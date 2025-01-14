@@ -3,7 +3,7 @@ This example proposes a general organization for OBIs software. The focus here i
 
 ## Goals
 
-- **Ideal code framework for Simulations Neuroscience which the platform builds on top of.**
+- **Ideal code framework for Simulations Neuroscience which the platform builds on top of.** As the platform is essentially a code generator, executer and data manager, it will benefit most if the structure of the underlying code base is ideal in itself for advancing the field of Simulations Neuroscience.
 
 - **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
     1) The composition of different Stages and Steps for new Projects/Models.
@@ -13,15 +13,15 @@ This example proposes a general organization for OBIs software. The focus here i
  
 - **Standardization and iteration of the communication of complex multifaceted models (including details, rationale, validations and use cases). Information in the standard format can be rendered in the platform in a clear format which naturally teaches the user about existing models/data and the key parts of Simulations Neuroscience.** Communication is essential to convincing and eductating potential paying users, peer reviewers and the rest of the scientific community about our models and their value. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases, demanding huge time investment to learn at a high level. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform. Moreover, such descriptions take months or years to achieve (historically for papers) through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
 
-- **Rendering A standard format can be iter which can be iterated on is critical to developing good communication of our models.
-
-- **Naturally teaches the key parts of Simulations Neuroscience** The standardization of how we communicate 
-
-- **Code/configuration files for launching on AWS with each piece of code.**
-
 - **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
 
 - **Clear correspondence between persistence of generated artifacts and version control of associated code.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for.
+
+- **Code/configuration files for launching on AWS with each piece of code.**
+
+
+
+
 
 - **Leverages the advantages of source control.**
 
