@@ -1,12 +1,10 @@
-# Scientific Proposal For General OBI Code Organization - Example as a basis for discussions & refinement
-This example proposes a general organization for OBIs software that considers our scientific experience of modelling and publishing. The focus here is not on the specifics of a technical implementation or terminology. Instead we hope to arrive at an ideal code framework (organization of data and code) for advancing the field of Simulations Neuroscience which the platform can be built on top of.
+# Scientific Proposal For General OBI Code Organization - Goals & Proposal
+- Here we define the **goals** and an initial **proposal** for a general organization of OBIs software.
+- This aims to provide a basis for discussions and the potential prototyping of a general data and code organization.
 
 ## Goals
 
-As scientists we define the following goals: 
-
-
-- **Ideal code framework for Simulations Neuroscience which the platform builds on top of.** As the platform is essentially a code generator, executer and data manager, it will benefit most if the structure of the underlying code base is ideal in itself for advancing the field of Simulations Neuroscience.
+- **General framework for advancing the field of Simulations Neuroscience, which the platform builds on top of.** As the platform is essentially a code generator, executer and data manager, it will benefit most if the structure of the underlying code base is ideal in itself for advancing the field of Simulations Neuroscience. A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied. Iterative refinement, efficiency, flexibility, description of data/methods, collaboration
 
 - **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
     1) The composition of different Stages and Steps for new Projects/Models.
@@ -37,16 +35,9 @@ As scientists we define the following goals:
 
 - **High scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
 
--**Users can contribute code to a project or general code library**
+- **Users can contribute code to a project or general code library**
 
 - **Maximize code generality/reusability.** Code must be re-usable across models and different simulations. Users should also see a path for converting there existing code to a general piece of code that others can re-use.
-
-- **Iterative refinement, efficiency, flexibility, description of data/methods, collaboration, which the platform can be built on top of.**
-
-
-
-Old:
-- **A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied.
 
 
 ## Proposal
