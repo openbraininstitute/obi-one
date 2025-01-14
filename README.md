@@ -16,29 +16,19 @@ This example proposes a general organization for OBIs software. The focus here i
 
 - **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
 
-- **Version control of user code which has clear correspondence with persistence of generated artifacts.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for. Version control of code is also essential to users 
+- **Version control of user code which has clear correspondence with persistence of generated artifacts.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for. Version control of code/generated code is also essential for users.
 
-- **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, as well as the
+- **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, with corresponding code and descriptions is well suited for LLMs.
 
-- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** Lots of users/experts with access to compute. If we remember just how much compute was needed to run build, optimize, validate the full SSCx model, we are probably in the millions of dollars or even 10s of millions of dollars on AWS.
+- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** The development, improvement and use of our models is extremely expensive in terms of compute and human time. Moreover, it remains a highly experimental process: unexpected issues (both engineering and scientific) are very common, meaning that code (including building, optimization, simulation and analysis) must often be rerun many times to attain a relevant result. Many labs and experts around the world have access to compute and may not currently have funds for cloud compute. The peer review process is also highly demanding, with reviewers expecting models to hugely advance the state of the art. For now, the complexity of our models demands a much wider community of neuroscientists to engage in the development and advancent of models, and the development process to be much more structured. It may also be necessary for 
+
+
 
 - **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.**
 
 - **Code/configuration files for launching on AWS with each piece of code.**
 
-
-
-
-
-
-
-
-
-
-
 - **Confirmation of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
-
-
 
 - **Enables reproducibility with easy cloud deployment.** 
 
@@ -58,7 +48,7 @@ This example proposes a general organization for OBIs software. The focus here i
 
 
 ## Proposal
-As an initial proposal for discussion, we propose the following demarcation organization:
+Taking into account all of these considerations, we make the following proposal for discussion and iteration. To begin we suggest the following demarcation organization:
 
 ## OBI Libraries
 [OBI Libraries](https://www.github.com/james-isbister/OBI-Libraries) are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
