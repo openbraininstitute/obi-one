@@ -22,19 +22,19 @@ This example proposes a general organization for OBIs software. The focus here i
 
 - **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** The development, improvement and use of our models is extremely expensive in terms of compute and human time. Moreover, it remains a highly experimental process: unexpected issues (both engineering and scientific) are very common, meaning that code (including building, optimization, simulation and analysis) must often be rerun many times to attain a relevant result. Many labs and experts around the world have access to compute and may not currently have funds for cloud compute. The peer review process is also highly demanding, with reviewers expecting models to hugely advance the state of the art. For now, the complexity of our models demands a much wider community of neuroscientists to engage in the development and advancent of models, and the development process to be more structured. A compartmental GitHub-based structuring with SQL/AWS persistence would allow simple management of model development and validation, with clear Stages and Steps, some of which could be assigned for burst-out compute across the world.
 
-- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.** Such a standard could also be used for the models of other groups, with descriptions, rationale etc of different Stages and Steps automatically being rendered in the platform.  
+- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.** Such a standard could also be used for the models of other groups, with descriptions, rationale etc of different Stages and Steps automatically being rendered in the platform.
 
-- **Code/configuration files for launching on AWS with each piece of code.**
+- **Cloud deployment enables easy reproducibility.** Being able to publish a paper with code that anyone can easily run and recreate on the cloud would be very attractive to scientists; particularly because citations often come from the ability to extend/re-use work.
+
+- **Potential/eventual generality for any neuroscience use-case.** Such an organization of code, compute and persistance would provide a powerful framework for scienctists.
+
+- **Code/configuration files for launching on AWS with each piece of code.** Anyone browsing the code can easily launch it on AWS and start spending $.
 
 - **Confirmation of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
-- **Enables reproducibility with easy cloud deployment.** 
-
-- **Potential generality for any neuroscience use-case**
-
 - **Enable high scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
 
-- **Maximizes code reusability.** 
+- **Maximize code generality/reusability.** Code must  
 
 - **Learn lessons of our joint scientific experience** our scientific experience of model development, validation, leveraging models to make predictions, peer review.
 
