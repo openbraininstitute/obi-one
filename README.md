@@ -3,7 +3,7 @@ This example proposes a general organization for OBIs software. The focus here i
 
 ## Goals
 
-- **Provide an ideal underlying code framework for Simulations Neuroscience which the platform can be built on top of.**
+- **Ideal code framework for Simulations Neuroscience which the platform builds on top of.**
 
 - **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
     1) The composition of different Stages and Steps for new Projects/Models.
@@ -11,9 +11,11 @@ This example proposes a general organization for OBIs software. The focus here i
     3) Having a clear correspondence between code and GUI functionality.
     4) Reusing code and UI elements for different Steps of the same Stage (for example, validation and predictions from connectivity).
  
-- **Standardize the communication of complex multifaceted models (including details, rationale, validations and use cases).** Communication is essential to convincing potential paying users, peer reviewers and the rest of the scientific community of the value of our models, as well as rapidly educating them. It is also essential to rapidly educate potential users. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases. Basically, only Blue Brain employees could afford to invest the time to learn about a subset of the different components with the potential of a future pay-off. Even then, this would only give a birds eye view of many of the components. Moreover, such descriptions take months or years to achieve through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform.
+- **Standardization and iteration of the communication of complex multifaceted models (including details, rationale, validations and use cases). Information in the standard format can be rendered in the platform in a clear format which naturally teaches the user about existing models/data and the key parts of Simulations Neuroscience.** Communication is essential to convincing and eductating potential paying users, peer reviewers and the rest of the scientific community about our models and their value. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases, demanding huge time investment to learn at a high level. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform. Moreover, such descriptions take months or years to achieve (historically for papers) through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
 
-- **Naturally teaches the key parts of Simulations Neuroscience**
+- **Rendering A standard format can be iter which can be iterated on is critical to developing good communication of our models.
+
+- **Naturally teaches the key parts of Simulations Neuroscience** The standardization of how we communicate 
 
 - **Code/configuration files for launching on AWS with each piece of code.**
 
