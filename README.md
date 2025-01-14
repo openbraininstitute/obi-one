@@ -1,60 +1,57 @@
 # Scientific Proposal For General OBI Code Organization - Example as a basis for discussions & refinement
 This example proposes a general organization for OBIs software. The focus here is not on the specifics of a technical implementation or terminology but on eventually finding a general organization of data and code, which achieves the following goals:
 
-- **Compartmentalization of Modelling into compositional Stages and Steps.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps is essential to:
-    1) The composition of different Stages and Steps for new Projects/Models
-    2) Clearly communicating/teaching the generic Stages and Steps in Simulations Neuroscience,
-    3) Having a clear correspondence between code and GUI functionality,
-    4) Standardizing for 
-    5) reusing code and UI elements for different steps of the same stage (for example, validation and predictions from connectivity).
+## Goals
 
-- **A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied.
+- **Provide an ideal underlying code framework for Simulations Neuroscience which the platform can be built on top of.**
 
-- **A framework which targets iterative refinement, efficiency, flexibility, description of data/methods, collaboration, which the platform can be built on top of.**
+- **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
+    1) The composition of different Stages and Steps for new Projects/Models.
+    2) Naturally communicating/teaching the generic Stages and Steps in Simulations Neuroscience.
+    3) Having a clear correspondence between code and GUI functionality.
+    4) Reusing code and UI elements for different Steps of the same Stage (for example, validation and predictions from connectivity).
+ 
+- **Standardize the communication of complex multifaceted models (including details, rationale, validations and use cases).** Communication is essential to convincing potential paying users, peer reviewers and the rest of the scientific community of the value of our models, as well as rapidly educating them. It is also essential to rapidly educate potential users. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases. Basically, only Blue Brain employees could afford to invest the time to learn about a subset of the different components with the potential of a future pay-off. Even then, this would only give a birds eye view of many of the components. Moreover, such descriptions take months or years to achieve through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform.
 
+- **Naturally teaches the key parts of Simulations Neuroscience**
 
+- **Code/configuration files for launching on AWS with each piece of code.**
 
-- **Optimise communication of complex multifaceted models (including details, rationale, validations and use cases).** Communication is essential to convincing potential paying users, peer reviewers and the rest of the scientific community of the value of our models. It is also essential to rapidly educate potential users. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases. Basically, only Blue Brain employees could afford to invest the time to learn about a subset of the different components with the potential of a future pay-off. Even then, this would only give a birds eye view of many of the components. Moreover, such descriptions take months or years to achieve through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
+- **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
 
-- **Generality to decouple the technical side (engineering team) from the contents that scientists can and should manage.** Such a framework
-
-- **Provides a framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** Lots of users/experts with access to compute. If we remember just how much compute was needed to run build, optimize, validate the full SSCx model, we are probably in the millions of dollars or even 10s of millions of dollars on AWS.
-
-- **Create a GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, that can then be integrated in the platform.**
-
-- **Enable high scientific flexibility.** Science advances through trial and error, and the ability to quickly try different things. The platform should
+- **Clear correspondence between persistence of generated artifacts and version control of associated code.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for.
 
 - **Leverages the advantages of source control.**
 
-- **Unify persistence of artifacts with version control of associated code.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they have paid for.
+- **Builds clear correspondence between code and UI elements.**
 
-- **Code exixts with the AWS scripts/bbp-workflow for launching code**
+- **Standardizes the organization of code, data and descriptions for use by LLMs.**
 
-- **Enables reproducibility.** Code 
+- **Confirmation of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
-- **Standardizes the organization of code and data for use by LLMs.**
+- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** Lots of users/experts with access to compute. If we remember just how much compute was needed to run build, optimize, validate the full SSCx model, we are probably in the millions of dollars or even 10s of millions of dollars on AWS.
 
-More:
-- **Efficiency in re-use of code.** 
-- **Lower the barrier of entry**
-- **Learns lessons of scientific experience** our scientific experience of model development, validation, leveraging models to make predictions, peer review.
-- **Considers the realitites of the large scale compute required to build + validate large scale models**
-- **Enables iterative refinement of large scale models by the community**
+- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.**
 
-- **Enables clear communication of complex models**
+- **Enables reproducibility with easy cloud deployment.** 
 
-- **De-couples the provision of content** 
-- **Organizes code into clear scientific stages**
-- **Naturally teaches the key parts of Simulations Neuroscience**
-- **Maximizes code reusability**
-- **Enables the user to see the code of the expensive simulations they have run**
-- **Eventually enables global collaboration on projects**
-- Builds an association between
-- Enables scientists to add code.
-- Builds a correspondence between code
+- **Potential generality for any neuroscience use-case**
 
+- **Enable high scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
+
+- **Maximizes code reusability.** 
+
+- **Learn lessons of our joint scientific experience** our scientific experience of model development, validation, leveraging models to make predictions, peer review.
+
+- **Iterative refinement, efficiency, flexibility, description of data/methods, collaboration, which the platform can be built on top of.**
+
+- **A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied.
+
+- **Provide a basis for users/scientists to first contribute code for a particular model/dataset, but then convert it to more generally applied analysis.**
+
+
+## Proposal
 As an initial proposal for discussion, we propose the following demarcation organization:
-
 
 ## OBI Libraries
 [OBI Libraries](https://www.github.com/james-isbister/OBI-Libraries) are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
