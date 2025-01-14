@@ -1,6 +1,6 @@
 # Scientific Proposal For General OBI Code Organization - Goals & Proposal
-- Here we define the **goals** and an initial **proposal** for a general organization of OBIs software.
-- This aims to provide a basis for discussions and the potential prototyping of a general data and code organization.
+- Here we define the **goals** and an initial **proposal** for a general organization of code and data, which can **advance the field of Simulations Neuroscience** and **maximise the scientific utility of the Platform**.
+- This aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
 
 ## Goals
 
