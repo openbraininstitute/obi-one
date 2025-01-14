@@ -1,7 +1,10 @@
 # Scientific Proposal For General OBI Code Organization - Example as a basis for discussions & refinement
-This example proposes a general organization for OBIs software that considers our scientific experience of modelling and publishing. The focus here is not on the specifics of a technical implementation or terminology but on eventually finding a general organization of data and code, which achieves the following goals:
+This example proposes a general organization for OBIs software that considers our scientific experience of modelling and publishing. The focus here is not on the specifics of a technical implementation or terminology. Instead we hope to arrive at an ideal code framework (organization of data and code) for advancing the field of Simulations Neuroscience which the platform can be built on top of.
 
 ## Goals
+
+As scientists we define the following goals: 
+
 
 - **Ideal code framework for Simulations Neuroscience which the platform builds on top of.** As the platform is essentially a code generator, executer and data manager, it will benefit most if the structure of the underlying code base is ideal in itself for advancing the field of Simulations Neuroscience.
 
@@ -20,7 +23,7 @@ This example proposes a general organization for OBIs software that considers ou
 
 - **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, with corresponding code and descriptions is well suited for LLMs.
 
-- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** The development, improvement and use of our models is extremely expensive in terms of compute and human time. Moreover, it remains a highly experimental process: unexpected issues (both engineering and scientific) are very common, meaning that code (including building, optimization, simulation and analysis) must often be rerun many times to attain a relevant result. Many labs and experts around the world have access to compute and may not currently have funds for cloud compute. The peer review process is also highly demanding, with reviewers expecting models to hugely advance the state of the art. For now, the complexity of our models demands a much wider community of neuroscientists to engage in the development and advancent of models, and the development process to be more structured. A compartmental GitHub-based structuring with SQL/AWS persistence would allow simple management of model development and validation, with clear Stages and Steps, some of which could be assigned for burst-out compute across the world.
+- **A framework for collaboration combining cloud compute and burst-out to institution supercomputers.** The development, improvement and use of our models is extremely expensive in terms of compute and human time. Moreover, it remains a highly experimental process: unexpected issues (both engineering and scientific) are very common, meaning that code (including building, optimization, simulation and analysis) must often be rerun many times to attain a relevant result. Many labs and experts around the world have access to compute and may not currently have funds for cloud compute. The peer review process is also highly demanding, with reviewers expecting models to hugely advance the state of the art. For now, the complexity of our models demands a much wider community of neuroscientists to engage in the development and advancent of models, and the development process to be more structured. A compartmental GitHub-based structuring with SQL/AWS persistence would allow simple management of model development and validation, with clear Stages and Steps, some of which could be assigned for burst-out compute across the world.
 
 - **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.** Such a standard could also be used for the models of other groups, with descriptions, rationale etc of different Stages and Steps automatically being rendered in the platform.
 
@@ -32,15 +35,18 @@ This example proposes a general organization for OBIs software that considers ou
 
 - **Confirmation of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
-- **Enable high scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
+- **High scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
+
+-**Users can contribute code to a project or general code library**
 
 - **Maximize code generality/reusability.** Code must be re-usable across models and different simulations. Users should also see a path for converting there existing code to a general piece of code that others can re-use.
 
 - **Iterative refinement, efficiency, flexibility, description of data/methods, collaboration, which the platform can be built on top of.**
 
-- **A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied.
 
-- **Provide a basis for users/scientists to first contribute code for a particular model/dataset, but then convert it to more generally applied analysis.**
+
+Old:
+- **A framework to collate, organize, standardize and run all key building, optimizations, simulations, validations and analyses (and their associated dependencies).** As the platform is essentially a code generator, executor and data manager, the code for any platform functionality must first be collated. By collating all important functionalities, we also see what are the 'core' use cases. Any functionality we can collate the code for and make runnable on the cloud, we can also in theory generate income, before it is even GUI-fied.
 
 
 ## Proposal
