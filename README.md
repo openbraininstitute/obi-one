@@ -1,5 +1,5 @@
 # Scientific Proposal For General OBI Code Organization - Example as a basis for discussions & refinement
-This example proposes a general organization for OBIs software. The focus here is not on the specifics of a technical implementation or terminology but on eventually finding a general organization of data and code, which achieves the following goals:
+This example proposes a general organization for OBIs software that considers our scientific experience of modelling and publishing. The focus here is not on the specifics of a technical implementation or terminology but on eventually finding a general organization of data and code, which achieves the following goals:
 
 ## Goals
 
@@ -34,9 +34,7 @@ This example proposes a general organization for OBIs software. The focus here i
 
 - **Enable high scientific flexibility.** Science advances through trial and error so the platform should enable fast iteration on analyses etc.
 
-- **Maximize code generality/reusability.** Code must  
-
-- **Learn lessons of our joint scientific experience** our scientific experience of model development, validation, leveraging models to make predictions, peer review.
+- **Maximize code generality/reusability.** Code must be re-usable across models and different simulations. Users should also see a path for converting there existing code to a general piece of code that others can re-use.
 
 - **Iterative refinement, efficiency, flexibility, description of data/methods, collaboration, which the platform can be built on top of.**
 
