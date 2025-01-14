@@ -7,15 +7,22 @@ This example proposes a general organization for OBIs software. The focus here i
 
 - **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
     1) The composition of different Stages and Steps for new Projects/Models.
-    2) Naturally communicating/teaching the generic Stages and Steps in Simulations Neuroscience.
-    3) Having a clear correspondence between code and GUI functionality.
-    4) Reusing code and UI elements for different Steps of the same Stage (for example, validation and predictions from connectivity).
+    2) Clear correspondence between code and UI elements.
+    3) Naturally communicating/teaching the generic Stages and Steps in Simulations Neuroscience.
+    4) Having a clear correspondence between code and GUI functionality.
+    5) Reusing code and UI elements for different Steps of the same Stage (for example, validation and predictions from connectivity).
  
-- **Standardization and iteration of the communication of complex multifaceted models (including details, rationale, validations and use cases). Information in the standard format can be rendered in the platform in a clear format which naturally teaches the user about existing models/data and the key parts of Simulations Neuroscience.** Communication is essential to convincing and eductating potential paying users, peer reviewers and the rest of the scientific community about our models and their value. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases, demanding huge time investment to learn at a high level. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform. Moreover, such descriptions take months or years to achieve (historically for papers) through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
+- **Standardization and iteration of the communication of complex multifaceted models (including details, rationale, validations and use cases). Information in this standard format can be rendered in the platform, with the structure of the standard naturally teaching the user about existing models/data and the key parts of Simulations Neuroscience.** Communication is essential to convincing and eductating potential paying users, peer reviewers and the rest of the scientific community about our models and their value. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases, demanding huge time investment to learn at a high level. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform. Moreover, such descriptions take months or years to achieve (historically for papers) through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
 
 - **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
 
-- **Clear correspondence between persistence of generated artifacts and version control of associated code.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for.
+- **Version control of user code which has clear correspondence with persistence of generated artifacts.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for. Version control of code is also essential to users 
+
+- **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, as well as the
+
+- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** Lots of users/experts with access to compute. If we remember just how much compute was needed to run build, optimize, validate the full SSCx model, we are probably in the millions of dollars or even 10s of millions of dollars on AWS.
+
+- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.**
 
 - **Code/configuration files for launching on AWS with each piece of code.**
 
@@ -23,17 +30,15 @@ This example proposes a general organization for OBIs software. The focus here i
 
 
 
-- **Leverages the advantages of source control.**
 
-- **Builds clear correspondence between code and UI elements.**
 
-- **Standardizes the organization of code, data and descriptions for use by LLMs.**
+
+
+
 
 - **Confirmation of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
-- **A framework for future international collaboration combining cloud compute and burst-out to institution supercomputers.** Lots of users/experts with access to compute. If we remember just how much compute was needed to run build, optimize, validate the full SSCx model, we are probably in the millions of dollars or even 10s of millions of dollars on AWS.
 
-- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.**
 
 - **Enables reproducibility with easy cloud deployment.** 
 
