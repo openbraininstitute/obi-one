@@ -71,7 +71,7 @@ OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuro
 7) Similar to the concept of bbp-workflow perhaps, except code functions are 
 
 ## OBI Project Examples
-1) [OBI Project Examples](https://www.github.com/james-isbister/OBI-Project-Examples) contains a list of configurations files for different OBI Templates
+1) [OBI Project Examples](./OBI-Project-Examples) contains a list of configurations files for different OBI Templates
 
 2) Projects have high level json configs defining (serial and parallel) order of Stages (which are in subdirectories)
 
@@ -81,19 +81,19 @@ OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuro
 
 
 ## OBI User Projects
-[OBI User Projects](https://www.github.com/james-isbister/OBI-User-Projects)
+[OBI User Projects](./OBI-User-Projects)
 
 1) Each User has a set of Projects, with each Project being a seperate GitHub repository.
 
 2) User Projects may be forks of Templates or Examples.
 
-
+## OBI Platform
+[OBI Platform](./OBI-Platform) 
 
 ## OBI Database and Persistence
-[OBI Database and Persistence](https://www.github.com/james-isbister/OBI-Database-and-Persistence) is the Everything is built on top of a database
+[OBI Database and Persistence](./OBI-Database-and-Persistence) is the Everything is built on top of a database
 
-## OBI Platform
-[OBI Platform](https://www.github.com/james-isbister/OBI-Platform) 
+
 
 
 
