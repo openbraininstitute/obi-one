@@ -23,8 +23,11 @@
     3) Naturally communicating/teaching the generic Stages and Steps in Simulations Neuroscience.
     4) Having a clear correspondence between code and GUI functionality.
     5) Reusing code and UI elements for different Steps of the same Stage (for example, validation and predictions from connectivity).
+    6) Enables clear seperation of work for **collaborators** and **peer reviewers**.
  
 - **Standardization and iteration of the communication of complex multifaceted models (including details, rationale, validations and use cases). Information in this standard format can be rendered in the platform, with the structure of the standard naturally teaching the user about existing models/data and the key parts of Simulations Neuroscience.** Communication is essential to convincing and eductating potential paying users, peer reviewers and the rest of the scientific community about our models and their value. Currently large collections of interelated scientific papers jointly describe details, rationale, validations and use cases, demanding huge time investment to learn at a high level. Standardization of how models and components are communicated is also essential for avoiding re-use in the platform. Moreover, such descriptions take months or years to achieve (historically for papers) through iterative refinement. Moreover, when models build/iterate upon previous models, descriptions should be inherited and adjusted.
+
+- **No repetition of writing between platform communication and paper**
 
 - **Version control of user code which has clear correspondence with persistence of generated artifacts.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for. Version control of code/generated code is also essential for users.
 
@@ -55,6 +58,25 @@ Taking into account all of these considerations, we make the following proposal 
 ## OBI Libraries
 OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
 
+## OBI Interface
+- Single Python API for using functionality of all OBI Libraries
+- Library of functions which return persistable 
+- Jupyter notebooks generated automatically to display
+
+## OBI Project Examples
+1) [OBI Project Examples](./OBI-Project-Examples) contains a list of configurations files for different OBI Templates
+2) Projects have high level json configs defining (serial and parallel) order of Stages (which are in subdirectories)
+3) Each Stage has a json config defining (serial and parallel) order of Steps
+4) Each Step has a json config defining the parameters of its code
+
+
+As an example of a project we consider the rat nbS1. We begin by assuming that everything can be d
+
+![rat_nbS1](explanatory_images/rat_nbS1.png)
+![model](explanatory_images/model.png)
+![neuron_palcement](explanatory_images/neuron_placement.png)
+ 
+<!--
 ## OBI Code Templates
 1) [OBI Code Templates](./OBI-Code-Templates) are generalizable pieces of code which use code in OBI Libraries (and beyond) for building, optimizing parameters, validating and characterizing discrepencies with laboratory data, making predictions, and running other use cases.
 
@@ -69,15 +91,9 @@ OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuro
 6) Templates are compositional...
 
 7) Similar to the concept of bbp-workflow perhaps, except code functions are 
+-->
 
-## OBI Project Examples
-1) [OBI Project Examples](./OBI-Project-Examples) contains a list of configurations files for different OBI Templates
 
-2) Projects have high level json configs defining (serial and parallel) order of Stages (which are in subdirectories)
-
-3) Each Stage has a json config defining (serial and parallel) order of Steps
-
-4) Each Step has a json config defining the parameters of its code
 
 
 ## OBI User Projects

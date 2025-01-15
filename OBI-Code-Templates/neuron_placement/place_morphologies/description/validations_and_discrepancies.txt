@@ -1,3 +1,0 @@
-Validations
-
-To validate the placement of neuron morphologies we...
