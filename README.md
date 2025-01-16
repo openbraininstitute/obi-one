@@ -53,53 +53,56 @@
 
 
 ## Proposal
-Taking into account all of these considerations, we make the following proposal for discussion and iteration. To begin we suggest the following demarcation organization:
+Taking into account these considerations, we propose make the following proposal for discussion and iteration. 
 
+The general idea is to have a single API for using BBP libraries with AWS, SQL persistance and version control. The API can be used both directly by users and by the platform.
 
+Functions 
 
+**OBI Interface**
 
-OBI Interface
+A single API
 
 ![obi_interface](explanatory_images/obi_interface.png)
 
 
 
-core
+Core
 
 ![core](explanatory_images/core.png)
 
 
 
-modeling -> neuron placement
+Modeling -> Neuron placement
 
 ![modeling_neuron_placement](explanatory_images/modeling_neuron_placement.png)
 
 
 
-modeling -> neuron placement -> perform
+Modeling -> Neuron placement -> Perform
 
 ![modeling_neuron_placement_perform](explanatory_images/modeling_neuron_placement_perform.png)
 
 
 
-examples
+Examples
 
 ![examples](explanatory_images/examples.png)
 
 
 
-examples: generated project
+Examples: generated project
 
 ![examples_generated_project](explanatory_images/examples_generated_project.png)
 
 
 
-examples: generated notebooks
+Examples: generated notebooks
 
 ![examples_generated_notebooks](explanatory_images/examples_generated_notebooks.png)
 
 
-
+As code and rationale for generating entities are clearly structured and organized, they can be rendered in the platform with the same organization. 
 
 
 
@@ -162,24 +165,4 @@ As an example of a project we consider the rat nbS1. We begin by assuming that e
 ## OBI Database and Persistence
 [OBI Database and Persistence](./OBI-Database-and-Persistence) is the Everything is built on top of a database
 -->
-
-
-
-
-
-
-## Overview Diagram
-```mermaid
-graph TB
-A[OBI Libraries] --> B[OBI Code Templates]
-B --> C[OBI Example Projects]
-
-A --> D[OBI Platform]
-B --> D
-C --> D
-
-```
-
-## Outstanding questions
-- What is the best/cleanest way of having 
 
