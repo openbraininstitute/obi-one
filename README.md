@@ -55,26 +55,79 @@
 ## Proposal
 Taking into account all of these considerations, we make the following proposal for discussion and iteration. To begin we suggest the following demarcation organization:
 
-## OBI Libraries
-OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
 
+
+
+OBI Interface
+
+![obi_interface](explanatory_images/obi_interface.png)
+
+
+
+core
+
+![core](explanatory_images/core.png)
+
+
+
+modeling -> neuron placement
+
+![modeling_neuron_placement](explanatory_images/modeling_neuron_placement.png)
+
+
+
+modeling -> neuron placement -> perform
+
+![modeling_neuron_placement_perform](explanatory_images/modeling_neuron_placement_perform.png)
+
+
+
+examples
+
+![examples](explanatory_images/examples.png)
+
+
+
+examples: generated project
+
+![examples_generated_project](explanatory_images/examples_generated_project.png)
+
+
+
+examples: generated notebooks
+
+![examples_generated_notebooks](explanatory_images/examples_generated_notebooks.png)
+
+
+
+
+
+
+
+<!--
 ## OBI Interface
 - Single Python API for using functionality of all OBI Libraries
 - Library of functions which return persistable 
 - Jupyter notebooks generated automatically to display
+-->
 
+<!--
+## OBI Libraries
+OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
+-->
+
+ 
+<!--
 ## OBI Project Examples
 1) [OBI Project Examples](./OBI-Project-Examples) contains a list of configurations files for different OBI Templates
 2) Projects have high level json configs defining (serial and parallel) order of Stages (which are in subdirectories)
 3) Each Stage has a json config defining (serial and parallel) order of Steps
 4) Each Step has a json config defining the parameters of its code
-
+-->
 
 As an example of a project we consider the rat nbS1. We begin by assuming that everything can be d
 
-![rat_nbS1](explanatory_images/rat_nbS1.png)
-![model](explanatory_images/model.png)
-![neuron_palcement](explanatory_images/neuron_placement.png)
+
  
 <!--
 ## OBI Code Templates
@@ -95,7 +148,7 @@ As an example of a project we consider the rat nbS1. We begin by assuming that e
 
 
 
-
+<!--
 ## OBI User Projects
 [OBI User Projects](./OBI-User-Projects)
 
@@ -108,7 +161,7 @@ As an example of a project we consider the rat nbS1. We begin by assuming that e
 
 ## OBI Database and Persistence
 [OBI Database and Persistence](./OBI-Database-and-Persistence) is the Everything is built on top of a database
-
+-->
 
 
 
