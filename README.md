@@ -110,10 +110,16 @@ OBI-SDK organized by:
 
 Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
 
-Under this organization, the Platform acts as a:
+Under this organization, the Platform offers a:
+
+- **Clear**
+
 - **An entry point for new users to generate projects and parameterize configuration files.** Through the GUI they can create projects and gradually build up pipelines of functions. The GUI offers both 1) simple form based parameterization of configuration files based on the schema of any OBI-SDK library function and 2) more advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
 
-- **Automatic generation of project GitHub repository**
+- **Management**
+
+
+- **Automatic generation of project GitHub repository.**
 
 To begin with they can choose example
 
@@ -123,52 +129,22 @@ To begin with they can choose example
 
 ## Advantages
 
-Such an organization has a number of advantages:
-- Any work done through the OBP has a clear
-- 
+Such an organization has a number of additional advantages:
 
+- **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
 
+- **High scientific flexibility.**
 
+- **Reproducibility and impact enabled by cloud deployment.** Being able to publish a paper with code that anyone can easily run and recreate on the cloud would be very attractive to scientists; particularly because citations often come from the ability to extend/re-use work.
 
-<!--
-## OBI Interface
-- Single Python API for using functionality of all OBI Libraries
-- Library of functions which return persistable 
-- Jupyter notebooks generated automatically to display
--->
+- **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, with corresponding code and descriptions is well suited for LLMs.
 
-<!--
-## OBI Libraries
-OBI Libraries are the OBI maintained libraries / packages i.e. Neuron, CoreNeuron, BlueETL, BluepySnap, etc.
--->
+- **In developing a framework, collate and organize the code and dependencies which will form the basis of a platform. This code can be run by users to generate income before even being accessible in the platform.**
 
- 
-<!--
-## OBI Project Examples
-1) [OBI Project Examples](./OBI-Project-Examples) contains a list of configurations files for different OBI Templates
-2) Projects have high level json configs defining (serial and parallel) order of Stages (which are in subdirectories)
-3) Each Stage has a json config defining (serial and parallel) order of Steps
-4) Each Step has a json config defining the parameters of its code
--->
+- **A framework for collaboration combining cloud compute and (eventual) burst-out to institution supercomputers.** The development, improvement and use of our models is extremely expensive in terms of compute and human time. Moreover, it remains a highly experimental process: unexpected issues (both engineering and scientific) are very common, meaning that code (including building, optimization, simulation and analysis) must often be rerun many times to attain a relevant result. Many labs and experts around the world have access to compute and may not currently have funds for cloud compute. The peer review process is also highly demanding, with reviewers expecting models to hugely advance the state of the art. For now, the complexity of our models demands a much wider community of neuroscientists to engage in the development and advancent of models, and the development process to be more structured. A compartmental GitHub-based structuring with SQL/AWS persistence would allow simple management of model development and validation, with clear Stages and Steps, some of which could be assigned for burst-out compute across the world.
 
-As an example of a project we consider the rat nbS1. We begin by assuming that everything can be d
+- **A general GitHub based standard for cloud deployment (and busrt-out to university supercomputers in future) of brain models and analyses, with inherited integration into the platform.** Such a standard could also be used for the models of other groups, with descriptions, rationale etc of different Stages and Steps automatically being rendered in the platform.
 
+- **Simple framework for automated testing of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
- 
-<!--
-## OBI Code Templates
-1) [OBI Code Templates](./OBI-Code-Templates) are generalizable pieces of code which use code in OBI Libraries (and beyond) for building, optimizing parameters, validating and characterizing discrepencies with laboratory data, making predictions, and running other use cases.
-
-2) Templates read in parameters or contain placeholders (e.g. for notebooks), for input and output data paths and other parameters. These are populated by values from configuration files (json).
-
-3) Templates exist with example configuration files and the necessary AWS scripts for launching them.
-
-4) Templates exist with 
-
-5) Templates are organized by Modelling Stage (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc.) and Modelling Step (i.e. building, optimization of parameters, validation/discrepencies with real data, predictions, use cases), 
-
-6) Templates are compositional...
-
-7) Similar to the concept of bbp-workflow perhaps, except code functions are 
--->
-
+- **Potential/eventual generality for any neuroscience use case.** Such an organization of code, compute and persistance would provide a powerful framework for scienctists.
