@@ -110,21 +110,19 @@ OBI-SDK organized by:
 
 Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
 
-Under this organization, the Platform offers a:
-
-- **Clear**
+Under this organization, the Platform can offer:
 
 - **An entry point for new users to generate projects and parameterize configuration files.** Through the GUI they can create projects and gradually build up pipelines of functions. The GUI offers both 1) simple form based parameterization of configuration files based on the schema of any OBI-SDK library function and 2) more advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
 
-- **Management**
+- **Clear, general and hierarchical organization and navigation of complex multifaceted models. The hierachical organization of the underlying GitHub repository corresponds with easy navigation through the platform to code, rationale, description of methods and results for all validations, predictions and building steps.** This has huge benefits for the communication of models; both for potential users and peer reviewers. Currently both groups have to dive into many recent and historic publications, to understand the building steps, rational, validations and predictions made with our models.
 
+
+- **Management/visualisation of data entities**
+
+- **Clear correspondence between code and GUI elements.**
 
 - **Automatic generation of project GitHub repository.**
 
-To begin with they can choose example
-
-
-- Any project has a clear hierarchy that can be clickable
 
 
 ## Advantages
@@ -148,3 +146,10 @@ Such an organization has a number of additional advantages:
 - **Simple framework for automated testing of expected behaviour.** As scientists, we can rerun building, optimizations, simulations etc and verify expected behaviour.
 
 - **Potential/eventual generality for any neuroscience use case.** Such an organization of code, compute and persistance would provide a powerful framework for scienctists.
+
+- **Encourages/enables code generality/reusability through clear location and hierarchical organization for general code.** Users should also see a path for converting there existing code to a general piece of code that others can re-use across models and different simulations. 
+
+
+- **No repetition of writing between platform communication and paper**
+
+- **Code/configuration files for launching on AWS with each piece of code.** Anyone browsing the code can easily launch it on AWS and start spending $.
