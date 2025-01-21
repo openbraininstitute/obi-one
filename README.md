@@ -13,7 +13,7 @@ Taking into account these considerations, we make the following proposal for dis
 
 ## OBI-SDK
 OBI-SDK organized by:
-- A **library of modeling code organized by modeling stage (i.e. neuron placement, network activity etc), and modeling steps (i.e. perform, validate, predict)**. Each modeling step can have **multiple substeps or alternative approaches** each defined by a single function in its own subdirectory, and each with a corresponding schema for parameterization:
+- A **library of modeling code organized hierarchically by modeling stage (i.e. neuron placement, network activity etc), and modeling steps (i.e. perform, validate, predict)**. Each modeling step can have **multiple substeps or alternative approaches** each defined by a single function in its own subdirectory, and each with a corresponding schema for parameterization:
 
     ![modeling](explanatory_images/new/modeling.png)
 
@@ -24,7 +24,7 @@ OBI-SDK organized by:
     modeling/neuron_placement/validate/basic_neuron_placement_validation/functionality/validate_neuron_placement_example.yaml \
     modeling/neuron_placement/validate/basic_neuron_placement_validation/resources/aws_example.yaml
    ```
-   where the **parameters** configuration file specifies the parameters and exact function to be run:
+   where the **parameters** configuration file specifies the **parameters, git branch/commit** and exact **function** to be run:
    ```yaml
    function: ./validate_neuron_placement.py
    branch: main
@@ -42,7 +42,7 @@ OBI-SDK organized by:
    user: smith
    ```
 
-    This might commit and push existing code (if required) and call the rest API (PUSH, passing the two configuration files). The service then launches the code (using the correct commit for each step) on the specified / appropriate resource.
+    Calling run_aws might commit and push existing code (if required) and call the rest API (PUSH, passing the two configuration files). The **service** then launches the code using the correct commit for each step and the specified / appropriate resource.
 
 
 - **Sequences of stages and steps can then be defined in pipeline configuration files** which point to different stage/step configuration files:
@@ -71,44 +71,64 @@ OBI-SDK organized by:
     ![example1](explanatory_images/new/example1.png)
 
 
-- **Then for a single Step: configuration files, latex files and resource parameterizations keep a single structure to that of the modeling library:**
+- **For a Step: configuration, latex and resource files are organized with a similar structure to that of the modeling library:**
 
     ![example2](explanatory_images/new/example2.png)
 
-    Here the Step configuration file could point to the sdk function:
+    Here the Step configuration file can point to the SDK function:
     ```yaml
     function: obi-sdk/modeling/neuron_placement/validate/basic_neuron_placement_validation/validate_neuron_placement.py
+    branch: main
+    commit: HEAD
     params: 
         output_data: ./neuron_placment/validate/basic_neuron_placement
         proportion_of_cells: 0.2
    ```
 
-- **Users can also add custom code within this structure:**
+- **Users can also add custom code within the project and reference these functions rather than those in the SDK:**
 
     ![example3](explanatory_images/new/example3.png)
 
-    And point to these functions rather the SDK in the configuration file:
+    And point to these functions in the configuration file rather than functions in the SDK:
     ```yaml
     function: rat_nbs1/modeling/neuron_placement/validate/basic_neuron_placement_validation/perform_neuron_placement_custom.py
+    branch: main
+    commit: HEAD
     params: 
         output_data: ./neuron_placment/validate/basic_neuron_placement
         proportion_of_cells: 0.2
    ```
 
-- **Custom code could also be collated in forks of the SDK, which would allow pull requests to be made into the main branch later.**
+- **Custom code could also be added in forks of the SDK, which would allow pull requests into the main branch later.**
 
 - **As has been seen, tests and descriptions (rationale/descriptions/results) for different Steps can also be organized in the same hierarchical structure (both in the SDK and project).**
 
+- **Input and output artifacts for each function all comply with our SQL schema.** It might be beneficial to store the schema in the same repository so that users can add functionality without having to sync two seperate repositories (syncing seperate repos may seem challenging / risky to low/medium skill git users):
 
-- **Input and output artifacts for each function all comply with our new SQL schema.** It might be beneficial to store the schema in the same repository so that users can add functionality without having to sync two seperate repositories (syncing seperate repos may seem challenging / risky to low/medium skill git users):
+- **By default, artifacts are stored with meta-data referencing the code, branch, commit, and position in the Stages and Steps hierarchy.**
 
-- **Artifacts produced by a project are then stored with the same organization into Stages and Steps.**
+- **Template Jupyter Notebooks could be stored in the same hierchical structure of Stages and Steps, and maintained as part of the SDK.**
 
-- **All persistance and usage of artifacts is standardized**
+- **Notebooks could also be generated automatically from 
 
 # Platform
 
-The platform then has a direct correspondence with the version controlled modeling library and each project
+Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
+
+Under this organization, the Platform acts as a:
+- An entry point to any
+- Any project has a clear hierarchy that can be clickable
+
+
+
+
+
+# Advantages
+
+Such an organization has a number of advantages:
+- Any work done through the OBP has a clear
+- 
+
 
 
 
