@@ -1,15 +1,9 @@
 # Scientific Proposal For General OBI Code Organization - Goals & Proposal
-- Here we define the **goals** and an initial **proposal** for a general organization of code and data, which can:
+- Here we define an initial **proposal** for a general organization of code and data, which can:
     - **Maximise the scientific utility of the Platform**
     - **Accelerate the field of Simulations Neuroscience**
 - The aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
-
-
-
-
-
-# Proposal
-Taking into account these considerations, we make the following proposal for discussion and iteration. The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control. The SDK can be used both directly by users and by the platform.
+- The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control of user code. The SDK can be used both directly by users and by the platform.
 
 ## OBI-SDK
 OBI-SDK organized by:
@@ -42,7 +36,7 @@ OBI-SDK organized by:
    user: smith
    ```
 
-    Calling run_aws might commit and push existing code (if required) and call the rest API (PUSH, passing the two configuration files). The **service** then launches the code using the correct commit for each step and the specified / appropriate resource.
+    Calling **run_aws** might **commit and push** existing code (if required) and **call the rest API** (PUSH, passing the two configuration files). The **service** then **launches the function** using the correct **commit for each step** and the **specified / appropriate resource.**
 
 
 - **Sequences of stages and steps can then be defined in pipeline configuration files** which point to different stage/step configuration files:
@@ -71,11 +65,11 @@ OBI-SDK organized by:
     ![example1](explanatory_images/new/example1.png)
 
 
-- **For a Step: configuration, latex and resource files are organized with a similar structure to that of the modeling library:**
+- **For a Step: configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
 
     ![example2](explanatory_images/new/example2.png)
 
-    Here the Step configuration file can point to the SDK function:
+    Here **the Step configuration file can point to the SDK function**:
     ```yaml
     function: obi-sdk/modeling/neuron_placement/validate/basic_neuron_placement_validation/validate_neuron_placement.py
     branch: main
@@ -89,7 +83,7 @@ OBI-SDK organized by:
 
     ![example3](explanatory_images/new/example3.png)
 
-    And point to these functions in the configuration file rather than functions in the SDK:
+    The configuration file can then reference these custom function rather than functions in the SDK:
     ```yaml
     function: rat_nbs1/modeling/neuron_placement/validate/basic_neuron_placement_validation/perform_neuron_placement_custom.py
     branch: main
@@ -99,9 +93,9 @@ OBI-SDK organized by:
         proportion_of_cells: 0.2
    ```
 
-- **Custom code could also be added in forks of the SDK, which would allow pull requests into the main branch later.**
+- **Custom code could also be added in forks of the SDK, which could be pulled into the main branch later.**
 
-- **As has been seen, tests and descriptions (rationale/descriptions/results) for different Steps can also be organized in the same hierarchical structure (both in the SDK and project).**
+- **As has been seen, tests and descriptions (rationale/descriptions/results) for different Steps can also be organized in the same hierarchical structure (both in the SDK and project).** Maintaining descriptions within this structure allows users to write the paper as they go. Keeping a clear seperation of different modeling Stages and Steps would create a paper optimally organized based on our experience of peer review, with corresponding code for each step.
 
 - **Input and output artifacts for each function all comply with our SQL schema.** It might be beneficial to store the schema in the same repository so that users can add functionality without having to sync two seperate repositories (syncing seperate repos may seem challenging / risky to low/medium skill git users):
 
@@ -109,21 +103,25 @@ OBI-SDK organized by:
 
 - **Template Jupyter Notebooks could be stored in the same hierchical structure of Stages and Steps, and maintained as part of the SDK.**
 
-- **Notebooks could also be generated automatically from 
+- **Notebooks could also be generated automatically for library or user functions.**
 
-# Platform
+
+## Platform
 
 Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
 
 Under this organization, the Platform acts as a:
-- An entry point to any
+- **An entry point for new users to generate projects and parameterize configuration files.** Through the GUI they can create projects and gradually build up pipelines of functions. The GUI offers both 1) simple form based parameterization of configuration files based on the schema of any OBI-SDK library function and 2) more advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
+
+- **Automatic generation of project GitHub repository**
+
+To begin with they can choose example
+
+
 - Any project has a clear hierarchy that can be clickable
 
 
-
-
-
-# Advantages
+## Advantages
 
 Such an organization has a number of advantages:
 - Any work done through the OBP has a clear
@@ -172,22 +170,5 @@ As an example of a project we consider the rat nbS1. We begin by assuming that e
 6) Templates are compositional...
 
 7) Similar to the concept of bbp-workflow perhaps, except code functions are 
--->
-
-
-
-<!--
-## OBI User Projects
-[OBI User Projects](./OBI-User-Projects)
-
-1) Each User has a set of Projects, with each Project being a seperate GitHub repository.
-
-2) User Projects may be forks of Templates or Examples.
-
-## OBI Platform
-[OBI Platform](./OBI-Platform) 
-
-## OBI Database and Persistence
-[OBI Database and Persistence](./OBI-Database-and-Persistence) is the Everything is built on top of a database
 -->
 
