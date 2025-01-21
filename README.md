@@ -149,7 +149,6 @@ Such an organization has a number of additional advantages:
 
 - **Encourages/enables code generality/reusability through clear location and hierarchical organization for general code.** Users should also see a path for converting there existing code to a general piece of code that others can re-use across models and different simulations. 
 
-
 - **No repetition of writing between platform communication and paper**
 
 - **Code/configuration files for launching on AWS with each piece of code.** Anyone browsing the code can easily launch it on AWS and start spending $.
