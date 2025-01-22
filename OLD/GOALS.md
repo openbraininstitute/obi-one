@@ -21,18 +21,5 @@
 
 - **Version control of user code which has clear correspondence with persistence of generated artifacts.** Customers paying large sums of money want to access to the exact code they are running because 1) most journals now demand the publication of source code, 2) to understand what it is exactly they might pay for and/or have paid for. Version control of code/generated code is also essential for users.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 - **Users can contribute code to a project or general code library**
 
