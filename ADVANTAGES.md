@@ -1,10 +1,18 @@
 # 5. Advantages
 
-Such an organization has a number of additional advantages:
+Such a design has a number of additional advantages:
 
 - **Decoupling contents (managed by scientists) and the engineering side confers high scientific flexibility.** Such a framework can rapidly allow us to collate existing code into usable features.
 
 - **Reproducibility and impact enabled by cloud deployment.** Being able to publish a paper with code that anyone can easily run and recreate on the cloud would be very attractive to scientists; particularly because citations often come from the ability to extend/re-use work.
+
+- **Compartmentalized peer review.** A major issue we encountered is that 
+
+- **Having a single community driven SDK such as "spikeinterface", "DeepLabCut", "CEBRA" confers the following benefits:**  
+    - Gives users a feeling that there is a single learnable codebase that will offer mastery. This is important to convincing them that the time investment is worthwhile.
+    - All engineers and scientists collaborate and become experts in a single high quality code base.
+    - A community can be built around this single SDK. Similar to Spikeinterface.
+    - There is a single reference point for code that can gain an identity impress big Neuroscience players
 
 - **Standardize the organization of code, data and descriptions for use by LLMs.** The standardization of modelling Stages and Steps, with corresponding code and descriptions is well suited for LLMs.
 
@@ -22,15 +30,7 @@ Such an organization has a number of additional advantages:
 
 - **No repetition of writing between platform communication and paper**
 
-- **Code/configuration files for launching on AWS with each piece of code.** Anyone browsing the code can easily launch it on AWS and start spending $.
-
-- We all become experts on and work on a single SDK.
-- Gives users a feeling that there is a single learnable codebase that will offer mastery
-- A community can be built around this single SDK. Similar to Spikeinterface.
-- Impress big Neuroscience players
-
-
-
+- **Code and files for launching on AWS stored together** meaning anyone browsing the code can easily launch it on AWS and start spending $.
 
 
 # Old - maybe useful
@@ -40,8 +40,6 @@ Such an organization has a number of additional advantages:
     - Flexibility
     - Description and communication of data/methods
     - Collaboration
-
-
 
 - **Compartmentalization of Modelling into compositional Stages and Steps with standardized interface.** All models are built, validated and used for making predictions in a sequential or parralel series of clearly defined **Modelling Stages** (i.e. neuron morphology generation, neuron placement, connectivity, ..., network activity, ... etc. At each Stage, there can be a combination of the following **Modelling Steps**: building, optimization of parameters, validation/discrepencies with real data, predictions, use cases. Making this clear demarcation of Stages and Steps and standardizing the interface for executing different components is essential to:
     1) The composition of different Stages and Steps for new Projects/Models.
