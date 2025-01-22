@@ -170,7 +170,7 @@ Under this organization, the Platform can offer:
 
 - **Clear, general and hierarchical organization and navigation of complex multifaceted models. The hierachical organization of the underlying GitHub repository corresponds with easy navigation through the platform to code, rationale, description of methods and results for all validations, predictions and building steps.** This has huge benefits for the communication of models; both for potential users and peer reviewers. Currently both groups have to dive into many recent and historic publications, to understand the building steps, rational, validations and predictions made with our models.
 
-![example3](explanatory_images/new/platform.png)
+<img src="explanatory_images/new/platform.png" alt="platform" width="60%">
 
 
 - **Management/visualisation of data entities**
