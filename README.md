@@ -1,18 +1,32 @@
 # OBI-SDK + Repo + Platform Integration - Scientific Proposal
-Here we define an initial **proposal** for a general organization of code, data and the Platform, which can:
+Here we define an initial **proposal** and **goals** for a general organization of code, data and the Platform, which can:
 - **Maximise the scientific utility of the Platform**
 - **Accelerate the field of Simulations Neuroscience**
 
 Everything related to design and engineering is simply a rough non-expert outline. The aim is to provide a basis for discussions, iteration and potential prototyping. The general idea is to have a single SDK for performing BBP modeling with AWS, SQL persistance and version control of user code, which can be used through code, the platform or by LLMs. Moreover, the goal is to create a clear correspondence between artifacts, user code and Platform functionality.
 
+---
+
+# Proposal
+The SDK is organized into two main parts:
+
+- [1. Modeling Library (click)](./MODELING_LIBRARY.md)
+- [2. Core Operations (click)](./CORE_OPERATIONS.md)
+
+User projects can then be created through code (forking an existing example) or through the platform.
+
+- [3. Example User Project - CODE (click)](./EXAMPLE_USER_PROJECT.md)
+- [4. Example User Project - PLATFORM (click)](./PLATFORM.md)
+
+
 # Goals
 
 Scientifically, we hope to find a solution which:
 - **Decouples contents (managed by scientists) and the engineering side to confer high scientific flexibility.**
-- **Builds upon the hierarchical compartmentalization of Modelling into Stages** (i.e. neuron placement, connectivity, ..., network activity) and **Steps** (i.e. building, optimization, validation, predictions) to:
+- **Builds upon the hierarchical compartmentalization of Modelling into Stages** (e.g. neuron placement, connectivity, network activity) and **Steps** (i.e. building, validation, predictions) to:
     - Confer a structure which **inherently educates the user in the Stages and Steps of Simulations Neuroscience**, and is inherently **designed for distributed peer review** of these types of models.
     - **Create projects/models which correspond with a single GitHub repository defining models as compositions of different Stages and Steps.** 
-    - **Allows descriptions, code, tests, article text, notebooks, artifacts for single Stages and Steps to be collated in this hierarchical structure using version controlled code/AWS persistance, which can be navigated and viewed in the platform.** 
+    - **Optimize the communication of highly complex multifaceted models. Particularly we hope to organize descriptions, code, tests, article text, notebooks, artifacts for single Stages and Steps to be collated in this hierarchical structure using version controlled code/AWS persistance, which can be navigated and viewed in the platform.** 
     - **All artifacts correspond directly with version controlled code.**
     - **Projects can be built directly from the Platform or as code in a repository, but always have a correspondence in both to leverage the advantages of both.** 
     - **Optimizes communication/description of complex multifaceted models: users can work on descriptions in this hierarchy/GitHub repo which are automatically rendered in the platform**.
@@ -38,20 +52,6 @@ Scientifically, we hope to find a solution which:
 - Allows us to **collate and organize the code and dependencies which will underly the platform.**
 - **Eliminates repetition of writing between communication of model in platform and paper writing.**
 
-
-
----
-
-# Proposal
-The SDK is organized into two main parts:
-
-- [1. Modeling Library (click)](./MODELING_LIBRARY.md)
-- [2. Core Operations (click)](./CORE_OPERATIONS.md)
-
-User projects can then be created through code (forking an existing example) or through the platform.
-
-- [3. Example User Project - CODE (click)](./EXAMPLE_USER_PROJECT.md)
-- [4. Example User Project - PLATFORM (click)](./PLATFORM.md)
 
 <!-- This organization offers the following additional advantages:
 
