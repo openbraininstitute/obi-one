@@ -15,7 +15,7 @@ OBI-SDK organized by:
     
     Each **Substep** is **defined** by a **single entry function** and **parameterization schema** (with an example parma config) in its own subdirectory:
 
-    <img src="explanatory_images/new/modeling.png" alt="modeling" width="30%">
+    <img src="explanatory_images/modeling.png" alt="modeling" width="30%">
 
     ---
 
@@ -25,13 +25,13 @@ OBI-SDK organized by:
     - **Schemas for AWS/compute resources, and requirements**
     - **Notebooks.** Notebooks could also be generated automatically for library functions.
 
-    <img src="explanatory_images/new/modeling_step.png" alt="modeling_step" width="25%">
+    <img src="explanatory_images/modeling_step.png" alt="modeling_step" width="25%">
 
     ---
 
 - **All modeling Stages and Steps including (for example) circuit building, extraction and simulation are organized in this way:**
 
-    <img src="explanatory_images/new/circuit_activity.png" alt="circuit_activity" width="20%">
+    <img src="explanatory_images/circuit_activity.png" alt="circuit_activity" width="20%">
 
 
     ---
@@ -99,7 +99,7 @@ Works with standardized content of **modeling library** (i.e. schemas, code, ver
 
 Possibly stored in the same SDK:
 
-<img src="explanatory_images/new/core1.png" alt="core1" width="13%">
+<img src="explanatory_images/core1.png" alt="core1" width="13%">
 
 
 
@@ -111,21 +111,21 @@ Possibly stored in the same SDK:
 
 - **Example/user projects use a similar structure to the modeling library**, with a seperation into Stages and Steps, and one or multiple pipelines.**
 
-    ![example1](explanatory_images/new/example1.png)
+    ![example1](explanatory_images/example1.png)
 
 
 ---
 
 - **Each user project corresponds with a version controlled repository (i.e. GitHub):**
 
-    <img src="explanatory_images/new/github1.png" alt="github1" width="50%">
+    <img src="explanatory_images/github1.png" alt="github1" width="50%">
 
 ---
 
 
 - **Configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
 
-    ![example2](explanatory_images/new/example2.png)
+    <img src="explanatory_images/example2.png" alt="example2" width="20%">
 
     Here **the Step configuration file can point to the SDK function**:
     ```yaml
@@ -139,17 +139,17 @@ Possibly stored in the same SDK:
 
 ---
 
-- **Maintaining descriptions within this hierarchical structure allows users to write the paper in the Platform/GitHub repo as they go.**
+- **Maintaining DESCRIPTIONS within this hierarchical structure allows users to write the paper in the Platform/GitHub repo as they go.**
 
     The hierarchy confers a natural and optimal organization of the paper based on our experience of peer review, with corresponding code for each step.
 
-    <img src="explanatory_images/new/paper1.png" alt="paper1" width="35%">
+    <img src="explanatory_images/paper1.png" alt="paper1" width="30%">
 
 ---
 
 - **Users can also add custom code within the project** and reference these functions rather than those in the SDK:
 
-    ![example3](explanatory_images/new/example3.png)
+    <img src="explanatory_images/example3.png" alt="example3" width="30%">
 
     The configuration file can then reference these custom function rather than functions in the SDK:
     ```yaml
@@ -186,7 +186,7 @@ Under this organization, the Platform can offer:
 
 - **Clear, general and hierarchical organization and navigation of complex multifaceted models. The hierachical organization of the underlying GitHub repository corresponds with easy navigation through the platform to code, rationale, description of methods and results for all validations, predictions and building steps.** This has huge benefits for the communication of models; both for potential users and peer reviewers. Currently both groups have to dive into many recent and historic publications, to understand the building steps, rational, validations and predictions made with our models.
 
-<img src="explanatory_images/new/platform.png" alt="platform" width="90%">
+<img src="explanatory_images/platform.png" alt="platform" width="90%">
 
 
 - **Management/visualisation of data entities**
