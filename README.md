@@ -5,7 +5,7 @@
 - The aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
 - The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control of user code. The SDK can be used both directly by users and by the platform.
 
-# Library of Modeling Code
+# 1. Library of Modeling Code
 OBI-SDK organized by:
 - A **LIBRARY of MODELING CODE organized HIERARCHICALLY** by:
     1. Modeling **STAGE** (i.e. neuron placement, network activity etc)
@@ -91,7 +91,23 @@ OBI-SDK organized by:
 
 ---
 
-# Example User Project
+# 2. Core operations
+
+**Single Core API for running code, calling rest AWS services, persisting/managing artifacts, accounting, managing version control.** 
+
+Works with standardized content of **modeling library** (i.e. schemas, code, version control, etc.)
+
+Possibly stored in the same SDK:
+
+<img src="explanatory_images/new/core1.png" alt="core1" width="13%">
+
+
+
+
+---
+
+
+# 3. Example User Project (with GitHub + Paper generation)
 
 - **Example/user projects use a similar structure to the modeling library**, with a seperation into Stages and Steps, and one or multiple pipelines.**
 
@@ -127,7 +143,7 @@ OBI-SDK organized by:
 
     The hierarchy confers a natural and optimal organization of the paper based on our experience of peer review, with corresponding code for each step.
 
-    <img src="explanatory_images/new/paper1.png" alt="paper1" width="20%">
+    <img src="explanatory_images/new/paper1.png" alt="paper1" width="35%">
 
 ---
 
@@ -160,7 +176,7 @@ OBI-SDK organized by:
 
 ---
 
-# Platform
+# 4. Platform
 
 Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
 
@@ -181,7 +197,7 @@ Under this organization, the Platform can offer:
 
 ---
 
-# Advantages
+# 5. Advantages
 
 Such an organization has a number of additional advantages:
 
