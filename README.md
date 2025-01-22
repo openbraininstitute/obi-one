@@ -5,6 +5,10 @@
 - The aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
 - The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control of user code. The SDK can be used both directly by users and by the platform.
 
+
+- [Modeling Library](./MODELING_LIBRARY.md): Detailed documentation on the modeling library used in this project.
+
+
 # 1. Library of Modeling Code
 OBI-SDK organized by:
 - A **LIBRARY of MODELING CODE organized HIERARCHICALLY** by:
