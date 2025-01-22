@@ -1,4 +1,4 @@
-# OBI-SDK + Platform Integration - Scientific Proposal
+# OBI-SDK + Repo + Platform Integration - Scientific Proposal
 Here we define an initial **proposal** for a general organization of code, data and the Platform, which can:
 - **Maximise the scientific utility of the Platform**
 - **Accelerate the field of Simulations Neuroscience**
