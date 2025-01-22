@@ -5,7 +5,7 @@
 - The aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
 - The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control of user code. The SDK can be used both directly by users and by the platform.
 
-## Library of Modeling Code
+# Library of Modeling Code
 OBI-SDK organized by:
 - A **LIBRARY of MODELING CODE organized HIERARCHICALLY** by:
     1. Modeling **STAGE** (i.e. neuron placement, network activity etc)
@@ -90,14 +90,23 @@ OBI-SDK organized by:
    ```
 
 
-## Example User Project
+# Example User Project
 
-- **Example/user projects use a similar structure to the modeling library, with a seperation into Stages and Steps, and one or multiple pipelines.**
+- **Example/user projects use a similar structure to the modeling library**, with a seperation into Stages and Steps, and one or multiple pipelines.**
 
     ![example1](explanatory_images/new/example1.png)
 
 
-- **For a Step: configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
+---
+
+- **Each user project corresponds with a version controlled repository (i.e. GitHub):**
+
+    <img src="explanatory_images/new/github1.png" alt="github1" width="50%">
+
+---
+
+
+- For a Step: **configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
 
     ![example2](explanatory_images/new/example2.png)
 
@@ -110,8 +119,9 @@ OBI-SDK organized by:
         output_data: ./neuron_placment/validate/basic_neuron_placement
         proportion_of_cells: 0.2
    ```
+---
 
-- **Users can also add custom code within the project and reference these functions rather than those in the SDK:**
+- **Users can also add custom code within the project** and reference these functions rather than those in the SDK:
 
     ![example3](explanatory_images/new/example3.png)
 
@@ -125,7 +135,11 @@ OBI-SDK organized by:
         proportion_of_cells: 0.2
    ```
 
-- **Custom code could also be added in forks of the SDK, which could be pulled into the main branch later.**
+---
+
+- **Custom code could also be added in forks of the SDK**, which could be pulled into the main branch later.
+
+---
 
 - **Like for the SDK, tests, descriptions (rationale/descriptions/results), notebooks are kept in the same hierarchical structure.** Maintaining descriptions within this structure allows users to write the paper as they go. Keeping a clear seperation of different modeling Stages and Steps would create a paper optimally organized based on our experience of peer review, with corresponding code for each step.
 
@@ -138,7 +152,7 @@ OBI-SDK organized by:
 - **Notebooks could also be generated automatically for library or user functions.**
 
 
-## Platform
+# Platform
 
 Any **project** created through the platform has a direct correspondence with the proposed **GitHub** project structure, and vice versa. 
 
@@ -159,7 +173,7 @@ Under this organization, the Platform can offer:
 
 
 
-## Advantages
+# Advantages
 
 Such an organization has a number of additional advantages:
 
