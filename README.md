@@ -18,6 +18,7 @@ User projects can then be created through code (forking an existing example) or 
 - [3. Example User Project - CODE (click)](./EXAMPLE_USER_PROJECT.md)
 - [4. Example User Project - PLATFORM (click)](./PLATFORM.md)
 
+---
 
 # Goals
 
@@ -52,7 +53,4 @@ Scientifically, we hope to find a solution which:
 - Allows us to **collate and organize the code and dependencies which will underly the platform.**
 - **Eliminates repetition of writing between communication of model in platform and paper writing.**
 
-
-<!-- This organization offers the following additional advantages:
-
-- [5. Advantages](./ADVANTAGES.md) -->
+---
