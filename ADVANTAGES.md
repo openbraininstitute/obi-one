@@ -2,9 +2,7 @@
 
 Such an organization has a number of additional advantages:
 
-- **Generality to decouple the contents that scientists can manage and the technical side managed by the engineering team.** Such a framework can rapidly allow us to collate existing code into usable features.
-
-- **High scientific flexibility.**
+- **Decoupling contents (managed by scientists) and the engineering side confers high scientific flexibility.** Such a framework can rapidly allow us to collate existing code into usable features.
 
 - **Reproducibility and impact enabled by cloud deployment.** Being able to publish a paper with code that anyone can easily run and recreate on the cloud would be very attractive to scientists; particularly because citations often come from the ability to extend/re-use work.
 

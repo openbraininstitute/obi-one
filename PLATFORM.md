@@ -7,12 +7,26 @@ Under this organization, the Platform can offer:
 - **An entry point for new users to generate projects, parameterize configuration files, build pipelines.** 
 
     The GUI offers both:
-    - 1. Simple form based parameterization of configuration files based on the schema of any OBI-SDK library function.
-    - 2. More advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
+    - Simple form based parameterization of configuration files based on the schema of any OBI-SDK library function.
+    - More advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
 
     ---
 
 - **Automatic generation of project GitHub repository. Clear correspondence between code and GUI elements.**
+
+    When a user creates a project, a corresponding GitHub repository should be produced.
+
+    Then when a modeling Stage is added in the platform, a corresponding modeling Stage is added to the hierarchy and pipeline of the GitHub repository.
+
+    This is important because there is a need for any modeling functionality offered by the platform (or in a users project) to have a clear correspondence with code that is viewable to the user, as:
+        1. Users want to see what they are paying for
+        2. Journals demand code to be submitted with a paper.
+        3. Journals demand that code is theoretically reusable on other computers.
+        4. In case the user finds an issue, we need to know exactly what code/version were used, and very easily navigate this code.
+
+    Morover, we should leverage both the advantages of code (flexibility, version code, extension etc) and a platform (visualisation, management, simplification/usability).
+
+    ---
 
 - **Clear, general and hierarchical organization and navigation of complex multifaceted models.** 
 
@@ -40,7 +54,7 @@ Under this organization, the Platform can offer:
 ---
 
 
-- **Management/visualisation of data entities**
+- **Management/overview of data entities**
 
     All entities associated with a project are visible and can be managed or genereated through the platform:
 
@@ -48,3 +62,17 @@ Under this organization, the Platform can offer:
 
 
 ---
+
+
+- **Advanced visualization of model components and simulations**
+
+    Simulations Neuroscience is partly made difficult by the complexity and sheer volume of model components and simulations.
+    
+    A big advantage of the platform is its capacity to view different elements in three 3-dimensions.
+
+    Particularly useful will be:
+        - Visualizing the internal activity of single neurons during single, pairwise or circuit simulations.
+        - Visual validation of circuit/simulation elements arrangement. For example, are axons, thalamic fibres, synapse locations, recording electrodes visually correct.
+        - Visualization of network activity
+
+
