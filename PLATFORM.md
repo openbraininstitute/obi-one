@@ -12,14 +12,14 @@ Under this organization, the Platform can offer:
 
     ---
 
-- **Automatic generation of project GitHub repository. Clear correspondence between code and GUI elements.**
+- **Automatic generation of project GitHub repository. Clear correspondence between code and GUI elements. Version control of user code which has clear correspondence with persistence of generated artifacts.**
 
     When a user creates a project, a corresponding GitHub repository should be produced.
 
     Then when a modeling Stage is added in the platform, a corresponding modeling Stage is added to the hierarchy and pipeline of the GitHub repository.
 
     This is important because there is a need for any modeling functionality offered by the platform (or in a users project) to have a clear correspondence with code that is viewable to the user, as:
-        1. Users want to see what they are paying for
+        1. Users want to see and understand what they are paying for
         2. Journals demand code to be submitted with a paper.
         3. Journals demand that code is theoretically reusable on other computers.
         4. In case the user finds an issue, we need to know exactly what code/version were used, and very easily navigate this code.
@@ -27,6 +27,7 @@ Under this organization, the Platform can offer:
     Morover, we should leverage both the advantages of code (flexibility, version code, extension etc) and a platform (visualisation, management, simplification/usability).
 
     ---
+
 
 - **Clear, general and hierarchical organization and navigation of complex multifaceted models.** 
 
