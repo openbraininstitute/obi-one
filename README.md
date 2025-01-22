@@ -1,24 +1,50 @@
-# Scientific Proposal For General OBI Code Organization - Goals & Proposal
+# OBI-SDK + Platform Integration - Scientific Proposal
 - Here we define an initial **proposal** for a general organization of code and data, which can:
     - **Maximise the scientific utility of the Platform**
     - **Accelerate the field of Simulations Neuroscience**
 - The aim is to provide a basis for discussions, iteration and the potential prototyping of a general data and code organization.
 - The general idea is to have a single SDK for using BBP libraries with AWS, SQL persistance and version control of user code. The SDK can be used both directly by users and by the platform.
 
-## OBI-SDK
+## Library of Modeling Code
 OBI-SDK organized by:
-- A **library of modeling code organized hierarchically by modeling stage (i.e. neuron placement, network activity etc), and modeling steps (i.e. perform, validate, predict)**. Each modeling step can have **multiple substeps or alternative approaches** each defined by a single function in its own subdirectory, and each with a corresponding schema for parameterization:
+- A **LIBRARY of MODELING CODE organized HIERARCHICALLY** by:
+    1. Modeling **STAGE** (i.e. neuron placement, network activity etc)
+    2. Modeling **STEP** (i.e. perform, validate, predict). 
 
-    ![modeling](explanatory_images/new/modeling.png)
+    Each modeling Step can have **multiple SUBSTEPS or alternative/complementary functions.**
+    
+    Each **Substep** is **defined** by a **single entry function** and **parameterization schema** (with an example parma config) in its own subdirectory:
+
+    <img src="explanatory_images/new/modeling.png" alt="modeling" width="30%">
+
+    ---
+
+- **Everything related to this SUBSTEP is then stored in the same location, including:**
+    - **Tests**
+    - **Descriptions/Rationale** (which can be rendered in the platform)
+    - **Schemas for AWS/compute resources, and requirements**
+    - **Notebooks**
+
+    <img src="explanatory_images/new/modeling_step.png" alt="modeling_step" width="25%">
+
+    ---
+
+- **All modeling Stages and Steps including (for example) circuit building, extraction and simulation are organized in this way:**
+
+    <img src="explanatory_images/new/circuit_activity.png" alt="circuit_activity" width="20%">
 
 
-- **Standardization allows any step to be launched in the same way**: passing a **parameters** configuration file and a **resources** configuration file to a python script which then makes a call to the rest API, for example:
+    ---
+
+- **Such standardization allows any step to be launched in the same way.**
+
+    For example, passing **parameters** and **resources** config files to a Python script which then calls the rest API:
    ```bash
     run_aws.py \
     modeling/neuron_placement/validate/basic_neuron_placement_validation/functionality/validate_neuron_placement_example.yaml \
     modeling/neuron_placement/validate/basic_neuron_placement_validation/resources/aws_example.yaml
    ```
-   where the **parameters** configuration file specifies the **parameters, git branch/commit** and exact **function** to be run:
+   Where the **parameters** config file specifies the **parameters, git branch/commit** and exact **function** to be run:
    ```yaml
    function: ./validate_neuron_placement.py
    branch: main
@@ -27,7 +53,7 @@ OBI-SDK organized by:
     output_data: ./neuron_placment/validate/basic_neuron_placement
     proportion_of_cells: 0.2
    ```
-   and the **resources** configuration file specifies the aws resources:
+   And the **resources** config file specifies the AWS resources:
    ```yaml
    nodes: 1
    cores_per_node: 4
@@ -36,10 +62,13 @@ OBI-SDK organized by:
    user: smith
    ```
 
-    Calling **run_aws** might **commit and push** existing code (if required) and **call the rest API** (PUSH, passing the two configuration files). The **service** then **launches the function** using the correct **commit for each step** and the **specified / appropriate resource.**
+    Calling **run_aws** might **commit and push** existing code (if required) and **call the rest API** (PUSH, passing the two configuration files). 
+    
+    The **service** then **launches the function** using the correct **commit for each step** and the **specified / appropriate resource.**
 
+    ---
 
-- **Sequences of stages and steps can then be defined in pipeline configuration files** which point to different stage/step configuration files:
+- **PIPELINES of Stages and Steps can then be defined in Pipeline config files** which point to different stage/step configuration files:
     ```yaml
     project: "SSCx_v2"
     aws_persistance_root: ""
@@ -59,6 +88,9 @@ OBI-SDK organized by:
             validate: ...
             predict: ...
    ```
+
+
+## Example User Project
 
 - **Example/user projects use a similar structure to the modeling library, with a seperation into Stages and Steps, and one or multiple pipelines.**
 
@@ -95,7 +127,7 @@ OBI-SDK organized by:
 
 - **Custom code could also be added in forks of the SDK, which could be pulled into the main branch later.**
 
-- **As has been seen, tests and descriptions (rationale/descriptions/results) for different Steps can also be organized in the same hierarchical structure (both in the SDK and project).** Maintaining descriptions within this structure allows users to write the paper as they go. Keeping a clear seperation of different modeling Stages and Steps would create a paper optimally organized based on our experience of peer review, with corresponding code for each step.
+- **Like for the SDK, tests, descriptions (rationale/descriptions/results), notebooks are kept in the same hierarchical structure.** Maintaining descriptions within this structure allows users to write the paper as they go. Keeping a clear seperation of different modeling Stages and Steps would create a paper optimally organized based on our experience of peer review, with corresponding code for each step.
 
 - **Input and output artifacts for each function all comply with our SQL schema.** It might be beneficial to store the schema in the same repository so that users can add functionality without having to sync two seperate repositories (syncing seperate repos may seem challenging / risky to low/medium skill git users):
 
@@ -115,6 +147,8 @@ Under this organization, the Platform can offer:
 - **An entry point for new users to generate projects and parameterize configuration files.** Through the GUI they can create projects and gradually build up pipelines of functions. The GUI offers both 1) simple form based parameterization of configuration files based on the schema of any OBI-SDK library function and 2) more advanced custom GUI elements for parameterizing configuration files (i.e. existing single cell).
 
 - **Clear, general and hierarchical organization and navigation of complex multifaceted models. The hierachical organization of the underlying GitHub repository corresponds with easy navigation through the platform to code, rationale, description of methods and results for all validations, predictions and building steps.** This has huge benefits for the communication of models; both for potential users and peer reviewers. Currently both groups have to dive into many recent and historic publications, to understand the building steps, rational, validations and predictions made with our models.
+
+![example3](explanatory_images/new/platform.png)
 
 
 - **Management/visualisation of data entities**
@@ -152,3 +186,11 @@ Such an organization has a number of additional advantages:
 - **No repetition of writing between platform communication and paper**
 
 - **Code/configuration files for launching on AWS with each piece of code.** Anyone browsing the code can easily launch it on AWS and start spending $.
+
+
+
+
+- We all become experts on and work on a single SDK.
+- Gives users a feeling that there is a single learnable codebase that will offer mastery
+- A community can be built around this single SDK. Similar to Spikeinterface.
+- Impress big Neuroscience players
