@@ -23,7 +23,7 @@ OBI-SDK organized by:
     - **Tests**
     - **Descriptions/Rationale** (which can be rendered in the platform)
     - **Schemas for AWS/compute resources, and requirements**
-    - **Notebooks**
+    - **Notebooks.** Notebooks could also be generated automatically for library functions.
 
     <img src="explanatory_images/new/modeling_step.png" alt="modeling_step" width="25%">
 
@@ -89,6 +89,7 @@ OBI-SDK organized by:
             predict: ...
    ```
 
+---
 
 # Example User Project
 
@@ -106,7 +107,7 @@ OBI-SDK organized by:
 ---
 
 
-- For a Step: **configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
+- **Configuration, latex and resource files are organized with a similar hierarchical structure to that of the modeling library:**
 
     ![example2](explanatory_images/new/example2.png)
 
@@ -119,6 +120,15 @@ OBI-SDK organized by:
         output_data: ./neuron_placment/validate/basic_neuron_placement
         proportion_of_cells: 0.2
    ```
+
+---
+
+- **Maintaining descriptions within this hierarchical structure allows users to write the paper in the Platform/GitHub repo as they go.**
+
+    The hierarchy confers a natural and optimal organization of the paper based on our experience of peer review, with corresponding code for each step.
+
+    <img src="explanatory_images/new/paper1.png" alt="paper1" width="20%">
+
 ---
 
 - **Users can also add custom code within the project** and reference these functions rather than those in the SDK:
@@ -141,16 +151,14 @@ OBI-SDK organized by:
 
 ---
 
-- **Like for the SDK, tests, descriptions (rationale/descriptions/results), notebooks are kept in the same hierarchical structure.** Maintaining descriptions within this structure allows users to write the paper as they go. Keeping a clear seperation of different modeling Stages and Steps would create a paper optimally organized based on our experience of peer review, with corresponding code for each step.
-
 - **Input and output artifacts for each function all comply with our SQL schema.** It might be beneficial to store the schema in the same repository so that users can add functionality without having to sync two seperate repositories (syncing seperate repos may seem challenging / risky to low/medium skill git users):
+
+
+---
 
 - **By default, artifacts are stored with meta-data referencing the code, branch, commit, and position in the Stages and Steps hierarchy.**
 
-- **Template Jupyter Notebooks could be stored in the same hierchical structure of Stages and Steps, and maintained as part of the SDK.**
-
-- **Notebooks could also be generated automatically for library or user functions.**
-
+---
 
 # Platform
 
@@ -171,7 +179,7 @@ Under this organization, the Platform can offer:
 
 - **Automatic generation of project GitHub repository.**
 
-
+---
 
 # Advantages
 
