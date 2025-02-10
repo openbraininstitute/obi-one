@@ -10,5 +10,5 @@ __pycache__/
 */*/*/__pycache__/
 */*/*/*/__pycache__/
 
-OBI_API/build/
-OBI_API/obi.egg-info/
+obi/build/
+obi/obi.egg-info/
