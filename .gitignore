@@ -4,6 +4,11 @@
 */*/*/.DS_Store
 */*/*/*/.DS_Store
 
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*/*/*/*/__pycache__/
+
 OBI_API/build/
-OBI_API/__pycache__/
 OBI_API/obi.egg-info/
