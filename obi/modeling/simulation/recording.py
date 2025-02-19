@@ -8,6 +8,12 @@ class Recording(SubTemplate):
     start_time: float | list[float]
     end_time: float | list[float]
 
+    _sonata_config: dict = {}
+
+
+    def generate_config(self):
+        return self._sonata_config
+
 class VoltageRecording(Recording):
     
     recording_type: str = "voltage"
@@ -22,7 +28,7 @@ class SpikeRecording(Recording):
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
     intracellular_location_set: IntracellularLocationSet
 
-    def sonata_config(self):
+    def generate_config(self):
         self._sonata_config = {
             "type": "compartment",
             "sections": self.intracellular_location_set.section,

@@ -1,5 +1,5 @@
 from .modeling.core.template import Template, SubTemplate
-from .modeling.core.parameter_scan import GridParameterScan
+from .modeling.core.parameter_scan import GridParameterScan, CoupledCoordsParameterScan
 
 from .modeling.circuit.circuit import Circuit
 from .modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet  
@@ -9,5 +9,5 @@ from .modeling.circuit.extracellular_location_sets import ExtracellularLocationS
 
 from .modeling.simulation.timestamps import Timestamps, RegularTimestamps, CategoricalTimestamps
 from .modeling.simulation.stimulus import Stimulus, SynchronousSingleSpikeStimulus
-from .modeling.simulation.recording import Recording
-from .modeling.simulation.simulations import SimulationParameterScanTemplate, Simulation, SimulationParameterScan 
+from .modeling.simulation.recording import Recording, SpikeRecording, IntracellularLocationSetVoltageRecording, ExtraceullarLocationSetVoltageRecording
+from .modeling.simulation.simulations import SimulationParameterScanTemplate, Simulation 

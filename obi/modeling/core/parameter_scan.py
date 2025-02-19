@@ -1,22 +1,22 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
 from .template import Template, SubTemplate
 
-import copy
+import os, copy, json
 class ParameterScan(BaseModel):
 
     template_instance: Template = None
+    _coords = PrivateAttr(default=[])
     _coord_instances: list = PrivateAttr(default=[])
 
-class GridParameterScan(ParameterScan):
+    def coord_instances_from_coords(self) -> list[Template]:
+        
+        # print(self._coords)
 
-    @property
-    def coord_instances(self) -> list[Template]:
-
-        if len(self._coord_instances) > 0: return self._coord_instances
-
-        for coord in self.template_instance.generate_grid_scan_coords():
+        for coord in self._coords:
 
             coord_template_instance = copy.deepcopy(self.template_instance)
+
+            # print(coord)
 
             for param in coord:
                 keys = param[0]
@@ -46,6 +46,30 @@ class GridParameterScan(ParameterScan):
         return self._coord_instances
     
 
+    def write_configs(self, output_dir, prefix="simulation_config_"):
+
+        os.makedirs(output_dir, exist_ok=True)
+        for idx, coord_instance in enumerate(self.coord_instances):
+            config = coord_instance.generate_config()
+
+            config_path = os.path.join(output_dir, f"{prefix}{idx}.json")
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+
+
+class GridParameterScan(ParameterScan):
+
+    @property
+    def coord_instances(self) -> list[Template]:
+
+        if len(self._coord_instances) > 0: return self._coord_instances
+            
+        self._coords = self.template_instance.generate_grid_scan_coords()
+        self._coord_instances = self.coord_instances_from_coords()
+
+        return self._coord_instances
+        
+
 class CoupledCoordsParameterScan(ParameterScan):
 
     @property
@@ -53,6 +77,8 @@ class CoupledCoordsParameterScan(ParameterScan):
 
         if len(self._coord_instances) > 0: return self._coord_instances
 
-        for coord in self.template_instance.generate_coupled_scan_coords():
+        self._coords = self.template_instance.generate_coupled_scan_coords()
+        print(self._coords)
+        self._coord_instances = self.coord_instances_from_coords()
 
-            coord_template_instance = copy.deepcopy(self.template_instance)
+        return self._coord_instances

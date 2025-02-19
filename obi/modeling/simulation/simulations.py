@@ -44,7 +44,7 @@ class Simulation(SimulationParameterScanTemplate, SingleTypeMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 
-    def sonata_config(self):
+    def generate_config(self):
 
         self._sonata_config = {}
         self._sonata_config['version'] = self.initialize.sonata_version
@@ -75,20 +75,7 @@ class Simulation(SimulationParameterScanTemplate, SingleTypeMixin):
 
         self._sonata_config['reports'] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config['reports'][recording_key] = recording.sonata_config()
+            self._sonata_config['reports'][recording_key] = recording.generate_config()
 
         return self._sonata_config
 
-
-import os, json
-class SimulationParameterScan(ParameterScan):
-
-    def write_simulation_sonata_configs(self, output_dir):
-
-        os.makedirs(output_dir, exist_ok=True)
-
-        for idx, simulation in enumerate(self.coord_instances):
-            config = simulation.sonata_config()
-            config_path = os.path.join(output_dir, f"simulation_config_{idx}.json")
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
