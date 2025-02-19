@@ -43,3 +43,5 @@ class Campaign(BaseModel):
                 print("Validation Error:", e)
 
         return self._coord_instances
+    
+    

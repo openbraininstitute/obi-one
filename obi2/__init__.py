@@ -1,5 +1,5 @@
 from .template import Template, SubTemplate
-from .simulations import SimulationCampaignTemplate, Simulation
+from .simulations import SimulationCampaignTemplate, Simulation, SimulationCampaign
 from .campaign import Campaign
 from .stimulus import Stimulus, SynchronousSingleSpikeStimulus
 from .recording import Recording

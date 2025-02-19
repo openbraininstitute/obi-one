@@ -4,6 +4,7 @@ from .circuit_grouping import CircuitGrouping
 from .timestamps import Timestamps
 from .recording import Recording
 from .circuit import Circuit
+from .campaign import Campaign
 
 class SimulationCampaignTemplate(Template):
     """Base simulation model that contains a generic nested object."""
@@ -33,3 +34,52 @@ class SimulationCampaignTemplate(Template):
 class Simulation(SimulationCampaignTemplate, SingleTypeMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
+
+    def sonata_config(self):
+
+        self._sonata_config = {}
+        self._sonata_config['version'] = self.initialize.sonata_version
+        self._sonata_config['target_simulator'] = self.initialize.target_simulator
+
+        self._sonata_config['network'] = self.initialize.circuit.circuit_path
+        self._sonata_config["node_set"] = self.initialize.circuit.node_set
+
+        self._sonata_config['run'] = {}
+        self._sonata_config['run']['dt'] = self.initialize.timestep
+        self._sonata_config['run']['random_seed'] = self.initialize.random_seed
+        self._sonata_config['run']['tstop'] = self.initialize.simulation_length
+
+        self._sonata_config['conditions'] = {}
+        self._sonata_config['conditions']['extracellular_calcium'] = self.initialize.extracellular_calcium_concentration
+        self._sonata_config['conditions']['v_init'] = self.initialize.v_init
+
+        self._sonata_config['conditions']['mechanisms'] = {
+            "ProbAMPANMDA_EMS": {
+                "init_depleted": True,
+                "minis_single_vesicle": True
+            },
+            "ProbGABAAB_EMS": {
+                "init_depleted": True,
+                "minis_single_vesicle": True
+            }
+        }
+
+        self._sonata_config['reports'] = {}
+        for recording_key, recording in self.recordings.items():
+            self._sonata_config['reports'][recording_key] = recording.sonata_config()
+
+        return self._sonata_config
+
+
+import os, json
+class SimulationCampaign(Campaign):
+
+    def write_simulation_sonata_configs(self, output_dir):
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        for idx, simulation in enumerate(self.coord_instances):
+            config = simulation.sonata_config()
+            config_path = os.path.join(output_dir, f"simulation_config_{idx}.json")
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
