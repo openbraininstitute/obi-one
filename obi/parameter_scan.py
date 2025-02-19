@@ -2,11 +2,12 @@ from pydantic import BaseModel, PrivateAttr, ValidationError
 from .template import Template, SubTemplate
 
 import copy
-class Campaign(BaseModel):
+class ParameterScan(BaseModel):
 
     template_instance: Template = None
-
     _coord_instances: list = PrivateAttr(default=[])
+
+class GridParameterScan(ParameterScan):
 
     @property
     def coord_instances(self) -> list[Template]:

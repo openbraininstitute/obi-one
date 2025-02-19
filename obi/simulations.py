@@ -3,13 +3,13 @@ from .stimulus import Stimulus
 from .timestamps import Timestamps
 from .recording import Recording
 from .circuit import Circuit
-from .campaign import Campaign
+from .parameter_scan import ParameterScan
 from .neuron_sets import NeuronSet
 from .synapse_sets import SynapseSet
 from .intracellular_location_sets import IntracellularLocationSet
 from .extracellular_location_sets import ExtracellularLocationSet
 
-class SimulationCampaignTemplate(Template):
+class SimulationParameterScanTemplate(Template):
     """Base simulation model that contains a generic nested object."""
 
     timestamps: dict[str, Timestamps]
@@ -38,7 +38,7 @@ class SimulationCampaignTemplate(Template):
         return globals()["Simulation"] 
 
 
-class Simulation(SimulationCampaignTemplate, SingleTypeMixin):
+class Simulation(SimulationParameterScanTemplate, SingleTypeMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 
@@ -79,7 +79,7 @@ class Simulation(SimulationCampaignTemplate, SingleTypeMixin):
 
 
 import os, json
-class SimulationCampaign(Campaign):
+class SimulationParameterScan(ParameterScan):
 
     def write_simulation_sonata_configs(self, output_dir):
 
