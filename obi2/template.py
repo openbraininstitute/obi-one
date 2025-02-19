@@ -1,8 +1,6 @@
 from typing import Any, List, Union, Dict
 from pydantic import BaseModel, ValidationError, field_validator, PrivateAttr
 
-
-
 class SubTemplate(BaseModel):
     """
     """

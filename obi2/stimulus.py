@@ -1,7 +1,13 @@
 from .template import SubTemplate
 from typing import Union, List
 
+    
+from .timestamps import Timestamps
+from .circuit_grouping import CircuitGrouping
+
 class Stimulus(SubTemplate):
-    """A nested model containing numeric attributes."""
-    nested_param1: Union[float, List[float]]
-    nested_param2: Union[float, List[float]]
+    circuit_grouping: CircuitGrouping
+    timestamps: Timestamps
+
+class SynchronousSingleSpikeStimulus(Stimulus):
+    spike_probability: float | list[float]
