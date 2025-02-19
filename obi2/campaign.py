@@ -1,15 +1,15 @@
-from pydantic import BaseModel, PrivateAttr
-from .multi_template import MultiTemplate, ValidationError
+from pydantic import BaseModel, PrivateAttr, ValidationError
+from .template import Template, SubTemplate
 
 import copy
 class Campaign(BaseModel):
 
-    template_instance: MultiTemplate = None
+    template_instance: Template = None
 
     _coord_instances: list = PrivateAttr(default=[])
 
     @property
-    def coord_instances(self) -> list[MultiTemplate]:
+    def coord_instances(self) -> list[Template]:
 
         if len(self._coord_instances) > 0: return self._coord_instances
 
@@ -24,7 +24,7 @@ class Campaign(BaseModel):
                 current_level = coord_template_instance
                 for i, key in enumerate(keys):
 
-                    if isinstance(current_level, MultiTemplate):
+                    if isinstance(current_level, SubTemplate):
 
                         if i == len(keys) - 1:
                             current_level.__dict__[key] = val

@@ -1,9 +1,9 @@
-from .multi_template import MultiTemplate, SingleTypeMixin
+from .template import Template, SingleTypeMixin
 from .stimulus import Stimulus
 
 from pydantic import PrivateAttr
 
-class SimulationCampaignTemplate(MultiTemplate):
+class SimulationCampaignTemplate(Template):
     """Base simulation model that contains a generic nested object."""
     nested: dict[str, Stimulus]
 

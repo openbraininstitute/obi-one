@@ -1,11 +1,18 @@
 from typing import Any, List, Union, Dict
 from pydantic import BaseModel, ValidationError, field_validator, PrivateAttr
 
+
+
+class SubTemplate(BaseModel):
+    """
+    """
+    pass
+
 from itertools import product
-class MultiTemplate(BaseModel):
+class Template(BaseModel):
     """
     """
-    _multi_params: dict = PrivateAttr(default={})  # Private storage
+    _multi_params: dict = PrivateAttr(default={})
     _sonata_config: dict = PrivateAttr(default={})
     
     
@@ -14,7 +21,7 @@ class MultiTemplate(BaseModel):
         
         for attr_name, attr_value in self.__dict__.items():
 
-            if isinstance(attr_value, dict) and all(isinstance(dict_val, MultiTemplate) for dict_key, dict_val in attr_value.items()):
+            if isinstance(attr_value, dict) and all(isinstance(dict_val, SubTemplate) for dict_key, dict_val in attr_value.items()):
                 for dict_key, dict_val in attr_value.items():
                     for key, value in dict_val.__dict__.items():
                         if not isinstance(value, BaseModel) and isinstance(value, list) and len(value) > 1:
@@ -53,8 +60,6 @@ class SingleTypeMixin:
     def enforce_single_type(cls, value):
         """Ensure all fields contain only single floats (no lists)."""
 
-        # print("enforce_single_type", value)
-
         if isinstance(value, list):
             raise ValueError("Lists are not allowed for this class.")
         if isinstance(value, dict):  # Check for nested dictionaries containing BaseModel instances
@@ -69,3 +74,4 @@ class SingleTypeMixin:
                     raise ValueError(f"Nested attribute '{field}' must not be a list.")
                 
         return value
+    
