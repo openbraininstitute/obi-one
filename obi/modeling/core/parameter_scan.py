@@ -78,7 +78,6 @@ class CoupledCoordsParameterScan(ParameterScan):
         if len(self._coord_instances) > 0: return self._coord_instances
 
         self._coords = self.template_instance.generate_coupled_scan_coords()
-        print(self._coords)
         self._coord_instances = self.coord_instances_from_coords()
 
         return self._coord_instances

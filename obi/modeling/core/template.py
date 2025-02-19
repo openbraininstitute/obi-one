@@ -119,8 +119,6 @@ class Template(BaseModel):
         return coords
 
 
-        
-
     
     def cast_to_single_instance(self):
         class_to_cast_to = self.single_version_class()
