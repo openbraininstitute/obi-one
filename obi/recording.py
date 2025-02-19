@@ -1,20 +1,41 @@
+from typing import Literal
+
 from .template import SubTemplate
-from .intracellular_location_sets import SomaIntracellularLocationSet
+from .intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
+from .extracellular_location_sets import ExtracellularLocationSet
 
 class Recording(SubTemplate):
     start_time: float | list[float]
     end_time: float | list[float]
-    soma_intracellular_location_set: SomaIntracellularLocationSet
+
+class VoltageRecording(Recording):
+    
+    recording_type: str = "voltage"
+    dt: float | list[float] = 0.1
+
+    
+
+class SpikeRecording(Recording):
+    recording_type: str= "spike"
+    spike_detection_location: Literal['AIS', 'soma']
+
+class IntracellularLocationSetVoltageRecording(VoltageRecording):
+    intracellular_location_set: IntracellularLocationSet
 
     def sonata_config(self):
         self._sonata_config = {
             "type": "compartment",
-            "sections": "soma",
-            "cells":  "hex0",
+            "sections": intracellular_location_set.section,
+            "cells":  intracellular_location_set.neuron_ids,
             "variable_name": "v",
-            "dt": 0.1,
+            "dt": self.dt,
             "compartments": "center",
-            "start_time": 1400,
-            "end_time": 12000
+            "start_time": self.start_time,
+            "end_time": self.end_time
         }
         return self._sonata_config
+
+class ExtraceullarLocationSetVoltageRecording(VoltageRecording):
+    extracellular_location_set: ExtracellularLocationSet
+
+    
