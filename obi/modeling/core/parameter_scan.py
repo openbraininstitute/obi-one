@@ -9,14 +9,10 @@ class ParameterScan(BaseModel):
     _coord_instances: list = PrivateAttr(default=[])
 
     def coord_instances_from_coords(self) -> list[Template]:
-        
-        # print(self._coords)
 
         for coord in self._coords:
 
             coord_template_instance = copy.deepcopy(self.template_instance)
-
-            # print(coord)
 
             for param in coord:
                 keys = param[0]
