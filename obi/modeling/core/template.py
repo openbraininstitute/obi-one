@@ -27,6 +27,11 @@ class SubTemplate(BaseModel):
                     }
 
         return self._multi_params
+    
+    def enforce_no_lists(self):
+        for key, value in self.__dict__.items():
+            if isinstance(value, list):
+                raise ValueError(f"Attribute '{key}' must not be a list.")
 
 
 class Template(BaseModel):
@@ -94,25 +99,21 @@ class Template(BaseModel):
     
 
 class SingleTypeMixin:
-    """Mixin to enforce only single float values for all fields."""
+    """Mixin to enforce no lists in all SubTemplates and SubTemplates in Category dictionaries."""
 
     @field_validator("*", mode="before")
     @classmethod
     def enforce_single_type(cls, value):
-        """Ensure all fields contain only single floats (no lists)."""
 
-        if isinstance(value, list):
-            raise ValueError("Lists are not allowed for this class.")
-        if isinstance(value, dict):  # Check for nested dictionaries containing BaseModel instances
+        if isinstance(value, dict):  # Check for nested dictionaries containing SubTemplate instances
             for key, dict_value in value.items():
-                if isinstance(dict_value, BaseModel):  # Recursively validate BaseModel objects
-                    for field, field_value in dict_value.model_dump().items():
-                        if isinstance(field_value, list):
-                            raise ValueError(f"Nested dictionary attribute '{key}.{field}' must not be a list.")
-        if isinstance(value, BaseModel):  # Validate Pydantic objects
-            for field, field_value in value.model_dump().items():
-                if isinstance(field_value, list):
-                    raise ValueError(f"Nested attribute '{field}' must not be a list.")
+                if isinstance(dict_value, SubTemplate):  # Recursively validate SubTemplate objects
+                    subtemplate = dict_value
+                    subtemplate.enforce_no_lists()
+                        
+        if isinstance(value, SubTemplate):  # Validate SubTemplate objects
+            subtemplate = value
+            value.enforce_no_lists()
                 
         return value
     
