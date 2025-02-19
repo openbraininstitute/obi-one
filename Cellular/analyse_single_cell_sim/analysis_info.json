@@ -1,24 +1,22 @@
 {
-    "name": "Display features of morphology population",
+    "name": "Display single cell simulation results",
     "authors": ["OBI", "Michael W. Reimann"],
-    "description": "This analysis extracts morphology features from a list of morphologies and displays the distribution of their values as a histogram.",
+    "description": "Plots: (1) Recorded voltage traces from the output of single cell simulations. (2) Spike counts detected in the output of single cell simulations. To be used as a starting point for more complex analyses.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python",
     "input": [
         {
             "data_type": {
-                "artefact": "morphology",
+                "artefact": "Single cell simulation",
                 "required_properties": []
             },
-            "class": "list"
+            "class": "single"
         }
     ],
     "requirements": [
         "pandas>=2.0.1",
-        "neurom>=3.2.2",
         "numpy>=1.24.3",
-        "requests>=2.31.0",
         "ipywidgets>=8.1.0",
         "matplotlib>=3.7.1"
     ]

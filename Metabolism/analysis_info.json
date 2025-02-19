@@ -1,5 +1,10 @@
 {
+    "name": "Metabolism",
+    "authors": ["OBI", "Polina Shichkova", "Daniel Keller"],
+    "description": "This data-driven molecular model of the neuro-glia-vascular system allows exploration of the complex relationships between the aging brain, energy metabolism, blood flow, and neuronal activity. Comprising 16,800 interaction pathways, the model includes all key enzymes,transporters, metabolites, and circulatory factors vital for neuronal electrical activity. The simulation allows one to track the time evolution of metabolites in response to a pulse stimulus.",
+    "scale": "metabolism",
     "type": "notebook",
+    "kernel": "julia",
     "environment":"julia==1.6.6",
     "input": [
         {

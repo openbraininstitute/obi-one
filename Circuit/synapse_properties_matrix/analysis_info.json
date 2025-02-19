@@ -1,5 +1,10 @@
 {
+    "name": "Synapse property matrix extraction",
+    "authors": ["OBI", "Christoph Pokorny"],
+    "description": "This analysis extracts and visualizes a matrix of a selected synapse property (conductance, delay, ...), grouped by a selected neuron property (layer, m-type, ...).",
+    "scale": "circuit",
     "type": "notebook",
+    "kernel": "python",
     "input": [
         {
             "data_type": {

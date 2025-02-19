@@ -1,5 +1,10 @@
 {
+    "name": "Display circuit composition",
+    "scale": "Circuit",
+    "authors": ["OBI", "Michael W. Reimann"],
+    "description": "This analysis displays the composition of a circuit model with respect to user-selected neuron properties, such as morphological types, electrical types, home layers, etc. It is displayed as a Sankey plot, allowing the user to see, e.g., how many neurons of a given morphological type have a given electrical type.",
     "type": "notebook",
+    "kernel": "python",
     "input": [
         {
             "data_type": {
