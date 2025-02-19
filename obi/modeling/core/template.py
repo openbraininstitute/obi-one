@@ -7,16 +7,24 @@ class SubTemplate(BaseModel):
     """
     _multi_params: dict = PrivateAttr(default={})
     
-    def multi_params(self, attr_name, dict_key) -> dict:
-
-        print(attr_name, dict_key)
+    def multi_params(self, category_name, subtemplate_key='') -> dict:
         
+        """
+        Iterate through all attributes of the SubTemplate
+        """
         for key, value in self.__dict__.items():
-            if not isinstance(value, BaseModel) and isinstance(value, list) and len(value) > 1:
-                self._multi_params[f"{attr_name}.{dict_key}.{key}"] = {
-                    "coord_param_keys": [attr_name, dict_key, key],
-                    "coord_param_values": value
-                }
+            if isinstance(value, list) and len(value) > 1:
+
+                if subtemplate_key != '':
+                    self._multi_params[f"{category_name}.{subtemplate_key}.{key}"] = {
+                        "coord_param_keys": [category_name, subtemplate_key, key],
+                        "coord_param_values": value
+                    }
+                else:
+                    self._multi_params[f"{category_name}.{key}"] = {
+                        "coord_param_keys": [category_name, key],
+                        "coord_param_values": value
+                    }
 
         return self._multi_params
 
@@ -40,27 +48,27 @@ class Template(BaseModel):
             Check if the attribute is a dictionary of SubTemplate instances
             """
             if isinstance(attr_value, dict) and all(isinstance(dict_val, SubTemplate) for dict_key, dict_val in attr_value.items()):
+
+                category_name = attr_name; category_subtemplates_dict = attr_value
                 
                 """
-                If so iterate through the dictionaries SubTemplate instances
+                If so iterate through the dictionary's SubTemplate instances
                 """
-                for dict_key, dict_val in attr_value.items():
+                for subtemplate_key, subtemplate in category_subtemplates_dict.items():
 
                     """
-                    Iterate through all attributes of the SubTemplate instance
-                    """
-                    dict_val.multi_params(attr_name, dict_key)
-                    self._multi_params.update(dict_val.multi_params(attr_name, dict_key))
+                    Call the multi_params method of the SubTemplate instance
+                    """                    
+                    self._multi_params.update(subtemplate.multi_params(category_name=category_name, subtemplate_key=subtemplate_key))
 
-                    # for key, value in dict_val.__dict__.items():
-                    #     if not isinstance(value, BaseModel) and isinstance(value, list) and len(value) > 1:
-                    #         self._multi_params[f"{attr_name}.{dict_key}.{key}"] = {
-                    #             "coord_param_keys": [attr_name, dict_key, key],
-                    #             "coord_param_values": value
-                    #         }
 
-            elif isinstance(attr_value, SubTemplate):
-                self._multi_params.update(attr_value.multi_params(attr_name, attr_name))
+            """
+            Else if the attribute is a SubTemplate instance, call the multi_params method of the SubTemplate instance
+            """
+            if isinstance(attr_value, SubTemplate):
+                category_name = attr_name
+                category_subtemplate = attr_value
+                self._multi_params.update(category_subtemplate.multi_params(category_name=category_name))
 
                             
         return self._multi_params
