@@ -25,8 +25,8 @@ class IntracellularLocationSetVoltageRecording(VoltageRecording):
     def sonata_config(self):
         self._sonata_config = {
             "type": "compartment",
-            "sections": intracellular_location_set.section,
-            "cells":  intracellular_location_set.neuron_ids,
+            "sections": self.intracellular_location_set.section,
+            "cells":  self.intracellular_location_set.neuron_ids,
             "variable_name": "v",
             "dt": self.dt,
             "compartments": "center",
