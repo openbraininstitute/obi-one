@@ -1,4 +1,4 @@
-from .template import SubTemplate
+from ..core.template import SubTemplate
 
 class Timestamps(SubTemplate):
     start_time: float | list[float]

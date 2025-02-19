@@ -1,9 +1,8 @@
-from .template import SubTemplate
 from typing import Union, List
 
-    
+from ..core.template import SubTemplate
+from ..circuit.synapse_sets import SynapseSet
 from .timestamps import Timestamps
-from .synapse_sets import SynapseSet
 
 class Stimulus(SubTemplate):
     synapse_set: SynapseSet

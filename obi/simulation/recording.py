@@ -1,8 +1,8 @@
 from typing import Literal
 
-from .template import SubTemplate
-from .intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
-from .extracellular_location_sets import ExtracellularLocationSet
+from ..core.template import SubTemplate
+from ..circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
+from ..circuit.extracellular_location_sets import ExtracellularLocationSet
 
 class Recording(SubTemplate):
     start_time: float | list[float]

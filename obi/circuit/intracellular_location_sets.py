@@ -1,5 +1,5 @@
-from .template import SubTemplate
-from .circuit import Circuit
+from ..core.template import SubTemplate
+from ..circuit.circuit import Circuit
 
 class IntracellularLocationSet(SubTemplate):
     """

@@ -1,13 +1,15 @@
-from .template import Template, SubTemplate, SingleTypeMixin
+from ..core.template import Template, SubTemplate, SingleTypeMixin
+from ..core.parameter_scan import ParameterScan
+
+from ..circuit.circuit import Circuit
+from ..circuit.neuron_sets import NeuronSet
+from ..circuit.synapse_sets import SynapseSet
+from ..circuit.intracellular_location_sets import IntracellularLocationSet
+from ..circuit.extracellular_location_sets import ExtracellularLocationSet
+
 from .stimulus import Stimulus
 from .timestamps import Timestamps
 from .recording import Recording
-from .circuit import Circuit
-from .parameter_scan import ParameterScan
-from .neuron_sets import NeuronSet
-from .synapse_sets import SynapseSet
-from .intracellular_location_sets import IntracellularLocationSet
-from .extracellular_location_sets import ExtracellularLocationSet
 
 class SimulationParameterScanTemplate(Template):
     """Base simulation model that contains a generic nested object."""
