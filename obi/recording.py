@@ -1,7 +1,7 @@
-from .multi_template import MultiTemplate
+from .template import SubTemplate
 from .circuit_grouping import CircuitGrouping
 
-class Recording(MultiTemplate):
+class Recording(SubTemplate):
     start_time: float | list[float]
     end_time: float | list[float]
     circuit_grouping: CircuitGrouping

@@ -1,6 +1,6 @@
-from .multi_template import MultiTemplate
+from .template import SubTemplate
 
-class Timestamps(MultiTemplate):
+class Timestamps(SubTemplate):
     start_time: float | list[float]
     
 class RegularTimestamps(Timestamps):
@@ -8,11 +8,8 @@ class RegularTimestamps(Timestamps):
     interval: float | list[float]
     
 # class PoissonianTimestamps(Timestamps):
-    
-    
-    
 
-class CategoricalTimestamps(MultiTemplate):
+class CategoricalTimestamps(Timestamps):
     number_of_categories: int | list[int]
     repetitions_per_category: int | list[int]
     inter_trial_interval: float | list[float]

@@ -1,8 +1,8 @@
-from .multi_template import MultiTemplate
+from .template import Template, SubTemplate
+from .simulations import SimulationCampaignTemplate, Simulation, SimulationCampaign
+from .campaign import Campaign
+from .stimulus import Stimulus, SynchronousSingleSpikeStimulus
+from .recording import Recording
 from .circuit import Circuit
 from .circuit_grouping import CircuitGrouping, NeuronCircuitGrouping
 from .timestamps import Timestamps, RegularTimestamps, CategoricalTimestamps
-from .recording import Recording
-from .simulation import Simulation
-from .simulation_campaign import SimulationCampaign
-from .stimulus import Stimulus, SynchronousSingleSpikeStimulus

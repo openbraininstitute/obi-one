@@ -1,7 +1,7 @@
-from .multi_template import MultiTemplate
+from .template import SubTemplate
 from .circuit import Circuit
 
-class CircuitGrouping(MultiTemplate):
+class CircuitGrouping(SubTemplate):
     circuit: Circuit
 
 class NeuronCircuitGrouping(CircuitGrouping):

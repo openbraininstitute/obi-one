@@ -1,8 +1,11 @@
-from .multi_template import MultiTemplate
+from .template import SubTemplate
+from typing import Union, List
+
+    
 from .timestamps import Timestamps
 from .circuit_grouping import CircuitGrouping
 
-class Stimulus(MultiTemplate):
+class Stimulus(SubTemplate):
     circuit_grouping: CircuitGrouping
     timestamps: Timestamps
 
