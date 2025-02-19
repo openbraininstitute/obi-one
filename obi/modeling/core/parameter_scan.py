@@ -45,4 +45,14 @@ class GridParameterScan(ParameterScan):
 
         return self._coord_instances
     
-    
+
+class CoupledCoordsParameterScan(ParameterScan):
+
+    @property
+    def coord_instances(self) -> list[Template]:
+
+        if len(self._coord_instances) > 0: return self._coord_instances
+
+        for coord in self.template_instance.generate_coupled_scan_coords():
+
+            coord_template_instance = copy.deepcopy(self.template_instance)

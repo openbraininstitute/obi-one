@@ -93,7 +93,35 @@ class Template(BaseModel):
             all_tuples.append(tups)
 
         coords = [coord for coord in product(*all_tuples)]
+
+        print(coords)
+
         return coords
+    
+    def generate_coupled_scan_coords(self) -> list:
+        previous_len = None
+        for key, value in self.multi_params.items():
+
+            print(value)
+
+            current_len = len(value['coord_param_values'])
+            if previous_len is not None and current_len != previous_len:
+                raise ValueError("All multi-parameters must have the same number of values.")
+
+            previous_len = current_len
+
+        n_coords = current_len
+
+        for coord_i in range(n_coords):
+            coord = []
+            for key, value in self.multi_params.items():
+                coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
+
+            print(coord)
+
+
+        
+
     
     def cast_to_single_instance(self):
         class_to_cast_to = self.single_version_class()
