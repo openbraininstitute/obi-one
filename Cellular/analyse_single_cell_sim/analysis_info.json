@@ -1,0 +1,23 @@
+{
+    "name": "Display single cell simulation results",
+    "authors": ["OBI", "Michael W. Reimann"],
+    "description": "Plots: (1) Recorded voltage traces from the output of single cell simulations. (2) Spike counts detected in the output of single cell simulations. To be used as a starting point for more complex analyses.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "Single cell simulation",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "pandas>=2.0.1",
+        "numpy>=1.24.3",
+        "ipywidgets>=8.1.0",
+        "matplotlib>=3.7.1"
+    ]
+}
