@@ -1,17 +1,24 @@
 from .template import Template, SubTemplate, SingleTypeMixin
 from .stimulus import Stimulus
-from .circuit_grouping import CircuitGrouping
 from .timestamps import Timestamps
 from .recording import Recording
 from .circuit import Circuit
 from .campaign import Campaign
+from .neuron_sets import NeuronSet
+from .synapse_sets import SynapseSet
+from .intracellular_location_sets import IntracellularLocationSet
+from .extracellular_location_sets import ExtracellularLocationSet
 
 class SimulationCampaignTemplate(Template):
     """Base simulation model that contains a generic nested object."""
-    circuit_groupings: dict[str, CircuitGrouping]
+
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]
     recordings: dict[str, Recording]
+    neuron_sets: dict[str, NeuronSet]
+    synapse_sets: dict[str, SynapseSet]
+    intracellular_location_sets: dict[str, IntracellularLocationSet]
+    extracellular_location_sets: dict[str, ExtracellularLocationSet]
 
     class Initialization(SubTemplate):
         circuit: Circuit

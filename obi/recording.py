@@ -1,10 +1,10 @@
 from .template import SubTemplate
-from .circuit_grouping import CircuitGrouping
+from .intracellular_location_sets import SomaIntracellularLocationSet
 
 class Recording(SubTemplate):
     start_time: float | list[float]
     end_time: float | list[float]
-    circuit_grouping: CircuitGrouping
+    soma_intracellular_location_set: SomaIntracellularLocationSet
 
     def sonata_config(self):
         self._sonata_config = {

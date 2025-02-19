@@ -3,10 +3,10 @@ from typing import Union, List
 
     
 from .timestamps import Timestamps
-from .circuit_grouping import CircuitGrouping
+from .synapse_sets import SynapseSet
 
 class Stimulus(SubTemplate):
-    circuit_grouping: CircuitGrouping
+    synapse_set: SynapseSet
     timestamps: Timestamps
 
 class SynchronousSingleSpikeStimulus(Stimulus):

@@ -1,8 +1,10 @@
 from .template import SubTemplate
 from .circuit import Circuit
 
-class CircuitGrouping(SubTemplate):
+class NeuronSet(SubTemplate):
+    """
+    """
     circuit: Circuit
 
-class NeuronCircuitGrouping(CircuitGrouping):
+class IDNeuronSet(NeuronSet):
     neuron_ids: tuple[int, ...] | list[tuple[int, ...]]
