@@ -5,8 +5,11 @@ from itertools import product
 class SubTemplate(BaseModel):
     """
     """
+    _multi_params: dict = PrivateAttr(default={})
     
     def multi_params(self, attr_name, dict_key) -> dict:
+
+        print(attr_name, dict_key)
         
         for key, value in self.__dict__.items():
             if not isinstance(value, BaseModel) and isinstance(value, list) and len(value) > 1:
@@ -14,6 +17,8 @@ class SubTemplate(BaseModel):
                     "coord_param_keys": [attr_name, dict_key, key],
                     "coord_param_values": value
                 }
+
+        return self._multi_params
 
 
 class Template(BaseModel):
@@ -44,7 +49,8 @@ class Template(BaseModel):
                     """
                     Iterate through all attributes of the SubTemplate instance
                     """
-                    self._multi_param.append(dict_val.multi_params(attr_name, dict_key))
+                    dict_val.multi_params(attr_name, dict_key)
+                    self._multi_params.update(dict_val.multi_params(attr_name, dict_key))
 
                     # for key, value in dict_val.__dict__.items():
                     #     if not isinstance(value, BaseModel) and isinstance(value, list) and len(value) > 1:
@@ -54,7 +60,7 @@ class Template(BaseModel):
                     #         }
 
             elif isinstance(attr_value, SubTemplate):
-                self._multi_param.append(dict_val.multi_params(attr_name, dict_key))
+                self._multi_params.update(attr_value.multi_params(attr_name, attr_name))
 
                             
         return self._multi_params
