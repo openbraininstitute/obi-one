@@ -5,22 +5,33 @@ from .timestamps import Timestamps
 from .stimulus import Stimulus
 from .recording import Recording
 
+from pydantic import BaseModel
 
 class Simulation(MultiTemplate):
 
-    circuit: Circuit
     circuit_groupings: dict[str, CircuitGrouping]
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]
     recordings: dict[str, Recording]
 
-    sonata_version: int = 1
-    target_simulator: str = 'CORENEURON'
-    timestep: float = 0.025
-    simulation_length: float = 100
-    random_seed: int = 1
-    extracellular_calcium_concentration: float = 1.1
-    v_init: float = -80.0
+    class Initialization(BaseModel):
+        circuit: Circuit
+        simulation_length: float = 100.0
+        random_seed: int = 1
+        extracellular_calcium_concentration: float = 1.1
+        v_init: float = -80.0
+
+
+        sonata_version: int = 1
+        target_simulator: str = 'CORENEURON'
+        timestep: float = 0.025
+
+    initialize: Initialization
+
+        
+
+    
+
 
 
     def sonata_config(self):
