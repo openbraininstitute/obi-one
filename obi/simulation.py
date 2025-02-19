@@ -28,12 +28,6 @@ class Simulation(MultiTemplate):
 
     initialize: Initialization
 
-        
-
-    
-
-
-
     def sonata_config(self):
 
         self._sonata_config = {}
