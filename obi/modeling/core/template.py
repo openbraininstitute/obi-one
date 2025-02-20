@@ -121,7 +121,7 @@ class Template(BaseModel):
 
     
     def cast_to_single_instance(self):
-        class_to_cast_to = self.single_version_class()s
+        class_to_cast_to = self.single_version_class()
         single_instance = class_to_cast_to.model_construct(**self.__dict__)
         return single_instance
     

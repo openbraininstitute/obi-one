@@ -24,7 +24,7 @@ class SimulationParameterScanTemplate(Template):
 
     class Initialization(SubTemplate):
         circuit: Circuit
-        simulation_length: float = 100.0
+        simulation_length: list[float] | float = 100.0
         random_seed: int = 1
         extracellular_calcium_concentration: float = 1.1
         v_init: float = -80.0

@@ -1,6 +1,13 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
 from .template import Template, SubTemplate
 
+
+# def set_value_in_subtemplate(subtemplate: SubTemplate, key, value):
+#     # print(subtemplate)
+#     print(subtemplate.__dict__[key])
+#     # subtemplate.__dict__[key] = value
+
+
 import os, copy, json
 class ParameterScan(BaseModel):
 
@@ -13,25 +20,25 @@ class ParameterScan(BaseModel):
         for coord in self._coords:
 
             coord_template_instance = copy.deepcopy(self.template_instance)
-
-            for param in coord:
+            
+            for param in list(coord):
+                
                 keys = param[0]
                 val = param[1]
 
-                current_level = coord_template_instance
-                for i, key in enumerate(keys):
+                level_0_val = coord_template_instance.__dict__[keys[0]]
 
-                    if isinstance(current_level, SubTemplate):
+                if isinstance(level_0_val, SubTemplate):
+                    level_0_val.__dict__[keys[1]] = val
 
-                        if i == len(keys) - 1:
-                            current_level.__dict__[key] = val
-                        else:
-                            current_level = current_level.__dict__[key]
-                
-                    elif isinstance(current_level, dict):
-                        current_level = current_level[key]
-
-
+                if isinstance(level_0_val, dict):
+                    level_1_val = level_0_val[keys[1]]
+                    if isinstance(level_1_val, SubTemplate):
+                        level_1_val.__dict__[keys[2]] = val
+                    else:
+                        # This should already by checked elsewhere (in future, if not done already)
+                        print("Validation Error:", "Non SubTemplate options should not be used here.")  
+    
             try:
                 coord_instance = coord_template_instance.cast_to_single_instance()
                 self._coord_instances.append(coord_instance)
