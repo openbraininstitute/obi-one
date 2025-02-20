@@ -1,11 +1,17 @@
 {
+    "name": "Model parameter comparison plot",
+    "authors": ["OBI", "Darshan Mandge"],
+    "description": "Notebook to compare final parameter values for different sections such as apical, basal dendrites and soma of a single cell electrical model (e-model).",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
     "input": [
         {
             "data_type": {
-                "artefact": ["EModel_json_Resource"],
+                "artefact": ["EModel json"],
                 "required_properties": []
             },
-            "class": "list"
+            "class": "single"
         }
     ],
     "requires-python": ">=3.9,<3.13",

@@ -1,7 +1,7 @@
 {
-    "name": "LFPy: active e-model IClamp",
+    "name": "LFPy: passive e-model with synapse -- plot LFP",
     "authors": ["OBI", "Darshan Mandge"],
-    "description": "In this notebook, we inject a step current in soma of the an e-model and record the local field potentials on a microelectrode array (MEA).",
+    "description": "Notebook to apply synapses and using LFPy, recording local field potentials and plotting local field lines.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python",
@@ -16,8 +16,7 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
-        "neuron>=8.2.6",
         "LFPy>=2.3.5",
-        "matplotlib=3.10.0"
+        "neuron>=8.0.0,<9.0"
     ]
 }

@@ -66,11 +66,11 @@ Here is brief introduction of each experiment
 
 - **`Local Field Potential(LFP) Simulations`**  
 
-    - [**`Passive e-model with synapse: Plot LFP Heatmap`**](lfpy_simulations/passive_emodel_synapses/analysis_notebook_1.ipynb)
+    - [**`Passive e-model with synapse: Plot LFP Heatmap`**](lfpy_simulations/passive_emodel_synapses_heatmap/analysis_notebook.ipynb)
         - Running a passive OBP e-model with a synapse activation using [LFPy](https://github.com/LFPy/LFPy)
         - Plot LFP Heatmap recorded with a linear electrode array
 
-    - [**`Passive e-model with synapse: Plot LFP`**](lfpy_simulations/passive_emodel_synapses/analysis_notebook_2.ipynb) 
+    - [**`Passive e-model with synapse: Plot LFP`**](lfpy_simulations/passive_emodel_synapses_LFP/analysis_notebook.ipynb) 
         - Running a passive OBP e-model with a synapse activation
         - We record the LFP at different distances from the neuron in space (with spherical coordinates)
 

@@ -1,11 +1,17 @@
 {
+    "name": "LFPy: active e-model synapses",
+    "authors": ["OBI", "Darshan Mandge"],
+    "description": "In this notebook, you will be able to insert a synapse using LFPy soma of the an e-mdodel. This notebook gives the users how they can use different synapses with the OBP e-models.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
     "input": [
         {
             "data_type": {
-                "artefact": ["emodel-template", "asc/swc morphology", "mechanisms"],
+                "artefact": ["me-model"],
                 "required_properties": []
             },
-            "class": "list"
+            "class": "single"
         }
     ],
     "requires-python": ">=3.9,<3.13",
