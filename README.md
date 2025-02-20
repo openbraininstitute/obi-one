@@ -22,8 +22,8 @@ The folder has been divided into 3 main subfolders, each corresponding to the le
       - **lfpy_simulations**
         - [**LFPy_active_iclamp**](Cellular/emodels/lfpy_simulations/active_emodel_Iclamp/analysis_notebook.ipynb): Running an OBP e-model with current clamp: record and plot LFP on a microelectrode array
         - [**LFPy_active_synapse**](Cellular/emodels/lfpy_simulations/active_emodel_synapses/analysis_notebook.ipynb): Running an OBP active e-model with a synapse activation
-        - [**LFPy_passive_synapse_1**](Cellular/emodels/lfpy_simulations/passive_emodel_synapses/analysis_notebook_1.ipynb): Running a passive OBP e-model with a synapse activation: Plot LFP Heatmap
-        - [**LFPy_passive_synapse_2**](Cellular/emodels/lfpy_simulations/passive_emodel_synapses/analysis_notebook_2.ipynb): Running a passive OBP e-model with a synapse activation: Plot Local Field
+        - [**LFPy_passive_synapse_1**](Cellular/emodels/lfpy_simulations/passive_emodel_synapses_heatmap/analysis_notebook.ipynb): Running a passive OBP e-model with a synapse activation: Plot LFP Heatmap
+        - [**LFPy_passive_emodel_synapses_LFP**](Cellular/emodels/lfpy_simulations/passive_emodel_synapses_LFP/analysis_notebook.ipynb): Running a passive OBP e-model with a synapse activation: Plot Local Field
 
   - **morphologies**: Notebooks on morphologies
     - [**display_morphology_population_features**](Cellular/morphologies/display_morphology_population_features/analysis_notebook.ipynb): Plot morphological features for a population of morphologies
