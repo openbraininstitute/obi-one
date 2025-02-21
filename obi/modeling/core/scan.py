@@ -53,14 +53,29 @@ class Scan(BaseModel):
                 json.dump(config, f, indent=2)
 
 
+from itertools import product
 class GridScan(Scan):
+
+    def generate_grid_scan_coords(self) -> list:
+
+        all_tuples = []
+        for key, value in self.form.multi_params.items():
+            tups = []
+            for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
+                tups.append((k, v))
+
+            all_tuples.append(tups)
+
+        coords = [coord for coord in product(*all_tuples)]
+
+        return coords
 
     @property
     def coord_instances(self) -> list[Form]:
 
         if len(self._coord_instances) > 0: return self._coord_instances
             
-        self._coords = self.form.generate_grid_scan_coords()
+        self._coords = self.generate_grid_scan_coords()
         self._coord_instances = self.coord_instances_from_coords()
 
         return self._coord_instances
@@ -68,12 +83,34 @@ class GridScan(Scan):
 
 class CoupledScan(Scan):
 
+    def generate_coupled_scan_coords(self) -> list:
+        previous_len = None
+        for key, value in self.form.multi_params.items():
+
+            current_len = len(value['coord_param_values'])
+            if previous_len is not None and current_len != previous_len:
+                raise ValueError("All multi-parameters must have the same number of values.")
+
+            previous_len = current_len
+
+        n_coords = current_len
+
+        coords = []
+        for coord_i in range(n_coords):
+            coupled_coord = []
+            for key, value in self.form.multi_params.items():
+                coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
+
+            coords.append(tuple(coupled_coord))
+
+        return coords
+
     @property
     def coord_instances(self) -> list[Form]:
 
         if len(self._coord_instances) > 0: return self._coord_instances
 
-        self._coords = self.form.generate_coupled_scan_coords()
+        self._coords = self.generate_coupled_scan_coords()
         self._coord_instances = self.coord_instances_from_coords()
 
         return self._coord_instances

@@ -1,6 +1,4 @@
 from pydantic import BaseModel, field_validator, PrivateAttr
-from itertools import product
-
 from obi.modeling.core.block import Block
 
 class Form(BaseModel):
@@ -46,45 +44,7 @@ class Form(BaseModel):
 
                             
         return self._multi_params
-
-
-    def generate_grid_scan_coords(self) -> list:
-
-        all_tuples = []
-        for key, value in self.multi_params.items():
-            tups = []
-            for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
-                tups.append((k, v))
-
-            all_tuples.append(tups)
-
-        coords = [coord for coord in product(*all_tuples)]
-
-        return coords
-    
-    def generate_coupled_scan_coords(self) -> list:
-        previous_len = None
-        for key, value in self.multi_params.items():
-
-            current_len = len(value['coord_param_values'])
-            if previous_len is not None and current_len != previous_len:
-                raise ValueError("All multi-parameters must have the same number of values.")
-
-            previous_len = current_len
-
-        n_coords = current_len
-
-        coords = []
-        for coord_i in range(n_coords):
-            coupled_coord = []
-            for key, value in self.multi_params.items():
-                coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
-
-            coords.append(tuple(coupled_coord))
-
-        return coords
-
-
+        
     
     def cast_to_single_instance(self):
         class_to_cast_to = self.single_version_class()
