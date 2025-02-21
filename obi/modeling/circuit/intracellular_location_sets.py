@@ -1,7 +1,7 @@
-from ..core.template import SubTemplate
+from ..core.template import Block
 from ..circuit.circuit import Circuit
 
-class IntracellularLocationSet(SubTemplate):
+class IntracellularLocationSet(Block):
     """
     """
     neuron_ids: tuple[int, ...] | list[tuple[int, ...]]

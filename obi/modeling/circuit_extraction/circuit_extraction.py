@@ -1,11 +1,11 @@
-from ..core.template import Template, SubTemplate, SingleTypeMixin
+from ..core.template import Form, Block, SingleTypeMixin
 from ..core.parameter_scan import ParameterScan
 
-class CircuitExtractions(Template):
+class CircuitExtractions(Form):
     """
     """
 
-    class Initialization(SubTemplate):
+    class Initialization(Block):
         circuit_path: str | list[str]
         output_root: str | list[str]
         node_set: str | list[str]

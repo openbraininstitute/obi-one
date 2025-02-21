@@ -1,10 +1,10 @@
 from typing import Union, List
 
-from ..core.template import SubTemplate
+from ..core.template import Block
 from ..circuit.synapse_sets import SynapseSet
 from .timestamps import Timestamps
 
-class Stimulus(SubTemplate):
+class Stimulus(Block):
     synapse_set: SynapseSet
     timestamps: Timestamps
 

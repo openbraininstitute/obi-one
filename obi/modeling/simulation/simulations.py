@@ -1,4 +1,4 @@
-from ..core.template import Template, SubTemplate, SingleTypeMixin
+from ..core.template import Form, Block, SingleTypeMixin
 from ..core.parameter_scan import ParameterScan
 
 from ..circuit.circuit import Circuit
@@ -11,7 +11,7 @@ from .stimulus import Stimulus
 from .timestamps import Timestamps
 from .recording import Recording
 
-class Simulations(Template):
+class SimulationsForm(Form):
     """Base simulation model that contains a generic nested object."""
 
     timestamps: dict[str, Timestamps]
@@ -22,7 +22,7 @@ class Simulations(Template):
     intracellular_location_sets: dict[str, IntracellularLocationSet]
     extracellular_location_sets: dict[str, ExtracellularLocationSet]
 
-    class Initialization(SubTemplate):
+    class Initialization(Block):
         circuit: Circuit
         simulation_length: list[float] | float = 100.0
         random_seed: int = 1
@@ -40,7 +40,7 @@ class Simulations(Template):
         return globals()["Simulation"] 
 
 
-class Simulation(Simulations, SingleTypeMixin):
+class Simulation(SimulationsForm, SingleTypeMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 

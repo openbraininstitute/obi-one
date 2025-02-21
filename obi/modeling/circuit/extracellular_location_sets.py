@@ -1,7 +1,7 @@
-from ..core.template import SubTemplate
+from ..core.template import Block
 from ..circuit.circuit import Circuit
 
-class ExtracellularLocationSet(SubTemplate):
+class ExtracellularLocationSet(Block):
     """
     """
 

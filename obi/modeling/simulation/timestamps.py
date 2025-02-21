@@ -1,6 +1,6 @@
-from ..core.template import SubTemplate
+from ..core.template import Block
 
-class Timestamps(SubTemplate):
+class Timestamps(Block):
     start_time: float | list[float]
     
 class RegularTimestamps(Timestamps):

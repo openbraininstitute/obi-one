@@ -1,10 +1,10 @@
 from typing import Literal
 
-from ..core.template import SubTemplate
+from ..core.template import Block
 from ..circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
 from ..circuit.extracellular_location_sets import ExtracellularLocationSet
 
-class Recording(SubTemplate):
+class Recording(Block):
     start_time: float | list[float]
     end_time: float | list[float]
 

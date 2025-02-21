@@ -1,14 +1,14 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
-from .template import Template, SubTemplate
+from .template import Form, Block
 
 import os, copy, json
 class ParameterScan(BaseModel):
 
-    template_instance: Template = None
+    template_instance: Form = None
     _coords = PrivateAttr(default=[])
     _coord_instances: list = PrivateAttr(default=[])
 
-    def coord_instances_from_coords(self) -> list[Template]:
+    def coord_instances_from_coords(self) -> list[Form]:
 
         for coord in self._coords:
 
@@ -21,16 +21,16 @@ class ParameterScan(BaseModel):
 
                 level_0_val = coord_template_instance.__dict__[keys[0]]
 
-                if isinstance(level_0_val, SubTemplate):
+                if isinstance(level_0_val, Block):
                     level_0_val.__dict__[keys[1]] = val
 
                 if isinstance(level_0_val, dict):
                     level_1_val = level_0_val[keys[1]]
-                    if isinstance(level_1_val, SubTemplate):
+                    if isinstance(level_1_val, Block):
                         level_1_val.__dict__[keys[2]] = val
                     else:
                         # This should already by checked elsewhere (in future, if not done already)
-                        print("Validation Error:", "Non SubTemplate options should not be used here.")  
+                        print("Validation Error:", "Non Block options should not be used here.")  
     
             try:
                 coord_instance = coord_template_instance.cast_to_single_instance()
@@ -56,7 +56,7 @@ class ParameterScan(BaseModel):
 class GridParameterScan(ParameterScan):
 
     @property
-    def coord_instances(self) -> list[Template]:
+    def coord_instances(self) -> list[Form]:
 
         if len(self._coord_instances) > 0: return self._coord_instances
             
@@ -69,7 +69,7 @@ class GridParameterScan(ParameterScan):
 class CoupledCoordsParameterScan(ParameterScan):
 
     @property
-    def coord_instances(self) -> list[Template]:
+    def coord_instances(self) -> list[Form]:
 
         if len(self._coord_instances) > 0: return self._coord_instances
 
