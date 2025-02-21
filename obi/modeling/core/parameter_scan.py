@@ -1,13 +1,6 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
 from .template import Template, SubTemplate
 
-
-# def set_value_in_subtemplate(subtemplate: SubTemplate, key, value):
-#     # print(subtemplate)
-#     print(subtemplate.__dict__[key])
-#     # subtemplate.__dict__[key] = value
-
-
 import os, copy, json
 class ParameterScan(BaseModel):
 

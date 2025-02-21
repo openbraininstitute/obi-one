@@ -11,3 +11,5 @@ from .modeling.simulation.timestamps import Timestamps, RegularTimestamps, Categ
 from .modeling.simulation.stimulus import Stimulus, SynchronousSingleSpikeStimulus
 from .modeling.simulation.recording import Recording, SpikeRecording, IntracellularLocationSetVoltageRecording, ExtraceullarLocationSetVoltageRecording
 from .modeling.simulation.simulations import SimulationParameterScanTemplate, Simulation 
+
+from .modeling.circuit_extraction.circuit_extraction import CircuitExtractionParameterScanTemplate, CircuitExtraction
