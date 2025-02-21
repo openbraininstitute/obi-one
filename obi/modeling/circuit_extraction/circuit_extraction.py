@@ -5,12 +5,12 @@ class CircuitExtractions(Form):
     """
     """
 
-    class Initialization(Block):
+    class Initialize(Block):
         circuit_path: str | list[str]
         output_root: str | list[str]
         node_set: str | list[str]
 
-    initialize: Initialization
+    initialize: Initialize
 
     # Is this reasonable? (Is there an alternative?)
     def single_version_class(self):

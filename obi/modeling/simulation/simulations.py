@@ -22,7 +22,7 @@ class SimulationsForm(Form):
     intracellular_location_sets: dict[str, IntracellularLocationSet]
     extracellular_location_sets: dict[str, ExtracellularLocationSet]
 
-    class Initialization(Block):
+    class Initialize(Block):
         circuit: Circuit
         simulation_length: list[float] | float = 100.0
         random_seed: int = 1
@@ -33,7 +33,7 @@ class SimulationsForm(Form):
         target_simulator: str = 'CORENEURON'
         timestep: float = 0.025
 
-    initialize: Initialization
+    initialize: Initialize
 
     # Is this reasonable? (Is there an alternative?)
     def single_version_class(self):
