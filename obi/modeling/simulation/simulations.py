@@ -11,7 +11,7 @@ from .stimulus import Stimulus
 from .timestamps import Timestamps
 from .recording import Recording
 
-class SimulationParameterScanTemplate(Template):
+class Simulations(Template):
     """Base simulation model that contains a generic nested object."""
 
     timestamps: dict[str, Timestamps]
@@ -40,7 +40,7 @@ class SimulationParameterScanTemplate(Template):
         return globals()["Simulation"] 
 
 
-class Simulation(SimulationParameterScanTemplate, SingleTypeMixin):
+class Simulation(Simulations, SingleTypeMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 

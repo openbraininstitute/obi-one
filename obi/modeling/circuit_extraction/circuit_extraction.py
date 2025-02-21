@@ -1,7 +1,7 @@
 from ..core.template import Template, SubTemplate, SingleTypeMixin
 from ..core.parameter_scan import ParameterScan
 
-class CircuitExtractionParameterScanTemplate(Template):
+class CircuitExtractions(Template):
     """
     """
 
@@ -21,7 +21,7 @@ import os
 from brainbuilder.utils.sonata import split_population
 from importlib.metadata import version
 import json
-class CircuitExtraction(CircuitExtractionParameterScanTemplate, SingleTypeMixin):
+class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
     """"""
     pass
 

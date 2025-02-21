@@ -10,6 +10,6 @@ from .modeling.circuit.extracellular_location_sets import ExtracellularLocationS
 from .modeling.simulation.timestamps import Timestamps, RegularTimestamps, CategoricalTimestamps
 from .modeling.simulation.stimulus import Stimulus, SynchronousSingleSpikeStimulus
 from .modeling.simulation.recording import Recording, SpikeRecording, IntracellularLocationSetVoltageRecording, ExtraceullarLocationSetVoltageRecording
-from .modeling.simulation.simulations import SimulationParameterScanTemplate, Simulation 
+from .modeling.simulation.simulations import Simulations, Simulation 
 
-from .modeling.circuit_extraction.circuit_extraction import CircuitExtractionParameterScanTemplate, CircuitExtraction
+from .modeling.circuit_extraction.circuit_extraction import CircuitExtractions, CircuitExtraction
