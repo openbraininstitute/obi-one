@@ -1,10 +1,10 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
-from .template import Form, Block
+from .form import Form, Block
 
 import os, copy, json
 class ParameterScan(BaseModel):
 
-    template_instance: Form = None
+    form_instance: Form = None
     _coords = PrivateAttr(default=[])
     _coord_instances: list = PrivateAttr(default=[])
 
@@ -12,14 +12,14 @@ class ParameterScan(BaseModel):
 
         for coord in self._coords:
 
-            coord_template_instance = copy.deepcopy(self.template_instance)
+            coord_form_instance = copy.deepcopy(self.form_instance)
             
             for param in list(coord):
                 
                 keys = param[0]
                 val = param[1]
 
-                level_0_val = coord_template_instance.__dict__[keys[0]]
+                level_0_val = coord_form_instance.__dict__[keys[0]]
 
                 if isinstance(level_0_val, Block):
                     level_0_val.__dict__[keys[1]] = val
@@ -33,7 +33,7 @@ class ParameterScan(BaseModel):
                         print("Validation Error:", "Non Block options should not be used here.")  
     
             try:
-                coord_instance = coord_template_instance.cast_to_single_instance()
+                coord_instance = coord_form_instance.cast_to_single_instance()
                 self._coord_instances.append(coord_instance)
                 
             except ValidationError as e:
@@ -60,7 +60,7 @@ class GridParameterScan(ParameterScan):
 
         if len(self._coord_instances) > 0: return self._coord_instances
             
-        self._coords = self.template_instance.generate_grid_scan_coords()
+        self._coords = self.form_instance.generate_grid_scan_coords()
         self._coord_instances = self.coord_instances_from_coords()
 
         return self._coord_instances
@@ -73,7 +73,7 @@ class CoupledCoordsParameterScan(ParameterScan):
 
         if len(self._coord_instances) > 0: return self._coord_instances
 
-        self._coords = self.template_instance.generate_coupled_scan_coords()
+        self._coords = self.form_instance.generate_coupled_scan_coords()
         self._coord_instances = self.coord_instances_from_coords()
 
         return self._coord_instances

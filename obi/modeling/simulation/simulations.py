@@ -1,4 +1,4 @@
-from ..core.template import Form, Block, SingleTypeMixin
+from ..core.form import Form, Block, SingleTypeMixin
 from ..core.parameter_scan import ParameterScan
 
 from ..circuit.circuit import Circuit

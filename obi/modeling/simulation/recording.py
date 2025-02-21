@@ -1,6 +1,6 @@
 from typing import Literal
 
-from ..core.template import Block
+from ..core.form import Block
 from ..circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
 from ..circuit.extracellular_location_sets import ExtracellularLocationSet
 

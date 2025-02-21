@@ -1,4 +1,4 @@
-from ..core.template import Block
+from ..core.form import Block
 
 class Timestamps(Block):
     start_time: float | list[float]

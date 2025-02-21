@@ -1,6 +1,6 @@
 from typing import Union, List
 
-from ..core.template import Block
+from ..core.form import Block
 from ..circuit.synapse_sets import SynapseSet
 from .timestamps import Timestamps
 

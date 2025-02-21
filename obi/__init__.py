@@ -1,4 +1,4 @@
-from .modeling.core.template import Form, Block
+from .modeling.core.form import Form, Block
 from .modeling.core.parameter_scan import GridParameterScan, CoupledCoordsParameterScan
 
 from .modeling.circuit.circuit import Circuit

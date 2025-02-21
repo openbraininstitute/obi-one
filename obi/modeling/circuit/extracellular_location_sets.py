@@ -1,4 +1,4 @@
-from ..core.template import Block
+from ..core.form import Block
 from ..circuit.circuit import Circuit
 
 class ExtracellularLocationSet(Block):
