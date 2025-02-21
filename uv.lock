@@ -1423,6 +1423,36 @@ wheels = [
 ]
 
 [[package]]
+name = "obi"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+jupyter = [
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "jupyterlab" },
+    { name = "notebook" },
+]
+subcircuit-extraction = [
+    { name = "brainbuilder" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "brainbuilder", marker = "extra == 'subcircuit-extraction'" },
+    { name = "ipykernel", marker = "extra == 'jupyter'" },
+    { name = "jupyter", marker = "extra == 'jupyter'" },
+    { name = "jupyterlab", marker = "extra == 'jupyter'" },
+    { name = "notebook", marker = "extra == 'jupyter'" },
+    { name = "pydantic", specifier = ">=2.10.6" },
+]
+provides-extras = ["subcircuit-extraction", "jupyter"]
+
+[[package]]
 name = "overrides"
 version = "7.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1987,36 +2017,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/23/e2/4894cf732611987c3cee18de8ff087994291a4f7bcd42af2d0418e4d0cdf/rpds_py-0.23.0-cp313-cp313t-win32.whl", hash = "sha256:ce1c4277d7f235faa2f31f1aad82e3ab3caeb66f13c97413e738592ec7fef7e0", size = 219672 },
     { url = "https://files.pythonhosted.org/packages/fb/4b/ed448931f973f363b4dbf38e86907a2d62cde961176fb938926b63106a38/rpds_py-0.23.0-cp313-cp313t-win_amd64.whl", hash = "sha256:f46d53a6a37383eca41a111df0e9993399a60e9e1e2110f467fddc5de4a43b68", size = 235568 },
 ]
-
-[[package]]
-name = "scientificproposal-obisdk-repoplatformintegration"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-jupyter = [
-    { name = "ipykernel" },
-    { name = "jupyter" },
-    { name = "jupyterlab" },
-    { name = "notebook" },
-]
-subcircuit-extraction = [
-    { name = "brainbuilder" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "brainbuilder", marker = "extra == 'subcircuit-extraction'" },
-    { name = "ipykernel", marker = "extra == 'jupyter'" },
-    { name = "jupyter", marker = "extra == 'jupyter'" },
-    { name = "jupyterlab", marker = "extra == 'jupyter'" },
-    { name = "notebook", marker = "extra == 'jupyter'" },
-    { name = "pydantic", specifier = ">=2.10.6" },
-]
-provides-extras = ["subcircuit-extraction", "jupyter"]
 
 [[package]]
 name = "scipy"

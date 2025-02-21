@@ -1,0 +1,10 @@
+pydantic>=2.10.6
+
+[jupyter]
+jupyter
+notebook
+jupyterlab
+ipykernel
+
+[subcircuit_extraction]
+brainbuilder
