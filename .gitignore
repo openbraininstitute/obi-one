@@ -12,3 +12,7 @@ __pycache__/
 
 obi/build/
 obi/obi.egg-info/
+
+
+scientificproposal_obisdk_repoplatformintegration.egg-info/*
+build/*
