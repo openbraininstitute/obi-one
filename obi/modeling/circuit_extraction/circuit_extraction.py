@@ -19,15 +19,13 @@ class CircuitExtractionParameterScanTemplate(Template):
 
 import os
 from brainbuilder.utils.sonata import split_population
+from importlib.metadata import version
+import json
 class CircuitExtraction(CircuitExtractionParameterScanTemplate, SingleTypeMixin):
     """"""
     pass
 
     def run_extraction(self):
-
-        # print(self)
-        # a = CircuitExtractionParameterScanTemplate()
-        # print(self.model_dump())
 
         output_path = self.initialize.output_root + self.initialize.node_set + "/"
 
@@ -44,7 +42,10 @@ class CircuitExtraction(CircuitExtractionParameterScanTemplate, SingleTypeMixin)
                 print("Error:", f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.")
                 return
 
-        with open(os.path.join(output_path, "subcircuit_extraction_configuration"), "w") as config_file:
-            import json
-            config_file.write(self.model_dump_json(indent=4))
+
+        model_dump = self.model_dump()
+        model_dump["obi_version"] = version("obi")
+
+        with open(os.path.join(output_path, "model_dump.json"), "w") as json_file:
+            json.dump(model_dump, json_file, indent=4)
         
