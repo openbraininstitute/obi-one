@@ -1,5 +1,5 @@
 from ..core.form import Form, Block, SingleTypeMixin
-from ..core.parameter_scan import ParameterScan
+from ..core.scan import Scan
 
 from ..circuit.circuit import Circuit
 from ..circuit.neuron_sets import NeuronSet

@@ -1,6 +1,6 @@
 from .modeling.core.form import Form
 from .modeling.core.block import Block
-from .modeling.core.parameter_scan import GridParameterScan, CoupledCoordsParameterScan
+from .modeling.core.scan import GridScan, CoupledScan
 
 from .modeling.circuit.circuit import Circuit
 from .modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet  

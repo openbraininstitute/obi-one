@@ -2,7 +2,7 @@ from pydantic import BaseModel, PrivateAttr, ValidationError
 from .form import Form, Block
 
 import os, copy, json
-class ParameterScan(BaseModel):
+class Scan(BaseModel):
 
     form_instance: Form = None
     _coords = PrivateAttr(default=[])
@@ -53,7 +53,7 @@ class ParameterScan(BaseModel):
                 json.dump(config, f, indent=2)
 
 
-class GridParameterScan(ParameterScan):
+class GridScan(Scan):
 
     @property
     def coord_instances(self) -> list[Form]:
@@ -66,7 +66,7 @@ class GridParameterScan(ParameterScan):
         return self._coord_instances
         
 
-class CoupledCoordsParameterScan(ParameterScan):
+class CoupledScan(Scan):
 
     @property
     def coord_instances(self) -> list[Form]:
