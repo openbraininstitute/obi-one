@@ -1,0 +1,21 @@
+[project]
+name = "scientificproposal-obisdk-repoplatformintegration"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.10.6",
+]
+
+[project.optional-dependencies]
+subcircuit_extraction = [
+    "brainbuilder"
+]
+
+jupyter = [
+    "jupyter", 
+    "notebook", 
+    "jupyterlab",
+    "ipykernel"
+]
