@@ -3,9 +3,9 @@ from pydantic import BaseModel, PrivateAttr
 class Block(BaseModel):
     """
     """
-    _multi_params: dict = PrivateAttr(default={})
+    _multiple_value_parameters: dict = PrivateAttr(default={})
     
-    def multi_params(self, category_name, block_key='') -> dict:
+    def multiple_value_parameters(self, category_name, block_key='') -> dict:
         
         """
         Iterate through all attributes of the Block
@@ -14,17 +14,17 @@ class Block(BaseModel):
             if isinstance(value, list) and len(value) > 1:
 
                 if block_key != '':
-                    self._multi_params[f"{category_name}.{block_key}.{key}"] = {
+                    self._multiple_value_parameters[f"{category_name}.{block_key}.{key}"] = {
                         "coord_param_keys": [category_name, block_key, key],
                         "coord_param_values": value
                     }
                 else:
-                    self._multi_params[f"{category_name}.{key}"] = {
+                    self._multiple_value_parameters[f"{category_name}.{key}"] = {
                         "coord_param_keys": [category_name, key],
                         "coord_param_values": value
                     }
 
-        return self._multi_params
+        return self._multiple_value_parameters
     
     def enforce_no_lists(self):
         """

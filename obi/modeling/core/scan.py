@@ -5,13 +5,13 @@ import os, copy, json
 class Scan(BaseModel):
 
     form: Form = None
-    _multi_params: dict = PrivateAttr(default={})
+    _multiple_value_parameters: dict = PrivateAttr(default={})
     _coords = PrivateAttr(default=[])
     _coord_instances: list = PrivateAttr(default=[])
 
 
     @property
-    def multi_params(self) -> dict:
+    def multiple_value_parameters(self) -> dict:
         
         """
         Iterate through all attributes of the Form
@@ -31,21 +31,21 @@ class Scan(BaseModel):
                 for block_key, block in category_blocks_dict.items():
 
                     """
-                    Call the multi_params method of the Block instance
+                    Call the multiple_value_parameters method of the Block instance
                     """                    
-                    self._multi_params.update(block.multi_params(category_name=category_name, block_key=block_key))
+                    self._multiple_value_parameters.update(block.multiple_value_parameters(category_name=category_name, block_key=block_key))
 
 
             """
-            Else if the attribute is a Block instance, call the multi_params method of the Block instance
+            Else if the attribute is a Block instance, call the multiple_value_parameters method of the Block instance
             """
             if isinstance(attr_value, Block):
                 category_name = attr_name
                 category_block = attr_value
-                self._multi_params.update(category_block.multi_params(category_name=category_name))
+                self._multiple_value_parameters.update(category_block.multiple_value_parameters(category_name=category_name))
 
                             
-        return self._multi_params
+        return self._multiple_value_parameters
 
     def coord_instances_from_coords(self) -> list[Form]:
 
@@ -98,7 +98,7 @@ class GridScan(Scan):
     def generate_grid_scan_coords(self) -> list:
 
         all_tuples = []
-        for key, value in self.multi_params.items():
+        for key, value in self.multiple_value_parameters.items():
             tups = []
             for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
                 tups.append((k, v))
@@ -124,7 +124,7 @@ class CoupledScan(Scan):
 
     def generate_coupled_scan_coords(self) -> list:
         previous_len = None
-        for key, value in self.multi_params.items():
+        for key, value in self.multiple_value_parameters.items():
 
             current_len = len(value['coord_param_values'])
             if previous_len is not None and current_len != previous_len:
@@ -137,7 +137,7 @@ class CoupledScan(Scan):
         coords = []
         for coord_i in range(n_coords):
             coupled_coord = []
-            for key, value in self.multi_params.items():
+            for key, value in self.multiple_value_parameters.items():
                 coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
 
             coords.append(tuple(coupled_coord))
