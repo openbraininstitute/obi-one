@@ -47,26 +47,6 @@ class Scan(BaseModel):
                             
         return self._multiple_value_parameters
 
-
-    def display_multiple_value_parameters(self):
-        print("\nMULTIPLE VALUE PARAMETERS")
-        for k, d in self.multiple_value_parameters.items():
-            print(f"{k}: {d['coord_param_values']}")
-
-    def display_coordinate_parameters(self):
-
-        print("\nCOORDINATE PARAMETERS")
-
-        for single_coordinate_parameters in self.coordinate_parameters:
-            print(single_coordinate_parameters)
-
-    def display_coordinate_instances(self):
-
-         print("\nCOORDINATE INSTANCES")
-
-         for coordinate_instance in self.coordinate_instances:
-            print(coordinate_instance)
-
     @property
     def coordinate_instances(self) -> list[Form]:
 
@@ -113,6 +93,39 @@ class Scan(BaseModel):
             config_path = os.path.join(output_dir, f"{prefix}{idx}.json")
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=2)
+
+    """
+    Display functions
+    """
+    def display_multiple_value_parameters(self):
+        print("\nMULTIPLE VALUE PARAMETERS")
+        for k, d in self.multiple_value_parameters.items():
+            print(f"{k}: {d['coord_param_values']}")
+
+    def display_coordinate_parameters(self):
+
+        print("\nCOORDINATE PARAMETERS")
+
+        for single_coordinate_parameters in self.coordinate_parameters:
+            output = f""
+            for j, parameter in enumerate(single_coordinate_parameters):
+                
+                for i, s in enumerate(parameter[0]):
+                    output = output + f"{s}"
+                    if i < len(parameter[0]) - 1:
+                        output = output + "."
+
+                output = output + ": " + str(parameter[1])
+                if j < len(single_coordinate_parameters) - 1:
+                    output = output + ", "
+            print(output)
+
+    def display_coordinate_instances(self):
+
+         print("\nCOORDINATE INSTANCES")
+
+         for coordinate_instance in self.coordinate_instances:
+            print(coordinate_instance)
 
 
 from itertools import product
