@@ -6,7 +6,7 @@ class Scan(BaseModel):
 
     form: Form = None
     _multiple_value_parameters: dict = PrivateAttr(default={})
-    _coords = PrivateAttr(default=[])
+    _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
 
@@ -52,7 +52,7 @@ class Scan(BaseModel):
 
         if len(self._coordinate_instances) > 0: return self._coordinate_instances
 
-        for coord in self.coordinate_parameters():
+        for coord in self.coordinate_parameters:
 
             coord_form = copy.deepcopy(self.form)
             
@@ -98,7 +98,10 @@ class Scan(BaseModel):
 from itertools import product
 class GridScan(Scan):
 
+    @property
     def coordinate_parameters(self) -> list:
+
+        if len(self._coordinate_parameters) > 0: return self._coordinate_parameters
 
         all_tuples = []
         for key, value in self.multiple_value_parameters.items():
@@ -108,13 +111,14 @@ class GridScan(Scan):
 
             all_tuples.append(tups)
 
-        coords = [coord for coord in product(*all_tuples)]
+        self._coordinate_parameters = [coord for coord in product(*all_tuples)]
 
-        return coords
+        return self._coordinate_parameters
 
 
 class CoupledScan(Scan):
 
+    @property
     def coordinate_parameters(self) -> list:
         previous_len = None
         for key, value in self.multiple_value_parameters.items():
