@@ -17,7 +17,7 @@ class SimulationsForm(Form):
     """
     """
 
-    _single_coord_class = "Simulation"
+    _single_coord_class_name = "Simulation"
 
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]
@@ -39,9 +39,6 @@ class SimulationsForm(Form):
         timestep: float = 0.025
 
     initialize: Initialize
-
-    def single_coord_class(self):
-        return globals()[self._single_coord_class]
 
 
 class Simulation(SimulationsForm, SingleTypeMixin):

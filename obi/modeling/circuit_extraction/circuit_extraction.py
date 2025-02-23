@@ -7,7 +7,7 @@ class CircuitExtractions(Form):
     """
     """
 
-    _single_coord_class = "CircuitExtraction"
+    _single_coord_class_name = "CircuitExtraction"
 
     class Initialize(Block):
         circuit_path: str | list[str]
@@ -15,11 +15,6 @@ class CircuitExtractions(Form):
         node_set: str | list[str]
 
     initialize: Initialize
-
-    def single_coord_class(self):
-        return globals()[self._single_coord_class]
-
-     
 
 
 import os

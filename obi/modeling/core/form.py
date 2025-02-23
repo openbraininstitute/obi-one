@@ -7,7 +7,11 @@ class Form(BaseModel):
     _multi_params: dict = PrivateAttr(default={})
     _sonata_config: dict = PrivateAttr(default={})
 
-    _single_coord_class: str = ""
+    _single_coord_class_name: str = ""
+
+    def single_coord_class(self):
+        module = __import__(self.__module__)
+        return getattr(module, self._single_coord_class_name)
     
     
     @property
