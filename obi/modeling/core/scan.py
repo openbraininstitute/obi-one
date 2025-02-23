@@ -33,7 +33,7 @@ class Scan(BaseModel):
                         print("Validation Error:", "Non Block options should not be used here.")  
     
             try:
-                coord_instance = coord_form.cast_to_single_instance()
+                coord_instance = coord_form.cast_to_single_coord()
                 self._coord_instances.append(coord_instance)
                 
             except ValidationError as e:
