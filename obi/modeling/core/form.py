@@ -9,9 +9,11 @@ class Form(BaseModel):
 
     _single_coord_class_name: str = ""
 
-    def single_coord_class(self):
+    def cast_to_single_instance(self):
         module = __import__(self.__module__)
-        return getattr(module, self._single_coord_class_name)
+        class_to_cast_to = getattr(module, self._single_coord_class_name)
+        single_instance = class_to_cast_to.model_construct(**self.__dict__)
+        return single_instance
     
     
     @property
@@ -51,12 +53,6 @@ class Form(BaseModel):
                             
         return self._multi_params
         
-    
-    def cast_to_single_instance(self):
-        class_to_cast_to = self.single_coord_class()
-        single_instance = class_to_cast_to.model_construct(**self.__dict__)
-        return single_instance
-    
 
 class SingleTypeMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""
