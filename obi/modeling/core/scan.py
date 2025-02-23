@@ -53,22 +53,35 @@ class Scan(BaseModel):
         for k, d in self.multiple_value_parameters.items():
             print(f"{k}: {d['coord_param_values']}")
 
+    def display_coordinate_parameters(self):
+
+        print("\nCOORDINATE PARAMETERS")
+
+        for single_coordinate_parameters in self.coordinate_parameters:
+            print(single_coordinate_parameters)
+
+    def display_coordinate_instances(self):
+
+         print("\nCOORDINATE INSTANCES")
+
+         for coordinate_instance in self.coordinate_instances:
+            print(coordinate_instance)
 
     @property
     def coordinate_instances(self) -> list[Form]:
 
         if len(self._coordinate_instances) > 0: return self._coordinate_instances
 
-        for coord in self.coordinate_parameters:
+        for single_coordinate_parameters in self.coordinate_parameters:
 
-            coord_form = copy.deepcopy(self.form)
+            single_coordinate_form = copy.deepcopy(self.form)
             
-            for param in list(coord):
+            for param in list(single_coordinate_parameters):
                 
                 keys = param[0]
                 val = param[1]
 
-                level_0_val = coord_form.__dict__[keys[0]]
+                level_0_val = single_coordinate_form.__dict__[keys[0]]
 
                 if isinstance(level_0_val, Block):
                     level_0_val.__dict__[keys[1]] = val
@@ -82,8 +95,8 @@ class Scan(BaseModel):
                         print("Validation Error:", "Non Block options should not be used here.")  
     
             try:
-                coord_instance = coord_form.cast_to_single_coord()
-                self._coordinate_instances.append(coord_instance)
+                coordinate_instance = single_coordinate_form.cast_to_single_coord()
+                self._coordinate_instances.append(coordinate_instance)
                 
             except ValidationError as e:
                 print("Validation Error:", e)
