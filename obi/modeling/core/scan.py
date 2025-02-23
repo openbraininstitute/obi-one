@@ -47,9 +47,12 @@ class Scan(BaseModel):
                             
         return self._multiple_value_parameters
 
-    def coordinate_instances_from_coordinate_parameters(self) -> list[Form]:
+    @property
+    def coordinate_instances(self) -> list[Form]:
 
-        for coord in self._coords:
+        if len(self._coordinate_instances) > 0: return self._coordinate_instances
+
+        for coord in self.coordinate_parameters():
 
             coord_form = copy.deepcopy(self.form)
             
@@ -109,16 +112,6 @@ class GridScan(Scan):
 
         return coords
 
-    @property
-    def coordinate_instances(self) -> list[Form]:
-
-        if len(self._coordinate_instances) > 0: return self._coordinate_instances
-            
-        self._coords = self.coordinate_parameters()
-        self._coordinate_instances = self.coordinate_instances_from_coordinate_parameters()
-
-        return self._coordinate_instances
-        
 
 class CoupledScan(Scan):
 
@@ -143,13 +136,3 @@ class CoupledScan(Scan):
             coords.append(tuple(coupled_coord))
 
         return coords
-
-    @property
-    def coordinate_instances(self) -> list[Form]:
-
-        if len(self._coordinate_instances) > 0: return self._coordinate_instances
-
-        self._coords = self.coordinate_parameters()
-        self._coordinate_instances = self.coordinate_instances_from_coordinate_parameters()
-
-        return self._coordinate_instances
