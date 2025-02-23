@@ -6,6 +6,8 @@ class Form(BaseModel):
     """
     _multi_params: dict = PrivateAttr(default={})
     _sonata_config: dict = PrivateAttr(default={})
+
+    _single_coord_class: str = ""
     
     
     @property
@@ -47,7 +49,7 @@ class Form(BaseModel):
         
     
     def cast_to_single_instance(self):
-        class_to_cast_to = self.single_version_class()
+        class_to_cast_to = self.single_coord_class()
         single_instance = class_to_cast_to.model_construct(**self.__dict__)
         return single_instance
     

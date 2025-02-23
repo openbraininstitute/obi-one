@@ -1,3 +1,5 @@
+from pydantic import PrivateAttr
+
 from ..core.form import Form, Block, SingleTypeMixin
 from ..core.scan import Scan
 
@@ -12,7 +14,10 @@ from .timestamps import Timestamps
 from .recording import Recording
 
 class SimulationsForm(Form):
-    """Base simulation model that contains a generic nested object."""
+    """
+    """
+
+    _single_coord_class = "Simulation"
 
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]
@@ -35,9 +40,8 @@ class SimulationsForm(Form):
 
     initialize: Initialize
 
-    # Is this reasonable? (Is there an alternative?)
-    def single_version_class(self):
-        return globals()["Simulation"] 
+    def single_coord_class(self):
+        return globals()[self._single_coord_class]
 
 
 class Simulation(SimulationsForm, SingleTypeMixin):

@@ -1,9 +1,13 @@
+from pydantic import PrivateAttr
+
 from ..core.form import Form, Block, SingleTypeMixin
 from ..core.scan import Scan
 
 class CircuitExtractions(Form):
     """
     """
+
+    _single_coord_class = "CircuitExtraction"
 
     class Initialize(Block):
         circuit_path: str | list[str]
@@ -12,9 +16,10 @@ class CircuitExtractions(Form):
 
     initialize: Initialize
 
-    # Is this reasonable? (Is there an alternative?)
-    def single_version_class(self):
-        return globals()["CircuitExtraction"] 
+    def single_coord_class(self):
+        return globals()[self._single_coord_class]
+
+     
 
 
 import os
