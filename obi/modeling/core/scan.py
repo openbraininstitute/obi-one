@@ -7,7 +7,7 @@ class Scan(BaseModel):
     form: Form = None
     _multiple_value_parameters: dict = PrivateAttr(default={})
     _coords = PrivateAttr(default=[])
-    _coord_instances: list = PrivateAttr(default=[])
+    _coordinate_instances: list = PrivateAttr(default=[])
 
 
     @property
@@ -47,7 +47,7 @@ class Scan(BaseModel):
                             
         return self._multiple_value_parameters
 
-    def coord_instances_from_coords(self) -> list[Form]:
+    def coordinate_instances_from_coordinate_parameters(self) -> list[Form]:
 
         for coord in self._coords:
 
@@ -73,18 +73,18 @@ class Scan(BaseModel):
     
             try:
                 coord_instance = coord_form.cast_to_single_coord()
-                self._coord_instances.append(coord_instance)
+                self._coordinate_instances.append(coord_instance)
                 
             except ValidationError as e:
                 print("Validation Error:", e)
 
-        return self._coord_instances
+        return self._coordinate_instances
     
 
     def write_configs(self, output_dir, prefix="simulation_config_"):
 
         os.makedirs(output_dir, exist_ok=True)
-        for idx, coord_instance in enumerate(self.coord_instances):
+        for idx, coord_instance in enumerate(self.coordinate_instances):
             config = coord_instance.generate_config()
 
             config_path = os.path.join(output_dir, f"{prefix}{idx}.json")
@@ -95,7 +95,7 @@ class Scan(BaseModel):
 from itertools import product
 class GridScan(Scan):
 
-    def generate_grid_scan_coords(self) -> list:
+    def coordinate_parameters(self) -> list:
 
         all_tuples = []
         for key, value in self.multiple_value_parameters.items():
@@ -110,19 +110,19 @@ class GridScan(Scan):
         return coords
 
     @property
-    def coord_instances(self) -> list[Form]:
+    def coordinate_instances(self) -> list[Form]:
 
-        if len(self._coord_instances) > 0: return self._coord_instances
+        if len(self._coordinate_instances) > 0: return self._coordinate_instances
             
-        self._coords = self.generate_grid_scan_coords()
-        self._coord_instances = self.coord_instances_from_coords()
+        self._coords = self.coordinate_parameters()
+        self._coordinate_instances = self.coordinate_instances_from_coordinate_parameters()
 
-        return self._coord_instances
+        return self._coordinate_instances
         
 
 class CoupledScan(Scan):
 
-    def generate_coupled_scan_coords(self) -> list:
+    def coordinate_parameters(self) -> list:
         previous_len = None
         for key, value in self.multiple_value_parameters.items():
 
@@ -145,11 +145,11 @@ class CoupledScan(Scan):
         return coords
 
     @property
-    def coord_instances(self) -> list[Form]:
+    def coordinate_instances(self) -> list[Form]:
 
-        if len(self._coord_instances) > 0: return self._coord_instances
+        if len(self._coordinate_instances) > 0: return self._coordinate_instances
 
-        self._coords = self.generate_coupled_scan_coords()
-        self._coord_instances = self.coord_instances_from_coords()
+        self._coords = self.coordinate_parameters()
+        self._coordinate_instances = self.coordinate_instances_from_coordinate_parameters()
 
-        return self._coord_instances
+        return self._coordinate_instances
