@@ -11,7 +11,7 @@ class Scan(BaseModel):
 
 
     @property
-    def multiple_value_parameters(self) -> dict:
+    def multiple_value_parameters(self, display=False) -> dict:
         
         """
         Iterate through all attributes of the Form
@@ -46,6 +46,13 @@ class Scan(BaseModel):
 
                             
         return self._multiple_value_parameters
+
+
+    def display_multiple_value_parameters(self):
+        print("\nMULTIPLE VALUE PARAMETERS")
+        for k, d in self.multiple_value_parameters.items():
+            print(f"{k}: {d['coord_param_values']}")
+
 
     @property
     def coordinate_instances(self) -> list[Form]:
