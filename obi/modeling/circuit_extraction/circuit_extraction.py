@@ -19,15 +19,14 @@ class CircuitExtractions(Form):
 import os
 from brainbuilder.utils.sonata import split_population
 from importlib.metadata import version
-import json
+
 class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
     """"""
     pass
 
-    def run(self, output_root):
+    def run(self, output_root) -> str:
 
         subcircuit_output_root = os.path.join(output_root, self.initialize.node_set)
-
         os.makedirs(subcircuit_output_root, exist_ok=True)
 
         try:
@@ -41,10 +40,7 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
                 print("Error:", f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.")
                 return
 
+        return subcircuit_output_root
 
-        model_dump = self.model_dump()
-        model_dump["obi_version"] = version("obi")
-
-        with open(os.path.join(subcircuit_output_root, "model_dump.json"), "w") as json_file:
-            json.dump(model_dump, json_file, indent=4)
+        
         

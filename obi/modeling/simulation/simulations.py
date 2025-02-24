@@ -86,5 +86,5 @@ class Simulation(SimulationsForm, SingleTypeMixin):
         with open(simulation_config_path, 'w') as f:
             json.dump(self._sonata_config, f, indent=2)
 
-        return self._sonata_config
+        return simulation_output_root
 

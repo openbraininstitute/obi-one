@@ -1,4 +1,6 @@
 from pydantic import BaseModel, field_validator, PrivateAttr
+from importlib.metadata import version
+import json
 from obi.modeling.core.block import Block
 
 class Form(BaseModel):
@@ -16,6 +18,12 @@ class Form(BaseModel):
 
     def __str__(self):
         return self.__repr__()
+
+    def dump_model_to_json_with_package_version(self, output_path):
+        model_dump = self.model_dump()
+        model_dump["obi_version"] = version("obi")
+        with open(output_path, "w") as json_file:
+            json.dump(model_dump, json_file, indent=4)
 
 
 class SingleTypeMixin:

@@ -122,7 +122,8 @@ class Scan(BaseModel):
         os.makedirs(self.output_root, exist_ok=True)
         for idx, coordinate_instance in enumerate(self.coordinate_instances()):
             if hasattr(coordinate_instance, 'generate'):
-                coordinate_instance.generate(self.output_root, idx=idx)
+                coordinate_root = coordinate_instance.generate(self.output_root, idx=idx)
+                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_root, "generate_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
@@ -133,6 +134,7 @@ class Scan(BaseModel):
         for coordinate_instance in self.coordinate_instances():
             if hasattr(coordinate_instance, 'run'):
                 coordinate_instance.run(self.output_root)
+                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_root, "run_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
