@@ -57,7 +57,7 @@ class SingleTypeMixin:
 
     def dump_coordinate_instance_to_json_with_package_version(self, output_path):
 
-        model_dump = self.model_dump()
+        model_dump = self.model_dump(serialize_as_any=True)
         model_dump["obi_version"] = version("obi")
         model_dump["coordinate_output_root"] = self.coordinate_output_root
 

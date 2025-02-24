@@ -126,7 +126,7 @@ class Scan(BaseModel):
             else:
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
-        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "scan_config.json"))
+        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "generate_scan_config.json"))
 
     def run(self):
 
@@ -138,7 +138,7 @@ class Scan(BaseModel):
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
-        # self.dump_scan_to_json_with_package_version(self.output_root)
+        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "run_scan_config.json"))
 
     def generate_and_run(self):
         self.generate()
@@ -146,11 +146,8 @@ class Scan(BaseModel):
 
 
     def dump_scan_to_json_with_package_version(self, output_path):
-        # print(self.form)
-
-        # Imlement better dumping of scan in future
-
-        model_dump = self.model_dump()
+   
+        model_dump = self.model_dump(serialize_as_any=True)
         model_dump["obi_version"] = version("obi")
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
