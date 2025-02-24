@@ -1,10 +1,11 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
 from .form import Form, Block
+from .base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
 
-class Scan(BaseModel):
+class Scan(OBIBaseModel):
 
     form: Form
     output_root: str
@@ -151,14 +152,17 @@ class Scan(BaseModel):
    
         model_dump = self.model_dump(serialize_as_any=True)
         model_dump["obi_version"] = version("obi")
-        model_dump["form_class_name"] = self.form.__class__.__name__
-        model_dump["scan_class_name"] = self.__class__.__name__
+
+        model_dump["form"]
 
         model_dump = OrderedDict(model_dump)
-        model_dump.move_to_end('scan_class_name', last=False)
-        model_dump.move_to_end('form_class_name', last=False)
+
         model_dump.move_to_end('output_root', last=False)
+        model_dump.move_to_end('obi_class', last=False)
         model_dump.move_to_end('obi_version', last=False)
+
+        model_dump["form"] = OrderedDict(model_dump["form"])
+        model_dump["form"].move_to_end('obi_class', last=False)
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:

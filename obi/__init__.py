@@ -1,3 +1,4 @@
+from .modeling.core.base import OBIBaseModel
 from .modeling.core.form import Form
 from .modeling.core.block import Block
 from .modeling.core.scan import GridScan, CoupledScan

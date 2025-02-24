@@ -1,6 +1,7 @@
 from pydantic import BaseModel, PrivateAttr
+from .base import OBIBaseModel
 
-class Block(BaseModel):
+class Block(OBIBaseModel):
     """
     """
     _multiple_value_parameters: dict = PrivateAttr(default={})

@@ -3,8 +3,9 @@ from importlib.metadata import version
 import json, os
 from obi.modeling.core.block import Block
 from collections import OrderedDict
+from .base import OBIBaseModel
 
-class Form(BaseModel):
+class Form(OBIBaseModel):
     """
     """
     _sonata_config: dict = PrivateAttr(default={})
@@ -15,9 +16,6 @@ class Form(BaseModel):
         class_to_cast_to = getattr(module, self._single_coord_class_name)
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
         return single_coord
-
-    def __str__(self):
-        return self.__repr__()
 
 
 
@@ -61,13 +59,13 @@ class SingleTypeMixin:
         model_dump = self.model_dump(serialize_as_any=True)
         model_dump = OrderedDict(model_dump)
         model_dump["obi_version"] = version("obi")
-        model_dump["class_name"] = self.__class__.__name__
+        model_dump["obi_class"] = self.__class__.__name__
         model_dump["coordinate_output_root"] = self.coordinate_output_root
 
         model_dump.move_to_end('scan_output_root', last=False)
         model_dump.move_to_end('coordinate_output_root', last=False)
         model_dump.move_to_end('idx', last=False)
-        model_dump.move_to_end('class_name', last=False)
+        model_dump.move_to_end('obi_class', last=False)
         model_dump.move_to_end('obi_version', last=False)
         
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
