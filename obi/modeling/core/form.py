@@ -2,6 +2,7 @@ from pydantic import BaseModel, field_validator, PrivateAttr
 from importlib.metadata import version
 import json, os
 from obi.modeling.core.block import Block
+from collections import OrderedDict
 
 class Form(BaseModel):
     """
@@ -58,9 +59,17 @@ class SingleTypeMixin:
     def dump_coordinate_instance_to_json_with_package_version(self, output_path):
 
         model_dump = self.model_dump(serialize_as_any=True)
+        model_dump = OrderedDict(model_dump)
         model_dump["obi_version"] = version("obi")
+        model_dump["class_name"] = self.__class__.__name__
         model_dump["coordinate_output_root"] = self.coordinate_output_root
 
+        model_dump.move_to_end('scan_output_root', last=False)
+        model_dump.move_to_end('coordinate_output_root', last=False)
+        model_dump.move_to_end('idx', last=False)
+        model_dump.move_to_end('class_name', last=False)
+        model_dump.move_to_end('obi_version', last=False)
+        
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
