@@ -132,7 +132,7 @@ class Scan(BaseModel):
 
         for coordinate_instance in self.coordinate_instances():
             if hasattr(coordinate_instance, 'run'):
-                coordinate_instance.run()
+                coordinate_instance.run(self.output_root)
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 

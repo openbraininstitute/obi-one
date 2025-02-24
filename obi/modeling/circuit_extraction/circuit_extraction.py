@@ -24,14 +24,14 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
     """"""
     pass
 
-    def run(self):
+    def run(self, output_root):
 
-        subcircuit_output_path = self.initialize.output_path + self.initialize.node_set + "/"
+        subcircuit_output_root = os.path.join(output_root, self.initialize.node_set)
 
-        os.makedirs(subcircuit_output_path, exist_ok=True)
+        os.makedirs(subcircuit_output_root, exist_ok=True)
 
         try:
-            split_population.split_subcircuit(subcircuit_output_path,
+            split_population.split_subcircuit(subcircuit_output_root,
                                             self.initialize.node_set,
                                             self.initialize.circuit_path,
                                             True,
@@ -45,6 +45,6 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
         model_dump = self.model_dump()
         model_dump["obi_version"] = version("obi")
 
-        with open(os.path.join(subcircuit_output_path, "model_dump.json"), "w") as json_file:
+        with open(os.path.join(subcircuit_output_root, "model_dump.json"), "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
         
