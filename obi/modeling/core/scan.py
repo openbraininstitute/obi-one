@@ -1,10 +1,10 @@
 from pydantic import BaseModel, PrivateAttr, ValidationError
 from .form import Form, Block
-
+from importlib.metadata import version
 import os, copy, json
 class Scan(BaseModel):
 
-    form: Form = None
+    form: Form
     output_root: str
     _multiple_value_parameters: dict = PrivateAttr(default={})
     _coordinate_parameters: list = PrivateAttr(default=[])
@@ -122,11 +122,11 @@ class Scan(BaseModel):
             if hasattr(coordinate_instance, 'generate'):
                 coordinate_instance.scan_output_root = self.output_root
                 coordinate_instance.generate()
-                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
+                coordinate_instance.dump_coordinate_instance_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
-
+        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "scan_config.json"))
 
     def run(self):
 
@@ -134,14 +134,28 @@ class Scan(BaseModel):
             if hasattr(coordinate_instance, 'run'):
                 coordinate_instance.scan_output_root = self.output_root
                 coordinate_instance.run()
-                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
+                coordinate_instance.dump_coordinate_instance_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
+        # self.dump_scan_to_json_with_package_version(self.output_root)
 
     def generate_and_run(self):
         self.generate()
         self.run()
+
+
+    def dump_scan_to_json_with_package_version(self, output_path):
+        # print(self.form)
+
+        # Imlement better dumping of scan in future
+
+        model_dump = self.model_dump()
+        model_dump["obi_version"] = version("obi")
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w") as json_file:
+            json.dump(model_dump, json_file, indent=4)
 
 
 

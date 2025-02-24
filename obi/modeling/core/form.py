@@ -18,16 +18,6 @@ class Form(BaseModel):
     def __str__(self):
         return self.__repr__()
 
-    def dump_model_to_json_with_package_version(self, output_path):
-
-        model_dump = self.model_dump()
-        model_dump["obi_version"] = version("obi")
-        model_dump["coordinate_output_root"] = self.coordinate_output_root
-
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as json_file:
-            json.dump(model_dump, json_file, indent=4)
-
 
 
 class SingleTypeMixin:
@@ -51,10 +41,7 @@ class SingleTypeMixin:
             block = value
             value.enforce_no_lists() # Enforce no lists
                 
-        return value
-
-
-    
+        return value    
 
     @property
     def coordinate_output_root(self):
@@ -67,5 +54,13 @@ class SingleTypeMixin:
     def coordinate_output_root(self, value):
         self._coordinate_output_root = value
             
-    
-    
+
+    def dump_coordinate_instance_to_json_with_package_version(self, output_path):
+
+        model_dump = self.model_dump()
+        model_dump["obi_version"] = version("obi")
+        model_dump["coordinate_output_root"] = self.coordinate_output_root
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w") as json_file:
+            json.dump(model_dump, json_file, indent=4)
