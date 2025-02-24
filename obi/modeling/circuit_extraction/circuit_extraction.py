@@ -16,6 +16,12 @@ class CircuitExtractions(Form):
 
     initialize: Initialize
 
+    def extract_circuits():
+        print("\nEXTRACT CIRCUITS")
+        
+        for coord_instance in grid_scan.coordinate_instances(): 
+            coord_instance.run_extraction()
+
 
 import os
 from brainbuilder.utils.sonata import split_population

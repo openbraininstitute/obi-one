@@ -14,6 +14,9 @@ class Form(BaseModel):
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
         return single_coord
 
+    def __str__(self):
+        return self.__repr__()
+
 
 class SingleTypeMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""

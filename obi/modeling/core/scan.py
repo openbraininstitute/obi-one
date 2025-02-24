@@ -10,9 +10,12 @@ class Scan(BaseModel):
     _coordinate_instances: list = PrivateAttr(default=[])
 
 
-    @property
+    # @property
     def multiple_value_parameters(self, display=False) -> dict:
         
+
+        self._multiple_value_parameters = {}
+
         """
         Iterate through all attributes of the Form
         """
@@ -45,14 +48,38 @@ class Scan(BaseModel):
                 self._multiple_value_parameters.update(category_block.multiple_value_parameters(category_name=category_name))
 
                             
+        if display:
+            print("\nMULTIPLE VALUE PARAMETERS")
+            for k, d in self._multiple_value_parameters.items():
+                print(f"{k}: {d['coord_param_values']}")
+
         return self._multiple_value_parameters
 
-    @property
-    def coordinate_instances(self) -> list[Form]:
 
-        if len(self._coordinate_instances) > 0: return self._coordinate_instances
+    def display_coordinate_parameters(self):
+ 
+        print("\nCOORDINATE PARAMETERS")
 
-        for single_coordinate_parameters in self.coordinate_parameters:
+        for single_coordinate_parameters in self._coordinate_parameters:
+            output = f""
+            for j, parameter in enumerate(single_coordinate_parameters):
+                
+                for i, s in enumerate(parameter[0]):
+                    output = output + f"{s}"
+                    if i < len(parameter[0]) - 1:
+                        output = output + "."
+
+                output = output + ": " + str(parameter[1])
+                if j < len(single_coordinate_parameters) - 1:
+                    output = output + ", "
+            print(output)
+
+
+    def coordinate_instances(self, display=False) -> list[Form]:
+
+        self._coordinate_instances = []
+
+        for single_coordinate_parameters in self.coordinate_parameters():
 
             single_coordinate_form = copy.deepcopy(self.form)
             
@@ -81,63 +108,31 @@ class Scan(BaseModel):
             except ValidationError as e:
                 print("Validation Error:", e)
 
+        if display: 
+            print("\nCOORDINATE INSTANCES")
+            for coordinate_instance in self._coordinate_instances:
+                print(coordinate_instance)
+
         return self._coordinate_instances
     
 
-    def write_configs(self, output_dir, prefix="simulation_config_"):
+    def generate(self, output_dir):
 
         os.makedirs(output_dir, exist_ok=True)
-        for idx, coord_instance in enumerate(self.coordinate_instances):
-            config = coord_instance.generate_config()
+        for idx, coordinate_instance in enumerate(self.coordinate_instances()):
+            coordinate_instance.generate(output_dir, idx=idx)
 
-            config_path = os.path.join(output_dir, f"{prefix}{idx}.json")
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
+    # def run(self, output_dir, prefix="")
 
-    """
-    Display functions
-    """
-    def display_multiple_value_parameters(self):
-        print("\nMULTIPLE VALUE PARAMETERS")
-        for k, d in self.multiple_value_parameters.items():
-            print(f"{k}: {d['coord_param_values']}")
-
-    def display_coordinate_parameters(self):
-
-        print("\nCOORDINATE PARAMETERS")
-
-        for single_coordinate_parameters in self.coordinate_parameters:
-            output = f""
-            for j, parameter in enumerate(single_coordinate_parameters):
-                
-                for i, s in enumerate(parameter[0]):
-                    output = output + f"{s}"
-                    if i < len(parameter[0]) - 1:
-                        output = output + "."
-
-                output = output + ": " + str(parameter[1])
-                if j < len(single_coordinate_parameters) - 1:
-                    output = output + ", "
-            print(output)
-
-    def display_coordinate_instances(self):
-
-         print("\nCOORDINATE INSTANCES")
-
-         for coordinate_instance in self.coordinate_instances:
-            print(coordinate_instance)
 
 
 from itertools import product
 class GridScan(Scan):
 
-    @property
-    def coordinate_parameters(self) -> list:
-
-        if len(self._coordinate_parameters) > 0: return self._coordinate_parameters
+    def coordinate_parameters(self, display=False) -> list:
 
         all_tuples = []
-        for key, value in self.multiple_value_parameters.items():
+        for key, value in self.multiple_value_parameters().items():
             tups = []
             for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
                 tups.append((k, v))
@@ -145,16 +140,17 @@ class GridScan(Scan):
             all_tuples.append(tups)
 
         self._coordinate_parameters = [coord for coord in product(*all_tuples)]
+        
+        if display: self.display_coordinate_parameters()
 
         return self._coordinate_parameters
 
 
 class CoupledScan(Scan):
 
-    @property
-    def coordinate_parameters(self) -> list:
+    def coordinate_parameters(self, display=False) -> list:
         previous_len = None
-        for key, value in self.multiple_value_parameters.items():
+        for key, value in self.multiple_value_parameters().items():
 
             current_len = len(value['coord_param_values'])
             if previous_len is not None and current_len != previous_len:
@@ -164,12 +160,14 @@ class CoupledScan(Scan):
 
         n_coords = current_len
 
-        coords = []
+        self._coordinate_parameters = []
         for coord_i in range(n_coords):
             coupled_coord = []
-            for key, value in self.multiple_value_parameters.items():
+            for key, value in self.multiple_value_parameters().items():
                 coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
 
-            coords.append(tuple(coupled_coord))
+            self._coordinate_parameters.append(tuple(coupled_coord))
 
-        return coords
+        if display: self.display_coordinate_parameters()
+
+        return self._coordinate_parameters
