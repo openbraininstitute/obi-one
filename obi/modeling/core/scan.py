@@ -5,6 +5,7 @@ import os, copy, json
 class Scan(BaseModel):
 
     form: Form = None
+    output_root: str
     _multiple_value_parameters: dict = PrivateAttr(default={})
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
@@ -99,14 +100,14 @@ class Scan(BaseModel):
                         level_1_val.__dict__[keys[2]] = val
                     else:
                         # This should already by checked elsewhere (in future, if not done already)
-                        print("Validation Error:", "Non Block options should not be used here.")  
+                        raise ValueError("Non Block options should not be used here.")
     
             try:
                 coordinate_instance = single_coordinate_form.cast_to_single_coord()
                 self._coordinate_instances.append(coordinate_instance)
                 
             except ValidationError as e:
-                print("Validation Error:", e)
+                raise ValidationError(e)
 
         if display: 
             print("\nCOORDINATE INSTANCES")
@@ -116,13 +117,29 @@ class Scan(BaseModel):
         return self._coordinate_instances
     
 
-    def generate(self, output_dir):
+    def generate(self):
 
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.output_root, exist_ok=True)
         for idx, coordinate_instance in enumerate(self.coordinate_instances()):
-            coordinate_instance.generate(output_dir, idx=idx)
+            if hasattr(coordinate_instance, 'generate'):
+                coordinate_instance.generate(self.output_root, idx=idx)
+            else:
+                raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
-    # def run(self, output_dir, prefix="")
+
+
+    def run(self):
+
+        for coordinate_instance in self.coordinate_instances():
+            if hasattr(coordinate_instance, 'run'):
+                coordinate_instance.run()
+            else:
+                raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
+
+
+    def generate_and_run(self):
+        self.generate()
+        self.run()
 
 
 

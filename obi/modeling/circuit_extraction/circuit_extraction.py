@@ -11,16 +11,9 @@ class CircuitExtractions(Form):
 
     class Initialize(Block):
         circuit_path: str | list[str]
-        output_root: str | list[str]
         node_set: str | list[str]
 
     initialize: Initialize
-
-    def extract_circuits():
-        print("\nEXTRACT CIRCUITS")
-        
-        for coord_instance in grid_scan.coordinate_instances(): 
-            coord_instance.run_extraction()
 
 
 import os
@@ -31,14 +24,14 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
     """"""
     pass
 
-    def run_extraction(self):
+    def run(self):
 
-        output_path = self.initialize.output_root + self.initialize.node_set + "/"
+        subcircuit_output_path = self.initialize.output_path + self.initialize.node_set + "/"
 
-        os.makedirs(output_path, exist_ok=True)
+        os.makedirs(subcircuit_output_path, exist_ok=True)
 
         try:
-            split_population.split_subcircuit(output_path,
+            split_population.split_subcircuit(subcircuit_output_path,
                                             self.initialize.node_set,
                                             self.initialize.circuit_path,
                                             True,
@@ -52,6 +45,6 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
         model_dump = self.model_dump()
         model_dump["obi_version"] = version("obi")
 
-        with open(os.path.join(output_path, "model_dump.json"), "w") as json_file:
+        with open(os.path.join(subcircuit_output_path, "model_dump.json"), "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
         
