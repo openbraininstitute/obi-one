@@ -10,11 +10,8 @@ class Scan(BaseModel):
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
-
-    # @property
     def multiple_value_parameters(self, display=False) -> dict:
         
-
         self._multiple_value_parameters = {}
 
         """
@@ -80,7 +77,7 @@ class Scan(BaseModel):
 
         self._coordinate_instances = []
 
-        for single_coordinate_parameters in self.coordinate_parameters():
+        for idx, single_coordinate_parameters in enumerate(self.coordinate_parameters()):
 
             single_coordinate_form = copy.deepcopy(self.form)
             
@@ -104,6 +101,7 @@ class Scan(BaseModel):
     
             try:
                 coordinate_instance = single_coordinate_form.cast_to_single_coord()
+                coordinate_instance.idx = idx
                 self._coordinate_instances.append(coordinate_instance)
                 
             except ValidationError as e:
@@ -116,14 +114,15 @@ class Scan(BaseModel):
 
         return self._coordinate_instances
     
-
     def generate(self):
 
         os.makedirs(self.output_root, exist_ok=True)
-        for idx, coordinate_instance in enumerate(self.coordinate_instances()):
+        for coordinate_instance in self.coordinate_instances():
+
             if hasattr(coordinate_instance, 'generate'):
-                coordinate_root = coordinate_instance.generate(self.output_root, idx=idx)
-                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_root, "generate_coordinate_instance.json"))
+                coordinate_instance.scan_output_root = self.output_root
+                coordinate_instance.generate()
+                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
@@ -133,8 +132,9 @@ class Scan(BaseModel):
 
         for coordinate_instance in self.coordinate_instances():
             if hasattr(coordinate_instance, 'run'):
-                coordinate_instance.run(self.output_root)
-                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_root, "run_coordinate_instance.json"))
+                coordinate_instance.scan_output_root = self.output_root
+                coordinate_instance.run()
+                coordinate_instance.dump_model_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
