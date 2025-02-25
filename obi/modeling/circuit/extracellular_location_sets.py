@@ -1,5 +1,4 @@
-from ..core.form import Block
-from ..circuit.circuit import Circuit
+from obi.modeling.core.block import Block
 
 class ExtracellularLocationSet(Block):
     """

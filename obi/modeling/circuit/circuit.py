@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from obi.modeling.core.block import Block
 
-class Circuit(BaseModel):
+class Circuit(Block):
     """
     """
     circuit_path: str | list[str]

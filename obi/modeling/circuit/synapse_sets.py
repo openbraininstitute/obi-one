@@ -1,5 +1,5 @@
-from ..core.form import Block
-from ..circuit.circuit import Circuit
+from obi.modeling.core.block import Block
+from obi.modeling.circuit.circuit import Circuit
 
 class SynapseSet(Block):
     """

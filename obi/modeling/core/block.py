@@ -1,5 +1,5 @@
-from pydantic import BaseModel, PrivateAttr
-from .base import OBIBaseModel
+from pydantic import PrivateAttr
+from obi.modeling.core.base import OBIBaseModel
 
 class Block(OBIBaseModel):
     """

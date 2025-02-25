@@ -1,6 +1,6 @@
-from pydantic import BaseModel, PrivateAttr, ValidationError
-from .form import Form, Block
-from .base import OBIBaseModel
+from pydantic import PrivateAttr, ValidationError
+from obi.modeling.core.form import Form, Block
+from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict

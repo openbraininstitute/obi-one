@@ -1,9 +1,10 @@
-from pydantic import BaseModel, field_validator, PrivateAttr
+from pydantic import field_validator, PrivateAttr
 from importlib.metadata import version
 import json, os
-from obi.modeling.core.block import Block
 from collections import OrderedDict
-from .base import OBIBaseModel
+
+from obi.modeling.core.block import Block
+from obi.modeling.core.base import OBIBaseModel
 
 class Form(OBIBaseModel):
     """
