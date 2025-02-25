@@ -15,9 +15,9 @@ uv pip install -e .
 
 Option for scan folder hierarchy to be based on scan variables and values
 
-Create simulation campaign 
+Create bbp-workflow like simulation campaign config
 
-Block dependency tree
+Test building Block dependency tree
 
 Test/integrate Block dictionary parameters for filtering
 
