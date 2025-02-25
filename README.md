@@ -8,3 +8,5 @@ uv sync
 
 uv pip install '.[jupyter,subcircuit_extraction]'
 
+uv pip install -e .
+
