@@ -32,13 +32,13 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: Circuit
         simulation_length: list[float] | float = 100.0
-        random_seed: int = 1
-        extracellular_calcium_concentration: float = 1.1
-        v_init: float = -80.0
+        random_seed: list[int] | int = 1
+        extracellular_calcium_concentration: list[float] | float = 1.1
+        v_init: list[float] | float = -80.0
 
-        sonata_version: int = 1
-        target_simulator: str = 'CORENEURON'
-        timestep: float = 0.025
+        sonata_version: list[int] | int = 1
+        target_simulator: list[str] | str = 'CORENEURON'
+        timestep: list[float] | float = 0.025
 
     initialize: Initialize
 
