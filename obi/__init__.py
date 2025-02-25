@@ -2,6 +2,7 @@ from obi.modeling.core.base import OBIBaseModel
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.scan import GridScan, CoupledScan
+from obi.modeling.core.serialization import deserialize_obi_object_json
 
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet  
