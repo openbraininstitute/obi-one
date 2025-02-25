@@ -130,6 +130,7 @@ class Scan(OBIBaseModel):
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
         self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "generate_scan_config.json"))
+        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     def run(self):
 
@@ -142,6 +143,7 @@ class Scan(OBIBaseModel):
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
         self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "run_scan_config.json"))
+        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     def generate_and_run(self):
         self.generate()
@@ -167,6 +169,36 @@ class Scan(OBIBaseModel):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
+
+
+    def create_bbp_workflow_campaign_config(self, output_path):
+
+        campaign_config = {
+            "dims": [],
+            "attrs": {},
+            "data": [],
+            "coords": {},
+            "name": ""
+        }
+
+        campaign_config['dims'] = [param_key for param_key in self.multiple_value_parameters()]
+
+
+        for param_key, param_dict in self.multiple_value_parameters().items():
+
+            sub_d = {param_key: {
+                                    "dims": [param_key],
+                                    "attrs": {},
+                                    "data": param_dict["coord_param_values"]
+                                 }
+                    }
+
+            campaign_config["coords"].update(sub_d)
+
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w") as json_file:
+            json.dump(campaign_config, json_file, indent=4)
 
 
 
