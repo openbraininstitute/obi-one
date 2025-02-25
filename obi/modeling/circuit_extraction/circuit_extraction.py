@@ -26,8 +26,8 @@ class CircuitExtraction(CircuitExtractions, SingleTypeMixin):
 
     def run(self) -> str:
 
-        self.coordinate_output_root = os.path.join(self.scan_output_root, self.initialize.node_set)
-        os.makedirs(self.coordinate_output_root, exist_ok=True)
+        # self.coordinate_output_root = os.path.join(self.scan_output_root, self.initialize.node_set)
+        # os.makedirs(self.coordinate_output_root, exist_ok=True)
 
         try:
             split_population.split_subcircuit(self.coordinate_output_root,

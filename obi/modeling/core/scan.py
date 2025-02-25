@@ -1,6 +1,7 @@
 from pydantic import PrivateAttr, ValidationError
 from obi.modeling.core.form import Form, Block
 from obi.modeling.core.base import OBIBaseModel
+from obi.modeling.core.form import nested_param_short
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
@@ -65,11 +66,7 @@ class Scan(OBIBaseModel):
             output = f""
             for j, parameter in enumerate(single_coordinate_parameters):
                 
-                for i, s in enumerate(parameter[0]):
-                    output = output + f"{s}"
-                    if i < len(parameter[0]) - 1:
-                        output = output + "."
-
+                output = nested_param_short(parameter[0])
                 output = output + ": " + str(parameter[1])
                 if j < len(single_coordinate_parameters) - 1:
                     output = output + ", "
@@ -105,6 +102,7 @@ class Scan(OBIBaseModel):
             try:
                 coordinate_instance = single_coordinate_form.cast_to_single_coord()
                 coordinate_instance.idx = idx
+                coordinate_instance.coordinate_parameters = single_coordinate_parameters
                 self._coordinate_instances.append(coordinate_instance)
                 
             except ValidationError as e:
