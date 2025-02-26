@@ -342,20 +342,35 @@ GridScan class:
 from itertools import product
 class GridScan(Scan):
 
+    """
+    coordinate_parameters implementation
+    """
     def coordinate_parameters(self, display=False) -> list:
 
+        """
+        First create all_tuples: a list of sublists of tuples
+        There is a sublist for each multi value parmater with the sublist containing
+        tuples with the location of the multi value parameter (as a list) and a unique value
+        [
+            [(['timestamps', 'timestamps_1', 'interval'], 1.0), (['timestamps', 'timestamps_1', 'interval'], 5.0)], 
+            [(['stimuli', 'stimulus_1', 'spike_probability'], 0.5), (['stimuli', 'stimulus_1', 'spike_probability'], 0.8)], 
+            [(['initialize', 'simulation_length'], 100.0), (['initialize', 'simulation_length'], 500.0)]]
+        ]
+        """
         all_tuples = []
         for key, value in self.multiple_value_parameters().items():
             tups = []
             for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
                 tups.append((k, v))
-
             all_tuples.append(tups)
 
+        # Then create the coordinate parameters as a product of all_tuples
         self._coordinate_parameters = [coord for coord in product(*all_tuples)]
         
+        # Optionally display the coordinate parameters
         if display: self.display_coordinate_parameters()
 
+        # Return the coordinate parameters
         return self._coordinate_parameters
 
 """
