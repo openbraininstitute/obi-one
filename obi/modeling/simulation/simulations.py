@@ -1,6 +1,6 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
-from obi.modeling.core.single import SingleTypeMixin
+from obi.modeling.core.single import SingleCoordinate
 from obi.modeling.core.scan import Scan
 
 from obi.modeling.circuit.circuit import Circuit
@@ -43,7 +43,7 @@ class SimulationsForm(Form):
     initialize: Initialize
 
 
-class Simulation(SimulationsForm, SingleTypeMixin):
+class Simulation(SimulationsForm, SingleCoordinate):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 
