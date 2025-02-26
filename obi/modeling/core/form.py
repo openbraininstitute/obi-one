@@ -78,7 +78,7 @@ class SingleTypeMixin:
         self._coordinate_output_root = value
             
 
-    def dump_coordinate_instance_to_json_with_package_version(self, output_path):
+    def serialize(self, output_path):
 
         model_dump = self.model_dump(serialize_as_any=True)
         model_dump = OrderedDict(model_dump)

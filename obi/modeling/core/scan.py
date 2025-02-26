@@ -1,7 +1,6 @@
 from pydantic import PrivateAttr, ValidationError
-from obi.modeling.core.form import Form, Block
+from obi.modeling.core.form import Form, Block, nested_param_short
 from obi.modeling.core.base import OBIBaseModel
-from obi.modeling.core.form import nested_param_short
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
@@ -80,6 +79,7 @@ class Scan(OBIBaseModel):
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
 
+
     """
     Coordinate parameters
     - Must be implemented by a subclass of Scan
@@ -111,10 +111,9 @@ class Scan(OBIBaseModel):
         - Making a deep copy of the form
         - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
             (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
-        - Casting the form to it's _single_coord_class_name type 
+        - Casting the form to its _single_coord_class_name type 
             (i.e. SimulationsForm -> Simulation)
     """
-
     def coordinate_instances(self, display=False) -> list[Form]:
 
         self._coordinate_instances = []
@@ -147,47 +146,86 @@ class Scan(OBIBaseModel):
                         raise ValueError("Non Block options should not be used here.")
     
             try:
+                # Cast the form to its _single_coord_class_name type
                 coordinate_instance = single_coordinate_form.cast_to_single_coord()
+
+                # Set the variables of the coordinate instance related to the scan
                 coordinate_instance.idx = idx
                 coordinate_instance.coordinate_parameters = single_coordinate_parameters
+
+                # Append the coordinate instance to self._coordinate_instances
                 self._coordinate_instances.append(coordinate_instance)
                 
             except ValidationError as e:
                 raise ValidationError(e)
 
+        # Optionally display the coordinate instances
         if display: 
             print("\nCOORDINATE INSTANCES")
             for coordinate_instance in self._coordinate_instances:
                 print(coordinate_instance)
 
+        # Return self._coordinate_instances
         return self._coordinate_instances
     
+
+    """
+    Generate
+    - Creates the Scan output_root
+    - Checks if generate() implemented for the coordinate_instances
+    - Calls generate() for each instance of self.coordinate_instances()
+    - Serializes each instance to json
+    - Serializes the Scan
+    - Create a bbp_workflow_campaign_config
+    """
     def generate(self):
 
+        # Creates the Scan output_root
         os.makedirs(self.output_root, exist_ok=True)
+
+        # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
 
+            # Check if coordinate instance has function "generate"
             if hasattr(coordinate_instance, 'generate'):
+
+                # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
+
+                # Call the coordinate_instance's generate() function
                 coordinate_instance.generate()
-                coordinate_instance.dump_coordinate_instance_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
+
+                # Serialize the coordinate instance
+                coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
             else:
+                # Raise an error if generate() not implemented for the coordinate instance
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
 
-        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "generate_scan_config.json"))
+        # Serialize the scan
+        self.serialize(os.path.join(self.output_root, "generate_scan_config.json"))
+
+        # Create a bbp_workflow_campaign_config
         self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
+    """
+    Run
+    - Creates the Scan output_root
+    - Checks if run() implemented for the coordinate_instances
+    - Calls run() for each instance of self.coordinate_instances()
+    - Serializes each instance to json
+    - Serializes the Scan
+    - Create a bbp_workflow_campaign_config
+    """  
     def run(self):
-
         for coordinate_instance in self.coordinate_instances():
             if hasattr(coordinate_instance, 'run'):
                 coordinate_instance.scan_output_root = self.output_root
                 coordinate_instance.run()
-                coordinate_instance.dump_coordinate_instance_to_json_with_package_version(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
+                coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
             else:
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
-        self.dump_scan_to_json_with_package_version(os.path.join(self.output_root, "run_scan_config.json"))
+        self.serialize(os.path.join(self.output_root, "run_scan_config.json"))
         self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     def generate_and_run(self):
@@ -195,7 +233,7 @@ class Scan(OBIBaseModel):
         self.run()
 
 
-    def dump_scan_to_json_with_package_version(self, output_path):
+    def serialize(self, output_path):
    
         model_dump = self.model_dump(serialize_as_any=True)
         model_dump["obi_version"] = version("obi")
