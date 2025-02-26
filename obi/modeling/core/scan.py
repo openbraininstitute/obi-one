@@ -6,6 +6,22 @@ from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
 
+"""
+Scan class:
+- Takes a Form & output_root as input
+
+- Has several intermediate functions for computing a multi-dimensional parameter scan:
+    - multiple_value_parameters()
+    - coordinate_parameters()
+    - coordinate_instances()
+
+- Creates a multi-dimensional parameter scan through calls to:
+    - generate(), 
+    - run() 
+    - generate_and_run()
+
+- Within the multi-dimensional parameter scan...
+"""
 class Scan(OBIBaseModel):
 
     form: Form
@@ -14,6 +30,22 @@ class Scan(OBIBaseModel):
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
+
+    """
+    Multi value parameters:
+    - Iterates through the Blocks of self.form to find "multi value parameters" 
+        (i.e. parameters with list values of length greater than 1).
+        
+    - Returns a dictionary where each key-value pair represents a single "multi value parameter" where:
+        - The key represents the location of the parameter in the form
+        - The value is a dictionary containing:
+            - 'coord_param_keys': The location of the parameter as a list of property names 
+            - 'coord_param_values': The list of values specified for the parameter
+
+        For example:
+            'timestamps.timestamps_1.interval': {'coord_param_keys': ['timestamps', 'timestamps_1', 'interval'], 
+                                                'coord_param_values': [1.0, 5.0]}
+    """
     def multiple_value_parameters(self, display=False) -> dict:
         
         self._multiple_value_parameters = {}
@@ -39,38 +71,62 @@ class Scan(OBIBaseModel):
                 category_block = attr_value
                 self._multiple_value_parameters.update(category_block.multiple_value_parameters(category_name=category_name))
 
-                            
+        # Optionally display the multiple_value_parameters             
         if display:
             print("\nMULTIPLE VALUE PARAMETERS")
             for k, d in self._multiple_value_parameters.items():
                 print(f"{k}: {d['coord_param_values']}")
 
+        # Return the multiple_value_parameters
         return self._multiple_value_parameters
 
+    """
+    Coordinate parameters
+    - Must be implemented by a subclass of Scan
 
-    def display_coordinate_parameters(self):
- 
-        print("\nCOORDINATE PARAMETERS")
+    - Should return a list, where each element in the list represents 
+        a single coordinate in the scan as a tuple of subtuples,
+        where each subtuple represents a single parameter of the coordinate by:
+            - The location of the parameter as a list of property names
+            - The value of that parameter for the coordinate
 
-        for single_coordinate_parameters in self._coordinate_parameters:
-            output = f""
-            for j, parameter in enumerate(single_coordinate_parameters):
-                
-                output = nested_param_short(parameter[0])
-                output = output + ": " + str(parameter[1])
-                if j < len(single_coordinate_parameters) - 1:
-                    output = output + ", "
-            print(output)
+        For example, a single coordinate is represented by the following tuple:
+            (
+             (['timestamps', 'timestamps_1', 'interval'], 1.0), 
+             (['stimuli', 'stimulus_1', 'spike_probability'], 0.5), 
+             (['initialize', 'simulation_length'], 100.0)
+            )
+    """
+    def coordinate_parameters(self, display=False) -> list:
+        raise NotImplementedError("Subclasses must implement this method")
 
+
+    """
+    Coordinate instance
+    - Returns a list of "coordinate instances" by:
+        - Iterating through self.coordinate_parameters()
+        - Creating a single "coordinate instance" for each single coordinate parameter tuple
+
+    - Each "coordinate instance" is created by:
+        - Making a deep copy of the form
+        - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
+            (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
+        - Casting the form to it's _single_coord_class_name type 
+            (i.e. SimulationsForm -> Simulation)
+    """
 
     def coordinate_instances(self, display=False) -> list[Form]:
 
         self._coordinate_instances = []
 
+        # Iterate through coordinate_parameters
         for idx, single_coordinate_parameters in enumerate(self.coordinate_parameters()):
 
+            # Make a deep copy of self.form
             single_coordinate_form = copy.deepcopy(self.form)
             
+            # Iterate through the parameters in the single_coordinate_parameters tuple
+            # Change the value of the multi parameter from a list to the single value of the coordinate
             for param in list(single_coordinate_parameters):
                 
                 keys = param[0]
@@ -78,15 +134,16 @@ class Scan(OBIBaseModel):
 
                 level_0_val = single_coordinate_form.__dict__[keys[0]]
 
+                # If the first level is a Block
                 if isinstance(level_0_val, Block):
                     level_0_val.__dict__[keys[1]] = val
 
+                # If the first level is a category dictionary
                 if isinstance(level_0_val, dict):
                     level_1_val = level_0_val[keys[1]]
                     if isinstance(level_1_val, Block):
                         level_1_val.__dict__[keys[2]] = val
                     else:
-                        # This should already by checked elsewhere (in future, if not done already)
                         raise ValueError("Non Block options should not be used here.")
     
             try:
@@ -189,6 +246,24 @@ class Scan(OBIBaseModel):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(campaign_config, json_file, indent=4)
+
+
+    """
+    Function for displaying the coordinate parameters
+    """
+    def display_coordinate_parameters(self):
+ 
+        print("\nCOORDINATE PARAMETERS")
+
+        for single_coordinate_parameters in self._coordinate_parameters:
+            output = f""
+            for j, parameter in enumerate(single_coordinate_parameters):
+                
+                output = nested_param_short(parameter[0])
+                output = output + ": " + str(parameter[1])
+                if j < len(single_coordinate_parameters) - 1:
+                    output = output + ", "
+            print(output)
 
 
 
