@@ -15,8 +15,6 @@ uv pip install -e .
 
 Rewrite several comments in scan.py
 
-Reimplement several "displays" in scan.py
-
 Complete bbp-workflow like simulation campaign config
 
 Test building Block dependency tree

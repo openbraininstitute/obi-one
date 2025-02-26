@@ -1,4 +1,4 @@
-from obi.modeling.core.block import Block, SingleValueScanParameter
+from obi.modeling.core.block import Block, SingleValueScanParam
 from obi.modeling.core.base import OBIBaseModel
 
 from pydantic import field_validator
@@ -7,22 +7,22 @@ import json, os
 from collections import OrderedDict
 
 
-class SingleCoordinateScanParameters(OBIBaseModel):
-    single_value_scan_parameters_list: list[SingleValueScanParameter]
+class SingleCoordinateScanParams(OBIBaseModel):
+    scan_params: list[SingleValueScanParam]
     nested_coordinate_subpath_str: str = ''
 
     @property
     def nested_param_value_subpath(self):
         self.nested_coordinate_subpath_str = ""
-        for single_value_scan_parameter in self.single_value_scan_parameters_list:
-            self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{single_value_scan_parameter.location_str}={single_value_scan_parameter.value}/"
+        for scan_param in self.scan_params:
+            self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{scan_param.location_str}={scan_param.value}/"
         return self.nested_coordinate_subpath_str
 
     def display_parameters(self):
         output = f""
-        for j, single_value_scan_parameters in enumerate(self.single_value_scan_parameters_list):
-            output = output + single_value_scan_parameters.location_str + ": " + str(single_value_scan_parameters.value)
-            if j < len(self.single_value_scan_parameters_list) - 1:
+        for j, scan_param in enumerate(self.scan_params):
+            output = output + scan_param.location_str + ": " + str(scan_param.value)
+            if j < len(self.scan_params) - 1:
                 output = output + ", "
         print(output)
 
@@ -33,7 +33,7 @@ class SingleTypeMixin:
     idx: int = -1
     scan_output_root: str = ""
     _coordinate_output_root: str = ""
-    single_coordinate_scan_parameters: SingleCoordinateScanParameters = None
+    single_coordinate_scan_params: SingleCoordinateScanParams = None
 
     @field_validator("*", mode="before")
     @classmethod
@@ -55,7 +55,7 @@ class SingleTypeMixin:
     def coordinate_output_root(self):
 
         if self._coordinate_output_root == "":
-            self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_parameters.nested_param_value_subpath)
+            self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_params.nested_param_value_subpath)
 
             # Old index based directories
             # if self._coordinate_output_root == "":

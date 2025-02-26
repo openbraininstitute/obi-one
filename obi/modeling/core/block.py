@@ -12,7 +12,7 @@ def nested_param_short(nested_param_list):
     return nested_param_short
 
 
-class ScanParameter(OBIBaseModel):
+class ScanParam(OBIBaseModel):
     location_list: list = []
     location_str: str = ""
 
@@ -20,19 +20,19 @@ class ScanParameter(OBIBaseModel):
         super().__init__(**data)
         self.location_str = nested_param_short(self.location_list)
 
-class MultiValueScanParameter(ScanParameter):
+class MultiValueScanParam(ScanParam):
     values: list[Any] = [None]
     
-class SingleValueScanParameter(ScanParameter):
+class SingleValueScanParam(ScanParam):
     value: Any
 
 
 class Block(OBIBaseModel):
     """
     """
-    _multiple_value_parameters: list[MultiValueScanParameter] = PrivateAttr(default=[])
+    _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
     
-    def multiple_value_parameters(self, category_name, block_key='') -> list[MultiValueScanParameter]:
+    def multiple_value_parameters(self, category_name, block_key='') -> list[MultiValueScanParam]:
 
         self._multiple_value_parameters = []
         
@@ -41,9 +41,9 @@ class Block(OBIBaseModel):
             if isinstance(value, list) and len(value) > 1:
                 multi_values = value
                 if block_key != '':
-                    self._multiple_value_parameters.append(MultiValueScanParameter(location_list=[category_name, block_key, key], values=multi_values))
+                    self._multiple_value_parameters.append(MultiValueScanParam(location_list=[category_name, block_key, key], values=multi_values))
                 else:
-                    self._multiple_value_parameters.append(MultiValueScanParameter(location_list=[category_name, key], values=multi_values))
+                    self._multiple_value_parameters.append(MultiValueScanParam(location_list=[category_name, key], values=multi_values))
 
         return self._multiple_value_parameters
 

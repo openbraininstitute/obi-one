@@ -1,7 +1,7 @@
 from pydantic import PrivateAttr, ValidationError
 from obi.modeling.core.form import Form
-from obi.modeling.core.single import SingleTypeMixin, SingleCoordinateScanParameters
-from obi.modeling.core.block import Block, MultiValueScanParameter, SingleValueScanParameter
+from obi.modeling.core.single import SingleTypeMixin, SingleCoordinateScanParams
+from obi.modeling.core.block import Block, MultiValueScanParam, SingleValueScanParam
 from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
@@ -33,7 +33,7 @@ class Scan(OBIBaseModel):
         
     - Rewrite description
     """
-    def multiple_value_parameters(self, display=False) -> list[MultiValueScanParameter]:
+    def multiple_value_parameters(self, display=False) -> list[MultiValueScanParam]:
         
         self._multiple_value_parameters = []
 
@@ -98,26 +98,26 @@ class Scan(OBIBaseModel):
         self._coordinate_instances = []
 
         # Iterate through coordinate_parameters
-        for idx, single_coordinate_scan_parameters in enumerate(self.coordinate_parameters()):
+        for idx, single_coordinate_scan_params in enumerate(self.coordinate_parameters()):
 
             # Make a deep copy of self.form
             single_coordinate_form = copy.deepcopy(self.form)
             
             # Iterate through the parameters in the single_coordinate_parameters tuple
             # Change the value of the multi parameter from a list to the single value of the coordinate
-            for single_value_scan_parameter in single_coordinate_scan_parameters.single_value_scan_parameters_list:
+            for scan_param in single_coordinate_scan_params.scan_params:
 
-                level_0_val = single_coordinate_form.__dict__[single_value_scan_parameter.location_list[0]]
+                level_0_val = single_coordinate_form.__dict__[scan_param.location_list[0]]
 
                 # If the first level is a Block
                 if isinstance(level_0_val, Block):
-                    level_0_val.__dict__[single_value_scan_parameter.location_list[1]] = single_value_scan_parameter.value
+                    level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
 
                 # If the first level is a category dictionary
                 if isinstance(level_0_val, dict):
-                    level_1_val = level_0_val[single_value_scan_parameter.location_list[1]]
+                    level_1_val = level_0_val[scan_param.location_list[1]]
                     if isinstance(level_1_val, Block):
-                        level_1_val.__dict__[single_value_scan_parameter.location_list[2]] = single_value_scan_parameter.value
+                        level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
                     else:
                         raise ValueError("Non Block options should not be used here.")
     
@@ -127,7 +127,7 @@ class Scan(OBIBaseModel):
 
                 # Set the variables of the coordinate instance related to the scan
                 coordinate_instance.idx = idx
-                coordinate_instance.single_coordinate_scan_parameters = single_coordinate_scan_parameters
+                coordinate_instance.single_coordinate_scan_params = single_coordinate_scan_params
 
                 # Append the coordinate instance to self._coordinate_instances
                 self._coordinate_instances.append(coordinate_instance)
@@ -295,12 +295,12 @@ class GridScan(Scan):
         for multi_value in self.multiple_value_parameters():
             single_values = []
             for value in multi_value.values:
-                single_values.append(SingleValueScanParameter(location_list=multi_value.location_list, value=value))
+                single_values.append(SingleValueScanParam(location_list=multi_value.location_list, value=value))
             single_values_by_multi_value.append(single_values)
 
         self._coordinate_parameters = []
-        for single_value_scan_parameters_list in product(*single_values_by_multi_value):
-            self._coordinate_parameters.append(SingleCoordinateScanParameters(single_value_scan_parameters_list=single_value_scan_parameters_list))
+        for scan_params in product(*single_values_by_multi_value):
+            self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
                 
         # Optionally display the coordinate parameters
         if display: self.display_coordinate_parameters()
@@ -332,10 +332,10 @@ class CoupledScan(Scan):
 
         self._coordinate_parameters = []
         for coord_i in range(n_coords):
-            single_value_scan_parameters_list = []
+            scan_params = []
             for multi_value in self.multiple_value_parameters():
-                single_value_scan_parameters_list.append(SingleValueScanParameter(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
-            self._coordinate_parameters.append(SingleCoordinateScanParameters(single_value_scan_parameters_list=single_value_scan_parameters_list))
+                scan_params.append(SingleValueScanParam(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
+            self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
 
         if display: self.display_coordinate_parameters()
 
