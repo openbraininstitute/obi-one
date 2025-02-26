@@ -5,6 +5,14 @@ from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
 
+
+
+# class ValueLocationPair(BaseModel):
+    # location_list: list = []
+    # location_str: str = ""
+    # value: Any = None
+
+
 """
 Scan class:
 - Takes a Form & output_root as input
@@ -25,29 +33,64 @@ class Scan(OBIBaseModel):
 
     form: Form
     output_root: str
-    _multiple_value_parameters: dict = PrivateAttr(default={})
+    _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
 
-    """
-    Multi value parameters:
-    - Iterates through the Blocks of self.form to find "multi value parameters" 
-        (i.e. parameters with list values of length greater than 1).
+    # """
+    # Multi value parameters:
+    # - Iterates through the Blocks of self.form to find "multi value parameters" 
+    #     (i.e. parameters with list values of length greater than 1).
         
-    - Returns a dictionary where each key-value pair represents a single "multi value parameter" where:
-        - The key represents the location of the parameter in the form
-        - The value is a dictionary containing:
-            - 'coord_param_keys': The location of the parameter as a list of property names 
-            - 'coord_param_values': The list of values specified for the parameter
+    # - Returns a dictionary where each key-value pair represents a single "multi value parameter" where:
+    #     - The key represents the location of the parameter in the form
+    #     - The value is a dictionary containing:
+    #         - 'coord_param_keys': The location of the parameter as a list of property names 
+    #         - 'coord_param_values': The list of values specified for the parameter
 
-        For example:
-            'timestamps.timestamps_1.interval': {'coord_param_keys': ['timestamps', 'timestamps_1', 'interval'], 
-                                                'coord_param_values': [1.0, 5.0]}
-    """
+    #     For example:
+    #         'timestamps.timestamps_1.interval': {'coord_param_keys': ['timestamps', 'timestamps_1', 'interval'], 
+    #                                             'coord_param_values': [1.0, 5.0]}
+    # """
+    # def multiple_value_parameters(self, display=False) -> dict:
+        
+    #     self._multiple_value_parameters = {}
+
+    #     # Iterate through all attributes of the Form
+    #     for attr_name, attr_value in self.form.__dict__.items():
+
+    #         # Check if the attribute is a dictionary of Block instances
+    #         if isinstance(attr_value, dict) and all(isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()):
+
+    #             category_name = attr_name; category_blocks_dict = attr_value
+                
+    #             # If so iterate through the dictionary's Block instances
+    #             for block_key, block in category_blocks_dict.items():
+
+    #                 # Call the multiple_value_parameters method of the Block instance
+    #                 self._multiple_value_parameters.update(block.multiple_value_parameters(category_name=category_name, block_key=block_key))
+
+
+    #         # Else if the attribute is a Block instance, call the multiple_value_parameters method of the Block instance
+    #         if isinstance(attr_value, Block):
+    #             category_name = attr_name
+    #             category_block = attr_value
+    #             self._multiple_value_parameters.update(category_block.multiple_value_parameters(category_name=category_name))
+
+    #     # Optionally display the multiple_value_parameters             
+    #     if display:
+    #         print("\nMULTIPLE VALUE PARAMETERS")
+    #         for k, d in self._multiple_value_parameters.items():
+    #             print(f"{k}: {d['coord_param_values']}")
+
+    #     # Return the multiple_value_parameters
+    #     return self._multiple_value_parameters
+
+
     def multiple_value_parameters(self, display=False) -> dict:
         
-        self._multiple_value_parameters = {}
+        self._multiple_value_parameters = []
 
         # Iterate through all attributes of the Form
         for attr_name, attr_value in self.form.__dict__.items():
@@ -61,20 +104,22 @@ class Scan(OBIBaseModel):
                 for block_key, block in category_blocks_dict.items():
 
                     # Call the multiple_value_parameters method of the Block instance
-                    self._multiple_value_parameters.update(block.multiple_value_parameters(category_name=category_name, block_key=block_key))
+                    block_multi_value_parameters = block.multiple_value_parameters(category_name=category_name, block_key=block_key)
+                    if len(block_multi_value_parameters): self._multiple_value_parameters.extend(block_multi_value_parameters)
 
 
-            # Else if the attribute is a Block instance, call the multiple_value_parameters method of the Block instance
+            # Else if the attribute is a Block instance, call the _multiple_value_parameters method of the Block instance
             if isinstance(attr_value, Block):
-                category_name = attr_name
-                category_block = attr_value
-                self._multiple_value_parameters.update(category_block.multiple_value_parameters(category_name=category_name))
+                block_name = attr_name
+                block = attr_value
+                block_multi_value_parameters = block.multiple_value_parameters(category_name=block_name)
+                if len(block_multi_value_parameters): self._multiple_value_parameters.extend(block_multi_value_parameters)
 
-        # Optionally display the multiple_value_parameters             
-        if display:
-            print("\nMULTIPLE VALUE PARAMETERS")
-            for k, d in self._multiple_value_parameters.items():
-                print(f"{k}: {d['coord_param_values']}")
+        # # Optionally display the multiple_value_parameters             
+        # if display:
+        #     print("\nMULTIPLE VALUE PARAMETERS")
+        #     for k, d in self._multiple_value_parameters.items():
+        #         print(f"{k}: {d['coord_param_values']}")
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
@@ -278,6 +323,7 @@ class Scan(OBIBaseModel):
     Create bbp-workflow campaign config
     """
     def create_bbp_workflow_campaign_config(self, output_path):
+        #HERE
 
         campaign_config = {
             "dims": [],
@@ -346,7 +392,6 @@ class GridScan(Scan):
     coordinate_parameters implementation
     """
     def coordinate_parameters(self, display=False) -> list:
-
         """
         First create all_tuples: a list of sublists of tuples
         There is a sublist for each multi value parmater with the sublist containing
@@ -357,15 +402,19 @@ class GridScan(Scan):
             [(['initialize', 'simulation_length'], 100.0), (['initialize', 'simulation_length'], 500.0)]]
         ]
         """
+        # HERE
         all_tuples = []
         for key, value in self.multiple_value_parameters().items():
             tups = []
             for k, v in zip([value["coord_param_keys"] for i in range(len(value['coord_param_values']))], value['coord_param_values']):
                 tups.append((k, v))
             all_tuples.append(tups)
+            
 
         # Then create the coordinate parameters as a product of all_tuples
         self._coordinate_parameters = [coord for coord in product(*all_tuples)]
+
+        print(self._coordinate_parameters)
         
         # Optionally display the coordinate parameters
         if display: self.display_coordinate_parameters()
@@ -388,7 +437,9 @@ CoupledScan class:
 class CoupledScan(Scan):
 
     def coordinate_parameters(self, display=False) -> list:
+        
         previous_len = None
+        # HERE
         for key, value in self.multiple_value_parameters().items():
 
             current_len = len(value['coord_param_values'])
@@ -402,6 +453,7 @@ class CoupledScan(Scan):
         self._coordinate_parameters = []
         for coord_i in range(n_coords):
             coupled_coord = []
+            # HERE
             for key, value in self.multiple_value_parameters().items():
                 coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
 
