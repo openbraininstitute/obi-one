@@ -18,32 +18,22 @@ class Scan(OBIBaseModel):
         
         self._multiple_value_parameters = {}
 
-        """
-        Iterate through all attributes of the Form
-        """
+        # Iterate through all attributes of the Form
         for attr_name, attr_value in self.form.__dict__.items():
 
-            """
-            Check if the attribute is a dictionary of Block instances
-            """
+            # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()):
 
                 category_name = attr_name; category_blocks_dict = attr_value
                 
-                """
-                If so iterate through the dictionary's Block instances
-                """
+                # If so iterate through the dictionary's Block instances
                 for block_key, block in category_blocks_dict.items():
 
-                    """
-                    Call the multiple_value_parameters method of the Block instance
-                    """                    
+                    # Call the multiple_value_parameters method of the Block instance
                     self._multiple_value_parameters.update(block.multiple_value_parameters(category_name=category_name, block_key=block_key))
 
 
-            """
-            Else if the attribute is a Block instance, call the multiple_value_parameters method of the Block instance
-            """
+            # Else if the attribute is a Block instance, call the multiple_value_parameters method of the Block instance
             if isinstance(attr_value, Block):
                 category_name = attr_name
                 category_block = attr_value
@@ -192,6 +182,8 @@ class Scan(OBIBaseModel):
                     }
 
             campaign_config["coords"].update(sub_d)
+
+            campaign_config["data"] = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
 
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
