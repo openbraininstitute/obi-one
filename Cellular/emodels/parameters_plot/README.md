@@ -27,3 +27,17 @@ Notebook to compare final parameter values for different sections such as apical
 - `passedValidation`(bool) : passed or failed validation
 - `seed` : selected seed value from the multiple optimisation runs
 
+## Use
+
+### Get the data
+To plot your own, model, replace the `em_file` variable with the path to the downloaded `EM__*.json` file for an e-model from Open Brain Platform (OBP). 
+
+To get a `EM__*.json` file from OBP, go to any e-model page on the platform and click download. It will download a download.zip file. Unzip the file to find the `EM__*.json` file.
+
+
+Alternatively, the `EM__*.json` can be downloaded from the [Blue Brain Open Data](https://registry.opendata.aws/bluebrain_opendata/). We'll it to run the notebook. 
+
+
+1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) based on [instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for your operating system if you are running locally on your PC.
+1. Run the following command:
+!aws s3 cp --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/EM__emodel=cADpyr__etype=cADpyr__mtype=L5_TPC_A__species=mouse__brain_region=grey__iteration=1372346__13.json ./

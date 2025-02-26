@@ -16,6 +16,7 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
+        "aws-cli>=2.23.2",
         "neuron>=8.2.6",
         "LFPy>=2.3.5",
         "matplotlib>=3.10.0"
