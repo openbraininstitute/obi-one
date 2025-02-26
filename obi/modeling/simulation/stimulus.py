@@ -1,8 +1,8 @@
 from typing import Union, List
 
-from ..core.form import Block
-from ..circuit.synapse_sets import SynapseSet
-from .timestamps import Timestamps
+from obi.modeling.core.block import Block
+from obi.modeling.circuit.synapse_sets import SynapseSet
+from obi.modeling.simulation.timestamps import Timestamps
 
 class Stimulus(Block):
     synapse_set: SynapseSet

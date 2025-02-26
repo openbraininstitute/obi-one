@@ -1,17 +1,17 @@
-from pydantic import PrivateAttr
+from obi.modeling.core.form import Form
+from obi.modeling.core.block import Block
+from obi.modeling.core.single import SingleTypeMixin
+from obi.modeling.core.scan import Scan
 
-from ..core.form import Form, Block, SingleTypeMixin
-from ..core.scan import Scan
+from obi.modeling.circuit.circuit import Circuit
+from obi.modeling.circuit.neuron_sets import NeuronSet
+from obi.modeling.circuit.synapse_sets import SynapseSet
+from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
+from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
-from ..circuit.circuit import Circuit
-from ..circuit.neuron_sets import NeuronSet
-from ..circuit.synapse_sets import SynapseSet
-from ..circuit.intracellular_location_sets import IntracellularLocationSet
-from ..circuit.extracellular_location_sets import ExtracellularLocationSet
-
-from .stimulus import Stimulus
-from .timestamps import Timestamps
-from .recording import Recording
+from obi.modeling.simulation.stimulus import Stimulus
+from obi.modeling.simulation.timestamps import Timestamps
+from obi.modeling.simulation.recording import Recording
 
 import os, json
 

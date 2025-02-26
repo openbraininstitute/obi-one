@@ -1,21 +1,11 @@
 from pydantic import PrivateAttr, ValidationError
 from obi.modeling.core.form import Form
+from obi.modeling.core.single import SingleTypeMixin, SingleCoordinateScanParameters
 from obi.modeling.core.block import Block, MultiValueScanParameter, SingleValueScanParameter
 from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
-
-class SingleCoordinateScanParameters(OBIBaseModel):
-    single_value_scan_parameters_list: list[SingleValueScanParameter]
-    nested_coordinate_subpath_str: str = ''
-
-    @property
-    def nested_param_value_subpath(self):
-        self.nested_coordinate_subpath_str = ""
-        for single_value_scan_parameter in self.single_value_scan_parameters_list:
-            self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{single_value_scan_parameter.location_str}={single_value_scan_parameter.value}/"
-        return self.nested_coordinate_subpath_str
 
 """
 Scan class:

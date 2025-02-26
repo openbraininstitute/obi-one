@@ -1,6 +1,6 @@
-from pydantic import PrivateAttr
-
-from obi.modeling.core.form import Form, Block, SingleTypeMixin
+from obi.modeling.core.form import Form
+from obi.modeling.core.block import Block
+from obi.modeling.core.single import SingleTypeMixin
 from obi.modeling.core.scan import Scan
 
 class CircuitExtractions(Form):

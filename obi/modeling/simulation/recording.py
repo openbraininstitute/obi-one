@@ -1,8 +1,9 @@
 from typing import Literal
 
-from ..core.form import Block
-from ..circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
-from ..circuit.extracellular_location_sets import ExtracellularLocationSet
+
+from obi.modeling.core.block import Block
+from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
+from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
 class Recording(Block):
     start_time: float | list[float]
