@@ -262,7 +262,6 @@ class Scan(OBIBaseModel):
     Create bbp-workflow campaign config
     """
     def create_bbp_workflow_campaign_config(self, output_path):
-        #HERE
 
         campaign_config = {
             "dims": [],
@@ -272,15 +271,14 @@ class Scan(OBIBaseModel):
             "name": ""
         }
 
-        campaign_config['dims'] = [param_key for param_key in self.multiple_value_parameters()]
+        campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
 
-
-        for param_key, param_dict in self.multiple_value_parameters().items():
+        for multi_param in self.multiple_value_parameters():
 
             sub_d = {param_key: {
-                                    "dims": [param_key],
+                                    "dims": [multi_param.location_str],
                                     "attrs": {},
-                                    "data": param_dict["coord_param_values"]
+                                    "data": multi_param.values
                                  }
                     }
 
@@ -349,7 +347,7 @@ CoupledScan class:
     - Inherits from Scan
     - Implements coordinate_parameters which iterates through multiple_value_parameters dictionary to create:
         coordinate_parameters list
-    - Rewrite
+    - Rewrite description
 """
 class CoupledScan(Scan):
 
