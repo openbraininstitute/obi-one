@@ -171,7 +171,6 @@ class Scan(OBIBaseModel):
 
     """
     Generate
-    - Creates the Scan output_root
     - Checks if generate() implemented for the coordinate_instances
     - Calls generate() for each instance of self.coordinate_instances()
     - Serializes each instance to json
@@ -179,9 +178,6 @@ class Scan(OBIBaseModel):
     - Create a bbp_workflow_campaign_config
     """
     def generate(self):
-
-        # Creates the Scan output_root
-        os.makedirs(self.output_root, exist_ok=True)
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
@@ -197,6 +193,7 @@ class Scan(OBIBaseModel):
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
+
             else:
                 # Raise an error if generate() not implemented for the coordinate instance
                 raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
@@ -209,7 +206,6 @@ class Scan(OBIBaseModel):
 
     """
     Run
-    - Creates the Scan output_root
     - Checks if run() implemented for the coordinate_instances
     - Calls run() for each instance of self.coordinate_instances()
     - Serializes each instance to json
@@ -217,43 +213,70 @@ class Scan(OBIBaseModel):
     - Create a bbp_workflow_campaign_config
     """  
     def run(self):
+
+        # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
+
+            # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, 'run'):
+
+                # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
+
+                # Call the coordinate_instance's run() function
                 coordinate_instance.run()
+
+                # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
+
             else:
+                 # Raise an error if run() not implemented for the coordinate instance
                 raise NotImplementedError(f"Function \"run\" function not implemented for type:{type(coordinate_instance)}")
 
+        # Serialize the scan
         self.serialize(os.path.join(self.output_root, "run_scan_config.json"))
+
+        # Create a bbp_workflow_campaign_config
         self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
-    def generate_and_run(self):
-        self.generate()
-        self.run()
+    
+    """
+    Serializes the scan, by:
+    - Calling model_dump (returns model_dump dict) on the Pydantic Scan object (self)
+    - Setting the obi_version in model_dump dict
+    - Ordering keys in the model_dump dict, and form sub dict for improved readibility
+    - Writing the dictionary to a json file
 
-
+    Note that as Scan, Form and Block classes are child classes of OBIBaseModel, model_dump adds the obi_class name
+    to each subdictionary representing these classes, for future deserialization
+    """
     def serialize(self, output_path):
    
+        # Get a dictionary representation of the scan
         model_dump = self.model_dump(serialize_as_any=True)
+
+        # Add the obi version
         model_dump["obi_version"] = version("obi")
-
-        model_dump["form"]
-
+        
+        # Order the keys in model_dump
         model_dump = OrderedDict(model_dump)
-
         model_dump.move_to_end('output_root', last=False)
         model_dump.move_to_end('obi_class', last=False)
         model_dump.move_to_end('obi_version', last=False)
 
+        # Order the keys in model_dump["form"]
         model_dump["form"] = OrderedDict(model_dump["form"])
         model_dump["form"].move_to_end('obi_class', last=False)
 
+        # Create the directory and write the model_dump dict to a json file
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
 
 
+    """
+    Create bbp-workflow campaign config
+    """
     def create_bbp_workflow_campaign_config(self, output_path):
 
         campaign_config = {
@@ -304,7 +327,18 @@ class Scan(OBIBaseModel):
             print(output)
 
 
-
+"""
+GridScan class:
+    - Inherits from Scan
+    - Implements coordinate_parameters which iterates through multiple_value_parameters dictionary to create:
+        coordinate_parameters list of tuples as described for base implementation in parent class.
+    - i.e. Each tuple in the list is of the form:
+        (
+            (['timestamps', 'timestamps_1', 'interval'], 1.0), 
+            (['stimuli', 'stimulus_1', 'spike_probability'], 0.5), 
+            (['initialize', 'simulation_length'], 100.0)
+        )
+"""
 from itertools import product
 class GridScan(Scan):
 
@@ -324,7 +358,18 @@ class GridScan(Scan):
 
         return self._coordinate_parameters
 
-
+"""
+CoupledScan class:
+    - Inherits from Scan
+    - Implements coordinate_parameters which iterates through multiple_value_parameters dictionary to create:
+        coordinate_parameters list of tuples as described for base implementation in parent class.
+    - i.e. Each tuple in the list is of the form:
+        (
+            (['timestamps', 'timestamps_1', 'interval'], 1.0), 
+            (['stimuli', 'stimulus_1', 'spike_probability'], 0.5), 
+            (['initialize', 'simulation_length'], 100.0)
+        )
+"""
 class CoupledScan(Scan):
 
     def coordinate_parameters(self, display=False) -> list:
