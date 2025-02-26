@@ -18,6 +18,14 @@ class SingleCoordinateScanParameters(OBIBaseModel):
             self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{single_value_scan_parameter.location_str}={single_value_scan_parameter.value}/"
         return self.nested_coordinate_subpath_str
 
+    def display_parameters(self):
+        output = f""
+        for j, single_value_scan_parameters in enumerate(self.single_value_scan_parameters_list):
+            output = output + single_value_scan_parameters.location_str + ": " + str(single_value_scan_parameters.value)
+            if j < len(self.single_value_scan_parameters_list) - 1:
+                output = output + ", "
+        print(output)
+
 
 class SingleTypeMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""

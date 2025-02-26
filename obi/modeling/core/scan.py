@@ -11,17 +11,11 @@ from collections import OrderedDict
 Scan class:
 - Takes a Form & output_root as input
 
-- Has several intermediate functions for computing a multi-dimensional parameter scan:
-    - multiple_value_parameters()
-    - coordinate_parameters()
-    - coordinate_instances()
+- Includes several intermediate functions for computing multi-dimensional parameter scans:
+    a) multiple_value_parameters, b) coordinate_parameters, c) coordinate_instances
 
-- Creates a multi-dimensional parameter scan through calls to:
-    - generate(), 
-    - run() 
-    - generate_and_run()
-
-- Within the multi-dimensional parameter scan...
+- Creates multi-dimensional parameter scans through calls to:
+    - generate, run
 """
 class Scan(OBIBaseModel):
 
@@ -153,11 +147,6 @@ class Scan(OBIBaseModel):
 
     """
     Generate
-    - Checks if generate() implemented for the coordinate_instances
-    - Calls generate() for each instance of self.coordinate_instances()
-    - Serializes each instance to json
-    - Serializes the Scan
-    - Create a bbp_workflow_campaign_config
     """
     def generate(self):
 
@@ -188,11 +177,6 @@ class Scan(OBIBaseModel):
 
     """
     Run
-    - Checks if run() implemented for the coordinate_instances
-    - Calls run() for each instance of self.coordinate_instances()
-    - Serializes each instance to json
-    - Serializes the Scan
-    - Create a bbp_workflow_campaign_config
     """  
     def run(self):
 
@@ -223,34 +207,29 @@ class Scan(OBIBaseModel):
 
     
     """
-    Serializes the scan, by:
-    - Calling model_dump (returns model_dump dict) on the Pydantic Scan object (self)
-    - Setting the obi_version in model_dump dict
-    - Ordering keys in the model_dump dict, and form sub dict for improved readibility
-    - Writing the dictionary to a json file
-
-    Note that as Scan, Form and Block classes are child classes of OBIBaseModel, model_dump adds the obi_class name
-    to each subdictionary representing these classes, for future deserialization
+    Serialize Scan
+    obi_class name added to each subobject of type
+    inheriting from OBIBaseModel for future deserialization
     """
     def serialize(self, output_path):
    
-        # Get a dictionary representation of the scan
+        # Dict representation of the scan object
         model_dump = self.model_dump(serialize_as_any=True)
 
-        # Add the obi version
+        # Add the OBI version
         model_dump["obi_version"] = version("obi")
         
-        # Order the keys in model_dump
+        # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
         model_dump.move_to_end('obi_class', last=False)
         model_dump.move_to_end('obi_version', last=False)
 
-        # Order the keys in model_dump["form"]
+        # Order the keys in subdict "form"
         model_dump["form"] = OrderedDict(model_dump["form"])
         model_dump["form"].move_to_end('obi_class', last=False)
 
-        # Create the directory and write the model_dump dict to a json file
+        # Create the directory and write dict to json file
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
@@ -291,27 +270,16 @@ class Scan(OBIBaseModel):
 
 
     """
-    Function for displaying the coordinate parameters
+    Display coordinate parameters
     """
     def display_coordinate_parameters(self):
- 
         print("\nCOORDINATE PARAMETERS (Reimplement)")
-
-        # for single_coordinate_parameters in self._coordinate_parameters:
-        #     output = f""
-        #     for j, parameter in enumerate(single_coordinate_parameters):
-                
-        #         output = nested_param_short(parameter[0])
-        #         output = output + ": " + str(parameter[1])
-        #         if j < len(single_coordinate_parameters) - 1:
-        #             output = output + ", "
-        #     print(output)
+        for single_coordinate_parameters in self._coordinate_parameters:
+            single_coordinate_parameters.display_parameters()
 
 
 """
-GridScan class:
-    - Inherits from Scan
-    - Rewrite description
+GridScan class
 """
 from itertools import product
 class GridScan(Scan):
