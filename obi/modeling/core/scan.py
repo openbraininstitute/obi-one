@@ -333,7 +333,6 @@ class GridScan(Scan):
             single_values = []
             for value in multi_value.values:
                 single_values.append(SingleValueScanParameter(location_list=multi_value.location_list, value=value))
-
             single_values_by_multi_value.append(single_values)
 
         self._coordinate_parameters = []
@@ -370,10 +369,10 @@ class CoupledScan(Scan):
 
         self._coordinate_parameters = []
         for coord_i in range(n_coords):
-            coupled_coord = []
+            single_value_scan_parameters_list = []
             for multi_value in self.multiple_value_parameters():
-                coupled_coord.append(SingleValueScanParameter(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
-            self._coordinate_parameters.append(tuple(coupled_coord))
+                single_value_scan_parameters_list.append(SingleValueScanParameter(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
+            self._coordinate_parameters.append(SingleCoordinateScanParameters(single_value_scan_parameters_list=single_value_scan_parameters_list))
 
         if display: self.display_coordinate_parameters()
 
