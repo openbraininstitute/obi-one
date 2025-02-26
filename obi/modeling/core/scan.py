@@ -173,8 +173,8 @@ class Scan(OBIBaseModel):
                 # Call the coordinate_instance's generate() function
                 coordinate_instance.generate()
 
-                # # Serialize the coordinate instance
-                # coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
+                # Serialize the coordinate instance
+                coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
 
             else:
                 # Raise an error if generate() not implemented for the coordinate instance

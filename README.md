@@ -18,5 +18,3 @@ Complete bbp-workflow like simulation campaign config
 Test building Block dependency tree
 
 Test/integrate Block dictionary parameters for filtering
-
-Create ScanCoordinate Class
