@@ -6,23 +6,12 @@ from collections import OrderedDict
 from obi.modeling.core.block import Block
 from obi.modeling.core.base import OBIBaseModel
 
-
-def nested_param_short(nested_param_list):
-    nested_param_short = ''
-    for i, s in enumerate(nested_param_list):
-        nested_param_short = nested_param_short + f"{s}"
-        if i < len(nested_param_list) - 1:
-            nested_param_short = nested_param_short + '.'
-    return nested_param_short
-
-
-
 class Form(OBIBaseModel):
     """
     """
     _sonata_config: dict = PrivateAttr(default={})
     _single_coord_class_name: str = ""
-    coordinate_parameters: tuple = ()
+    # coordinate_parameters: tuple = ()
 
     def cast_to_single_coord(self):
         module = __import__(self.__module__)
@@ -38,6 +27,7 @@ class SingleTypeMixin:
     idx: int = -1
     scan_output_root: str = ""
     _coordinate_output_root: str = ""
+    single_coordinate_scan_parameters: None
 
     @field_validator("*", mode="before")
     @classmethod
@@ -55,18 +45,13 @@ class SingleTypeMixin:
                 
         return value
 
-    def nested_param_value_subpath(self):
-        sub_path = ""
-        for param_tuple in self.coordinate_parameters:
-            sub_path = sub_path + f"{nested_param_short(param_tuple[0])}={param_tuple[1]}/"
-        return sub_path
-
     @property
     def coordinate_output_root(self):
 
         if self._coordinate_output_root == "":
-            self._coordinate_output_root = os.path.join(self.scan_output_root, self.nested_param_value_subpath())
+            self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_parameters.nested_param_value_subpath)
 
+        print(self._coordinate_output_root)
             # Old index based directories
             # if self._coordinate_output_root == "":
             # self._coordinate_output_root = os.path.join(self.scan_output_root, f"{self.idx}")

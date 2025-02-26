@@ -1,5 +1,5 @@
 from pydantic import PrivateAttr, ValidationError
-from obi.modeling.core.form import Form, nested_param_short
+from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block, MultiValueScanParameter, SingleValueScanParameter
 from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
@@ -8,6 +8,14 @@ from collections import OrderedDict
 
 class SingleCoordinateScanParameters(OBIBaseModel):
     single_value_scan_parameters_list: list[SingleValueScanParameter]
+    nested_coordinate_subpath_str: str = ''
+
+    @property
+    def nested_param_value_subpath(self):
+        self.nested_coordinate_subpath_str = ""
+        for single_value_scan_parameter in self.single_value_scan_parameters_list:
+            self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{single_value_scan_parameter.location_str}={single_value_scan_parameter.value}/"
+        return self.nested_coordinate_subpath_str
 
 """
 Scan class:
@@ -92,7 +100,7 @@ class Scan(OBIBaseModel):
     Coordinate instance
     - Returns a list of "coordinate instances" by:
         - Iterating through self.coordinate_parameters()
-        - Creating a single "coordinate instance" for each single coordinate parameter tuple
+        - Creating a single "coordinate instance" for each single coordinate parameter
 
     - Each "coordinate instance" is created by:
         - Making a deep copy of the form
@@ -106,29 +114,26 @@ class Scan(OBIBaseModel):
         self._coordinate_instances = []
 
         # Iterate through coordinate_parameters
-        for idx, single_coordinate_parameters in enumerate(self.coordinate_parameters()):
+        for idx, single_coordinate_scan_parameters in enumerate(self.coordinate_parameters()):
 
             # Make a deep copy of self.form
             single_coordinate_form = copy.deepcopy(self.form)
             
             # Iterate through the parameters in the single_coordinate_parameters tuple
             # Change the value of the multi parameter from a list to the single value of the coordinate
-            for param in list(single_coordinate_parameters):
-                
-                keys = param[0]
-                val = param[1]
+            for single_value_scan_parameter in single_coordinate_scan_parameters.single_value_scan_parameters_list:
 
-                level_0_val = single_coordinate_form.__dict__[keys[0]]
+                level_0_val = single_coordinate_form.__dict__[single_value_scan_parameter.location_list[0]]
 
                 # If the first level is a Block
                 if isinstance(level_0_val, Block):
-                    level_0_val.__dict__[keys[1]] = val
+                    level_0_val.__dict__[single_value_scan_parameter.location_list[1]] = single_value_scan_parameter.value
 
                 # If the first level is a category dictionary
                 if isinstance(level_0_val, dict):
-                    level_1_val = level_0_val[keys[1]]
+                    level_1_val = level_0_val[single_value_scan_parameter.location_list[1]]
                     if isinstance(level_1_val, Block):
-                        level_1_val.__dict__[keys[2]] = val
+                        level_1_val.__dict__[single_value_scan_parameter.location_list[2]] = single_value_scan_parameter.value
                     else:
                         raise ValueError("Non Block options should not be used here.")
     
@@ -138,7 +143,7 @@ class Scan(OBIBaseModel):
 
                 # Set the variables of the coordinate instance related to the scan
                 coordinate_instance.idx = idx
-                coordinate_instance.coordinate_parameters = single_coordinate_parameters
+                coordinate_instance.single_coordinate_scan_parameters = single_coordinate_scan_parameters
 
                 # Append the coordinate instance to self._coordinate_instances
                 self._coordinate_instances.append(coordinate_instance)
@@ -178,8 +183,8 @@ class Scan(OBIBaseModel):
                 # Call the coordinate_instance's generate() function
                 coordinate_instance.generate()
 
-                # Serialize the coordinate instance
-                coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
+                # # Serialize the coordinate instance
+                # coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
 
             else:
                 # Raise an error if generate() not implemented for the coordinate instance
@@ -278,7 +283,7 @@ class Scan(OBIBaseModel):
 
         for multi_param in self.multiple_value_parameters():
 
-            sub_d = {param_key: {
+            sub_d = {multi_param.location_str: {
                                     "dims": [multi_param.location_str],
                                     "attrs": {},
                                     "data": multi_param.values
