@@ -6,6 +6,9 @@ from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
 
+class SingleCoordinateScanParameters(OBIBaseModel):
+    single_value_scan_parameters_list: list[SingleValueScanParameter]
+
 """
 Scan class:
 - Takes a Form & output_root as input
@@ -317,7 +320,7 @@ GridScan class:
 """
 from itertools import product
 class GridScan(Scan):
-
+    
     """
     coordinate_parameters implementation
     """
@@ -327,14 +330,15 @@ class GridScan(Scan):
         """
         single_values_by_multi_value = []
         for multi_value in self.multiple_value_parameters():
-            print(multi_value)
-            single_values_for_multi_value = []
+            single_values = []
             for value in multi_value.values:
-                single_values_for_multi_value.append(SingleValueScanParameter(location_list=multi_value.location_list, value=value))
+                single_values.append(SingleValueScanParameter(location_list=multi_value.location_list, value=value))
 
-            single_values_by_multi_value.append(single_values_for_multi_value)
+            single_values_by_multi_value.append(single_values)
 
-        self._coordinate_parameters = [coord for coord in product(*single_values_by_multi_value)]
+        self._coordinate_parameters = []
+        for single_value_scan_parameters_list in product(*single_values_by_multi_value):
+            self._coordinate_parameters.append(SingleCoordinateScanParameters(single_value_scan_parameters_list=single_value_scan_parameters_list))
                 
         # Optionally display the coordinate parameters
         if display: self.display_coordinate_parameters()

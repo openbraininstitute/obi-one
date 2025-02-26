@@ -19,4 +19,4 @@ Test building Block dependency tree
 
 Test/integrate Block dictionary parameters for filtering
 
-Possibly remove list representation of multi value parameters locations
+Create ScanCoordinate Class
