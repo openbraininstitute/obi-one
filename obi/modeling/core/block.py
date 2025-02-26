@@ -11,60 +11,39 @@ def nested_param_short(nested_param_list):
             nested_param_short = nested_param_short + '.'
     return nested_param_short
 
-class MultiValueLocationPair(OBIBaseModel):
+
+class ScanParameter(OBIBaseModel):
     location_list: list = []
-    multi_values: list[Any] = [None]
     location_str: str = ""
 
     def __init__(self, **data):
         super().__init__(**data)
         self.location_str = nested_param_short(self.location_list)
 
-    # def __init__(self):
-    #     
-
-    # self.location_str = nested_param_short(location_list)
-
+class MultiValueScanParameter(ScanParameter):
+    values: list[Any] = [None]
+    
+class SingleValueScanParameter(ScanParameter):
+    value: Any
 
 
 class Block(OBIBaseModel):
     """
     """
-    # _multiple_value_parameters: dict = PrivateAttr(default={})
-    _multiple_value_parameters: list[MultiValueLocationPair] = PrivateAttr(default=[])
+    _multiple_value_parameters: list[MultiValueScanParameter] = PrivateAttr(default=[])
     
-    # def multiple_value_parameters(self, category_name, block_key='') -> dict:
-        
-    #     # Iterate through all attributes of the Block
-    #     for key, value in self.__dict__.items():
-    #         if isinstance(value, list) and len(value) > 1:
+    def multiple_value_parameters(self, category_name, block_key='') -> list[MultiValueScanParameter]:
 
-    #             if block_key != '':
-    #                 self._multiple_value_parameters[f"{category_name}.{block_key}.{key}"] = {
-    #                     "coord_param_keys": [category_name, block_key, key],
-    #                     "coord_param_values": value
-    #                 }
-    #             else:
-    #                 self._multiple_value_parameters[f"{category_name}.{key}"] = {
-    #                     "coord_param_keys": [category_name, key],
-    #                     "coord_param_values": value
-    #                 }
-
-    #     return self._multiple_value_parameters
-
-
-
-    def multiple_value_parameters(self, category_name, block_key='') -> list[MultiValueLocationPair]:
-
+        self._multiple_value_parameters = []
         
         for key, value in self.__dict__.items():
 
             if isinstance(value, list) and len(value) > 1:
                 multi_values = value
                 if block_key != '':
-                    self._multiple_value_parameters.append(MultiValueLocationPair(multi_values=multi_values, location_list=[category_name, block_key, key]))
+                    self._multiple_value_parameters.append(MultiValueScanParameter(location_list=[category_name, block_key, key], values=multi_values))
                 else:
-                    self._multiple_value_parameters.append(MultiValueLocationPair(multi_values=multi_values, location_list=[category_name, key]))
+                    self._multiple_value_parameters.append(MultiValueScanParameter(location_list=[category_name, key], values=multi_values))
 
         return self._multiple_value_parameters
 
