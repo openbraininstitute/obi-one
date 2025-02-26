@@ -31,21 +31,13 @@ class Scan(OBIBaseModel):
     _coordinate_instances: list = PrivateAttr(default=[])
 
 
-    # """
-    # Multi value parameters:
-    # - Iterates through the Blocks of self.form to find "multi value parameters" 
-    #     (i.e. parameters with list values of length greater than 1).
+    """
+    Multi value parameters:
+    - Iterates through the Blocks of self.form to find "multi value parameters" 
+        (i.e. parameters with list values of length greater than 1).
         
-    # - Returns a dictionary where each key-value pair represents a single "multi value parameter" where:
-    #     - The key represents the location of the parameter in the form
-    #     - The value is a dictionary containing:
-    #         - 'coord_param_keys': The location of the parameter as a list of property names 
-    #         - 'coord_param_values': The list of values specified for the parameter
-
-    #     For example:
-    #         'timestamps.timestamps_1.interval': {'coord_param_keys': ['timestamps', 'timestamps_1', 'interval'], 
-    #                                             'coord_param_values': [1.0, 5.0]}
-    # """
+    - Rewrite description
+    """
     def multiple_value_parameters(self, display=False) -> list[MultiValueScanParameter]:
         
         self._multiple_value_parameters = []
@@ -77,7 +69,7 @@ class Scan(OBIBaseModel):
         if display:
             print("\nMULTIPLE VALUE PARAMETERS")
             for multi_value in self._multiple_value_parameters:
-                print(f"{multi_value.location_str}: {multi_value.multi_values}")
+                print(f"{multi_value.location_str}: {multi_value.values}")
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
@@ -87,18 +79,7 @@ class Scan(OBIBaseModel):
     Coordinate parameters
     - Must be implemented by a subclass of Scan
 
-    - Should return a list, where each element in the list represents 
-        a single coordinate in the scan as a tuple of subtuples,
-        where each subtuple represents a single parameter of the coordinate by:
-            - The location of the parameter as a list of property names
-            - The value of that parameter for the coordinate
-
-        For example, a single coordinate is represented by the following tuple:
-            (
-             (['timestamps', 'timestamps_1', 'interval'], 1.0), 
-             (['stimuli', 'stimulus_1', 'spike_probability'], 0.5), 
-             (['initialize', 'simulation_length'], 100.0)
-            )
+    - Rewrite description
     """
     def coordinate_parameters(self, display=False) -> list:
         raise NotImplementedError("Subclasses must implement this method")
@@ -318,23 +299,23 @@ class Scan(OBIBaseModel):
     """
     def display_coordinate_parameters(self):
  
-        print("\nCOORDINATE PARAMETERS")
+        print("\nCOORDINATE PARAMETERS (Reimplement)")
 
-        for single_coordinate_parameters in self._coordinate_parameters:
-            output = f""
-            for j, parameter in enumerate(single_coordinate_parameters):
+        # for single_coordinate_parameters in self._coordinate_parameters:
+        #     output = f""
+        #     for j, parameter in enumerate(single_coordinate_parameters):
                 
-                output = nested_param_short(parameter[0])
-                output = output + ": " + str(parameter[1])
-                if j < len(single_coordinate_parameters) - 1:
-                    output = output + ", "
-            print(output)
+        #         output = nested_param_short(parameter[0])
+        #         output = output + ": " + str(parameter[1])
+        #         if j < len(single_coordinate_parameters) - 1:
+        #             output = output + ", "
+        #     print(output)
 
 
 """
 GridScan class:
     - Inherits from Scan
-    - Rewrite
+    - Rewrite description
 """
 from itertools import product
 class GridScan(Scan):
@@ -374,13 +355,12 @@ class CoupledScan(Scan):
 
     def coordinate_parameters(self, display=False) -> list:
         
-        previous_len = None
+        previous_len = -1
 
-        for key, value in self.multiple_value_parameters().items():
-
-            current_len = len(value['coord_param_values'])
-            if previous_len is not None and current_len != previous_len:
-                raise ValueError("All multi-parameters must have the same number of values.")
+        for multi_value in self.multiple_value_parameters():
+            current_len = len(multi_value.values)
+            if previous_len != -1 and current_len != previous_len:
+                raise ValueError("All multi parameters must have the same number of values.")
 
             previous_len = current_len
 
@@ -389,10 +369,8 @@ class CoupledScan(Scan):
         self._coordinate_parameters = []
         for coord_i in range(n_coords):
             coupled_coord = []
-            # HERE
-            for key, value in self.multiple_value_parameters().items():
-                coupled_coord.append((value["coord_param_keys"], value["coord_param_values"][coord_i]))
-
+            for multi_value in self.multiple_value_parameters():
+                coupled_coord.append(SingleValueScanParameter(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
             self._coordinate_parameters.append(tuple(coupled_coord))
 
         if display: self.display_coordinate_parameters()
