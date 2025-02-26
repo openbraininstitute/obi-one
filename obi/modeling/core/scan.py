@@ -7,17 +7,14 @@ from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
 
-"""
-Scan class:
-- Takes a Form & output_root as input
 
-- Includes several intermediate functions for computing multi-dimensional parameter scans:
-    a) multiple_value_parameters, b) coordinate_parameters, c) coordinate_instances
-
-- Creates multi-dimensional parameter scans through calls to:
-    - generate, run
-"""
 class Scan(OBIBaseModel):
+    """
+    - Takes a Form & output_root as input
+    - Creates multi-dimensional parameter scans through calls to generate and run
+    - Includes several intermediate functions for computing multi-dimensional parameter scans:
+        i.e. multiple_value_parameters, coordinate_parameters, coordinate_instances
+    """
 
     form: Form
     output_root: str
@@ -26,14 +23,12 @@ class Scan(OBIBaseModel):
     _coordinate_instances: list = PrivateAttr(default=[])
 
 
-    """
-    Multi value parameters:
-    - Iterates through the Blocks of self.form to find "multi value parameters" 
-        (i.e. parameters with list values of length greater than 1).
-        
-    - Rewrite description
-    """
     def multiple_value_parameters(self, display=False) -> list[MultiValueScanParam]:
+        """
+        - Iterates through Blocks of self.form to find "multi value parameters" 
+            (i.e. parameters with list values of length greater than 1)
+        - Returns a list of MultiValueScanParam objects
+        """
         
         self._multiple_value_parameters = []
 
@@ -70,30 +65,28 @@ class Scan(OBIBaseModel):
         return self._multiple_value_parameters
 
 
-    """
-    Coordinate parameters
-    - Must be implemented by a subclass of Scan
-
-    - Rewrite description
-    """
-    def coordinate_parameters(self, display=False) -> list:
+    def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
+        """
+        Must be implemented by a subclass of Scan
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
 
-    """
-    Coordinate instance
-    - Returns a list of "coordinate instances" by:
-        - Iterating through self.coordinate_parameters()
-        - Creating a single "coordinate instance" for each single coordinate parameter
+    
+    def coordinate_instances(self, display=False) -> list[SingleTypeMixin]:
+        """
+        Coordinate instance
+        - Returns a list of "coordinate instances" by:
+            - Iterating through self.coordinate_parameters()
+            - Creating a single "coordinate instance" for each single coordinate parameter
 
-    - Each "coordinate instance" is created by:
-        - Making a deep copy of the form
-        - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
-            (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
-        - Casting the form to its _single_coord_class_name type 
-            (i.e. SimulationsForm -> Simulation)
-    """
-    def coordinate_instances(self, display=False) -> list[Form]:
+        - Each "coordinate instance" is created by:
+            - Making a deep copy of the form
+            - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
+                (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
+            - Casting the form to its _single_coord_class_name type 
+                (i.e. SimulationsForm -> Simulation)
+        """
 
         self._coordinate_instances = []
 
@@ -145,10 +138,11 @@ class Scan(OBIBaseModel):
         return self._coordinate_instances
     
 
-    """
-    Generate
-    """
+    
     def generate(self):
+        """
+        Description
+        """
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
@@ -175,10 +169,11 @@ class Scan(OBIBaseModel):
         # Create a bbp_workflow_campaign_config
         self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
-    """
-    Run
-    """  
+   
     def run(self):
+        """
+        Description
+        """
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
@@ -206,12 +201,13 @@ class Scan(OBIBaseModel):
         self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     
-    """
-    Serialize Scan
-    obi_class name added to each subobject of type
-    inheriting from OBIBaseModel for future deserialization
-    """
+   
     def serialize(self, output_path):
+        """
+        Serialize a Scan object
+        - obi_class name added to each subobject of type
+            inheriting from OBIBaseModel for future deserialization
+        """
    
         # Dict representation of the scan object
         model_dump = self.model_dump(serialize_as_any=True)
@@ -235,61 +231,56 @@ class Scan(OBIBaseModel):
             json.dump(model_dump, json_file, indent=4)
 
 
-    """
-    Create bbp-workflow campaign config
-    """
+  
     def create_bbp_workflow_campaign_config(self, output_path):
+        """
+        Description
+        """
 
-        campaign_config = {
-            "dims": [],
-            "attrs": {},
-            "data": [],
-            "coords": {},
-            "name": ""
-        }
+        # Dictionary intialization
+        campaign_config = {"dims": [], "attrs": {}, "data": [], "coords": {}, "name": ""}
 
+        # dims
         campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
 
+        # coords
         for multi_param in self.multiple_value_parameters():
-
             sub_d = {multi_param.location_str: {
                                     "dims": [multi_param.location_str],
                                     "attrs": {},
                                     "data": multi_param.values
                                  }
                     }
-
             campaign_config["coords"].update(sub_d)
 
-            campaign_config["data"] = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
+        # data
+        campaign_config["data"] = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
 
-
+        # Write json to file
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:
             json.dump(campaign_config, json_file, indent=4)
 
 
-    """
-    Display coordinate parameters
-    """
     def display_coordinate_parameters(self):
+        """
+        Description
+        """
         print("\nCOORDINATE PARAMETERS (Reimplement)")
         for single_coordinate_parameters in self._coordinate_parameters:
             single_coordinate_parameters.display_parameters()
 
 
-"""
-GridScan class
-"""
+
 from itertools import product
 class GridScan(Scan):
+    """
+    Description
+    """
     
-    """
-    coordinate_parameters implementation
-    """
-    def coordinate_parameters(self, display=False) -> list:
+    def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
         """
-        Rewrite description
+        Description
         """
         single_values_by_multi_value = []
         for multi_value in self.multiple_value_parameters():
@@ -308,16 +299,16 @@ class GridScan(Scan):
         # Return the coordinate parameters
         return self._coordinate_parameters
 
-"""
-CoupledScan class:
-    - Inherits from Scan
-    - Implements coordinate_parameters which iterates through multiple_value_parameters dictionary to create:
-        coordinate_parameters list
-    - Rewrite description
-"""
+
 class CoupledScan(Scan):
+    """
+    Description
+    """
 
     def coordinate_parameters(self, display=False) -> list:
+        """
+        Description
+        """
         
         previous_len = -1
 
