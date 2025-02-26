@@ -8,6 +8,7 @@ from collections import OrderedDict
 
 
 class SingleCoordinateScanParams(OBIBaseModel):
+
     scan_params: list[SingleValueScanParam]
     nested_coordinate_subpath_str: str = ''
 
@@ -27,7 +28,7 @@ class SingleCoordinateScanParams(OBIBaseModel):
         print(output)
 
 
-class SingleCoordinate:
+class SingleCoordinateMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""
 
     idx: int = -1

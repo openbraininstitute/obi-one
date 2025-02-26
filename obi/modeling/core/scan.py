@@ -1,6 +1,6 @@
 from pydantic import PrivateAttr, ValidationError
 from obi.modeling.core.form import Form
-from obi.modeling.core.single import SingleCoordinate, SingleCoordinateScanParams
+from obi.modeling.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi.modeling.core.block import Block, MultiValueScanParam, SingleValueScanParam
 from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
@@ -73,7 +73,7 @@ class Scan(OBIBaseModel):
 
 
     
-    def coordinate_instances(self, display=False) -> list[SingleCoordinate]:
+    def coordinate_instances(self, display=False) -> list[SingleCoordinateMixin]:
         """
         Coordinate instance
         - Returns a list of "coordinate instances" by:

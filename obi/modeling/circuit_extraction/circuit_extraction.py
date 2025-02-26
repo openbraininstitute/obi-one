@@ -1,6 +1,6 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
-from obi.modeling.core.single import SingleCoordinate
+from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.scan import Scan
 
 class CircuitExtractions(Form):
@@ -20,7 +20,7 @@ import os
 from brainbuilder.utils.sonata import split_population
 from importlib.metadata import version
 
-class CircuitExtraction(CircuitExtractions, SingleCoordinate):
+class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     """"""
     pass
 
