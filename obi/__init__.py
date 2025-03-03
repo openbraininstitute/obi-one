@@ -4,6 +4,7 @@ from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.block import Block
 from obi.modeling.core.scan import GridScan, CoupledScan
 from obi.modeling.core.serialization import deserialize_obi_object_json
+from obi.modeling.core.fastapi import activate_fastapi_app
 
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet  

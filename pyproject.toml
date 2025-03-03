@@ -20,6 +20,11 @@ subcircuit_extraction = [
     "brainbuilder"
 ]
 
+fastapi_app = [
+    "fastapi",
+    "uvicorn"
+]
+
 jupyter = [
     "jupyter", 
     "notebook", 

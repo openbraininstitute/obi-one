@@ -42,6 +42,9 @@ class SimulationsForm(Form):
 
     initialize: Initialize
 
+    def generate(self):
+        print("Hello world")
+
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
