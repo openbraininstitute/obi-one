@@ -34,3 +34,5 @@ Coordinate output root not generated automatically
 
 Lists of length 1 don't get cast to single values on scan generation
 
+GridScan with no multi params. Default subdirectory name or don't call it grid scan?
+
