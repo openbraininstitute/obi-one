@@ -35,7 +35,9 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
         except Exception as e:
             if str(e) == "Unable to synchronously create group (name already exists)":
                 print("Error:", f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.")
-                return
+            else:
+                print(f"Error: {e}")
+            return
 
 
         

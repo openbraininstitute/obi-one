@@ -19,6 +19,9 @@ packages = ["obi"]
 subcircuit_extraction = [
     "brainbuilder"
 ]
+connectivity_extraction = [
+    "Connectome-Utilities"
+]
 
 fastapi_app = [
     "fastapi",
