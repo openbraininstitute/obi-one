@@ -17,3 +17,5 @@ from obi.modeling.simulation.recording import Recording, SpikeRecording, Intrace
 from obi.modeling.simulation.simulations import SimulationsForm, Simulation 
 
 from obi.modeling.circuit_extraction.circuit_extraction import CircuitExtractions, CircuitExtraction
+
+from obi.modeling.connectivity_matrix_extraction.connectivity_matrix_extraction import ConnectivityMatrixExtractions, ConnectivityMatrixExtraction
