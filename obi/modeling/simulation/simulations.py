@@ -20,7 +20,7 @@ class SimulationsForm(Form):
     """
     """
 
-    single_coord_class_name: str = "Simulation"
+    _single_coord_class_name: str = "Simulation"
 
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]

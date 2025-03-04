@@ -7,7 +7,7 @@ class CircuitExtractions(Form):
     """
     """
 
-    single_coord_class_name: str = "CircuitExtraction"
+    _single_coord_class_name: str = "CircuitExtraction"
 
     class Initialize(Block):
         circuit_path: str | list[str]
