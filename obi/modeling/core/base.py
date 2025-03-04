@@ -22,7 +22,7 @@ def get_subclasses_recursive(cls: Type[T]) -> List[Type[T]]:
 def get_subclass_recursive(cls: Type[T], name: str, allow_same_class: bool = False) -> Type[T]:
     # I oversimplified this to keep it short (there are checks for 0 or more than 1 subclasses
     # and we did not even use parameter `allow_same_class` to also match the parent class) 
-    return next(c for c in get_subclasses_recursive(cls=cls) if c.__name__ == name)
+    return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
 class OBIBaseModel(BaseModel):
 
@@ -40,7 +40,7 @@ class OBIBaseModel(BaseModel):
         result: Dict[str, Any] = handler(self)
         # if 'obi_class' in result:
         #     raise ValueError('Cannot use field "obi_class". It is reserved.')
-        result['obi_class'] = f'{self.__class__.__name__}'
+        result['obi_class'] = f'{self.__class__.__qualname__}'
         return result
 
     @model_validator(mode='wrap')  # noqa  # the decorator position is correct
