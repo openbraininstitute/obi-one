@@ -84,7 +84,7 @@ class Scan(OBIBaseModel):
             - Making a deep copy of the form
             - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
                 (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
-            - Casting the form to its _single_coord_class_name type 
+            - Casting the form to its single_coord_class_name type 
                 (i.e. SimulationsForm -> Simulation)
         """
 
@@ -115,7 +115,7 @@ class Scan(OBIBaseModel):
                         raise ValueError("Non Block options should not be used here.")
     
             try:
-                # Cast the form to its _single_coord_class_name type
+                # Cast the form to its single_coord_class_name type
                 coordinate_instance = single_coordinate_form.cast_to_single_coord()
 
                 # Set the variables of the coordinate instance related to the scan
@@ -202,7 +202,7 @@ class Scan(OBIBaseModel):
 
     
    
-    def serialize(self, output_path):
+    def serialize(self, output_path=''):
         """
         Serialize a Scan object
         - obi_class name added to each subobject of type
@@ -226,11 +226,12 @@ class Scan(OBIBaseModel):
         model_dump["form"].move_to_end('obi_class', last=False)
 
         # Create the directory and write dict to json file
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as json_file:
-            json.dump(model_dump, json_file, indent=4)
+        if output_path != '':
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            with open(output_path, "w") as json_file:
+                json.dump(model_dump, json_file, indent=4)
 
-
+        return model_dump
   
     def create_bbp_workflow_campaign_config(self, output_path):
         """

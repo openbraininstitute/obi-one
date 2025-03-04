@@ -13,21 +13,22 @@ from obi.modeling.simulation.stimulus import Stimulus
 from obi.modeling.simulation.timestamps import Timestamps
 from obi.modeling.simulation.recording import Recording
 
+from pydantic import PrivateAttr
 import os, json
 
 class SimulationsForm(Form):
     """
     """
 
-    _single_coord_class_name = "Simulation"
+    single_coord_class_name: str = "Simulation"
 
     timestamps: dict[str, Timestamps]
     stimuli: dict[str, Stimulus]
     recordings: dict[str, Recording]
     neuron_sets: dict[str, NeuronSet]
     synapse_sets: dict[str, SynapseSet]
-    intracellular_location_sets: dict[str, IntracellularLocationSet]
-    extracellular_location_sets: dict[str, ExtracellularLocationSet]
+    # intracellular_location_sets: dict[str, IntracellularLocationSet]
+    # extracellular_location_sets: dict[str, ExtracellularLocationSet]
 
     class Initialize(Block):
         circuit: Circuit
@@ -41,9 +42,6 @@ class SimulationsForm(Form):
         timestep: list[float] | float = 0.025
 
     initialize: Initialize
-
-    def generate(self):
-        print("Hello world")
 
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):

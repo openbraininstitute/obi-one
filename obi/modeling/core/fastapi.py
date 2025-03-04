@@ -29,12 +29,24 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     # if model_name not in db:
     #     db[model_name] = {}
 
+
+
+    @app.post(f"/{model_name}/set_form/")
+    async def set_form(form_obi_serialized_json: Dict[str, Any]):
+        """Send a JSON dictionary of an unspecified type"""
+
+        global current_form
+        current_form = obi.deserialize_obi_object_from_json_data(form_obi_serialized_json)
+
+        return
+
+
     @app.post(f"/{model_name}/create_form/", response_model=model)
     async def create_form(item: model):
         """Create an item"""
 
         global current_form
-        current_form = item
+        current_form = model(**item)
         return item
 
     @app.get(f"/{model_name}/schema/")
@@ -42,14 +54,20 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
         """Get schema of the model"""
         return model.schema()
 
-    @app.get(f"/{model_name}/generate_grid_scan/", response_model=obi.GridScan)
+    @app.post(f"/{model_name}/generate_grid_scan/")
     async def generate_grid_scan():
         """Call generate method on an item by ID"""
-        
-        grid_scan = obi.GridScan(form=current_form, output_root='../../obi_output/fastapi_test/circuit_simulations/grid_scan')
+
+        print("\ngenerate_grid_scan")
+
+        # print(current_form)
+        grid_scan = obi.GridScan(form=current_form, output_root='../obi_output/fastapi_test/circuit_simulations/grid_scan')
         grid_scan.generate()
 
-        return grid_scan
+        # return {}
+
+
+        # return grid_scan
 
 
             # if item_id not in db[model_name]:
