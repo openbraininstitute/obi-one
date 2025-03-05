@@ -32,10 +32,6 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
         try:
             print(f"Info: Running idx {self.idx}")
 
-            if not os.path.exists(self.coordinate_output_root):
-                print(f"Warning: *FIXME* Coordinate output root folder '{self.coordinate_output_root}' does not yet exist!")
-                os.makedirs(self.coordinate_output_root)
-
             output_file = os.path.join(self.coordinate_output_root, "connectivity_matrix.h5")
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
 
