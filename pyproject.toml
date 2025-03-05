@@ -23,6 +23,11 @@ connectivity_extraction = [
     "Connectome-Utilities"
 ]
 
+fastapi_app = [
+    "fastapi",
+    "uvicorn"
+]
+
 jupyter = [
     "jupyter", 
     "notebook", 
