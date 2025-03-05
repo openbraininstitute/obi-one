@@ -153,6 +153,9 @@ class Scan(OBIBaseModel):
                 # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
 
+                # Create the coordinate_output_root directory
+                os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
+
                 # Call the coordinate_instance's generate() function
                 coordinate_instance.generate()
 
@@ -183,6 +186,9 @@ class Scan(OBIBaseModel):
 
                 # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
+
+                # Create the coordinate_output_root directory
+                os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
                 # Call the coordinate_instance's run() function
                 coordinate_instance.run()

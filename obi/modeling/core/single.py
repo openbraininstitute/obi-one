@@ -57,7 +57,6 @@ class SingleCoordinateMixin:
 
         if self._coordinate_output_root == "":
             self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_params.nested_param_value_subpath)
-            os.makedirs(self._coordinate_output_root, exist_ok=True)
 
             # Old index based directories
             # if self._coordinate_output_root == "":
