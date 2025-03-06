@@ -1,0 +1,24 @@
+{
+    "name": "LFPy: active e-model IClamp",
+    "authors": ["OBI", "Darshan Mandge"],
+    "description": "In this notebook, we inject a step current in soma of the an e-model and record the local field potentials on a microelectrode array (MEA).",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": ["me-model"],
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requires-python": ">=3.9,<3.13",
+    "requirements": [
+        "aws-cli>=2.23.2",
+        "neuron>=8.2.6",
+        "LFPy>=2.3.5",
+        "matplotlib=3.10.0"
+    ]
+}

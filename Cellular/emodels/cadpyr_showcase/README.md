@@ -20,16 +20,38 @@ It plots:
 ## Use
 Steps to run the notebook are given below:
 
-1. The cADpyr e-model model `hoc` file,  `.asc` morphology file, mechanism (`.mod`) and `EM_*.json` file (containing the e-model parameters) should be obtained from OBI. These could be downloaded from 
-  - the [OBI Platform](https://openbraininstitute.org) from `Explore` -->`E-model` section --> Click on an e-model from the list --> `Download`. This final parameters file `EM_*.json` of the e-model.
-  - [Blue Brain Open Data](https://registry.opendata.aws/bluebrain_opendata/) using [Amazon CLI](https://aws.amazon.com/cli/) 
-  - (temporary for testing purpose) the data for below notebooks is also saved [here](https://openbraininstitute.sharepoint.com/:f:/s/OBI-Scientificstaff/EpqQOMfkUoRIv5mkPmaTdWEBuVeg6qEi93fJbmy-FSsgRA?e=SwGY4V) in a private folder. Put the files in a folder `cadpyr_emodel`. You can choose any other folder name.
-2. If you choose a different folder name, you need to update the  
-`emodel_folder_path` with relative path your folder name 
-e.g.  `emodel_folder_path=Path("../your_folder_name")`
+1. The emodel data required to run this notebook (hoc file, morphology file, mechanisms and EModel resource json) can be downloaded from the [Blue Brain Open Data](https://registry.opendata.aws/bluebrain_opendata/). In future, you will be able to download the emodel data for different e-models directly from the Open Brain Platform.
 
-The `emodel_name` (str, optional) can also be changed. Currently, it is set to `cadpyr_emodel`. The detailed instructions are also available in the notebook.
+1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) based on [instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for your operating system.
 
-3. Now, you should be able to run the notebook. Follow the notebook text and comments in notebook to learn more about the e-model and results.
+1. Run the following commands to donwload the data in folder `./cadpyr_emodel`:
+    ```
+    # check if the directory exists if not create it
+    !if [ ! -d "cadpyr_emodel" ]; then mkdir cadpyr_emodel; fi 
 
-You can also test this notebook other pyramidal neuron e-models of OBI. Follow the Step 1 above to replace the models files from OBI platform and update the `emodel_folder_path`.
+    # download mechanisms (mod files)
+    !aws s3 sync --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/mechanisms ./cadpyr_emodel/mechanisms 
+
+    # hoc file
+    !aws s3 cp --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/model.hoc ./cadpyr_emodel/model.hoc
+
+    # morphology file 
+    !aws s3 cp --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/C060114A5.asc ./cadpyr_emodel/C060114A5.asc
+
+    # EModel json resource
+    !aws s3 cp --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/EM__emodel=cADpyr__etype=cADpyr__mtype=L5_TPC_A__species=mouse__brain_region=grey__iteration=1372346__13.json ./cadpyr_emodel/
+    ```
+
+    You can also download the morphology from the platform:
+    - Go to https://www.openbraininstitute.org/ `-->` Your virtual lab `-->` Explore `-->` Morphology (bottom of the page) `-->` in the searchbar, search for `C060114A5.asc` `-->` click on the morphology with species `Rattus norvegicus` `-->` Download (top of the page). 
+        
+    - This will download a zip file with morphology asc file. Extract the zip file and put the `C060114A5.asc` file in the `cadpyr_emodel` folder.
+
+1. If you choose a different folder name, you need to update the  `emodel_folder_path` with relative path your folder name 
+e.g.  `emodel_folder_path=Path("./your_folder_name")`
+
+    The `emodel_name` (str, optional) can also be changed. Currently, it is set to `cadpyr_emodel`. The detailed instructions are also available in the notebook.
+
+1. Now, you should be able to run the notebook. Follow the notebook text and comments in notebook to learn more about the e-model and results.
+
+    You can also test this notebook other pyramidal neuron e-models of OBI. Follow the Step 1 above to replace the models files from OBI platform and update the `emodel_folder_path`.

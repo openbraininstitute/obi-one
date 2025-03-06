@@ -1,0 +1,25 @@
+{
+    "name": "Voltage clamp efeature extraction",
+    "authors": ["OBI", "Darshan Mandge"],
+    "description": "This notebook explains how to use traces from voltage clamp in eFEL to extract efeatures for ion channel construction",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": ["NWB file"],
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requires-python": ">=3.9",
+    "requirements": [
+        "aws-cli>=2.23.2",
+        "h5py>=3.12.1",
+        "matplotlib>=3.10.0",
+        "scipy>=1.15.1",
+        "efel>=5.7.13"
+    ]
+}

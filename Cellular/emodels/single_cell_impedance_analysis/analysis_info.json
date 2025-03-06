@@ -1,6 +1,6 @@
 {
     "name": "Single cell impedance analysis",
-    "authors": ["OBI", "Aurélien Jaquier"],
+    "authors": ["OBI", "Aurélien Jaquier", "Darshan Mandge"],
     "description": "This notebook showcases how to run a single cell with a ZAP stimulus, record its current input and voltage output, use them to compute the cell's impedance and plot the impedance vs frequency graph.",
     "scale": "cellular",
     "type": "notebook",
@@ -16,6 +16,7 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
+        "aws-cli>=2.23.2",
         "bluecellulab>=2.6.39",
         "bluepyemodel>=1.0.32",
         "numpy>=1.24.3",
