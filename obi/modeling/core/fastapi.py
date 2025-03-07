@@ -13,6 +13,7 @@ def activate_fastapi_app(app: FastAPI):
         generate_routes(subclass, app)
     return
 
+
 # Auto-generate API routes
 def generate_routes(model: Type[obi.Form], app: FastAPI):
 
@@ -41,13 +42,14 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
         return
 
 
-    @app.post(f"/{model_name}/create_form/", response_model=model)
-    async def create_form(item: model):
+    @app.post(f"/{model_name}/create_form/") #
+    async def create_form(item: model): # , response_model=model
         """Create an item"""
-
+        # global current_form
+        # current_form = model(**item)
         global current_form
-        current_form = model(**item)
-        return item
+        current_form = item
+        return
 
     @app.get(f"/{model_name}/schema/")
     async def get_schema():

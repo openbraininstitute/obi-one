@@ -3,6 +3,8 @@ from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.scan import Scan
 
+from obi.modeling.core.block_unions import TimestampsUnion
+
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet
 from obi.modeling.circuit.synapse_sets import SynapseSet
@@ -13,7 +15,7 @@ from obi.modeling.simulation.stimulus import Stimulus
 from obi.modeling.simulation.timestamps import Timestamps
 from obi.modeling.simulation.recording import Recording
 
-from pydantic import PrivateAttr
+from pydantic import PrivateAttr, Field
 import os, json
 
 class SimulationsForm(Form):
@@ -22,7 +24,7 @@ class SimulationsForm(Form):
 
     _single_coord_class_name: str = "Simulation"
 
-    timestamps: dict[str, Timestamps]
+    timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, Stimulus]
     recordings: dict[str, Recording]
     neuron_sets: dict[str, NeuronSet]
@@ -48,6 +50,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 
+class GridScan(Scan):
     def generate(self):
 
         self._sonata_config = {}
