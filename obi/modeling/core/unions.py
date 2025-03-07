@@ -8,6 +8,5 @@ def get_all_subclasses(cls):
     return subclasses
 
 def subclass_union(block_parent_class) -> Type[Union[OBIBaseModel]]:
-    # subclasses = block_parent_class.__subclasses__()
     subclasses = get_all_subclasses(block_parent_class)
     return Union[tuple(subclasses)]

@@ -36,7 +36,8 @@ class SimulationsForm(Form):
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
-    pass
+    
+    _sonata_config: dict = PrivateAttr(default={})
 
     def generate(self):
 

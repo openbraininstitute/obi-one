@@ -2,7 +2,7 @@ from typing import Literal
 
 
 from obi.modeling.core.block import Block
-from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
+from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
 from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
 class Recording(Block):

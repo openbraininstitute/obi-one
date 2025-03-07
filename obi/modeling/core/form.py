@@ -4,9 +4,7 @@ from obi.modeling.core.base import OBIBaseModel
 class Form(OBIBaseModel):
     """
     """
-    _sonata_config: dict = PrivateAttr(default={})
     _single_coord_class_name: str = ""
-
 
     def cast_to_single_coord(self):
         module = __import__(self.__module__)

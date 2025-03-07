@@ -6,7 +6,6 @@ from importlib.metadata import version
 import json, os
 from collections import OrderedDict
 
-
 class SingleCoordinateScanParams(OBIBaseModel):
 
     scan_params: list[SingleValueScanParam]
