@@ -3,7 +3,7 @@ from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.scan import Scan
 
-from obi.modeling.core.block_unions import TimestampsUnion
+from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, IntracellularLocationSetUnion, ExtracellularLocationSetUnion, TimestampsUnion, RecordingUnion, StimulusUnion
 
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet
@@ -25,12 +25,12 @@ class SimulationsForm(Form):
     _single_coord_class_name: str = "Simulation"
 
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
-    stimuli: dict[str, Stimulus]
-    recordings: dict[str, Recording]
-    neuron_sets: dict[str, NeuronSet]
-    synapse_sets: dict[str, SynapseSet]
-    # intracellular_location_sets: dict[str, IntracellularLocationSet]
-    # extracellular_location_sets: dict[str, ExtracellularLocationSet]
+    stimuli: dict[str, StimulusUnion]
+    recordings: dict[str, RecordingUnion]
+    neuron_sets: dict[str, NeuronSetUnion]
+    synapse_sets: dict[str, SynapseSetUnion]
+    # intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
+    # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: Circuit

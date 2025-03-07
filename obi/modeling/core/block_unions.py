@@ -1,8 +1,39 @@
 from typing import Union, Type
-from obi.modeling.simulation.timestamps import Timestamps
+from obi.modeling.core.block import Block
 
-def get_timestamps_union() -> Type[Union[Timestamps]]:
-    subclasses = Timestamps.__subclasses__()
+from obi.modeling.circuit.circuit import Circuit
+from obi.modeling.circuit.neuron_sets import NeuronSet
+from obi.modeling.circuit.synapse_sets import SynapseSet
+from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
+from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
+
+from obi.modeling.simulation.timestamps import Timestamps
+from obi.modeling.simulation.stimulus import Stimulus
+from obi.modeling.simulation.recording import Recording
+
+def block_union(block_parent_class) -> Type[Union[Block]]:
+    subclasses = block_parent_class.__subclasses__()
     return Union[tuple(subclasses)]
 
-TimestampsUnion = get_timestamps_union()
+
+NeuronSetUnion = block_union(Timestamps)
+SynapseSetUnion = block_union(Timestamps)
+IntracellularLocationSetUnion = block_union(Timestamps)
+ExtracellularLocationSetUnion = block_union(Timestamps)
+
+TimestampsUnion = block_union(Timestamps)
+StimulusUnion = block_union(Stimulus)
+RecordingUnion = block_union(Recording)
+
+
+"""
+May want to have specific functions for each
+Block parent class type in future as below
+so can do checks for specific function implementations, 
+or also include parent class
+"""
+# def timestamps_union() -> Type[Union[Timestamps]]:
+#     subclasses = Timestamps.__subclasses__()
+#     return Union[tuple(subclasses)]
+
+# TimestampsUnion = timestamps_union(class)
