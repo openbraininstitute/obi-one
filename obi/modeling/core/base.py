@@ -24,7 +24,24 @@ def get_subclass_recursive(cls: Type[T], name: str, allow_same_class: bool = Fal
     # and we did not even use parameter `allow_same_class` to also match the parent class) 
     return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
+from typing import Literal
+from pydantic import Field
 class OBIBaseModel(BaseModel):
+
+    type: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_type(cls, data):
+        """Automatically sets `type` when instantiated in Python."""
+        if isinstance(data, dict) and "type" not in data:
+            data["type"] = cls.__name__
+        return data
+
+    def __init_subclass__(cls, **kwargs):
+        """Dynamically set the `type` field to the class name"""
+        super().__init_subclass__(**kwargs)
+        cls.__annotations__["type"] = Literal[cls.__name__]
 
     def __str__(self):
         return self.__repr__()

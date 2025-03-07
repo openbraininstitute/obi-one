@@ -3,13 +3,11 @@ from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.scan import Scan
 
-from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, IntracellularLocationSetUnion, ExtracellularLocationSetUnion, TimestampsUnion, RecordingUnion, StimulusUnion
+from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, TimestampsUnion, RecordingUnion, StimulusUnion
 
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet
 from obi.modeling.circuit.synapse_sets import SynapseSet
-from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
-from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
 from obi.modeling.simulation.stimulus import Stimulus
 from obi.modeling.simulation.timestamps import Timestamps
@@ -29,8 +27,6 @@ class SimulationsForm(Form):
     recordings: dict[str, RecordingUnion]
     neuron_sets: dict[str, NeuronSetUnion]
     synapse_sets: dict[str, SynapseSetUnion]
-    # intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
-    # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: Circuit
@@ -50,7 +46,6 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
     pass
 
-class GridScan(Scan):
     def generate(self):
 
         self._sonata_config = {}

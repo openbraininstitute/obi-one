@@ -4,8 +4,6 @@ from obi.modeling.core.block import Block
 from obi.modeling.circuit.circuit import Circuit
 from obi.modeling.circuit.neuron_sets import NeuronSet
 from obi.modeling.circuit.synapse_sets import SynapseSet
-from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
-from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
 from obi.modeling.simulation.timestamps import Timestamps
 from obi.modeling.simulation.stimulus import Stimulus
@@ -16,10 +14,8 @@ def block_union(block_parent_class) -> Type[Union[Block]]:
     return Union[tuple(subclasses)]
 
 
-NeuronSetUnion = block_union(Timestamps)
-SynapseSetUnion = block_union(Timestamps)
-IntracellularLocationSetUnion = block_union(Timestamps)
-ExtracellularLocationSetUnion = block_union(Timestamps)
+NeuronSetUnion = block_union(NeuronSet)
+SynapseSetUnion = block_union(SynapseSet)
 
 TimestampsUnion = block_union(Timestamps)
 StimulusUnion = block_union(Stimulus)

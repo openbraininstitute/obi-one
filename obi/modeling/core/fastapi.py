@@ -30,41 +30,42 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     # if model_name not in db:
     #     db[model_name] = {}
 
+    # @app.post(f"/{model_name}/set_form/")
+    # async def set_form(form_obi_serialized_json: Dict[str, Any]):
+    #     """Send a JSON dictionary of an unspecified type"""
+
+    #     global current_form
+    #     current_form = obi.deserialize_obi_object_from_json_data(form_obi_serialized_json)
+
+    #     return
 
 
-    @app.post(f"/{model_name}/set_form/")
-    async def set_form(form_obi_serialized_json: Dict[str, Any]):
-        """Send a JSON dictionary of an unspecified type"""
+    # @app.post(f"/{model_name}/create_form/") #
+    # async def create_form(item: model): # , response_model=model
+    #     """Create an item"""
+    #     global current_form
+    #     current_form = item
+    #     return
 
-        global current_form
-        current_form = obi.deserialize_obi_object_from_json_data(form_obi_serialized_json)
-
-        return
-
-
-    @app.post(f"/{model_name}/create_form/") #
-    async def create_form(item: model): # , response_model=model
-        """Create an item"""
-        # global current_form
-        # current_form = model(**item)
-        global current_form
-        current_form = item
-        return
-
-    @app.get(f"/{model_name}/schema/")
-    async def get_schema():
-        """Get schema of the model"""
-        return model.schema()
+    # @app.get(f"/{model_name}/schema/")
+    # async def get_schema():
+    #     """Get schema of the model"""
+    #     return model.schema()
 
     @app.post(f"/{model_name}/generate_grid_scan/")
-    async def generate_grid_scan():
-        """Call generate method on an item by ID"""
-
+    async def generate_grid_scan(form: model):
+        
         print("\ngenerate_grid_scan")
 
+        # print(form)
         # print(current_form)
-        grid_scan = obi.GridScan(form=current_form, output_root='../obi_output/fastapi_test/circuit_simulations/grid_scan')
-        grid_scan.generate()
+        try:
+            print(form.timestamps['additionalProp3'])
+            grid_scan = obi.GridScan(form=form, output_root='../obi_output/fastapi_test/circuit_simulations/grid_scan')
+            # print(grid_scan)
+            grid_scan.generate()
+        except Exception as e:
+            print(e)
 
         # return {}
 

@@ -2,8 +2,14 @@ from obi.modeling.core.block import Block
 
 class Timestamps(Block):
     start_time: float | list[float]
+
+
     
 class RegularTimestamps(Timestamps):
+    number_of_repetitions: int | list[int]
+    interval: float | list[float]
+
+class RegularTimestamps2(Timestamps):
     number_of_repetitions: int | list[int]
     interval: float | list[float]
     

@@ -15,7 +15,7 @@ from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocati
 from obi.modeling.simulation.timestamps import Timestamps, RegularTimestamps, CategoricalTimestamps
 from obi.modeling.simulation.stimulus import Stimulus, SynchronousSingleSpikeStimulus
 from obi.modeling.simulation.recording import Recording, SpikeRecording, IntracellularLocationSetVoltageRecording, ExtraceullarLocationSetVoltageRecording
-from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, IntracellularLocationSetUnion, ExtracellularLocationSetUnion, TimestampsUnion, StimulusUnion, RecordingUnion
+from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, TimestampsUnion, StimulusUnion, RecordingUnion
 from obi.modeling.simulation.simulations import SimulationsForm, Simulation
 
 from obi.modeling.circuit_extraction.circuit_extraction import CircuitExtractions, CircuitExtraction

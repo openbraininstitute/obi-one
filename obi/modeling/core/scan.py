@@ -212,18 +212,18 @@ class Scan(OBIBaseModel):
         # Dict representation of the scan object
         model_dump = self.model_dump(serialize_as_any=True)
 
-        # Add the OBI version
-        model_dump["obi_version"] = version("obi")
+        # # Add the OBI version
+        # model_dump["obi_version"] = version("obi")
         
-        # Order keys in dict
-        model_dump = OrderedDict(model_dump)
-        model_dump.move_to_end('output_root', last=False)
-        model_dump.move_to_end('obi_class', last=False)
-        model_dump.move_to_end('obi_version', last=False)
+        # # Order keys in dict
+        # model_dump = OrderedDict(model_dump)
+        # model_dump.move_to_end('output_root', last=False)
+        # model_dump.move_to_end('obi_class', last=False)
+        # model_dump.move_to_end('obi_version', last=False)
 
-        # Order the keys in subdict "form"
-        model_dump["form"] = OrderedDict(model_dump["form"])
-        model_dump["form"].move_to_end('obi_class', last=False)
+        # # Order the keys in subdict "form"
+        # model_dump["form"] = OrderedDict(model_dump["form"])
+        # model_dump["form"].move_to_end('obi_class', last=False)
 
         # Create the directory and write dict to json file
         if output_path != '':
