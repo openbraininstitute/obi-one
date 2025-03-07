@@ -1,11 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from typing import Type, Dict, Any, List
-# from obi.modeling.core.form import Form
 import obi
-
-# db: Dict[str, Dict[int, Dict[str, Any]]] = {}
-
-current_form: obi.Form = None
 
 def activate_fastapi_app(app: FastAPI):
 
@@ -19,16 +14,31 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
 
     # Model is the OBI.Form subclass 
     # i.e. <class 'obi.modeling.simulation.simulations.SimulationsForm'>
-    print(model)
 
     # model_name is the name of the model (i.e. OBI.Form subclass) 
     # in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
-    print(model_name)
 
-    # Create a new dictionary in the db dictionary with the key as the lowercase model_name
-    # if model_name not in db:
-    #     db[model_name] = {}
+    @app.post(f"/{model_name}/generate_grid_scan/")
+    async def generate_grid_scan(form: model):
+        
+        print("\ngenerate_grid_scan")
+
+        try:
+            grid_scan = obi.GridScan(form=form, output_root='../obi_output/fastapi_test/circuit_simulations/grid_scan')
+            grid_scan.generate()
+        except Exception as e:
+            print(e)
+
+        return {}
+
+
+
+    """
+    Misc old
+    """
+
+    # current_form: obi.Form = None
 
     # @app.post(f"/{model_name}/set_form/")
     # async def set_form(form_obi_serialized_json: Dict[str, Any]):
@@ -52,27 +62,6 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     #     """Get schema of the model"""
     #     return model.schema()
 
-    @app.post(f"/{model_name}/generate_grid_scan/")
-    async def generate_grid_scan(form: model):
-        
-        print("\ngenerate_grid_scan")
-
-        # print(form)
-        # print(current_form)
-        try:
-            print(form.timestamps['additionalProp3'])
-            grid_scan = obi.GridScan(form=form, output_root='../obi_output/fastapi_test/circuit_simulations/grid_scan')
-            # print(grid_scan)
-            grid_scan.generate()
-        except Exception as e:
-            print(e)
-
-        # return {}
-
-
-        # return grid_scan
-
-
             # if item_id not in db[model_name]:
         #     raise HTTPException(status_code=404, detail="Item not found")
         # item_data = db[model_name][item_id]
@@ -93,10 +82,6 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     #     return model.get_pythonic_schema()
     #     # model.get_pythonic_schema()
     #     # return item.get_pythonic_schema()
-
-
-    
-
 
 
     # # @app.get(f"/{model_name}/{{item_id}}", response_model=model)

@@ -20,8 +20,6 @@ class VoltageRecording(Recording):
     recording_type: str = "voltage"
     dt: float | list[float] = 0.1
 
-    
-
 class SpikeRecording(Recording):
     recording_type: str= "spike"
     spike_detection_location: Literal['AIS', 'soma']

@@ -1,17 +1,9 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
-from obi.modeling.core.scan import Scan
 
-from obi.modeling.core.block_unions import NeuronSetUnion, SynapseSetUnion, TimestampsUnion, RecordingUnion, StimulusUnion
-
+from obi.modeling.core.unions_block import TimestampsUnion, StimulusUnion, RecordingUnion, NeuronSetUnion, SynapseSetUnion
 from obi.modeling.circuit.circuit import Circuit
-from obi.modeling.circuit.neuron_sets import NeuronSet
-from obi.modeling.circuit.synapse_sets import SynapseSet
-
-from obi.modeling.simulation.stimulus import Stimulus
-from obi.modeling.simulation.timestamps import Timestamps
-from obi.modeling.simulation.recording import Recording
 
 from pydantic import PrivateAttr, Field
 import os, json

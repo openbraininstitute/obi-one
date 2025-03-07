@@ -1,6 +1,6 @@
-"""
-Adapted from https://github.com/pydantic/pydantic/issues/7366
-"""
+# """
+# Adapted from https://github.com/pydantic/pydantic/issues/7366
+# """
 
 
 from pydantic import BaseModel, model_serializer, model_validator, ValidatorFunctionWrapHandler
@@ -24,8 +24,9 @@ def get_subclass_recursive(cls: Type[T], name: str, allow_same_class: bool = Fal
     # and we did not even use parameter `allow_same_class` to also match the parent class) 
     return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
+# from pydantic import BaseModel, model_validator
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, BaseModel, model_validator
 class OBIBaseModel(BaseModel):
 
     type: str = ""
@@ -35,30 +36,16 @@ class OBIBaseModel(BaseModel):
     def set_type(cls, data):
         """Automatically sets `type` when instantiated in Python."""
         if isinstance(data, dict) and "type" not in data:
-            data["type"] = cls.__name__
+            data["type"] = cls.__qualname__
         return data
 
     def __init_subclass__(cls, **kwargs):
-        """Dynamically set the `type` field to the class name"""
+    #     """Dynamically set the `type` field to the class name"""
         super().__init_subclass__(**kwargs)
-        cls.__annotations__["type"] = Literal[cls.__name__]
+        cls.__annotations__["type"] = Literal[cls.__qualname__]
 
     def __str__(self):
         return self.__repr__()
-
-
-    """
-    Preserves the types of objects passed in pydantic models during serialization and de-serialization.
-    This is achieved by injecting a field called "type" upon serialization.
-    """
-
-    @model_serializer(mode='wrap')
-    def inject_type_on_serialization(self, handler: ValidatorFunctionWrapHandler) -> Dict[str, Any]:
-        result: Dict[str, Any] = handler(self)
-        # if 'obi_class' in result:
-        #     raise ValueError('Cannot use field "obi_class". It is reserved.')
-        result['obi_class'] = f'{self.__class__.__qualname__}'
-        return result
 
     @model_validator(mode='wrap')  # noqa  # the decorator position is correct
     @classmethod
@@ -68,7 +55,7 @@ class OBIBaseModel(BaseModel):
             # WARNING: we do not want to modify `value` which will come from the outer scope
             # WARNING2: `sub_cls(**modified_value)` will trigger a recursion, and thus we need to remove `obi_class`
             modified_value = value.copy()
-            sub_cls_name = modified_value.pop('obi_class', None)
+            sub_cls_name = modified_value.pop('type', None)
             if sub_cls_name is not None:
                 sub_cls = get_subclass_recursive(cls=OBIBaseModel, name=sub_cls_name, allow_same_class=True)
                 return sub_cls(**modified_value)
