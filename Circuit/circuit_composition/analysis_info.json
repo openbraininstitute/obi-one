@@ -8,7 +8,7 @@
     "input": [
         {
             "data_type": {
-                "artefact": "circuit",
+                "artefact": "SimulatableCircuit",
                 "required_properties": []
             },
             "class": "single"

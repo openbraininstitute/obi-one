@@ -8,7 +8,7 @@
     "input": [
         {
             "data_type": {
-                "artefact": ["NWB file"],
+                "artefact": "ElectricalCellRecording",
                 "required_properties": []
             },
             "class": "single"
