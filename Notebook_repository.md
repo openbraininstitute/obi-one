@@ -39,7 +39,7 @@ A notebook can contain virtually any analysis. It is expected to begin by loadin
 
 ## List of artefact types:
 - "CellMorphology": A reconstructed morphology. In skeleton representation. Format is one of .h5, .swc, .asc
-- "ElectricalCellRecording": Experimental or simulated single cell recording in .nsb format.
+- "ElectricalCellRecording": Experimental or simulated single cell recording in .nwb format.
 - "ElectricalCellPairRecording": As above, but for a pair of (connected) neurons.
 - "ElectricalCellModel": A parameterized model of the distribution of ion channels over the neuron membrane, plus those ion channel models. .json format.
 - "ElectricalCellFeatures": "Features" of the electrical activity of a neuron upon standardized stimulation, such as AP height, width, etc.
