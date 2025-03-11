@@ -6,10 +6,6 @@ class Timestamps(Block):
 class RegularTimestamps(Timestamps):
     number_of_repetitions: int | list[int]
     interval: float | list[float]
-
-class RegularTimestamps2(Timestamps):
-    number_of_repetitions: int | list[int]
-    interval: float | list[float]
     
 class CategoricalTimestamps(Timestamps):
     number_of_categories: int | list[int]
