@@ -5,7 +5,7 @@ from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
-from obi.modeling.core.unions_form import FormUnion
+from obi.modeling.unions.unions_form import FormUnion
 
 class Scan(OBIBaseModel):
     """

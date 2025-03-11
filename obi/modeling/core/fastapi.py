@@ -23,9 +23,8 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
 
     # if model_name == 'simulationsform':
 
-    @app.get("/")  # Define a route for the root path "/"
-    def read_root():
-        return {"message": "Welcome to the OBI modeling library FastAPI!"}
+    
+        
 
     # @app.get("/")
     # async def root():
@@ -33,7 +32,8 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     #     response.headers["Access-Control-Allow-Origin"] = "*"  # ✅ Proper way to set headers
     #     return response
     
-    @app.post(f"/{model_name}/generate_grid_scan/")
+    # @app.post(f"/{model_name}/generate_grid_scan/")
+    @app.post(f"/{model_name}/")
     async def generate_grid_scan(form: model):
         
         print("\ngenerate_grid_scan")
@@ -44,7 +44,11 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
         except Exception as e:
             print(e)
 
-        return
+        return {}
+
+    # @app.get("/")  # Define a route for the root path "/"
+    # def read_root():
+    #     return {"message": "Welcome to the OBI modeling library FastAPI!"}
 
         # response = JSONResponse(content={"message": "CORS test"})
         # response.headers["Access-Control-Allow-Origin"] = "*"
