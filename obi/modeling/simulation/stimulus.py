@@ -1,13 +1,10 @@
-# from typing import Union, List
-
 from obi.modeling.core.block import Block
-from obi.modeling.circuit.synapse_sets import SynapseSet
-from obi.modeling.simulation.timestamps import Timestamps
 
 from obi.modeling.unions.unions_timestamps import TimestampsUnion
+from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
 
 class Stimulus(Block):
-    synapse_set: SynapseSet
+    synapse_set: SynapseSetUnion
     timestamps: TimestampsUnion
 
 class SynchronousSingleSpikeStimulus(Stimulus):

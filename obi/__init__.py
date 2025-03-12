@@ -22,5 +22,10 @@ from obi.modeling.circuit_extraction.circuit_extraction import CircuitExtraction
 from obi.modeling.connectivity_matrix_extraction.connectivity_matrix_extraction import ConnectivityMatrixExtractions, ConnectivityMatrixExtraction
 
 from obi.modeling.unions.unions_form import FormUnion
-from obi.modeling.unions.unions_block import NeuronSetUnion, SynapseSetUnion, RecordingUnion, StimulusUnion # TimestampsUnion
 from obi.modeling.unions.unions_timestamps import TimestampsUnion
+from obi.modeling.unions.unions_recordings import RecordingUnion
+from obi.modeling.unions.unions_stimuli import StimulusUnion
+from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
+from obi.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion

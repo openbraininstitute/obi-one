@@ -2,8 +2,14 @@ from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 
-from obi.modeling.unions.unions_block import StimulusUnion, RecordingUnion, NeuronSetUnion, SynapseSetUnion
 from obi.modeling.unions.unions_timestamps import TimestampsUnion
+from obi.modeling.unions.unions_recordings import RecordingUnion
+from obi.modeling.unions.unions_stimuli import StimulusUnion
+from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
+from obi.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
+
 from obi.modeling.circuit.circuit import Circuit
 
 from pydantic import PrivateAttr, Field
@@ -20,6 +26,8 @@ class SimulationsForm(Form):
     recordings: dict[str, RecordingUnion]
     neuron_sets: dict[str, NeuronSetUnion]
     synapse_sets: dict[str, SynapseSetUnion]
+    intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
+    extra_cellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: Circuit
