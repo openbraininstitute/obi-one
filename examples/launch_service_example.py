@@ -11,12 +11,11 @@ app = FastAPI()
 # Define allowed origins
 origins = [
     "http://localhost:3000",  # Allow frontend running on React/Vue/Next.js
-    # "http://127.0.0.1:8000",
-    "http://127.0.0.1:3000"
-    # "https://yourdomain.com",  # Allow specific production domain
+    # "http://127.0.0.1:3000"
     # "*"  # Allow all domains (not recommended for production)
 ]
 
+# Trying to fix CORS issue (currently not solved)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -26,6 +25,7 @@ app.add_middleware(
     expose_headers=["Access-Control-Allow-Origin"]
 )
 
+# Possibly useful to solving issue
 # app.headers["Access-Control-Allow-Origin"] = True
 
 
