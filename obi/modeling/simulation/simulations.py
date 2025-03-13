@@ -1,19 +1,18 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
-from obi.modeling.core.scan import Scan
+
+from obi.modeling.unions.unions_timestamps import TimestampsUnion
+from obi.modeling.unions.unions_recordings import RecordingUnion
+from obi.modeling.unions.unions_stimuli import StimulusUnion
+from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
+from obi.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
 from obi.modeling.circuit.circuit import Circuit
-from obi.modeling.circuit.neuron_sets import NeuronSet
-from obi.modeling.circuit.synapse_sets import SynapseSet
-from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet
-from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
 
-from obi.modeling.simulation.stimulus import Stimulus
-from obi.modeling.simulation.timestamps import Timestamps
-from obi.modeling.simulation.recording import Recording
-
-from pydantic import PrivateAttr
+from pydantic import PrivateAttr, Field
 import os, json
 
 class SimulationsForm(Form):
@@ -22,13 +21,13 @@ class SimulationsForm(Form):
 
     _single_coord_class_name: str = "Simulation"
 
-    timestamps: dict[str, Timestamps]
-    stimuli: dict[str, Stimulus]
-    recordings: dict[str, Recording]
-    neuron_sets: dict[str, NeuronSet]
-    synapse_sets: dict[str, SynapseSet]
-    # intracellular_location_sets: dict[str, IntracellularLocationSet]
-    # extracellular_location_sets: dict[str, ExtracellularLocationSet]
+    timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
+    stimuli: dict[str, StimulusUnion]
+    recordings: dict[str, RecordingUnion]
+    neuron_sets: dict[str, NeuronSetUnion]
+    synapse_sets: dict[str, SynapseSetUnion]
+    intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
+    extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: Circuit
@@ -46,7 +45,8 @@ class SimulationsForm(Form):
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single float values and ensures nested attributes follow the same rule."""
-    pass
+    
+    _sonata_config: dict = PrivateAttr(default={})
 
     def generate(self):
 

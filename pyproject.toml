@@ -25,7 +25,8 @@ connectivity_extraction = [
 
 fastapi_app = [
     "fastapi",
-    "uvicorn"
+    "uvicorn",
+    "starlette"
 ]
 
 jupyter = [

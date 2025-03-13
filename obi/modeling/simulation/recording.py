@@ -2,8 +2,9 @@ from typing import Literal
 
 
 from obi.modeling.core.block import Block
-from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet#, IDSectionIntracellularLocationSet
-from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet
+
+from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
 class Recording(Block):
     start_time: float | list[float]
@@ -20,14 +21,12 @@ class VoltageRecording(Recording):
     recording_type: str = "voltage"
     dt: float | list[float] = 0.1
 
-    
-
 class SpikeRecording(Recording):
     recording_type: str= "spike"
     spike_detection_location: Literal['AIS', 'soma']
 
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
-    intracellular_location_set: IntracellularLocationSet
+    intracellular_location_set: IntracellularLocationSetUnion
 
     def generate_config(self):
         self._sonata_config = {
@@ -43,6 +42,6 @@ class IntracellularLocationSetVoltageRecording(VoltageRecording):
         return self._sonata_config
 
 class ExtraceullarLocationSetVoltageRecording(VoltageRecording):
-    extracellular_location_set: ExtracellularLocationSet
+    extracellular_location_set: ExtracellularLocationSetUnion
 
     

@@ -1,12 +1,11 @@
 from pydantic import PrivateAttr, ValidationError
-from obi.modeling.core.form import Form
 from obi.modeling.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi.modeling.core.block import Block, MultiValueScanParam, SingleValueScanParam
 from obi.modeling.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
-
+from obi.modeling.unions.unions_form import FormUnion
 
 class Scan(OBIBaseModel):
     """
@@ -16,7 +15,7 @@ class Scan(OBIBaseModel):
         i.e. multiple_value_parameters, coordinate_parameters, coordinate_instances
     """
 
-    form: Form
+    form: FormUnion
     output_root: str
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
@@ -211,7 +210,7 @@ class Scan(OBIBaseModel):
     def serialize(self, output_path=''):
         """
         Serialize a Scan object
-        - obi_class name added to each subobject of type
+        - type name added to each subobject of type
             inheriting from OBIBaseModel for future deserialization
         """
    
@@ -224,12 +223,12 @@ class Scan(OBIBaseModel):
         # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
-        model_dump.move_to_end('obi_class', last=False)
+        model_dump.move_to_end('type', last=False)
         model_dump.move_to_end('obi_version', last=False)
 
         # Order the keys in subdict "form"
         model_dump["form"] = OrderedDict(model_dump["form"])
-        model_dump["form"].move_to_end('obi_class', last=False)
+        model_dump["form"].move_to_end('type', last=False)
 
         # Create the directory and write dict to json file
         if output_path != '':

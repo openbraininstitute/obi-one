@@ -1618,6 +1618,7 @@ connectivity-extraction = [
 ]
 fastapi-app = [
     { name = "fastapi" },
+    { name = "starlette" },
     { name = "uvicorn" },
 ]
 jupyter = [
@@ -1640,6 +1641,7 @@ requires-dist = [
     { name = "jupyterlab", marker = "extra == 'jupyter'" },
     { name = "notebook", marker = "extra == 'jupyter'" },
     { name = "pydantic", specifier = ">=2.10.6" },
+    { name = "starlette", marker = "extra == 'fastapi-app'" },
     { name = "uvicorn", marker = "extra == 'fastapi-app'" },
 ]
 provides-extras = ["subcircuit-extraction", "connectivity-extraction", "fastapi-app", "jupyter"]
