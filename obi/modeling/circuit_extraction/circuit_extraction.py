@@ -1,7 +1,6 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
-from obi.modeling.core.scan import Scan
 
 class CircuitExtractions(Form):
     """
