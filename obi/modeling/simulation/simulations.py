@@ -27,7 +27,7 @@ class SimulationsForm(Form):
     neuron_sets: dict[str, NeuronSetUnion]
     synapse_sets: dict[str, SynapseSetUnion]
     intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
-    extra_cellular_location_sets: dict[str, ExtracellularLocationSetUnion]
+    extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: Circuit

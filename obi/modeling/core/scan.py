@@ -204,7 +204,7 @@ class Scan(OBIBaseModel):
     def serialize(self, output_path=''):
         """
         Serialize a Scan object
-        - obi_class name added to each subobject of type
+        - type name added to each subobject of type
             inheriting from OBIBaseModel for future deserialization
         """
    
@@ -217,7 +217,7 @@ class Scan(OBIBaseModel):
         # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
-        model_dump.move_to_end('obi_class', last=False)
+        model_dump.move_to_end('type', last=False)
         model_dump.move_to_end('obi_version', last=False)
 
         # Order the keys in subdict "form"
