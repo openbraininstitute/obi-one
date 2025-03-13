@@ -39,7 +39,7 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
         print("\ngenerate_grid_scan")
 
         try:
-            grid_scan = obi.GridScan(form=form, output_root='../obi_output/fastapi_test/{model_name}/grid_scan')
+            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")
             grid_scan.generate()
         except Exception as e:
             print(e)
