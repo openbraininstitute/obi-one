@@ -1,30 +1,30 @@
 import json
 
-# input_nodeset_file = '/Users/james/Documents/obi/gpfs/bbp.cscs.ch/project/proj83/circuits/Bio_M/20200805-pure-sonata/node_sets.json'
-input_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/original_node_sets.json'
+"""
+Before running this script, make sure to copy node_sets.json 
+to original_node_sets.json so that we don't lose the original
+"""
 
-with open(input_nodeset_file, 'r') as file:
-    nodeset_dict = json.load(file)
+# input_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/original_node_sets.json'
 
-new_nodeset_dict = nodeset_dict.copy()
+# with open(input_nodeset_file, 'r') as file:
+#     nodeset_dict = json.load(file)
 
-for layer in [[1], [4], [5], [6]]:
-    for hex_nodeset_name in ['hex0', 'hex1']:
+# new_nodeset_dict = nodeset_dict.copy()
 
-        hex_nodeset = nodeset_dict[hex_nodeset_name]
+# for layer in [[1], [4], [5], [6]]:
+#     for hex_nodeset_name in ['hex0', 'hex1']:
 
-        new_hex_nodeset = hex_nodeset.copy()
+#         hex_nodeset = nodeset_dict[hex_nodeset_name]
 
-        new_hex_nodeset['node_id'] = hex_nodeset['node_id']
-        new_hex_nodeset['layer'] = str(layer[0])
+#         new_hex_nodeset = hex_nodeset.copy()
 
-        print(f"{hex_nodeset_name}_layer{layer[0]}")
-        new_nodeset_dict[f"{hex_nodeset_name}_layer{layer[0]}"] = new_hex_nodeset
+#         new_hex_nodeset['node_id'] = hex_nodeset['node_id']
+#         new_hex_nodeset['layer'] = str(layer[0])
 
-    #     break
-    # break
+#         print(f"{hex_nodeset_name}_layer{layer[0]}")
+#         new_nodeset_dict[f"{hex_nodeset_name}_layer{layer[0]}"] = new_hex_nodeset
 
-
-output_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/node_sets.json'
-with open(output_nodeset_file, 'w') as file:
-    json.dump(new_nodeset_dict, file, indent=4)
+# output_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/node_sets.json'
+# with open(output_nodeset_file, 'w') as file:
+#     json.dump(new_nodeset_dict, file, indent=4)

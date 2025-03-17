@@ -7,6 +7,7 @@ import os, copy, json
 from collections import OrderedDict
 from obi.modeling.unions.unions_form import FormUnion
 
+
 class Scan(OBIBaseModel):
     """
     - Takes a Form & output_root as input
@@ -17,6 +18,7 @@ class Scan(OBIBaseModel):
 
     form: FormUnion
     output_root: str
+    coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
@@ -153,6 +155,7 @@ class Scan(OBIBaseModel):
                 coordinate_instance.scan_output_root = self.output_root
 
                 # Create the coordinate_output_root directory
+                coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
                 os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
                 # Call the coordinate_instance's generate() function
@@ -187,6 +190,7 @@ class Scan(OBIBaseModel):
                 coordinate_instance.scan_output_root = self.output_root
 
                 # Create the coordinate_output_root directory
+                coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
                 os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
                 # Call the coordinate_instance's run() function

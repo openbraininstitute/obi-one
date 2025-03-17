@@ -26,6 +26,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def run(self) -> str:
 
         try:
+            print(self.coordinate_output_root)
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
                                             self.initialize.circuit_path,

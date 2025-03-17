@@ -12,10 +12,17 @@ class SingleCoordinateScanParams(OBIBaseModel):
     nested_coordinate_subpath_str: str = ''
 
     @property
-    def nested_param_value_subpath(self):
+    def nested_param_name_and_value_subpath(self):
         self.nested_coordinate_subpath_str = ""
         for scan_param in self.scan_params:
             self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{scan_param.location_str}={scan_param.value}/"
+        return self.nested_coordinate_subpath_str
+
+    @property
+    def nested_param_value_subpath(self):
+        self.nested_coordinate_subpath_str = ""
+        for scan_param in self.scan_params:
+            self.nested_coordinate_subpath_str = self.nested_coordinate_subpath_str + f"{scan_param.value}/"
         return self.nested_coordinate_subpath_str
 
     def display_parameters(self):
@@ -33,6 +40,7 @@ class SingleCoordinateMixin:
     idx: int = -1
     scan_output_root: str = ""
     _coordinate_output_root: str = ""
+    coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
     @field_validator("*", mode="before")
@@ -55,11 +63,13 @@ class SingleCoordinateMixin:
     def coordinate_output_root(self):
 
         if self._coordinate_output_root == "":
-            self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_params.nested_param_value_subpath)
 
-            # Old index based directories
-            # if self._coordinate_output_root == "":
-            # self._coordinate_output_root = os.path.join(self.scan_output_root, f"{self.idx}")
+            if self.coordinate_directory_option == "NAME_EQUALS_VALUE":
+                self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_params.nested_param_name_and_value_subpath)
+            elif self.coordinate_directory_option == "VALUE":
+                self._coordinate_output_root = os.path.join(self.scan_output_root, self.single_coordinate_scan_params.nested_param_value_subpath)
+            elif self.coordinate_directory_option == "ZERO_INDEX":
+                self._coordinate_output_root = os.path.join(self.scan_output_root, f"{self.idx}")
 
         return self._coordinate_output_root
 
