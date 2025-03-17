@@ -12,6 +12,8 @@ uv pip install '.[jupyter,subcircuit_extraction,connectivity_extraction,fastapi_
 
 uv pip install -e .
 
+python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
+
 
 # Todo
 
