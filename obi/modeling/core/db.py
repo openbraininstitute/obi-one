@@ -43,7 +43,7 @@ class CircuitCollectionEntity(Base):
     )
 
     def __repr__(self):
-        return f"<CircuitCollectionEntity(id={self.id}, name='{self.name}')>"
+        return f"<CircuitCollectionEntity(id={self.id}')>" # , name='{self.name}
 
 
 def SaveCircuitCollectionEntity(circuits: list[CircuitEntity]):
@@ -54,7 +54,7 @@ def SaveCircuitCollectionEntity(circuits: list[CircuitEntity]):
 
 import os
 session = None
-def load_db(db_path='sqlite:///obi.db'):
+def database(db_path='sqlite:///obi.db'):
 
     # Setup SQLite in-memory database for simplicity
     engine = create_engine(db_path, echo=True)
