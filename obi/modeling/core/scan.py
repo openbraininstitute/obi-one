@@ -281,6 +281,16 @@ class Scan(OBIBaseModel):
             single_coordinate_parameters.display_parameters()
 
 
+    def save(self):
+
+        coordinate_instance_entities = []
+        for coordinate_instance in self.coordinate_instances():
+            coordinate_instance_entity = coordinate_instance.save_single()
+            coordinate_instance_entities.append(coordinate_instance_entity)
+
+        self.form.save_collection(coordinate_instance_entities)
+
+
 
 from itertools import product
 class GridScan(Scan):
