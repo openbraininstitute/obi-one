@@ -171,8 +171,8 @@ class Scan(OBIBaseModel):
         # Serialize the scan
         self.serialize(os.path.join(self.output_root, "generate_scan_config.json"))
 
-        # Create a bbp_workflow_campaign_config
-        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
+        # # Create a bbp_workflow_campaign_config
+        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
    
     def run(self):
@@ -206,8 +206,8 @@ class Scan(OBIBaseModel):
         # Serialize the scan
         self.serialize(os.path.join(self.output_root, "run_scan_config.json"))
 
-        # Create a bbp_workflow_campaign_config
-        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
+        # # Create a bbp_workflow_campaign_config
+        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     
    
@@ -219,7 +219,7 @@ class Scan(OBIBaseModel):
         """
    
         # Dict representation of the scan object
-        model_dump = self.model_dump(serialize_as_any=True)
+        model_dump = self.model_dump()
 
         # Add the OBI version
         model_dump["obi_version"] = version("obi")
@@ -260,7 +260,7 @@ class Scan(OBIBaseModel):
             campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
 
             # coords
-            for multi_param in self.multiple_value_parameters():
+            for multi_param in multi_value_parameters:
                 sub_d = {multi_param.location_str: {
                                         "dims": [multi_param.location_str],
                                         "attrs": {},

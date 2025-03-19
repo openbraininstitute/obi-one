@@ -1,6 +1,7 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
+from obi.modeling.core.base import NamedPath
 
 class ConnectivityMatrixExtractions(Form):
     """
@@ -9,7 +10,7 @@ class ConnectivityMatrixExtractions(Form):
     _single_coord_class_name = "ConnectivityMatrixExtraction"
 
     class Initialize(Block):
-        circuit_path: str | list[str]
+        circuit_path: NamedPath | list[NamedPath]
         edge_population: None | str | list[None | str] = None
         node_attributes: None | tuple[str, ...] | list[None | tuple[str, ...]] = None
 
@@ -25,7 +26,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
     """
     """
 
-    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "layer", "synapse_class")
+    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "etype", "layer", "synapse_class")
 
     def run(self) -> None:
 
@@ -37,7 +38,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
 
             # Load circuit
             print(f"Info: Loading circuit '{self.initialize.circuit_path}'")
-            c = Circuit(self.initialize.circuit_path)
+            c = Circuit(self.initialize.circuit_path.path)
             popul_names = c.edges.population_names
             assert len(popul_names) > 0, "Circuit does not have any edge populations!"
             edge_popul = self.initialize.edge_population

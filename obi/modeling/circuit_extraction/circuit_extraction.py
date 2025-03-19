@@ -2,6 +2,7 @@ from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.db import SaveCircuitEntity, SaveCircuitCollectionEntity
+from obi.modeling.core.base import NamedPath
 
 class CircuitExtractions(Form):
     """
@@ -10,7 +11,7 @@ class CircuitExtractions(Form):
     _single_coord_class_name: str = "CircuitExtraction"
 
     class Initialize(Block):
-        circuit_path: str | list[str]
+        circuit_path: NamedPath | list[NamedPath]
         node_set: str | list[str]
 
     initialize: Initialize
@@ -44,7 +45,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             print(self.coordinate_output_root)
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
-                                            self.initialize.circuit_path,
+                                            self.initialize.circuit_path.path,
                                             True,
                                             False)
             
