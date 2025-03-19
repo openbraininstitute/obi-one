@@ -261,11 +261,10 @@ class Scan(OBIBaseModel):
 
             # coords
             for multi_param in multi_value_parameters:
-                data = [_v.model_dump() if hasattr(_v, "model_dump") else _v for _v in multi_param.values]
                 sub_d = {multi_param.location_str: {
                                         "dims": [multi_param.location_str],
                                         "attrs": {},
-                                        "data": data
+                                        "data": multi_param.values
                                     }
                         }
                 campaign_config["coords"].update(sub_d)
