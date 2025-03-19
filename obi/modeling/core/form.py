@@ -11,3 +11,7 @@ class Form(OBIBaseModel):
         class_to_cast_to = getattr(module, self._single_coord_class_name)
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
         return single_coord
+    
+    @property
+    def single_coord_scan_default_subpath(self):
+        return self._single_coord_class_name + "/"
