@@ -26,7 +26,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
     """
     """
 
-    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "layer", "synapse_class")
+    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "etype", "layer", "synapse_class")
 
     def run(self) -> None:
 
