@@ -67,6 +67,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
                 original_circuit_config_copy = original_circuit_config.copy()
                 original_circuit_config_copy['networks']['edges'][0]['edges_file'] = "external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical.h5"
+                original_circuit_config_copy['networks']['edges'][3]['edges_file'] = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/edges.h5"
 
                 with open(self.coordinate_output_root + "/circuit_config.json", 'w') as config_file:
                     json.dump(original_circuit_config_copy, config_file, indent=4)
