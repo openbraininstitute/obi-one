@@ -88,7 +88,7 @@ class SingleCoordinateMixin:
 
     def serialize(self, output_path):
 
-        model_dump = self.model_dump(serialize_as_any=True)
+        model_dump = self.model_dump()
         model_dump = OrderedDict(model_dump)
         model_dump["obi_version"] = version("obi")
         model_dump["coordinate_output_root"] = self.coordinate_output_root

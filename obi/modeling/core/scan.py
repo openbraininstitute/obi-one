@@ -219,7 +219,7 @@ class Scan(OBIBaseModel):
         """
    
         # Dict representation of the scan object
-        model_dump = self.model_dump(serialize_as_any=True)
+        model_dump = self.model_dump()
 
         # Add the OBI version
         model_dump["obi_version"] = version("obi")
@@ -260,11 +260,12 @@ class Scan(OBIBaseModel):
             campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
 
             # coords
-            for multi_param in self.multiple_value_parameters():
+            for multi_param in multi_value_parameters:
+                data = [_v.model_dump() if hasattr(_v, "model_dump") else _v for _v in multi_param.values]
                 sub_d = {multi_param.location_str: {
                                         "dims": [multi_param.location_str],
                                         "attrs": {},
-                                        "data": multi_param.values
+                                        "data": data
                                     }
                         }
                 campaign_config["coords"].update(sub_d)
