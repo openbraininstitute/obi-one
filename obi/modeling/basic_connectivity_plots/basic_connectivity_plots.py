@@ -1,6 +1,7 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
+from obi.modeling.core.base import NamedPath
 
 class BasicConnectivityPlots(Form):
     """
@@ -10,7 +11,7 @@ class BasicConnectivityPlots(Form):
     _single_coord_class_name = "BasicConnectivityPlot"
 
     class Initialize(Block):
-        matrix_path: str | list[str]
+        matrix_path: NamedPath | list[NamedPath]
         # TODO: implement node population option
         # node_population: None | str | list[None | str] = None
         plot_formats:  None|tuple[str, ...] = None
@@ -39,7 +40,7 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
 
             # Load matrix
             print(f"Info: Loading matrix '{self.initialize.matrix_path}'")
-            adj = ConnectivityMatrix.from_h5(self.initialize.matrix_path).matrix
+            adj = ConnectivityMatrix.from_h5(self.initialize.matrix_path.path).matrix
             # Set plot format output
             if self.initialize.plot_formats is None:
                 plot_formats = self.DEFAULT_FORMATS
