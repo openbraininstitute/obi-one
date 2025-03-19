@@ -1,4 +1,4 @@
-# Install instructions (draft/notes)
+# Install instructions
 
 cd \<repo folder\>
 
@@ -13,21 +13,3 @@ uv pip install '.[jupyter,subcircuit_extraction,connectivity_extraction,fastapi_
 uv pip install -e .
 
 python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
-
-
-# Todo
-
-Rewrite several comments in scan.py
-
-Complete bbp-workflow like simulation campaign config
-
-Test building Block dependency tree
-
-Test/integrate Block dictionary parameters for filtering
-
-
-## Feedback/Noticed by Christoph
-
-When a path of type string is specified as a parameter (i.e. circuit paths), generating the output paths produces many subpaths (for each "/")
-
-Should wrong list lengths be checked for on Coupled Coordinate generation?
