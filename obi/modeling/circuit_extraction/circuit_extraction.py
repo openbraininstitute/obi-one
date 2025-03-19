@@ -2,7 +2,7 @@ from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.db import SaveCircuitEntity, SaveCircuitCollectionEntity
-from obi.modeling.circuit.circuit import CircuitPath
+from obi.modeling.core.base import NamedPath
 
 class CircuitExtractions(Form):
     """
@@ -11,7 +11,7 @@ class CircuitExtractions(Form):
     _single_coord_class_name: str = "CircuitExtraction"
 
     class Initialize(Block):
-        circuit_path: CircuitPath | list[CircuitPath]
+        circuit_path: NamedPath | list[NamedPath]
         node_set: str | list[str]
 
     initialize: Initialize

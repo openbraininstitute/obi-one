@@ -1,7 +1,7 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
-from obi.modeling.circuit.circuit import CircuitPath
+from obi.modeling.core.base import NamedPath
 
 class ConnectivityMatrixExtractions(Form):
     """
@@ -10,7 +10,7 @@ class ConnectivityMatrixExtractions(Form):
     _single_coord_class_name = "ConnectivityMatrixExtraction"
 
     class Initialize(Block):
-        circuit_path: CircuitPath | list[CircuitPath]
+        circuit_path: NamedPath | list[NamedPath]
         edge_population: None | str | list[None | str] = None
         node_attributes: None | tuple[str, ...] | list[None | tuple[str, ...]] = None
 

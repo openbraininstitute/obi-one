@@ -1,4 +1,5 @@
 from obi.modeling.core.base import OBIBaseModel
+from obi.modeling.core.base import NamedPath
 from obi.modeling.core.form import Form
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.block import Block
@@ -8,7 +9,6 @@ from obi.modeling.core.fastapi import activate_fastapi_app
 
 
 from obi.modeling.circuit.circuit import Circuit
-from obi.modeling.circuit.circuit import CircuitPath
 from obi.modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet  
 from obi.modeling.circuit.synapse_sets import SynapseSet, IDSynapseSet
 from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet, SectionIntracellularLocationSet
