@@ -38,7 +38,7 @@ class Block(OBIBaseModel):
         
         for key, value in self.__dict__.items():
 
-            if isinstance(value, list) and len(value) > 1:
+            if isinstance(value, list) # and len(value) > 1:
                 multi_values = value
                 if block_key != '':
                     self._multiple_value_parameters.append(MultiValueScanParam(location_list=[category_name, block_key, key], values=multi_values))
