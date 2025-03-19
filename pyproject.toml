@@ -37,4 +37,9 @@ jupyter = [
 ]
 
 
+database = [
+    "sqlalchemy"
+]
+
+
 

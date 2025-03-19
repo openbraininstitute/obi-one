@@ -253,15 +253,31 @@ class Scan(OBIBaseModel):
         # dims
         campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
 
-        # coords
-        for multi_param in self.multiple_value_parameters():
-            sub_d = {multi_param.location_str: {
-                                    "dims": [multi_param.location_str],
-                                    "attrs": {},
-                                    "data": multi_param.values
-                                 }
-                    }
-            campaign_config["coords"].update(sub_d)
+        
+        multi_value_parameters = self.multiple_value_parameters()
+        if len(multi_value_parameters):
+            # dims
+            campaign_config['dims'] = [multi_param.location_str for multi_param in self.multiple_value_parameters()]
+
+            # coords
+            for multi_param in self.multiple_value_parameters():
+                sub_d = {multi_param.location_str: {
+                                        "dims": [multi_param.location_str],
+                                        "attrs": {},
+                                        "data": multi_param.values
+                                    }
+                        }
+                campaign_config["coords"].update(sub_d)
+        else:
+            campaign_config['dims'] = ["single_coordinate"]
+            campaign_config["coords"] = {
+                                    "single_coordinate": {
+                                        "dims": ["single_coordinate"],
+                                        "attrs": {},
+                                        "data": [self.form.single_coord_scan_default_subpath]
+                                    }
+                                }
+
 
         # data
         campaign_config["data"] = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
@@ -281,6 +297,16 @@ class Scan(OBIBaseModel):
             single_coordinate_parameters.display_parameters()
 
 
+    def save(self):
+
+        coordinate_instance_entities = []
+        for coordinate_instance in self.coordinate_instances():
+            coordinate_instance_entity = coordinate_instance.save_single()
+            coordinate_instance_entities.append(coordinate_instance_entity)
+
+        self.form.save_collection(coordinate_instance_entities)
+
+
 
 from itertools import product
 class GridScan(Scan):
@@ -293,15 +319,20 @@ class GridScan(Scan):
         Description
         """
         single_values_by_multi_value = []
-        for multi_value in self.multiple_value_parameters():
-            single_values = []
-            for value in multi_value.values:
-                single_values.append(SingleValueScanParam(location_list=multi_value.location_list, value=value))
-            single_values_by_multi_value.append(single_values)
+        multi_value_parameters = self.multiple_value_parameters()
+        if len(multi_value_parameters):
+            for multi_value in multi_value_parameters:
+                single_values = []
+                for value in multi_value.values:
+                    single_values.append(SingleValueScanParam(location_list=multi_value.location_list, value=value))
+                single_values_by_multi_value.append(single_values)
 
-        self._coordinate_parameters = []
-        for scan_params in product(*single_values_by_multi_value):
-            self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
+            self._coordinate_parameters = []
+            for scan_params in product(*single_values_by_multi_value):
+                self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
+
+        else:
+            self._coordinate_parameters = [SingleCoordinateScanParams(nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath)]
                 
         # Optionally display the coordinate parameters
         if display: self.display_coordinate_parameters()
