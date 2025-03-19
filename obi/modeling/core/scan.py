@@ -171,8 +171,8 @@ class Scan(OBIBaseModel):
         # Serialize the scan
         self.serialize(os.path.join(self.output_root, "generate_scan_config.json"))
 
-        # Create a bbp_workflow_campaign_config
-        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
+        # # Create a bbp_workflow_campaign_config
+        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
    
     def run(self):
@@ -206,8 +206,8 @@ class Scan(OBIBaseModel):
         # Serialize the scan
         self.serialize(os.path.join(self.output_root, "run_scan_config.json"))
 
-        # Create a bbp_workflow_campaign_config
-        self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
+        # # Create a bbp_workflow_campaign_config
+        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
     
    
