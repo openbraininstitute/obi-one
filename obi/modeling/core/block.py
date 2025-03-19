@@ -14,11 +14,11 @@ def nested_param_short(nested_param_list):
 
 class ScanParam(OBIBaseModel):
     location_list: list = []
-    location_str: str = ""
+    _location_str: str = ""
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.location_str = nested_param_short(self.location_list)
+    @property
+    def location_str(self):
+        return nested_param_short(self._location_str)
 
 class MultiValueScanParam(ScanParam):
     values: list[Any] = [None]
