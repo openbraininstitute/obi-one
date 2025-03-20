@@ -35,6 +35,7 @@ def copy_directory(source_dir, destination_dir):
         os.makedirs(destination_dir, exist_ok=True)
         os.system(f"cp -r {source_dir} {destination_dir}")
 
+from bluepysnap import Circuit
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     """"""
     pass
@@ -42,14 +43,48 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def run(self) -> str:
 
         try:
-            print(self.coordinate_output_root)
+            # Create subcircuit
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
                                             self.initialize.circuit_path.path,
                                             True,
                                             False)
-            
 
+            # Custom edit of the circuit config
+            with open(self.initialize.circuit_path.path, 'r') as original_circuit_config_file:
+                original_circuit_config = json.load(original_circuit_config_file)
+
+                original_circuit_config_copy = original_circuit_config.copy()
+                original_circuit_config_copy['networks']['edges'][0]['edges_file'] = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/edges.h5"
+                original_circuit_config_copy['networks']['edges'][3]['edges_file'] = "external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical.h5"
+                original_circuit_config_copy['networks']['nodes'].pop(3)
+                
+
+                with open(self.coordinate_output_root + "/circuit_config.json", 'w') as config_file:
+                    json.dump(original_circuit_config_copy, config_file, indent=4)
+
+            
+            # Copy subcircuit morphologies
+            original_circuit = Circuit(self.initialize.circuit_path.path)
+            new_circuit_path = self.coordinate_output_root + "circuit_config.json"
+            new_circuit = Circuit(new_circuit_path)
+            for pop_name, pop in new_circuit.nodes.items():
+
+                print(pop_name, len(pop.get()))
+
+                if 'morphology' in pop.property_names:
+
+                    h5_morphologies_dir = pop.config['morphologies_dir'] + "/h5/"
+                    ascii_morphologies_dir = pop.config['morphologies_dir'] + "/ascii/"
+                    os.makedirs(h5_morphologies_dir, exist_ok=True)
+                    os.makedirs(ascii_morphologies_dir, exist_ok=True)
+
+                    for morphology_name in pop.get()['morphology'].unique():
+
+                        os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/h5/{morphology_name}.h5 {h5_morphologies_dir}{morphology_name}.h5")
+                        os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/ascii/{morphology_name}.asc {ascii_morphologies_dir}{morphology_name}.asc")
+                        
+            # Copy emodels hoc            
             with open(self.coordinate_output_root + "circuit_config.json", 'r') as config_file:
                 config = json.load(config_file)
 
@@ -63,19 +98,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                             print("Copying biophysical_neuron_models")
                             copy_directory(population_dict['biophysical_neuron_models_dir'], os.path.join(self.coordinate_output_root, "emodels_hoc"))
 
-            with open(self.initialize.circuit_path, 'r') as original_circuit_config_file:
-                original_circuit_config = json.load(original_circuit_config_file)
 
-                original_circuit_config_copy = original_circuit_config.copy()
-                original_circuit_config_copy['networks']['edges'][0]['edges_file'] = "external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/external_S1nonbarrel_neurons__S1nonbarrel_neurons__chemical.h5"
-                original_circuit_config_copy['networks']['edges'][3]['edges_file'] = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/edges.h5"
-
-                with open(self.coordinate_output_root + "/circuit_config.json", 'w') as config_file:
-                    json.dump(original_circuit_config_copy, config_file, indent=4)
-
-
-
-            
 
 
         except Exception as e:

@@ -16,9 +16,15 @@ build-backend = "setuptools.build_meta"
 packages = ["obi"]
 
 [project.optional-dependencies]
+#subcircuit_extraction = [
+ #   "brainbuilder"
+#]
 subcircuit_extraction = [
-    "brainbuilder"
+    "brainbuilder @ file:////Users/james/Documents/obi/code/brainbuilder"
 ]
+
+
+
 connectivity_extraction = [
     "Connectome-Utilities"
 ]
