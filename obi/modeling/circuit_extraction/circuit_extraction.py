@@ -43,6 +43,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def run(self) -> str:
 
         try:
+
             # Create subcircuit
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
@@ -70,33 +71,30 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             new_circuit = Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
 
-                print(pop_name, len(pop.get()))
+                if pop.config['type'] == 'biophysical':
 
-                if 'morphology' in pop.property_names:
+                    print(pop_name, len(pop.get()))
 
-                    h5_morphologies_dir = pop.config['morphologies_dir'] + "/h5/"
-                    ascii_morphologies_dir = pop.config['morphologies_dir'] + "/ascii/"
-                    os.makedirs(h5_morphologies_dir, exist_ok=True)
-                    os.makedirs(ascii_morphologies_dir, exist_ok=True)
+                    if 'morphology' in pop.property_names:
 
-                    for morphology_name in pop.get()['morphology'].unique():
+                        h5_morphologies_dir = pop.config['morphologies_dir'] + "/h5/"
+                        ascii_morphologies_dir = pop.config['morphologies_dir'] + "/ascii/"
+                        os.makedirs(h5_morphologies_dir, exist_ok=True)
+                        os.makedirs(ascii_morphologies_dir, exist_ok=True)
 
-                        os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/h5/{morphology_name}.h5 {h5_morphologies_dir}{morphology_name}.h5")
-                        os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/ascii/{morphology_name}.asc {ascii_morphologies_dir}{morphology_name}.asc")
-                        
-            # Copy emodels hoc            
-            with open(self.coordinate_output_root + "circuit_config.json", 'r') as config_file:
-                config = json.load(config_file)
+                        for morphology_name in pop.get()['morphology'].unique():
 
-                for nodes_dict in config['networks']['nodes']:
-                    for population_key, population_dict in nodes_dict['populations'].items():
+                            os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/h5/{morphology_name}.h5 {h5_morphologies_dir}{morphology_name}.h5")
+                            os.system(f"cp {original_circuit.nodes[pop_name].config['morphologies_dir']}/ascii/{morphology_name}.asc {ascii_morphologies_dir}{morphology_name}.asc")
+                            
+                    print(pop.property_names)
+                    if 'biophysical_neuron_models_dir' in pop.config:
+                        print("Copying biophysical_neuron_models")
 
-                        # if 'morphologies_dir' in population_dict:                
-                        #     print("Copying morphologies")
-                            # copy_directory(population_dict['morphologies_dir'], os.path.join(self.coordinate_output_root, "morphologies"))
-                        if 'biophysical_neuron_models_dir' in population_dict:
-                            print("Copying biophysical_neuron_models")
-                            copy_directory(population_dict['biophysical_neuron_models_dir'], os.path.join(self.coordinate_output_root, "emodels_hoc"))
+                        source_dir = original_circuit.nodes[pop_name].config['biophysical_neuron_models_dir']
+                        dest_dir = os.path.join(self.coordinate_output_root, "emodels_hoc")
+
+                        os.system(f"cp -r {source_dir} {dest_dir}")
 
 
 
