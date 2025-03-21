@@ -19,6 +19,12 @@ packages = ["obi"]
 subcircuit_extraction = [
     "brainbuilder"
 ]
+#subcircuit_extraction = [
+#    "brainbuilder @ file:////Users/james/Documents/obi/code/brainbuilder"
+#]
+
+
+
 connectivity_extraction = [
     "Connectome-Utilities"
 ]
