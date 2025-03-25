@@ -15,50 +15,97 @@ class BasicConnectivityPlots(Form):
         # TODO: implement node population option
         # node_population: None | str | list[None | str] = None
         plot_formats:  None|tuple[str, ...] = None
+        dpi: None|int =None
 
     initialize: Initialize
 
 
 import os
-from conntility.connectivity import ConnectivityMatrix
 from typing import ClassVar
+import traceback
+
+import numpy as np
+import matplotlib.colors as mcolors
+
+from conntility import ConnectivityMatrix
+from connalysis.network.topology import rc_submatrix, node_degree
+from connalysis.randomization import ER_model
+from .helpers import *
 
 class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
     """
     #TODO: Add docstring
     """
     DEFAULT_FORMATS: ClassVar [tuple[str, ...]] = ("png", "pdf",  "svg")
+    DEFAULT_RESOLUTION:  ClassVar[int] = 300
 
     def run(self) -> None:
 
         try:
             print(f"Info: Running idx {self.idx}")
 
-            #TODO: Fis handling of files. 
-            # output_file = os.path.join(self.coordinate_output_root, "connectivity_matrix.h5")
-            #assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
-
-            # Load matrix
-            print(f"Info: Loading matrix '{self.initialize.matrix_path}'")
-            adj = ConnectivityMatrix.from_h5(self.initialize.matrix_path.path).matrix
-            # Set plot format output
+            # Set plot format and resolution
             if self.initialize.plot_formats is None:
                 plot_formats = self.DEFAULT_FORMATS
             else:
                 plot_formats = self.initialize.plot_formats
+            if self.initialize.dpi is None:
+                dpi = self.DEFAULT_RESOLUTION
+            else:
+                dpi = self.initialize.dpi
 
-            # TODO: DO SOMETHING HERE
+            # Load matrix
+            print(f"Info: Loading matrix '{self.initialize.matrix_path}'")
+            conn = ConnectivityMatrix.from_h5(self.initialize.matrix_path.path)
 
-            print(f"The connectivity matrix has shape {adj.shape}")
-            print(f"The file formats required are {plot_formats}")
+            # Size metrics 
+            size = np.array([len(conn.vertices),
+                             conn.matrix.nnz,
+                             conn.matrix.sum()])
+            print("Neuron, connection and synapse counts")
+            print(size) 
+            output_file = os.path.join(self.coordinate_output_root, f"size.npy")
+            np.save(output_file, size)
+
+            # Node metrics 
+            node_cmaps={"synapse_class":mcolors.LinearSegmentedColormap.from_list('RedBlue', ["C0", "C3"]), 
+                        "layer":plt.get_cmap("Dark2"), 
+                        "mtype": plt.get_cmap("GnBu")}
+            fig=plot_node_stats(conn, node_cmaps)
+            for format in plot_formats:
+                output_file = os.path.join(self.coordinate_output_root, f"node_stats.{format}")
+                fig.savefig(output_file, dpi=dpi,  bbox_inches='tight')
 
 
-                                                   
+            ### Compute network metrics
+            # Degrees of matrix and control 
+            adj=conn.matrix.astype(bool)
+            adj_ER=ER_model(adj)
+            deg=node_degree(adj, direction=('IN', 'OUT'))
+            deg_ER=node_degree(adj_ER, direction=('IN', 'OUT'))
 
-            # Save to file
-            # cmat.to_h5(output_file)
-            # if os.path.exists(output_file):
-            #     print(f"Info: Connectivity matrix successfully written to '{output_file}'")
+            # Connection probabilities per pathway
+            conn_probs={"full":{}, "within":{}}
+            for grouping_prop in ["synapse_class", "layer", "mtype"]:
+                conn_probs["full"][grouping_prop]= connection_probability_pathway(conn, grouping_prop)
+                conn_probs["within"][grouping_prop]= connection_probability_within_pathway(conn, grouping_prop, max_dist=100)
+
+            # Global connection probabilities
+            global_conn_probs={"full":None, "within":None}
+            global_conn_probs["full"]= compute_global_connectivity(adj, adj_ER, type="full")
+            global_conn_probs["widthin"]=compute_global_connectivity(adj, adj_ER, v=conn.vertices, type="within", max_dist=100, cols=["x", "y"])
+            
+            ### Plot network metrics
+            full_width=16 # width of the Figure TODO move out 
+            fig_network_global=plot_connection_probability_stats(full_width, global_conn_probs)
+            fig_network_pathway=plot_connection_probability_pathway_stats(full_width, conn_probs, deg, deg_ER)
+            for format in plot_formats:
+                output_file = os.path.join(self.coordinate_output_root, f"network_global_stats.{format}")
+                fig_network_global.savefig(output_file, dpi=dpi,  bbox_inches='tight')
+                output_file = os.path.join(self.coordinate_output_root, f"network_pathway_stats.{format}")
+                fig_network_pathway.savefig(output_file, dpi=dpi,  bbox_inches='tight')
+            
+            print(f"Done with {self.idx}")
 
         except Exception as e:
-            print(f"Error: {e}")
+            traceback.print_exception(e)
