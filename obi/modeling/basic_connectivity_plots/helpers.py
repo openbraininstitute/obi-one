@@ -98,16 +98,48 @@ def compute_global_connectivity(m, m_ER, v=None, type="full", max_dist=100, cols
 def make_pie_plot(ax, conn, grouping_prop, cmaps):
     category_counts = conn.vertices[grouping_prop].value_counts()
     category_counts = category_counts[category_counts > 0]
+    
+    # Group categories with percentages ≤ 2% into "Other"
+    total = category_counts.sum()
+    percentages = (category_counts / total) * 100
+    small_categories = percentages[percentages <= 2].index
+    if len(small_categories) > 1:
+        other_count = category_counts[small_categories].sum()
+        category_counts = category_counts.drop(small_categories)
+        category_counts["Other"] = other_count
+    
     # Define colors
-    cmap=cmaps[grouping_prop]
-    if grouping_prop=="synapse_class":
+    cmap = cmaps[grouping_prop]
+    if grouping_prop == "synapse_class":
         # Fix red/blue for EXC/INH
-        color_map={"EXC":cmap(cmap.N), "INH":cmap(0)}
-        colors = [color_map[key] for key in category_counts.index]
+        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0)}
+        colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
-        
-    ax.pie(category_counts, labels=category_counts.index, autopct='%1.1f%%', startangle=140, colors=colors,textprops={'fontsize': 8})
+    
+    # Create the pie chart without percentages inside
+    wedges, _ = ax.pie(
+        category_counts, startangle=140, colors=colors, textprops={'fontsize': 8}
+    )
+    
+    # Add annotations outside the pie chart to avoid overlapping
+    for i, wedge in enumerate(wedges):
+        angle = (wedge.theta2 + wedge.theta1) / 2  # Midpoint angle of the wedge
+        x = np.cos(np.radians(angle))  # X-coordinate for the label
+        y = np.sin(np.radians(angle))  # Y-coordinate for the label
+        extent = 1.4
+        label_x = extent * x  # Position the label farther out
+        label_y = extent * y
+        ax.text(
+            label_x, label_y,
+            f"{category_counts.index[i]}: {percentages.iloc[i]:.1f}%",
+            fontsize=8, ha='center', va='center'
+        )
+    
+    # Adjust limits to ensure all labels are visible
+    ax.set_xlim(-extent-0.1, extent+0.1)
+    ax.set_ylim(-extent-0.1, extent+0.1)
+    
     return ax
 
 def plot_node_stats(conn,cmaps):
@@ -235,9 +267,14 @@ def plot_in_out_deg(ax, direction, node_size=10, head_width=0.1, head_length=0.1
     ax.set_axis_off()
     return ax 
 
-def plot_connection_probability_pathway(ax, connection_prob, cmap):
-    #connection_prob=connection_probability_pathway(conn, grouping_prop)
-    plot= ax.imshow(connection_prob, cmap=cmap)
+def imshow_wrapper(ax, img, cutoff=15*15, perc=97.5, **kwargs):
+    if np.prod(img.shape) > cutoff:
+        kwargs.update({"clim": [0.0, np.percentile(img.values.ravel()[~np.isnan(img.values.ravel())], perc)]})
+    plot=ax.imshow(img, **kwargs)
+    return ax, plot
+
+def plot_connection_probability_pathway(ax, connection_prob, cmap, cutoff=15*15, perc=97.5, **kwargs):
+    ax, plot=imshow_wrapper(ax, connection_prob, cutoff=cutoff, perc=perc, cmap=cmap, **kwargs)
     ax.set_yticks(range(len(connection_prob)),labels= connection_prob.index)
     ax.set_xticks(range(len(connection_prob)),labels= connection_prob.index)
     return ax, plot
