@@ -14,8 +14,8 @@ class BasicConnectivityPlots(Form):
         matrix_path: NamedPath | list[NamedPath]
         # TODO: implement node population option
         # node_population: None | str | list[None | str] = None
-        plot_formats:  None|tuple[str, ...] = None
-        dpi: None|int =None
+        plot_formats:  tuple[str] = ("png", "pdf", "svg")
+        dpi: int = 300
 
     initialize: Initialize
 
@@ -34,7 +34,6 @@ from .helpers import *
 
 class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
     """
-    #TODO: Add docstring
     """
     DEFAULT_FORMATS: ClassVar [tuple[str, ...]] = ("png", "pdf",  "svg")
     DEFAULT_RESOLUTION:  ClassVar[int] = 300
@@ -45,14 +44,9 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             print(f"Info: Running idx {self.idx}")
 
             # Set plot format and resolution
-            if self.initialize.plot_formats is None:
-                plot_formats = self.DEFAULT_FORMATS
-            else:
-                plot_formats = self.initialize.plot_formats
-            if self.initialize.dpi is None:
-                dpi = self.DEFAULT_RESOLUTION
-            else:
-                dpi = self.initialize.dpi
+            plot_formats = self.initialize.plot_formats
+            dpi = self.initialize.dpi
+            
 
             # Load matrix
             print(f"Info: Loading matrix '{self.initialize.matrix_path}'")
