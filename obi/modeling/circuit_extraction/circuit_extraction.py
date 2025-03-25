@@ -119,13 +119,17 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                             rebase_config(_v, old_base, new_base)
 
             old_base = os.path.split(self.initialize.circuit_path.path)[0]
+            alt_base = old_base  # Alternative old base
+            for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
+                alt_base = alt_base.removesuffix(_sfix)  # Quick fix to deal with symbolic links in base circuit
             new_base = "$BASE_DIR"
             new_circuit_path = self.coordinate_output_root + "circuit_config.json"
-            shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")
+            # shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")
 
             with open(new_circuit_path, "r") as config_file:
                 config_dict = json.load(config_file)
             rebase_config(config_dict, old_base, new_base)
+            rebase_config(config_dict, alt_base, new_base)  # Quick fix to deal with symbolic links in base circuit
             with open(new_circuit_path, "w") as config_file:
                 json.dump(config_dict, config_file, indent=4)
 
