@@ -16,17 +16,29 @@ prefix = "nbS1"
 
 all_nodeset_names = []
 
-for layer in [[1], [4], [5], [6]]:
-    for hex_nodeset_name in ['hex0', 'hex1']:
+for layer in [[], [1], [2, 3], [4], [5], [6]]:
+    for hex_nodeset_name in ['hex0', 'hex1', 'hex2', 'hex3', 'hex4', 'hex5', 'hex6']:
 
         hex_nodeset = nodeset_dict[hex_nodeset_name]
 
         new_hex_nodeset = hex_nodeset.copy()
 
         new_hex_nodeset['node_id'] = hex_nodeset['node_id']
-        new_hex_nodeset['layer'] = str(layer[0])
 
-        nodeset_key = f"{prefix}-{hex_nodeset_name.upper()}-L{layer[0]}"
+        nodeset_key = f"{prefix}-{hex_nodeset_name.upper()}"
+
+        if len(layer):
+            layer_str_list = []
+            layer_str = ''
+            for l in layer:
+                layer_str += str(l)
+                layer_str_list.append(str(l))
+
+            # new_hex_nodeset['layer'] = layer_str
+            new_hex_nodeset['layer'] = layer_str_list
+            # print(new_hex_nodeset['layer'])
+            nodeset_key += f"-L{layer_str}"
+
         all_nodeset_names.append(nodeset_key)
         print(nodeset_key)
 

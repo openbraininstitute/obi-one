@@ -12,4 +12,6 @@ uv pip install '.[jupyter,subcircuit_extraction,connectivity_extraction,fastapi_
 
 uv pip install -e .
 
+uv pip install -e ../brainbuilder
+
 python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"

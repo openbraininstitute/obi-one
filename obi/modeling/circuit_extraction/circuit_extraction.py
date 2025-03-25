@@ -91,9 +91,15 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                     if 'biophysical_neuron_models_dir' in pop.config:
                         print("Copying biophysical_neuron_models")
 
+                        # Copy hoc files
                         source_dir = original_circuit.nodes[pop_name].config['biophysical_neuron_models_dir']
                         dest_dir = os.path.join(self.coordinate_output_root, "emodels_hoc")
+                        os.system(f"cp -r {source_dir} {dest_dir}")
 
+                        # Copy mod files                    
+                        source_dir, file_name = os.path.split(self.initialize.circuit_path.path)
+                        source_dir = os.path.join(source_dir, "mod")
+                        dest_dir = os.path.join(self.coordinate_output_root, "mod")
                         os.system(f"cp -r {source_dir} {dest_dir}")
 
 
