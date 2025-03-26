@@ -8,7 +8,7 @@
     "input": [
         {
             "data_type": {
-                "artefact": "Single cell simulation",
+                "artefact": "SingleCellSimulation",
                 "required_properties": []
             },
             "class": "single"
