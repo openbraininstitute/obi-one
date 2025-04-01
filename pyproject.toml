@@ -42,4 +42,9 @@ database = [
 ]
 
 
+blueetl = [
+    "blueetl"
+]
+
+
 

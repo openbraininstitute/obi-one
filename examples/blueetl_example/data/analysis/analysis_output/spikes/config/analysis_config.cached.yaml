@@ -1,0 +1,85 @@
+cache:
+  path: data/analysis/analysis_output/spikes
+  clear: false
+  readonly: false
+  skip_features: false
+  store_type: parquet
+simulations_filter:
+  seed:
+  - 334630
+  - 174404
+simulations_filter_in_memory: {}
+extraction:
+  report:
+    type: spikes
+    name: ''
+  neuron_classes:
+    All:
+      query: {}
+      population: default
+      node_set: null
+      node_sets_file: null
+      node_sets_checksum: null
+      limit: 1000
+      node_id: null
+    L2_X:
+      query:
+        mtype:
+        - L2_X
+      population: default
+      node_set: null
+      node_sets_file: null
+      node_sets_checksum: null
+      limit: 1000
+      node_id: null
+    L6_Y:
+      query:
+        mtype:
+        - L6_Y
+      population: default
+      node_set: null
+      node_sets_file: null
+      node_sets_checksum: null
+      limit: 1000
+      node_id: null
+  windows:
+    w1:
+      initial_offset: 0.0
+      bounds:
+      - 0.0
+      - 1.0
+      t_step: 0.0
+      n_trials: 0
+      trial_steps_value: 0.0
+      trial_steps_list: []
+      trial_steps_label: ''
+      window_type: spontaneous
+    w2:
+      initial_offset: 0.5
+      bounds:
+      - 0.0
+      - 1.0
+      t_step: 0.0
+      n_trials: 2
+      trial_steps_value: 0.1
+      trial_steps_list: []
+      trial_steps_label: ''
+      window_type: ''
+  trial_steps: {}
+features:
+- type: multi
+  name: null
+  groupby:
+  - simulation_id
+  - circuit_id
+  - neuron_class
+  - window
+  function: blueetl.external.bnac.calculate_features.calculate_features_multi
+  neuron_classes: []
+  windows: []
+  params:
+    export_all_neurons: true
+  params_product: {}
+  params_zip: {}
+  suffix: ''
+  multi_index: true

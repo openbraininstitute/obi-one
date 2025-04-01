@@ -8,7 +8,7 @@ source .venv/bin/activate
 
 uv sync
 
-uv pip install '.[jupyter,subcircuit_extraction,connectivity_extraction,fastapi_app,database]'
+uv pip install '.[jupyter,subcircuit_extraction,connectivity_extraction,fastapi_app,database,blueetl]'
 
 uv pip install -e .
 
