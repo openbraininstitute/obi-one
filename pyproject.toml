@@ -10,10 +10,12 @@ dependencies = [
     "pydantic>=2.10.6",
 
     # CIRCUIT EXTRACTION
-    "brainbuilder",
+    # "brainbuilder",
+    "brainbuilder @ git+https://github.com/openbraininstitute/brainbuilder.git@split_popul_fix",
 
     # CONNECTIVITY
     "Connectome-Utilities",
+    "cmake",
     "connectome-analysis>=1.0.1",
 
     # FAST API SERVICE
