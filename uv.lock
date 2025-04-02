@@ -246,8 +246,8 @@ sdist = { url = "https://files.pythonhosted.org/packages/2e/d3/d561f569d37c9a80f
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.20.2.dev2+gd0ffe47"
+source = { git = "https://github.com/openbraininstitute/brainbuilder.git?rev=split_popul_fix#d0ffe471d1b1d8e8c4f7597b31fcabd49af8b8ba" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "click" },
@@ -264,7 +264,6 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/ed/f55378f2ab62715e6b8f18bb0241dea70082c8cfb986ecc2e7dd77776b38/brainbuilder-0.20.1.tar.gz", hash = "sha256:d46c3dc831dbac24a926a6e7b31a9eeea06bcc5fa500b84efb8153e27b56fac3", size = 214237 }
 
 [[package]]
 name = "cached-property"
@@ -1766,52 +1765,39 @@ name = "obi"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-blueetl = [
     { name = "blueetl" },
-]
-connectivity = [
+    { name = "brainbuilder" },
+    { name = "cmake" },
     { name = "connectome-analysis" },
     { name = "connectome-utilities" },
-]
-database = [
-    { name = "sqlalchemy" },
-]
-fastapi-app = [
     { name = "fastapi" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-]
-jupyter = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
     { name = "notebook" },
-]
-subcircuit-extraction = [
-    { name = "brainbuilder" },
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "blueetl", marker = "extra == 'blueetl'" },
-    { name = "brainbuilder", marker = "extra == 'subcircuit-extraction'" },
-    { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-utilities", marker = "extra == 'connectivity'" },
-    { name = "fastapi", marker = "extra == 'fastapi-app'" },
-    { name = "ipykernel", marker = "extra == 'jupyter'" },
-    { name = "jupyter", marker = "extra == 'jupyter'" },
-    { name = "jupyterlab", marker = "extra == 'jupyter'" },
-    { name = "notebook", marker = "extra == 'jupyter'" },
+    { name = "blueetl" },
+    { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git?rev=split_popul_fix" },
+    { name = "cmake" },
+    { name = "connectome-analysis", specifier = ">=1.0.1" },
+    { name = "connectome-utilities" },
+    { name = "fastapi" },
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "jupyterlab" },
+    { name = "notebook" },
     { name = "pydantic", specifier = ">=2.10.6" },
-    { name = "sqlalchemy", marker = "extra == 'database'" },
-    { name = "starlette", marker = "extra == 'fastapi-app'" },
-    { name = "uvicorn", marker = "extra == 'fastapi-app'" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
-provides-extras = ["subcircuit-extraction", "connectivity", "fastapi-app", "jupyter", "database", "blueetl"]
 
 [[package]]
 name = "overrides"
