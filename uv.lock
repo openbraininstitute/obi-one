@@ -1766,52 +1766,37 @@ name = "obi"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-blueetl = [
     { name = "blueetl" },
-]
-connectivity = [
+    { name = "brainbuilder" },
     { name = "connectome-analysis" },
     { name = "connectome-utilities" },
-]
-database = [
-    { name = "sqlalchemy" },
-]
-fastapi-app = [
     { name = "fastapi" },
-    { name = "starlette" },
-    { name = "uvicorn" },
-]
-jupyter = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
     { name = "notebook" },
-]
-subcircuit-extraction = [
-    { name = "brainbuilder" },
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "blueetl", marker = "extra == 'blueetl'" },
-    { name = "brainbuilder", marker = "extra == 'subcircuit-extraction'" },
-    { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-utilities", marker = "extra == 'connectivity'" },
-    { name = "fastapi", marker = "extra == 'fastapi-app'" },
-    { name = "ipykernel", marker = "extra == 'jupyter'" },
-    { name = "jupyter", marker = "extra == 'jupyter'" },
-    { name = "jupyterlab", marker = "extra == 'jupyter'" },
-    { name = "notebook", marker = "extra == 'jupyter'" },
+    { name = "blueetl" },
+    { name = "brainbuilder" },
+    { name = "connectome-analysis", specifier = ">=1.0.1" },
+    { name = "connectome-utilities" },
+    { name = "fastapi" },
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "jupyterlab" },
+    { name = "notebook" },
     { name = "pydantic", specifier = ">=2.10.6" },
-    { name = "sqlalchemy", marker = "extra == 'database'" },
-    { name = "starlette", marker = "extra == 'fastapi-app'" },
-    { name = "uvicorn", marker = "extra == 'fastapi-app'" },
+    { name = "sqlalchemy" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
-provides-extras = ["subcircuit-extraction", "connectivity", "fastapi-app", "jupyter", "database", "blueetl"]
 
 [[package]]
 name = "overrides"

@@ -5,7 +5,34 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+
+    # PYDANTIC
     "pydantic>=2.10.6",
+
+    # CIRCUIT EXTRACTION
+    "brainbuilder",
+
+    # CONNECTIVITY
+    "Connectome-Utilities",
+    "connectome-analysis>=1.0.1",
+
+    # FAST API SERVICE
+    "fastapi",
+    "uvicorn",
+    "starlette",
+
+    # JUPYTER
+    "jupyter", 
+    "notebook", 
+    "jupyterlab",
+    "ipykernel",
+
+    # DATABASE
+    "sqlalchemy",
+
+    # BLUEETL
+    "blueetl"
+
 ]
 
 [build-system]
@@ -14,44 +41,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["obi"]
-
-[project.optional-dependencies]
-subcircuit_extraction = [
-    "brainbuilder"
-]
-#subcircuit_extraction = [
-#    "brainbuilder @ file:////Users/james/Documents/obi/code/brainbuilder"
-#]
-
-
-
-connectivity = [
-    "Connectome-Utilities",
-    "connectome-analysis>=1.0.1"
-]
-
-fastapi_app = [
-    "fastapi",
-    "uvicorn",
-    "starlette"
-]
-
-jupyter = [
-    "jupyter", 
-    "notebook", 
-    "jupyterlab",
-    "ipykernel"
-]
-
-
-database = [
-    "sqlalchemy"
-]
-
-
-blueetl = [
-    "blueetl"
-]
-
-
-
