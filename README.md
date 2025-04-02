@@ -16,7 +16,9 @@ python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 - When multiple developers are working on such a branch it may be preferable to create additioanl branches with a suffix indicating their initials (i.e. **current_stimulus_fix_bfg**).
 - Developers should make pull requests into the dev branch. The pull request can be merged by the developer who created it if the changes are small and unlikely to affect other parts of the codebase. Otherwise, if the changes might affect other parts of the codebase or the developer would like a second opinion, the developer can request for another developer to review the pull request.
 - Example notebooks/scripts should ideally store output in a directory named **obi-output** that is at the same level as the obi-one repository i.e. outside the respistory.
+- Currently all dependencies are required in pyproject.toml to simplify development. This may lead to a slow initial import of obi. In future we can explore adding optional dependencies, and optional imports of obi functionalities into the obi module depending on what dependencies are installed.
 - All issues are tracked on the project board, where tickets can be created and moved appropriately: https://github.com/orgs/openbraininstitute/projects/42/views/1 
+
 
 # Examples
 - Example notebooks are available in the examples/ directory 
