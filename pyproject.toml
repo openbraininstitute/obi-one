@@ -49,4 +49,9 @@ database = [
 ]
 
 
+blueetl = [
+    "blueetl"
+]
+
+
 
