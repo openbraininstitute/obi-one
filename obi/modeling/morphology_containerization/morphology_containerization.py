@@ -33,8 +33,26 @@ from typing import ClassVar
 class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordinateMixin):
     """
     """
-
     CONTAINER_FILENAME: ClassVar[str] = "merged-morphologies.h5"
+
+    @staticmethod
+    def _filter_ext(file_list, ext):
+        """Filter file list based on file extension."""
+        return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
+
+    @staticmethod
+    def _check_morphologies(circuit_config):
+        """Check modified circuit by loading some .h5 morphologies from each node population."""
+        c = Circuit(circuit_config)
+        for npop in c.nodes.population_names:
+            nodes = c.nodes[npop]
+            if nodes.type == "biophysical":
+                for nid in nodes.ids()[[0, -1]]:  # First/last node ID
+                    try:
+                        morph = nodes.morph.get(nid, transform=True, extension="h5")  # Will throw an error if not accessible
+                    except:
+                        return False
+        return True
 
     @staticmethod
     def _find_hoc_proc(proc_name, hoc_code):
@@ -62,7 +80,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         return start_idx, end_idx, hoc_code[start_idx : end_idx + 2]
 
     def _update_hoc_files(self, hoc_folder):
-        # TODO: CHECK IF ALREADY NEW VERSION??
+        # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
         # Extract code to be replaced from hoc templates
         with open(self.initialize.hoc_template_old, "r") as f:
             tmpl_old = f.read()
@@ -92,7 +110,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
     def run(self) -> None:
 
         try:
-            print(f"Info: Running morphology containerization for '{self.initialize.circuit_path}'")
+            print(f"Running morphology containerization for '{self.initialize.circuit_path}'")
 
             # Copy contents of original circuit folder to output_root
             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
@@ -107,6 +125,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             node_populations = c.nodes.population_names
             hoc_folders_updated = []  # Keep track of updated folders (in case of different ones for different populations)
             morph_folders_to_delete = []  # Keep track of morphology folders (to be deleted afterwards)
+            global_morph_entry = None  # Keep track wheter or not the circuit config has a global component entry for morphologies
             for npop in node_populations:
                 nodes = c.nodes[npop]
                 if nodes.type != "biophysical":
@@ -120,7 +139,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                     try:
                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
                         assert os.path.exists(morph_folder), f"ERROR: {_morph_ext} morphology folder does not exist!"
-                        assert len(os.listdir(morph_folder)) > 0, f"ERROR: {_morph_ext} morphology folder is empty!"
+                        assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
                         if morph_folder not in morph_folders_to_delete:
                             morph_folders_to_delete.append(morph_folder)
                     except:
@@ -145,7 +164,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                             convert(src_file, dest_file)
 
                 # Merge into .h5 container
-                if h5_folder not in morph_folders:
+                if h5_folder not in morph_folders_to_delete:
                     morph_folders_to_delete.append(h5_folder)
                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
                 with h5py.File(h5_container, "a") as f_container:
@@ -156,7 +175,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                                 skip_counter += 1
                             else:
                                 f_h5.copy(f_h5, f_container, name=_m)
-                print(f"INFO: Merged {len(morph_names) - skip_counter} morphologies into container ({skip_counter} already existed)")
+                print(f"Merged {len(morph_names) - skip_counter} morphologies into container ({skip_counter} already existed)")
 
                 # Update circuit config
                 cname, cext = os.path.splitext(circuit_config)
@@ -165,16 +184,52 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 with open(circuit_config, "r") as f:
                     cfg_dict = json.load(f)
 
-                # TODO: Fix for hippocampus
-                if "components" in cfg_dict:
-                    if "morphologies_dir" in cfg_dict["components"]:
-                        if len(cfg_dict["components"]["morphologies_dir"]) > 0:
-                            global_morph_dir = True
-                for _ndict in cfg_dict["networks"]["nodes"]:
-                    if nodes.name in _ndict["populations"]:
-                        _pop = _ndict["populations"][nodes.name]
-                        _pop["alternate_morphologies"]["h5v1"] = os.path.join(os.path.split(_pop["alternate_morphologies"]["neurolucida-asc"])[0], self.CONTAINER_FILENAME)
-                        break
+                if global_morph_entry is None:  # State unknown
+                    global_morph_entry = False
+                    if "components" in cfg_dict:
+                        if "morphologies_dir" in cfg_dict["components"]:
+                            if len(cfg_dict["components"]["morphologies_dir"]) > 0:
+                                base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+                                cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+                                global_morph_entry = True
+                        if "alternate_morphologies" in cfg_dict["components"]:
+                            if "neurolucida-asc" in cfg_dict["components"]["alternate_morphologies"]:
+                                if len(cfg_dict["components"]["alternate_morphologies"]["neurolucida-asc"]) > 0:
+                                    base_path = os.path.split(cfg_dict["components"]["alternate_morphologies"]["neurolucida-asc"])[0]
+                                    cfg_dict["components"]["alternate_morphologies"]["neurolucida-asc"] = ""  # Remove .asc path
+                                    global_morph_entry = True
+                            if "h5v1" in cfg_dict["components"]["alternate_morphologies"]:
+                                if len(cfg_dict["components"]["alternate_morphologies"]["h5v1"]) > 0:
+                                    base_path = os.path.split(cfg_dict["components"]["alternate_morphologies"]["h5v1"])[0]
+                                    cfg_dict["components"]["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+                                    global_morph_entry = True
+                        if global_morph_entry:
+                            # Set .h5 container path globally
+                            h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+                            cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+
+                if not global_morph_entry:  # Set individually per population
+                    for _ndict in cfg_dict["networks"]["nodes"]:
+                        if nodes.name in _ndict["populations"]:
+                            _pop = _ndict["populations"][nodes.name]
+                            base_path = None
+                            if "morphologies_dir" in _pop:
+                                if _pop["morphologies_dir"] > 0:
+                                    base_path = os.path.split(_pop["morphologies_dir"])[0]
+                                    _pop["morphologies_dir"] = ""  # Remove .swc path
+                            if "alternate_morphologies" in _pop:
+                                if "neurolucida-asc" in _pop["alternate_morphologies"]:
+                                    base_path = os.path.split(_pop["alternate_morphologies"]["neurolucida-asc"])[0]
+                                    _pop["alternate_morphologies"]["neurolucida-asc"] = ""  # Remove .asc path
+                                if "h5v1" in _pop["alternate_morphologies"]:
+                                    base_path = os.path.split(_pop["alternate_morphologies"]["h5v1"])[0]
+                                    _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+                            assert base_path is not None, f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+                            h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+                            _pop["alternate_morphologies"] = {"h5v1": h5_file}
+                            break
+                else:
+                    pass  # Skip, should be already set
 
                 with open(circuit_config, "w") as f:
                     json.dump(cfg_dict, f, indent=2)
@@ -186,10 +241,13 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                     hoc_folders_updated.append(hoc_folder)
 
             # Cleanup morphology folders
-            # TODO
-            # for _folder in morph_folders_to_delete:
-            #     print(f"Deleting morphology")
-            #     shutil.rmtree(_folder)
+            print(f"Cleaning morphology folders: {morph_folders_to_delete}")
+            for _folder in morph_folders_to_delete:
+                shutil.rmtree(_folder)
+
+            # Reload and check morphologies in modified circuit
+            assert self._check_morphologies(circuit_config), "ERROR: Morphology check not successful!"
+            print("Morphology containerization DONE")
 
         except Exception as e:
             traceback.print_exception(e)
