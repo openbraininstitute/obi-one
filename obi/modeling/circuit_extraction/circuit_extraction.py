@@ -129,11 +129,13 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             with open(new_circuit_path, "r") as config_file:
                 config_dict = json.load(config_file)
             rebase_config(config_dict, old_base, new_base)
-            rebase_config(config_dict, alt_base, new_base)  # Quick fix to deal with symbolic links in base circuit
+            if alt_base != old_base:  # Quick fix to deal with symbolic links in base circuit
+                rebase_config(config_dict, alt_base, new_base)
             with open(new_circuit_path, "w") as config_file:
                 json.dump(config_dict, config_file, indent=4)
 
             # Copy subcircuit morphologies and e-models
+            # TODO: Deal with .swc morphologies, if any!!
             original_circuit = Circuit(self.initialize.circuit_path.path)
             new_circuit = Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
@@ -141,14 +143,20 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 if pop.config['type'] == 'biophysical':
                     print(f"Copying morphologies for population '{pop_name}' ({pop.size})")
                     if 'morphology' in pop.property_names:
-                        ascii_morphologies_dir = pop.config["alternate_morphologies"]["neurolucida-asc"]
-                        os.makedirs(ascii_morphologies_dir, exist_ok=True)
-                        orig_ascii_morphologies_dir = original_circuit.nodes[pop_name].config["alternate_morphologies"]["neurolucida-asc"]
-
                         morphology_list = pop.get(properties="morphology").unique()
-                        for morphology_name in tqdm.tqdm(morphology_list):
-                            shutil.copyfile(os.path.join(orig_ascii_morphologies_dir, f"{morphology_name}.asc"),
-                                            os.path.join(ascii_morphologies_dir, f"{morphology_name}.asc"))
+
+                        for _mkey, _mfmt in [("neurolucida-asc", "asc"), ("h5v1", "h5")]:
+                            if _mkey in original_circuit.nodes[pop_name].config["alternate_morphologies"]:
+                                orig_morphologies_dir = original_circuit.nodes[pop_name].config["alternate_morphologies"][_mkey]
+                                if not os.path.exists(orig_morphologies_dir) or len(os.listdir(orig_morphologies_dir)) == 0:
+                                    break  # No morphologies of that format
+    
+                                morphologies_dir = pop.config["alternate_morphologies"][_mkey]
+                                os.makedirs(morphologies_dir, exist_ok=True)
+    
+                                for morphology_name in tqdm.tqdm(morphology_list, desc=_mkey):
+                                    shutil.copyfile(os.path.join(orig_morphologies_dir, f"{morphology_name}.{_mfmt}"),
+                                                    os.path.join(morphologies_dir, f"{morphology_name}.{_mfmt}"))
 
                     if "biophysical_neuron_models_dir" in pop.config:
                         print(f"Copying biophysical_neuron_models for population '{pop_name}' ({pop.size})")
@@ -172,7 +180,6 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             if str(e) == "Unable to synchronously create group (name already exists)":
                 print("Error:", f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.")
             else:
-                # print(f"Error: {e}")
                 traceback.print_exception(e)
             return
 

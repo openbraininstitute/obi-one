@@ -19,6 +19,7 @@ class FolderCompressions(Form):
 
 import os
 import tarfile
+import traceback
 from typing import ClassVar
 
 class FolderCompression(FolderCompressions, SingleCoordinateMixin):
@@ -43,4 +44,4 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             print("DONE", flush=True)
 
         except Exception as e:
-            print(f"Error: {e}")
+            traceback.print_exception(e)
