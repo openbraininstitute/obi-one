@@ -16,7 +16,7 @@ In the future, we hope to:
 
 <br>
 
----
+
 
 # Installation
 
@@ -31,14 +31,14 @@ python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 
 <br>
 
----
+
 
 # Examples
 Example notebooks are available in the examples/ directory
 
 <br>
 
----
+
 
 # Technical Overview / Glossary
 
@@ -57,7 +57,7 @@ obi-one has the following base classes:
 
 <br>
 
----
+
 
 
 # Launching the FAST API Service
@@ -71,7 +71,7 @@ Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8
 
 <br>
 
----
+
 
 
 # Generative GUI:
@@ -79,7 +79,7 @@ Once the service has been launched, the generated gui can additionally be launch
 
 <br>
 
----
+
 
 
 # Developer guidelines
