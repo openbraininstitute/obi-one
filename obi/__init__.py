@@ -23,6 +23,7 @@ from obi.modeling.circuit_extraction.circuit_extraction import CircuitExtraction
 from obi.modeling.connectivity_matrix_extraction.connectivity_matrix_extraction import ConnectivityMatrixExtractions, ConnectivityMatrixExtraction
 from obi.modeling.basic_connectivity_plots.basic_connectivity_plots import BasicConnectivityPlots, BasicConnectivityPlot
 from obi.modeling.folder_compression.folder_compression import FolderCompressions, FolderCompression
+from obi.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 
 from obi.modeling.unions.unions_form import FormUnion
 from obi.modeling.unions.unions_timestamps import TimestampsUnion
