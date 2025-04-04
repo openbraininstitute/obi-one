@@ -1,3 +1,16 @@
+# Overview
+
+obi-one is a standardized library of functions + workflows for biophysically-detailed brain modeling. The current scope is to:
+- Standardize the creation of multi-dimensional parameter scans across different modeling workflows to maximise code reuse for technical aspects such as endpoint generation, reproducibility, and data persistance.
+- Seperate scientific modeling functionality from service and database technicalities, to enable fast addition of functionality by scientists.
+- Automatically generate FastAPI endpoints which allow for 1) automatic generation of GUIs, 2) integration with LLM agents.
+- Standardize serialization of multi-dimensional parameter scans to support reproducibility.
+- Standardize database persistance.
+- Support scientific workflows composing multiple scientific modeling steps.
+- Standardize the production of figures for manuscripts and frontend display.
+
+<br>
+
 # Installation
 
 ```
@@ -8,6 +21,59 @@ uv sync
 uv pip install -e .
 python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 ```
+
+<br>
+
+
+# Examples
+Example notebooks are available in the examples/ directory
+
+<br>
+
+
+# Technical Overview / Glossary
+
+[Writing in progress]
+
+Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi/modeling/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally add the type of objects when they are serialized to json. This allows objects referenced in a parent object to be correctly deserialized.
+
+obi-one has the following base classes, which inherit from OBIBaseModel and from which specific functionalities/components inherit:
+
+- [**Form**](obi/modeling/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi/modeling/simulation/simulations.py) for designing a simulation campaign or [CircuitExtractions](obi/modeling/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. (Todo: explain need for both). Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case.
+
+- [**Block**](obi/modeling/core/block.py): defines a component of a Form. Blocks are the components which support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. (Todo: explain list notation etc.)
+
+- [**Scan**](obi/modeling/core/scan.py): takes a single Form as input, an output path and a string for specifying how output files should be stored. Either generate() or run() funcions can then be called on the scan object which then generate the parameter scan (Todo: explain further).
+
+- [**SingleCoordinateMixin**](obi/modeling/core/single.py): (Todo: explain further)
+
+
+<br>
+
+
+
+
+# Launching the FAST API Service
+To launch the FAST API service simply call:
+```
+uvicorn examples.launch_service_example:app --reload
+```
+
+Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8000/docs
+
+
+<br>
+
+
+
+
+# Generative GUI:
+Once the service has been launched, the generated gui can additionally be launched: https://github.com/openbraininstitute/obi-generative-gui
+
+<br>
+
+
+
 
 # Developer guidelines
 
@@ -20,18 +86,6 @@ python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 - All issues are tracked on the project board, where tickets can be created and moved appropriately: https://github.com/orgs/openbraininstitute/projects/42/views/1 
 
 
-# Examples
-- Example notebooks are available in the examples/ directory 
+ 
 
 
-# Launching the FAST API Service
-To launch the FAST API service simply call:
-```
-uvicorn examples.launch_service_example:app --reload
-```
-
-Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8000/docs
-
-
-# Generative GUI:
-Once the service has been launched, the generated gui can additionally be launched: https://github.com/openbraininstitute/obi-generative-gui
