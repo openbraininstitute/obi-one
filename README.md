@@ -1,22 +1,15 @@
-___
-
 # Overview
 
-The current scope of obi-one is to:
-- Standardize the creation of multi-dimensional parameter scans across different modeling workflows to maximise code reuse for technical aspects such as endpoint generation, reproducibility , and data persistance.
+obi-one is a standardized library of functions + workflows for biophysically-detailed brain modeling. The current scope is to:
+- Standardize the creation of multi-dimensional parameter scans across different modeling workflows to maximise code reuse for technical aspects such as endpoint generation, reproducibility, and data persistance.
 - Seperate scientific modeling functionality from service and database technicalities, to enable fast addition of functionality by scientists.
 - Automatically generate FastAPI endpoints which allow for 1) automatic generation of GUIs, 2) integration with LLM agents.
 - Standardize serialization of multi-dimensional parameter scans to support reproducibility.
 - Standardize database persistance.
-
-In the future, we hope to: 
 - Support scientific workflows composing multiple scientific modeling steps.
 - Standardize the production of figures for manuscripts and frontend display.
 
-
 <br>
-
-
 
 # Installation
 
@@ -32,25 +25,21 @@ python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 <br>
 
 
-
 # Examples
 Example notebooks are available in the examples/ directory
 
 <br>
 
 
-
 # Technical Overview / Glossary
 
-Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi/modeling/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally support correct deserialization of serialized objects.
+Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi/modeling/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally add the type of objects when they are serialized to json. This allows objects referenced in a parent object to be correctly deserialized.
 
-obi-one has the following base classes:
+obi-one has the following base classes, which inherit from OBIBaseModel and from which specific functionalities/components inherit:
 
-- [Form](obi/modeling/core/form.py): defines a single modeling use case 
+- [Form](obi/modeling/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi/modeling/simulation/simulations.py) for designing a similation campaign or [CircuitExtractions](obi/modeling/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case.
 
-- [Block](obi/modeling/core/block.py): component of a Form
-
-
+- [Block](obi/modeling/core/block.py): defines a component of a Form. Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case. Within any block
 
 - [Scan](obi/modeling/core/scan.py): a basic 
 
