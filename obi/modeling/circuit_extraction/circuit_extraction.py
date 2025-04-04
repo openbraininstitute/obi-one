@@ -39,15 +39,18 @@ import tqdm
 
 from bluepysnap import Circuit
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
-    """"""
-    pass
+    """
+    """
+    @staticmethod
+    def _filter_ext(file_list, ext):
+        return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
 
     def run(self) -> str:
 
         try:
 
             # Create subcircuit
-            print(f"Extracting subcircuit '{self.initialize.circuit_path}'")
+            print(f"Extracting subcircuit from '{self.initialize.circuit_path}'")
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
                                             self.initialize.circuit_path.path,
@@ -135,7 +138,6 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 json.dump(config_dict, config_file, indent=4)
 
             # Copy subcircuit morphologies and e-models
-            # TODO: Deal with .swc morphologies, if any!!
             original_circuit = Circuit(self.initialize.circuit_path.path)
             new_circuit = Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
@@ -145,26 +147,34 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                     if 'morphology' in pop.property_names:
                         morphology_list = pop.get(properties="morphology").unique()
 
-                        for _mkey, _mfmt in [("neurolucida-asc", "asc"), ("h5v1", "h5")]:
-                            if _mkey in original_circuit.nodes[pop_name].config["alternate_morphologies"]:
-                                orig_morphologies_dir = original_circuit.nodes[pop_name].config["alternate_morphologies"][_mkey]
-                                if not os.path.exists(orig_morphologies_dir) or len(os.listdir(orig_morphologies_dir)) == 0:
-                                    break  # No morphologies of that format
-    
-                                morphologies_dir = pop.config["alternate_morphologies"][_mkey]
-                                os.makedirs(morphologies_dir, exist_ok=True)
-    
-                                for morphology_name in tqdm.tqdm(morphology_list, desc=_mkey):
-                                    shutil.copyfile(os.path.join(orig_morphologies_dir, f"{morphology_name}.{_mfmt}"),
-                                                    os.path.join(morphologies_dir, f"{morphology_name}.{_mfmt}"))
+                        src_morph_dirs = {}
+                        dest_morph_dirs = {}
+                        for _morph_ext in ["swc", "asc", "h5"]:
+                            try:
+                                morph_folder = original_circuit.nodes[pop_name].morph.get_morphology_dir(_morph_ext)
+                                assert os.path.exists(morph_folder), f"ERROR: {_morph_ext} morphology folder does not exist!"
+                                assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+                                dest_morph_dirs[_morph_ext] = pop.morph.get_morphology_dir(_morph_ext)
+                                src_morph_dirs[_morph_ext] = morph_folder
+                            except:
+                                morph_folder = None
 
-                    if "biophysical_neuron_models_dir" in pop.config:
+                        for _morph_ext in src_morph_dirs.keys():
+                            os.makedirs(dest_morph_dirs[_morph_ext], exist_ok=True)
+                            for morphology_name in tqdm.tqdm(morphology_list, desc=f"Copying .{_morph_ext} morphologies"):
+                                src_file = os.path.join(src_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}")
+                                dest_file = os.path.join(dest_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}")
+                                assert os.path.exists(src_file), f"ERROR: Morphology '{src_file}' missing!"
+                                if not os.path.exists(dest_file):
+                                    shutil.copyfile(src_file, dest_file)
+
+                    if "biophysical_neuron_models_dir" in pop.config:  # Even if defined globally, shows up under pop.config
                         print(f"Copying biophysical_neuron_models for population '{pop_name}' ({pop.size})")
 
                         source_dir = original_circuit.nodes[pop_name].config["biophysical_neuron_models_dir"]
-                        dest_dir = os.path.join(self.coordinate_output_root, os.path.split(source_dir)[1])
+                        dest_dir = pop.config["biophysical_neuron_models_dir"]
 
-                        shutil.copytree(source_dir, dest_dir)
+                        shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
 
             # Copy mod files
             mod_folder = "mod"
