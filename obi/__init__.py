@@ -1,5 +1,5 @@
 from obi.modeling.core.base import OBIBaseModel
-from obi.modeling.core.base import NamedPath
+from obi.modeling.core.path import NamedPath
 from obi.modeling.core.form import Form
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.block import Block
