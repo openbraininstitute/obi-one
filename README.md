@@ -33,15 +33,19 @@ Example notebooks are available in the examples/ directory
 
 # Technical Overview / Glossary
 
+[Writing in progress]
+
 Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi/modeling/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally add the type of objects when they are serialized to json. This allows objects referenced in a parent object to be correctly deserialized.
 
 obi-one has the following base classes, which inherit from OBIBaseModel and from which specific functionalities/components inherit:
 
-- [Form](obi/modeling/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi/modeling/simulation/simulations.py) for designing a similation campaign or [CircuitExtractions](obi/modeling/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case.
+- [**Form**](obi/modeling/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi/modeling/simulation/simulations.py) for designing a simulation campaign or [CircuitExtractions](obi/modeling/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. (Todo: explain need for both). Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case.
 
-- [Block](obi/modeling/core/block.py): defines a component of a Form. Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case. Within any block
+- [**Block**](obi/modeling/core/block.py): defines a component of a Form. Blocks are the components which support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. (Todo: explain list notation etc.)
 
-- [Scan](obi/modeling/core/scan.py): a basic 
+- [**Scan**](obi/modeling/core/scan.py): takes a single Form as input, an output path and a string for specifying how output files should be stored. Either generate() or run() funcions can then be called on the scan object which then generate the parameter scan (Todo: explain further).
+
+- [**SingleCoordinateMixin**](obi/modeling/core/single.py): (Todo: explain further)
 
 
 <br>
