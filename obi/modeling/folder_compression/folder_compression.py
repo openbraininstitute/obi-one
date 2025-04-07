@@ -11,7 +11,7 @@ class FolderCompressions(Form):
 
     class Initialize(Block):
         folder_path: NamedPath | list[NamedPath]
-        file_format: None | str | list[None | str] = "xz"
+        file_format: None | str | list[None | str] = "gz"
         file_name: None | str | list[None | str] = "compressed"
 
     initialize: Initialize
@@ -19,13 +19,14 @@ class FolderCompressions(Form):
 
 import os
 import tarfile
+import time
 import traceback
 from typing import ClassVar
 
 class FolderCompression(FolderCompressions, SingleCoordinateMixin):
     """
     """
-    FILE_FORMATS: ClassVar[tuple[str, ...]] = ("xz", "gz", "bz2")  # Supported compression formats
+    FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 
     def run(self) -> None:
 
@@ -39,9 +40,18 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
 
             # Compress
             print(f"Info: Running {self.initialize.file_format} compression on {self.initialize.folder_path}...", end="", flush=True)
+            t0 = time.time()
             with tarfile.open(output_file, f"w:{self.initialize.file_format}") as tar:
                 tar.add(self.initialize.folder_path.path, arcname=os.path.basename(self.initialize.folder_path.path))
-            print("DONE", flush=True)
+            dt = time.time() - t0
+            t_str = time.strftime("%Hh:%Mmin:%Ss", time.gmtime(dt))
+            file_size = os.stat(output_file).st_size / (1024 * 1024) # (MB)
+            if file_size < 1024:
+                file_unit = "MB"
+            else:
+                file_size = file_size / 1024
+                file_unit = "GB"
+            print(f"DONE (Duration {t_str}; File size {file_size:.1f}{file_unit})", flush=True)
 
         except Exception as e:
             traceback.print_exception(e)
