@@ -25,8 +25,9 @@ subcircuit_extraction = [
 
 
 
-connectivity_extraction = [
-    "Connectome-Utilities"
+connectivity = [
+    "Connectome-Utilities",
+    "connectome-analysis>=1.0.1"
 ]
 
 fastapi_app = [

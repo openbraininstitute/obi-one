@@ -20,7 +20,7 @@ layer_as_str = False  # For backward compatibility (default: True)
 all_nodeset_names = []
 
 for layer in [[], [1], [2, 3], [4], [5], [6]]:
-    for hex_nodeset_name in ['hex0']:
+    for hex_nodeset_name in ['hex0', 'hex1', 'hex2', 'hex3', 'hex4', 'hex5', 'hex6']:
 
         hex_nodeset = nodeset_dict[hex_nodeset_name]
 
