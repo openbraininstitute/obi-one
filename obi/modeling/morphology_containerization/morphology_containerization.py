@@ -214,7 +214,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                             _pop = _ndict["populations"][nodes.name]
                             base_path = None
                             if "morphologies_dir" in _pop:
-                                if _pop["morphologies_dir"] > 0:
+                                if len(_pop["morphologies_dir"]) > 0:
                                     base_path = os.path.split(_pop["morphologies_dir"])[0]
                                     _pop["morphologies_dir"] = ""  # Remove .swc path
                             if "alternate_morphologies" in _pop:
