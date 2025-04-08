@@ -89,5 +89,6 @@ Once the service has been launched, the generated gui can additionally be launch
 - The goal of each milestone can be viewed by clicking the "Project details" icon in the top right of the project board.
 
  
-
+# Acknowledgements
+Copyright © 2025 Open Brain Institute
 
