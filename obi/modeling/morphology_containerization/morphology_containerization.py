@@ -20,6 +20,7 @@ class MorphologyContainerizationsForm(Form):
 import datetime
 import h5py
 import json
+import logging
 import numpy as np
 import os
 import shutil
@@ -125,6 +126,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
         try:
             print(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+
+            # Set logging level to WARNING to prevent a lot of debug output from morph_tool.convert()
+            logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
             # Copy contents of original circuit folder to output_root
             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
