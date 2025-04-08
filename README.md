@@ -13,10 +13,15 @@ obi-one is a standardized library of functions + workflows for biophysically-det
 
 # Installation
 
+Install [**uv**](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer), [**open-mpi**](https://www.open-mpi.org/), [**boost**](https://www.boost.org/), [**cmake**](https://cmake.org/), for example:
+```
+brew install uv open-mpi boost cmake
+```
+
 ```
 cd obi-one
 uv sync
-python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
+python -m ipykernel install --user --name=obi-one
 ```
 
 <br>

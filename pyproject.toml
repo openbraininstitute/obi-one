@@ -14,13 +14,16 @@ dependencies = [
     "brainbuilder @ git+https://github.com/openbraininstitute/brainbuilder.git@split_popul_fix",
 
     # MORPHOLOGY CONTAINERIZATION
+    "brain-indexer @ git+https://github.com/james-isbister/brain-indexer.git@cmakelists_update",
     # bluepysnap >= 3.0.2 (not yet on PyPI)
     "bluepysnap @ git+https://github.com/openbraininstitute/snap.git@master",
+    # "bluepysnap @ git+https://github.com/james-isbister/snap.git@master",
 
     # CONNECTIVITY
     "Connectome-Utilities",
     "cmake",
-    "connectome-analysis>=1.0.1",
+    # "connectome-analysis>=1.0.1",
+    "connectome-analysis @ git+https://github.com/james-isbister/connectome_analysis.git@master",
 
     # FAST API SERVICE
     "fastapi",
