@@ -24,6 +24,9 @@ from typing import ClassVar
 
 class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordinateMixin):
     """
+    Extracts a connectivity matrix of a given edge population of a SONATA circuit in ConnectomeUtilities format,
+    consisting of a sparse connectivity matrix with the number of synapses for each connection, together with a
+    table (dataframe) of selected node attributes.
     """
 
     DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "etype", "layer", "synapse_class")

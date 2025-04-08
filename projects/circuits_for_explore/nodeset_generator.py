@@ -5,7 +5,7 @@ Before running this script, make sure to copy node_sets.json
 to original_node_sets.json so that we don't lose the original
 """
 
-input_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/original_node_sets.json'
+input_nodeset_file = '/Users/pokorny/Data/nbS1-O1-beta/original_node_sets.json'
 
 with open(input_nodeset_file, 'r') as file:
     nodeset_dict = json.load(file)
@@ -13,6 +13,9 @@ with open(input_nodeset_file, 'r') as file:
 new_nodeset_dict = nodeset_dict.copy()
 
 prefix = "nbS1"
+postfix = "-beta"  # (Optional)
+
+layer_as_str = False  # For backward compatibility (default: True)
 
 all_nodeset_names = []
 
@@ -25,17 +28,16 @@ for layer in [[], [1], [2, 3], [4], [5], [6]]:
 
         new_hex_nodeset['node_id'] = hex_nodeset['node_id']
 
-        nodeset_key = f"{prefix}-{hex_nodeset_name.upper()}"
+        nodeset_key = f"{prefix}-{hex_nodeset_name.upper()}{postfix}"
 
         if len(layer):
-            layer_str_list = []
+            layer_list = []
             layer_str = ''
             for l in layer:
                 layer_str += str(l)
-                layer_str_list.append(str(l))
+                layer_list.append(str(l) if layer_as_str else l)
 
-            # new_hex_nodeset['layer'] = layer_str
-            new_hex_nodeset['layer'] = layer_str_list
+            new_hex_nodeset['layer'] = layer_list
             # print(new_hex_nodeset['layer'])
             nodeset_key += f"-L{layer_str}"
 
@@ -46,6 +48,6 @@ for layer in [[], [1], [2, 3], [4], [5], [6]]:
 
 print(all_nodeset_names)
 
-output_nodeset_file = '/Users/james/Documents/obi/additional_data/O1_data/O1_data/node_sets.json'
+output_nodeset_file = '/Users/pokorny/Data/nbS1-O1-beta/node_sets.json'
 with open(output_nodeset_file, 'w') as file:
     json.dump(new_nodeset_dict, file, indent=4)

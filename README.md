@@ -15,10 +15,7 @@ obi-one is a standardized library of functions + workflows for biophysically-det
 
 ```
 cd obi-one
-uv venv
-source .venv/bin/activate
 uv sync
-uv pip install -e .
 python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
 ```
 
@@ -83,11 +80,11 @@ Once the service has been launched, the generated gui can additionally be launch
 - Developers should make pull requests into the dev branch. The pull request can be merged by the developer who created it if the changes are small and unlikely to affect other parts of the codebase. Otherwise, if the changes might affect other parts of the codebase or the developer would like a second opinion, the developer can request for another developer to review the pull request.
 - Example notebooks/scripts should ideally store output in a directory named **obi-output** that is at the same level as the obi-one repository i.e. outside the respistory.
 - Currently all dependencies are required in pyproject.toml to simplify development. This may lead to a slow initial import of obi. In future we can explore adding optional dependencies, and optional imports of obi functionalities into the obi module depending on what dependencies are installed.
+- Dependencies to a specific version/branch of another repository can be added to pyproject.toml as `"repo-name @ git+https://github.com/repo-name.git@branch-name"`.
 - All issues are tracked on the project board, where tickets can be created and moved appropriately: https://github.com/orgs/openbraininstitute/projects/42/views/1 
 - Issues may belong to individual product repositories (i.e. single_cell_lab) or the obi-one repository. This allows us to group the issues by product in the project board.
 - "Milestones" are also used for grouping to support sprint development. As issues belong to different repositories we created several generically named milestones (i.e. OBI-ONE Milestone A, OBI-ONE Milestone B, ...) in each product repository. This avoids having to create new milestones everytime a new milestone is begun. Instead we can assign a previously finished milestone (i.e. OBI-ONE Milestone C) to issues associated with the new milestone. 
 - The goal of each milestone can be viewed by clicking the "Project details" icon in the top right of the project board.
-
  
 
 
