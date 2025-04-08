@@ -16,7 +16,6 @@ dependencies = [
     # MORPHOLOGY CONTAINERIZATION
     # bluepysnap >= 3.0.2 (not yet on PyPI)
     "bluepysnap @ git+https://github.com/openbraininstitute/snap.git@master",
-    "bluepyopt",
 
     # CONNECTIVITY
     "Connectome-Utilities",
