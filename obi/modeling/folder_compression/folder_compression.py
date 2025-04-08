@@ -31,6 +31,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
     def run(self) -> None:
 
         try:
+            # Initial checks
             assert os.path.isdir(self.initialize.folder_path.path), f"Folder path '{self.initialize.folder_path}' is not a valid directory!"
             assert self.initialize.folder_path.path[-1] != os.path.sep, f"Please remove trailing separator '{os.path.sep}' from path!"
             assert self.initialize.file_format in self.FILE_FORMATS, f"File format '{self.initialize.file_format}' not supported! Supported formats: {self.FILE_FORMATS}"
@@ -38,11 +39,13 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             output_file = os.path.join(self.coordinate_output_root, f"{self.initialize.file_name}.{self.initialize.file_format}")
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
 
-            # Compress
+            # Compress using specified file format
             print(f"Info: Running {self.initialize.file_format} compression on {self.initialize.folder_path}...", end="", flush=True)
             t0 = time.time()
             with tarfile.open(output_file, f"w:{self.initialize.file_format}") as tar:
                 tar.add(self.initialize.folder_path.path, arcname=os.path.basename(self.initialize.folder_path.path))
+            
+            # Once done, check elapsed time and resulting file size for reporting
             dt = time.time() - t0
             t_str = time.strftime("%Hh:%Mmin:%Ss", time.gmtime(dt))
             file_size = os.stat(output_file).st_size / (1024 * 1024) # (MB)

@@ -42,7 +42,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
         try:
 
-            # Create subcircuit
+            # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit_path}'")
             split_population.split_subcircuit(self.coordinate_output_root,
                                             self.initialize.node_set,
@@ -50,7 +50,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                                             True,
                                             False)
 
-            # Custom edit of the circuit config
+            # Custom edit of the circuit config so that all paths are relative to the new base directory
+            # (in case there were absolute paths in the original config)
             def rebase_config(config_dict, old_base, new_base):
                 for key, value in config_dict.items():
                     if isinstance(value, str):
@@ -65,29 +66,33 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                             rebase_config(_v, old_base, new_base)
 
             old_base = os.path.split(self.initialize.circuit_path.path)[0]
-            alt_base = old_base  # Alternative old base
-            for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
-                alt_base = alt_base.removesuffix(_sfix)  # Quick fix to deal with symbolic links in base circuit
+
+            # Quick fix to deal with symbolic links in base circuit (not usually required)
+            # alt_base = old_base  # Alternative old base
+            # for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
+            #     alt_base = alt_base.removesuffix(_sfix)
+
             new_base = "$BASE_DIR"
             new_circuit_path = self.coordinate_output_root + "circuit_config.json"
-            # shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")
+            # shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")  # Create backup before modifying
 
             with open(new_circuit_path, "r") as config_file:
                 config_dict = json.load(config_file)
             rebase_config(config_dict, old_base, new_base)
-            if alt_base != old_base:  # Quick fix to deal with symbolic links in base circuit
-                rebase_config(config_dict, alt_base, new_base)
+            # if alt_base != old_base:  # Quick fix to deal with symbolic links in base circuit
+                # rebase_config(config_dict, alt_base, new_base)
             with open(new_circuit_path, "w") as config_file:
                 json.dump(config_dict, config_file, indent=4)
 
-            # Copy subcircuit morphologies and e-models
+            # Copy subcircuit morphologies and e-models (separately per node population)
             original_circuit = Circuit(self.initialize.circuit_path.path)
             new_circuit = Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
 
                 if pop.config['type'] == 'biophysical':
-                    print(f"Copying morphologies for population '{pop_name}' ({pop.size})")
+                    # Copying morphologies of any (supported) format
                     if 'morphology' in pop.property_names:
+                        print(f"Copying morphologies for population '{pop_name}' ({pop.size})")
                         morphology_list = pop.get(properties="morphology").unique()
 
                         src_morph_dirs = {}
@@ -109,8 +114,10 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                                 dest_file = os.path.join(dest_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}")
                                 assert os.path.exists(src_file), f"ERROR: Morphology '{src_file}' missing!"
                                 if not os.path.exists(dest_file):
+                                    # Copy only, if not yet existing (could happen for shared morphologies among populations)
                                     shutil.copyfile(src_file, dest_file)
 
+                    # Copy .hoc file directory
                     if "biophysical_neuron_models_dir" in pop.config:  # Even if defined globally, shows up under pop.config
                         print(f"Copying biophysical_neuron_models for population '{pop_name}' ({pop.size})")
 
@@ -119,7 +126,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
                         shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
 
-            # Copy mod files
+            # Copy .mod files, if any
             mod_folder = "mod"
             source_dir = os.path.join(os.path.split(self.initialize.circuit_path.path)[0], mod_folder)
             if os.path.exists(source_dir):
