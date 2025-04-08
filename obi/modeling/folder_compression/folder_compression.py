@@ -42,7 +42,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
 
             # Compress using specified file format
-            print(f"Info: Running {self.initialize.file_format} compression on {self.initialize.folder_path}...", end="", flush=True)
+            print(f"Info: Running {self.initialize.file_format} compression on '{self.initialize.folder_path}'...", end="", flush=True)
             t0 = time.time()
             with tarfile.open(output_file, f"w:{self.initialize.file_format}") as tar:
                 tar.add(self.initialize.folder_path.path, arcname=os.path.basename(self.initialize.folder_path.path))
