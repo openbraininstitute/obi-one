@@ -1487,6 +1487,19 @@ wheels = [
 ]
 
 [[package]]
+name = "mpld3"
+version = "0.5.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "matplotlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/58/19378f4189a034eb3efc17b133426b8551af1d3b2c70d641a63124579629/mpld3-0.5.10.tar.gz", hash = "sha256:a478eb404fa5212505c59133cf272cd9a94105872e605597720e7f84de38fbc7", size = 1027709 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/6a/e3691bcc47485f38b09853207c928130571821d187cf174eed5418d45e82/mpld3-0.5.10-py3-none-any.whl", hash = "sha256:80877acce87ea447380fad7374668737505c8c0684aab05238e7c5dc1fab38c1", size = 202561 },
+]
+
+[[package]]
 name = "msgpack"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1774,6 +1787,7 @@ dependencies = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "mpld3" },
     { name = "notebook" },
     { name = "pydantic" },
     { name = "sqlalchemy" },
@@ -1792,6 +1806,7 @@ requires-dist = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "mpld3" },
     { name = "notebook" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "sqlalchemy" },

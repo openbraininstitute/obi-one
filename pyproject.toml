@@ -33,7 +33,10 @@ dependencies = [
     "sqlalchemy",
 
     # BLUEETL
-    "blueetl"
+    "blueetl",
+
+    # INTERACTIVE PLOTS
+    "mpld3"
 
 ]
 

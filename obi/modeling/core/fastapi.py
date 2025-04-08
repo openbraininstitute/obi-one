@@ -8,6 +8,22 @@ def activate_fastapi_app(app: FastAPI):
 
     for subclass in obi.Form.__subclasses__():
         generate_routes(subclass, app)
+
+    import mpld3
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt    
+    @app.get("/interactive-plot")
+    def interactive_plot():
+        fig, ax = plt.subplots()
+        ax.plot([1, 2, 3], [4, 9, 2])
+        ax.set_title("Interactive mpld3 Plot")
+
+        html_str = mpld3.fig_to_html(fig)
+        plt.close(fig)
+        return JSONResponse(content={"html": html_str})
+
+
     return
 
 

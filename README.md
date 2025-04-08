@@ -15,8 +15,6 @@ obi-one is a standardized library of functions + workflows for biophysically-det
 
 ```
 cd obi-one
-uv venv
-source .venv/bin/activate
 uv sync
 uv pip install -e .
 python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
