@@ -13,10 +13,17 @@ obi-one is a standardized library of functions + workflows for biophysically-det
 
 # Installation
 
+
+Install [**uv**](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer), [**open-mpi**](https://www.open-mpi.org/), [**boost**](https://www.boost.org/), [**cmake**](https://cmake.org/), for example:
+```
+brew install uv open-mpi boost cmake
+```
+
 ```
 cd obi-one
-uv sync
-python -m ipykernel install --user --name=.venv --display-name "Python (.venv)"
+CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+. .venv/bin/activate
+python -m ipykernel install --user --name=.venv --display-name "obi-one"
 ```
 
 <br>
@@ -86,5 +93,6 @@ Once the service has been launched, the generated gui can additionally be launch
 - "Milestones" are also used for grouping to support sprint development. As issues belong to different repositories we created several generically named milestones (i.e. OBI-ONE Milestone A, OBI-ONE Milestone B, ...) in each product repository. This avoids having to create new milestones everytime a new milestone is begun. Instead we can assign a previously finished milestone (i.e. OBI-ONE Milestone C) to issues associated with the new milestone. 
 - The goal of each milestone can be viewed by clicking the "Project details" icon in the top right of the project board.
  
-
+# Acknowledgements
+Copyright © 2025 Open Brain Institute
 
