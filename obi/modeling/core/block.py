@@ -18,7 +18,7 @@ class ScanParam(OBIBaseModel):
 
     @property
     def location_str(self):
-        return nested_param_short(self._location_str)
+        return nested_param_short(self.location_list)
 
 class MultiValueScanParam(ScanParam):
     values: list[Any] = [None]

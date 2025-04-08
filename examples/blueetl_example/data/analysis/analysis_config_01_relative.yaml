@@ -1,0 +1,26 @@
+---
+version: 4
+simulation_campaign: ../simulation_campaign/config_01_relative_bbp_workflow.json
+simulations_filter: {seed: [334630, 174404]}
+cache:
+  path: analysis_output
+analysis:
+  spikes:
+    extraction:
+      report:
+        type: spikes
+      neuron_classes:
+        All: {}
+        L2_X: {query: {mtype: [L2_X]}}
+        L6_Y: {query: {mtype: [L6_Y]}}
+      limit: 1000
+      population: default
+      node_set: null
+      windows:
+        w1: {bounds: [0, 1], window_type: spontaneous}
+        w2: {bounds: [0, 1], initial_offset: 0.5, n_trials: 2, trial_steps_value: 0.1}
+    features:
+    - type: multi
+      groupby: [simulation_id, circuit_id, neuron_class, window]
+      function: blueetl.external.bnac.calculate_features.calculate_features_multi
+      params: {export_all_neurons: true}

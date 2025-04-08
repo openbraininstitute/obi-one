@@ -1,5 +1,5 @@
 from obi.modeling.core.base import OBIBaseModel
-from obi.modeling.core.base import NamedPath
+from obi.modeling.core.path import NamedPath
 from obi.modeling.core.form import Form
 from obi.modeling.core.single import SingleCoordinateMixin
 from obi.modeling.core.block import Block
@@ -20,9 +20,10 @@ from obi.modeling.simulation.recording import Recording, SpikeRecording, Voltage
 from obi.modeling.simulation.simulations import SimulationsForm, Simulation
 
 from obi.modeling.circuit_extraction.circuit_extraction import CircuitExtractions, CircuitExtraction
-
 from obi.modeling.connectivity_matrix_extraction.connectivity_matrix_extraction import ConnectivityMatrixExtractions, ConnectivityMatrixExtraction
 from obi.modeling.basic_connectivity_plots.basic_connectivity_plots import BasicConnectivityPlots, BasicConnectivityPlot
+from obi.modeling.folder_compression.folder_compression import FolderCompressions, FolderCompression
+from obi.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 
 from obi.modeling.unions.unions_form import FormUnion
 from obi.modeling.unions.unions_timestamps import TimestampsUnion

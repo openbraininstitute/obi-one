@@ -3,9 +3,42 @@ name = "obi"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
+
+    # PYDANTIC
     "pydantic>=2.10.6",
+
+    # CIRCUIT EXTRACTION
+    # "brainbuilder",
+    "brainbuilder @ git+https://github.com/openbraininstitute/brainbuilder.git@split_popul_fix",
+
+    # MORPHOLOGY CONTAINERIZATION
+    # bluepysnap >= 3.0.2 (not yet on PyPI)
+    "bluepysnap @ git+https://github.com/openbraininstitute/snap.git@master",
+
+    # CONNECTIVITY
+    "Connectome-Utilities",
+    "cmake",
+    "connectome-analysis>=1.0.1",
+
+    # FAST API SERVICE
+    "fastapi",
+    "uvicorn",
+    "starlette",
+
+    # JUPYTER
+    "jupyter", 
+    "notebook", 
+    "jupyterlab",
+    "ipykernel",
+
+    # DATABASE
+    "sqlalchemy",
+
+    # BLUEETL
+    "blueetl"
+
 ]
 
 [build-system]
@@ -14,32 +47,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["obi"]
-
-[project.optional-dependencies]
-subcircuit_extraction = [
-    "brainbuilder"
-]
-connectivity_extraction = [
-    "Connectome-Utilities"
-]
-
-fastapi_app = [
-    "fastapi",
-    "uvicorn",
-    "starlette"
-]
-
-jupyter = [
-    "jupyter", 
-    "notebook", 
-    "jupyterlab",
-    "ipykernel"
-]
-
-
-database = [
-    "sqlalchemy"
-]
-
-
-
