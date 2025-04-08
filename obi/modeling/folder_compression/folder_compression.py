@@ -25,6 +25,8 @@ from typing import ClassVar
 
 class FolderCompression(FolderCompressions, SingleCoordinateMixin):
     """
+    Compression of an entire folder (e.g., circuit) using the given compression file format.
+    The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
     """
     FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 

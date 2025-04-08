@@ -33,6 +33,8 @@ import tqdm
 from bluepysnap import Circuit
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     """
+    Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain
+    all morphologies, hoc files, and mod files that are required to simulate the extracted circuit.
     """
     @staticmethod
     def _filter_ext(file_list, ext):
