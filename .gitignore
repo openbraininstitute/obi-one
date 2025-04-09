@@ -18,3 +18,8 @@ obi.egg-info/*
 
 scientificproposal_obisdk_repoplatformintegration.egg-info/*
 build/*
+
+venv/
+temp/
+*/arm64/
+**/arm64/
