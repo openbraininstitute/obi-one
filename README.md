@@ -19,6 +19,7 @@ Install [**uv**](https://docs.astral.sh/uv/getting-started/installation/#standal
 brew install uv open-mpi boost cmake
 ```
 
+Generate a virtual environment with obi-one installed, and register it as a Jupyter kernel 
 ```
 cd obi-one
 CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
@@ -30,7 +31,7 @@ python -m ipykernel install --user --name=.venv --display-name "obi-one"
 
 
 # Examples
-Example notebooks are available in the examples/ directory
+Example notebooks are available in the [**examples**](examples/) directory
 
 <br>
 
