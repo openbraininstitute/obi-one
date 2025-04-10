@@ -33,11 +33,15 @@ class SingleCoordinateScanParams(OBIBaseModel):
 
     def display_parameters(self):
         output = f""
-        for j, scan_param in enumerate(self.scan_params):
-            output = output + scan_param.location_str + ": " + str(scan_param.value)
-            if j < len(self.scan_params) - 1:
-                output = output + ", "
-        print(output)
+
+        if len(self.scan_params) == 0:
+            print("No coordinate parameters.")
+        else:
+            for j, scan_param in enumerate(self.scan_params):
+                output = output + scan_param.location_str + ": " + str(scan_param.value)
+                if j < len(self.scan_params) - 1:
+                    output = output + ", "
+            print(output)
 
 
 class SingleCoordinateMixin:
