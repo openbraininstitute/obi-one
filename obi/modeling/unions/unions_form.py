@@ -6,6 +6,7 @@ from obi.modeling.connectivity_matrix_extraction.connectivity_matrix_extraction 
 from obi.modeling.basic_connectivity_plots.basic_connectivity_plots import *
 from obi.modeling.folder_compression.folder_compression import *
 from obi.modeling.morphology_containerization.morphology_containerization import *
+from obi.modeling.morphology_metrics.morphology_metrics import *
 
 
 FormUnion = subclass_union(Form)
