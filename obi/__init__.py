@@ -25,6 +25,8 @@ from obi.modeling.basic_connectivity_plots.basic_connectivity_plots import Basic
 from obi.modeling.folder_compression.folder_compression import FolderCompressions, FolderCompression
 from obi.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 
+from obi.modeling.morphology_metrics.morphology_metrics import MorphologyMetricsForm, MorphologyMetrics
+
 from obi.modeling.unions.unions_form import FormUnion
 from obi.modeling.unions.unions_timestamps import TimestampsUnion
 from obi.modeling.unions.unions_recordings import RecordingUnion
