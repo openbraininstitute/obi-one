@@ -15,6 +15,7 @@ obi/obi.egg-info/
 
 obi.egg-info/*
 
-
 scientificproposal_obisdk_repoplatformintegration.egg-info/*
 build/*
+
+examples/blueetl_example/analysis_output
