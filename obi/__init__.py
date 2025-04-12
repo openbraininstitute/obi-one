@@ -36,5 +36,11 @@ from obi.modeling.unions.unions_neuron_sets import NeuronSetUnion
 from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
 from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
-from obi.modeling.core.db import database, circuits, close_db
-from obi.modeling.core.db import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
+from obi.modeling.core.db_old import database, circuits, close_db
+from obi.modeling.core.db_old import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
+
+from obi.modeling.core.db import init_db, entitysdk_classes
+
+for cls in entitysdk_classes:
+    globals()[cls.__name__] = cls
+
