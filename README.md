@@ -21,10 +21,7 @@ brew install uv open-mpi boost cmake
 
 Generate a virtual environment with obi-one installed, and register it as a Jupyter kernel 
 ```
-cd obi-one
-CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
-. .venv/bin/activate
-python -m ipykernel install --user --name=.venv --display-name "obi-one"
+make install
 ```
 
 <br>
@@ -61,7 +58,7 @@ obi-one has the following base classes, which inherit from OBIBaseModel and from
 # Launching the FAST API Service
 To launch the FAST API service simply call:
 ```
-uvicorn examples.launch_service_example:app --reload
+make run-local
 ```
 
 Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8000/docs
