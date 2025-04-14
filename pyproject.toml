@@ -1,51 +1,148 @@
 [project]
 name = "obi"
 version = "0.1.0"
-description = "Add your description here"
+description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
-
     # PYDANTIC
     "pydantic>=2.10.6",
-
     # CIRCUIT EXTRACTION
-    # "brainbuilder",
-    "brainbuilder @ git+https://github.com/openbraininstitute/brainbuilder.git@split_popul_fix",
-
+    "brainbuilder",
     # MORPHOLOGY CONTAINERIZATION
-    # bluepysnap >= 3.0.2 (not yet on PyPI)
-    "bluepysnap @ git+https://github.com/openbraininstitute/snap.git@master",
-
+    "bluepysnap",
     # CONNECTIVITY
-    "Connectome-Utilities",
-    "cmake",
+    "connectome-utilities",
     "connectome-analysis>=1.0.1",
-
     # FAST API SERVICE
     "fastapi",
     "uvicorn",
     "starlette",
-
     # JUPYTER
-    "jupyter", 
-    "notebook", 
+    "jupyter",
+    "notebook",
     "jupyterlab",
     "ipykernel",
     # DATABASE
     "sqlalchemy",
-
     # BLUEETL
     "blueetl",
-
     # NEUROM
-    "neurom"
-
+    "neurom",
 ]
 
 [build-system]
-requires = ["setuptools"]
+requires = [
+    "setuptools>=42",
+    "wheel",
+]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["obi"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["obi*"]
+
+[tool.uv.sources]
+bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
+brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git", branch = "split_popul_fix" }
+
+[dependency-groups]
+dev = [
+    "coverage[toml]",
+    "pyright",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi/**/*.py"]
+
+[tool.ruff.lint]
+preview = true
+select = ["ALL"]
+ignore = [
+    "A005",    # Module is shadowing a Python builtin module
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    "COM812",  # Trailing comma (to have similar behavior to black)
+    "CPY001",  # Missing copyright notice at top of file
+    "ISC001",  # single line implicit string concatenation (disabling suggested by ruff formatter)
+    "N802",    # function name should be lowercase
+    "D100",    # Missing docstring in public module
+    "D101",    # Missing docstring in public class
+    "D102",    # Missing docstring in public method
+    "D103",    # Missing docstring in public function
+    "D104",    # Missing docstring in public package
+    "D106",    # Missing docstring in public nested class
+]
+
+[tool.ruff.lint.isort]
+known-local-folder = ["tests"]
+combine-as-imports = true
+
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["license"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "ANN", # Missing type annotation
+    "D", # pydocstyle
+    "ERA001", # Found commented-out code
+    "PLC2701", # Private name import from external module
+    "PLR2004", # magic value (constant) used in comparison (i.e. expected == 3)
+    "S101", # Use of `assert` detected
+    "SLF001", # private member access
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+# Maximum number of arguments for function / method
+max-args = 12
+# Maximum number of locals for function / method body
+max-locals = 15
+# Maximum number of return / yield for function / method body
+max-returns = 6
+# Maximum number of branch for function / method body
+max-branches = 12
+# Maximum number of statements in function / method body
+max-statements = 50
+# Maximum number of public methods for a class (see R0904).
+max-public-methods = 60
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--import-mode=importlib",
+    "-vv",
+    "-ra",
+    "--cov=app",
+    "--durations=10",
+    "--durations-min=1.0",
+]
+# asyncio_mode = "auto"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = false
+source_pkgs = [
+    "app",
+    "obi",
+]
+
+[tool.coverage.report]
+show_missing = true
+precision = 0
+fail_under = 30
+omit = [
+    "__main__.py",
+]
