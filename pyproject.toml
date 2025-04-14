@@ -7,6 +7,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     # PYDANTIC
     "pydantic>=2.10.6",
+    "pydantic-settings>=2.8.1",
     # CIRCUIT EXTRACTION
     "brainbuilder",
     # MORPHOLOGY CONTAINERIZATION
@@ -31,7 +32,7 @@ dependencies = [
     "neurom",
     # ENTITYSDK
     "entitysdk",
-    "obi-auth"
+    "obi-auth",
 ]
 
 [build-system]
