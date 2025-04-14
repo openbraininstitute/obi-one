@@ -21,6 +21,7 @@ from entitysdk.models.morphology import (
 from obi_auth import get_token
 
 client = None
+# token = None
 def init_db(virtual_lab_id, project_id, entitycore_api_url="http://127.0.0.1:8000"):
     project_context = ProjectContext(
         virtual_lab_id=virtual_lab_id,
@@ -50,9 +51,15 @@ for cls in imported_classes:
         def find(cls, limit=10, **kwargs): # token=None, 
             return client.search_entity(
                 entity_type=cls, query=kwargs, token=token, limit=limit
-            )
-
+            ).all()
         setattr(cls, "find", classmethod(find))
+
+        def fetch(cls, entity_id):
+            return client.get_entity(
+                entity_id=entity_id, entity_type=cls, token=token
+            )
+        setattr(cls, "fetch", classmethod(fetch))
+
         # Dynamically add the class to the package
         entitysdk_classes.append(cls)
 
@@ -66,3 +73,23 @@ for cls in imported_classes:
         entitysdk_classes.append(cls)
         
 
+
+def download_morphology_assets(morphology):
+
+    for asset in morphology.assets:
+        print(asset)
+        if asset.content_type == "application/swc":
+            client.download_file(
+                entity_id=morphology.id,
+                entity_type=type(morphology),
+                asset_id=asset.id,
+                output_path="./my-file.h5",
+                token=token,
+            )
+        #     content = client.download_content(
+        #         entity_id=morphology.id, entity_type=type(morphology), asset_id=asset.id, token=token
+        #     )
+        #     break
+
+        #     print(content)
+        #     print(Path("my-file.h5").read_text())

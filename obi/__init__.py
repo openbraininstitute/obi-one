@@ -8,7 +8,7 @@ from obi.modeling.core.serialization import deserialize_obi_object_from_json_fil
 from obi.modeling.core.fastapi import activate_fastapi_app
 from obi.modeling.core.db_old import database, circuits, close_db
 from obi.modeling.core.db_old import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
-from obi.modeling.core.db import init_db, entitysdk_classes
+from obi.modeling.core.db import init_db, entitysdk_classes, download_morphology_assets
 for cls in entitysdk_classes:
     globals()[cls.__name__] = cls
 
