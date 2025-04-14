@@ -61,7 +61,7 @@ To launch the FAST API service simply call:
 make run-local
 ```
 
-Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8000/docs
+Once launched, the generated endpoints can then be viewed at: http://127.0.0.1:8100/docs
 
 
 <br>
