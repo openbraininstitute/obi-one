@@ -4,6 +4,8 @@ from obi.modeling.core.single import SingleCoordinateMixin
 # from obi.modeling.core.db import SaveCircuitEntity, SaveCircuitCollectionEntity
 from obi.modeling.core.path import NamedPath
 
+from obi.modeling.core.db import *
+
 class MorphologyMetricsForm(Form):
     """
     """
@@ -11,7 +13,7 @@ class MorphologyMetricsForm(Form):
     _single_coord_class_name: str = "MorphologyMetrics"
 
     class Initialize(Block):
-        morphology_path: NamedPath | list[NamedPath]
+        morphology_path: NamedPath | list[NamedPath] | ReconstructionMorphology | list[ReconstructionMorphology]
         # soma: str | list[str]
 
     initialize: Initialize

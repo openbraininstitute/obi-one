@@ -18,6 +18,8 @@ from entitysdk.models.morphology import (
     Strain,
 )
 
+from obi_auth import get_token
+
 client = None
 def init_db(virtual_lab_id, project_id, entitycore_api_url="http://127.0.0.1:8000"):
     project_context = ProjectContext(
@@ -28,7 +30,7 @@ def init_db(virtual_lab_id, project_id, entitycore_api_url="http://127.0.0.1:800
     client = Client(api_url=entitycore_api_url, project_context=project_context)
 
     global token
-    token = os.getenv("ACCESS_TOKEN", "XXX")
+    token = os.getenv("ACCESS_TOKEN", get_token(environment="staging"))
 
 # Iterate through all imported classes in the current module
 imported_classes = [

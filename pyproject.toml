@@ -42,7 +42,10 @@ dependencies = [
     "neurom",
 
     # ENTITYSDK
-    "entitysdk"
+    "entitysdk",
+
+    # OBI-AUTH
+    "obi-auth"
 
 ]
 
