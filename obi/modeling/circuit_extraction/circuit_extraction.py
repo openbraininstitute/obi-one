@@ -1,7 +1,7 @@
 from obi.modeling.core.form import Form
 from obi.modeling.core.block import Block
 from obi.modeling.core.single import SingleCoordinateMixin
-from obi.modeling.core.db import SaveCircuitEntity, SaveCircuitCollectionEntity
+from obi.modeling.core.db_old import SaveCircuitEntity, SaveCircuitCollectionEntity
 from obi.modeling.core.path import NamedPath
 
 class CircuitExtractions(Form):

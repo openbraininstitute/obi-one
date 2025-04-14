@@ -22,7 +22,8 @@ services = [
 
     {
         "name": "Launch OBI-ONE Service",
-        "command": ["uvicorn examples.launch_service_example:app --reload --host 127.0.0.1 --port 8100"], # 
+        "command": ["make install",
+                    "make run-local"], # 
         "cwd": ".",
         "post_sleep_time": 1,
     },
