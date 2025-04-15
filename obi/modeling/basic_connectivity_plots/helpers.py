@@ -2,14 +2,19 @@
 Last modified 03.2025 
 Author: Daniela Egas Santander"""
 
-import numpy as np 
+import warnings
+
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import networkx as nx
+import numpy as np
+from matplotlib import gridspec
 
+try:
+    from connalysis.network.classic import connection_probability_within, density
+    from connalysis.network.topology import rc_submatrix
+except ImportError:
+    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
-from connalysis.network.topology import rc_submatrix
-from connalysis.network.classic import density, connection_probability_within
 
 ### Stats functions 
 

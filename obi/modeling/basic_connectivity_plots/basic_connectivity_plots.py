@@ -1,7 +1,31 @@
-from obi.modeling.core.form import Form
+import os
+import traceback
+import warnings
+
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+
+from obi.modeling.basic_connectivity_plots.helpers import (
+    compute_global_connectivity,
+    connection_probability_pathway,
+    connection_probability_within_pathway,
+    plot_connection_probability_pathway_stats,
+    plot_connection_probability_stats,
+    plot_node_stats,
+)
 from obi.modeling.core.block import Block
-from obi.modeling.core.single import SingleCoordinateMixin
+from obi.modeling.core.form import Form
 from obi.modeling.core.path import NamedPath
+from obi.modeling.core.single import SingleCoordinateMixin
+
+try:
+    from connalysis.network.topology import node_degree
+    from connalysis.randomization import ER_model
+    from conntility import ConnectivityMatrix
+except ImportError:
+    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
+
 
 class BasicConnectivityPlots(Form):
     """
@@ -21,17 +45,6 @@ class BasicConnectivityPlots(Form):
     initialize: Initialize
 
 
-import os
-from typing import ClassVar
-import traceback
-
-import numpy as np
-import matplotlib.colors as mcolors
-
-from conntility import ConnectivityMatrix
-from connalysis.network.topology import rc_submatrix, node_degree
-from connalysis.randomization import ER_model
-from .helpers import *
 
 class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
     """
@@ -49,7 +62,6 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             print("Plot Types:", plot_types)
 
             print(f"Info: Running idx {self.idx}, plots for {plot_types}")
-        
 
             # Load matrix
             print(f"Info: Loading matrix '{self.initialize.matrix_path}'")

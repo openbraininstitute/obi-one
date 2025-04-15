@@ -1,7 +1,19 @@
-from obi.modeling.core.form import Form
+import os
+import warnings
+from typing import ClassVar
+
+from bluepysnap import Circuit
+
 from obi.modeling.core.block import Block
-from obi.modeling.core.single import SingleCoordinateMixin
+from obi.modeling.core.form import Form
 from obi.modeling.core.path import NamedPath
+from obi.modeling.core.single import SingleCoordinateMixin
+
+try:
+    from conntility.connectivity import ConnectivityMatrix
+except ImportError:
+    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
+
 
 class ConnectivityMatrixExtractions(Form):
     """
@@ -16,11 +28,6 @@ class ConnectivityMatrixExtractions(Form):
 
     initialize: Initialize
 
-
-import os
-from conntility.connectivity import ConnectivityMatrix
-from bluepysnap import Circuit
-from typing import ClassVar
 
 class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordinateMixin):
     """

@@ -1669,13 +1669,12 @@ dependencies = [
     { name = "blueetl" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
-    { name = "connectome-analysis" },
-    { name = "connectome-utilities" },
     { name = "entitysdk" },
     { name = "fastapi" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "networkx" },
     { name = "neurom" },
     { name = "notebook" },
     { name = "obi-auth" },
@@ -1684,6 +1683,12 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "starlette" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+connectivity = [
+    { name = "connectome-analysis" },
+    { name = "connectome-utilities" },
 ]
 
 [package.dev-dependencies]
@@ -1700,13 +1705,14 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepysnap", git = "https://github.com/openbraininstitute/snap.git" },
     { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git?branch=split_popul_fix" },
-    { name = "connectome-analysis", specifier = ">=1.0.1" },
-    { name = "connectome-utilities" },
+    { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
+    { name = "connectome-utilities", marker = "extra == 'connectivity'", specifier = ">=0.4.10" },
     { name = "entitysdk" },
     { name = "fastapi" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "networkx", specifier = ">=3.4.2" },
     { name = "neurom" },
     { name = "notebook" },
     { name = "obi-auth" },
@@ -1716,6 +1722,7 @@ requires-dist = [
     { name = "starlette" },
     { name = "uvicorn" },
 ]
+provides-extras = ["connectivity"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -18,6 +18,9 @@ apt-get install -qyy \
     build-essential \
     ca-certificates \
     cmake \
+    libboost1.81-all-dev \
+    libhdf5-dev \
+    libopenmpi-dev \
     zlib1g-dev \
     git
 EOT
@@ -49,11 +52,19 @@ RUN \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi,target=obi \
-    uv sync --locked --no-editable
+    uv sync --locked --no-editable --no-cache
 
 # run stage
 FROM python:$PYTHON_BASE
 SHELL ["bash", "-e", "-x", "-o", "pipefail", "-c"]
+
+RUN <<EOT
+apt-get update -qy
+apt-get install -qyy \
+    -o APT::Install-Recommends=false \
+    -o APT::Install-Suggests=false \
+    libhdf5-103-1
+EOT
 
 RUN <<EOT
 groupadd -r app

@@ -12,9 +12,6 @@ dependencies = [
     "brainbuilder",
     # MORPHOLOGY CONTAINERIZATION
     "bluepysnap",
-    # CONNECTIVITY
-    "connectome-utilities",
-    "connectome-analysis>=1.0.1",
     # FAST API SERVICE
     "fastapi",
     "uvicorn",
@@ -33,6 +30,23 @@ dependencies = [
     # ENTITYSDK
     "entitysdk",
     "obi-auth",
+    "networkx>=3.4.2",
+]
+
+[project.optional-dependencies]
+connectivity = [
+    "connectome-analysis>=1.0.1",
+    "connectome-utilities>=0.4.10",
+]
+
+
+[dependency-groups]
+dev = [
+    "coverage[toml]",
+    "pyright",
+    "pytest",
+    "pytest-cov",
+    "ruff",
 ]
 
 [build-system]
@@ -49,15 +63,6 @@ include = ["obi*"]
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
 brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git", branch = "split_popul_fix" }
-
-[dependency-groups]
-dev = [
-    "coverage[toml]",
-    "pyright",
-    "pytest",
-    "pytest-cov",
-    "ruff",
-]
 
 [tool.ruff]
 line-length = 100
