@@ -1,14 +1,14 @@
-from obi_one.modeling.core.base import OBIBaseModel
-from obi_one.modeling.core.path import NamedPath
-from obi_one.modeling.core.form import Form
-from obi_one.modeling.core.single import SingleCoordinateMixin
-from obi_one.modeling.core.block import Block
-from obi_one.modeling.core.scan import GridScan, CoupledScan
-from obi_one.modeling.core.serialization import deserialize_obi_object_from_json_file, deserialize_obi_object_from_json_data
-from obi_one.modeling.core.fastapi import activate_fastapi_app
-from obi_one.modeling.core.db_old import database, circuits, close_db
-from obi_one.modeling.core.db_old import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
-from obi_one.modeling.core.db import init_db, entitysdk_classes, download_morphology_assets
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.path import NamedPath
+from obi_one.core.form import Form
+from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.block import Block
+from obi_one.core.scan import GridScan, CoupledScan
+from obi_one.core.serialization import deserialize_obi_object_from_json_file, deserialize_obi_object_from_json_data
+from obi_one.core.fastapi import activate_fastapi_app
+from obi_one.core.db_old import database, circuits, close_db
+from obi_one.core.db_old import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
+from obi_one.core.db import init_db, entitysdk_classes, download_morphology_assets
 for cls in entitysdk_classes:
     globals()[cls.__name__] = cls
 

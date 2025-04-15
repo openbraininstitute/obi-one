@@ -1,4 +1,4 @@
-from obi_one.modeling.core.block import Block
+from obi_one.core.block import Block
 
 class Timestamps(Block):
     start_time: float | list[float]

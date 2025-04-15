@@ -1,6 +1,6 @@
-from obi_one.modeling.core.form import Form
-from obi_one.modeling.core.block import Block
-from obi_one.modeling.core.single import SingleCoordinateMixin
+from obi_one.core.form import Form
+from obi_one.core.block import Block
+from obi_one.core.single import SingleCoordinateMixin
 
 from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
 from obi_one.modeling.unions.unions_recordings import RecordingUnion

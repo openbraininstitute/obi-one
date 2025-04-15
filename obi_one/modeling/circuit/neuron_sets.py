@@ -1,4 +1,4 @@
-from obi_one.modeling.core.block import Block
+from obi_one.core.block import Block
 from obi_one.modeling.circuit.circuit import Circuit
 
 class NeuronSet(Block):

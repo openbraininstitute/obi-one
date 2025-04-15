@@ -1,7 +1,7 @@
 from pydantic import PrivateAttr, ValidationError
-from obi_one.modeling.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
-from obi_one.modeling.core.block import Block, MultiValueScanParam, SingleValueScanParam
-from obi_one.modeling.core.base import OBIBaseModel
+from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
+from obi_one.core.block import Block, MultiValueScanParam, SingleValueScanParam
+from obi_one.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
@@ -225,13 +225,13 @@ class Scan(OBIBaseModel):
         model_dump = self.model_dump()
 
         # Add the OBI version
-        model_dump["obi_version"] = version("obi")
+        model_dump["obi_one_version"] = version("obi-one")
         
         # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
         model_dump.move_to_end('type', last=False)
-        model_dump.move_to_end('obi_version', last=False)
+        model_dump.move_to_end('obi_one_version', last=False)
 
         # Order the keys in subdict "form"
         model_dump["form"] = OrderedDict(model_dump["form"])

@@ -1,4 +1,4 @@
-from obi_one.modeling.core.base import OBIBaseModel
+from obi_one.core.base import OBIBaseModel
 
 class NamedPath(OBIBaseModel):
     """Helper class to assign a name to a file path."""
