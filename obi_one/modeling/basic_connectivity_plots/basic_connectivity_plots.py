@@ -14,10 +14,10 @@ from obi_one.modeling.basic_connectivity_plots.helpers import (
     plot_connection_probability_stats,
     plot_node_stats,
 )
-from obi_one.modeling.core.block import Block
-from obi_one.modeling.core.form import Form
-from obi_one.modeling.core.path import NamedPath
-from obi_one.modeling.core.single import SingleCoordinateMixin
+from obi_one.core.block import Block
+from obi_one.core.form import Form
+from obi_one.core.path import NamedPath
+from obi_one.core.single import SingleCoordinateMixin
 
 try:
     from connalysis.network.topology import node_degree
