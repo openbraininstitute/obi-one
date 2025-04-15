@@ -189,6 +189,57 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
+class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+    _module: str = "subthreshold"
+    _input_type: str = "current_clamp"
+
+    percentage_below_threshold: float | list[float] = Field(default=0.1, description="A percentage adjusted from 100 of a cell’s threshold current. E.g. 20 will apply 80\% of the threshold current. Using a negative value will give more than 100. E.g. -20 will inject 120\% of the threshold current.")
+    represents_physical_electrode: bool | list[bool] = Field(default=False, description=REPRESENTS_PHYSICAL_ELECTRODE_DESCRIPTION)
+
+    def generate(self):
+        
+        sonata_config = {}
+        
+        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = 
+                {
+                    "delay": timestamp,
+                    "duration": self.duration,
+                    "cells":  self.neuron_set.name,
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "percent_less": self.percentage_below_threshold,
+                    "represents_physical_electrode": self.represents_physical_electrode
+                }
+        return sonata_config
+
+
+class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
+
+    "A hyperpolarizing current injection which brings a cell to base membrance voltage used in experiments. Note: No additional parameter are needed when using module “hyperpolarizing”. The holding current applied is defined in the cell model."
+
+    _module: str = "hyperpolarizing"
+    _input_type: str = "current_clamp"
+
+    represents_physical_electrode: bool | list[bool] = Field(default=False, description=REPRESENTS_PHYSICAL_ELECTRODE_DESCRIPTION)
+
+    def generate(self):
+        
+        sonata_config = {}
+        
+        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = 
+                {
+                    "delay": timestamp,
+                    "duration": self.duration,
+                    "cells":  self.neuron_set.name,
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "represents_physical_electrode": self.represents_physical_electrode
+                }
+        return sonata_config
+
+
 
 
 
