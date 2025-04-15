@@ -51,7 +51,7 @@ RUN \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
-    --mount=type=bind,source=obi,target=obi \
+    --mount=type=bind,source=obi_one,target=obi_one \
     uv sync --locked --no-editable --no-cache
 
 # run stage
