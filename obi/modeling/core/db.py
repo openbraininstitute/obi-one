@@ -18,20 +18,35 @@ from entitysdk.models.morphology import (
     Strain,
 )
 
-from obi_auth import get_token
+default_base_store = "../obi-output/obi-entity-file-store"
 
 client = None
-# token = None
-def init_db(virtual_lab_id, project_id, entitycore_api_url="http://127.0.0.1:8000"):
-    project_context = ProjectContext(
-        virtual_lab_id=virtual_lab_id,
-        project_id=project_id,
-    )
-    global client
-    client = Client(api_url=entitycore_api_url, project_context=project_context)
+token = None
+entity_file_store_path = None
+def init_db(virtual_lab_id, project_id, entity_file_store_root='', entitycore_api_url="http://127.0.0.1:8000"):
 
+    global client
     global token
-    token = os.getenv("ACCESS_TOKEN", get_token(environment="staging"))
+    global entity_file_store_path
+
+    entity_file_store_path = entity_file_store_root + "/obi-entity-file-store"
+    os.makedirs(entity_file_store_path, exist_ok=True)
+    
+    # # Local. Not fully working
+    # project_context = ProjectContext(
+    #     virtual_lab_id=virtual_lab_id,
+    #     project_id=project_id,
+    # )    
+    # client = Client(api_url=entitycore_api_url, project_context=project_context)
+    # token = os.getenv("ACCESS_TOKEN", "XXX")
+
+    # Staging
+    from obi_auth import get_token
+    token = get_token(environment="staging")
+    # Replace this with your vlab project url in staging
+    project_context = ProjectContext.from_vlab_url(f"https://staging.openbraininstitute.org/app/virtual-lab/lab/{virtual_lab_id}/project/{project_id}/home")
+    client = Client(environment="staging", project_context=project_context)
+
 
 # Iterate through all imported classes in the current module
 imported_classes = [
@@ -79,11 +94,15 @@ def download_morphology_assets(morphology):
     for asset in morphology.assets:
         print(asset)
         if asset.content_type == "application/swc":
+
+            file_output_path = Path(entity_file_store_path) / asset.full_path
+            file_output_path.parent.mkdir(parents=True, exist_ok=True)
+
             client.download_file(
                 entity_id=morphology.id,
                 entity_type=type(morphology),
                 asset_id=asset.id,
-                output_path="./my-file.h5",
+                output_path=file_output_path,
                 token=token,
             )
         #     content = client.download_content(
