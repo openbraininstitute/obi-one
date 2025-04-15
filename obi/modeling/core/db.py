@@ -46,7 +46,7 @@ for cls in imported_classes:
     # Check if the class inherits from Entity
     if issubclass(cls, Entity) and cls is not Entity:
 
-        print(cls)
+        # print(cls)
         # Dynamically add the 'find' method to the class
         def find(cls, limit=10, **kwargs): # token=None, 
             return client.search_entity(
