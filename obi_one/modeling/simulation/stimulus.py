@@ -36,8 +36,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -61,8 +60,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -86,8 +84,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -111,8 +108,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -138,8 +134,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -166,8 +161,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -192,8 +186,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -217,8 +210,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -234,16 +226,15 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
-    mean_amplitude = Field(default=0.01, description="The mean value of current to inject. Given in nA.")
-    variance = Field(default=0.01, description="The variance around the mean of current to inject using a normal distribution.")
+    mean_amplitude: float | list[float] = Field(default=0.01, description="The mean value of current to inject. Given in nA.")
+    variance: float | list[float] = Field(default=0.01, description="The variance around the mean of current to inject using a normal distribution.")
 
     def generate(self):
 
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
@@ -261,16 +252,15 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
-    mean_percentage_of_threshold_current = Field(default=0.01, description="The mean value of current to inject as a percentage of a cell’s threshold current.")
-    variance = Field(default=0.01, description="The variance around the mean of current to inject using a normal distribution.")
+    mean_percentage_of_threshold_current: float | list[float] = Field(default=0.01, description="The mean value of current to inject as a percentage of a cell’s threshold current.")
+    variance: float | list[float] = Field(default=0.01, description="The variance around the mean of current to inject using a normal distribution.")
 
     def generate(self):
 
         sonata_config = {}
         
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = 
-                {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                     "delay": timestamp,
                     "duration": self.duration,
                     "cells":  self.neuron_set.name,
