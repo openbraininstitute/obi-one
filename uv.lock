@@ -1746,6 +1746,28 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", extras = ["toml"] },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[[package]]
+name = "obi-auth"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "uvicorn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/02/cd7289cf870a8acb2693c3767a88173689d28cfb0d8d7baf3f04de1cdd39/obi_auth-0.1.0.tar.gz", hash = "sha256:c214433b521063df13cc827909629283e11cb89581cd71b4dc5115ddaee0c5f1", size = 14002 }
+
 [[package]]
 name = "overrides"
 version = "7.7.0"
