@@ -67,7 +67,7 @@ for cls in imported_classes:
 
     # Check if the class inherits from Struct
     if issubclass(cls, Struct) and cls is not Struct:
-        print(cls)
+        # print(cls)
 
         # setattr(cls, "__package__", __package__)
         entitysdk_classes.append(cls)
