@@ -1,5 +1,12 @@
 name: Build and publish the Docker image
 
+<<<<<<< HEAD
+=======
+permissions:
+  id-token: write # Required for OIDC authentication
+  contents: read # Standard permission for GitHub Actions
+
+>>>>>>> main
 on:
   push:
     tags:
