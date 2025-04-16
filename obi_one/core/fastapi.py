@@ -33,7 +33,7 @@ def generate_routes(model: Type[obi.Form], app: FastAPI):
     #     return response
     
     # @app.post(f"/{model_name}/generate_grid_scan/")
-    @app.post(f"/{model_name}/")
+    @app.post(f"/{model_name}")
     async def generate_grid_scan(form: model):
         
         print("\ngenerate_grid_scan")
