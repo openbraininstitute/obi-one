@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.application import app
-from obi.modeling.core import base
+from obi_one.core import base
 
 
 def test_app():

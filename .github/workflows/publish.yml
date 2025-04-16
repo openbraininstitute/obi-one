@@ -1,5 +1,9 @@
 name: Build and publish the Docker image
 
+permissions:
+  id-token: write # Required for OIDC authentication
+  contents: read # Standard permission for GitHub Actions
+
 on:
   push:
     tags:
@@ -16,11 +20,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Authenticate with AWS ECR account for pushing the image
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.PUBLICECR_UPLOAD_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.PUBLICECR_UPLOAD_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
           aws-region: ${{ vars.PUBLICECR_REGION }}
 
       - name: Authenticate with AWS Public ECR

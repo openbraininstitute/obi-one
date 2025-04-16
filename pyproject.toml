@@ -1,5 +1,5 @@
 [project]
-name = "obi"
+name = "obi-one"
 version = "0.1.0"
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
@@ -58,7 +58,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["obi*"]
+include = ["obi_one*"]
 
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
@@ -67,7 +67,7 @@ brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git",
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi/**/*.py"]
+include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
 
 [tool.ruff.lint]
 preview = true
@@ -87,6 +87,9 @@ ignore = [
     "D103",    # Missing docstring in public function
     "D104",    # Missing docstring in public package
     "D106",    # Missing docstring in public nested class
+    "DOC201",  # `return` is not documented in docstring
+    "DOC402",  # `yield` is not documented in docstring
+    "DOC501",  # Raised exception missing from docstring
 ]
 
 [tool.ruff.lint.isort]
@@ -145,7 +148,7 @@ branch = true
 parallel = false
 source_pkgs = [
     "app",
-    "obi",
+    "obi_one",
 ]
 
 [tool.coverage.report]
