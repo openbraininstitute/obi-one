@@ -1,7 +1,7 @@
 {
   "manifest": {
     "$BASE_DIR": ".",
-    "$COMPONENT_DIR": "./components",
+    "$COMPONENT_DIR": ".",
     "$NETWORK_DIR": "$BASE_DIR/network"
   },
   "components": {
@@ -14,25 +14,16 @@
       {
         "nodes_file": "$NETWORK_DIR/nodes.h5",
         "populations": {
-          "Node1": {
-            "type": "biophysical"
+          "Node0": {
+            "type": "biophysical",          
+            "morphologies_dir": "$BASE_DIR/components/morphologies",
+            "alternate_morphologies": {
+                "neurolucida-asc": "$BASE_DIR/components/morphologies/"
+            }
           }
-        }
-      },
-      {
-        "nodes_file": "$NETWORK_DIR/projections.h5",
-        "node_population_b": {
-          "type": "virtual"
         }
       }
     ],
-    "edges": [
-      {
-        "edges_file": "$NETWORK_DIR/edges.h5",
-        "populations": {
-            "edges-AB": {}
-        }
-      }
-    ]
+    "edges": []
   }
 }

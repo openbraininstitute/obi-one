@@ -23,5 +23,11 @@ Create an example of single-cell simulation to run using a SONATA circuit file.
 ### create a node_set file
 
 
+To Ask
+h5 file struc ture
+Edge file? 
+
+
+
 
 
