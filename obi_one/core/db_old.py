@@ -1,95 +1,97 @@
-import io
-import os
-import tempfile
-from pathlib import Path
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Table
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
 
-# from rich import print as rprint
+Base = declarative_base()
 
-from entitysdk.client import Client
-from entitysdk.common import ProjectContext
-from entitysdk.models.entity import Entity
-from entitysdk.models.core import Struct
-import inspect
-from entitysdk.models.morphology import (
-    BrainLocation,
-    BrainRegion,
-    ReconstructionMorphology,
-    Species,
-    Strain,
+# Association table for many-to-many relationship
+circuit_collection_association = Table(
+    'circuit_collection_association', Base.metadata,
+    Column('collection_id', Integer, ForeignKey('circuit_collections.id')),
+    Column('circuit_id', Integer, ForeignKey('circuits.id'))
 )
 
-from obi_auth import get_token
+class CircuitEntity(Base):
+    __tablename__ = 'circuits'
 
-client = None
-# token = None
-def init_db(virtual_lab_id, project_id, entitycore_api_url="http://127.0.0.1:8000"):
-    project_context = ProjectContext(
-        virtual_lab_id=virtual_lab_id,
-        project_id=project_id,
+    id = Column(Integer, primary_key=True)
+    config_path = Column(String, nullable=False)
+
+    def __repr__(self):
+        return f"<CircuitEntity(id={self.id}, config_path='{self.config_path}')>"
+
+def SaveCircuitEntity(config_path: str):
+
+    circuit_entity = CircuitEntity(config_path=config_path)
+    session.add(circuit_entity)
+    session.commit()
+
+    return circuit_entity
+
+
+class CircuitCollectionEntity(Base):
+    __tablename__ = 'circuit_collections'
+
+    id = Column(Integer, primary_key=True)
+    # name = Column(String, nullable=False)
+
+    # Link to many circuits
+    circuits = relationship(
+        "CircuitEntity",
+        secondary=circuit_collection_association,
+        backref="collections"
     )
-    global client
-    client = Client(api_url=entitycore_api_url, project_context=project_context)
 
-    global token
-    token = os.getenv("ACCESS_TOKEN", get_token(environment="staging"))
-
-# Iterate through all imported classes in the current module
-imported_classes = [
-    obj
-    for name, obj in globals().items()
-    if inspect.isclass(obj) and obj.__module__ != "__main__"
-]
+    def __repr__(self):
+        return f"<CircuitCollectionEntity(id={self.id}')>" # , name='{self.name}
 
 
-entitysdk_classes = []
-for cls in imported_classes:
-    # Check if the class inherits from Entity
-    if issubclass(cls, Entity) and cls is not Entity:
+def SaveCircuitCollectionEntity(circuits: list[CircuitEntity]):
 
-        print(cls)
-        # Dynamically add the 'find' method to the class
-        def find(cls, limit=10, **kwargs): # token=None, 
-            return client.search_entity(
-                entity_type=cls, query=kwargs, token=token, limit=limit
-            ).all()
-        setattr(cls, "find", classmethod(find))
+    collection = CircuitCollectionEntity(circuits=circuits)
+    session.add(collection)
+    session.commit()
 
-        def fetch(cls, entity_id):
-            return client.get_entity(
-                entity_id=entity_id, entity_type=cls, token=token
-            )
-        setattr(cls, "fetch", classmethod(fetch))
+import os
+session = None
+def database(db_path='sqlite:///obi.db'):
 
-        # Dynamically add the class to the package
-        entitysdk_classes.append(cls)
+    # Setup SQLite in-memory database for simplicity
+    engine = create_engine(db_path, echo=True)
+    Base.metadata.create_all(engine)
 
-        # setattr(cls, "__package__", __package__)
-
-    # Check if the class inherits from Struct
-    if issubclass(cls, Struct) and cls is not Struct:
-        print(cls)
-
-        # setattr(cls, "__package__", __package__)
-        entitysdk_classes.append(cls)
-        
+    Session = sessionmaker(bind=engine)
+    global session
+    session = Session()
 
 
-def download_morphology_assets(morphology):
 
-    for asset in morphology.assets:
-        print(asset)
-        if asset.content_type == "application/swc":
-            client.download_file(
-                entity_id=morphology.id,
-                entity_type=type(morphology),
-                asset_id=asset.id,
-                output_path="./my-file.h5",
-                token=token,
-            )
-        #     content = client.download_content(
-        #         entity_id=morphology.id, entity_type=type(morphology), asset_id=asset.id, token=token
-        #     )
-        #     break
 
-        #     print(content)
-        #     print(Path("my-file.h5").read_text())
+
+# def create_circuits_and_collection(session, circuit_paths):
+#     circuits = []
+#     for circuit_path in circuit_paths:
+#         circuit = CircuitEntity(config_path=circuit_path)
+#         session.add(circuit)
+
+
+
+#         circuits.append(circuit)
+#     session.commit()
+
+#     collection1 = CircuitCollectionEntity(name="First Collection", circuits=circuits)
+#     session.add(collection1)
+#     session.commit()
+
+
+def circuit_collections():
+    collections = session.query(CircuitCollectionEntity).all()
+    print(collections)
+
+def circuits():
+    circuits = session.query(CircuitEntity).all()
+    print(circuits)
+
+
+def close_db():
+    session.close()
