@@ -20,7 +20,7 @@ from obi_one.modeling.circuit.synapse_sets import SynapseSet, IDSynapseSet
 from obi_one.modeling.circuit.intracellular_location_sets import IntracellularLocationSet, SectionIntracellularLocationSet
 from obi_one.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet, XYZExtracellularLocationSet
 
-from obi_one.modeling.simulation.timestamps import Timestamps, RegularTimestamps, CategoricalTimestamps
+from obi_one.modeling.simulation.timestamps import Timestamps, RegularTimestamps
 from obi_one.modeling.simulation.stimulus import Stimulus, SynchronousSingleSpikeStimulus
 from obi_one.modeling.simulation.recording import Recording, SpikeRecording, VoltageRecording, IntracellularLocationSetVoltageRecording, ExtraceullarLocationSetVoltageRecording
 from obi_one.modeling.simulation.simulations import SimulationsForm, Simulation
