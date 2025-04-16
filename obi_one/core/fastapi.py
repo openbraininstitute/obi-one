@@ -6,13 +6,22 @@ from fastapi.responses import JSONResponse
 
 def activate_fastapi_app(app: FastAPI):
 
+    # For each obi.Form subclass, create a FastAPI route for generating grid scans.
     for subclass in obi.Form.__subclasses__():
-        generate_routes(subclass, app)
+        create_form_generate_route(subclass, app)
+
+    # Create a single endpoint that returns all available Form endpoints
+    @app.get("/forms")
+    async def get_forms():
+        forms = [subclass.__name__.lower() for subclass in obi.Form.__subclasses__()]
+        return JSONResponse(content={"forms": forms})
+
+    
     return
 
-
-# Auto-generate API routes
-def generate_routes(model: Type[obi.Form], app: FastAPI):
+# # This function creates a FastAPI route for generating grid scans based on the provided OBI Form model.
+# It takes a model class (subclass of obi.Form) and a FastAPI app instance as arguments.
+def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
 
     # model is the OBI.Form subclass 
     # i.e. <class 'obi.modeling.simulation.simulations.SimulationsForm'>
