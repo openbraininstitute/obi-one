@@ -54,8 +54,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config['version'] = self.initialize.sonata_version
         self._sonata_config['target_simulator'] = self.initialize.target_simulator
 
-        self._sonata_config['network'] = self.initialize.circuit.circuit_path
-        self._sonata_config["node_set"] = self.initialize.circuit.node_set
+        self._sonata_config['network'] = self.initialize.circuit.path
+        # self._sonata_config["node_set"] = self.initialize.circuit.node_set
 
         self._sonata_config['run'] = {}
         self._sonata_config['run']['dt'] = self.initialize.timestep

@@ -1,13 +1,13 @@
-from obi.modeling.core.block import Block
+from obi.modeling.core.base import OBIBaseModel
 import bluepysnap as snap
 import os
 
-class Circuit(Block):
+class Circuit(OBIBaseModel):
     """
     Class representing a circuit, i.e., pointing to a SONATA config.
     """
-    path: str
     name: str
+    path: str
 
     def __init__(self, name, path):
         super().__init__(name=name, path=path)
@@ -20,6 +20,11 @@ class Circuit(Block):
     def sonata_circuit(self):
         """Provide access to SONATA circuit object."""
         return snap.Circuit(self.path)
+
+    @property
+    def node_sets(self):
+        """Returns list of available node sets."""
+        return list(self.sonata_circuit.node_sets.content.keys())
 
     @property
     def node_population_names(self):
