@@ -30,7 +30,7 @@ def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
     # in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
-    @app.post(f"/{model_name}/")
+    @app.post(f"/{model_name}")
     async def generate_grid_scan(form: model):
         
         print("\ngenerate_grid_scan")
