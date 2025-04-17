@@ -108,7 +108,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
         # Replace code in hoc files
         for _file in tqdm.tqdm(os.listdir(hoc_folder), desc="Updating .hoc files"):
-            if os.path.splitext(_file)[1].lower() != ".hoc":
+            if os.path.splitext(_file)[1].lower() != ".hoc" or _file[0] == ".":  # Exclude non-hoc and hidden files starting with ._xxx.hoc
                 continue
             hoc_file = os.path.join(hoc_folder, _file)
             with open(hoc_file, "r") as f:
@@ -266,7 +266,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             # Clean up morphology folders with individual morphologies
             print(f"Cleaning morphology folders: {morph_folders_to_delete}")
             for _folder in morph_folders_to_delete:
-                shutil.rmtree(_folder)
+                shutil.rmtree(_folder, ignore_errors=True)
 
             # Reload and check morphologies in modified circuit
             assert self._check_morphologies(circuit_config), "ERROR: Morphology check not successful!"
