@@ -25,7 +25,7 @@ help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
 install:  ## Install dependencies into .venv
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra connectivity
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
 
 compile-deps:  ## Create or update the lock file, without upgrading the version of the dependencies
