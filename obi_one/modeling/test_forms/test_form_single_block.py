@@ -7,6 +7,7 @@ from obi_one.core.db import *
 
 class SingleBlockGenerateTestForm(Form):
     """
+    Test
     """
     _single_coord_class_name: str = "SingleBlockGenerateTest"
 
@@ -18,6 +19,9 @@ class SingleBlockGenerateTestForm(Form):
 
 import traceback
 class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin):
+    """
+    Test
+    """
     
     def run(self):
 
@@ -34,6 +38,7 @@ class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin
 from obi_one.core.db import *
 class SingleBlockEntitySDKTestForm(Form):
     """
+    Test
     """
     _single_coord_class_name: str = "SingleBlockGenerateTest"
 
@@ -42,7 +47,10 @@ class SingleBlockEntitySDKTestForm(Form):
 
     initialize: Initialize
 
-class SingleBlockEntitySDKTest(Form):
+class SingleBlockEntitySDKTest(SingleBlockEntitySDKTestForm, SingleCoordinateMixin):
+    """
+    Test
+    """
 
     def run(self):
 
