@@ -30,8 +30,9 @@ from obi_one.modeling.connectivity_matrix_extraction.connectivity_matrix_extract
 from obi_one.modeling.basic_connectivity_plots.basic_connectivity_plots import BasicConnectivityPlots, BasicConnectivityPlot
 from obi_one.modeling.folder_compression.folder_compression import FolderCompressions, FolderCompression
 from obi_one.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
-
 from obi_one.modeling.morphology_metrics.morphology_metrics import MorphologyMetricsForm, MorphologyMetrics
+
+from obi_one.modeling.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest
 
 from obi_one.modeling.unions.unions_form import FormUnion
 from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
