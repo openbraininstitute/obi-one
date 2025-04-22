@@ -79,13 +79,15 @@ Once the service has been launched, the generated gui can additionally be launch
 
 # Developer guidelines
 
-- We recommend that any new features are developed on a new branch originating from the **dev** branch. 
+- We recommend that any new features are developed on a new branch originating from the **main** branch. 
 - The name of the new branch should describe the change being worked on (i.e. **current_stimulus_fix**). 
 - When multiple developers are working on such a branch it may be preferable to create additioanl branches with a suffix indicating their initials (i.e. **current_stimulus_fix_bfg**).
-- Developers should make pull requests into the dev branch. The pull request can be merged by the developer who created it if the changes are small and unlikely to affect other parts of the codebase. Otherwise, if the changes might affect other parts of the codebase or the developer would like a second opinion, the developer can request for another developer to review the pull request.
+- Developers should make pull requests into the main branch.
+- Releases will be made when substantial changes have been made and tested.
 - Example notebooks/scripts should ideally store output in a directory named **obi-output** that is at the same level as the obi-one repository i.e. outside the respistory.
 - Currently all dependencies are required in pyproject.toml to simplify development. This may lead to a slow initial import of obi. In future we can explore adding optional dependencies, and optional imports of obi functionalities into the obi module depending on what dependencies are installed.
-- Dependencies to a specific version/branch of another repository can be added to pyproject.toml as `"repo-name @ git+https://github.com/repo-name.git@branch-name"`.
+- Dependencies to a specific version/branch of another repository can be added to pyproject.toml under [tool.uv.sources]
+as `repo_name = { git = "https://github.com/repo_name/snap.git", branch = "branch_name" }`.  
 - All issues are tracked on the project board, where tickets can be created and moved appropriately: https://github.com/orgs/openbraininstitute/projects/42/views/1 
 - Issues may belong to individual product repositories (i.e. single_cell_lab) or the obi-one repository. This allows us to group the issues by product in the project board.
 - "Milestones" are also used for grouping to support sprint development. As issues belong to different repositories we created several generically named milestones (i.e. OBI-ONE Milestone A, OBI-ONE Milestone B, ...) in each product repository. This avoids having to create new milestones everytime a new milestone is begun. Instead we can assign a previously finished milestone (i.e. OBI-ONE Milestone C) to issues associated with the new milestone. 

@@ -2,7 +2,7 @@ services:
   app:
     profiles: [run]
     image: "${IMAGE_NAME}:${IMAGE_TAG}"
-    platform: linux/amd64  # because of pyflagser
+#    platform: linux/amd64  # for pyflagser
     build:
       dockerfile: Dockerfile
       args:
@@ -13,7 +13,7 @@ services:
       tags:
       - "${IMAGE_NAME}:${IMAGE_TAG_ALIAS}"
     ports:
-    - "127.0.0.1:8000:8000"
+    - "127.0.0.1:8100:8000"
     env_file: .env.run-docker
     develop:
       watch:

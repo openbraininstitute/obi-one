@@ -3,7 +3,7 @@ Generate basic connectivity plots for all connectomes
 Last updated 03.2025
 Author: Daniela Egas Santander"""
 
-import obi
+import obi_one as obi
 import os
 
 # Path to store figures 
