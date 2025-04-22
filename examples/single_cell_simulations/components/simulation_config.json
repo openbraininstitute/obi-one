@@ -3,6 +3,7 @@
         "$OUTPUT_DIR": "."
     },
     "run": {
+        "tstart": 0.0,
         "tstop": 50.0,
         "dt": 0.025,
         "random_seed": 1

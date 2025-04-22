@@ -15,10 +15,10 @@
         "nodes_file": "$NETWORK_DIR/nodes.h5",
         "populations": {
           "Node0": {
-            "type": "biophysical",          
-            "morphologies_dir": "$BASE_DIR/components/morphologies",
+            "type": "biophysical",
+            "morphologies_dir": "$COMPONENT_DIR/",
             "alternate_morphologies": {
-                "neurolucida-asc": "$BASE_DIR/components/morphologies/"
+                "neurolucida-asc": "$COMPONENT_DIR/"
             }
           }
         }

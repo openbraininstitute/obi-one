@@ -6,44 +6,44 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
     # Create the main nodes group
     nodes = f.create_group('nodes')
     # nodes.attrs['version'] = '1.0'
-    
+
     # Create a population named "Node0"
     population = nodes.create_group('Node0')
-    
+
     # Add node_type_id at the population level
     node_type_id = population.create_dataset('node_type_id', (1,), dtype='int64')
     node_type_id[0] = -1  # As per specification
 
     # Create the '0' group inside the population
     group_0 = population.create_group('0')
-    
-    # Create the '@library' group with all fields shown in the first screenshot
-    library = group_0.create_group('@library')
-    
-    # Add all datasets to '@library' as shown in first screenshot
-    lib_etype = library.create_dataset('etype', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_etype[0] = "cADpyr"
-    
-    lib_layer = library.create_dataset('layer', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_layer[0] = "L5"
-    
-    lib_model_type = library.create_dataset('model_type', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_model_type[0] = "biophysical"
-    
-    lib_morph_class = library.create_dataset('morph_class', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_morph_class[0] = "PYR"
-    
-    lib_mtype = library.create_dataset('mtype', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_mtype[0] = "L5TPC:A"
-    
-    lib_population = library.create_dataset('population', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_population[0] = "Node0"
-    
-    lib_region = library.create_dataset('region', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_region[0] = "cortex"
-    
-    lib_synapse_class = library.create_dataset('synapse_class', (1,), dtype=h5py.special_dtype(vlen=str))
-    lib_synapse_class[0] = "EXC"
+
+    # # Create the '@library' group with all fields shown in the first screenshot
+    # library = group_0.create_group('@library')
+
+    # # Add all datasets to '@library' as shown in first screenshot
+    # lib_etype = library.create_dataset('etype', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_etype[0] = "cADpyr"
+
+    # lib_layer = library.create_dataset('layer', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_layer[0] = "L5"
+
+    # lib_model_type = library.create_dataset('model_type', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_model_type[0] = "biophysical"
+
+    # lib_morph_class = library.create_dataset('morph_class', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_morph_class[0] = "PYR"
+
+    # lib_mtype = library.create_dataset('mtype', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_mtype[0] = "L5TPC:A"
+
+    # lib_population = library.create_dataset('population', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_population[0] = "Node0"
+
+    # lib_region = library.create_dataset('region', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_region[0] = "cortex"
+
+    # lib_synapse_class = library.create_dataset('synapse_class', (1,), dtype=h5py.special_dtype(vlen=str))
+    # lib_synapse_class[0] = "EXC"
     # # Define all enum mappings
     # enum_mappings = {
     #     'etype': {'cADpyr': 0},
@@ -54,7 +54,7 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
     #     'synapse_class': {'EXC': 0},
     #     'region': {'cortex': 0}  # Optional field
     # }
-    
+
     # # Create enums and store values
     # for name, mapping in enum_mappings.items():
     #     # Create main enum dataset
@@ -82,13 +82,13 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
     model_type[0] = "0"
     morph_class = group_0.create_dataset('morph_class', (1,), dtype='int32')
     morph_class[0] = "0"
-    
+
     # morphology = group_0.create_dataset('morphology', (1,), dtype=h5py.special_dtype(vlen=str))
     morphology = group_0.create_dataset('morphology', (1,), dtype=h5py.string_dtype(encoding='utf-8'))
     morphology[0] = "morphologies/C060114A5"
     mtype = group_0.create_dataset('mtype', (1,), dtype=h5py.string_dtype(encoding='utf-8'))
     mtype[0] = "L5TPC:A"
-    
+
     # Add numeric properties
     numeric_props = {
         'x': 0.0,
@@ -100,7 +100,7 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
         # 'exc-mini_frequency': 1.2,   # Example optional field value in Hz
         # 'inh-mini_frequency': 2.3,   # Example optional field value in Hz
     }
-    
+
     for name, value in numeric_props.items():
         ds = group_0.create_dataset(name, (1,), dtype='float32')
         ds[0] = value
