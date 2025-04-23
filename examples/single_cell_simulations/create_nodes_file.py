@@ -1,5 +1,27 @@
 import h5py
 import numpy as np
+import glob
+from calculate_threshold_holding import get_threshold_and_holding_current
+
+# get the hoc and morphology file paths
+# use glob to get the hoc and morphology file paths
+
+hoc_file = glob.glob("components/hocs/*.hoc")[0]
+morph_file = glob.glob("components/morphologies/*.asc")[0]
+EM_file = glob.glob("components/EM__*.json")[0]
+# to find a better way to get this:
+mtype = "L5TPC:A"
+
+print("Hoc file:", hoc_file)
+print("Morphology file:", morph_file)
+print("EM file:", EM_file)
+
+# Retrieve threshold and holding current
+threshold_current, holding_current = get_threshold_and_holding_current(hoc_file, morph_file, EM_file)
+print("Threshold current:", threshold_current)
+print("Holding current:", holding_current)
+# Define the path to the HDF5 file
+
 
 # Create a new HDF5 file
 with h5py.File('components/network/nodes.h5', 'w') as f:
@@ -67,8 +89,8 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
 
     # Add mandatory dynamics_params fields
     dynamics = group_0.create_group('dynamics_params')
-    dynamics.create_dataset('holding_current', (1,), dtype='float32', data=[-0.0875])
-    dynamics.create_dataset('threshold_current', (1,), dtype='float32', data=[0.1624028733588378])
+    dynamics.create_dataset('holding_current', (1,), dtype='float32', data=[holding_current])
+    dynamics.create_dataset('threshold_current', (1,), dtype='float32', data=[threshold_current])
 
     # Add optional dynamics_params fields
     # dynamics.create_dataset('AIS_scaler', (1,), dtype='float32', data=[1.0])  # Example value
@@ -77,7 +99,7 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
     # Add standard string properties
     # model_template = group_0.create_dataset('model_template', (1,), dtype=h5py.special_dtype(vlen=str))
     model_template = group_0.create_dataset('model_template', (1,), dtype=h5py.string_dtype(encoding='utf-8'))
-    model_template[0] = "hoc:model"
+    model_template[0] = f"hoc:{hoc_file.split('/')[-1].split('.')[0]}"
     model_type = group_0.create_dataset('model_type', (1,), dtype='int32')
     model_type[0] = "0"
     morph_class = group_0.create_dataset('morph_class', (1,), dtype='int32')
@@ -85,9 +107,9 @@ with h5py.File('components/network/nodes.h5', 'w') as f:
 
     # morphology = group_0.create_dataset('morphology', (1,), dtype=h5py.special_dtype(vlen=str))
     morphology = group_0.create_dataset('morphology', (1,), dtype=h5py.string_dtype(encoding='utf-8'))
-    morphology[0] = "morphologies/C060114A5"
+    morphology[0] = f"morphologies/{morph_file.split('/')[-1].split('.')[0]}"
     mtype = group_0.create_dataset('mtype', (1,), dtype=h5py.string_dtype(encoding='utf-8'))
-    mtype[0] = "L5TPC:A"
+    mtype[0] = mtype #"L5TPC:A"
 
     # Add numeric properties
     numeric_props = {

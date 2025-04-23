@@ -1,0 +1,26 @@
+{
+    "name": "SONATA Single Cell Simulation",
+    "authors": ["Darshan Mandge", "Ilkan Kilic"],
+    "description": "The notebook run_sonata_sim.ipynb run a single cell simulation using a SONATA circuit",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SimulatableNeuron",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requires-python": ">=3.9,<3.13",
+    "requirements": [
+        "aws-cli>=2.23.2",
+        "bluecellulab>=2.6.40",
+        "neuron>=8.0<9.0",
+        "matplotlib>=3.7.1",
+        "bluepysnap>=3.0.1",
+        "h5py>=3.13.0" 
+    ]
+}
