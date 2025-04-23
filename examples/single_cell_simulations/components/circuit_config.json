@@ -1,0 +1,29 @@
+{
+  "manifest": {
+    "$BASE_DIR": ".",
+    "$COMPONENT_DIR": ".",
+    "$NETWORK_DIR": "$BASE_DIR/network"
+  },
+  "components": {
+    "morphologies_dir": "$COMPONENT_DIR/morphologies",
+    "biophysical_neuron_models_dir": "$COMPONENT_DIR/hocs"
+  },
+  "node_sets_file": "$BASE_DIR/node_sets.json",
+  "networks": {
+    "nodes": [
+      {
+        "nodes_file": "$NETWORK_DIR/nodes.h5",
+        "populations": {
+          "Node0": {
+            "type": "biophysical",
+            "morphologies_dir": "$COMPONENT_DIR/",
+            "alternate_morphologies": {
+                "neurolucida-asc": "$COMPONENT_DIR/"
+            }
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}

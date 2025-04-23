@@ -6,3 +6,7 @@ coverage.xml
 .DS_Store
 .idea
 **/analysis_output
+venv/
+temp/
+*/arm64/
+**/arm64/
