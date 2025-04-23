@@ -32,7 +32,7 @@ from obi_one.modeling.folder_compression.folder_compression import FolderCompres
 from obi_one.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 from obi_one.modeling.morphology_metrics.morphology_metrics import MorphologyMetricsForm, MorphologyMetrics
 
-from obi_one.modeling.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntitySDKTestForm, SingleBlockEntitySDKTest
+from obi_one.modeling.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntitySDKTestForm, SingleBlockEntitySDKTest, MultiBlockEntitySDKTestForm, MultiBlockEntitySDKTest
 
 from obi_one.modeling.unions.unions_form import FormUnion
 from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
