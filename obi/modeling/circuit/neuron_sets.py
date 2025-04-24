@@ -5,28 +5,39 @@ import numpy as np
 import os
 from obi.modeling.core.block import Block
 from obi.modeling.circuit.circuit import Circuit
+from pydantic import Field, model_validator
+from typing import Annotated
+from typing_extensions import Self
+
 
 class NeuronSet(Block, abc.ABC):
     """
     Base class representing a neuron set of a single SONATA node populations.
     """
-    name: str
+    name: Annotated[str, Field(min_length=1)]
     circuit: Circuit
-    population: str
+    population: Annotated[str, Field(min_length=1)]
     random_sample: None | int | float = None
     random_seed: int = 0
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @model_validator(mode='after')
+    def check_name(self) -> Self:
+        assert self.name not in self.circuit.node_sets, f"Neuron set '{self.name}' already exists in the circuit's node sets!"
+        return self
 
-        assert self.name not in self.circuit.node_sets, f"ERROR: Neuron set '{self.name}' already exists in the circuit's node sets!"
-        assert self.population in self.circuit.node_population_names, f"ERROR: Node population '{self.population}' not found!"
+    @model_validator(mode='after')
+    def check_population(self) -> Self:
+        assert self.population in self.circuit.node_population_names, f"Node population '{self.population}' not found!"
+        return self
 
+    @model_validator(mode='after')
+    def check_random_sample(self) -> Self:
         if self.random_sample is not None:
             if isinstance(self.random_sample, int):
-                assert self.random_sample >= 0, "ERROR: Random sample number must not be negative!"
+                assert self.random_sample >= 0, "Random sample number must not be negative!"
             elif isinstance(self.random_sample, float):
-                assert 0.0 <= self.random_sample <= 1.0, "ERROR: Random sample fraction must be between 0.0 and 1.0!"
+                assert 0.0 <= self.random_sample <= 1.0, "Random sample fraction must be between 0.0 and 1.0!"
+        return self
 
     @abc.abstractmethod
     def _get_expression(self):
@@ -79,7 +90,7 @@ class NeuronSet(Block, abc.ABC):
             expression = self._get_expression()
         else:
             # Individual IDs need to be resolved
-            expression = {"node_id": self.get_ids().tolist()}
+            expression = {"population": self.population, "node_id": self.get_ids().tolist()}
 
         return {self.name: expression}
 
@@ -113,14 +124,13 @@ class BasicNeuronSet(NeuronSet):
     """
     Basic neuron set definition based on a combination of existing (named) node sets.
     """
-    node_sets: list[str]
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    node_sets: Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
 
-        assert len(self.node_sets) > 0, "ERROR: Empty list of node sets!"
+    @model_validator(mode='after')
+    def check_node_sets(self) -> Self:
         for _nset in self.node_sets:
-            assert _nset in self.circuit.node_sets, f"ERROR: Node set '{_nset}' not found!"
+            assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
+        return self
 
     def _get_expression(self):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -131,34 +141,37 @@ class IDNeuronSet(NeuronSet):
     """
     Neuron set definition by providing a list of neuron IDs.
     """
-    neuron_ids: list[int]
+    neuron_ids: Annotated[list[int], Field(min_length=1)]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+    @model_validator(mode='after')
+    def check_neuron_ids(self) -> Self:
         popul_ids = self.circuit.sonata_circuit.nodes[self.population].ids()
-        assert all(_nid in popul_ids for _nid in self.neuron_ids), f"ERROR: Neuron ID(s) not within population '{self.population}'!"
+        assert all(_nid in popul_ids for _nid in self.neuron_ids), f"Neuron ID(s) not in population '{self.population}'!"
+        return self
 
     def _get_expression(self):
         """Returns the SONATA node set expression (w/o subsampling)."""
-        return {'node_id': self.neuron_ids}
+        return {"population": self.population, "node_id": self.neuron_ids}
 
 
 class PropertyNeuronSet(NeuronSet):
     """
     Neuron set definition based on neuron properties, optionally combined with (named) node sets.
     """
-    property_specs: dict
-    node_sets: list[str] = []
+    property_specs: Annotated[dict, Field(min_length=1)]
+    node_sets: list[Annotated[str, Field(min_length=1)]] = []
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
+    @model_validator(mode='after')
+    def check_properties(self) -> Self:
         prop_names = self.circuit.sonata_circuit.nodes[self.population].property_names
-        assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"ERROR: Invalid neuron properties! Available properties: {prop_names}"
+        assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"Invalid neuron properties! Available properties: {prop_names}"
+        return self
 
+    @model_validator(mode='after')
+    def check_node_sets(self) -> Self:
         for _nset in self.node_sets:
-            assert _nset in self.circuit.node_sets, f"ERROR: Node set '{_nset}' not found!"
+            assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
+        return self
 
     def _get_expression(self):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -173,6 +186,6 @@ class PropertyNeuronSet(NeuronSet):
                 node_ids = np.union1d(node_ids, c.nodes[self.population].ids(_nset))
             node_ids = np.intersect1d(node_ids, c.nodes[self.population].ids(self.property_specs))
 
-            expression = {"node_id": node_ids.tolist()}
+            expression = {"population": self.population, "node_id": node_ids.tolist()}
 
         return expression
