@@ -83,9 +83,9 @@ class NeuronSet(Block, abc.ABC):
         """Returns the size (#neurons) of the neuron set."""
         return len(self.get_ids())
 
-    def get_node_set_dict(self):
-        """Returns the SONATA node set definition as dict."""
-        if self.random_sample is None:
+    def get_node_set_dict(self, force_resolve_ids=False):
+        """Returns the SONATA node set definition as dict, optionally forcing to resolve individual IDs."""
+        if self.random_sample is None and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression()
         else:
@@ -94,7 +94,7 @@ class NeuronSet(Block, abc.ABC):
 
         return {self.name: expression}
 
-    def write_node_set_file(self, output_path, overwrite_if_exists=False, append_if_exists=False):
+    def write_node_set_file(self, output_path, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False):
         """Writes a new node set file of the circuit."""
         fname = os.path.split(self.circuit.sonata_circuit.config["node_sets_file"])[1]
         output_file = os.path.join(output_path, fname)
@@ -104,14 +104,14 @@ class NeuronSet(Block, abc.ABC):
         if not os.path.exists(output_file) or overwrite_if_exists:
             # Create new node sets file from circuit object, overwrite if existing
             node_sets = self.circuit.sonata_circuit.node_sets.content
-            node_sets.update(self.get_node_set_dict())
+            node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
 
         elif os.path.exists(output_file) and append_if_exists:
             # Append to existing node sets file
             with open(output_file, "r") as f:
                 node_sets = json.load(f)
                 assert self.name not in node_sets, f"ERROR: Appending not possible, node set '{self.name}' already exists!"
-                node_sets.update(self.get_node_set_dict())
+                node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
 
         else:  # File existing but no option chosen
             assert False, f"ERROR: Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
