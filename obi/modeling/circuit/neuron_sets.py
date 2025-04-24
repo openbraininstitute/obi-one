@@ -35,7 +35,7 @@ class NeuronSet(Block, abc.ABC):
 
     @staticmethod
     def add_node_set_to_circuit(sonata_circuit, node_set_dict, overwrite_if_exists=False):
-        """Adds the node set definition to a SONATA circuit object (in-place)."""
+        """Adds the node set definition to a SONATA circuit object to make it accessible (in-place)."""
         existing_node_sets = sonata_circuit.node_sets.content
         if not overwrite_if_exists:
             for _k in node_set_dict.keys():
@@ -45,11 +45,11 @@ class NeuronSet(Block, abc.ABC):
 
     def _resolve_ids(self):
         """Returns the full list of neuron IDs (w/o subsampling)."""
-        c = snap.Circuit(self.circuit.path)
+        c = self.circuit.sonata_circuit
         self.add_node_set_to_circuit(c, {self.name: self._get_expression()})
         return c.nodes[self.population].ids(self.name)
 
-    def get_ids(self):
+    def get_ids(self, with_population=False):
         """Returns list of neuron IDs (with subsampling, if specified)."""
         ids = np.array(self._resolve_ids())
         if self.random_sample is not None:
@@ -61,7 +61,11 @@ class NeuronSet(Block, abc.ABC):
                 num_sample = np.round(self.random_sample * len(ids)).astype(int)
 
             ids = ids[np.random.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
-        return ids
+
+        if with_population:
+            return {self.population: ids}
+        else:
+            return ids
 
     @property
     def size(self):
@@ -123,110 +127,52 @@ class BasicNeuronSet(NeuronSet):
         return self.node_sets
 
 
-# class BasicNeuronSet(NeuronSet):
-#     """
-#     Basic neuron set definition based on a combination of existing (named) node sets.
-#     """
-#     node_sets: list[str]
-    
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
+class IDNeuronSet(NeuronSet):
+    """
+    Neuron set definition by providing a list of neuron IDs.
+    """
+    neuron_ids: list[int]
 
-#         assert len(self.node_sets) > 0, "ERROR: Empty list of node sets!"
-#         for _nset in self.node_sets:
-#             assert _nset in self.circuit.node_sets, f"ERROR: Node set '{_nset}' not found!"
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-#     def _get_expression(self):
-#         """Returns the SONATA node set expression (w/o subsampling)."""
-#         if len(self.node_sets) == 1:
-#             return self.node_sets[0]
-#         else:
-#             return {"$or": self.node_sets}
+        popul_ids = self.circuit.sonata_circuit.nodes[self.population].ids()
+        assert all(_nid in popul_ids for _nid in self.neuron_ids), f"ERROR: Neuron ID(s) not within population '{self.population}'!"
+
+    def _get_expression(self):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        return {'node_id': self.neuron_ids}
 
 
-# import numpy as np
-# from obi.modeling.core.block import Block
-# from obi.modeling.circuit.circuit import Circuit
+class PropertyNeuronSet(NeuronSet):
+    """
+    Neuron set definition based on neuron properties, optionally combined with (named) node sets.
+    """
+    property_specs: dict
+    node_sets: list[str] = []
 
-# class NeuronSet(Block):
-#     """
-#     Base class representing a neuron set of a node populations.
-#     """
-#     circuit: Circuit
-#     population: str
-#     node_set: None | str = None
-#     random_sample: None | int | float = None
-#     random_seed: int = 0
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
+        prop_names = self.circuit.sonata_circuit.nodes[self.population].property_names
+        assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"ERROR: Invalid neuron properties! Available properties: {prop_names}"
 
-#         assert self.population in self.circuit.node_population_names, f"ERROR: Node population '{self.population}' not found!"
-#         if self.node_set is not None:
-#             assert self.node_set in self.circuit.sonata_circuit.node_sets.content, f"ERROR: Node set '{self.node_set}' not found!"
+        for _nset in self.node_sets:
+            assert _nset in self.circuit.node_sets, f"ERROR: Node set '{_nset}' not found!"
 
-#         if self.random_sample is not None:
-#             if isinstance(self.random_sample, int):
-#                 assert self.random_sample >=0, "ERROR: Random sample number must not be negative!"
-#             elif isinstance(self.random_sample, float):
-#                 assert 0.0 <= self.random_sample <= 1.0, "ERROR: Random sample fraction must be between 0.0 and 1.0!"
+    def _get_expression(self):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        if len(self.node_sets) == 0:
+            # Symbolic expression can be preserved
+            expression = self.property_specs
+        else:
+            # Individual IDs need to be resolved
+            c = self.circuit.sonata_circuit
+            node_ids = np.array([]).astype(int)
+            for _nset in self.node_sets:
+                node_ids = np.union1d(node_ids, c.nodes[self.population].ids(_nset))
+            node_ids = np.intersect1d(node_ids, c.nodes[self.population].ids(self.property_specs))
 
-#     def _resolve_ids(self):
-#         """Returns the full list of neuron IDs (w/o subsampling)."""
-#         return self.circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
+            expression = {"node_id": node_ids.tolist()}
 
-#     @property
-#     def ids(self):
-#         """Returns list of neuron IDs."""
-#         ids = np.array(self._resolve_ids())
-#         if self.random_sample is not None:
-#             np.random.seed(self.random_seed)
-
-#             if isinstance(self.random_sample, int):
-#                 num_sample = np.minimum(self.random_sample, len(ids))
-#             elif isinstance(self.random_sample, float):
-#                 num_sample = np.round(self.random_sample * len(ids)).astype(int)
-
-#             ids = ids[np.random.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
-#         return ids
-
-#     @property
-#     def size(self):
-#         """Returns the size (#neurons) of the neuron set."""
-#         return len(self.ids)
-
-
-# class BasicNeuronSet(NeuronSet):
-#     """
-#     Basic neuron set definition as in the NeuronSet base class.
-#     (Required since NeuronSet won't be part of the NeuronSetUnion.)
-#     """
-#     pass
-
-
-# class IDNeuronSet(NeuronSet):
-#     """
-#     Neuron set definition by providing a list of neuron IDs.
-#     """
-#     neuron_ids: list[int]
-
-#     def _resolve_ids(self):
-#         """Returns the full list of neuron IDs (w/o subsampling)."""
-#         ids = super()._resolve_ids()
-#         return np.intersect1d(ids, self.neuron_ids)
-
-
-# class PropertyNeuronSet(NeuronSet):
-#     """
-#     Neuron set definition based on neuron properties.
-#     """
-#     property_specs: dict
-
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         assert all(_k in self.circuit.sonata_circuit.nodes[self.population].property_names for _k in self.property_specs.keys()), "ERROR: Invalid neuron properties!"
-
-#     def _resolve_ids(self):
-#         """Returns the full list of neuron IDs (w/o subsampling)."""
-#         ids = super()._resolve_ids()
-#         return np.intersect1d(ids, self.circuit.sonata_circuit.nodes[self.population].ids(self.property_specs))
+        return expression

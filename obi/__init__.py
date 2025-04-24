@@ -9,7 +9,7 @@ from obi.modeling.core.fastapi import activate_fastapi_app
 
 
 from obi.modeling.circuit.circuit import Circuit
-from obi.modeling.circuit.neuron_sets import NeuronSet, BasicNeuronSet  # , IDNeuronSet, PropertyNeuronSet
+from obi.modeling.circuit.neuron_sets import NeuronSet, BasicNeuronSet, IDNeuronSet, PropertyNeuronSet
 from obi.modeling.circuit.synapse_sets import SynapseSet, IDSynapseSet
 from obi.modeling.circuit.intracellular_location_sets import IntracellularLocationSet, SectionIntracellularLocationSet
 from obi.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet, XYZExtracellularLocationSet 
