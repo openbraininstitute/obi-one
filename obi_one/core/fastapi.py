@@ -26,24 +26,33 @@ class MorphologyFeatureToolOutput(BaseModel):
     hello: str
 
 
+
+import inspect
+from typing import get_type_hints
 # # This function creates a FastAPI route for generating grid scans based on the provided OBI Form model.
 # It takes a model class (subclass of obi.Form) and a FastAPI app instance as arguments.
 def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
 
-    # model is the OBI.Form subclass 
-    # i.e. <class 'obi.modeling.simulation.simulations.SimulationsForm'>
+    # model is the OBI.Form subclass i.e. <class 'obi.modeling.simulation.simulations.SimulationsForm'>
 
-    # model_name is the name of the model (i.e. OBI.Form subclass) 
-    # in lowercase (i.e. 'simulationsform')
+    # model_name is the name of the model in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
     model_return = None
-    if hasattr(model, "Output") and isinstance(model.Output, type) and issubclass(model.Output, OBIBaseModel):
-        model_return = model.Output
+    if hasattr(model, "single_coord_class_name") and model.single_coord_class_name:
+        # Check if the class name exists in the obi module
+        if not hasattr(obi, model.single_coord_class_name):
+            raise ValueError(f"Class {model.single_coord_class_name} not found in obi module.")
+        
+        cls = getattr(obi, model.single_coord_class_name)
+    
+        method = cls.run
+        return_type = get_type_hints(method).get('return')
+        model_return = return_type
 
 
-    @app.post(f"/{model_name}", summary="Hello world", description="Hello world description.")
 
+    @app.post(f"/{model_name}", summary=model.name, description=model.description)
     async def generate_grid_scan(form: model) -> model_return:
 
         try:
