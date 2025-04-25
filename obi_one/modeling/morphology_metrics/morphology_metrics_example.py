@@ -20,7 +20,8 @@ class MorphologyMetricsExampleForm(Form):
 
     initialize: Initialize
 
-    # def save_collection(self, circuit_entities):
+    def save_collection(self, circuit_entities):
+        pass
     #     SaveCircuitCollectionEntity(circuits=circuit_entities)
         
 
@@ -146,8 +147,9 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
 
          
 
-    # def save_single(self):
-    #     circuit_entity = SaveCircuitEntity(config_path=self.coordinate_output_root + "circuit_config.json")
-    #     return circuit_entity
+    def save_single(self):
+        pass
+        # circuit_entity = SaveCircuitEntity(config_path=self.coordinate_output_root + "circuit_config.json")
+        # return circuit_entity
         
         

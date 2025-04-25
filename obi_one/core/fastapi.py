@@ -45,10 +45,6 @@ def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
     @app.post(f"/{model_name}", summary="Hello world", description="Hello world description.")
 
     async def generate_grid_scan(form: model) -> model_return:
-        
-        """
-        Test doc string
-        """
 
         try:
             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")

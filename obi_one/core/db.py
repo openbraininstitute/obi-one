@@ -65,43 +65,54 @@ def make_new_init(cls, original_init):
     return new_init
 
 
-from pydantic import BaseModel, Field, model_validator
-
-
+from typing import Any
+from pydantic import BaseModel, Field
+from pydantic_core import core_schema
 from entitysdk.models.entity import Entity
+
+from typing import Any
+from pydantic import BaseModel, Field
+from pydantic_core import core_schema
+from entitysdk.models.entity import Entity
+
+from typing import Any
+from pydantic import BaseModel, Field, create_model
+from pydantic_core import core_schema
+from pydantic import ConfigDict
+
+from typing import Any
+from pydantic import BaseModel, Field, create_model, ConfigDict
+
+from pydantic import BaseModel, Field, create_model, ConfigDict
+
 def make_new_subclass_with_hydration(cls):
     subclass_name = f"{cls.__name__}FromID"
 
-    class NewCls(cls):
+    NewCls = create_model(
+        subclass_name,
+        id_str=(str, Field(..., description="The ID of the entity in string format.")),
+        __config__=ConfigDict(arbitrary_types_allowed=True, extra='allow'),
+    )
 
-        id_str: str = Field(
-            default=None,
-            description="The ID of the entity in string format.",
-        )
-        _entitysdk_type: Entity = None
-        
-        @model_validator(mode="before")
-        @classmethod
-        def hydrate_from_id(cls_, values):
-            if "id_str" in values and len(values) == 1:
+    original_init = NewCls.__init__
 
-                entity = cls.fetch(values["id_str"])  # call fetch from original class
-                hydrated_dict = entity.dict()
-                hydrated_dict["id_str"] = str(values["id_str"])
-                cls_._entitysdk_type = cls
-                return hydrated_dict
-            return values
+    def __init__(self, **data):
+        original_init(self, **data)
+        entity = cls.fetch(self.id_str)
+        for key, value in entity.dict().items():
+            if key != "id_str":
+                setattr(self, key, value)
+        self._entitysdk_type = cls
 
-        @property
-        def entitysdk_type(self):
-            return self._entitysdk_type
+    NewCls.__init__ = __init__
 
-        class Config:
-            arbitrary_types_allowed = True
+    @property
+    def entitysdk_type(self):
+        return self._entitysdk_type
 
-    NewCls.__name__ = subclass_name
+    NewCls.entitysdk_type = entitysdk_type
     NewCls.__module__ = cls.__module__
-
+    return NewCls
     return NewCls
 
 
@@ -138,8 +149,9 @@ for cls in imported_classes:
 def temporary_download_swc(self):
 
     for asset in self.assets:
-        print(asset.content_type)
-        if asset.content_type == "application/asc":
+        print(asset)
+        print(asset.keys())
+        if asset['content_type'] == "application/asc":
 
             file_output_path = Path(entity_file_store_path) / asset.full_path
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
