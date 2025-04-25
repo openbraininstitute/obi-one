@@ -5,7 +5,7 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
-from obi_one.core.db import *
+from obi_one.db.db import *
 import traceback
 
 """

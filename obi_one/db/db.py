@@ -49,8 +49,6 @@ imported_classes = [
 ]
 
 from pydantic import Field, create_model, ConfigDict
-from pydantic import 
-
 def make_new_subclass_with_hydration(cls):
     subclass_name = f"{cls.__name__}FromID"
 

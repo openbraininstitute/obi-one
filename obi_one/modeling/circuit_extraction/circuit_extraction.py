@@ -1,7 +1,6 @@
 from obi_one.core.form import Form
 from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.core.db_old import SaveCircuitEntity, SaveCircuitCollectionEntity
 from obi_one.core.path import NamedPath
 
 class CircuitExtractions(Form):
@@ -17,9 +16,10 @@ class CircuitExtractions(Form):
     initialize: Initialize
 
     def save_collection(self, circuit_entities):
-        SaveCircuitCollectionEntity(circuits=circuit_entities)
-        
-
+        pass
+        """
+        Should save the collaction object here
+        """
 
 import os
 from brainbuilder.utils.sonata import split_population
@@ -146,7 +146,9 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             return
 
     def save_single(self):
-        circuit_entity = SaveCircuitEntity(config_path=self.coordinate_output_root + "circuit_config.json")
-        return circuit_entity
+        pass
+        """
+        Currently should return a created entity
+        """
         
         
