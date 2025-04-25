@@ -1,15 +1,11 @@
-import io
 import os
-import tempfile
 from pathlib import Path
-
-# from rich import print as rprint
+import inspect
 
 from entitysdk.client import Client
 from entitysdk.common import ProjectContext
 from entitysdk.models.entity import Entity
 from entitysdk.models.core import Struct
-import inspect
 from entitysdk.models.morphology import (
     BrainLocation,
     BrainRegion,
@@ -18,12 +14,14 @@ from entitysdk.models.morphology import (
     Strain,
 )
 
-default_base_store = "../obi-output/obi-entity-file-store"
+from obi_auth import get_token
+
 
 client = None
 token = None
 entity_file_store_path = None
-def init_db(virtual_lab_id, project_id, entity_file_store_root='', entitycore_api_url="http://127.0.0.1:8000"):
+
+def init_db(virtual_lab_id, project_id, entity_file_store_root="../../obi-output", entitycore_api_url="http://127.0.0.1:8000"):
 
     global client
     global token
@@ -31,21 +29,16 @@ def init_db(virtual_lab_id, project_id, entity_file_store_root='', entitycore_ap
 
     entity_file_store_path = entity_file_store_root + "/obi-entity-file-store"
     os.makedirs(entity_file_store_path, exist_ok=True)
-    
-    # # Local. Not fully working
-    # project_context = ProjectContext(
-    #     virtual_lab_id=virtual_lab_id,
-    #     project_id=project_id,
-    # )    
-    # client = Client(api_url=entitycore_api_url, project_context=project_context)
-    # token = os.getenv("ACCESS_TOKEN", "XXX")
 
     # Staging
-    from obi_auth import get_token
     token = get_token(environment="staging")
-    # Replace this with your vlab project url in staging
     project_context = ProjectContext.from_vlab_url(f"https://staging.openbraininstitute.org/app/virtual-lab/lab/{virtual_lab_id}/project/{project_id}/home")
     client = Client(environment="staging", project_context=project_context)
+    
+    # Local. Not fully working
+    # project_context = ProjectContext(virtual_lab_id=virtual_lab_id, project_id=project_id)    
+    # client = Client(api_url=entitycore_api_url, project_context=project_context)
+    # token = os.getenv("ACCESS_TOKEN", "XXX")
 
 
 # Iterate through all imported classes in the current module
@@ -55,21 +48,8 @@ imported_classes = [
     if inspect.isclass(obj) and obj.__module__ != "__main__"
 ]
 
-
-def make_new_init(cls, original_init):
-    def new_init(self, entity_id, *args, **kwargs):
-        print("cls: ", cls)
-        fetched_entity = cls.fetch(entity_id)
-        self.__dict__.update(fetched_entity.__dict__)
-        original_init(self, *args, **kwargs)
-    return new_init
-
-
-from typing import Any
-from pydantic import BaseModel, Field, create_model
-from pydantic_core import core_schema
-from entitysdk.models.entity import Entity
-from pydantic import ConfigDict
+from pydantic import Field, create_model, ConfigDict
+from pydantic import 
 
 def make_new_subclass_with_hydration(cls):
     subclass_name = f"{cls.__name__}FromID"
@@ -134,8 +114,6 @@ for cls in imported_classes:
 def temporary_download_swc(self):
 
     for asset in self.assets:
-        # print(asset)
-        # print(asset.keys())
         if asset['content_type'] == "application/asc":
 
             file_output_path = Path(entity_file_store_path) / asset['full_path']
