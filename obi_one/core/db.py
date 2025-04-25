@@ -66,24 +66,10 @@ def make_new_init(cls, original_init):
 
 
 from typing import Any
-from pydantic import BaseModel, Field
-from pydantic_core import core_schema
-from entitysdk.models.entity import Entity
-
-from typing import Any
-from pydantic import BaseModel, Field
-from pydantic_core import core_schema
-from entitysdk.models.entity import Entity
-
-from typing import Any
 from pydantic import BaseModel, Field, create_model
 from pydantic_core import core_schema
+from entitysdk.models.entity import Entity
 from pydantic import ConfigDict
-
-from typing import Any
-from pydantic import BaseModel, Field, create_model, ConfigDict
-
-from pydantic import BaseModel, Field, create_model, ConfigDict
 
 def make_new_subclass_with_hydration(cls):
     subclass_name = f"{cls.__name__}FromID"
@@ -112,7 +98,6 @@ def make_new_subclass_with_hydration(cls):
 
     NewCls.entitysdk_type = entitysdk_type
     NewCls.__module__ = cls.__module__
-    return NewCls
     return NewCls
 
 
@@ -149,27 +134,29 @@ for cls in imported_classes:
 def temporary_download_swc(self):
 
     for asset in self.assets:
-        print(asset)
-        print(asset.keys())
+        # print(asset)
+        # print(asset.keys())
         if asset['content_type'] == "application/asc":
 
-            file_output_path = Path(entity_file_store_path) / asset.full_path
+            file_output_path = Path(entity_file_store_path) / asset['full_path']
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            entity_type = type(self)
+            if hasattr(self, 'entitysdk_type'):
+                entity_type = self.entitysdk_type
+            
 
             client.download_file(
                 entity_id=self.id,
-                # entity_type=type(self),
-                entity_type=self.entitysdk_type,
-                asset_id=asset.id,
+                entity_type=entity_type,
+                asset_id=asset['id'],
                 output_path=file_output_path,
                 token=token,
             )
 
             return file_output_path
-            # self.swc_path = file_output_path
         break
     
-
 
 ReconstructionMorphology.temporary_download_swc = temporary_download_swc
 ReconstructionMorphologyFromID.temporary_download_swc = temporary_download_swc
