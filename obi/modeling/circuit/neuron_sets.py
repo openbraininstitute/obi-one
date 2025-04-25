@@ -50,7 +50,7 @@ class NeuronSet(Block, abc.ABC):
         existing_node_sets = sonata_circuit.node_sets.content
         if not overwrite_if_exists:
             for _k in node_set_dict.keys():
-                assert _k not in existing_node_sets, f"ERROR: Node set '{_k}' already exists!"
+                assert _k not in existing_node_sets, f"Node set '{_k}' already exists!"
         existing_node_sets.update(node_set_dict)
         sonata_circuit.node_sets = snap.circuit.NodeSets.from_dict(existing_node_sets)
 
@@ -94,12 +94,18 @@ class NeuronSet(Block, abc.ABC):
 
         return {self.name: expression}
 
-    def write_node_set_file(self, output_path, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False):
-        """Writes a new node set file of the circuit."""
-        fname = os.path.split(self.circuit.sonata_circuit.config["node_sets_file"])[1]
-        output_file = os.path.join(output_path, fname)
+    def write_node_set_file(self, output_path, file_name=None, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False):
+        """Writes a new node set file of a circuit."""
+        if file_name is None:
+            # Use circuit's node set file name by default
+            file_name = os.path.split(self.circuit.sonata_circuit.config["node_sets_file"])[1]
+        else:
+            assert isinstance(file_name, str) and len(file_name) > 0, "File name must be a non-empty string! Can be omitted to use default file name."
+            fname, fext = os.path.splitext(file_name)
+            assert len(fname) > 0 and fext.lower() == ".json", "File name must be non-empty and of type .json!"
+        output_file = os.path.join(output_path, file_name)
 
-        assert not (overwrite_if_exists and append_if_exists), "ERROR: Append and overwrite options are mutually exclusive!"
+        assert not (overwrite_if_exists and append_if_exists), "Append and overwrite options are mutually exclusive!"
 
         if not os.path.exists(output_file) or overwrite_if_exists:
             # Create new node sets file from circuit object, overwrite if existing
@@ -110,14 +116,16 @@ class NeuronSet(Block, abc.ABC):
             # Append to existing node sets file
             with open(output_file, "r") as f:
                 node_sets = json.load(f)
-                assert self.name not in node_sets, f"ERROR: Appending not possible, node set '{self.name}' already exists!"
+                assert self.name not in node_sets, f"Appending not possible, node set '{self.name}' already exists!"
                 node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
 
         else:  # File existing but no option chosen
-            assert False, f"ERROR: Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
+            assert False, f"Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
                 
         with open(output_file, "w") as f:
             json.dump(node_sets, f)
+
+        return output_file
 
 
 class BasicNeuronSet(NeuronSet):
