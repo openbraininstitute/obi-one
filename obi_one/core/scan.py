@@ -222,7 +222,7 @@ class Scan(OBIBaseModel):
         """
    
         # Dict representation of the scan object
-        model_dump = self.model_dump()
+        model_dump = self.model_dump(mode="json")
 
         # Add the OBI version
         model_dump["obi_one_version"] = version("obi-one")

@@ -19,6 +19,13 @@ def activate_fastapi_app(app: FastAPI):
     
     return
 
+from pydantic import BaseModel
+from obi_one.core.base import OBIBaseModel
+class MorphologyFeatureToolOutput(BaseModel):
+    """Output schema for the neurom tool."""
+    hello: str
+
+
 # # This function creates a FastAPI route for generating grid scans based on the provided OBI Form model.
 # It takes a model class (subclass of obi.Form) and a FastAPI app instance as arguments.
 def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
@@ -30,10 +37,18 @@ def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
     # in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
-    @app.post(f"/{model_name}")
-    async def generate_grid_scan(form: model):
+    model_return = None
+    if hasattr(model, "Output") and isinstance(model.Output, type) and issubclass(model.Output, OBIBaseModel):
+        model_return = model.Output
+
+
+    @app.post(f"/{model_name}", summary="Hello world", description="Hello world description.")
+
+    async def generate_grid_scan(form: model) -> model_return:
         
-        print("\ngenerate_grid_scan")
+        """
+        Test doc string
+        """
 
         try:
             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")
@@ -41,4 +56,4 @@ def create_form_generate_route(model: Type[obi.Form], app: FastAPI):
         except Exception as e:
             print(e)
 
-        return {}
+        return MorphologyFeatureToolOutput(hello="Hello, world!")

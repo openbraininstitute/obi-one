@@ -8,7 +8,7 @@ from obi_one.core.serialization import deserialize_obi_object_from_json_file, de
 from obi_one.core.fastapi import activate_fastapi_app
 from obi_one.core.db_old import database, circuits, close_db
 from obi_one.core.db_old import CircuitEntity, CircuitCollectionEntity, circuit_collections, circuits
-from obi_one.core.db import init_db, entitysdk_classes, download_morphology_assets
+from obi_one.core.db import init_db, entitysdk_classes
 for cls in entitysdk_classes:
     globals()[cls.__name__] = cls
 
@@ -31,6 +31,7 @@ from obi_one.modeling.basic_connectivity_plots.basic_connectivity_plots import B
 from obi_one.modeling.folder_compression.folder_compression import FolderCompressions, FolderCompression
 from obi_one.modeling.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 from obi_one.modeling.morphology_metrics.morphology_metrics import MorphologyMetricsForm, MorphologyMetrics
+from obi_one.modeling.morphology_metrics.morphology_metrics_example import MorphologyMetricsExampleForm, MorphologyMetricsExample
 
 from obi_one.modeling.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntitySDKTestForm, SingleBlockEntitySDKTest, MultiBlockEntitySDKTestForm, MultiBlockEntitySDKTest
 

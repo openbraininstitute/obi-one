@@ -24,11 +24,30 @@ def get_subclass_recursive(cls: Type[T], name: str, allow_same_class: bool = Fal
     # and we did not even use parameter `allow_same_class` to also match the parent class) 
     return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
+
+from pydantic import ConfigDict
+from entitysdk.models.entity import Entity
+def entity_encoder(obj):
+    if issubclass(obj.__class__, Entity) and not "FromID" in obj.__class__.__name__:
+        return {
+            "type": f"{obj.__class__.__name__}FromID",
+            "id_str": str(obj.id),
+        }
+    elif "FromID" in obj.__class__.__name__:
+        return {
+            "type": obj.__class__.__name__,
+            "id_str": str(obj.id),
+        }
+
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
 from typing import Literal
 from pydantic import Field, BaseModel, model_validator
 class OBIBaseModel(BaseModel):
 
     type: str = ""
+
+    model_config = ConfigDict(json_encoders={Entity: entity_encoder})
 
     @model_validator(mode="before")
     @classmethod
@@ -45,6 +64,8 @@ class OBIBaseModel(BaseModel):
 
     def __str__(self):
         return self.__repr__()
+
+    
 
     @model_validator(mode='wrap')  # noqa  # the decorator position is correct
     @classmethod

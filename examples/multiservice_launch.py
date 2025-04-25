@@ -23,7 +23,7 @@ services = [
     {
         "name": "Launch OBI-ONE Service",
         "command": ["make install",
-                    "make run-local"], # 
+                    "make run-docker"], # 
         "cwd": ".",
         "post_sleep_time": 1,
     },
@@ -37,7 +37,7 @@ services = [
 
     {
         "name": "GUI",
-        "command": ["npm run dev"],
+        "command": ["make run-docker"],
         "cwd": "../obi-generative-gui",
         "post_sleep_time": 1,
     },

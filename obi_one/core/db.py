@@ -56,12 +56,60 @@ imported_classes = [
 ]
 
 
+def make_new_init(cls, original_init):
+    def new_init(self, entity_id, *args, **kwargs):
+        print("cls: ", cls)
+        fetched_entity = cls.fetch(entity_id)
+        self.__dict__.update(fetched_entity.__dict__)
+        original_init(self, *args, **kwargs)
+    return new_init
+
+
+from pydantic import BaseModel, Field, model_validator
+
+
+from entitysdk.models.entity import Entity
+def make_new_subclass_with_hydration(cls):
+    subclass_name = f"{cls.__name__}FromID"
+
+    class NewCls(cls):
+
+        id_str: str = Field(
+            default=None,
+            description="The ID of the entity in string format.",
+        )
+        _entitysdk_type: Entity = None
+        
+        @model_validator(mode="before")
+        @classmethod
+        def hydrate_from_id(cls_, values):
+            if "id_str" in values and len(values) == 1:
+
+                entity = cls.fetch(values["id_str"])  # call fetch from original class
+                hydrated_dict = entity.dict()
+                hydrated_dict["id_str"] = str(values["id_str"])
+                cls_._entitysdk_type = cls
+                return hydrated_dict
+            return values
+
+        @property
+        def entitysdk_type(self):
+            return self._entitysdk_type
+
+        class Config:
+            arbitrary_types_allowed = True
+
+    NewCls.__name__ = subclass_name
+    NewCls.__module__ = cls.__module__
+
+    return NewCls
+
+
 entitysdk_classes = []
 for cls in imported_classes:
     # Check if the class inherits from Entity
     if issubclass(cls, Entity) and cls is not Entity:
 
-        # print(cls)
         # Dynamically add the 'find' method to the class
         def find(cls, limit=10, **kwargs): # token=None, 
             return client.search_entity(
@@ -75,40 +123,41 @@ for cls in imported_classes:
             )
         setattr(cls, "fetch", classmethod(fetch))
 
-        # Dynamically add the class to the package
+        subclass = make_new_subclass_with_hydration(cls)
+        globals()[subclass.__name__] = subclass
+        entitysdk_classes.append(subclass)
         entitysdk_classes.append(cls)
 
-        # setattr(cls, "__package__", __package__)
+
 
     # Check if the class inherits from Struct
     if issubclass(cls, Struct) and cls is not Struct:
-        # print(cls)
-
-        # setattr(cls, "__package__", __package__)
         entitysdk_classes.append(cls)
         
 
+def temporary_download_swc(self):
 
-def download_morphology_assets(morphology):
-
-    for asset in morphology.assets:
-        print(asset)
-        if asset.content_type == "application/swc":
+    for asset in self.assets:
+        print(asset.content_type)
+        if asset.content_type == "application/asc":
 
             file_output_path = Path(entity_file_store_path) / asset.full_path
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
 
             client.download_file(
-                entity_id=morphology.id,
-                entity_type=type(morphology),
+                entity_id=self.id,
+                # entity_type=type(self),
+                entity_type=self.entitysdk_type,
                 asset_id=asset.id,
                 output_path=file_output_path,
                 token=token,
             )
-        #     content = client.download_content(
-        #         entity_id=morphology.id, entity_type=type(morphology), asset_id=asset.id, token=token
-        #     )
-        #     break
 
-        #     print(content)
-        #     print(Path("my-file.h5").read_text())
+            return file_output_path
+            # self.swc_path = file_output_path
+        break
+    
+
+
+ReconstructionMorphology.temporary_download_swc = temporary_download_swc
+ReconstructionMorphologyFromID.temporary_download_swc = temporary_download_swc
