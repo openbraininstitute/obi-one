@@ -1,7 +1,7 @@
 {
     "name": "LFPy: active e-model synapses",
     "authors": ["OBI", "Darshan Mandge"],
-    "description": "In this notebook, you will be able to insert a synapse using LFPy in the soma of the an e-model. This notebook gives the users how they can use different synapses with the OBP e-models.",
+    "description": "In this notebook, you will be able to add a synapse on the soma of an an e-model using LFPy. This notebook shows the users how they can use different synapses with the OBP e-models.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python",
