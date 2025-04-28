@@ -41,9 +41,11 @@ db_classes.extend(struct_classes)
 
 
 """
-Function to create for a given entitysdk class [ENTITY_CLASS], 
-a new class for [ENTITY_CLASS]FromID
-
+Function to create for a given entitysdk Pydantic BaseModel [ENTITY_CLASS], 
+a new BaseModel [ENTITY_CLASS]FromID with:
+- A single id_str field
+- An initializer that fetches the entity from the database and sets the attributes of [ENTITY_CLASS]FromID to the attributes of the entity
+- A property returning the original entitysdk type
 
 """
 from pydantic import Field, create_model, ConfigDict
