@@ -1,9 +1,6 @@
-import os
 from pathlib import Path
 import inspect
 
-from entitysdk.client import Client
-from entitysdk.common import ProjectContext
 from entitysdk.models.entity import Entity
 from entitysdk.models.core import Struct
 from entitysdk.models.morphology import (
@@ -14,32 +11,7 @@ from entitysdk.models.morphology import (
     Strain,
 )
 
-from obi_auth import get_token
-
-
-client = None
-token = None
-entity_file_store_path = None
-
-def init_db(virtual_lab_id, project_id, entity_file_store_root="../../obi-output", entitycore_api_url="http://127.0.0.1:8000"):
-
-    global client
-    global token
-    global entity_file_store_path
-
-    entity_file_store_path = entity_file_store_root + "/obi-entity-file-store"
-    os.makedirs(entity_file_store_path, exist_ok=True)
-
-    # Staging
-    token = get_token(environment="staging")
-    project_context = ProjectContext.from_vlab_url(f"https://staging.openbraininstitute.org/app/virtual-lab/lab/{virtual_lab_id}/project/{project_id}/home")
-    client = Client(environment="staging", project_context=project_context)
-    
-    # Local. Not fully working
-    # project_context = ProjectContext(virtual_lab_id=virtual_lab_id, project_id=project_id)    
-    # client = Client(api_url=entitycore_api_url, project_context=project_context)
-    # token = os.getenv("ACCESS_TOKEN", "XXX")
-
+from obi_one.database.db_manager import db
 
 # Iterate through all imported classes in the current module
 imported_classes = [
@@ -86,14 +58,14 @@ for cls in imported_classes:
 
         # Dynamically add the 'find' method to the class
         def find(cls, limit=10, **kwargs): # token=None, 
-            return client.search_entity(
-                entity_type=cls, query=kwargs, token=token, limit=limit
+            return db.client.search_entity(
+                entity_type=cls, query=kwargs, token=db.token, limit=limit
             ).all()
         setattr(cls, "find", classmethod(find))
 
         def fetch(cls, entity_id):
-            return client.get_entity(
-                entity_id=entity_id, entity_type=cls, token=token
+            return db.client.get_entity(
+                entity_id=entity_id, entity_type=cls, token=db.token
             )
         setattr(cls, "fetch", classmethod(fetch))
 
@@ -114,7 +86,7 @@ def temporary_download_swc(self):
     for asset in self.assets:
         if asset['content_type'] == "application/asc":
 
-            file_output_path = Path(entity_file_store_path) / asset['full_path']
+            file_output_path = Path(db.entity_file_store_path) / asset['full_path']
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
 
             entity_type = type(self)
@@ -122,12 +94,12 @@ def temporary_download_swc(self):
                 entity_type = self.entitysdk_type
             
 
-            client.download_file(
+            db.client.download_file(
                 entity_id=self.id,
                 entity_type=entity_type,
                 asset_id=asset['id'],
                 output_path=file_output_path,
-                token=token,
+                token=db.token,
             )
 
             return file_output_path

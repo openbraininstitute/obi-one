@@ -3,8 +3,6 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
-from obi_one.db.db import *
-
 class MorphologyMetricsForm(Form):
     """
     """
@@ -12,7 +10,7 @@ class MorphologyMetricsForm(Form):
     _single_coord_class_name: str = "MorphologyMetrics"
 
     class Initialize(Block):
-        morphology_path: NamedPath | list[NamedPath] | ReconstructionMorphology | list[ReconstructionMorphology]
+        morphology_path: NamedPath | list[NamedPath]
         # soma: str | list[str]
 
     initialize: Initialize
