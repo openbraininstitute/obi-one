@@ -46,7 +46,6 @@ a new BaseModel [ENTITY_CLASS]FromID with:
 - A single id_str field
 - An initializer that fetches the entity from the database and sets the attributes of [ENTITY_CLASS]FromID to the attributes of the entity
 - A property returning the original entitysdk type
-
 """
 from pydantic import Field, create_model, ConfigDict
 def create_from_id_class_by_hydration_for_entitysdk_class(cls):
