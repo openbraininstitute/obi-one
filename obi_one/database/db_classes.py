@@ -1,6 +1,5 @@
 from pathlib import Path
 import inspect
-
 from entitysdk.models.entity import Entity
 from entitysdk.models.core import Struct
 from entitysdk.models.morphology import (
@@ -13,13 +12,32 @@ from entitysdk.models.morphology import (
 
 from obi_one.database.db_manager import db
 
-# Iterate through all imported classes in the current module
-imported_classes = [
-    obj
-    for name, obj in globals().items()
-    if inspect.isclass(obj) and obj.__module__ != "__main__"
-]
 
+"""
+Get all imported classes in the current module
+"""
+entity_classes = []
+struct_classes = []
+global_values = list(globals().values())
+for val in global_values:
+    
+    if inspect.isclass(val):
+        if issubclass(val, Entity):
+            entity_classes.append(val)
+        if issubclass(val, Struct):
+            struct_classes.append(val)
+
+"""
+Add the find and fetch methods to all classes that inherit from Entity
+Create a new subclass with hydration
+"""
+db_classes = []
+db_classes.extend(struct_classes)
+
+
+"""
+Function to create a new subclass with hydration
+"""
 from pydantic import Field, create_model, ConfigDict
 def make_new_subclass_with_hydration(cls):
     subclass_name = f"{cls.__name__}FromID"
@@ -51,35 +69,25 @@ def make_new_subclass_with_hydration(cls):
     return NewCls
 
 
-entitysdk_classes = []
-for cls in imported_classes:
-    # Check if the class inherits from Entity
-    if issubclass(cls, Entity) and cls is not Entity:
+for cls in entity_classes:
 
-        # Dynamically add the 'find' method to the class
-        def find(cls, limit=10, **kwargs): # token=None, 
-            return db.client.search_entity(
-                entity_type=cls, query=kwargs, token=db.token, limit=limit
-            ).all()
-        setattr(cls, "find", classmethod(find))
+    def find(cls, limit=10, **kwargs):
+        return db.client.search_entity(
+            entity_type=cls, query=kwargs, token=db.token, limit=limit
+        ).all()
+    setattr(cls, "find", classmethod(find))
 
-        def fetch(cls, entity_id):
-            return db.client.get_entity(
-                entity_id=entity_id, entity_type=cls, token=db.token
-            )
-        setattr(cls, "fetch", classmethod(fetch))
+    def fetch(cls, entity_id):
+        return db.client.get_entity(
+            entity_id=entity_id, entity_type=cls, token=db.token
+        )
+    setattr(cls, "fetch", classmethod(fetch))
 
-        subclass = make_new_subclass_with_hydration(cls)
-        globals()[subclass.__name__] = subclass
-        entitysdk_classes.append(subclass)
-        entitysdk_classes.append(cls)
+    subclass = make_new_subclass_with_hydration(cls)
+    globals()[subclass.__name__] = subclass
+    db_classes.append(subclass)
+    db_classes.append(cls)
 
-
-
-    # Check if the class inherits from Struct
-    if issubclass(cls, Struct) and cls is not Struct:
-        entitysdk_classes.append(cls)
-        
 
 def temporary_download_swc(self):
 

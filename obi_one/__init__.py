@@ -9,11 +9,10 @@ from obi_one.core.serialization import deserialize_obi_object_from_json_file, de
 from obi_one.fastapi.fastapi import activate_fastapi_app
 
 from obi_one.database.db_manager import db
+from obi_one.database.db_classes import db_classes
 __all__ = ["db"]
 
-
-from obi_one.database.entitysdk_classes import entitysdk_classes
-for cls in entitysdk_classes:
+for cls in db_classes:
     globals()[cls.__name__] = cls
 
 

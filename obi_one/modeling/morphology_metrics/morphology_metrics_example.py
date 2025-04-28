@@ -6,7 +6,7 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 from obi_one.core.base import OBIBaseModel
-from obi_one.database.entitysdk_classes import *
+from obi_one.database.db_classes import *
 
 class MorphologyMetricsExampleForm(Form):
     """
