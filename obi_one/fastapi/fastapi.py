@@ -71,7 +71,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         elif data_handling == "GET":
                             # Create a get endpoint
-                            @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                            @app.get(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
                             async def grid_scan_endpoint(form: model):
 
                                 try:
