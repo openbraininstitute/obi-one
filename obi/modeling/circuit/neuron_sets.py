@@ -54,6 +54,24 @@ class NeuronSet(Block, abc.ABC):
         existing_node_sets.update(node_set_dict)
         sonata_circuit.node_sets = snap.circuit.NodeSets.from_dict(existing_node_sets)
 
+    @staticmethod
+    def write_circuit_node_set_file(sonata_circuit, output_path, file_name=None, overwrite_if_exists=False):
+        """Writes a new node set file of a given SONATA circuit object."""
+        if file_name is None:
+            # Use circuit's node set file name by default
+            file_name = os.path.split(sonata_circuit.config["node_sets_file"])[1]
+        else:
+            assert isinstance(file_name, str) and len(file_name) > 0, "File name must be a non-empty string! Can be omitted to use default file name."
+            fname, fext = os.path.splitext(file_name)
+            assert len(fname) > 0 and fext.lower() == ".json", "File name must be non-empty and of type .json!"
+        output_file = os.path.join(output_path, file_name)
+
+        if not overwrite_if_exists:
+            assert not os.path.exists(output_file), f"Output file '{output_file}' already exists! Delete file or choose to overwrite."
+
+        with open(output_file, "w") as f:
+            json.dump(sonata_circuit.node_sets.content, f)
+
     def _resolve_ids(self):
         """Returns the full list of neuron IDs (w/o subsampling)."""
         c = self.circuit.sonata_circuit
