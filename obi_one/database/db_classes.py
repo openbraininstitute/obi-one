@@ -40,59 +40,56 @@ db_classes = []
 db_classes.extend(struct_classes)
 
 
-"""
-Function to create for a given entitysdk Pydantic BaseModel [ENTITY_CLASS], 
-a new BaseModel [ENTITY_CLASS]FromID with:
-- A single id_str field
-- An initializer that fetches the entity from the database and sets the attributes of [ENTITY_CLASS]FromID to the attributes of the entity
-- A property returning the original entitysdk type
-"""
-from pydantic import Field, create_model, ConfigDict
-def create_from_id_class_by_hydration_for_entitysdk_class(cls):
 
-    # The new class name
+from typing import Type
+from pydantic import Field, create_model, ConfigDict, BaseModel
+from neurom import load_morphology
+
+def create_from_id_class_for_entitysdk_class(cls: Type[Entity]) -> Type[BaseModel]:
+    """
+    Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
+    that initializes from an id_str, fetches the full entity from the database,
+    and populates its attributes.
+    """
+    # New class name
     new_cls_name = f"{cls.__name__}FromID"
 
-    # Create the new class 
-    # With a single id_str field
+    # Create a basic Pydantic model with just id_str
     new_cls = create_model(
         new_cls_name,
-        id_str=(str, Field(..., description="The ID of the entity in string format.")),
-        __config__=ConfigDict(arbitrary_types_allowed=True, extra='allow'),
+        id_str=(str, Field(..., description="ID of the entity in string format.")),
+        __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
     )
 
-    # Store the original initializer of the new class
-    # So it can be called in the new initializer
+    # Store original __init__
     original_init = new_cls.__init__
 
-    # Define the new initializer
     def __init__(self, **data):
-
-        # Call the original initializer
+        # Call the original __init__ (to set id_str)
         original_init(self, **data)
 
-        # Fetch the entity from the database
+        # Fetch the full entity only once
         entity = cls.fetch(self.id_str)
 
-        # Add each attribute of the entity to the new class
+        # Hydrate all attributes except id_str
         for key, value in entity.dict().items():
             if key != "id_str":
                 setattr(self, key, value)
 
-        # Add the entitysdk type to the new class
+        # Save original entity class reference
         self._entitysdk_type = cls
 
-    # Set the new initializer
+    # Replace the __init__ method
     new_cls.__init__ = __init__
 
-
-    # Add a property to get the original entitysdk type
+    # Add a property for accessing original class
     @property
     def entitysdk_type(self):
         return self._entitysdk_type
+
     new_cls.entitysdk_type = entitysdk_type
 
-    # Set the module of the new class
+    # Assign the same module to make debugging and imports easier
     new_cls.__module__ = cls.__module__
 
     return new_cls
@@ -127,7 +124,7 @@ for cls in entity_classes:
     setattr(cls, "fetch", classmethod(fetch))
 
     # Create a new class [ENTITY_CLASS]FromID with hydration for the class.
-    new_cls = create_from_id_class_by_hydration_for_entitysdk_class(cls)
+    new_cls = create_from_id_class_for_entitysdk_class(cls)
 
     # Add the new_cls to the globals
     globals()[new_cls.__name__] = new_cls
@@ -137,10 +134,11 @@ for cls in entity_classes:
     db_classes.append(cls)
 
 
-"""
-Temporary function for downloading SWC files of a morphology
-"""
-def temporary_download_swc(morphology):
+
+def download_swc(morphology):
+    """
+    Temporary function for downloading SWC files of a morphology
+    """
 
     for asset in morphology.assets:
         if asset['content_type'] == "application/asc":
@@ -163,10 +161,34 @@ def temporary_download_swc(morphology):
 
             return file_output_path
         break
-    
+
 
 """
-Add the temporary download function to the Morphology classes
+Add the swc_file property to the Morphology classes
 """
-ReconstructionMorphology.temporary_download_swc = temporary_download_swc
-ReconstructionMorphologyFromID.temporary_download_swc = temporary_download_swc
+ReconstructionMorphology.swc_file = property(download_swc)
+ReconstructionMorphologyFromID.swc_file = property(download_swc)
+
+
+
+def neurom_morphology_getter(self):
+    """
+    Getter for the neurom_morphology property.
+    Downloads the application/asc asset if not already downloaded
+    and loads it using neurom.load_morphology.
+    """
+    if not hasattr(self, "_neurom_morphology"):
+        swc_file = self.swc_file
+        if swc_file:
+            self._neurom_morphology = load_morphology(swc_file)
+        else:
+            raise ValueError("No valid application/asc asset found for morphology.")
+    return self._neurom_morphology
+
+"""
+Add the neurom_morphology property to the classes
+"""
+ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
+ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
+    
+

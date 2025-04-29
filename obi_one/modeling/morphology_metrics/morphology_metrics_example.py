@@ -50,13 +50,10 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
     def run(self) -> MorphologyMetricsExampleRunOutput:
         
         try:
-                        
-            swc_path = self.initialize.morphology.temporary_download_swc()            
-            morpho = neurom.load_morphology(swc_path)
- 
+
             features = {
-                "soma_radius [µm]": neurom.get("soma_radius", morpho),
-                "soma_surface_area [µm^2]": neurom.get("soma_surface_area", morpho),
+                "soma_radius [µm]": neurom.get("soma_radius", self.initialize.morphology.neurom_morphology),
+                "soma_surface_area [µm^2]": neurom.get("soma_surface_area", self.initialize.morphology.neurom_morphology),
             }
 
             return MorphologyMetricsExampleRunOutput(features=features)
