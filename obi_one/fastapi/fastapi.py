@@ -39,15 +39,29 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
         return_class = return_type
 
 
-    # Create the endpoint
-    @app.post(f"/{model_name}", summary=model.name, description=model.description)
+    # Create the get endpoint
+    @app.get(f"/{model_name}", summary=model.name, description=model.description)
     async def grid_scan_endpoint(form: model) -> return_class:
 
         try:
-            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")
+            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling="GET")
             grid_scan.generate()
         except Exception as e:
             print(e)
 
         # Still need to consider what exactly to return
         return 
+
+
+    # Create the post endpoint
+    @app.post(f"/{model_name}", summary=model.name, description=model.description)
+    async def grid_scan_endpoint(form: model) -> return_class:
+
+        try:
+            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling="POST")
+            grid_scan.generate()
+        except Exception as e:
+            print(e)
+
+        # Still need to consider what exactly to return
+        return
