@@ -9,15 +9,20 @@ def activate_fastapi_app(app: FastAPI):
     2. Create an endpoint that returns all available Form endpoints.
     """
 
+    all_form_endpoints = []
+
     # 1.
     for subclass in obi.Form.__subclasses__():
-        create_form_endpoints(subclass, app)
+        form_endpoints = create_form_endpoints(subclass, app)
+        all_form_endpoints.extend(form_endpoints)
+
+    print(f"All form endpoints: {all_form_endpoints}")
 
     # 2.
     @app.get("/forms")
     async def get_forms():
-        forms = [subclass.__name__.lower() for subclass in obi.Form.__subclasses__()]
-        return JSONResponse(content={"forms": forms})
+        # forms = [subclass.__name__.lower() for subclass in obi.Form.__subclasses__()]
+        return JSONResponse(content={"forms": all_form_endpoints})
 
     
 from typing import Type, get_type_hints
@@ -33,6 +38,8 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
     methods = ["run", "generate"]
     data_handlings = ["POST", "GET"]
+
+    endpoints = []
 
     for method in methods:
         for data_handling in data_handlings:
@@ -58,7 +65,9 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         if data_handling == "POST":
                             # Create a post endpoint
-                            @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                            endpoint = f"/{model_name}" + "_" + method + "_" + data_handling_method
+                            endpoints.append(endpoint)
+                            @app.post(endpoint, summary=model.name, description=model.description)
                             async def grid_scan_endpoint(form: model):
 
                                 try:
@@ -71,7 +80,9 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         elif data_handling == "GET":
                             # Create a get endpoint
-                            @app.get(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                            endpoint = f"/{model_name}" + "_" + method + "_" + data_handling_method
+                            endpoints.append(endpoint)
+                            @app.get(endpoint, summary=model.name, description=model.description)
                             async def grid_scan_endpoint(form: model):
 
                                 try:
@@ -81,3 +92,5 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                                 except Exception as e:
                                     print(e)
                                     return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
+
+    return endpoints
