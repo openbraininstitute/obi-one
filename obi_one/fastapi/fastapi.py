@@ -44,35 +44,40 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
             # Get return signature of the run method if specified
             return_type = None
-            if hasattr(model, "single_coord_class_name") and model.single_coord_class_name != "":        
+            if hasattr(model, "single_coord_class_name") and model.single_coord_class_name != "":
                 cls = getattr(obi, model.single_coord_class_name)
-                if hasattr(cls, method) and callable(getattr(cls, method)):            
-                    return_class = get_type_hints(getattr(cls, method)).get('return')
-                    return_type = dict[str, return_class]
 
+                if hasattr(cls, method) and callable(getattr(cls, method)):
+                    
+                    if hasattr(cls, data_handling_method) and callable(getattr(cls, data_handling_method)):
 
-            if data_handling == "POST":
-                # Create a post endpoint
-                @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
-                async def grid_scan_endpoint(form: model):
+                        print(cls, method, data_handling_method)
 
-                    try:
-                        grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
-                        result = getattr(grid_scan, method)()
-                        return result
-                    except Exception as e:
-                        print(e)
-                        return JSONResponse(content={"error": str(e)}, status_code=500)
+                        return_class = get_type_hints(getattr(cls, data_handling_method)).get('return')
+                        return_type = dict[str, return_class]
 
-            elif data_handling == "GET":
-                # Create a get endpoint
-                @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
-                async def grid_scan_endpoint(form: model):
+                        if data_handling == "POST":
+                            # Create a post endpoint
+                            @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                            async def grid_scan_endpoint(form: model):
 
-                    try:
-                        grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
-                        result = getattr(grid_scan, method)()
-                        return result
-                    except Exception as e:
-                        print(e)
-                        return JSONResponse(content={"error": str(e)}, status_code=500)
+                                try:
+                                    grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
+                                    result = getattr(grid_scan, method)()
+                                    return result
+                                except Exception as e:
+                                    print(e)
+                                    return JSONResponse(content={"error": str(e)}, status_code=500)
+
+                        elif data_handling == "GET":
+                            # Create a get endpoint
+                            @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                            async def grid_scan_endpoint(form: model):
+
+                                try:
+                                    grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
+                                    result = getattr(grid_scan, method)()
+                                    return result
+                                except Exception as e:
+                                    print(e)
+                                    return JSONResponse(content={"error": str(e)}, status_code=500)

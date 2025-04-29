@@ -50,7 +50,7 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
     """
 
 
-    def run(self) -> MorphologyMetricsExampleRunOutput:
+    def run(self):
         
         try:
             self.features = {
