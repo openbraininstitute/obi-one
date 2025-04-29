@@ -67,7 +67,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                                     return result
                                 except Exception as e:
                                     print(e)
-                                    return JSONResponse(content={"error": str(e)}, status_code=500)
+                                    return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
 
                         elif data_handling == "GET":
                             # Create a get endpoint
@@ -80,4 +80,4 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                                     return result
                                 except Exception as e:
                                     print(e)
-                                    return JSONResponse(content={"error": str(e)}, status_code=500)
+                                    return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
