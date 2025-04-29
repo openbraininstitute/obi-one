@@ -83,7 +83,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                             endpoint = f"/{model_name}" + "_" + method + "_" + data_handling_method
                             endpoints.append(endpoint)
                             @app.get(endpoint, summary=model.name, description=model.description)
-                            async def grid_scan_endpoint(form: model):
+                            async def grid_scan_endpoint(form: model) -> return_type:
 
                                 try:
                                     grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
