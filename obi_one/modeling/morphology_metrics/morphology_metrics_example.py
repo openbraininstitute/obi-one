@@ -8,6 +8,9 @@ from obi_one.core.path import NamedPath
 from obi_one.core.base import OBIBaseModel
 from obi_one.database.db_classes import *
 
+
+
+
 class MorphologyMetricsExampleForm(Form):
     """
     """
@@ -21,12 +24,11 @@ class MorphologyMetricsExampleForm(Form):
 
     initialize: Initialize
 
-    def save_collection(self, circuit_entities):
+    def save(self, circuit_entities):
         """
         Add entitysdk calls to save the collection
         """
         pass
-        
 
 
 class MorphologyMetricsExampleRunOutput(OBIBaseModel):
@@ -34,6 +36,7 @@ class MorphologyMetricsExampleRunOutput(OBIBaseModel):
     default_factory=dict,
     description="Dictionary containing feature_name: value.",
 )
+
 
 
 import traceback
@@ -50,23 +53,25 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
     def run(self) -> MorphologyMetricsExampleRunOutput:
         
         try:
-
-            features = {
+            self.features = {
                 "soma_radius [µm]": neurom.get("soma_radius", self.initialize.morphology.neurom_morphology),
                 "soma_surface_area [µm^2]": neurom.get("soma_surface_area", self.initialize.morphology.neurom_morphology),
             }
-
-            return MorphologyMetricsExampleRunOutput(features=features)
-
 
         except Exception as e:
             traceback.print_exception(e)
             
         
 
-    def save_single(self):
+    def save(self):
         """
         Add entitysdk calls to save the single instance
         """
         pass        
+
+    def data() -> MorphologyMetricsExampleRunOutput:
+        """
+        Return the data to the client
+        """
+        return MorphologyMetricsExampleRunOutput(features=self.features)
         

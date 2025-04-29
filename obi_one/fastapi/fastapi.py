@@ -31,37 +31,48 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     # model_name: model in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
-    # Get return signature of the run method if specified
-    return_class = None
-    if hasattr(model, "single_coord_class_name") and model.single_coord_class_name != "":        
-        cls = getattr(obi, model.single_coord_class_name)
-        return_type = get_type_hints(cls.run).get('return')
-        return_class = return_type
+    methods = ["run", "generate"]
+    data_handlings = ["POST", "GET"]
+
+    for method in methods:
+        for data_handling in data_handlings:
+
+            if data_handling == "POST":
+                data_handling_method = "save"
+            elif data_handling == "GET":
+                data_handling_method = "data"
+
+            # Get return signature of the run method if specified
+            return_type = None
+            if hasattr(model, "single_coord_class_name") and model.single_coord_class_name != "":        
+                cls = getattr(obi, model.single_coord_class_name)
+                if hasattr(cls, method) and callable(getattr(cls, method)):            
+                    return_class = get_type_hints(getattr(cls, method)).get('return')
+                    return_type = dict[str, return_class]
 
 
-    # Create the get endpoint
-    @app.get(f"/{model_name}", summary=model.name, description=model.description)
-    async def grid_scan_endpoint(form: model) -> return_class:
+            if data_handling == "POST":
+                # Create a post endpoint
+                @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                async def grid_scan_endpoint(form: model):
 
-        try:
-            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling="GET")
-            grid_scan.generate()
-        except Exception as e:
-            print(e)
+                    try:
+                        grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
+                        result = getattr(grid_scan, method)()
+                        return result
+                    except Exception as e:
+                        print(e)
+                        return JSONResponse(content={"error": str(e)}, status_code=500)
 
-        # Still need to consider what exactly to return
-        return 
+            elif data_handling == "GET":
+                # Create a get endpoint
+                @app.post(f"/{model_name}" + "_" + method + "_" + data_handling_method, summary=model.name, description=model.description)
+                async def grid_scan_endpoint(form: model):
 
-
-    # Create the post endpoint
-    @app.post(f"/{model_name}", summary=model.name, description=model.description)
-    async def grid_scan_endpoint(form: model) -> return_class:
-
-        try:
-            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling="POST")
-            grid_scan.generate()
-        except Exception as e:
-            print(e)
-
-        # Still need to consider what exactly to return
-        return
+                    try:
+                        grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
+                        result = getattr(grid_scan, method)()
+                        return result
+                    except Exception as e:
+                        print(e)
+                        return JSONResponse(content={"error": str(e)}, status_code=500)

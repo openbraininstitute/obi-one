@@ -145,7 +145,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 traceback.print_exception(e)
             return
 
-    def save_single(self):
+    def save(self):
         pass
         """
         Currently should return a created entity

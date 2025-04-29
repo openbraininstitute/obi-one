@@ -165,6 +165,12 @@ class Scan(OBIBaseModel):
                 # Call the coordinate_instance's generate() function
                 coordinate_instance.generate()
 
+                # Call either save() or data() for the instance
+                if self.data_handling == "POST":
+                    coordinate_instance.save()
+                elif self.data_handling == "GET":
+                    data = coordinate_instance.data()
+
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
 
@@ -199,6 +205,12 @@ class Scan(OBIBaseModel):
 
                 # Call the coordinate_instance's run() function
                 coordinate_instance.run()
+
+                # Call either save() or data() for the instance
+                if self.data_handling == "POST":
+                    coordinate_instance.save()
+                elif self.data_handling == "GET":
+                    coordinate_instance.data()
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
@@ -305,10 +317,12 @@ class Scan(OBIBaseModel):
 
         coordinate_instance_entities = []
         for coordinate_instance in self.coordinate_instances():
-            coordinate_instance_entity = coordinate_instance.save_single()
+            coordinate_instance_entity = coordinate_instance.save()
             coordinate_instance_entities.append(coordinate_instance_entity)
 
-        self.form.save_collection(coordinate_instance_entities)
+        self.form.save(coordinate_instance_entities)
+
+    
 
 
 

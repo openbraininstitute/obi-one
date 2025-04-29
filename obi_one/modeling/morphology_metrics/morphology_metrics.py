@@ -125,8 +125,3 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
                 traceback.print_exception(e)
             return
 
-    # def save_single(self):
-    #     circuit_entity = SaveCircuitEntity(config_path=self.coordinate_output_root + "circuit_config.json")
-    #     return circuit_entity
-        
-        
