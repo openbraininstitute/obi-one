@@ -106,7 +106,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
-                            result = getattr(grid_scan, method)()
+                            result = grid_scan.execute(method=method)
                             return {}
                         except Exception as e:
                             print(e)
@@ -123,7 +123,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
-                            result = getattr(grid_scan, method)()
+                            result = grid_scan.execute(method=method)
                             return result
                         except Exception as e:
                             print(e)

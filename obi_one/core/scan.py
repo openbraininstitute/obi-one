@@ -142,59 +142,20 @@ class Scan(OBIBaseModel):
         # Return self._coordinate_instances
         return self._coordinate_instances
     
-
-    
-    def generate(self):
-        """
-        Description
-        """
-
-        # Iterate through self.coordinate_instances()
-        for coordinate_instance in self.coordinate_instances():
-
-            # Check if coordinate instance has function "generate"
-            if hasattr(coordinate_instance, 'generate'):
-
-                # Set scan_output_root
-                coordinate_instance.scan_output_root = self.output_root
-
-                # Create the coordinate_output_root directory
-                coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
-                os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
-
-                # Call the coordinate_instance's generate() function
-                coordinate_instance.generate()
-
-                # Call either save() or data() for the instance
-                if self.data_handling == "POST":
-                    coordinate_instance.save()
-                elif self.data_handling == "GET":
-                    data = coordinate_instance.data()
-
-                # Serialize the coordinate instance
-                coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "generate_coordinate_instance.json"))
-
-            else:
-                # Raise an error if generate() not implemented for the coordinate instance
-                raise NotImplementedError(f"Function \"generate\" not implemented for type:{type(coordinate_instance)}")
-
-        # Serialize the scan
-        self.serialize(os.path.join(self.output_root, "generate_scan_config.json"))
-
-        # # Create a bbp_workflow_campaign_config
-        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
-
    
-    def run(self):
+    def execute(self, method=""):
         """
         Description
         """
+
+        if method == "":
+            raise ValueError("Method of SingleCoordMixin must be specified.")
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
 
             # Check if coordinate instance has function "run"
-            if hasattr(coordinate_instance, 'run'):
+            if hasattr(coordinate_instance, method):
 
                 # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
@@ -203,8 +164,8 @@ class Scan(OBIBaseModel):
                 coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
                 os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
-                # Call the coordinate_instance's run() function
-                coordinate_instance.run()
+                # Call the coordinate_instance's method (i.e. run, generate)
+                result = getattr(coordinate_instance, method)()
 
                 # Call either save() or data() for the instance
                 if self.data_handling == "POST":
