@@ -48,12 +48,13 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
     Boris Bergsma, Nicolas Frank, Jan Krepl
     in https://github.com/openbraininstitute/neuroagent/blob/main/backend/src/neuroagent/tools/morphology_features_tool.py
     """
+    _features: dict = {}
 
 
     def run(self):
         
         try:
-            self.features = {
+            self._features = {
                 "soma_radius [µm]": neurom.get("soma_radius", self.initialize.morphology.neurom_morphology),
                 "soma_surface_area [µm^2]": neurom.get("soma_surface_area", self.initialize.morphology.neurom_morphology),
             }
@@ -73,5 +74,5 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
         """
         Return the data to the client
         """
-        return MorphologyMetricsExampleRunOutput(features=self.features)
+        return MorphologyMetricsExampleRunOutput(features=self._features)
         
