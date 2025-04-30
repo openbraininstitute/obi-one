@@ -25,11 +25,11 @@ def activate_fastapi_app(app: FastAPI):
 
 
 from typing import get_type_hints
-def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model: Type[obi.Form], method: str, data_handling_method: str):
+def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model: Type[obi.Form], processing_method: str, data_postprocessing_method: str):
     """
-    Method to return the class of the return type of a method of the single coordinate class.
+    Method to return the class of the return type of a processing_method of the single coordinate class.
     Returns None if return type not specified
-    Returns message strings if the method or data_handling_method are not implementd
+    Returns message strings if the processing_method or data_postprocessing_method are not implementd
     """
 
     return_class = None
@@ -41,15 +41,15 @@ def check_implmentations_of_single_coordinate_class_and_methods_and_return_types
         single_coordinate_cls = getattr(obi, model.single_coord_class_name)
 
         # Check that the method is a method of the single coordinate class
-        if not (hasattr(single_coordinate_cls, method) and callable(getattr(single_coordinate_cls, method))):
-            return f"{method} is not a method of {single_coordinate_cls.__name__}"
+        if not (hasattr(single_coordinate_cls, processing_method) and callable(getattr(single_coordinate_cls, processing_method))):
+            return f"{processing_method} is not a method of {single_coordinate_cls.__name__}"
         else:
 
-            # Check that the data_handling_method is a method of the single coordinate class
-            if not (hasattr(single_coordinate_cls, data_handling_method) and callable(getattr(single_coordinate_cls, data_handling_method))):
-                return f"{data_handling_method} is not a method of {single_coordinate_cls.__name__}"
+            # Check that the data_postprocessing_method is a method of the single coordinate class
+            if not (hasattr(single_coordinate_cls, data_postprocessing_method) and callable(getattr(single_coordinate_cls, data_postprocessing_method))):
+                return f"{data_postprocessing_method} is not a method of {single_coordinate_cls.__name__}"
             else:
-                return_class = get_type_hints(getattr(single_coordinate_cls, data_handling_method)).get('return')
+                return_class = get_type_hints(getattr(single_coordinate_cls, data_postprocessing_method)).get('return')
 
     return return_class
 
@@ -67,24 +67,24 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     model_name = model.__name__.lower()
 
     # methods and data_handling types to iterate over
-    methods = ["run", "generate"]
+    processing_methods = ["run", "generate"]
     data_handling_types = ["POST", "GET"]
 
     # List of names of created endpoints
     endpoint_names = []
 
     # Iterate over methods and data_handling types
-    for method in methods:
+    for processing_method in processing_methods:
         for data_handling in data_handling_types:
 
             # Determine data_handling_method to check for
             if data_handling == "POST":
-                data_handling_method = "save"
+                data_postprocessing_method = "save"
             elif data_handling == "GET":
-                data_handling_method = "data"
+                data_postprocessing_method = "data"
 
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
-            return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, method, data_handling_method)
+            return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, processing_method, data_postprocessing_method)
             if not isinstance(return_class, str):
                 if return_class is None:
                     return_type = None
@@ -92,7 +92,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                     return_type = dict[str, return_class]
 
                 # Create endpoint names
-                endpoint_name = model_name + "_" + method + "_" + data_handling_method
+                endpoint_name = model_name + "_" + processing_method + "_" + data_postprocessing_method
                 endpoint_name_with_slash = "/" + endpoint_name
 
                 if data_handling == "POST":
@@ -106,7 +106,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
-                            result = grid_scan.execute(method=method, data_handling_method=data_handling_method)
+                            result = grid_scan.execute(processing_method=processing_method, data_handling_method=data_postprocessing_method)
                             return {}
                         except Exception as e:
                             print(e)
@@ -123,7 +123,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", coordinate_directory_option="ZERO_INDEX")
-                            result = grid_scan.execute(method=method, data_handling_method=data_handling_method)
+                            result = grid_scan.execute(processing_method=processing_method, data_postprocessing_method=data_postprocessing_method)
                             return result
                         except Exception as e:
                             print(e)

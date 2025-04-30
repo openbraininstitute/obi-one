@@ -142,21 +142,21 @@ class Scan(OBIBaseModel):
         return self._coordinate_instances
     
    
-    def execute(self, method="", data_handling_method="save"):
+    def execute(self, processing_method="", data_postprocessing_method="save"):
         """
         Description
         """
 
         return_dict = {}
 
-        if method == "":
+        if processing_method == "":
             raise ValueError("Method of SingleCoordMixin must be specified.")
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
 
             # Check if coordinate instance has function "run"
-            if hasattr(coordinate_instance, method):
+            if hasattr(coordinate_instance, processing_method):
 
                 # Set scan_output_root
                 coordinate_instance.scan_output_root = self.output_root
@@ -165,11 +165,11 @@ class Scan(OBIBaseModel):
                 coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
                 os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
-                # Call the coordinate_instance's method (i.e. run, generate)
-                result = getattr(coordinate_instance, method)()
+                # Call the coordinate_instance's processing_method (i.e. run, generate)
+                result = getattr(coordinate_instance, processing_method)()
 
                 # Call either save() or data() for the instance
-                return_dict[coordinate_instance.idx] = getattr(coordinate_instance, data_handling_method)()
+                return_dict[coordinate_instance.idx] = getattr(coordinate_instance, data_postprocessing_method)()
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
