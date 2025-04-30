@@ -93,7 +93,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                     return_type = dict[str, return_class]
 
                 # Create endpoint names
-                endpoint_name = model_name + "_" + processing_method # + "_" + data_postprocessing_method
+                endpoint_name = model_name + "_" + processing_method + "_grid" # + "_" + data_postprocessing_method
                 endpoint_name_with_slash = "/" + endpoint_name
 
                 if data_handling == "POST":
