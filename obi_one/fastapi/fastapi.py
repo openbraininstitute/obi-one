@@ -55,7 +55,7 @@ def check_implmentations_of_single_coordinate_class_and_methods_and_return_types
 
 
     
-
+import re
 def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     """
     Create a FastAPI endpoint for generating grid scans 
@@ -64,7 +64,13 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     """
 
     # model_name: model in lowercase (i.e. 'simulationsform')
-    model_name = model.__name__.lower()
+
+    # Split model name where there are capital letters
+
+
+    # 
+    model_base_name = model.__name__.removesuffix("Form")
+    model_name = '_'.join([word.lower() for word in re.findall(r'[A-Z][^A-Z]*', model_base_name)])
 
     # methods and data_handling types to iterate over
     processing_methods = ["run", "generate"]
@@ -92,7 +98,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                     return_type = dict[str, return_class]
 
                 # Create endpoint names
-                endpoint_name = model_name + "_" + processing_method + "_" + data_postprocessing_method
+                endpoint_name = model_name + "_" + processing_method # + "_" + data_postprocessing_method
                 endpoint_name_with_slash = "/" + endpoint_name
 
                 if data_handling == "POST":
@@ -101,8 +107,8 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                     endpoint_names.append(endpoint_name)
 
                     # Create POST endpoint
-                    @app.post(endpoint_name_with_slash)
-                    async def grid_scan_endpoint(form: model, summary=model.name, description=model.description):
+                    @app.post(endpoint_name_with_slash, summary=model.name, description=model.description)
+                    async def grid_scan_endpoint(form: model):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
