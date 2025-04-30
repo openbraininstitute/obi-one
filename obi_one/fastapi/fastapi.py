@@ -25,7 +25,7 @@ def activate_fastapi_app(app: FastAPI):
 
 
 from typing import get_type_hints
-def check_implmentations_of_single_coordinate_class_methods_and_return_types(model: Type[obi.Form], method: str, data_handling_method: str):
+def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model: Type[obi.Form], method: str, data_handling_method: str):
     """
     Method to return the class of the return type of a method of the single coordinate class.
     Returns None if return type not specified
@@ -66,35 +66,41 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     # model_name: model in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
+    # methods and data_handling types to iterate over
     methods = ["run", "generate"]
-    data_handlings = ["POST", "GET"]
+    data_handling_types = ["POST", "GET"]
 
+    # List of names of created endpoints
     endpoint_names = []
 
+    # Iterate over methods and data_handling types
     for method in methods:
-        for data_handling in data_handlings:
+        for data_handling in data_handling_types:
 
+            # Determine data_handling_method to check for
             if data_handling == "POST":
                 data_handling_method = "save"
             elif data_handling == "GET":
                 data_handling_method = "data"
 
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
-            return_class = check_implmentations_of_single_coordinate_class_methods_and_return_types(model, method, data_handling_method)
+            return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, method, data_handling_method)
             if not isinstance(return_class, str):
                 if return_class is None:
                     return_type = None
                 else:                
                     return_type = dict[str, return_class]
 
-
+                # Create endpoint names
                 endpoint_name = model_name + "_" + method + "_" + data_handling_method
                 endpoint_name_with_slash = "/" + endpoint_name
 
                 if data_handling == "POST":
-                    # Create a post endpoint
                     
+                    # Add endpoint name to list of endpoint names
                     endpoint_names.append(endpoint_name)
+
+                    # Create POST endpoint
                     @app.post(endpoint_name_with_slash)
                     async def grid_scan_endpoint(form: model):
 
@@ -107,9 +113,11 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                             return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
 
                 elif data_handling == "GET":
-                    # Create a get endpoint
 
+                    # Add endpoint name to list of endpoint names
                     endpoint_names.append(endpoint_name)
+
+                    # Create GET endpoint
                     @app.get(endpoint_name_with_slash, summary=model.name, description=model.description)
                     async def grid_scan_endpoint(form: model) -> return_type:
 
