@@ -16,7 +16,6 @@ for cls in db_classes:
     globals()[cls.__name__] = cls
 
 
-
 from obi_one.modeling.circuit.circuit import Circuit
 from obi_one.modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet
 from obi_one.modeling.circuit.synapse_sets import SynapseSet, IDSynapseSet
@@ -38,7 +37,7 @@ from obi_one.modeling.morphology_metrics.morphology_metrics_example import Morph
 
 from obi_one.modeling.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntitySDKTestForm, SingleBlockEntitySDKTest, MultiBlockEntitySDKTestForm, MultiBlockEntitySDKTest
 
-from obi_one.modeling.unions.unions_form import FormUnion
+from obi_one.modeling.unions.unions_form import FormUnion, check_implmentations_of_single_coordinate_class_and_methods_and_return_types
 from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
 from obi_one.modeling.unions.unions_recordings import RecordingUnion
 from obi_one.modeling.unions.unions_stimuli import StimulusUnion
