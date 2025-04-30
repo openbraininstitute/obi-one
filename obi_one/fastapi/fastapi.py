@@ -102,11 +102,11 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                     # Create POST endpoint
                     @app.post(endpoint_name_with_slash)
-                    async def grid_scan_endpoint(form: model):
+                    async def grid_scan_endpoint(form: model, summary=model.name, description=model.description):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
-                            result = grid_scan.execute(method=method)
+                            result = grid_scan.execute(method=method, data_handling_method=data_handling_method)
                             return {}
                         except Exception as e:
                             print(e)
@@ -122,8 +122,8 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                     async def grid_scan_endpoint(form: model) -> return_type:
 
                         try:
-                            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
-                            result = grid_scan.execute(method=method)
+                            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", coordinate_directory_option="ZERO_INDEX")
+                            result = grid_scan.execute(method=method, data_handling_method=data_handling_method)
                             return result
                         except Exception as e:
                             print(e)

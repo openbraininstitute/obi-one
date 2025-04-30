@@ -68,9 +68,9 @@ class MorphologyMetricsExample(MorphologyMetricsExampleForm, SingleCoordinateMix
         """
         Add entitysdk calls to save the single instance
         """
-        pass        
+        return None        
 
-    def data() -> MorphologyMetricsExampleRunOutput:
+    def data(self) -> MorphologyMetricsExampleRunOutput:
         """
         Return the data to the client
         """

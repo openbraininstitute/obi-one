@@ -19,7 +19,6 @@ class Scan(OBIBaseModel):
     form: FormUnion
     output_root: str
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
-    data_handling: str = "LOCAL"
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
@@ -143,10 +142,12 @@ class Scan(OBIBaseModel):
         return self._coordinate_instances
     
    
-    def execute(self, method=""):
+    def execute(self, method="", data_handling_method="save"):
         """
         Description
         """
+
+        return_dict = {}
 
         if method == "":
             raise ValueError("Method of SingleCoordMixin must be specified.")
@@ -168,10 +169,7 @@ class Scan(OBIBaseModel):
                 result = getattr(coordinate_instance, method)()
 
                 # Call either save() or data() for the instance
-                if self.data_handling == "POST":
-                    coordinate_instance.save()
-                elif self.data_handling == "GET":
-                    coordinate_instance.data()
+                return_dict[coordinate_instance.idx] = getattr(coordinate_instance, data_handling_method)()
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))
@@ -186,7 +184,9 @@ class Scan(OBIBaseModel):
         # # Create a bbp_workflow_campaign_config
         # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
 
-    
+        return return_dict
+
+
    
     def serialize(self, output_path=''):
         """
