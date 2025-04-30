@@ -17,7 +17,7 @@ class MorphologyMetricsExampleForm(Form):
 
     single_coord_class_name: ClassVar[str] = "MorphologyMetricsExample"
     name: ClassVar[str] = "Morphology metrics example name"
-    description: ClassVar[str] = """Add a description of the tool to the classes description variable"""
+    description: ClassVar[str] = """Morphology metrics example description"""
 
     class Initialize(Block):
         morphology: ReconstructionMorphology | ReconstructionMorphologyFromID | list[Union[ReconstructionMorphology, ReconstructionMorphologyFromID]]
@@ -34,7 +34,7 @@ class MorphologyMetricsExampleForm(Form):
 class MorphologyMetricsExampleRunOutput(OBIBaseModel):
     features: dict = Field(
     default_factory=dict,
-    description="Dictionary containing feature_name: value.",
+    description="Morphology metrics example output",
 )
 
 

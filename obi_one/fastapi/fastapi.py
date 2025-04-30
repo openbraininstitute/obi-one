@@ -63,12 +63,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     - model is the OBI.Form subclass
     """
 
-    # model_name: model in lowercase (i.e. 'simulationsform')
-
-    # Split model name where there are capital letters
-
-
-    # 
+    # model_name: model in lowercase with underscores between words and "Forms" removed (i.e. 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
     model_name = '_'.join([word.lower() for word in re.findall(r'[A-Z][^A-Z]*', model_base_name)])
 
@@ -108,7 +103,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                     # Create POST endpoint
                     @app.post(endpoint_name_with_slash, summary=model.name, description=model.description)
-                    async def grid_scan_endpoint(form: model):
+                    async def endpoint(form: model):
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling, coordinate_directory_option="ZERO_INDEX")
@@ -125,7 +120,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
 
                     # Create GET endpoint
                     @app.get(endpoint_name_with_slash, summary=model.name, description=model.description)
-                    async def grid_scan_endpoint(form: model) -> return_type:
+                    async def endpoint(form: model) -> return_type:
 
                         try:
                             grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", coordinate_directory_option="ZERO_INDEX")
