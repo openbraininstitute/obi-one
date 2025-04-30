@@ -5,24 +5,23 @@ import obi_one as obi
 from fastapi.responses import JSONResponse
 def activate_fastapi_app(app: FastAPI):
     """
-    1. Create endpoints for each OBI Form subclass.
-    2. Create an endpoint that returns all available Form endpoints.
+    Create endpoints for each OBI Form subclass 
+    and endpoint that lists Form endpoints.
     """
 
-    all_form_endpoints = []
+    all_endpoint_names = []
 
-    # 1.
+    # 1. Create endpoints for each OBI Form subclass.
     for subclass in obi.Form.__subclasses__():
         form_endpoints = create_form_endpoints(subclass, app)
-        all_form_endpoints.extend(form_endpoints)
+        all_endpoint_names.extend(form_endpoints)
 
-    print(f"All form endpoints: {all_form_endpoints}")
+    print(f"All endpoint names: {all_endpoint_names}")
 
-    # 2.
+    # 2. Create an endpoint that returns all available Form endpoints.
     @app.get("/forms")
     async def get_forms():
-        # forms = [subclass.__name__.lower() for subclass in obi.Form.__subclasses__()]
-        return JSONResponse(content={"forms": all_form_endpoints})
+        return JSONResponse(content={"forms": all_endpoint_names})
 
     
 from typing import Type, get_type_hints
@@ -39,7 +38,7 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
     methods = ["run", "generate"]
     data_handlings = ["POST", "GET"]
 
-    endpoints = []
+    endpoint_names = []
 
     for method in methods:
         for data_handling in data_handlings:
@@ -52,37 +51,38 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
             # Get return signature of the run method if specified
             return_type = None
             if hasattr(model, "single_coord_class_name") and model.single_coord_class_name != "":
-                cls = getattr(obi, model.single_coord_class_name)
+                single_coordinate_cls = getattr(obi, model.single_coord_class_name)
 
-                if hasattr(cls, method) and callable(getattr(cls, method)):
+                if hasattr(single_coordinate_cls, method) and callable(getattr(single_coordinate_cls, method)):
                     
-                    if hasattr(cls, data_handling_method) and callable(getattr(cls, data_handling_method)):
+                    if hasattr(single_coordinate_cls, data_handling_method) and callable(getattr(single_coordinate_cls, data_handling_method)):
 
-                        print(cls, method, data_handling_method)
+                        endpoint_name = model_name + "_" + method + "_" + data_handling_method
+                        endpoint_name_with_slash = "/" + endpoint_name
 
-                        return_class = get_type_hints(getattr(cls, data_handling_method)).get('return')
+                        return_class = get_type_hints(getattr(single_coordinate_cls, data_handling_method)).get('return')
                         return_type = dict[str, return_class]
 
                         if data_handling == "POST":
                             # Create a post endpoint
-                            endpoint = f"/{model_name}" + "_" + method + "_" + data_handling_method
-                            endpoints.append(endpoint)
-                            @app.post(endpoint, summary=model.name, description=model.description)
+                            
+                            endpoint_names.append(endpoint_name)
+                            @app.post(endpoint_name_with_slash)
                             async def grid_scan_endpoint(form: model):
 
                                 try:
                                     grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan", data_handling=data_handling)
                                     result = getattr(grid_scan, method)()
-                                    return result
+                                    return {}
                                 except Exception as e:
                                     print(e)
                                     return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
 
                         elif data_handling == "GET":
                             # Create a get endpoint
-                            endpoint = f"/{model_name}" + "_" + method + "_" + data_handling_method
-                            endpoints.append(endpoint)
-                            @app.get(endpoint, summary=model.name, description=model.description)
+
+                            endpoint_names.append(endpoint_name)
+                            @app.get(endpoint_name_with_slash, summary=model.name, description=model.description)
                             async def grid_scan_endpoint(form: model) -> return_type:
 
                                 try:
@@ -93,4 +93,4 @@ def create_form_endpoints(model: Type[obi.Form], app: FastAPI):
                                     print(e)
                                     return JSONResponse(content={"error": "An internal error has occurred."}, status_code=500)
 
-    return endpoints
+    return endpoint_names
