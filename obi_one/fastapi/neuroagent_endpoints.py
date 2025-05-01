@@ -1,11 +1,18 @@
+from app.config import settings
+from app.dependencies.auth import UserContextDep
+from app.logger import L
+
 from fastapi import APIRouter
 
-prefix = ""
-# prefix = "/neuroagent"
+def activate_neuroagent_router(router: APIRouter) -> APIRouter:
 
-router = APIRouter(prefix=prefix, tags=["OBI-ONE - Neuroagent"])
+    # Create POST endpoint
+    @router.get("/hello_world", summary="Hello world summary", description="Hello workd description")
+    async def hello_world(user_context: UserContextDep) -> dict:
 
-# Create POST endpoint
-@router.post("hello_world", summary="Hello world summary", description="Hello workd description")
-async def hello_world():
-    return {"message": "Hello world!"}
+        L.info("generate_grid_scan")
+        L.debug("user_context: %s", user_context.model_dump())
+
+        return {"message": "Hello world!"}
+
+    return router

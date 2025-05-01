@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +40,13 @@ class Settings(BaseSettings):
     LOG_ENQUEUE: bool = False
     LOG_CATCH: bool = True
     LOG_STANDARD_LOGGER: dict[str, str] = {"root": "INFO"}
+
+    KEYCLOAK_URL: str = "https://example.openbluebrain.com/auth/realms/SBO"
+    AUTH_CACHE_MAXSIZE: int = 128  # items
+    AUTH_CACHE_MAX_TTL: int = 300  # seconds
+    AUTH_CACHE_INFO: bool = False
+
+    OUTPUT_DIR: Path = Path("../obi_output")
 
 
 settings = Settings()

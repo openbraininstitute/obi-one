@@ -6,8 +6,6 @@ from obi_one.core.block import Block
 from obi_one.core.scan import GridScan, CoupledScan
 from obi_one.core.serialization import deserialize_obi_object_from_json_file, deserialize_obi_object_from_json_data
 
-from obi_one.fastapi.fastapi import activate_fastapi_app
-
 from obi_one.database.db_manager import db
 from obi_one.database.db_classes import db_classes
 __all__ = ["db"]
