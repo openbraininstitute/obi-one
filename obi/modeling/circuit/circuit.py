@@ -26,12 +26,23 @@ class Circuit(OBIBaseModel):
         """Returns list of available node sets."""
         return list(self.sonata_circuit.node_sets.content.keys())
 
-    @property
-    def node_population_names(self):
+    def get_node_population_names(self, incl_virtual=True):
         """Returns node population names."""
-        return self.sonata_circuit.nodes.population_names
+        popul_names = self.sonata_circuit.nodes.population_names
+        if not incl_virtual:
+            popul_names = [_pop for _pop in popul_names if self.sonata_circuit.nodes[_pop].type != "virtual"]
+        return popul_names
 
     @property
-    def edge_population_names(self):
+    def default_population_name(self):
+        """Returns the default node population name."""
+        popul_names = self.get_node_population_names(incl_virtual=False)
+        assert len(popul_names) == 1, "Default node population unknown!"
+        return popul_names[0]
+
+    def get_edge_population_names(self, incl_virtual=True):
         """Returns edge population names."""
-        return self.sonata_circuit.edges.population_names
+        popul_names = self.sonata_circuit.edges.population_names
+        if not incl_virtual:
+            popul_names = [_pop for _pop in popul_names if self.sonata_circuit.edges[_pop].source.type != "virtual"]
+        return popul_names

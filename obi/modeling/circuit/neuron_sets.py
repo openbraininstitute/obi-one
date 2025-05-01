@@ -12,35 +12,38 @@ from typing_extensions import Self
 
 class NeuronSet(Block, abc.ABC):
     """
-    Base class representing a neuron set of a single SONATA node populations.
+    Base class representing a SONATA neuron set.
     """
-    name: Annotated[str, Field(min_length=1)]
-    circuit: Circuit
-    population: Annotated[str, Field(min_length=1)]
-    random_sample: None | int | float = None
-    random_seed: int = 0
+    name: None | str = None
+    random_sample: None | int | float | list[None | int | float] = None
+    random_seed: int | list[int] = 0
 
-    @model_validator(mode='after')
-    def check_name(self) -> Self:
-        assert self.name not in self.circuit.node_sets, f"Neuron set '{self.name}' already exists in the circuit's node sets!"
-        return self
+    # @model_validator(mode='after')
+    # def check_name(self) -> Self:
+    #     assert self.name not in self.circuit.node_sets, f"Neuron set '{self.name}' already exists in the circuit's node sets!"
+    #     return self
 
-    @model_validator(mode='after')
-    def check_population(self) -> Self:
-        assert self.population in self.circuit.node_population_names, f"Node population '{self.population}' not found!"
-        return self
-
+    # @model_validator(mode='after')
+    # def check_population(self) -> Self:
+    #     assert self.population in self.circuit.node_population_names, f"Node population '{self.population}' not found!"
+    #     return self
+    
     @model_validator(mode='after')
     def check_random_sample(self) -> Self:
-        if self.random_sample is not None:
-            if isinstance(self.random_sample, int):
-                assert self.random_sample >= 0, "Random sample number must not be negative!"
-            elif isinstance(self.random_sample, float):
-                assert 0.0 <= self.random_sample <= 1.0, "Random sample fraction must be between 0.0 and 1.0!"
+        # Only check whenever list are resolved to individual objects
+        if not isinstance(self.random_sample, list):
+            if self.random_sample is not None:
+                if isinstance(self.random_sample, int):
+                    assert self.random_sample >= 0, "Random sample number must not be negative!"
+                elif isinstance(self.random_sample, float):
+                    assert 0.0 <= self.random_sample <= 1.0, "Random sample fraction must be between 0.0 and 1.0!"
         return self
 
+    # def check_lists_resolved(self):
+    #     assert all(not isinstance(getattr(self, _attr), list) for _attr in self.__dict__.keys()), "All lists must be resolved!"
+
     @abc.abstractmethod
-    def _get_expression(self):
+    def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
         pass
 
@@ -72,15 +75,23 @@ class NeuronSet(Block, abc.ABC):
         with open(output_file, "w") as f:
             json.dump(sonata_circuit.node_sets.content, f)
 
-    def _resolve_ids(self):
+    def _resolve_ids(self, circuit, population):
         """Returns the full list of neuron IDs (w/o subsampling)."""
-        c = self.circuit.sonata_circuit
-        self.add_node_set_to_circuit(c, {self.name: self._get_expression()})
-        return c.nodes[self.population].ids(self.name)
+        c = circuit.sonata_circuit
+        expression = self._get_expression(circuit, population)
+        if expression is None:
+            # Node set already existing
+            assert hasattr(self, "node_set") and isinstance(self.node_set, str), "Node set undefined, IDs cannot be resolved!"
+            name = self.node_set
+        else:
+            name = "__TMP_NODE_SET__"
+            self.add_node_set_to_circuit(c, {name: self._get_expression(circuit, population)})
+        return c.nodes[population].ids(name)
 
-    def get_ids(self, with_population=False):
+    def get_neuron_ids(self, circuit, population):
         """Returns list of neuron IDs (with subsampling, if specified)."""
-        ids = np.array(self._resolve_ids())
+        self.enforce_no_lists()
+        ids = np.array(self._resolve_ids(circuit, population))
         if self.random_sample is not None:
             np.random.seed(self.random_seed)
 
@@ -91,127 +102,145 @@ class NeuronSet(Block, abc.ABC):
 
             ids = ids[np.random.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
-        if with_population:
-            return {self.population: ids}
-        else:
-            return ids
+        return ids
 
-    @property
-    def size(self):
-        """Returns the size (#neurons) of the neuron set."""
-        return len(self.get_ids())
+    # @property
+    # def size(self, circuit, population):
+    #     """Returns the size (#neurons) of the neuron set."""
+    #     return len(self.get_ids(circuit, population))
 
-    def get_node_set_dict(self, force_resolve_ids=False):
-        """Returns the SONATA node set definition as dict, optionally forcing to resolve individual IDs."""
+    def get_node_set_definition(self, circuit, population, force_resolve_ids=False):
+        """Returns the SONATA node set definition, optionally forcing to resolve individual IDs."""
+        self.enforce_no_lists()
         if self.random_sample is None and not force_resolve_ids:
             # Symbolic expression can be preserved
-            expression = self._get_expression()
+            expression = self._get_expression(circuit, population)
         else:
             # Individual IDs need to be resolved
-            expression = {"population": self.population, "node_id": self.get_ids().tolist()}
-
-        return {self.name: expression}
-
-    def write_node_set_file(self, output_path, file_name=None, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False):
-        """Writes a new node set file of a circuit."""
-        if file_name is None:
-            # Use circuit's node set file name by default
-            file_name = os.path.split(self.circuit.sonata_circuit.config["node_sets_file"])[1]
-        else:
-            assert isinstance(file_name, str) and len(file_name) > 0, "File name must be a non-empty string! Can be omitted to use default file name."
-            fname, fext = os.path.splitext(file_name)
-            assert len(fname) > 0 and fext.lower() == ".json", "File name must be non-empty and of type .json!"
-        output_file = os.path.join(output_path, file_name)
-
-        assert not (overwrite_if_exists and append_if_exists), "Append and overwrite options are mutually exclusive!"
-
-        if not os.path.exists(output_file) or overwrite_if_exists:
-            # Create new node sets file from circuit object, overwrite if existing
-            node_sets = self.circuit.sonata_circuit.node_sets.content
-            node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
-
-        elif os.path.exists(output_file) and append_if_exists:
-            # Append to existing node sets file
-            with open(output_file, "r") as f:
-                node_sets = json.load(f)
-                assert self.name not in node_sets, f"Appending not possible, node set '{self.name}' already exists!"
-                node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
-
-        else:  # File existing but no option chosen
-            assert False, f"Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
-                
-        with open(output_file, "w") as f:
-            json.dump(node_sets, f)
-
-        return output_file
-
-
-class BasicNeuronSet(NeuronSet):
-    """
-    Basic neuron set definition based on a combination of existing (named) node sets.
-    """
-    node_sets: Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
-
-    @model_validator(mode='after')
-    def check_node_sets(self) -> Self:
-        for _nset in self.node_sets:
-            assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
-        return self
-
-    def _get_expression(self):
-        """Returns the SONATA node set expression (w/o subsampling)."""
-        return self.node_sets
-
-
-class IDNeuronSet(NeuronSet):
-    """
-    Neuron set definition by providing a list of neuron IDs.
-    """
-    neuron_ids: Annotated[list[int], Field(min_length=1)]
-
-    @model_validator(mode='after')
-    def check_neuron_ids(self) -> Self:
-        popul_ids = self.circuit.sonata_circuit.nodes[self.population].ids()
-        assert all(_nid in popul_ids for _nid in self.neuron_ids), f"Neuron ID(s) not in population '{self.population}'!"
-        return self
-
-    def _get_expression(self):
-        """Returns the SONATA node set expression (w/o subsampling)."""
-        return {"population": self.population, "node_id": self.neuron_ids}
-
-
-class PropertyNeuronSet(NeuronSet):
-    """
-    Neuron set definition based on neuron properties, optionally combined with (named) node sets.
-    """
-    property_specs: Annotated[dict, Field(min_length=1)]
-    node_sets: list[Annotated[str, Field(min_length=1)]] = []
-
-    @model_validator(mode='after')
-    def check_properties(self) -> Self:
-        prop_names = self.circuit.sonata_circuit.nodes[self.population].property_names
-        assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"Invalid neuron properties! Available properties: {prop_names}"
-        return self
-
-    @model_validator(mode='after')
-    def check_node_sets(self) -> Self:
-        for _nset in self.node_sets:
-            assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
-        return self
-
-    def _get_expression(self):
-        """Returns the SONATA node set expression (w/o subsampling)."""
-        if len(self.node_sets) == 0:
-            # Symbolic expression can be preserved
-            expression = self.property_specs
-        else:
-            # Individual IDs need to be resolved
-            c = self.circuit.sonata_circuit
-            node_ids = np.array([]).astype(int)
-            for _nset in self.node_sets:
-                node_ids = np.union1d(node_ids, c.nodes[self.population].ids(_nset))
-            node_ids = np.intersect1d(node_ids, c.nodes[self.population].ids(self.property_specs))
-
-            expression = {"population": self.population, "node_id": node_ids.tolist()}
+            expression = {"population": population, "node_id": self.get_neuron_ids(circuit, population).tolist()}
 
         return expression
+
+    # def write_node_set_file(self, output_path, file_name=None, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False):
+    #     """Writes a new node set file of a circuit."""
+    #     if file_name is None:
+    #         # Use circuit's node set file name by default
+    #         file_name = os.path.split(self.circuit.sonata_circuit.config["node_sets_file"])[1]
+    #     else:
+    #         assert isinstance(file_name, str) and len(file_name) > 0, "File name must be a non-empty string! Can be omitted to use default file name."
+    #         fname, fext = os.path.splitext(file_name)
+    #         assert len(fname) > 0 and fext.lower() == ".json", "File name must be non-empty and of type .json!"
+    #     output_file = os.path.join(output_path, file_name)
+
+    #     assert not (overwrite_if_exists and append_if_exists), "Append and overwrite options are mutually exclusive!"
+
+    #     if not os.path.exists(output_file) or overwrite_if_exists:
+    #         # Create new node sets file from circuit object, overwrite if existing
+    #         node_sets = self.circuit.sonata_circuit.node_sets.content
+    #         node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
+
+    #     elif os.path.exists(output_file) and append_if_exists:
+    #         # Append to existing node sets file
+    #         with open(output_file, "r") as f:
+    #             node_sets = json.load(f)
+    #             assert self.name not in node_sets, f"Appending not possible, node set '{self.name}' already exists!"
+    #             node_sets.update(self.get_node_set_dict(force_resolve_ids=force_resolve_ids))
+
+    #     else:  # File existing but no option chosen
+    #         assert False, f"Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
+                
+    #     with open(output_file, "w") as f:
+    #         json.dump(node_sets, f)
+
+    #     return output_file
+
+
+class ExistingNeuronSet(NeuronSet):
+    """
+    Neuron set wrapper of an existing (named) node sets.
+    """
+    node_set: Annotated[str, Field(min_length=1)] | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
+
+    # @model_validator(mode='after')
+    # def check_node_sets(self) -> Self:
+    #     for _nset in self.node_sets:
+    #         assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
+    #     return self
+
+    def _get_expression(self, circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        assert self.node_set in circuit.node_sets, f"Node set '{self.node_set}' not found in circuit '{circuit}'!"  # Assumed that all lists have been resolved
+        return None  # No expression to return, node set already existing
+
+
+class CombinedNeuronSet(NeuronSet):
+    """
+    Neuron set definition based on a combination of existing (named) node sets.
+    """
+    node_sets: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]  | Annotated[list[Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]], Field(min_length=1)]
+
+    # @model_validator(mode='after')
+    # def check_node_sets(self) -> Self:
+    #     for _nset in self.node_sets:
+    #         assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
+    #     return self
+
+    def _get_expression(self, circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        for _nset in self.node_sets:  # Assumed that all lists have been resolved
+            assert _nset in circuit.node_sets, f"Node set '{_nset}' not found in circuit '{circuit}'!"
+        return list(self.node_sets)
+
+
+# class IDNeuronSet(NeuronSet):
+#     """
+#     Neuron set definition by providing a list of neuron IDs.
+#     """
+#     neuron_ids: Annotated[tuple[int], Field(min_length=1)]
+
+#     @model_validator(mode='after')
+#     def check_neuron_ids(self) -> Self:
+#         popul_ids = self.circuit.sonata_circuit.nodes[self.population].ids()
+#         assert all(_nid in popul_ids for _nid in self.neuron_ids), f"Neuron ID(s) not in population '{self.population}'!"
+#         return self
+
+#     def _get_expression(self, circuit, population):
+#         """Returns the SONATA node set expression (w/o subsampling)."""
+#         return {"population": self.population, "node_id": self.neuron_ids}
+
+
+# class PropertyNeuronSet(NeuronSet):
+#     """
+#     Neuron set definition based on neuron properties, optionally combined with (named) node sets.
+#     """
+#     property_specs: Annotated[dict, Field(min_length=1)]
+#     node_sets: list[Annotated[str, Field(min_length=1)]] = []
+
+#     @model_validator(mode='after')
+#     def check_properties(self) -> Self:
+#         prop_names = self.circuit.sonata_circuit.nodes[self.population].property_names
+#         assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"Invalid neuron properties! Available properties: {prop_names}"
+#         return self
+
+#     @model_validator(mode='after')
+#     def check_node_sets(self) -> Self:
+#         for _nset in self.node_sets:
+#             assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
+#         return self
+
+#     def _get_expression(self, circuit, population):
+#         """Returns the SONATA node set expression (w/o subsampling)."""
+#         if len(self.node_sets) == 0:
+#             # Symbolic expression can be preserved
+#             expression = self.property_specs
+#         else:
+#             # Individual IDs need to be resolved
+#             c = self.circuit.sonata_circuit
+#             node_ids = np.array([]).astype(int)
+#             for _nset in self.node_sets:
+#                 node_ids = np.union1d(node_ids, c.nodes[self.population].ids(_nset))
+#             node_ids = np.intersect1d(node_ids, c.nodes[self.population].ids(self.property_specs))
+
+#             expression = {"population": self.population, "node_id": node_ids.tolist()}
+
+#         return expression
