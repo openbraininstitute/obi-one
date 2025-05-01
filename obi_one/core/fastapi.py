@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 import obi_one as obi
+from app.config import settings
 from app.dependencies.auth import UserContextDep
 from app.logger import L
 
@@ -43,7 +44,8 @@ def create_form_generate_route(model: type[obi.Form], router: APIRouter) -> None
         L.debug("user_context: %s", user_context.model_dump())
 
         try:
-            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")
+            output_root = settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan"
+            grid_scan = obi.GridScan(form=form, output_root=str(output_root))
             grid_scan.generate()
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")

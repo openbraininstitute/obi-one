@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +45,8 @@ class Settings(BaseSettings):
     AUTH_CACHE_MAXSIZE: int = 128  # items
     AUTH_CACHE_MAX_TTL: int = 300  # seconds
     AUTH_CACHE_INFO: bool = False
+
+    OUTPUT_DIR: Path = Path("../obi_output")
 
 
 settings = Settings()
