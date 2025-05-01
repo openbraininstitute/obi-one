@@ -15,11 +15,13 @@ from obi_one.modeling.circuit.circuit import Circuit
 from pydantic import PrivateAttr, Field
 import os, json
 
+from typing import ClassVar
+
 class SimulationsForm(Form):
     """
     """
 
-    _single_coord_class_name: str = "Simulation"
+    single_coord_class_name: ClassVar[str] = "Simulation"
 
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion]
@@ -85,3 +87,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         simulation_config_path = os.path.join(self.coordinate_output_root, f"simulation_config.json")
         with open(simulation_config_path, 'w') as f:
             json.dump(self._sonata_config, f, indent=2)
+
+    def save(self):
+        """
+        Add entitysdk calls to save the collection
+        """
+        pass
