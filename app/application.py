@@ -13,12 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-import obi_one
 from app.config import settings
 from app.dependencies.auth import user_verified
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
+from obi_one.core.fastapi import activate_router
 
 
 @asynccontextmanager
@@ -126,5 +126,4 @@ async def version() -> dict:
 
 
 router = APIRouter(prefix="/forms", tags=["forms"], dependencies=[Depends(user_verified)])
-obi_one.activate_fastapi_app(router)
-app.include_router(router)
+app.include_router(activate_router(router))
