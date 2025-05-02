@@ -36,7 +36,7 @@ class NeuronSet(Block, abc.ABC):
 
     @staticmethod
     def check_population(circuit, population):
-        assert population in circuit.node_population_names, f"Node population '{population}' not found in circuit '{circuit}'!"
+        assert population in circuit.get_node_population_names(), f"Node population '{population}' not found in circuit '{circuit}'!"
 
     @staticmethod
     def add_node_set_to_circuit(sonata_circuit, node_set_dict, overwrite_if_exists=False):
@@ -157,9 +157,12 @@ class ExistingNeuronSet(NeuronSet):
     """
     node_set: Annotated[str, Field(min_length=1)] | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
 
+    def check_node_set(self, circuit, population):
+        assert self.node_set in circuit.node_sets, f"Node set '{self.node_set}' not found in circuit '{circuit}'!"  # Assumed that all (outer) lists have been resolved
+
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
-        assert self.node_set in circuit.node_sets, f"Node set '{self.node_set}' not found in circuit '{circuit}'!"  # Assumed that all lists have been resolved
+        self.check_node_set(circuit, population)
         return None  # No expression to return, node set already existing
 
 
@@ -169,62 +172,62 @@ class CombinedNeuronSet(NeuronSet):
     """
     node_sets: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]  | Annotated[list[Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]], Field(min_length=1)]
 
+    def check_node_sets(self, circuit, population):
+        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
+            assert _nset in circuit.node_sets, f"Node set '{_nset}' not found in circuit '{circuit}'!"
+
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
-        for _nset in self.node_sets:  # Assumed that all lists have been resolved
-            assert _nset in circuit.node_sets, f"Node set '{_nset}' not found in circuit '{circuit}'!"
+        self.check_node_sets(circuit, population)
         return list(self.node_sets)
 
 
-# class IDNeuronSet(NeuronSet):
-#     """
-#     Neuron set definition by providing a list of neuron IDs.
-#     """
-#     neuron_ids: Annotated[tuple[int], Field(min_length=1)]
+class IDNeuronSet(NeuronSet):
+    """
+    Neuron set definition by providing a list of neuron IDs.
+    """
+    neuron_ids: Annotated[tuple[int, ...], Field(min_length=1)] | Annotated[list[Annotated[tuple[int, ...], Field(min_length=1)]], Field(min_length=1)]
 
-#     @model_validator(mode='after')
-#     def check_neuron_ids(self) -> Self:
-#         popul_ids = self.circuit.sonata_circuit.nodes[self.population].ids()
-#         assert all(_nid in popul_ids for _nid in self.neuron_ids), f"Neuron ID(s) not in population '{self.population}'!"
-#         return self
+    def check_neuron_ids(self, circuit, population):
+        popul_ids = circuit.sonata_circuit.nodes[population].ids()
+        assert all(_nid in popul_ids for _nid in self.neuron_ids), f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"  # Assumed that all (outer) lists have been resolved
 
-#     def _get_expression(self, circuit, population):
-#         """Returns the SONATA node set expression (w/o subsampling)."""
-#         return {"population": self.population, "node_id": self.neuron_ids}
+    def _get_expression(self, circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_neuron_ids(circuit, population)
+        return {"population": self.population, "node_id": self.neuron_ids}
 
 
-# class PropertyNeuronSet(NeuronSet):
-#     """
-#     Neuron set definition based on neuron properties, optionally combined with (named) node sets.
-#     """
-#     property_specs: Annotated[dict, Field(min_length=1)]
-#     node_sets: list[Annotated[str, Field(min_length=1)]] = []
+class PropertyNeuronSet(NeuronSet):
+    """
+    Neuron set definition based on neuron properties, optionally combined with (named) node sets.
+    """
+    property_specs: Annotated[dict, Field(min_length=1)] | Annotated[list[Annotated[dict, Field(min_length=1)]], Field(min_length=1)]
+    node_sets: tuple[Annotated[str, Field(min_length=1)], ...] | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)] = tuple()
 
-#     @model_validator(mode='after')
-#     def check_properties(self) -> Self:
-#         prop_names = self.circuit.sonata_circuit.nodes[self.population].property_names
-#         assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"Invalid neuron properties! Available properties: {prop_names}"
-#         return self
+    def check_properties(self, circuit, population):
+        prop_names = circuit.sonata_circuit.nodes[population].property_names
+        assert all(_prop in prop_names for _prop in self.property_specs.keys()), f"Invalid neuron properties! Available properties: {prop_names}"  # Assumed that all (outer) lists have been resolved
 
-#     @model_validator(mode='after')
-#     def check_node_sets(self) -> Self:
-#         for _nset in self.node_sets:
-#             assert _nset in self.circuit.node_sets, f"Node set '{_nset}' not found!"
-#         return self
+    def check_node_sets(self, circuit, population):
+        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
+            assert _nset in circuit.node_sets, f"Node set '{_nset}' not found in circuit '{circuit}'!"
 
-#     def _get_expression(self, circuit, population):
-#         """Returns the SONATA node set expression (w/o subsampling)."""
-#         if len(self.node_sets) == 0:
-#             # Symbolic expression can be preserved
-#             expression = self.property_specs
-#         else:
-#             # Individual IDs need to be resolved
-#             c = self.circuit.sonata_circuit
-#             node_ids = np.array([]).astype(int)
-#             for _nset in self.node_sets:
-#                 node_ids = np.union1d(node_ids, c.nodes[self.population].ids(_nset))
-#             node_ids = np.intersect1d(node_ids, c.nodes[self.population].ids(self.property_specs))
+    def _get_expression(self, circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_properties()
+        self.check_node_sets()
+        if len(self.node_sets) == 0:
+            # Symbolic expression can be preserved
+            expression = self.property_specs
+        else:
+            # Individual IDs need to be resolved
+            c = circuit.sonata_circuit
+            node_ids = np.array([]).astype(int)
+            for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
+                node_ids = np.union1d(node_ids, c.nodes[population].ids(_nset))
+            node_ids = np.intersect1d(node_ids, c.nodes[population].ids(self.property_specs))
 
-#             expression = {"population": self.population, "node_id": node_ids.tolist()}
+            expression = {"population": population, "node_id": node_ids.tolist()}
 
-#         return expression
+        return expression
