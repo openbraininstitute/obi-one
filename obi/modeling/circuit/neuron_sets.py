@@ -85,7 +85,7 @@ class NeuronSet(Block, abc.ABC):
             name = self.node_set
         else:
             name = "__TMP_NODE_SET__"
-            self.add_node_set_to_circuit(c, {name: self._get_expression(circuit, population)})
+            self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
 
     def get_neuron_ids(self, circuit, population):

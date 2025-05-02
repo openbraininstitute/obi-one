@@ -6,7 +6,7 @@ from obi.modeling.unions.unions_timestamps import TimestampsUnion
 from obi.modeling.unions.unions_recordings import RecordingUnion
 from obi.modeling.unions.unions_stimuli import StimulusUnion
 from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
-from obi.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi.modeling.unions.unions_neuron_sets import NeuronSet, NeuronSetUnion
 from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
 from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
@@ -112,24 +112,35 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     _sonata_config: dict = PrivateAttr(default={})
 
+    def _resolve_neuron_set(self, neuron_set, circuit, population):
+        """Resolves neuron set based on current coordinate's circuit."""
+        if len(self.single_coordinate_scan_params.scan_params) > 0:
+            coord_suffix = f"__coord_{self.idx}"
+        else:
+            coord_suffix = ""
+
+        nset_def = neuron_set.get_node_set_definition(circuit, population)
+        if nset_def is None:
+            # Neuron set already existing, nothing to add
+            name = neuron_set.node_set
+            expression = None
+        else:
+            # New expression needs to be added
+            name = neuron_set.name + coord_suffix
+            expression = {name: nset_def}
+        return name, expression
+
     def generate(self):
 
         # Define a coordinate suffix to be used in node set names in order
         # to avoid confusion since node sets may resolve to different sets
         # of neurons in different coordinate instances
-        if len(self.single_coordinate_scan_params.scan_params) > 0:
-            coord_suffix = f"__coord_{self.idx}"
-        else:
-            coord_suffix = ""
 
         self._sonata_config = {}
         self._sonata_config['version'] = self.initialize.sonata_version
         self._sonata_config['target_simulator'] = self.initialize.target_simulator
 
         self._sonata_config['network'] = self.initialize.circuit.path
-        self._sonata_config['node_set'] = self.initialize.node_set.name + coord_suffix
-        # self._sonata_config['node_set'] = self.find_key(self.neuron_sets, self.initialize.node_set)
-        self._sonata_config['node_sets_file'] = self.NODE_SETS_FILE_NAME
 
         self._sonata_config['run'] = {}
         self._sonata_config['run']['dt'] = self.initialize.timestep
@@ -157,16 +168,25 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         # Write SONATA node sets file (.json)
         os.makedirs(self.coordinate_output_root, exist_ok=True)
-        for _name, _nset in self.neuron_sets:
+        c = self.initialize.circuit.sonata_circuit
+        for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
-            # FIXME: Better handling of default node population in case of more than one
-            nset_def = _nset.get_node_set_definition(self.initialize.circuit, self.initialize.circuit.default_population_name)
-            if nset_def is None:
-                # Exisint node set, nothing to add
+            # FIXME: Better handling of (default) node population in case of more than one
+            nset_name, nset_expression = self._resolve_neuron_set(_nset, self.initialize.circuit, self.initialize.circuit.default_population_name)
+            if self.initialize.node_set.name == _name:
+                assert self._sonata_config.get('node_set') is None, "Node set config entry already defined!"
+                self._sonata_config['node_set'] = nset_name
+            if nset_expression is None:
+                # Node set already existing, no need to add
                 pass
             else:
-                # Node set needs to be added to circuit's node sets
-                # TODO
+                # Add node set to SONATA circuit object
+                # (will raise an error in case already existing)
+                NeuronSet.add_node_set_to_circuit(c, nset_expression, overwrite_if_exists=False)
+        # Write node sets from SONATA circuit object to .json file
+        # (will raise an error if file already exists)
+        NeuronSet.write_circuit_node_set_file(c, self.coordinate_output_root, file_name=self.NODE_SETS_FILE_NAME, overwrite_if_exists=False)
+        self._sonata_config['node_sets_file'] = self.NODE_SETS_FILE_NAME
 
         # Write simulation config file (.json)
         simulation_config_path = os.path.join(self.coordinate_output_root, self.CONFIG_FILE_NAME)
