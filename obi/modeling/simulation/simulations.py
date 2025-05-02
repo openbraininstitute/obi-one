@@ -19,41 +19,6 @@ from pydantic import PrivateAttr, Field, model_validator
 from typing import ClassVar
 from typing_extensions import Self
 
-# NOTE: With CustomDict (below), deserialization won't work. Also, it breaks the GUI.
-#
-# from typing import Any
-# from pydantic_core import CoreSchema, core_schema
-# from pydantic import GetCoreSchemaHandler, TypeAdapter
-#
-# class CustomDict(dict):
-#     @classmethod
-#     def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
-#         return core_schema.no_info_after_validator_function(cls, handler(dict))
-#
-#     @staticmethod
-#     def _set_key_as_name(obj, key):
-#         pass
-#         # if hasattr(obj, "name"):
-#         #     if obj.name is None:
-#         #         obj.name = key
-#         #     else:
-#         #         assert obj.name == key, "Name mismatch!"
-#
-#     def __init__(self, *args, **kwargs):
-#         # print(f"INIT: {args}, {kwargs}")
-#         for arg in args:
-#             assert isinstance(arg, dict), "Dict expected!"
-#             for _k, _v in arg.items():
-#                 self._set_key_as_name(_v, _k)
-#         for _k, _v in kwargs.items():
-#             self._set_key_as_name(_v, _k)
-#         self.update(*args, **kwargs)
-#
-#     def __setitem__(self, key, value):
-#         # print(f"ITEM SET: {key}: {value}")
-#         self._set_key_as_name(value, key)
-#         return dict.__setitem__(self, key, value)
-
 
 class SimulationsForm(Form):
     """
@@ -72,8 +37,7 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit
         simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetUnion  # NOTE: Needs to be member of the neuron_sets dict!
-        # node_set: str  # NOTE: Needs to be member of the neuron_sets dict  [FIXME: Neuron set not selectable in GUI]
+        node_set: NeuronSetUnion  # NOTE: Must be member of the neuron_sets dict!
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
@@ -84,29 +48,15 @@ class SimulationsForm(Form):
 
     initialize: Initialize
 
-    # @staticmethod
-    # def find_key(dictionary, value):
-    #     """Finds the key of a dict corresponding to a given value, if any."""
-    #     for _k, _v in dictionary.items():
-    #         if _v is value:
-    #             return _k
-    #     return None
-
-    # FIXME: Won't de-serialize with this check enabled!!
-    # @model_validator(mode='after')
-    # def check_node_set(self) -> Self:
-    #     """Checks if given node set is member of the neuron_sets dict."""
-    #     assert self.find_key(self.neuron_sets, self.initialize.node_set) is not None, "Node set must be member of neuron sets dictionary!"
-    #     return self
     @model_validator(mode='after')
     def check_node_set(self) -> Self:
         """Checks that given node set is member of the neuron_sets dict."""
-        assert self.initialize.node_set.name in self.neuron_sets, "Node set must be within of neuron sets dictionary!"
+        assert self.initialize.node_set.name in self.neuron_sets, "Node set must be within neuron sets dictionary!"
         assert self.initialize.node_set == self.neuron_sets[self.initialize.node_set.name], "Node set inconsistency!"
         return self
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
-    """Only allows single float values and ensures nested attributes follow the same rule."""
+    """Only allows single values and ensures nested attributes follow the same rule."""
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
 
@@ -115,26 +65,29 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def _resolve_neuron_set(self, neuron_set, circuit, population):
         """Resolves neuron set based on current coordinate's circuit."""
         if len(self.single_coordinate_scan_params.scan_params) > 0:
+            # Use coordinate-specific suffix to distinguish between different instances
+            # which may have the same name but will be resolved differently
             coord_suffix = f"__coord_{self.idx}"
         else:
+            # No suffix required in case there is only a single simulation
             coord_suffix = ""
 
         nset_def = neuron_set.get_node_set_definition(circuit, population)
+        # FIXME: Inconsistency possible in case a node set definition would span multiple populations
+        #        May consider force_resolve_ids=False to enforce resolving into given population
+        #        (but which won't be a human-readable representation any more)
         if nset_def is None:
             # Neuron set already existing, nothing to add
-            name = neuron_set.node_set
+            name = neuron_set.node_set  # Use name of actual (existing) node set
             expression = None
         else:
-            # New expression needs to be added
+            # New expression needs to be added using a new name
             name = neuron_set.name + coord_suffix
             expression = {name: nset_def}
         return name, expression
 
     def generate(self):
-
-        # Define a coordinate suffix to be used in node set names in order
-        # to avoid confusion since node sets may resolve to different sets
-        # of neurons in different coordinate instances
+        """Generates SONATA simulation config .json file."""
 
         self._sonata_config = {}
         self._sonata_config['version'] = self.initialize.sonata_version
@@ -171,7 +124,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         c = self.initialize.circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
-            # FIXME: Better handling of (default) node population in case of more than one
+            # FIXME: Better handling of (default) node population in case there is more than one
             nset_name, nset_expression = self._resolve_neuron_set(_nset, self.initialize.circuit, self.initialize.circuit.default_population_name)
             if self.initialize.node_set.name == _name:
                 assert self._sonata_config.get('node_set') is None, "Node set config entry already defined!"
