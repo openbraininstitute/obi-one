@@ -8,6 +8,7 @@ class Timestamps(Block, ABC):
     def timestamps(self):
         pass
     
+    
 class RegularTimestamps(Timestamps):
     number_of_repetitions: int | list[int]
     interval: float | list[float]
@@ -28,7 +29,7 @@ class RegularTimestamps(Timestamps):
 #             timestamps.extend([category_start_time + j for j in range(self.repetitions_per_category)])
 #         return timestamps
 
-
+    
 
 
     

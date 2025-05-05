@@ -9,4 +9,5 @@ from obi_one.modeling.morphology_containerization.morphology_containerization im
 from obi_one.modeling.morphology_metrics.morphology_metrics import *
 from obi_one.modeling.test_forms.test_form_single_block import *
 
+
 FormUnion = subclass_union(Form)
