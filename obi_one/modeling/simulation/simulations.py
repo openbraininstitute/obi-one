@@ -11,6 +11,7 @@ from obi_one.modeling.unions.unions_intracellular_location_sets import Intracell
 from obi_one.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
 from obi_one.modeling.circuit.circuit import Circuit
+from obi_one.modeling.circuit.neuron_sets import NeuronSet
 
 import json
 import os
