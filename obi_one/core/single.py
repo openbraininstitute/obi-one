@@ -100,7 +100,7 @@ class SingleCoordinateMixin:
         model_dump.move_to_end('scan_output_root', last=False)
         model_dump.move_to_end('coordinate_output_root', last=False)
         model_dump.move_to_end('idx', last=False)
-        model_dump.move_to_end('type', last=False)
+        model_dump.move_to_end('obi_type', last=False)
         model_dump.move_to_end('obi_one_version', last=False)
         
         os.makedirs(os.path.dirname(output_path), exist_ok=True)

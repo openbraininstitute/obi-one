@@ -204,12 +204,12 @@ class Scan(OBIBaseModel):
         # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
-        model_dump.move_to_end('type', last=False)
+        model_dump.move_to_end('obi_type', last=False)
         model_dump.move_to_end('obi_one_version', last=False)
 
         # Order the keys in subdict "form"
         model_dump["form"] = OrderedDict(model_dump["form"])
-        model_dump["form"].move_to_end('type', last=False)
+        model_dump["form"].move_to_end('obi_type', last=False)
 
         # Create the directory and write dict to json file
         if output_path != '':
