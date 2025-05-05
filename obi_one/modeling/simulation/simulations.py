@@ -87,9 +87,4 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         simulation_config_path = os.path.join(self.coordinate_output_root, f"simulation_config.json")
         with open(simulation_config_path, 'w') as f:
             json.dump(self._sonata_config, f, indent=2)
-
-    def save(self):
-        """
-        Add entitysdk calls to save the collection
-        """
-        pass
+            
