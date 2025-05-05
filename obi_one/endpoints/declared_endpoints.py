@@ -42,29 +42,23 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
             
             # Iterate through the assets of the morphology to find the one with content type "application/h5"
             for asset in morphology.assets:
-                if asset.content_type == "application/h5":
+                if asset.content_type == "application/asc":
 
                     # Download the content into memory
                     content = entity_client.download_content(
                                 entity_id=morphology.id, entity_type=ReconstructionMorphology, asset_id=asset.id
-                            )
+                            ).decode(encoding="utf-8")
 
+                    # Use StringIO to create a file-like object in memory from the string content
+                    neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
                     
-                    with tempfile.NamedTemporaryFile(suffix='.h5') as tmp_file:
 
-                        # Load content into file in memory
-                        tmp_file.write(content)
-                        tmp_file.flush()
-
-                        # Load the morphology from the temporary file in memory
-                        neurom_morphology = load_morphology(tmp_file.name)
-
-                        # Calculate the soma radius and surface area and return the ReconstructionMorphologyMetricsOutput object
-                        output = ReconstructionMorphologyMetricsOutput(
-                            soma_radius=neurom.get("soma_radius", neurom_morphology),
-                            soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-                        )
-                        return output
+                    # Calculate the soma radius and surface area and return the ReconstructionMorphologyMetricsOutput object
+                    output = ReconstructionMorphologyMetricsOutput(
+                        soma_radius=neurom.get("soma_radius", neurom_morphology),
+                        soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
+                    )
+                    return output
 
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")
