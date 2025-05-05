@@ -18,9 +18,8 @@ from app.dependencies.auth import user_verified
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
-
-from obi_one.fastapi.generated_endpoints import activate_generated_router
-from obi_one.fastapi.neuroagent_endpoints import activate_neuroagent_router
+from obi_one.endpoints.declared_endpoints import activate_declared_router
+from obi_one.endpoints.generated_endpoints import activate_generated_router
 
 
 @asynccontextmanager
@@ -125,10 +124,14 @@ async def version() -> dict:
         "app_version": settings.APP_VERSION,
         "commit_sha": settings.COMMIT_SHA,
     }
-    
 
-neuroagent_router = APIRouter(prefix="/neuroagent", tags=["neuroagent"], dependencies=[Depends(user_verified)])
-app.include_router(activate_neuroagent_router(neuroagent_router))
 
-generated_router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
+declared_endpoints_router = APIRouter(
+    prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)]
+)
+app.include_router(activate_declared_router(declared_endpoints_router))
+
+generated_router = APIRouter(
+    prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
+)
 app.include_router(activate_generated_router(generated_router))

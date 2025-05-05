@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     AUTH_CACHE_INFO: bool = False
 
     OUTPUT_DIR: Path = Path("../obi_output")
+    ENTITYCORE_URL: str = "http://127.0.0.1:8000"
 
 
 settings = Settings()

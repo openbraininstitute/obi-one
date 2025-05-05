@@ -9,6 +9,8 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+from typing import ClassVar
+
 try:
     from conntility.connectivity import ConnectivityMatrix
 except ImportError:
@@ -19,7 +21,7 @@ class ConnectivityMatrixExtractions(Form):
     """
     """
 
-    _single_coord_class_name = "ConnectivityMatrixExtraction"
+    single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtraction"
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]

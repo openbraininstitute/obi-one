@@ -3,11 +3,13 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
+from typing import ClassVar
+
 class CircuitExtractions(Form):
     """
     """
 
-    _single_coord_class_name: str = "CircuitExtraction"
+    single_coord_class_name: ClassVar[str] = "CircuitExtraction"
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]

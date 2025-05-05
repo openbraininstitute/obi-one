@@ -19,6 +19,8 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+from typing import ClassVar
+
 try:
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
@@ -32,7 +34,7 @@ class BasicConnectivityPlots(Form):
     Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
     """
 
-    _single_coord_class_name = "BasicConnectivityPlot"
+    single_coord_class_name: ClassVar[str] = "BasicConnectivityPlot"
 
     class Initialize(Block):
         matrix_path: NamedPath | list[NamedPath]
