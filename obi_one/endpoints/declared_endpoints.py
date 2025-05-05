@@ -23,12 +23,19 @@ import neurom
 def activate_declared_router(router: APIRouter) -> APIRouter:
 
     class ReconstructionMorphologyMetricsOutput(BaseModel):
+
+        aspect_ratio: Annotated[float, Field(title="aspect_ratio", description="Calculates the min/max ratio of the principal direction extents along the plane.")]
+        circularity: Annotated[float, Field(title="circularity", description="Calculates the circularity of the morphology points along the plane.")]
+        length_fraction_above_soma: Annotated[float, Field(title="length_fraction_above_soma", description="Returns the length fraction of the segments that have their midpoints higher than the soma.")]
+        max_radial_distance: Annotated[float, Field(title="max_radial_distance", description="Get the maximum radial distances of the termination sections.")]
+        number_of_neurites: Annotated[int, Field(title="number_of_neurites", description="Number of neurites in a morph.")]
+
         soma_radius: Annotated[float, Field(title="soma_radius [µm]", description="The radius of the soma in micrometers.")]
         soma_surface_area: Annotated[float, Field(title="soma_surface_area [µm^2]", description="The surface area of the soma in square micrometers.")]
         
     
-    @router.get("/neurom_metrics/{reconstruction_morphology_id}", summary="NeuroM Metrics", description="Takes a single NeuroM morphology and returns the soma radius and surface area.")
-    async def endpoint(entity_client: Annotated[entitysdk.client.Client, Depends(get_client)], 
+    @router.get("/neuron_morphology_metrics/{reconstruction_morphology_id}", summary="Neuron morphology metrics", description="This calculates neuron morphology metrics for a given reconstruciton morphology.")
+    async def neuron_morphology_metrics_endpoint(entity_client: Annotated[entitysdk.client.Client, Depends(get_client)], 
                         reconstruction_morphology_id: str) -> ReconstructionMorphologyMetricsOutput:
 
         L.info("neurom_metrics")
@@ -40,7 +47,7 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
                             entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
                         )
             
-            # Iterate through the assets of the morphology to find the one with content type "application/h5"
+            # Iterate through the assets of the morphology to find the one with content type "application/asc"
             for asset in morphology.assets:
                 if asset.content_type == "application/asc":
 
@@ -55,6 +62,15 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
                     # Calculate the soma radius and surface area and return the ReconstructionMorphologyMetricsOutput object
                     output = ReconstructionMorphologyMetricsOutput(
+                        aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
+                        circularity=neurom.get("circularity", neurom_morphology),
+                        length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
+                        max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
+                        # neurite_volume_density=neurom.get("neurite_volume_density", neurom_morphology),
+                        number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
+                        # list_of_number_of_sections_per_neurite=neurom.get("list_of_number_of_sections_per_neurite", neurom_morphology),
+                        # section_bif_radial_distances=neurom.get("section_bif_radial_distances", neurom_morphology),
+
                         soma_radius=neurom.get("soma_radius", neurom_morphology),
                         soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
                     )
