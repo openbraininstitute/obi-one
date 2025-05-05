@@ -1,6 +1,7 @@
 from pydantic import PrivateAttr, ValidationError
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
-from obi_one.core.block import Block, MultiValueScanParam, SingleValueScanParam
+from obi_one.core.block import Block
+from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json

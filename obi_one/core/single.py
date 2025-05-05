@@ -1,4 +1,5 @@
-from obi_one.core.block import Block, SingleValueScanParam
+from obi_one.core.block import Block
+from obi_one.core.param import SingleValueScanParam
 from obi_one.core.base import OBIBaseModel
 
 from pydantic import field_validator

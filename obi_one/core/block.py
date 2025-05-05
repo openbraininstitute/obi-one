@@ -1,30 +1,7 @@
 from pydantic import PrivateAttr
 from obi_one.core.base import OBIBaseModel
-from typing import Any
 
-
-def nested_param_short(nested_param_list):
-    nested_param_short = ''
-    for i, s in enumerate(nested_param_list):
-        nested_param_short = nested_param_short + f"{s}"
-        if i < len(nested_param_list) - 1:
-            nested_param_short = nested_param_short + '.'
-    return nested_param_short
-
-
-class ScanParam(OBIBaseModel):
-    location_list: list = []
-    _location_str: str = ""
-
-    @property
-    def location_str(self):
-        return nested_param_short(self.location_list)
-
-class MultiValueScanParam(ScanParam):
-    values: list[Any] = [None]
-    
-class SingleValueScanParam(ScanParam):
-    value: Any
+from obi_one.core.param import MultiValueScanParam
 
 
 class Block(OBIBaseModel):
