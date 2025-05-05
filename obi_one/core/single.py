@@ -1,5 +1,5 @@
-from obi.modeling.core.block import Block, SingleValueScanParam
-from obi.modeling.core.base import OBIBaseModel
+from obi_one.core.block import Block, SingleValueScanParam
+from obi_one.core.base import OBIBaseModel
 
 from pydantic import field_validator
 from importlib.metadata import version
@@ -33,11 +33,15 @@ class SingleCoordinateScanParams(OBIBaseModel):
 
     def display_parameters(self):
         output = f""
-        for j, scan_param in enumerate(self.scan_params):
-            output = output + scan_param.location_str + ": " + str(scan_param.value)
-            if j < len(self.scan_params) - 1:
-                output = output + ", "
-        print(output)
+
+        if len(self.scan_params) == 0:
+            print("No coordinate parameters.")
+        else:
+            for j, scan_param in enumerate(self.scan_params):
+                output = output + scan_param.location_str + ": " + str(scan_param.value)
+                if j < len(self.scan_params) - 1:
+                    output = output + ", "
+            print(output)
 
 
 class SingleCoordinateMixin:
@@ -90,14 +94,14 @@ class SingleCoordinateMixin:
 
         model_dump = self.model_dump()
         model_dump = OrderedDict(model_dump)
-        model_dump["obi_version"] = version("obi")
+        model_dump["obi_one_version"] = version("obi-one")
         model_dump["coordinate_output_root"] = self.coordinate_output_root
 
         model_dump.move_to_end('scan_output_root', last=False)
         model_dump.move_to_end('coordinate_output_root', last=False)
         model_dump.move_to_end('idx', last=False)
         model_dump.move_to_end('type', last=False)
-        model_dump.move_to_end('obi_version', last=False)
+        model_dump.move_to_end('obi_one_version', last=False)
         
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w") as json_file:

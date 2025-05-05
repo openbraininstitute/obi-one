@@ -1,130 +1,53 @@
-from fastapi import FastAPI, HTTPException
-from typing import Type, Dict, Any, List
-import obi
+
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+import obi_one as obi
+from app.config import settings
+from app.dependencies.auth import UserContextDep
+from app.logger import L
 
-def activate_fastapi_app(app: FastAPI):
 
+def activate_router(router: APIRouter) -> APIRouter:
+
+    # For each obi.Form subclass, create a FastAPI route for generating grid scans.
     for subclass in obi.Form.__subclasses__():
-        generate_routes(subclass, app)
-    return
+        create_form_generate_route(subclass, router)
+
+    # Create a single endpoint that returns all available Form endpoints
+    @router.get("")
+    async def get_forms() -> JSONResponse:
+        forms = [subclass.__name__.lower() for subclass in obi.Form.__subclasses__()]
+        return JSONResponse(content={"forms": forms})
+
+    return router
 
 
-# Auto-generate API routes
-def generate_routes(model: Type[obi.Form], app: FastAPI):
+def create_form_generate_route(model: type[obi.Form], router: APIRouter) -> None:
+    """Create a FastAPI route for generating grid scans based on the provided OBI Form model.
 
-    # Model is the OBI.Form subclass 
+    Args:
+        model: OBI Form model.
+        router: FastAPI router.
+    """
+    # model is the OBI.Form subclass
     # i.e. <class 'obi.modeling.simulation.simulations.SimulationsForm'>
 
-    # model_name is the name of the model (i.e. OBI.Form subclass) 
+    # model_name is the name of the model (i.e. OBI.Form subclass)
     # in lowercase (i.e. 'simulationsform')
     model_name = model.__name__.lower()
 
-    # if model_name == 'simulationsform':
+    @router.post(f"/{model_name}", summary=f"Generate a grid scan for {model.__name__}")
+    async def generate_grid_scan(user_context: UserContextDep, form: model) -> dict:
 
-    
-        
-
-    # @app.get("/")
-    # async def root():
-    #     response = JSONResponse(content={"message": "CORS test"})
-    #     response.headers["Access-Control-Allow-Origin"] = "*"  # ✅ Proper way to set headers
-    #     return response
-    
-    # @app.post(f"/{model_name}/generate_grid_scan/")
-    @app.post(f"/{model_name}/")
-    async def generate_grid_scan(form: model):
-        
-        print("\ngenerate_grid_scan")
+        L.info("generate_grid_scan")
+        L.debug("user_context: %s", user_context.model_dump())
 
         try:
-            grid_scan = obi.GridScan(form=form, output_root=f"../obi_output/fastapi_test/{model_name}/grid_scan")
+            output_root = settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan"
+            grid_scan = obi.GridScan(form=form, output_root=str(output_root))
             grid_scan.generate()
-        except Exception as e:
-            print(e)
+        except Exception:  # noqa: BLE001
+            L.exception("Generic exception")
 
         return {}
-
-    # @app.get("/")  # Define a route for the root path "/"
-    # def read_root():
-    #     return {"message": "Welcome to the OBI modeling library FastAPI!"}
-
-        # response = JSONResponse(content={"message": "CORS test"})
-        # response.headers["Access-Control-Allow-Origin"] = "*"
-        # return response
-
-
-        """
-        Misc old
-        """
-
-        # current_form: obi.Form = None
-
-        # @app.post(f"/{model_name}/set_form/")
-        # async def set_form(form_obi_serialized_json: Dict[str, Any]):
-        #     """Send a JSON dictionary of an unspecified type"""
-
-        #     global current_form
-        #     current_form = obi.deserialize_obi_object_from_json_data(form_obi_serialized_json)
-
-        #     return
-
-
-        # @app.post(f"/{model_name}/create_form/") #
-        # async def create_form(item: model): # , response_model=model
-        #     """Create an item"""
-        #     global current_form
-        #     current_form = item
-        #     return
-
-        # @app.get(f"/{model_name}/schema/")
-        # async def get_schema():
-        #     """Get schema of the model"""
-        #     return model.schema()
-
-                # if item_id not in db[model_name]:
-            #     raise HTTPException(status_code=404, detail="Item not found")
-            # item_data = db[model_name][item_id]
-
-            # item = model(**item_data)
-            # print(item.__class__)
-
-
-        # @app.get(f"/{model_name}/obi_class_serialization/")
-        # async def get_obi_class_serialization():
-        #     """Get obi class serialization"""
-        #     return model.serialize()
-
-        # @app.get(f"/{model_name}/pythonic_schema/") # , response_model=model
-        # async def get_pythonic_schema():
-        #     """Get pythonic schema"""
-        #     # print(model)
-        #     return model.get_pythonic_schema()
-        #     # model.get_pythonic_schema()
-        #     # return item.get_pythonic_schema()
-
-
-        # # @app.get(f"/{model_name}/{{item_id}}", response_model=model)
-        # # async def get_item(item_id: int):
-        # #     """Get an item by ID"""
-        # #     if item_id not in db[model_name]:
-        # #         raise HTTPException(status_code=404, detail="Item not found")
-        # #     return db[model_name][item_id]
-
-        # # @app.put(f"/{model_name}/{{item_id}}", response_model=model)
-        # # async def update_item(item_id: int, item: model):
-        # #     """Update an item by ID"""
-        # #     if item_id not in db[model_name]:
-        # #         raise HTTPException(status_code=404, detail="Item not found")
-        # #     db[model_name][item_id] = item.dict()
-        # #     return item
-
-        # # @app.delete(f"/{model_name}/{{item_id}}")
-        # # async def delete_item(item_id: int):
-        # #     """Delete an item by ID"""
-        # #     if item_id not in db[model_name]:
-        # #         raise HTTPException(status_code=404, detail="Item not found")
-        # #     del db[model_name][item_id]
-        # #     return {"message": "Item deleted"}
-

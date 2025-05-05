@@ -1,6 +1,7 @@
 ---
 version: 4
-simulation_campaign: ../simulation_campaign/config_01_relative_bbp_workflow.json
+simulation_campaign: ../data/blueetl_data/simulation_campaign/config_01_relative_bbp_workflow.json
+
 simulations_filter: {seed: [334630, 174404]}
 cache:
   path: analysis_output

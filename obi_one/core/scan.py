@@ -1,11 +1,11 @@
 from pydantic import PrivateAttr, ValidationError
-from obi.modeling.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
-from obi.modeling.core.block import Block, MultiValueScanParam, SingleValueScanParam
-from obi.modeling.core.base import OBIBaseModel
+from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
+from obi_one.core.block import Block, MultiValueScanParam, SingleValueScanParam
+from obi_one.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
-from obi.modeling.unions.unions_form import FormUnion
+from obi_one.modeling.unions.unions_form import FormUnion
 
 
 class Scan(OBIBaseModel):
@@ -59,8 +59,11 @@ class Scan(OBIBaseModel):
         # Optionally display the multiple_value_parameters             
         if display:
             print("\nMULTIPLE VALUE PARAMETERS")
-            for multi_value in self._multiple_value_parameters:
-                print(f"{multi_value.location_str}: {multi_value.values}")
+            if len(self._multiple_value_parameters) == 0:
+                print("No multiple value parameters found.")
+            else:
+                for multi_value in self._multiple_value_parameters:
+                    print(f"{multi_value.location_str}: {multi_value.values}")
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
@@ -222,13 +225,13 @@ class Scan(OBIBaseModel):
         model_dump = self.model_dump()
 
         # Add the OBI version
-        model_dump["obi_version"] = version("obi")
+        model_dump["obi_one_version"] = version("obi-one")
         
         # Order keys in dict
         model_dump = OrderedDict(model_dump)
         model_dump.move_to_end('output_root', last=False)
         model_dump.move_to_end('type', last=False)
-        model_dump.move_to_end('obi_version', last=False)
+        model_dump.move_to_end('obi_one_version', last=False)
 
         # Order the keys in subdict "form"
         model_dump["form"] = OrderedDict(model_dump["form"])
@@ -292,7 +295,7 @@ class Scan(OBIBaseModel):
         """
         Description
         """
-        print("\nCOORDINATE PARAMETERS (Reimplement)")
+        print("\nCOORDINATE PARAMETERS")
         for single_coordinate_parameters in self._coordinate_parameters:
             single_coordinate_parameters.display_parameters()
 
@@ -353,21 +356,26 @@ class CoupledScan(Scan):
         
         previous_len = -1
 
-        for multi_value in self.multiple_value_parameters():
-            current_len = len(multi_value.values)
-            if previous_len != -1 and current_len != previous_len:
-                raise ValueError("All multi parameters must have the same number of values.")
+        multi_value_parameters = self.multiple_value_parameters()
+        if len(multi_value_parameters):
+            for multi_value in multi_value_parameters:
+                current_len = len(multi_value.values)
+                if previous_len != -1 and current_len != previous_len:
+                    raise ValueError("All multi parameters must have the same number of values.")
 
-            previous_len = current_len
+                previous_len = current_len
 
-        n_coords = current_len
+            n_coords = current_len
 
-        self._coordinate_parameters = []
-        for coord_i in range(n_coords):
-            scan_params = []
-            for multi_value in self.multiple_value_parameters():
-                scan_params.append(SingleValueScanParam(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
-            self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
+            self._coordinate_parameters = []
+            for coord_i in range(n_coords):
+                scan_params = []
+                for multi_value in multi_value_parameters:
+                    scan_params.append(SingleValueScanParam(location_list=multi_value.location_list, value=multi_value.values[coord_i]))
+                self._coordinate_parameters.append(SingleCoordinateScanParams(scan_params=scan_params))
+
+        else:
+            self._coordinate_parameters = [SingleCoordinateScanParams(nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath)]
 
         if display: self.display_coordinate_parameters()
 

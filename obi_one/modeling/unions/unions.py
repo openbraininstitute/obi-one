@@ -1,6 +1,6 @@
 from typing import Union, Type
-from obi.modeling.core.base import OBIBaseModel
-from obi.modeling.core.single import SingleCoordinateMixin
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.single import SingleCoordinateMixin
 
 def get_all_subclasses(cls):
     subclasses = set(cls.__subclasses__())

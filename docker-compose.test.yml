@@ -1,0 +1,13 @@
+services:
+  test:
+    profiles: [test]
+    image: "${IMAGE_NAME}:${IMAGE_TAG}"
+#    platform: linux/amd64  # for pyflagser
+    command:
+    - sh
+    - -cx
+    - |
+      python -m pytest
+    volumes:
+    - ./tests:/code/tests
+    env_file: .env.test-docker

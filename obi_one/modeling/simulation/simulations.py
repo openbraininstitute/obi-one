@@ -1,16 +1,17 @@
-from obi.modeling.core.form import Form
-from obi.modeling.core.block import Block
-from obi.modeling.core.single import SingleCoordinateMixin
+<<<<<<< HEAD
+from obi_one.core.form import Form
+from obi_one.core.block import Block
+from obi_one.core.single import SingleCoordinateMixin
 
-from obi.modeling.unions.unions_timestamps import TimestampsUnion
-from obi.modeling.unions.unions_recordings import RecordingUnion
-from obi.modeling.unions.unions_stimuli import StimulusUnion
-from obi.modeling.unions.unions_synapse_set import SynapseSetUnion
-from obi.modeling.unions.unions_neuron_sets import NeuronSet, NeuronSetUnion
-from obi.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
-from obi.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
+from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
+from obi_one.modeling.unions.unions_recordings import RecordingUnion
+from obi_one.modeling.unions.unions_stimuli import StimulusUnion
+from obi_one.modeling.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi_one.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
-from obi.modeling.circuit.circuit import Circuit
+from obi_one.modeling.circuit.circuit import Circuit
 
 import json
 import os
@@ -18,7 +19,6 @@ import os
 from pydantic import PrivateAttr, Field, model_validator
 from typing import ClassVar
 from typing_extensions import Self
-
 
 class SimulationsForm(Form):
     """

@@ -3,8 +3,8 @@ import bluepysnap as snap
 import json
 import numpy as np
 import os
-from obi.modeling.core.block import Block
-from obi.modeling.circuit.circuit import Circuit
+from obi_one.core.block import Block
+from obi_one.modeling.circuit.circuit import Circuit
 from pydantic import Field, model_validator
 from typing import Annotated
 from typing_extensions import Self

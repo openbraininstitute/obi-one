@@ -1,4 +1,4 @@
-from obi.modeling.core.base import OBIBaseModel
+from obi_one.core.base import OBIBaseModel
 import bluepysnap as snap
 import os
 

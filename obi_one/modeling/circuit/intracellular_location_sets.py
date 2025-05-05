@@ -1,4 +1,4 @@
-from obi.modeling.core.block import Block
+from obi_one.core.block import Block
 
 class IntracellularLocationSet(Block):
     """

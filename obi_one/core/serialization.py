@@ -1,4 +1,4 @@
-import obi
+import obi_one as obi
 import json
 
 def deserialize_obi_object_from_json_data(json_data):
