@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from obi_one.core.form import Form
 from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
