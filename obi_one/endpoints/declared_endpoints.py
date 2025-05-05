@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from typing import Annotated
 from fastapi import Depends
 
+from pathlib import Path
+
 import entitysdk.client
 import entitysdk.common
 
@@ -31,37 +33,32 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
         try:
 
             morphology = entity_client.get_entity(
-                            entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology, token=client.token
+                            entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
                         )
-            L.info(f"morphology: {morphology}")
 
             morphology_path = ""
             for asset in morphology.assets:
-                if asset['content_type'] == "application/asc":
+ 
+                if asset.content_type == "application/swc":
 
-                    morphology_path = Path(settings.OUTPUT_DIR / "obi-entity-file-store" / asset['full_path'])
-                    print(file_output_path)
+                    morphology_path = Path(settings.OUTPUT_DIR / "obi-entity-file-store" / asset.full_path)
+                    L.info(f"morphology_path: {morphology_path}")
                     morphology_path.parent.mkdir(parents=True, exist_ok=True)
 
-                    client.download_file(
+                    entity_client.download_file(
                         entity_id=morphology.id,
-                        entity_type=entity_type,
-                        asset_id=asset['id'],
+                        entity_type=ReconstructionMorphology,
+                        asset_id=asset.id,
                         output_path=morphology_path,
-                        token=db.token,
                     )
 
-            if morphology_path == "":
-                L.exception("Generic exception")
-            else:
-                neurom_morphology = load_morphology(morphology_path)
+                    neurom_morphology = load_morphology(morphology_path)
 
-                output = ReconstructionMorphologyMetricsOutput(
-                    soma_radius=neurom.get("soma_radius", neurom_morphology),
-                    soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-                )
-
-                return output
+                    output = ReconstructionMorphologyMetricsOutput(
+                        soma_radius=neurom.get("soma_radius", neurom_morphology),
+                        soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
+                    )
+                    return output
 
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")
