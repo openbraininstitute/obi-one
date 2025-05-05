@@ -8,6 +8,8 @@ from typing import Annotated
 from fastapi import Depends
 
 from pathlib import Path
+import io
+import tempfile
 
 import entitysdk.client
 import entitysdk.common
@@ -16,6 +18,7 @@ from fastapi import APIRouter
 
 from entitysdk.models.morphology import ReconstructionMorphology
 from neurom import load_morphology
+import neurom
 
 def activate_declared_router(router: APIRouter) -> APIRouter:
 
@@ -32,33 +35,36 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
         try:
 
+            # Get the reconstruction morphology from entity core
             morphology = entity_client.get_entity(
                             entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
                         )
-
-            morphology_path = ""
+            
+            # Iterate through the assets of the morphology to find the one with content type "application/h5"
             for asset in morphology.assets:
- 
-                if asset.content_type == "application/swc":
+                if asset.content_type == "application/h5":
 
-                    morphology_path = Path(settings.OUTPUT_DIR / "obi-entity-file-store" / asset.full_path)
-                    L.info(f"morphology_path: {morphology_path}")
-                    morphology_path.parent.mkdir(parents=True, exist_ok=True)
+                    # Download the content into memory
+                    content = entity_client.download_content(
+                                entity_id=morphology.id, entity_type=ReconstructionMorphology, asset_id=asset.id
+                            )
 
-                    entity_client.download_file(
-                        entity_id=morphology.id,
-                        entity_type=ReconstructionMorphology,
-                        asset_id=asset.id,
-                        output_path=morphology_path,
-                    )
+                    
+                    with tempfile.NamedTemporaryFile(suffix='.h5') as tmp_file:
 
-                    neurom_morphology = load_morphology(morphology_path)
+                        # Load content into file in memory
+                        tmp_file.write(content)
+                        tmp_file.flush()
 
-                    output = ReconstructionMorphologyMetricsOutput(
-                        soma_radius=neurom.get("soma_radius", neurom_morphology),
-                        soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-                    )
-                    return output
+                        # Load the morphology from the temporary file in memory
+                        neurom_morphology = load_morphology(tmp_file.name)
+
+                        # Calculate the soma radius and surface area and return the ReconstructionMorphologyMetricsOutput object
+                        output = ReconstructionMorphologyMetricsOutput(
+                            soma_radius=neurom.get("soma_radius", neurom_morphology),
+                            soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
+                        )
+                        return output
 
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")
@@ -66,3 +72,22 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
     return router
 
+
+
+
+
+
+# """Useful for loading into file"""
+
+# morphology_path = Path(settings.OUTPUT_DIR / "obi-entity-file-store" / asset.full_path)
+# L.info(f"morphology_path: {morphology_path}")
+# morphology_path.parent.mkdir(parents=True, exist_ok=True)
+
+# entity_client.download_file(
+#     entity_id=morphology.id,
+#     entity_type=ReconstructionMorphology,
+#     asset_id=asset.id,
+#     output_path=morphology_path,
+# )
+
+# neurom_morphology = load_morphology(morphology_path)
