@@ -111,6 +111,7 @@ class NeuronSet(Block, abc.ABC):
 
     def to_node_set_file(self, circuit, population, output_path, file_name=None, overwrite_if_exists=False, append_if_exists=False, force_resolve_ids=False, init_empty=False):
         """Resolves the node set for a given circuit/population and writes it to a .json node set file."""
+        assert self.name is not None, "NeuronSet name must be set!"
         if file_name is None:
             # Use circuit's node set file name by default
             file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
@@ -133,6 +134,7 @@ class NeuronSet(Block, abc.ABC):
             else:
                 # Initialize with circuit object's node sets
                 node_sets = circuit.sonata_circuit.node_sets.content
+                assert self.name not in node_sets, f"Node set '{self.name}' already exists in circuit '{circuit}'!"
             node_sets.update({self.name: expression})
 
         elif os.path.exists(output_file) and append_if_exists:
@@ -195,7 +197,7 @@ class IDNeuronSet(NeuronSet):
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_neuron_ids(circuit, population)
-        return {"population": self.population, "node_id": self.neuron_ids}
+        return {"population": population, "node_id": list(self.neuron_ids)}
 
 
 class PropertyNeuronSet(NeuronSet):
@@ -215,8 +217,8 @@ class PropertyNeuronSet(NeuronSet):
 
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
-        self.check_properties()
-        self.check_node_sets()
+        self.check_properties(circuit, population)
+        self.check_node_sets(circuit, population)
         if len(self.node_sets) == 0:
             # Symbolic expression can be preserved
             expression = self.property_specs
