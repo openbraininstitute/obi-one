@@ -142,7 +142,7 @@ class Scan(OBIBaseModel):
         return self._coordinate_instances
     
    
-    def execute(self, processing_method="", data_postprocessing_method="save"):
+    def execute(self, processing_method="", data_postprocessing_method=""):
         """
         Description
         """
