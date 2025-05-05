@@ -169,7 +169,9 @@ class Scan(OBIBaseModel):
                 result = getattr(coordinate_instance, processing_method)()
 
                 # Call either save() or data() for the instance
-                return_dict[coordinate_instance.idx] = getattr(coordinate_instance, data_postprocessing_method)()
+                return_dict[coordinate_instance.idx] = None
+                if data_postprocessing_method != "":
+                    return_dict[coordinate_instance.idx] = getattr(coordinate_instance, data_postprocessing_method)()
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(os.path.join(coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"))

@@ -9,6 +9,8 @@ from obi_one.database.db_classes import *
 
 import traceback
 
+from typing import ClassVar
+
 """
 Test Form for testing the generation of a scan
 """
@@ -16,7 +18,7 @@ class SingleBlockGenerateTestForm(Form):
     """
     Test
     """
-    _single_coord_class_name: str = "SingleBlockGenerateTest"
+    single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
 
     class Initialize(Block):
         morphology_path: NamedPath | list[NamedPath]
@@ -51,7 +53,7 @@ class SingleBlockEntitySDKTestForm(Form):
     """
     Test
     """
-    _single_coord_class_name: str = "SingleBlockGenerateTest"
+    single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
 
     class Initialize(Block):
         morphology: ReconstructionMorphology | list[ReconstructionMorphology]
@@ -82,7 +84,7 @@ class MultiBlockEntitySDKTestForm(Form):
     """
     Test
     """
-    _single_coord_class_name: str = "MultiBlockGenerateTest"
+    single_coord_class_name: ClassVar[str] = "MultiBlockGenerateTest"
 
     test_blocks: dict[str, BlockForMultiBlockEntitySDKTest] = Field(description="Test blocks")
 

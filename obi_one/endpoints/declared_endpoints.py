@@ -66,10 +66,7 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
                         circularity=neurom.get("circularity", neurom_morphology),
                         length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
                         max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
-                        # neurite_volume_density=neurom.get("neurite_volume_density", neurom_morphology),
                         number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
-                        # list_of_number_of_sections_per_neurite=neurom.get("list_of_number_of_sections_per_neurite", neurom_morphology),
-                        # section_bif_radial_distances=neurom.get("section_bif_radial_distances", neurom_morphology),
 
                         soma_radius=neurom.get("soma_radius", neurom_morphology),
                         soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),

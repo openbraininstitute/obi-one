@@ -3,11 +3,14 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
+from typing import ClassVar
+
 class MorphologyContainerizationsForm(Form):
     """
     """
 
-    _single_coord_class_name = "MorphologyContainerization"
+    single_coord_class_name: ClassVar[str] = "MorphologyContainerization"
+    
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]

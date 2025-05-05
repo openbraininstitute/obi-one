@@ -31,14 +31,20 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
 
     # methods and data_handling types to iterate over
     processing_methods = ["run", "generate"]
-    data_postprocessing_methods = ["save", "data"]
+    data_postprocessing_methods = ["", "save", "data"]
+    
 
     # Iterate over methods and data_handling types
     for processing_method in processing_methods:
         for data_postprocessing_method in data_postprocessing_methods:
 
+            # print(f"Creating endpoint for {model_name} with processing method {processing_method} and data postprocessing method {data_postprocessing_method}")
+
+
+
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
             return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, processing_method, data_postprocessing_method)
+            print(return_class)
             if not isinstance(return_class, str):
                 if return_class is None:
                     return_type = None
@@ -46,7 +52,11 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
                     return_type = dict[str, return_class]
 
                 # Create endpoint name
-                endpoint_name_with_slash = "/" + model_name + "_" + processing_method + "_grid" + "_" + data_postprocessing_method
+                endpoint_name_with_slash = "/" + model_name + "_" + processing_method + "_grid"
+                if data_postprocessing_method != "":
+                    endpoint_name_with_slash = endpoint_name_with_slash + "_" + data_postprocessing_method
+
+                
 
                 # Create POST endpoint (advised that it is standard to use POST even for "GET-Like" requests, when the request body is non-trivial)
                 @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)

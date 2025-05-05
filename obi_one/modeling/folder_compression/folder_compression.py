@@ -3,11 +3,13 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
+from typing import ClassVar
+
 class FolderCompressions(Form):
     """
     """
 
-    _single_coord_class_name = "FolderCompression"
+    single_coord_class_name: ClassVar[str] = "FolderCompression"
 
     class Initialize(Block):
         folder_path: NamedPath | list[NamedPath]

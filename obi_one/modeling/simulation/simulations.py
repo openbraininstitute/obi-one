@@ -15,11 +15,13 @@ from obi_one.modeling.circuit.circuit import Circuit
 from pydantic import PrivateAttr, Field
 import os, json
 
+from typing import ClassVar
+
 class SimulationsForm(Form):
     """
     """
 
-    _single_coord_class_name: str = "Simulation"
+    single_coord_class_name: ClassVar[str] = "Simulation"
 
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion]
