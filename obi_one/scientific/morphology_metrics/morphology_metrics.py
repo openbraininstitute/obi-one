@@ -1,11 +1,12 @@
 from typing import Union, ClassVar, Annotated
+from pydantic import BaseModel, Field
 
 from obi_one.core.form import Form
 from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 from obi_one.core.base import OBIBaseModel
-from obi_one.database.db_classes import *
+from obi_one.database.db_classes import ReconstructionMorphologyFromID
 
 
 class MorphologyMetricsForm(Form):
