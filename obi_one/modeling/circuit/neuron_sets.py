@@ -70,13 +70,8 @@ class NeuronSet(Block, abc.ABC):
         """Returns the full list of neuron IDs (w/o subsampling)."""
         c = circuit.sonata_circuit
         expression = self._get_expression(circuit, population)
-        if expression is None:
-            # Node set already existing
-            assert hasattr(self, "node_set") and isinstance(self.node_set, str), "Node set undefined, IDs cannot be resolved!"
-            name = self.node_set
-        else:
-            name = "__TMP_NODE_SET__"
-            self.add_node_set_to_circuit(c, {name: expression})
+        name = "__TMP_NODE_SET__"
+        self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
 
     def get_neuron_ids(self, circuit, population):
@@ -153,9 +148,9 @@ class NeuronSet(Block, abc.ABC):
         return output_file
 
 
-class ExistingNeuronSet(NeuronSet):
+class PredefinedNeuronSet(NeuronSet):
     """
-    Neuron set wrapper of an existing (named) node sets.
+    Neuron set wrapper of an existing (named) node sets already predefined in the node sets file.
     """
     node_set: Annotated[str, Field(min_length=1)] | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
 
@@ -165,7 +160,7 @@ class ExistingNeuronSet(NeuronSet):
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
-        return None  # No expression to return, node set already existing
+        return [self.node_set]
 
 
 class CombinedNeuronSet(NeuronSet):
