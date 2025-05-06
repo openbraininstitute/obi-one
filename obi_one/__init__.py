@@ -14,7 +14,7 @@ for cls in entitysdk_classes:
 
 
 from obi_one.modeling.circuit.circuit import Circuit
-from obi_one.modeling.circuit.neuron_sets import NeuronSet, IDNeuronSet
+from obi_one.modeling.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet, CombinedNeuronSet, IDNeuronSet, PropertyNeuronSet
 from obi_one.modeling.circuit.synapse_sets import SynapseSet, IDSynapseSet
 from obi_one.modeling.circuit.intracellular_location_sets import IntracellularLocationSet, SectionIntracellularLocationSet
 from obi_one.modeling.circuit.extracellular_location_sets import ExtracellularLocationSet, XYZExtracellularLocationSet
