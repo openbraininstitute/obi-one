@@ -59,17 +59,18 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
+    USE_NAME_SUFFIX: ClassVar[bool] = True
 
     _sonata_config: dict = PrivateAttr(default={})
 
     def _resolve_neuron_set(self, neuron_set, circuit, population):
         """Resolves neuron set based on current coordinate's circuit."""
-        if len(self.single_coordinate_scan_params.scan_params) > 0:
+        if len(self.single_coordinate_scan_params.scan_params) > 0 and self.USE_NAME_SUFFIX:
             # Use coordinate-specific suffix to distinguish between different instances
             # which may have the same name but will be resolved differently
             coord_suffix = f"__coord_{self.idx}"
         else:
-            # No suffix required in case there is only a single simulation
+            # Suffix disabled, or no suffix required in case there is only a single simulation
             coord_suffix = ""
 
         nset_def = neuron_set.get_node_set_definition(circuit, population)
