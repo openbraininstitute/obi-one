@@ -6,7 +6,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 
-from obi_one.modeling.basic_connectivity_plots.helpers import (
+from obi_one.scientific.basic_connectivity_plots.helpers import (
     compute_global_connectivity,
     connection_probability_pathway,
     connection_probability_within_pathway,

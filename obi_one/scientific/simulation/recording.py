@@ -3,8 +3,8 @@ from typing import Literal
 
 from obi_one.core.block import Block
 
-from obi_one.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
-from obi_one.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
+from obi_one.scientific.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi_one.scientific.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
 class Recording(Block):
     start_time: float | list[float]

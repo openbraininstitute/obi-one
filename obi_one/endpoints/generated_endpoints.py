@@ -15,7 +15,7 @@ from app.dependencies.auth import UserContextDep
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 
-from obi_one.modeling.unions.unions_form import check_implmentations_of_single_coordinate_class_and_methods_and_return_types
+from obi_one.scientific.unions.unions_form import check_implmentations_of_single_coordinate_class_and_methods_and_return_types
 
 import re
 def create_endpoints_for_form(model: Type[Form], router: APIRouter):

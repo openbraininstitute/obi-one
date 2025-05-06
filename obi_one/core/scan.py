@@ -6,7 +6,7 @@ from obi_one.core.base import OBIBaseModel
 from importlib.metadata import version
 import os, copy, json
 from collections import OrderedDict
-from obi_one.modeling.unions.unions_form import FormUnion
+from obi_one.scientific.unions.unions_form import FormUnion
 
 
 class Scan(OBIBaseModel):

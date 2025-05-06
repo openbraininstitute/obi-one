@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from pydantic import PrivateAttr, Field
 
 from obi_one.core.block import Block
-from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
-from obi_one.modeling.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.modeling.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 
 class Stimulus(Block, ABC):

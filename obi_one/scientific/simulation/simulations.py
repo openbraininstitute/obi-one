@@ -2,15 +2,15 @@ from obi_one.core.form import Form
 from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 
-from obi_one.modeling.unions.unions_timestamps import TimestampsUnion
-from obi_one.modeling.unions.unions_recordings import RecordingUnion
-from obi_one.modeling.unions.unions_stimuli import StimulusUnion
-from obi_one.modeling.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.modeling.unions.unions_neuron_sets import NeuronSetUnion
-from obi_one.modeling.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
-from obi_one.modeling.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_recordings import RecordingUnion
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion
+from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi_one.scientific.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
 
-from obi_one.modeling.circuit.circuit import Circuit
+from obi_one.scientific.circuit.circuit import Circuit
 
 from pydantic import PrivateAttr, Field
 import os, json
