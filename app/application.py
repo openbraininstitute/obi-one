@@ -1,13 +1,90 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from http import HTTPStatus
+from typing import Any
 
-import obi_one
+import httpx
+from fastapi import APIRouter, Depends, FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
 from app.config import settings
+from app.dependencies.auth import user_verified
+from app.errors import ApiError, ApiErrorCode
+from app.logger import L
+from app.schemas.base import ErrorResponse
+from obi_one.core.fastapi import activate_router
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
+    """Execute actions on server startup and shutdown."""
+    L.info(
+        "Starting application [PID=%s, CPU_COUNT=%s, ENVIRONMENT=%s]",
+        os.getpid(),
+        os.cpu_count(),
+        settings.ENVIRONMENT,
+    )
+    http_client = httpx.Client()
+    try:
+        yield {
+            "http_client": http_client,
+        }
+    except asyncio.CancelledError as err:
+        # this can happen if the task is cancelled without sending SIGINT
+        L.info("Ignored %s in lifespan", err)
+    finally:
+        http_client.close()
+        L.info("Stopping application")
+
+
+async def api_error_handler(request: Request, exception: ApiError) -> Response:
+    """Handle API errors to be returned to the client."""
+    err_content = ErrorResponse(
+        message=exception.message,
+        error_code=exception.error_code,
+        details=exception.details,
+    )
+    L.warning("API error in %s %s: %s", request.method, request.url, err_content)
+    return Response(
+        media_type="application/json",
+        status_code=int(exception.http_status_code),
+        content=err_content.model_dump_json(),
+    )
+
+
+async def validation_exception_handler(
+    request: Request, exception: RequestValidationError
+) -> Response:
+    """Override the default handler for RequestValidationError."""
+    details = jsonable_encoder(exception.errors(), exclude={"input"})
+    err_content = ErrorResponse(
+        message="Validation error",
+        error_code=ApiErrorCode.INVALID_REQUEST,
+        details=details,
+    )
+    L.warning("Validation error in %s %s: %s", request.method, request.url, err_content)
+    return Response(
+        media_type="application/json",
+        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        content=err_content.model_dump_json(),
+    )
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION or "0.0.0",
     debug=settings.APP_DEBUG,
+    lifespan=lifespan,
+    exception_handlers={
+        ApiError: api_error_handler,
+        RequestValidationError: validation_exception_handler,
+    },
     root_path=settings.ROOT_PATH,
 )
 app.add_middleware(
@@ -17,6 +94,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root() -> dict:
@@ -47,4 +125,5 @@ async def version() -> dict:
     }
 
 
-obi_one.activate_fastapi_app(app)
+router = APIRouter(prefix="/forms", tags=["forms"], dependencies=[Depends(user_verified)])
+app.include_router(activate_router(router))
