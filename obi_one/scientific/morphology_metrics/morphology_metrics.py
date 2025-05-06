@@ -73,7 +73,7 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
         """
         Return the data to the client
         """
-        return self.morphology_metrics
+        return MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
 
 
 
