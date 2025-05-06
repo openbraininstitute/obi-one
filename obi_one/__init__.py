@@ -13,7 +13,6 @@ __all__ = ["db"]
 for cls in db_classes:
     globals()[cls.__name__] = cls
 
-
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet, CombinedNeuronSet, IDNeuronSet, PropertyNeuronSet
 from obi_one.scientific.circuit.synapse_sets import SynapseSet, IDSynapseSet
@@ -32,7 +31,7 @@ from obi_one.scientific.folder_compression.folder_compression import FolderCompr
 from obi_one.scientific.morphology_containerization.morphology_containerization import MorphologyContainerizationsForm, MorphologyContainerization
 from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsForm, MorphologyMetrics, MorphologyMetricsOutput
 
-from obi_one.scientific.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntitySDKTestForm, SingleBlockEntitySDKTest, MultiBlockEntitySDKTestForm, MultiBlockEntitySDKTest
+from obi_one.scientific.test_forms.test_form_single_block import SingleBlockGenerateTestForm, SingleBlockGenerateTest, SingleBlockEntityTestForm, SingleBlockEntitySDKTest, MultiBlockEntitySDKTestForm, MultiBlockEntitySDKTest
 
 from obi_one.scientific.unions.unions_form import FormUnion, check_implmentations_of_single_coordinate_class_and_methods_and_return_types
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
@@ -42,6 +41,3 @@ from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
 from obi_one.scientific.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
-
-
-

@@ -27,7 +27,7 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
 
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e. 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
-    model_name = '_'.join([word.lower() for word in re.findall(r'[A-Z][^A-Z]*', model_base_name)])
+    model_name = '-'.join([word.lower() for word in re.findall(r'[A-Z][^A-Z]*', model_base_name)])
 
     # methods and data_handling types to iterate over
     processing_methods = ["run", "generate"]
@@ -52,9 +52,9 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
                     return_type = dict[str, return_class]
 
                 # Create endpoint name
-                endpoint_name_with_slash = "/" + model_name + "_" + processing_method + "_grid"
+                endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
                 if data_postprocessing_method != "":
-                    endpoint_name_with_slash = endpoint_name_with_slash + "_" + data_postprocessing_method
+                    endpoint_name_with_slash = endpoint_name_with_slash + "-" + data_postprocessing_method
 
                 
 

@@ -5,7 +5,7 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.path import NamedPath
 
-from obi_one.database.db_classes import *
+from obi_one.database.db_classes import ReconstructionMorphologyFromID
 
 import traceback
 
@@ -49,18 +49,18 @@ class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin
 """
 Test Form for testing a single block form with entity SDK
 """
-class SingleBlockEntitySDKTestForm(Form):
+class SingleBlockEntityTestForm(Form):
     """
     Test
     """
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
 
     class Initialize(Block):
-        morphology: ReconstructionMorphology | list[ReconstructionMorphology]
+        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
 
     initialize: Initialize
 
-class SingleBlockEntitySDKTest(SingleBlockEntitySDKTestForm, SingleCoordinateMixin):
+class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin):
     """
     Test
     """
@@ -77,7 +77,7 @@ class SingleBlockEntitySDKTest(SingleBlockEntitySDKTestForm, SingleCoordinateMix
 Test Form for testing a single block form with entity SDK
 """
 class BlockForMultiBlockEntitySDKTest(Block):
-    morphology_2: ReconstructionMorphology | list[ReconstructionMorphology]
+    morphology_2: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
 
 
 class MultiBlockEntitySDKTestForm(Form):
@@ -89,7 +89,7 @@ class MultiBlockEntitySDKTestForm(Form):
     test_blocks: dict[str, BlockForMultiBlockEntitySDKTest] = Field(description="Test blocks")
 
     class Initialize(Block):
-        morphology: ReconstructionMorphology | list[ReconstructionMorphology]
+        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
 
     initialize: Initialize
 

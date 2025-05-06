@@ -12,8 +12,7 @@ from obi_one.scientific.test_forms.test_form_single_block import *
 
 FormUnion = subclass_union(Form)
 
-
-from typing import get_type_hints
+from typing import Type, get_type_hints
 def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model: Type[Form], processing_method: str, data_postprocessing_method: str):
     """
     Method to return the class of the return type of a processing_method of the single coordinate class.
