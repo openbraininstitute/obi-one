@@ -15,7 +15,7 @@ for cls in db_classes:
 
 
 from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet, IDNeuronSet
+from obi_one.scientific.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet, CombinedNeuronSet, IDNeuronSet, PropertyNeuronSet
 from obi_one.scientific.circuit.synapse_sets import SynapseSet, IDSynapseSet
 from obi_one.scientific.circuit.intracellular_location_sets import IntracellularLocationSet, SectionIntracellularLocationSet
 from obi_one.scientific.circuit.extracellular_location_sets import ExtracellularLocationSet, XYZExtracellularLocationSet
