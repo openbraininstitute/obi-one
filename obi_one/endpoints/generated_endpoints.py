@@ -2,10 +2,8 @@ from typing import Type
 from fastapi.responses import JSONResponse
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
-from fastapi import FastAPI
-from fastapi import APIRouter
+from fastapi import FastAPI, APIRouter, Depends
 from typing import Annotated
-from fastapi import Depends
 
 import entitysdk.client
 import entitysdk.common
@@ -31,16 +29,11 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
 
     # methods and data_handling types to iterate over
     processing_methods = ["run", "generate"]
-    data_postprocessing_methods = ["", "save", "data"]
+    data_postprocessing_methods = [""] #, "save", "data"
     
-
     # Iterate over methods and data_handling types
     for processing_method in processing_methods:
         for data_postprocessing_method in data_postprocessing_methods:
-
-            # print(f"Creating endpoint for {model_name} with processing method {processing_method} and data postprocessing method {data_postprocessing_method}")
-
-
 
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
             return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, processing_method, data_postprocessing_method)
@@ -55,8 +48,6 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
                 endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
                 if data_postprocessing_method != "":
                     endpoint_name_with_slash = endpoint_name_with_slash + "-" + data_postprocessing_method
-
-                
 
                 # Create POST endpoint (advised that it is standard to use POST even for "GET-Like" requests, when the request body is non-trivial)
                 @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)

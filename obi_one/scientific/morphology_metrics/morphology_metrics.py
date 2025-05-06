@@ -66,8 +66,9 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
         try:
             self.morphology_metrics = MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
 
-        except Exception as e:
-            traceback.print_exception(e)
+        except Exception as e:  # noqa: BLE001
+            L.exception(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
             
 
     def data(self) -> MorphologyMetricsOutput:
