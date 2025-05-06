@@ -64,7 +64,7 @@ class NeuronSet(Block, abc.ABC):
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists! Delete file or choose to overwrite."
 
         with open(output_file, "w") as f:
-            json.dump(sonata_circuit.node_sets.content, f)
+            json.dump(sonata_circuit.node_sets.content, f, indent=2)
 
     def _resolve_ids(self, circuit, population):
         """Returns the full list of neuron IDs (w/o subsampling)."""
@@ -148,7 +148,7 @@ class NeuronSet(Block, abc.ABC):
             assert False, f"Output file '{output_file}' already exists! Delete file or choose to append or overwrite."
                 
         with open(output_file, "w") as f:
-            json.dump(node_sets, f)
+            json.dump(node_sets, f, indent=2)
 
         return output_file
 
