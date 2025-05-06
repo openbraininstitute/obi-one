@@ -44,7 +44,7 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
 
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
             return_class = check_implmentations_of_single_coordinate_class_and_methods_and_return_types(model, processing_method, data_postprocessing_method)
-            print(return_class)
+
             if not isinstance(return_class, str):
                 if return_class is None:
                     return_type = None

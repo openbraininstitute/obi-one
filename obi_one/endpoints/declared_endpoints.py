@@ -32,7 +32,21 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
         soma_radius: Annotated[float, Field(title="soma_radius [µm]", description="The radius of the soma in micrometers.")]
         soma_surface_area: Annotated[float, Field(title="soma_surface_area [µm^2]", description="The surface area of the soma in square micrometers.")]
-        
+
+
+        @classmethod
+        def from_morphology(cls, neurom_morphology):
+            import neurom
+            return cls(
+                aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
+                circularity=neurom.get("circularity", neurom_morphology),
+                length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
+                max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
+                number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
+                soma_radius=neurom.get("soma_radius", neurom_morphology),
+                soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
+            )
+            
     
     @router.get("/neuron_morphology_metrics/{reconstruction_morphology_id}", summary="Neuron morphology metrics", description="This calculates neuron morphology metrics for a given reconstruciton morphology.")
     async def neuron_morphology_metrics_endpoint(entity_client: Annotated[entitysdk.client.Client, Depends(get_client)], 
@@ -59,19 +73,10 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
                     # Use StringIO to create a file-like object in memory from the string content
                     neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
                     
+                    # Calculate the metrics using neurom
+                    metrics = ReconstructionMorphologyMetricsOutput.from_morphology(neurom_morphology)
 
-                    # Calculate the soma radius and surface area and return the ReconstructionMorphologyMetricsOutput object
-                    output = ReconstructionMorphologyMetricsOutput(
-                        aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
-                        circularity=neurom.get("circularity", neurom_morphology),
-                        length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
-                        max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
-                        number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
-
-                        soma_radius=neurom.get("soma_radius", neurom_morphology),
-                        soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-                    )
-                    return output
+                    return metrics
 
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")
