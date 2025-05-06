@@ -7,7 +7,6 @@ from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import
 from obi_one.scientific.folder_compression.folder_compression import *
 from obi_one.scientific.morphology_containerization.morphology_containerization import *
 from obi_one.scientific.morphology_metrics.morphology_metrics import *
-from obi_one.scientific.morphology_metrics.morphology_metrics_example import *
 from obi_one.scientific.test_forms.test_form_single_block import *
 
 

@@ -3,8 +3,9 @@ from app.dependencies.auth import UserContextDep
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 
-from pydantic import BaseModel, Field
 from typing import Annotated
+
+from pydantic import BaseModel, Field
 from fastapi import Depends
 
 from pathlib import Path
@@ -20,37 +21,13 @@ from entitysdk.models.morphology import ReconstructionMorphology
 from neurom import load_morphology
 import neurom
 
+from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsOutput
+
 def activate_declared_router(router: APIRouter) -> APIRouter:
-
-    class ReconstructionMorphologyMetricsOutput(BaseModel):
-
-        aspect_ratio: Annotated[float, Field(title="aspect_ratio", description="Calculates the min/max ratio of the principal direction extents along the plane.")]
-        circularity: Annotated[float, Field(title="circularity", description="Calculates the circularity of the morphology points along the plane.")]
-        length_fraction_above_soma: Annotated[float, Field(title="length_fraction_above_soma", description="Returns the length fraction of the segments that have their midpoints higher than the soma.")]
-        max_radial_distance: Annotated[float, Field(title="max_radial_distance", description="Get the maximum radial distances of the termination sections.")]
-        number_of_neurites: Annotated[int, Field(title="number_of_neurites", description="Number of neurites in a morph.")]
-
-        soma_radius: Annotated[float, Field(title="soma_radius [µm]", description="The radius of the soma in micrometers.")]
-        soma_surface_area: Annotated[float, Field(title="soma_surface_area [µm^2]", description="The surface area of the soma in square micrometers.")]
-
-
-        @classmethod
-        def from_morphology(cls, neurom_morphology):
-            import neurom
-            return cls(
-                aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
-                circularity=neurom.get("circularity", neurom_morphology),
-                length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
-                max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
-                number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
-                soma_radius=neurom.get("soma_radius", neurom_morphology),
-                soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-            )
-            
     
     @router.get("/neuron_morphology_metrics/{reconstruction_morphology_id}", summary="Neuron morphology metrics", description="This calculates neuron morphology metrics for a given reconstruciton morphology.")
     async def neuron_morphology_metrics_endpoint(entity_client: Annotated[entitysdk.client.Client, Depends(get_client)], 
-                        reconstruction_morphology_id: str) -> ReconstructionMorphologyMetricsOutput:
+                        reconstruction_morphology_id: str) -> MorphologyMetricsOutput:
 
         L.info("neurom_metrics")
 
@@ -74,9 +51,9 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
                     neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
                     
                     # Calculate the metrics using neurom
-                    metrics = ReconstructionMorphologyMetricsOutput.from_morphology(neurom_morphology)
+                    morphology_metrics = MorphologyMetricsOutput.from_morphology(neurom_morphology)
 
-                    return metrics
+                    return morphology_metrics
 
         except Exception:  # noqa: BLE001
             L.exception("Generic exception")
