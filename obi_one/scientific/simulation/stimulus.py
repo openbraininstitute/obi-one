@@ -179,7 +179,8 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
 
-    percentage_below_threshold: float | list[float] = Field(default=0.1, description="A percentage adjusted from 100 of a cell’s threshold current. E.g. 20 will apply 80\% of the threshold current. Using a negative value will give more than 100. E.g. -20 will inject 120\% of the threshold current.")
+    
+    percentage_below_threshold: float | list[float] = Field(default=0.1, description=r"A percentage adjusted from 100 of a cell’s threshold current. E.g. 20 will apply 80% of the threshold current. Using a negative value will give more than 100. E.g. -20 will inject 120% of the threshold current.")
 
     def generate(self):
         

@@ -1,27 +1,17 @@
-from app.config import settings
-from app.dependencies.auth import UserContextDep
-from app.dependencies.entitysdk import get_client
-from app.logger import L
-
 from typing import Annotated
-
-from pydantic import BaseModel, Field
-from fastapi import Depends
-
-from pathlib import Path
 import io
-import tempfile
+from fastapi import APIRouter, Depends, HTTPException
+
+from neurom import load_morphology
 
 import entitysdk.client
 import entitysdk.common
-
-from fastapi import APIRouter
-
 from entitysdk.models.morphology import ReconstructionMorphology
-from neurom import load_morphology
-import neurom
 
+from app.dependencies.entitysdk import get_client
+from app.logger import L
 from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsOutput
+
 
 def activate_declared_router(router: APIRouter) -> APIRouter:
     
@@ -55,8 +45,10 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
                     return morphology_metrics
 
-        except Exception:  # noqa: BLE001
-            L.exception("Generic exception")
+
+        except Exception as e:  # noqa: BLE001
+            L.exception(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 
     return router
@@ -64,7 +56,8 @@ def activate_declared_router(router: APIRouter) -> APIRouter:
 
 
 
-
+# from pathlib import Path
+# from app.config import settings
 
 # """Useful for loading into file"""
 
