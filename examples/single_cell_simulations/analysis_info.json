@@ -1,6 +1,6 @@
 {
     "name": "SONATA Single Cell Simulation",
-    "authors": ["Darshan Mandge", "Ilkan Kilic"],
+    "authors": ["Darshan Mandge", "Ilkan Kiliç"],
     "description": "The notebook run_sonata_sim.ipynb run a single cell simulation using a SONATA circuit",
     "scale": "cellular",
     "type": "notebook",

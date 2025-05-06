@@ -6,7 +6,6 @@ Author: Darshan Mandge and Ilkan Kiliç, Open Brain Institute
 Last Modified: 04.2025
 
 ## Summary
-This simualtion
 The example shows how you can:
 1. Create a SONATA circuit structure for a single cell model
 2. Run a simulation with the circuit using [BlueCellulab](https://github.com/openbraininstitute/BlueCelluLab)
@@ -25,7 +24,7 @@ Go to the home directory of the example and run
 This will:
 - download the model from Blue Brain Open Data 
 - create a SONATA nodes file (via `create_nodes_file.py`) by adding template and morphology data along with calcualting holding and threshold current  (via `calculate_threshold_holding.py`)
-- arange the files in the following structure under `components` folder:
+- arrange the files in the following structure under `components` folder:
 
 ```
 components/
