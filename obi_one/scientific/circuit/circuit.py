@@ -9,11 +9,11 @@ class Circuit(OBIBaseModel):
     name: str
     path: str
 
-    def __init__(self, name, path):
-        super().__init__(name=name, path=path)
+    def __init__(self, name, path, **kwargs):
+        super().__init__(name=name, path=path, **kwargs)
         _c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
-    def __repr__(self):
+    def __str__(self):
         return self.name
 
     @property
