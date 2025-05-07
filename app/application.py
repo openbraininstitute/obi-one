@@ -18,8 +18,8 @@ from app.dependencies.auth import user_verified
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
-from obi_one.endpoints.declared_endpoints import activate_declared_router
-from obi_one.endpoints.generated_endpoints import activate_generated_router
+from obi_one.endpoints.declared_endpoints import activate_declared_endpoints
+from obi_one.endpoints.generated_endpoints import activate_generated_endpoints
 
 
 @asynccontextmanager
@@ -129,9 +129,9 @@ async def version() -> dict:
 declared_endpoints_router = APIRouter(
     prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)]
 )
-app.include_router(activate_declared_router(declared_endpoints_router))
+app.include_router(activate_declared_endpoints(declared_endpoints_router))
 
 generated_router = APIRouter(
     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
 )
-app.include_router(activate_generated_router(generated_router))
+app.include_router(activate_generated_endpoints(generated_router))

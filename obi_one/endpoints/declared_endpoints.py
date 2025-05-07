@@ -13,7 +13,7 @@ from app.logger import L
 from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsOutput
 
 
-def activate_declared_router(router: APIRouter) -> APIRouter:
+def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     
     @router.get("/neuron-morphology-metrics/{reconstruction_morphology_id}", summary="Neuron morphology metrics", description="This calculates neuron morphology metrics for a given reconstruction morphology.")
     async def neuron_morphology_metrics_endpoint(entity_client: Annotated[entitysdk.client.Client, Depends(get_client)], 

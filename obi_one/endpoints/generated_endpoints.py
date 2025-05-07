@@ -65,7 +65,7 @@ def create_endpoints_for_form(model: Type[Form], router: APIRouter):
 
 
 
-def activate_generated_router(router: APIRouter) -> APIRouter:
+def activate_generated_endpoints(router: APIRouter) -> APIRouter:
 
     # # 1. Create endpoints for each OBI Form subclass.
     for form in Form.__subclasses__():
