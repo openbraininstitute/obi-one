@@ -23,4 +23,4 @@ basic_connectivity_plots_form = obi.BasicConnectivityPlots(
                         )
 grid_scan = obi.GridScan(form=basic_connectivity_plots_form, output_root=output_root, coordinate_directory_option="VALUE")
 
-grid_scan.run()
+grid_scan.execute(processing_method='run')

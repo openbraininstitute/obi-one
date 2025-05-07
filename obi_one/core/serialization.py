@@ -1,3 +1,18 @@
+from typing import Any, Dict
+from entitysdk.models.entity import Entity
+
+def entity_encoder(obj: Any) -> Dict[str, str]:
+    """
+    Encode an Entity into a JSON-serializable dictionary.
+    """
+    cls_name = obj.__class__.__name__
+    if issubclass(obj.__class__, Entity) and "FromID" not in cls_name:
+        return {"type": f"{cls_name}FromID", "id_str": str(obj.id)}
+    elif "FromID" in cls_name:
+        return {"type": cls_name, "id_str": str(obj.id)}
+    raise TypeError(f"Object of type {cls_name} is not JSON serializable")
+
+
 import obi_one as obi
 import json
 
