@@ -1,6 +1,7 @@
 import subprocess
 import time
 
+# To be called from the root of the repository
 # python examples/multiservice_launch.py
 
 # Define each service with its command and optional working directory
