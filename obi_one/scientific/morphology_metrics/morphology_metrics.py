@@ -8,7 +8,6 @@ from obi_one.core.path import NamedPath
 from obi_one.core.base import OBIBaseModel
 from obi_one.database.db_classes import ReconstructionMorphologyFromID
 
-from app.logger import L
 from fastapi import HTTPException
 
 
@@ -70,7 +69,7 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
             self.morphology_metrics = MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
 
         except Exception as e:  # noqa: BLE001
-            L.exception(f"An error occurred: {e}")
+            print(f"An error occurred: {e}")
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
             
 
