@@ -13,7 +13,7 @@ class MorphologyMetricsForm(Form):
     """
     """
 
-    single_coord_class_name: ClassVar[str] = "MorphologyMetricsExample"
+    single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
     name: ClassVar[str] = "1. Morphology metrics example name"
     description: ClassVar[str] = "2. Morphology metrics example description"
 
@@ -71,11 +71,11 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
             
 
-    def data(self) -> MorphologyMetricsOutput:
-        """
-        Return the data to the client
-        """
-        return MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
+    # def data(self) -> MorphologyMetricsOutput:
+    #     """
+    #     Return the data to the client
+    #     """
+    #     return MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
 
 
 
