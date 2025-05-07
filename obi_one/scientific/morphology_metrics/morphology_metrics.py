@@ -66,7 +66,7 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
     def run(self):
         
         try:
-            self.morphology_metrics = MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology)
+            print(MorphologyMetricsOutput.from_morphology(self.initialize.morphology.neurom_morphology))
 
         except Exception as e:  # noqa: BLE001
             print(f"An error occurred: {e}")
