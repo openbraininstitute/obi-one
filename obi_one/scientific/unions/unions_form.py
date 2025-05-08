@@ -1,15 +1,41 @@
 from obi_one.core.form import Form
-from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import *
-from obi_one.scientific.circuit_extraction.circuit_extraction import *
-from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import *
-from obi_one.scientific.folder_compression.folder_compression import *
-from obi_one.scientific.morphology_containerization.morphology_containerization import *
-from obi_one.scientific.morphology_metrics.morphology_metrics import *
-from obi_one.scientific.simulation.simulations import *
-from obi_one.scientific.test_forms.test_form_single_block import *
-from obi_one.scientific.unions.unions import subclass_union
+from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
+    BasicConnectivityPlots,
+)
+from obi_one.scientific.circuit_extraction.circuit_extraction import (
+    CircuitExtractions,
+)
+from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtractions,
+)
+from obi_one.scientific.folder_compression.folder_compression import (
+    FolderCompressions,
+)
+from obi_one.scientific.morphology_containerization.morphology_containerization import (
+    MorphologyContainerizationsForm,
+)
+from obi_one.scientific.morphology_metrics.morphology_metrics import (
+    MorphologyMetricsForm,
+)
+from obi_one.scientific.simulation.simulations import SimulationsForm
+from obi_one.scientific.test_forms.test_form_single_block import (
+    MultiBlockEntitySDKTestForm,
+    SingleBlockEntityTestForm,
+    SingleBlockGenerateTestForm,
+)
 
-FormUnion = subclass_union(Form)
+FormUnion = (
+    BasicConnectivityPlots,
+    CircuitExtractions,
+    ConnectivityMatrixExtractions,
+    FolderCompressions,
+    MorphologyContainerizationsForm,
+    MorphologyMetricsForm,
+    SimulationsForm,
+    SingleBlockGenerateTestForm,
+    SingleBlockEntityTestForm,
+    MultiBlockEntitySDKTestForm,
+)
 
 from typing import get_type_hints
 
@@ -37,7 +63,7 @@ def check_implmentations_of_single_coordinate_class_and_methods_and_return_types
         and callable(getattr(single_coordinate_cls, processing_method))
     ):
         return f"{processing_method} is not a method of {single_coordinate_cls.__name__}"
-    if data_postprocessing_method == "":
+    if not data_postprocessing_method:
         return None
 
     # Check that the data_postprocessing_method is a method of the single coordinate class
