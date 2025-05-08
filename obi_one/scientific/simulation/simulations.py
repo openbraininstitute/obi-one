@@ -23,7 +23,7 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 
 
 class SimulationsForm(Form):
-    """ """
+    """Simulations Form."""
 
     single_coord_class_name: ClassVar[str] = "Simulation"
     name: ClassVar[str] = "Simulation Campaign"

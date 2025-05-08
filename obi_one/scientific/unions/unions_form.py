@@ -1,3 +1,5 @@
+from typing import get_type_hints
+
 from obi_one.core.form import Form
 from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
     BasicConnectivityPlots,
@@ -25,32 +27,32 @@ from obi_one.scientific.test_forms.test_form_single_block import (
 )
 
 FormUnion = (
-    BasicConnectivityPlots,
-    CircuitExtractions,
-    ConnectivityMatrixExtractions,
-    FolderCompressions,
-    MorphologyContainerizationsForm,
-    MorphologyMetricsForm,
-    SimulationsForm,
-    SingleBlockGenerateTestForm,
-    SingleBlockEntityTestForm,
-    MultiBlockEntitySDKTestForm,
+    BasicConnectivityPlots
+    | CircuitExtractions
+    | ConnectivityMatrixExtractions
+    | FolderCompressions
+    | MorphologyContainerizationsForm
+    | MorphologyMetricsForm
+    | SimulationsForm
+    | SingleBlockGenerateTestForm
+    | SingleBlockEntityTestForm
+    | MultiBlockEntitySDKTestForm
 )
-
-from typing import get_type_hints
 
 
 def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(
     model: type[Form], processing_method: str, data_postprocessing_method: str
 ):
-    """Method to return the class of the return type of a processing_method of the single coordinate class.
+    """Return the class of the return type of a processing_method of the single coordinate class.
+
     Returns None if return type not specified
-    Returns message strings if the processing_method or data_postprocessing_method are not implementd
+    Returns message strings if the processing_method
+    or data_postprocessing_method not implemented.
     """
     return_class = None
 
     # Check that the single_coord_class_name is set
-    if model.single_coord_class_name == "":
+    if not model.single_coord_class_name:
         return f"single_coord_class_name is not set in the form: {model.__name__}"
     single_coordinate_cls = globals().get(model.single_coord_class_name)
     if single_coordinate_cls is None:
