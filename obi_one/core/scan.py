@@ -75,8 +75,7 @@ class Scan(OBIBaseModel):
         return self._multiple_value_parameters
 
     def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
-        """Must be implemented by a subclass of Scan
-        """
+        """Must be implemented by a subclass of Scan"""
         raise NotImplementedError("Subclasses must implement this method")
 
     def coordinate_instances(self, display=False) -> list[SingleCoordinateMixin]:
@@ -140,8 +139,7 @@ class Scan(OBIBaseModel):
         return self._coordinate_instances
 
     def execute(self, processing_method="", data_postprocessing_method=""):
-        """Description
-        """
+        """Description"""
         return_dict = {}
 
         if processing_method == "":
@@ -219,8 +217,7 @@ class Scan(OBIBaseModel):
         return model_dump
 
     def create_bbp_workflow_campaign_config(self, output_path):
-        """Description
-        """
+        """Description"""
         # Dictionary intialization
         campaign_config = {"dims": [], "attrs": {}, "data": [], "coords": {}, "name": ""}
 
@@ -265,8 +262,7 @@ class Scan(OBIBaseModel):
             json.dump(campaign_config, json_file, indent=4)
 
     def display_coordinate_parameters(self):
-        """Description
-        """
+        """Description"""
         print("\nCOORDINATE PARAMETERS")
         for single_coordinate_parameters in self._coordinate_parameters:
             single_coordinate_parameters.display_parameters()
@@ -284,12 +280,10 @@ from itertools import product
 
 
 class GridScan(Scan):
-    """Description
-    """
+    """Description"""
 
     def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
-        """Description
-        """
+        """Description"""
         single_values_by_multi_value = []
         multi_value_parameters = self.multiple_value_parameters()
         if len(multi_value_parameters):
@@ -323,12 +317,10 @@ class GridScan(Scan):
 
 
 class CoupledScan(Scan):
-    """Description
-    """
+    """Description"""
 
     def coordinate_parameters(self, display=False) -> list:
-        """Description
-        """
+        """Description"""
         previous_len = -1
 
         multi_value_parameters = self.multiple_value_parameters()

@@ -46,8 +46,8 @@ def check_implmentations_of_single_coordinate_class_and_methods_and_return_types
         and callable(getattr(single_coordinate_cls, data_postprocessing_method))
     ):
         return f"{data_postprocessing_method} is not a method of {single_coordinate_cls.__name__}"
-    return_class = get_type_hints(
-        getattr(single_coordinate_cls, data_postprocessing_method)
-    ).get("return")
+    return_class = get_type_hints(getattr(single_coordinate_cls, data_postprocessing_method)).get(
+        "return"
+    )
 
     return return_class

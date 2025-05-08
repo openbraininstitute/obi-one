@@ -24,8 +24,7 @@ class MorphologyMetricsForm(Form):
     initialize: Initialize
 
     def save(self, circuit_entities):
-        """Add entitysdk calls to save the collection
-        """
+        """Add entitysdk calls to save the collection"""
 
 
 class MorphologyMetricsOutput(BaseModel):
@@ -74,7 +73,6 @@ class MorphologyMetricsOutput(BaseModel):
 
     @classmethod
     def from_morphology(cls, neurom_morphology):
-
         return cls(
             aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
             circularity=neurom.get("circularity", neurom_morphology),

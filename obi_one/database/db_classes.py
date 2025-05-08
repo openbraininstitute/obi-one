@@ -122,8 +122,7 @@ for cls in entity_classes:
 
 
 def download_swc(morphology):
-    """Temporary function for downloading SWC files of a morphology
-    """
+    """Temporary function for downloading SWC files of a morphology"""
     for asset in morphology.assets:
         if asset["content_type"] == "application/asc":
             file_output_path = Path(db.entity_file_store_path) / asset["full_path"]

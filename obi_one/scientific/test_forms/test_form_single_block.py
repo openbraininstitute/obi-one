@@ -15,8 +15,7 @@ Test Form for testing the generation of a scan
 
 
 class SingleBlockGenerateTestForm(Form):
-    """Test
-    """
+    """Test"""
 
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
     name: ClassVar[str] = "Single Block Generate Test"
@@ -29,8 +28,7 @@ class SingleBlockGenerateTestForm(Form):
 
 
 class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test"""
 
     def run(self):
         try:
@@ -47,8 +45,7 @@ Test Form for testing a single block form with entity SDK
 
 
 class SingleBlockEntityTestForm(Form):
-    """Test
-    """
+    """Test"""
 
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
     name: ClassVar[str] = "Single Block Entity Test"
@@ -61,8 +58,7 @@ class SingleBlockEntityTestForm(Form):
 
 
 class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test"""
 
     def run(self):
         return
@@ -78,8 +74,7 @@ class BlockForMultiBlockEntitySDKTest(Block):
 
 
 class MultiBlockEntitySDKTestForm(Form):
-    """Test
-    """
+    """Test"""
 
     single_coord_class_name: ClassVar[str] = "MultiBlockGenerateTest"
     name: ClassVar[str] = "Multi Block Entity Test"
@@ -94,8 +89,7 @@ class MultiBlockEntitySDKTestForm(Form):
 
 
 class MultiBlockEntitySDKTest(MultiBlockEntitySDKTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test"""
 
     def run(self):
         return

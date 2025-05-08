@@ -29,8 +29,7 @@ except ImportError:
 
 
 class BasicConnectivityPlots(Form):
-    """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
-    """
+    """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object."""
 
     single_coord_class_name: ClassVar[str] = "BasicConnectivityPlot"
     name: ClassVar[str] = "Basic Connectivity Plots"

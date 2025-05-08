@@ -1,12 +1,10 @@
-
 import bluepysnap as snap
 
 from obi_one.core.base import OBIBaseModel
 
 
 class Circuit(OBIBaseModel):
-    """Class representing a circuit, i.e., pointing to a SONATA config.
-    """
+    """Class representing a circuit, i.e., pointing to a SONATA config."""
 
     name: str
     path: str
