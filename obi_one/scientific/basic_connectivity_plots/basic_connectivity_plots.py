@@ -35,6 +35,8 @@ class BasicConnectivityPlots(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "BasicConnectivityPlot"
+    name: ClassVar[str] = "Basic Connectivity Plots"
+    description: ClassVar[str] = "Generates basic connectivity plots and stats from a ConnectivityMatrix object."
 
     class Initialize(Block):
         matrix_path: NamedPath | list[NamedPath]

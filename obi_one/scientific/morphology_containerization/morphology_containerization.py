@@ -10,6 +10,8 @@ class MorphologyContainerizationsForm(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "MorphologyContainerization"
+    name: ClassVar[str] = "Morphology Containerization"
+    description: ClassVar[str] = "Creates a circuit with containerized morphologies instead of individual morphology files"
     
 
     class Initialize(Block):

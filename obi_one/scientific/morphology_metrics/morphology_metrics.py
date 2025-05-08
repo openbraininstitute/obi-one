@@ -16,8 +16,8 @@ class MorphologyMetricsForm(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
-    name: ClassVar[str] = "1. Morphology metrics example name"
-    description: ClassVar[str] = "2. Morphology metrics example description"
+    name: ClassVar[str] = "Morphology Metrics"
+    description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
     class Initialize(Block):
         morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] = Field(description="3. Morphology description")

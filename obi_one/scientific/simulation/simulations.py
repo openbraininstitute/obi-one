@@ -27,6 +27,8 @@ class SimulationsForm(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "Simulation"
+    name: ClassVar[str] = "Simulation Campaign"
+    description: ClassVar[str] = "SONATA simulation campaign"
 
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion]

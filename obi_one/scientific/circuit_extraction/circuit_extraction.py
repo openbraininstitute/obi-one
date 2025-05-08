@@ -10,6 +10,8 @@ class CircuitExtractions(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "CircuitExtraction"
+    name: ClassVar[str] = "Circuit Extraction"
+    description: ClassVar[str] = "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain all morphologies, hoc files, and mod files that are required to simulate the extracted circuit."
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]

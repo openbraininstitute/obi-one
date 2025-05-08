@@ -10,6 +10,8 @@ class FolderCompressions(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "FolderCompression"
+    name: ClassVar[str] = "Folder Compression"
+    description: ClassVar[str] = "Compresses a folder using the specified compression format."
 
     class Initialize(Block):
         folder_path: NamedPath | list[NamedPath]
