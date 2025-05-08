@@ -1,21 +1,13 @@
-from pathlib import Path
 import inspect
+from pathlib import Path
 
-from entitysdk.models.entity import Entity
 from entitysdk.models.core import Struct
-from entitysdk.models.mtype import MTypeClass
+from entitysdk.models.entity import Entity
 from entitysdk.models.morphology import (
-    BrainLocation,
-    BrainRegion,
     ReconstructionMorphology,
-    Species,
-    Strain,
-    License,
-    Taxonomy
 )
 
 from obi_one.database.db_manager import db
-
 
 """
 Get all entity and struct classes from entitysdk
@@ -24,7 +16,6 @@ entity_classes = []
 struct_classes = []
 global_values = list(globals().values())
 for val in global_values:
-    
     if inspect.isclass(val):
         if issubclass(val, Entity):
             entity_classes.append(val)
@@ -40,14 +31,12 @@ db_classes = []
 db_classes.extend(struct_classes)
 
 
-
-from typing import Type
-from pydantic import Field, create_model, ConfigDict, BaseModel
 from neurom import load_morphology
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
-def create_from_id_class_for_entitysdk_class(cls: Type[Entity]) -> Type[BaseModel]:
-    """
-    Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
+
+def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
+    """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
     that initializes from an id_str, fetches the full entity from the database,
     and populates its attributes.
     """
@@ -103,7 +92,6 @@ Iterate through entitysdk Entity classes
 - Add the original class to the db_classes list.
 """
 for cls in entity_classes:
-
     # Add a find method to the class
     # This method will search for entities of the class
     # and can be called as ClassName.find(), ClassName.find(limit=5) or ClassName.find(kwargs=kwargs)
@@ -111,17 +99,16 @@ for cls in entity_classes:
         return db.client.search_entity(
             entity_type=cls, query=kwargs, token=db.token, limit=limit
         ).all()
-    setattr(cls, "find", classmethod(find))
 
+    cls.find = classmethod(find)
 
     # Add a fetch method to the class
     # This method will fetch a single entity of the class
     # and can be called as ClassName.fetch(entity_id)
     def fetch(cls, entity_id):
-        return db.client.get_entity(
-            entity_id=entity_id, entity_type=cls, token=db.token
-        )
-    setattr(cls, "fetch", classmethod(fetch))
+        return db.client.get_entity(entity_id=entity_id, entity_type=cls, token=db.token)
+
+    cls.fetch = classmethod(fetch)
 
     # Create a new class [ENTITY_CLASS]FromID with hydration for the class.
     new_cls = create_from_id_class_for_entitysdk_class(cls)
@@ -134,27 +121,22 @@ for cls in entity_classes:
     db_classes.append(cls)
 
 
-
 def download_swc(morphology):
+    """Temporary function for downloading SWC files of a morphology
     """
-    Temporary function for downloading SWC files of a morphology
-    """
-
     for asset in morphology.assets:
-        if asset['content_type'] == "application/asc":
-
-            file_output_path = Path(db.entity_file_store_path) / asset['full_path']
+        if asset["content_type"] == "application/asc":
+            file_output_path = Path(db.entity_file_store_path) / asset["full_path"]
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
 
             entity_type = type(morphology)
-            if hasattr(morphology, 'entitysdk_type'):
+            if hasattr(morphology, "entitysdk_type"):
                 entity_type = morphology.entitysdk_type
-            
 
             db.client.download_file(
                 entity_id=morphology.id,
                 entity_type=entity_type,
-                asset_id=asset['id'],
+                asset_id=asset["id"],
                 output_path=file_output_path,
                 token=db.token,
             )
@@ -170,10 +152,8 @@ ReconstructionMorphology.swc_file = property(download_swc)
 ReconstructionMorphologyFromID.swc_file = property(download_swc)
 
 
-
 def neurom_morphology_getter(self):
-    """
-    Getter for the neurom_morphology property.
+    """Getter for the neurom_morphology property.
     Downloads the application/asc asset if not already downloaded
     and loads it using neurom.load_morphology.
     """
@@ -185,10 +165,9 @@ def neurom_morphology_getter(self):
             raise ValueError("No valid application/asc asset found for morphology.")
     return self._neurom_morphology
 
+
 """
 Add the neurom_morphology property to the classes
 """
 ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
 ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
-    
-
