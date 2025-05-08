@@ -73,7 +73,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     _sonata_config: dict = PrivateAttr(default={})
 
     def _resolve_neuron_set_dictionary(self, neuron_set):
-        """Resolves a neuron set based on current coordinate circuit's default node population and returns its dictionary."""
+        """Resolves a neuron set based on current coordinate circuit's default node population and \
+            returns its dictionary.
+        """
         if len(self.single_coordinate_scan_params.scan_params) > 0 and self.USE_NAME_SUFFIX:
             # Use coordinate-specific suffix to distinguish between different instances
             # which may have the same name but will be resolved differently

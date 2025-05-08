@@ -106,7 +106,8 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
     percentage_of_threshold_current: float | list[float] = Field(
         default=10.0,
-        description="The percentage of a cell’s threshold current to inject when the stimulus activates.",
+        description="The percentage of a cell’s threshold current to inject when the stimulus \
+                    activates.",
     )
 
     def generate(self) -> dict:
@@ -131,11 +132,11 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
     percentage_of_threshold_current_start: float | list[float] = Field(
         default=10.0,
-        description="The percentage of a cell’s threshold current to inject when the stimulus activates.",
+        description="The percentage of a cell's threshold current to inject when the stimulus activates.",
     )
     percentage_of_threshold_current_end: float | list[float] = Field(
         default=100.0,
-        description="If given, the percentage of a cell’s threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
+        description="If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
     )
 
     def generate(self) -> dict:
@@ -226,7 +227,10 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
     percentage_below_threshold: float | list[float] = Field(
         default=0.1,
-        description=r"A percentage adjusted from 100 of a cell’s threshold current. E.g. 20 will apply 80% of the threshold current. Using a negative value will give more than 100. E.g. -20 will inject 120% of the threshold current.",
+        description=r"A percentage adjusted from 100 of a cell's threshold current. \
+                        E.g. 20 will apply 80% of the threshold current. Using a negative \
+                            value will give more than 100. E.g. -20 will inject 120% of the \
+                                threshold current.",
     )
 
     def generate(self) -> dict:
@@ -246,7 +250,10 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
-    """A hyperpolarizing current injection which brings a cell to base membrance voltage used in experiments. Note: No additional parameter are needed when using module “hyperpolarizing”. The holding current applied is defined in the cell model."""
+    """A hyperpolarizing current injection which brings a cell to base membrance voltage \
+        used in experiments. Note: No additional parameter are needed when using module \
+            “hyperpolarizing”. The holding current applied is defined in the cell model.
+    """
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -275,7 +282,8 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
     )
     variance: float | list[float] = Field(
         default=0.01,
-        description="The variance around the mean of current to inject using a normal distribution.",
+        description="The variance around the mean of current to inject using a \
+                    normal distribution.",
     )
 
     def generate(self) -> dict:
@@ -301,11 +309,13 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
     mean_percentage_of_threshold_current: float | list[float] = Field(
         default=0.01,
-        description="The mean value of current to inject as a percentage of a cell’s threshold current.",
+        description="The mean value of current to inject as a percentage of a cell's \
+                    threshold current.",
     )
     variance: float | list[float] = Field(
         default=0.01,
-        description="The variance around the mean of current to inject using a normal distribution.",
+        description="The variance around the mean of current to inject using a \
+                    normal distribution.",
     )
 
     def generate(self) -> dict:

@@ -1,5 +1,6 @@
 from typing import Annotated, ClassVar
 
+import neurom
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
@@ -24,7 +25,7 @@ class MorphologyMetricsForm(Form):
     initialize: Initialize
 
     def save(self, circuit_entities):
-        """Add entitysdk calls to save the collection"""
+        """Add entitysdk calls to save the collection."""
 
 
 class MorphologyMetricsOutput(BaseModel):
@@ -32,7 +33,8 @@ class MorphologyMetricsOutput(BaseModel):
         float,
         Field(
             title="aspect_ratio",
-            description="Calculates the min/max ratio of the principal direction extents along the plane.",
+            description="Calculates the min/max ratio of the principal direction extents \
+                along the plane.",
         ),
     ]
     circularity: Annotated[
@@ -46,7 +48,8 @@ class MorphologyMetricsOutput(BaseModel):
         float,
         Field(
             title="length_fraction_above_soma",
-            description="Returns the length fraction of the segments that have their midpoints higher than the soma.",
+            description="Returns the length fraction of the segments that have their midpoints \
+                            higher than the soma.",
         ),
     ]
     max_radial_distance: Annotated[
@@ -61,12 +64,12 @@ class MorphologyMetricsOutput(BaseModel):
     ]
 
     soma_radius: Annotated[
-        float, Field(title="soma_radius [µm]", description="The radius of the soma in micrometers.")
+        float, Field(title="soma_radius [μm]", description="The radius of the soma in micrometers.")
     ]
     soma_surface_area: Annotated[
         float,
         Field(
-            title="soma_surface_area [µm^2]",
+            title="soma_surface_area [μm^2]",
             description="The surface area of the soma in square micrometers.",
         ),
     ]
@@ -82,9 +85,6 @@ class MorphologyMetricsOutput(BaseModel):
             soma_radius=neurom.get("soma_radius", neurom_morphology),
             soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
         )
-
-
-import neurom
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
