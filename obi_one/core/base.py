@@ -1,6 +1,25 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ValidatorFunctionWrapHandler, model_validator
+from pydantic import BaseModel, model_serializer, ValidatorFunctionWrapHandler, model_validator
+from typing import Any, Dict, List, Type, TypeVar
+
+T = TypeVar('T')
+
+def get_subclasses_recursive(cls: Type[T]) -> List[Type[T]]:
+    """
+    Returns all the subclasses of a given class.
+    """
+    subclasses = []
+    for subclass in cls.__subclasses__():
+        subclasses.append(subclass)
+        subclasses.extend(get_subclasses_recursive(subclass))
+    return subclasses
+
+
+def get_subclass_recursive(cls: Type[T], name: str, allow_same_class: bool = False) -> Type[T]:
+    # I oversimplified this to keep it short (there are checks for 0 or more than 1 subclasses
+    # and we did not even use parameter `allow_same_class` to also match the parent class) 
+    return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
 
 class OBIBaseModel(BaseModel):
