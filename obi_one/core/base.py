@@ -6,8 +6,7 @@ T = TypeVar("T")
 
 
 def get_subclasses_recursive(cls: type[T]) -> list[type[T]]:
-    """Returns all the subclasses of a given class.
-    """
+    """Returns all the subclasses of a given class."""
     subclasses = []
     for subclass in cls.__subclasses__():
         subclasses.append(subclass)
