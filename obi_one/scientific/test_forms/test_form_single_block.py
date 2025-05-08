@@ -19,6 +19,8 @@ class SingleBlockGenerateTestForm(Form):
     Test
     """
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
+    name: ClassVar[str] = "Single Block Generate Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     class Initialize(Block):
         morphology_path: NamedPath | list[NamedPath]
@@ -54,6 +56,8 @@ class SingleBlockEntityTestForm(Form):
     Test
     """
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
+    name: ClassVar[str] = "Single Block Entity Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     class Initialize(Block):
         morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
@@ -85,6 +89,8 @@ class MultiBlockEntitySDKTestForm(Form):
     Test
     """
     single_coord_class_name: ClassVar[str] = "MultiBlockGenerateTest"
+    name: ClassVar[str] = "Multi Block Entity Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     test_blocks: dict[str, BlockForMultiBlockEntitySDKTest] = Field(description="Test blocks")
 

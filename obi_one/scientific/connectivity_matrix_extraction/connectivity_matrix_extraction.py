@@ -22,6 +22,8 @@ class ConnectivityMatrixExtractions(Form):
     """
 
     single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtraction"
+    name: ClassVar[str] = "Connectivity Matrix Extraction"
+    description: ClassVar[str] = "Extracts a connectivity matrix of a given edge population of a SONATA circuit in ConnectomeUtilities format, consisting of a sparse connectivity matrix with the number of synapses for each connection, together with a table (dataframe) of selected node attributes."
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]
