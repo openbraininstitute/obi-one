@@ -51,15 +51,28 @@ class SimulationsForm(Form):
 
     initialize: Initialize
 
+    # Below are initializations of the individual components as part of a simulation
+    # by setting their sim_init_name as the one used in the simulation form/GUI
+    # TODO: Ensure in GUI that these names don't have spaces or special characters
     @model_validator(mode="after")
-    def check_node_set(self) -> Self:
-        """Checks that given node set is member of the neuron_sets dict."""
-        assert self.initialize.node_set.name in self.neuron_sets, (
-            "Node set must be within neuron sets dictionary!"
-        )
-        assert self.initialize.node_set == self.neuron_sets[self.initialize.node_set.name], (
-            "Node set inconsistency!"
-        )
+    def initialize_timestamps(self) -> Self:
+        """Initializes timestamps within simulation campaign."""
+        for _k, _v in self.timestamps.items():
+            _v.sim_init_name = _k
+        return self
+
+    @model_validator(mode="after")
+    def initialize_stimuli(self) -> Self:
+        """Initializes stimuli within simulation campaign."""
+        for _k, _v in self.stimuli.items():
+            _v.sim_init_name = _k
+        return self
+
+    @model_validator(mode="after")
+    def initialize_neuron_sets(self) -> Self:
+        """Initializes neuron sets within simulation campaign."""
+        for _k, _v in self.neuron_sets.items():
+            _v.sim_init_name = _k
         return self
 
 
@@ -68,7 +81,6 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
-    USE_NAME_SUFFIX: ClassVar[bool] = True
 
     _sonata_config: dict = PrivateAttr(default={})
 
@@ -76,14 +88,6 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         """Resolves a neuron set based on current coordinate circuit's default node population and \
             returns its dictionary.
         """
-        if len(self.single_coordinate_scan_params.scan_params) > 0 and self.USE_NAME_SUFFIX:
-            # Use coordinate-specific suffix to distinguish between different instances
-            # which may have the same name but will be resolved differently
-            coord_suffix = f"__coord_{self.idx}"
-        else:
-            # Suffix disabled, or no suffix required in case there is only a single simulation
-            coord_suffix = ""
-
         nset_def = neuron_set.get_node_set_definition(
             self.initialize.circuit, self.initialize.circuit.default_population_name
         )
@@ -91,7 +95,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # FIXME: Inconsistency possible in case a node set definition would span multiple populations
         #        May consider force_resolve_ids=False to enforce resolving into given population
         #        (but which won't be a human-readable representation any more)
-        name = neuron_set.name + coord_suffix
+        name = neuron_set.name
         dictionary = {name: nset_def}
         return name, dictionary
 
@@ -119,6 +123,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
         }
 
+        # Generate stimulus input configs
+        self._sonata_config["inputs"] = {}
+        for stimulus_key, stimulus in self.stimuli.items():
+            self._sonata_config["inputs"].update(stimulus.config())
+
+        # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
             self._sonata_config["reports"][recording_key] = recording.generate_config()
@@ -127,20 +137,26 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         os.makedirs(self.coordinate_output_root, exist_ok=True)
         c = self.initialize.circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
-            # Resolve node set based on current coordinate's circuit
-            nset_name, nset_dictionary = self._resolve_neuron_set_dictionary(_nset)
+            # Resolve node set based on current coordinate circuit's default node population
+            # FIXME: Better handling of (default) node population in case there is more than one
+            # FIXME: Inconsistency possible in case a node set definition would span multiple populations
+            #        May consider force_resolve_ids=False to enforce resolving into given population
+            #        (but which won't be a human-readable representation any more)
+            assert _name == _nset.name, "Neuron set name mismatch!"
+
             if self.initialize.node_set.name == _name:
                 assert self._sonata_config.get("node_set") is None, (
                     "Node set config entry already defined!"
                 )
-                self._sonata_config["node_set"] = nset_name
-            if nset_dictionary is None:
-                # Node set already existing, no need to add
-                pass
-            else:
-                # Add node set to SONATA circuit object
-                # (will raise an error in case already existing)
-                NeuronSet.add_node_set_to_circuit(c, nset_dictionary, overwrite_if_exists=False)
+                self._sonata_config["node_set"] = _name
+
+            # Add node set to SONATA circuit object
+            # (will raise an error in case already existing)
+            nset_def = _nset.get_node_set_definition(
+                self.initialize.circuit, self.initialize.circuit.default_population_name
+            )
+            NeuronSet.add_node_set_to_circuit(c, {_name: nset_def}, overwrite_if_exists=False)
+
         # Write node sets from SONATA circuit object to .json file
         # (will raise an error if file already exists)
         NeuronSet.write_circuit_node_set_file(
