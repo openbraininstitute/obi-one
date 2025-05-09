@@ -69,7 +69,6 @@ __all__ = [
     "SingleCoordinateMixin",
     "SinusoidalCurrentClampSomaticStimulus",
     "SpikeRecording",
-    "Stimulus",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSet",
