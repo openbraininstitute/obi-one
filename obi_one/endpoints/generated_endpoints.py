@@ -1,5 +1,5 @@
 import re
-from typing import Annotated
+from typing import Annotated, get_type_hints
 
 import entitysdk.client
 import entitysdk.common
@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends
 from app.config import settings
 from app.dependencies.entitysdk import get_client
 from app.logger import L
+from obi_one import *
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
-from obi_one import *
 
-from typing import get_type_hints
+
 def check_implementations_of_single_coordinate_class(
     model: type[Form], processing_method: str, data_postprocessing_method: str
 ):
@@ -54,7 +54,6 @@ def check_implementations_of_single_coordinate_class(
     return return_class
 
 
-
 def create_endpoints_for_form(model: type[Form], router: APIRouter):
     """Create a FastAPI endpoint for generating grid scans
     based on an OBI Form model.
@@ -72,10 +71,8 @@ def create_endpoints_for_form(model: type[Form], router: APIRouter):
     for processing_method in processing_methods:
         for data_postprocessing_method in data_postprocessing_methods:
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
-            return_class = (
-                check_implementations_of_single_coordinate_class(
-                    model, processing_method, data_postprocessing_method
-                )
+            return_class = check_implementations_of_single_coordinate_class(
+                model, processing_method, data_postprocessing_method
             )
 
             if not isinstance(return_class, str):
