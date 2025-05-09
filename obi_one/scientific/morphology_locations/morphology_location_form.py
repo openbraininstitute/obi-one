@@ -25,7 +25,7 @@ class MorphologyLocationsForm(Form):
         srcs_per_center: int | list[int]
         center_pd_mean: float | list[float]
         center_pd_sd: float | list[float]
-        max_dist_from_center: float | list[float]
+        max_dist_from_center: Union[float, None] | list[Union[float, None]]
         lst_section_types: list[int] | list[list[int]]
 
     initialize: Initialize
