@@ -69,7 +69,6 @@ __all__ = [
     "TimestampsUnion",
     "VoltageRecording",
     "XYZExtracellularLocationSet",
-    "check_implmentations_of_single_coordinate_class_and_methods_and_return_types",
     "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
@@ -143,7 +142,6 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
 )
 from obi_one.scientific.unions.unions_form import (
     FormUnion,
-    check_implmentations_of_single_coordinate_class_and_methods_and_return_types,
 )
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,

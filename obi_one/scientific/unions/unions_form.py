@@ -1,6 +1,3 @@
-from typing import get_type_hints
-
-from obi_one.core.form import Form
 from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
     BasicConnectivityPlots,
 )
@@ -38,44 +35,3 @@ FormUnion = (
     | SingleBlockEntityTestForm
     | MultiBlockEntitySDKTestForm
 )
-
-
-def check_implmentations_of_single_coordinate_class_and_methods_and_return_types(
-    model: type[Form], processing_method: str, data_postprocessing_method: str
-):
-    """Return the class of the return type of a processing_method of the single coordinate class.
-
-    Returns None if return type not specified
-    Returns message strings if the processing_method
-    or data_postprocessing_method not implemented.
-    """
-    return_class = None
-
-    # Check that the single_coord_class_name is set
-    if not model.single_coord_class_name:
-        return f"single_coord_class_name is not set in the form: {model.__name__}"
-    single_coordinate_cls = globals().get(model.single_coord_class_name)
-    if single_coordinate_cls is None:
-        return f"Class {model.single_coord_class_name} not found in globals"
-
-    # Check that the method is a method of the single coordinate class
-
-    if not (
-        hasattr(single_coordinate_cls, processing_method)
-        and callable(getattr(single_coordinate_cls, processing_method))
-    ):
-        return f"{processing_method} is not a method of {single_coordinate_cls.__name__}"
-    if not data_postprocessing_method:
-        return None
-
-    # Check that the data_postprocessing_method is a method of the single coordinate class
-    if not (
-        hasattr(single_coordinate_cls, data_postprocessing_method)
-        and callable(getattr(single_coordinate_cls, data_postprocessing_method))
-    ):
-        return f"{data_postprocessing_method} is not a method of {single_coordinate_cls.__name__}"
-    return_class = get_type_hints(getattr(single_coordinate_cls, data_postprocessing_method)).get(
-        "return"
-    )
-
-    return return_class
