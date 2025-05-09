@@ -26,7 +26,7 @@ class MorphologyLocations(Block, abc.ABC):
 
     @abc.abstractmethod
     def _make_points(self, morphology):
-        """Returns the SONATA node set expression (w/o subsampling)."""
+        """Returns a generated list of points for the morphology."""
     
     @abc.abstractmethod
     def _check_parameter_values(self):

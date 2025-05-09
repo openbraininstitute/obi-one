@@ -144,6 +144,13 @@ from obi_one.scientific.morphology_locations.morphology_location_form import (
     MorphologyLocationsForm,
     MorphologyLocations
 )
+from obi_one.scientific.morphology_locations.morphology_location_block import (
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations
+)
 from obi_one.scientific.unions.unions_form import (
     FormUnion,
 )
