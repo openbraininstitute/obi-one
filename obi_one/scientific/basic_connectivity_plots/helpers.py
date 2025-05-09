@@ -21,8 +21,7 @@ except ImportError:
 
 
 def connection_probability_pathway(conn, grouping_prop):  # TODO: Add directly to connalysis?
-    """Compute the connection probability of the matrix for a given grouping of the nodes
-    """
+    """Compute the connection probability of the matrix for a given grouping of the nodes"""
 
     def count_connections(mat, nrn):
         return mat.nnz
@@ -68,8 +67,7 @@ def connection_probability_pathway(conn, grouping_prop):  # TODO: Add directly t
 
 
 def connection_probability_within_pathway(conn, grouping_prop, max_dist=100):
-    """Compute the connection probability within `max_dist` and for a given grouping of the nodes
-    """
+    """Compute the connection probability within `max_dist` and for a given grouping of the nodes"""
     # Setup analysis config per pathway
     analysis_specs = {
         "analyses": {

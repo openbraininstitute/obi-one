@@ -11,8 +11,7 @@ from obi_one.core.block import Block
 
 
 class NeuronSet(Block, abc.ABC):
-    """Base class representing a SONATA neuron set.
-    """
+    """Base class representing a SONATA neuron set."""
 
     name: None | Annotated[str, Field(min_length=1)] = None
     random_sample: None | int | float | list[None | int | float] = None
@@ -189,8 +188,7 @@ class NeuronSet(Block, abc.ABC):
 
 
 class PredefinedNeuronSet(NeuronSet):
-    """Neuron set wrapper of an existing (named) node sets already predefined in the node sets file.
-    """
+    """Neuron set wrapper of an existing (named) node sets already predefined in the node sets file."""
 
     node_set: (
         Annotated[str, Field(min_length=1)]
@@ -209,8 +207,7 @@ class PredefinedNeuronSet(NeuronSet):
 
 
 class CombinedNeuronSet(NeuronSet):
-    """Neuron set definition based on a combination of existing (named) node sets.
-    """
+    """Neuron set definition based on a combination of existing (named) node sets."""
 
     node_sets: (
         Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
@@ -233,8 +230,7 @@ class CombinedNeuronSet(NeuronSet):
 
 
 class IDNeuronSet(NeuronSet):
-    """Neuron set definition by providing a list of neuron IDs.
-    """
+    """Neuron set definition by providing a list of neuron IDs."""
 
     neuron_ids: (
         Annotated[tuple[int, ...], Field(min_length=1)]
@@ -254,8 +250,7 @@ class IDNeuronSet(NeuronSet):
 
 
 class PropertyNeuronSet(NeuronSet):
-    """Neuron set definition based on neuron properties, optionally combined with (named) node sets.
-    """
+    """Neuron set definition based on neuron properties, optionally combined with (named) node sets."""
 
     property_specs: (
         Annotated[dict, Field(min_length=1)]

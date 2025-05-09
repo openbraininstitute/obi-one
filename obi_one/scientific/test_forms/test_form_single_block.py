@@ -9,14 +9,9 @@ from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.db_classes import ReconstructionMorphologyFromID
 
-"""
-Test Form for testing the generation of a scan
-"""
-
 
 class SingleBlockGenerateTestForm(Form):
-    """Test
-    """
+    """Test."""
 
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
     name: ClassVar[str] = "Single Block Generate Test"
@@ -29,8 +24,7 @@ class SingleBlockGenerateTestForm(Form):
 
 
 class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test."""
 
     def run(self):
         try:
@@ -47,8 +41,7 @@ Test Form for testing a single block form with entity SDK
 
 
 class SingleBlockEntityTestForm(Form):
-    """Test
-    """
+    """Test Form for testing a single block form with entity SDK."""
 
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
     name: ClassVar[str] = "Single Block Entity Test"
@@ -61,16 +54,10 @@ class SingleBlockEntityTestForm(Form):
 
 
 class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test."""
 
-    def run(self):
-        return
-
-
-"""
-Test Form for testing a single block form with entity SDK
-"""
+    def run(self) -> None:
+        return None
 
 
 class BlockForMultiBlockEntitySDKTest(Block):
@@ -78,8 +65,7 @@ class BlockForMultiBlockEntitySDKTest(Block):
 
 
 class MultiBlockEntitySDKTestForm(Form):
-    """Test
-    """
+    """Test."""
 
     single_coord_class_name: ClassVar[str] = "MultiBlockGenerateTest"
     name: ClassVar[str] = "Multi Block Entity Test"
@@ -94,8 +80,7 @@ class MultiBlockEntitySDKTestForm(Form):
 
 
 class MultiBlockEntitySDKTest(MultiBlockEntitySDKTestForm, SingleCoordinateMixin):
-    """Test
-    """
+    """Test."""
 
-    def run(self):
-        return
+    def run(self) -> None:
+        return None

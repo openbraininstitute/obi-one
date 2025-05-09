@@ -1,4 +1,3 @@
-from obi_one.scientific.circuit.extracellular_location_sets import *
-from obi_one.scientific.unions.unions import subclass_union
+from obi_one.scientific.circuit.extracellular_location_sets import XYZExtracellularLocationSet
 
-ExtracellularLocationSetUnion = subclass_union(ExtracellularLocationSet)
+ExtracellularLocationSetUnion = XYZExtracellularLocationSet

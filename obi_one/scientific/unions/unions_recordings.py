@@ -1,4 +1,3 @@
-from obi_one.scientific.simulation.recording import *
-from obi_one.scientific.unions.unions import subclass_union
+from obi_one.scientific.simulation.recording import IntracellularLocationSetVoltageRecording
 
-RecordingUnion = subclass_union(Recording)
+RecordingUnion = IntracellularLocationSetVoltageRecording

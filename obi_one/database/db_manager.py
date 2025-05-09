@@ -18,8 +18,7 @@ class DatabaseManager:
         entity_file_store_root="../../obi-output",
         entitycore_api_url="http://127.0.0.1:8000",
     ):
-        """Initialize the database connection and set up the file store path.
-        """
+        """Initialize the database connection and set up the file store path."""
         self.entity_file_store_path = entity_file_store_root + "/obi-entity-file-store"
         os.makedirs(self.entity_file_store_path, exist_ok=True)
 

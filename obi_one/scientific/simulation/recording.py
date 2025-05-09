@@ -15,7 +15,7 @@ class Recording(Block):
 
     _sonata_config: dict = {}
 
-    def generate_config(self):
+    def generate_config(self) -> dict:
         return self._sonata_config
 
 
@@ -32,7 +32,7 @@ class SpikeRecording(Recording):
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
     intracellular_location_set: IntracellularLocationSetUnion
 
-    def generate_config(self):
+    def generate_config(self) -> dict:
         self._sonata_config = {
             "type": "compartment",
             "sections": self.intracellular_location_set.section,

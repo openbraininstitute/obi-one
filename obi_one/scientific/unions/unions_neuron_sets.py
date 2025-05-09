@@ -1,4 +1,8 @@
-from obi_one.scientific.circuit.neuron_sets import *
-from obi_one.scientific.unions.unions import subclass_union
+from obi_one.scientific.circuit.neuron_sets import (
+    CombinedNeuronSet,
+    IDNeuronSet,
+    PredefinedNeuronSet,
+    PropertyNeuronSet,
+)
 
-NeuronSetUnion = subclass_union(NeuronSet)
+NeuronSetUnion = PredefinedNeuronSet | CombinedNeuronSet | IDNeuronSet | PropertyNeuronSet

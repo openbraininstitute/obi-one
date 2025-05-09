@@ -29,8 +29,7 @@ class Block(OBIBaseModel):
         return self._multiple_value_parameters
 
     def enforce_no_lists(self):
-        """Raise a ValueError if any attribute is a list.
-        """
+        """Raise a ValueError if any attribute is a list."""
         for key, value in self.__dict__.items():
             if isinstance(value, list):
                 raise ValueError(f"Attribute '{key}' must not be a list.")
