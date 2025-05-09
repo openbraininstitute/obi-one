@@ -1741,7 +1741,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/04/7b/f23dab34bd71db688
 
 [[package]]
 name = "obi-one"
-version = "2025.5.0"
+version = "2025.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "blueetl" },

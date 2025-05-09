@@ -1,6 +1,6 @@
 [project]
 name = "obi-one"
-version = "2025.5.0"
+version = "2025.5.1"
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
