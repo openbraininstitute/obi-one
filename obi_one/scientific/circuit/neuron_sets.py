@@ -13,7 +13,7 @@ from obi_one.core.block import Block
 class NeuronSet(Block, abc.ABC):
     """Base class representing a SONATA neuron set."""
 
-    name: None | Annotated[str, Field(min_length=1)] = None
+    sim_init_name: None | Annotated[str, Field(min_length=1, description="Name within a simulation.")] = None
     random_sample: None | int | float | list[None | int | float] = None
     random_seed: int | list[int] = 0
 
@@ -30,10 +30,18 @@ class NeuronSet(Block, abc.ABC):
                     )
         return self
 
+    def check_sim_init(self):
+        assert self.sim_init_name is not None, f"'{self.__class__.__name__}' initialization within a simulation required!"
+
     @abc.abstractmethod
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
 
+    @property
+    def name(self):
+        self.check_sim_init()
+        return self.sim_init_name
+    
     @staticmethod
     def check_population(circuit, population):
         assert population in circuit.get_node_population_names(), (
