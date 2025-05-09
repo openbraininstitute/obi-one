@@ -151,7 +151,7 @@ def _check_user_info(
                 "virtual_lab_id": project_context.virtual_lab_id,
                 "project_id": project_context.project_id,
                 "groups": sorted(user_info_response.groups),
-            }
+            },
         )
 
     return user_context

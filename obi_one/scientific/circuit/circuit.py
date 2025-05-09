@@ -1,11 +1,11 @@
-from obi_one.core.base import OBIBaseModel
 import bluepysnap as snap
-import os
+
+from obi_one.core.base import OBIBaseModel
+
 
 class Circuit(OBIBaseModel):
-    """
-    Class representing a circuit, i.e., pointing to a SONATA config.
-    """
+    """Class representing a circuit, i.e., pointing to a SONATA config."""
+
     name: str
     path: str
 
@@ -30,7 +30,9 @@ class Circuit(OBIBaseModel):
         """Returns node population names."""
         popul_names = self.sonata_circuit.nodes.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if self.sonata_circuit.nodes[_pop].type != "virtual"]
+            popul_names = [
+                _pop for _pop in popul_names if self.sonata_circuit.nodes[_pop].type != "virtual"
+            ]
         return popul_names
 
     @property
@@ -44,5 +46,9 @@ class Circuit(OBIBaseModel):
         """Returns edge population names."""
         popul_names = self.sonata_circuit.edges.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if self.sonata_circuit.edges[_pop].source.type != "virtual"]
+            popul_names = [
+                _pop
+                for _pop in popul_names
+                if self.sonata_circuit.edges[_pop].source.type != "virtual"
+            ]
         return popul_names

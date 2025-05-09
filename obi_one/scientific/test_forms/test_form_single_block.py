@@ -1,24 +1,21 @@
-from pydantic import Field
-
-from obi_one.core.form import Form
-from obi_one.core.block import Block
-from obi_one.core.single import SingleCoordinateMixin
-from obi_one.core.path import NamedPath
-
-from obi_one.database.db_classes import ReconstructionMorphologyFromID
-
 import traceback
-
 from typing import ClassVar
 
-"""
-Test Form for testing the generation of a scan
-"""
+from pydantic import Field
+
+from obi_one.core.block import Block
+from obi_one.core.form import Form
+from obi_one.core.path import NamedPath
+from obi_one.core.single import SingleCoordinateMixin
+from obi_one.database.db_classes import ReconstructionMorphologyFromID
+
+
 class SingleBlockGenerateTestForm(Form):
-    """
-    Test
-    """
+    """Test."""
+
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
+    name: ClassVar[str] = "Single Block Generate Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     class Initialize(Block):
         morphology_path: NamedPath | list[NamedPath]
@@ -26,65 +23,53 @@ class SingleBlockGenerateTestForm(Form):
     initialize: Initialize
 
 
-
 class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin):
-    """
-    Test
-    """
-    
-    def run(self):
+    """Test."""
 
-        try:            
-            with open(self.initialize.morphology_path, 'w') as file:
+    def run(self):
+        try:
+            with open(self.initialize.morphology_path, "w") as file:
                 file.write("Hello world!")
 
         except Exception as e:
             traceback.print_exception(e)
-        
-        return
-        
-        
 
 
 """
 Test Form for testing a single block form with entity SDK
 """
+
+
 class SingleBlockEntityTestForm(Form):
-    """
-    Test
-    """
+    """Test Form for testing a single block form with entity SDK."""
+
     single_coord_class_name: ClassVar[str] = "SingleBlockGenerateTest"
+    name: ClassVar[str] = "Single Block Entity Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     class Initialize(Block):
         morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
 
     initialize: Initialize
 
+
 class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin):
-    """
-    Test
-    """
+    """Test."""
 
-    def run(self):
-
-        return
+    def run(self) -> None:
+        return None
 
 
-
-
-
-"""
-Test Form for testing a single block form with entity SDK
-"""
 class BlockForMultiBlockEntitySDKTest(Block):
     morphology_2: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
 
 
 class MultiBlockEntitySDKTestForm(Form):
-    """
-    Test
-    """
+    """Test."""
+
     single_coord_class_name: ClassVar[str] = "MultiBlockGenerateTest"
+    name: ClassVar[str] = "Multi Block Entity Test"
+    description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     test_blocks: dict[str, BlockForMultiBlockEntitySDKTest] = Field(description="Test blocks")
 
@@ -94,15 +79,8 @@ class MultiBlockEntitySDKTestForm(Form):
     initialize: Initialize
 
 
-
-
 class MultiBlockEntitySDKTest(MultiBlockEntitySDKTestForm, SingleCoordinateMixin):
-    """
-    Test
-    """
+    """Test."""
 
-    def run(self):
-
-        return
-
-
+    def run(self) -> None:
+        return None

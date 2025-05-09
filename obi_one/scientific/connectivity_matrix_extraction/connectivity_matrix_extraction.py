@@ -9,8 +9,6 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
-from typing import ClassVar
-
 try:
     from conntility.connectivity import ConnectivityMatrix
 except ImportError:
@@ -18,10 +16,13 @@ except ImportError:
 
 
 class ConnectivityMatrixExtractions(Form):
-    """
-    """
+    """ """
 
     single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtraction"
+    name: ClassVar[str] = "Connectivity Matrix Extraction"
+    description: ClassVar[str] = (
+        "Extracts a connectivity matrix of a given edge population of a SONATA circuit in ConnectomeUtilities format, consisting of a sparse connectivity matrix with the number of synapses for each connection, together with a table (dataframe) of selected node attributes."
+    )
 
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]
@@ -32,16 +33,22 @@ class ConnectivityMatrixExtractions(Form):
 
 
 class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordinateMixin):
-    """
-    Extracts a connectivity matrix of a given edge population of a SONATA circuit in ConnectomeUtilities format,
+    """Extracts a connectivity matrix of a given edge population of a SONATA circuit in ConnectomeUtilities format,
     consisting of a sparse connectivity matrix with the number of synapses for each connection, together with a
     table (dataframe) of selected node attributes.
     """
 
-    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = ("x", "y", "z", "mtype", "etype", "layer", "synapse_class")
+    DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = (
+        "x",
+        "y",
+        "z",
+        "mtype",
+        "etype",
+        "layer",
+        "synapse_class",
+    )
 
     def run(self) -> None:
-
         try:
             print(f"Info: Running idx {self.idx}")
 
@@ -55,10 +62,14 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
             assert len(popul_names) > 0, "Circuit does not have any edge populations!"
             edge_popul = self.initialize.edge_population
             if edge_popul is None:
-                assert len(popul_names) == 1, "Multiple edge populations found - please specify name of edge population 'edge_popul' to extract connectivity from!"
+                assert len(popul_names) == 1, (
+                    "Multiple edge populations found - please specify name of edge population 'edge_popul' to extract connectivity from!"
+                )
                 edge_popul = popul_names[0]  # Selecting the only one
             else:
-                assert edge_popul in popul_names, f"Edge population '{edge_popul}' not found in circuit!"
+                assert edge_popul in popul_names, (
+                    f"Edge population '{edge_popul}' not found in circuit!"
+                )
 
             # Extract connectivity matrix
             if self.initialize.node_attributes is None:
@@ -66,14 +77,18 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
             else:
                 node_props = self.initialize.node_attributes
             load_cfg = {
-                "loading":{
+                "loading": {
                     "properties": node_props,
                 }
             }
             print(f"Info: Node properties to extract: {node_props}")
             print(f"Info: Extracting connectivity from edge population '{edge_popul}'")
-            dummy_edge_prop = next(filter(lambda x: "@" not in x, c.edges[edge_popul].property_names))  # Select any existing edge property w/o "@"
-            cmat = ConnectivityMatrix.from_bluepy(c, load_cfg, connectome=edge_popul, edge_property=dummy_edge_prop, agg_func=len)
+            dummy_edge_prop = next(
+                filter(lambda x: "@" not in x, c.edges[edge_popul].property_names)
+            )  # Select any existing edge property w/o "@"
+            cmat = ConnectivityMatrix.from_bluepy(
+                c, load_cfg, connectome=edge_popul, edge_property=dummy_edge_prop, agg_func=len
+            )
             # Note: edge_property=<any property> and agg_func=len required to obtain the number of synapses per connection
 
             # Save to file

@@ -1,4 +1,5 @@
 """Main entrypoint."""
+
 import logging
 
 import click
