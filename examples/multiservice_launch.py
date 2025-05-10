@@ -16,7 +16,7 @@ services = [
 
     {
         "name": "Open EntitySDK",
-        "command": ["open http://127.0.0.1:8000/docs"], # 
+        "command": ["open http://127.0.0.1:8000/docs"],
         "cwd": ".",
         "post_sleep_time": 1,
     },
@@ -24,14 +24,14 @@ services = [
     {
         "name": "Launch OBI-ONE Service",
         "command": ["make install",
-                    "make run-docker"], # 
+                    "make run-docker"],
         "cwd": ".",
         "post_sleep_time": 1,
     },
 
     {
         "name": "Open OBI-ONE Service",
-        "command": ["open http://127.0.0.1:8100/docs"], # 
+        "command": ["open http://127.0.0.1:8100/docs"],
         "cwd": ".",
         "post_sleep_time": 1,
     },
@@ -45,7 +45,7 @@ services = [
 
     {
         "name": "Open GUI",
-        "command": ["open http://localhost:3000"], # 
+        "command": ["open http://localhost:3000"],
         "cwd": ".",
         "post_sleep_time": 1,
     },
@@ -57,7 +57,7 @@ processes = []
 try:
     for service in services:
         print(f"Launching {service['name']}...")
-   
+
         command = " && ".join(service["command"])
         process = subprocess.Popen(
             command,
