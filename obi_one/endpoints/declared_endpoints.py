@@ -16,7 +16,8 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
-        description="This calculates neuron morphology metrics for a given reconstruction morphology.",
+        description="This calculates neuron morphology metrics for a given reconstruction \
+                    morphology.",
     )
     async def neuron_morphology_metrics_endpoint(
         entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
@@ -30,7 +31,8 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
             )
 
-            # Iterate through the assets of the morphology to find the one with content type "application/asc"
+            # Iterate through the assets of the morphology to find the one with content type
+            # "application/asc"
             for asset in morphology.assets:
                 if asset.content_type == "application/asc":
                     # Download the content into memory
@@ -48,27 +50,8 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
 
                     return morphology_metrics
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             L.exception(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
 
     return router
-
-
-# from pathlib import Path
-# from app.config import settings
-
-# """Useful for loading into file"""
-
-# morphology_path = Path(settings.OUTPUT_DIR / "obi-entity-file-store" / asset.full_path)
-# L.info(f"morphology_path: {morphology_path}")
-# morphology_path.parent.mkdir(parents=True, exist_ok=True)
-
-# entity_client.download_file(
-#     entity_id=morphology.id,
-#     entity_type=ReconstructionMorphology,
-#     asset_id=asset.id,
-#     output_path=morphology_path,
-# )
-
-# neurom_morphology = load_morphology(morphology_path)
