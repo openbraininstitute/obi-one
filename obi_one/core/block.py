@@ -11,10 +11,12 @@ class Block(OBIBaseModel):
     when a list is used it is used as a dimension in a multi-dimensional parameter scan.
     Tuples should be used when list-like parameter is needed.
     """
+
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
-    def multiple_value_parameters(self,
-        category_name: str, block_key: str = "") -> list[MultiValueScanParam]:
+    def multiple_value_parameters(
+        self, category_name: str, block_key: str = ""
+    ) -> list[MultiValueScanParam]:
         """Return a list of MultiValueScanParam objects for the block."""
         self._multiple_value_parameters = []
 
