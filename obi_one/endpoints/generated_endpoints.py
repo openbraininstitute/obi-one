@@ -32,7 +32,6 @@ def check_implementations_of_single_coordinate_class(
         return f"Class {model.single_coord_class_name} not found in globals"
 
     # Check that the method is a method of the single coordinate class
-
     if not (
         hasattr(single_coordinate_cls, processing_method)
         and callable(getattr(single_coordinate_cls, processing_method))
@@ -74,7 +73,7 @@ def create_endpoint_for_form(
 
         # Create endpoint name
         endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
-        if not data_postprocessing_method:
+        if data_postprocessing_method:
             endpoint_name_with_slash = endpoint_name_with_slash + "-" + data_postprocessing_method
 
         @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)
