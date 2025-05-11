@@ -38,8 +38,8 @@ check-deps:  ## Check that the dependencies in the existing lock file are valid
 	uv lock --locked
 
 format:  ## Run formatters
-	uv run -m ruff format
-	uv run -m ruff check --fix
+	uv run -m ruff format $(FILE)
+	uv run -m ruff check --fix $(FILE)
 
 lint:  ## Run linters
 	#uv run -m ruff format --check
