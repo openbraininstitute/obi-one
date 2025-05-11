@@ -46,6 +46,9 @@ lint:  ## Run linters
 	#uv run -m ruff check
 	#uv run -m pyright obi
 
+lint_count:
+	ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
+
 build:  ## Build the Docker image
 	docker compose --progress=plain build app
 
