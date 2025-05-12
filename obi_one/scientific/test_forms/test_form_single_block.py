@@ -2,7 +2,6 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from app.logger import L
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
