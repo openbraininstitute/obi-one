@@ -14,6 +14,8 @@ from obi_one.database.db_classes import ReconstructionMorphologyFromID
 from fastapi import HTTPException
 from pathlib import Path
 
+from .morphology_location_block import MorphologyLocationsBlock
+
 class MorphologyLocationsForm(Form):
     """
     """
@@ -24,13 +26,7 @@ class MorphologyLocationsForm(Form):
 
     class Initialize(Block):
         morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] | Path | list[Path]
-        n_centers: int | list[int]
-        n_per_center: int | list[int]
-        srcs_per_center: int | list[int]
-        center_pd_mean: float | list[float]
-        center_pd_sd: float | list[float]
-        max_dist_from_center: Union[float, None] | list[Union[float, None]]
-        lst_section_types: list[int] | list[list[int]]
+        morph_locations: MorphologyLocationsBlock | list[MorphologyLocationsBlock]
 
     initialize: Initialize
 
@@ -76,24 +72,13 @@ class MorphologyLocations(MorphologyLocationsForm,SingleCoordinateMixin):
     def run(self):
         
         try:
-            print(self.coordinate_output_root)
             from .specified_morphology_locations import generate_neurite_locations_on
             if isinstance(self.initialize.morphology, Path):
                 import morphio
                 m = morphio.Morphology(self.initialize.morphology)
             else:
                 m = self.initialize.morphology.morphio_morphology
-
-            df = generate_neurite_locations_on(
-                m,
-                self.initialize.n_centers,
-                self.initialize.n_per_center,
-                self.initialize.srcs_per_center,
-                self.initialize.center_pd_mean,
-                self.initialize.center_pd_sd,
-                self.initialize.max_dist_from_center,
-                self.initialize.lst_section_types
-            )
+            df = self.initialize.morph_locations.points_on(m)
             
             fig = self._generate_plot(m, df)
             fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdf"))

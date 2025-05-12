@@ -15,7 +15,7 @@ from .specified_morphology_locations import (
 )
 
 
-class MorphologyLocations(Block, abc.ABC):
+class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
     name: None | Annotated[str, Field(min_length=1)] = None
@@ -42,7 +42,7 @@ class MorphologyLocations(Block, abc.ABC):
         self.enforce_no_lists()
         return self._make_points(morphology)
 
-class RandomMorphologyLocations(MorphologyLocations):
+class RandomMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations without constraint"""
 
     def _make_points(self, morphology):
@@ -56,7 +56,7 @@ class RandomMorphologyLocations(MorphologyLocations):
             None,
             lst_section_types=self.section_types,
             seed=self.random_seed
-        ).drop(columns=[_CEN_IDX, _PRE_IDX])
+        ).drop(columns=[_CEN_IDX])
         return locs
     
     def _check_parameter_values(self):
@@ -66,7 +66,7 @@ class RandomMorphologyLocations(MorphologyLocations):
                 "Number of locations must be at least one!"
             )
 
-class RandomGroupedMorphologyLocations(MorphologyLocations):
+class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations, but grouped into abstract groups"""
     n_groups: int | list[int] = 1
 
@@ -91,7 +91,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocations):
                 "Number of groups must be at least one!"
             )
 
-class PathDistanceMorphologyLocations(MorphologyLocations):
+class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     """Locations around a specified path distance"""
     path_dist_mean: float | list[float]
     path_dist_tolerance: float | list[float]
@@ -107,7 +107,7 @@ class PathDistanceMorphologyLocations(MorphologyLocations):
             0.9 * self.path_dist_tolerance,
             lst_section_types=self.section_types,
             seed=self.random_seed
-        ).drop(columns=[_CEN_IDX, _PRE_IDX])
+        ).drop(columns=[_CEN_IDX])
         return locs
     
     def _check_parameter_values(self):
@@ -122,7 +122,7 @@ class PathDistanceMorphologyLocations(MorphologyLocations):
                 "For numerical reasons, path distance tolerance must be at least 1.0!"
             )
 
-class ClusteredMorphologyLocations(MorphologyLocations):
+class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations"""
     n_clusters: int | list[int]
     cluster_max_distance: float | list[float]
@@ -141,7 +141,7 @@ class ClusteredMorphologyLocations(MorphologyLocations):
             self.cluster_max_distance,
             lst_section_types=self.section_types,
             seed=self.random_seed
-        ).drop(columns=[_PRE_IDX])
+        ).drop(columns=[_CEN_IDX])
         return locs
     
     def _check_parameter_values(self):
@@ -172,7 +172,7 @@ class ClusteredGroupedMorphologyLocations(ClusteredMorphologyLocations, RandomGr
             self.cluster_max_distance,
             lst_section_types=self.section_types,
             seed=self.random_seed
-        ).drop(columns=[_PRE_IDX])
+        ).drop(columns=[_CEN_IDX])
         return locs
     
     def _check_parameter_values(self):
