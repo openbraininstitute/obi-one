@@ -15,10 +15,11 @@ class NeuronSet(Block, abc.ABC):
     adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
     SONATA node set .json file (write_circuit_node_set_file).
     Whenever such a neuron set is used in a SimulationsForm, it must be added to its neuron_sets
-    dictionary which the key being the name of the SONATA node set.
+    dictionary with the key being the name of the SONATA node set which will internally be set
+    in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    sim_init_name: (
+    simulation_level_name: (
         None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
     ) = None
     random_sample: None | int | float | list[None | int | float] = None
@@ -37,8 +38,8 @@ class NeuronSet(Block, abc.ABC):
                     )
         return self
 
-    def check_sim_init(self):
-        assert self.sim_init_name is not None, (
+    def check_simulation_init(self):
+        assert self.simulation_level_name is not None, (
             f"'{self.__class__.__name__}' initialization within a simulation required!"
         )
 
@@ -48,8 +49,8 @@ class NeuronSet(Block, abc.ABC):
 
     @property
     def name(self):
-        self.check_sim_init()
-        return self.sim_init_name
+        self.check_simulation_init()
+        return self.simulation_level_name
 
     @staticmethod
     def check_population(circuit, population):
