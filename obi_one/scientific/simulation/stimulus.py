@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Annotated
 
 from pydantic import Field
-from typing import Annotated
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
@@ -10,10 +10,14 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 
 class Stimulus(Block, ABC):
     timestamps: TimestampsUnion
-    sim_init_name: None | Annotated[str, Field(min_length=1, description="Name within a simulation.")] = None
+    sim_init_name: (
+        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
+    ) = None
 
     def check_sim_init(self):
-        assert self.sim_init_name is not None, f"'{self.__class__.__name__}' initialization within a simulation required!"
+        assert self.sim_init_name is not None, (
+            f"'{self.__class__.__name__}' initialization within a simulation required!"
+        )
 
     @property
     def name(self):

@@ -1,16 +1,21 @@
 from abc import ABC, abstractmethod
-from pydantic import Field
 from typing import Annotated
+
+from pydantic import Field
 
 from obi_one.core.block import Block
 
 
 class Timestamps(Block, ABC):
     start_time: float | list[float]
-    sim_init_name: None | Annotated[str, Field(min_length=1, description="Name within a simulation.")] = None
+    sim_init_name: (
+        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
+    ) = None
 
     def check_sim_init(self):
-        assert self.sim_init_name is not None, f"'{self.__class__.__name__}' initialization within a simulation required!"
+        assert self.sim_init_name is not None, (
+            f"'{self.__class__.__name__}' initialization within a simulation required!"
+        )
 
     @property
     def name(self):
