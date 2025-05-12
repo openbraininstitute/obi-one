@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
@@ -19,6 +19,10 @@ class Recording(Block, ABC):
     end_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat], Field(description="Recording end time in ms.")
     ]
+    dt: Annotated[
+        NonNegativeFloat | list[NonNegativeFloat],
+        Field(description="Interval between recording time steps in ms."),
+    ] = 0.1
     simulation_level_name: (
         None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
     ) = None
@@ -50,7 +54,6 @@ class Recording(Block, ABC):
 
 class VoltageRecording(Recording):
     recording_type: str = "voltage"
-    dt: float | list[float] = 0.1
 
 
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
