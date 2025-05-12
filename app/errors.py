@@ -27,6 +27,7 @@ class ApiErrorCode(StrEnum):
     NOT_AUTHENTICATED = "NOT_AUTHENTICATED"
     NOT_AUTHORIZED = "NOT_AUTHORIZED"
     INVALID_REQUEST = "INVALID_REQUEST"
+    NOT_FOUND = "NOT_FOUND"
 
 
 @dataclasses.dataclass(kw_only=True)
