@@ -101,8 +101,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.
-            + "_" + str(t_ind)] = {
+            sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
                 "cells": self.neuron_set.name,

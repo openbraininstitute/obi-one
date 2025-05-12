@@ -52,27 +52,27 @@ class SimulationsForm(Form):
     initialize: Initialize
 
     # Below are initializations of the individual components as part of a simulation
-    # by setting their sim_init_name as the one used in the simulation form/GUI
+    # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
     @model_validator(mode="after")
     def initialize_timestamps(self) -> Self:
         """Initializes timestamps within simulation campaign."""
         for _k, _v in self.timestamps.items():
-            _v.sim_init_name = _k
+            _v.simulation_level_name = _k
         return self
 
     @model_validator(mode="after")
     def initialize_stimuli(self) -> Self:
         """Initializes stimuli within simulation campaign."""
         for _k, _v in self.stimuli.items():
-            _v.sim_init_name = _k
+            _v.simulation_level_name = _k
         return self
 
     @model_validator(mode="after")
     def initialize_neuron_sets(self) -> Self:
         """Initializes neuron sets within simulation campaign."""
         for _k, _v in self.neuron_sets.items():
-            _v.sim_init_name = _k
+            _v.simulation_level_name = _k
         return self
 
 
