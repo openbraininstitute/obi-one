@@ -1,3 +1,11 @@
-from obi_one.scientific.simulation.recording import IntracellularLocationSetVoltageRecording
+from obi_one.scientific.simulation.recording import (
+    ExtraceullarLocationSetVoltageRecording,
+    IntracellularLocationSetVoltageRecording,
+    VoltageRecording,
+)
 
-RecordingUnion = IntracellularLocationSetVoltageRecording
+RecordingUnion = (
+    VoltageRecording
+    | IntracellularLocationSetVoltageRecording
+    | ExtraceullarLocationSetVoltageRecording
+)
