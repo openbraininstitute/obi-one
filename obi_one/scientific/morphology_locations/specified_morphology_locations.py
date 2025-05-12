@@ -1,7 +1,13 @@
 import numpy
 import pandas
-from conntility.subcellular import MorphologyPathDistanceCalculator
+import warnings
+
 from scipy import stats
+
+try:
+    from conntility.subcellular import MorphologyPathDistanceCalculator
+except ImportError:
+    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 _SEC_ID = "section_id"
 _SEG_ID = "segment_id"
