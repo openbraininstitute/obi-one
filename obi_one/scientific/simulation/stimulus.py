@@ -42,9 +42,7 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetUnion | list[NeuronSetUnion] = Field(
-        description="Neuron set to which the stimulus is applied."
-    )
+    neuron_set: NeuronSetUnion = Field(description="Neuron set to which the stimulus is applied.")
     represents_physical_electrode: bool = Field(
         default=False,
         description="Default is False. If True, the signal will be implemented \
