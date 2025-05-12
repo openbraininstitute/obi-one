@@ -1,6 +1,6 @@
 import json
 import os
-from typing import ClassVar, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import Field, PrivateAttr, model_validator
 
@@ -140,7 +140,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config["reports"][recording_key] = recording.generate_config()
+            self._sonata_config["reports"].update(recording.config())
 
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node

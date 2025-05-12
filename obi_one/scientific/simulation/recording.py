@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
@@ -10,6 +10,7 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
 )
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 
 class Recording(Block, ABC):
@@ -53,7 +54,25 @@ class Recording(Block, ABC):
 
 
 class VoltageRecording(Recording):
-    recording_type: str = "voltage"
+    neuron_set: NeuronSetUnion = Field(description="Neuron set to record from.")
+    section: Literal["soma", "axon", "dend", "apic", "all"] = Field(
+        default="soma", description="Section(s) to record from."
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        sonata_config[self.name] = {
+            "cells": self.neuron_set.name,
+            "sections": self.section,
+            "type": "compartment",
+            "variable_name": "v",
+            "unit": "mV",
+            "dt": self.dt,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+        }
+        return sonata_config
 
 
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
