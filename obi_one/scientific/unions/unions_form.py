@@ -16,7 +16,7 @@ from obi_one.scientific.morphology_containerization.morphology_containerization 
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
 )
-from obi_one.scientific.morphology_locations.morphology_location_form import (
+from obi_one.scientific.morphology_locations import (
     MorphologyLocationsForm
 )
 from obi_one.scientific.simulation.simulations import SimulationsForm
