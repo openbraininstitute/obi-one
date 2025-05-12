@@ -11,9 +11,17 @@ from obi_one.core.block import Block
 
 
 class NeuronSet(Block, abc.ABC):
-    """Base class representing a SONATA neuron set."""
+    """Base class representing a neuron set which can be turned into a SONATA node set by either
+    adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
+    SONATA node set .json file (write_circuit_node_set_file).
+    Whenever such a neuron set is used in a SimulationsForm, it must be added to its neuron_sets
+    dictionary with the key being the name of the SONATA node set which will internally be set
+    in simulation_level_name upon initialization of the SimulationsForm.
+    """
 
-    name: None | Annotated[str, Field(min_length=1)] = None
+    simulation_level_name: (
+        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
+    ) = None
     random_sample: None | int | float | list[None | int | float] = None
     random_seed: int | list[int] = 0
 
@@ -30,9 +38,19 @@ class NeuronSet(Block, abc.ABC):
                     )
         return self
 
+    def check_simulation_init(self):
+        assert self.simulation_level_name is not None, (
+            f"'{self.__class__.__name__}' initialization within a simulation required!"
+        )
+
     @abc.abstractmethod
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
+
+    @property
+    def name(self):
+        self.check_simulation_init()
+        return self.simulation_level_name
 
     @staticmethod
     def check_population(circuit, population):

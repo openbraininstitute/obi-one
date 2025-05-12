@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Annotated
 
 from pydantic import Field
 
@@ -8,15 +9,28 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 
 
 class Stimulus(Block, ABC):
-    name: str = Field(description="Name of the stimulus.")
     timestamps: TimestampsUnion
+    simulation_level_name: (
+        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
+    ) = None
+
+    def check_simulation_init(self):
+        assert self.simulation_level_name is not None, (
+            f"'{self.__class__.__name__}' initialization within a simulation required!"
+        )
+
+    @property
+    def name(self):
+        self.check_simulation_init()
+        return self.simulation_level_name
+
+    def config(self) -> dict:
+        self.check_simulation_init()
+        return self._generate_config()
 
     @abstractmethod
-    def generate(self):
+    def _generate_config(self) -> dict:
         pass
-
-
-# https://sonata-extension.readthedocs.io/en/latest/sonata_simulation.html#pulse-current-clamp
 
 
 class SomaticStimulus(Stimulus, ABC):
@@ -28,9 +42,7 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetUnion | list[NeuronSetUnion] = Field(
-        description="Neuron set to which the stimulus is applied."
-    )
+    neuron_set: NeuronSetUnion = Field(description="Neuron set to which the stimulus is applied.")
     represents_physical_electrode: bool = Field(
         default=False,
         description="Default is False. If True, the signal will be implemented \
@@ -54,7 +66,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.1, description="The injected current. Given in nA."
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -83,7 +95,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nA",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -110,7 +122,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
                     activates.",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -139,7 +151,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         description="If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -171,7 +183,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         default=1.0, description="The frequency of pulse trains. Given in Hz."
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -203,7 +215,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.025, description="Timestep of generated signal in ms. Default is 0.025 ms."
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -233,7 +245,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
                                 threshold current.",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -258,7 +270,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -286,7 +298,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
                     normal distribution.",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
@@ -318,7 +330,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
                     normal distribution.",
     )
 
-    def generate(self) -> dict:
+    def _generate_config(self) -> dict:
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
