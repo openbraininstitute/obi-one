@@ -1,5 +1,7 @@
 from typing import ClassVar
 
+from pydantic import Field
+
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
@@ -18,9 +20,13 @@ class CircuitExtractions(Form):
     class Initialize(Block):
         circuit_path: NamedPath | list[NamedPath]
         node_set: str | list[str]
+        do_virtual: bool | list[bool] = Field(default=True, name="Do virtual",
+                                              description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
+        create_external: bool | list[bool] = Field(default=True, name="Create external",
+                                                   description="whether to create new virtual populations of all the incoming connections")
 
     initialize: Initialize
-
+    
     def save_collection(self, circuit_entities):
         pass
         """
@@ -55,8 +61,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 self.coordinate_output_root,
                 self.initialize.node_set,
                 self.initialize.circuit_path.path,
-                True,
-                False,
+                self.initialize.do_virtual,
+                self.initialize.create_external,
             )
 
             # Custom edit of the circuit config so that all paths are relative to the new base directory
