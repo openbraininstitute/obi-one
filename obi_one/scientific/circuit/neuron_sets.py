@@ -11,7 +11,12 @@ from obi_one.core.block import Block
 
 
 class NeuronSet(Block, abc.ABC):
-    """Base class representing a SONATA neuron set."""
+    """Base class representing a neuron set which can be turned into a SONATA node set by either
+    adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
+    SONATA node set .json file (write_circuit_node_set_file).
+    Whenever such a neuron set is used in a SimulationsForm, it must be added to its neuron_sets
+    dictionary which the key being the name of the SONATA node set.
+    """
 
     sim_init_name: (
         None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
