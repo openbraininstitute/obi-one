@@ -1,63 +1,66 @@
+import os
+from pathlib import Path
+from typing import ClassVar
+
 import numpy
 import pandas
-import os
+from fastapi import HTTPException
+from pydantic import Field
 
-from typing import Union, ClassVar, Annotated
-from pydantic import BaseModel, Field
-from neurom.core.types import SectionType
-
-from obi_one.core.form import Form
 from obi_one.core.block import Block
+from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.db_classes import ReconstructionMorphologyFromID
 
-from fastapi import HTTPException
-from pathlib import Path
-
 from .morphology_location_block import MorphologyLocationsBlock
 
+
 class MorphologyLocationsForm(Form):
-    """
-    """
+    """ """
 
     single_coord_class_name: ClassVar[str] = "MorphologyLocations"
     name: ClassVar[str] = "Point locations on neurite skeletons"
-    description: ClassVar[str] = "Generates optionally clustered locations on neurites of a morphology skeleton"
+    description: ClassVar[str] = (
+        "Generates optionally clustered locations on neurites of a morphology skeleton"
+    )
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] | Path | list[Path]
+        morphology: (
+            ReconstructionMorphologyFromID
+            | list[ReconstructionMorphologyFromID]
+            | Path
+            | list[Path]
+        ) = Field(title="Morphology", description="The morphology skeleton to place locations on")
 
     initialize: Initialize
-    morph_locations: MorphologyLocationsBlock
+    morph_locations: MorphologyLocationsBlock = Field(
+        title="Morphology locations",
+        description="Parameterization of locations on the neurites of the morphology",
+    )
 
     def save(self, circuit_entities):
+        """Add entitysdk calls to save the collection
         """
-        Add entitysdk calls to save the collection
-        """
-        pass
 
 
-class MorphologyLocations(MorphologyLocationsForm,SingleCoordinateMixin):
-    """
-    """
+class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
+    """ """
 
     def _generate_plot(self, m, df):
-        import neurom.view
         import neurom.io
-        
+        import neurom.view
         from matplotlib import pyplot as plt
-        from .specified_morphology_locations import _SEC_ID, _SEG_ID, _SEG_OFF, _PRE_IDX
+
+        from .specified_morphology_locations import _PRE_IDX, _SEC_ID, _SEG_ID, _SEG_OFF
 
         def location_xyz(row):
             secid = int(row[_SEC_ID])
             segid = int(row[_SEG_ID])
             o = row[_SEG_OFF]
-            seg = m.sections[secid - 1].points[segid:(segid + 2)]
+            seg = m.sections[secid - 1].points[segid : (segid + 2)]
             dseg = numpy.diff(seg, axis=0)[0]
             dseg = dseg / numpy.linalg.norm(dseg)
-            return pandas.Series(seg[0] + o * dseg,
-                                index=["x", "y", "z"])
-
+            return pandas.Series(seg[0] + o * dseg, index=["x", "y", "z"])
 
         fig = plt.figure(figsize=(3, 6))
         ax = fig.gca()
@@ -68,18 +71,17 @@ class MorphologyLocations(MorphologyLocationsForm,SingleCoordinateMixin):
         plt.axis("equal")
         return fig
 
-
     def run(self):
-        
         try:
-            from .specified_morphology_locations import generate_neurite_locations_on
+
             if isinstance(self.initialize.morphology, Path):
                 import morphio
+
                 m = morphio.Morphology(self.initialize.morphology)
             else:
                 m = self.initialize.morphology.morphio_morphology
             df = self.morph_locations.points_on(m)
-            
+
             fig = self._generate_plot(m, df)
             fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdf"))
             df.to_csv(os.path.join(self.coordinate_output_root, "morphology_locations.csv"))
@@ -87,4 +89,3 @@ class MorphologyLocations(MorphologyLocationsForm,SingleCoordinateMixin):
         except Exception as e:  # noqa: BLE001
             print(f"An error occurred: {e}")
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
-            

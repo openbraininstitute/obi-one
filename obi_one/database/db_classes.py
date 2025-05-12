@@ -175,6 +175,7 @@ def morphio_morphology_getter(self):
         swc_file = self.swc_file
         if swc_file:
             from morphio import Morphology
+
             self._morphio_morphology = Morphology(swc_file)
         else:
             raise ValueError("No valid application/asc asset found for morphology.")

@@ -142,14 +142,14 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
 )
 from obi_one.scientific.morphology_locations.morphology_location_form import (
     MorphologyLocationsForm,
-    MorphologyLocations
+    MorphologyLocations,
 )
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
-    ClusteredPathDistanceMorphologyLocations
+    ClusteredPathDistanceMorphologyLocations,
 )
 from obi_one.scientific.unions.unions_form import (
     FormUnion,

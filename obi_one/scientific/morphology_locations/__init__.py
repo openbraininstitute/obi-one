@@ -5,9 +5,6 @@ from .morphology_location_block import (
     PathDistanceMorphologyLocations,
     RandomGroupedMorphologyLocations,
     ClusteredGroupedMorphologyLocations,
-    ClusteredPathDistanceMorphologyLocations
+    ClusteredPathDistanceMorphologyLocations,
 )
-from .morphology_location_form import (
-    MorphologyLocationsForm,
-    MorphologyLocations
-)
+from .morphology_location_form import MorphologyLocationsForm, MorphologyLocations

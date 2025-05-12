@@ -1,9 +1,7 @@
 import numpy
 import pandas
-
 from conntility.subcellular import MorphologyPathDistanceCalculator
 from scipy import stats
-
 
 _SEC_ID = "section_id"
 _SEG_ID = "segment_id"
@@ -17,35 +15,38 @@ _SEG_MIN = "min_seg_offset"
 _SEG_MAX = "max_seg_offset"
 _PRE_IDX = "source_index"
 
+
 def path_distance_all_segments_from(locs_ref, m, PD, normalized_seg_loc=0.5, lst_sec_types=None):
-    """
-    Calculates path distances from reference locations on a morphology to all segments of the
+    """Calculates path distances from reference locations on a morphology to all segments of the
     same morphology.
 
     Args:
-        locs_ref (pandas.DataFrame): Defines the reference locations. For details how, see 
+        locs_ref (pandas.DataFrame): Defines the reference locations. For details how, see
         conntility.subcellular.MorphologyPathDistanceCalculator.
         m (morphio.Morphology): Morphology to use.
         PD (conntility.subcellular.MorphologyPathDistanceCalculator): Path distance calculator
         must be created on morphology m.
-        normalized_seg_loc (float, default: 0.5): Between 0 and 1. Normalized segment location. 
+        normalized_seg_loc (float, default: 0.5): Between 0 and 1. Normalized segment location.
         Path distances will be calculated to the part of each segment.
         lst_sec_types (list, default=None): List of section types to consider.
         If None, all types are considered.
     """
-    kwargs = {
-        "str_section_id": _SEC_ID,
-        "str_segment_id": _SEG_ID,
-        "str_offset": _SEG_OFF
-    }
-    locs_all = pandas.concat([
-        pandas.DataFrame({
-            _SEG_ID: numpy.arange(m.sections[i].n_points - 1),
-            _SEC_ID: numpy.ones(m.sections[i].n_points - 1, dtype=int) * (i + 1),
-            _SEC_TYP: numpy.ones(m.sections[i].n_points - 1, dtype=int) * int(m.sections[i].type),
-            _SEG_LEN: numpy.linalg.norm(numpy.diff(m.sections[i].points, axis=0), axis=1)
-        })
-        for i in range(len(m.sections))], axis=0).reset_index(drop=True)
+    kwargs = {"str_section_id": _SEC_ID, "str_segment_id": _SEG_ID, "str_offset": _SEG_OFF}
+    locs_all = pandas.concat(
+        [
+            pandas.DataFrame(
+                {
+                    _SEG_ID: numpy.arange(m.sections[i].n_points - 1),
+                    _SEC_ID: numpy.ones(m.sections[i].n_points - 1, dtype=int) * (i + 1),
+                    _SEC_TYP: numpy.ones(m.sections[i].n_points - 1, dtype=int)
+                    * int(m.sections[i].type),
+                    _SEG_LEN: numpy.linalg.norm(numpy.diff(m.sections[i].points, axis=0), axis=1),
+                }
+            )
+            for i in range(len(m.sections))
+        ],
+        axis=0,
+    ).reset_index(drop=True)
     if lst_sec_types is not None:
         locs_all = locs_all.loc[locs_all[_SEC_TYP].isin(lst_sec_types)].reset_index(drop=True)
     locs_all[_SEG_OFF] = normalized_seg_loc * locs_all[_SEG_LEN]
@@ -53,22 +54,25 @@ def path_distance_all_segments_from(locs_ref, m, PD, normalized_seg_loc=0.5, lst
     pd = PD.path_distances(locs_ref, locs_all, **kwargs)
     pd = [pandas.Series(_pd, name=_SOM_PAD) for _pd in pd]
 
-    return pandas.concat([
-        pandas.concat([locs_all, _pd], axis=1) for _pd in pd
-        ], axis=0, keys=range(len(pd)), names=[_CEN_IDX])
+    return pandas.concat(
+        [pandas.concat([locs_all, _pd], axis=1) for _pd in pd],
+        axis=0,
+        keys=range(len(pd)),
+        names=[_CEN_IDX],
+    )
+
 
 def select_segments_as_cluster_centers(n_pick, locs, distr, lst_sec_types=None):
     p = distr.pdf(locs[_SOM_PAD])
     if lst_sec_types is not None:
         p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)
 
-    selected_ids = numpy.random.choice(locs.index, n_pick,
-                                       p=p/p.sum())
+    selected_ids = numpy.random.choice(locs.index, n_pick, p=p / p.sum())
     return locs.iloc[selected_ids]
 
+
 def find_normalized_interval_below_zero(a, b):
-    """
-    Being given a and b, and assuming f(0) = a, f(1) = b, this function calculates the
+    """Being given a and b, and assuming f(0) = a, f(1) = b, this function calculates the
     sub-interval of [0, 1] where f is < 0.
 
     Args:
@@ -77,7 +81,7 @@ def find_normalized_interval_below_zero(a, b):
     """
     min_norm_pd = float(0)
     max_norm_pd = float(1)
-    if (b - a) > 0: # becomes invalid near the end
+    if (b - a) > 0:  # becomes invalid near the end
         max_norm_pd = numpy.minimum(-a / (b - a), max_norm_pd)
     elif (b - a) == 0:
         max_norm_pd = 0.0
@@ -85,9 +89,9 @@ def find_normalized_interval_below_zero(a, b):
         min_norm_pd = numpy.maximum(-a / (b - a), min_norm_pd)
     return min_norm_pd, max_norm_pd
 
+
 def min_max_offset_in_segment(row, max_distance):
-    """
-    Determines which offsets from the starting point of a segment are closer in path distance than
+    """Determines which offsets from the starting point of a segment are closer in path distance than
     a specified maximum value.
 
     Args:
@@ -100,15 +104,12 @@ def min_max_offset_in_segment(row, max_distance):
     l = row[_SEG_LEN]
     min_norm_pd, max_norm_pd = find_normalized_interval_below_zero(a, b)
 
-    return pandas.Series({
-        _SEG_MIN: min_norm_pd * l,
-        _SEG_MAX: max_norm_pd * l
-    })
+    return pandas.Series({_SEG_MIN: min_norm_pd * l, _SEG_MAX: max_norm_pd * l})
+
 
 def min_max_offset_for_center_segment(row, max_distance):
-    """
-    Determines which offsets from the starting point of a segment are closer in path distance than
-    a specified maximum value. Specialized version to be used for the segment that contains the 
+    """Determines which offsets from the starting point of a segment are closer in path distance than
+    a specified maximum value. Specialized version to be used for the segment that contains the
     point that path distances are relative to.
 
     Args:
@@ -123,27 +124,24 @@ def min_max_offset_for_center_segment(row, max_distance):
     min_norm_pd, _ = find_normalized_interval_below_zero(a, c)
     _, max_norm_pd = find_normalized_interval_below_zero(c, b)
 
-    return pandas.Series({
-        _SEG_MIN: 0.5 * min_norm_pd * l,
-        _SEG_MAX: (0.5 + 0.5 * max_norm_pd) * l
-    })
+    return pandas.Series({_SEG_MIN: 0.5 * min_norm_pd * l, _SEG_MAX: (0.5 + 0.5 * max_norm_pd) * l})
+
 
 def candidate_segments_all_morphology(locs):
-    """
-    Creates a dataframe matching the format of 'candidate_segments_for_center', but where all parts
+    """Creates a dataframe matching the format of 'candidate_segments_for_center', but where all parts
     of the morphology are admitted as candidates. For details, see that function.
     """
-    return pandas.DataFrame({
-        _SEG_MIN: numpy.zeros(len(locs), dtype=float),
-        _SEG_MAX: locs[_SEG_LEN].values
-    }, index=locs.index)
+    return pandas.DataFrame(
+        {_SEG_MIN: numpy.zeros(len(locs), dtype=float), _SEG_MAX: locs[_SEG_LEN].values},
+        index=locs.index,
+    )
+
 
 def candidate_segments_for_center(ids_center, locs, max_dist, m, PD, lst_sec_types=None):
-    """
-    Creates a dataframe specifying candidate locations to be picked around the center of a cluster.
+    """Creates a dataframe specifying candidate locations to be picked around the center of a cluster.
     That is, finds for all segments intervals that are closer than a maximum distance to the center.
     If no part of a segment is closer than the value, then the segment is omitted from the output.
-    
+
     Output is a DataFrame with one row per candidate segment. Columns specify the minimum and maximum
     within-segment offset in um that is still within the maximum distance.
 
@@ -157,8 +155,12 @@ def candidate_segments_for_center(ids_center, locs, max_dist, m, PD, lst_sec_typ
         lst_sec_types (list, default=None): List of section types allowed. If None, then all types are allowed.
     """
     loc_center = locs.loc[ids_center]
-    res_seg_start = path_distance_all_segments_from(loc_center, m, PD, 0.0, lst_sec_types=lst_sec_types).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
-    res_seg_end = path_distance_all_segments_from(loc_center, m, PD, 1.0, lst_sec_types=lst_sec_types).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
+    res_seg_start = path_distance_all_segments_from(
+        loc_center, m, PD, 0.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
+    res_seg_end = path_distance_all_segments_from(
+        loc_center, m, PD, 1.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
 
     res = pandas.concat([res_seg_start, res_seg_end[[_SOM_PAD + "_end"]]], axis=1)
 
@@ -171,28 +173,31 @@ def candidate_segments_for_center(ids_center, locs, max_dist, m, PD, lst_sec_typ
         intervals.loc[tpl] = min_max_offset_for_center_segment(res.loc[tpl], max_dist)
     return intervals
 
+
 def select_places_from_candidate_list(n, cands, locs):
-    """
-    From a list of candidate segments, pick randomly the specified number of locations.
+    """From a list of candidate segments, pick randomly the specified number of locations.
     Locations are identified not just by their segment, but also the offset within the segment.
     Each candidate location is equally likely (no bias).
 
     Args:
         n (int): Number of locations to pick
-        
+
         cands (pandas.DataFrame): dataframe specifying segments and intervals on the segments that
         are valid to be picked. Output of 'candidate_segments_for_center'.
 
         locs (pandas.DataFrame): dataframe of all segments on the morphology. Its index must be
         consistent with the index of 'cands'.
     """
+
     def randomly_pick_with_p(df_in):
         df_in = df_in.droplevel(0)
-        selected = df_in.loc[numpy.random.choice(df_in.index, n, p=df_in["p"]/df_in["p"].sum())]
-        selected = selected[_SEG_MIN] + numpy.random.rand(n) * (selected[_SEG_MAX] - selected[_SEG_MIN])
-        
+        selected = df_in.loc[numpy.random.choice(df_in.index, n, p=df_in["p"] / df_in["p"].sum())]
+        selected = selected[_SEG_MIN] + numpy.random.rand(n) * (
+            selected[_SEG_MAX] - selected[_SEG_MIN]
+        )
+
         output = locs.loc[selected.index].sort_index().drop(columns=[_SEG_OFF])
-        output[_SEG_OFF] = selected.values   
+        output[_SEG_OFF] = selected.values
         return output
 
     p = cands.diff(axis=1).values[:, 1]
@@ -201,9 +206,9 @@ def select_places_from_candidate_list(n, cands, locs):
 
     return cands.groupby(_CEN_IDX).apply(randomly_pick_with_p)
 
+
 def map_presynaptic_ids(df, n_per_center):
-    """
-    Assign ids to generated locations. Locations around the same center are split
+    """Assign ids to generated locations. Locations around the same center are split
     into the specified number of groups and assigned unique ids.
 
     Does not return an output, instead adds a column to the input dataframe.
@@ -217,9 +222,9 @@ def map_presynaptic_ids(df, n_per_center):
     rnd = numpy.random.randint(0, n_per_center, len(df))
     df[_PRE_IDX] = df[_CEN_IDX] * n_per_center + rnd
 
+
 def add_normalized_section_offset(df, m, PD):
-    """
-    Adds the normalized section offset to a dataframe that defines morphology locations.
+    """Adds the normalized section offset to a dataframe that defines morphology locations.
 
     Args:
         df (pandas.DataFrame): Contains the selected locations. Defined by section id,
@@ -229,31 +234,36 @@ def add_normalized_section_offset(df, m, PD):
 
         PD (conntility.subcellular.MorphologyPathDistanceCalculator): Must be defined on m.
     """
-    sec_lengths = numpy.array([
-        numpy.linalg.norm(numpy.diff(sec.points, axis=0), axis=1).sum()
-        for sec in m.sections
-    ])
+    sec_lengths = numpy.array(
+        [numpy.linalg.norm(numpy.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
+    )
     sec_o = PD.O[df[_SEC_ID] - 1, df[_SEG_ID]]
     sec_l = sec_lengths[df[_SEC_ID] - 1]
     df[_SEC_LOC] = sec_o / sec_l
 
-def generate_neurite_locations_on(m, n_centers, n_per_center, srcs_per_center,
-                                  center_pd_mean, center_pd_sd, 
-                                  max_dist_from_center,
-                                  lst_section_types=None,
-                                  seed=None):
-    """
-    Generates a specified number of morphology locations according to complex specifications.
+
+def generate_neurite_locations_on(
+    m,
+    n_centers,
+    n_per_center,
+    srcs_per_center,
+    center_pd_mean,
+    center_pd_sd,
+    max_dist_from_center,
+    lst_section_types=None,
+    seed=None,
+):
+    """Generates a specified number of morphology locations according to complex specifications.
     Locations are defined along morphology skeleton, i.e. they are 1d locations, not membrane locations.
 
-    Locations are 'clustered' around center locations on the morphology. If that is notr required, the 
+    Locations are 'clustered' around center locations on the morphology. If that is notr required, the
     parameter 'max_dist_from_center' can be set to None and clustering is ignored.
 
     Otherwise, the locations of the centers can be parameterized by specifying the mean and standard deviation
     of a Gaussian. The probability that any given neurite location is picked is then proportional to the value
     of the Gaussian at the path distance from the soma of the location. Note that this is *not* equivalent to
     saying that the distribution of path distances of the output locations follows the Gaussian. This is because
-    some path distances are more common than others on the input morphology. 
+    some path distances are more common than others on the input morphology.
     If you do not want to constrain path distances, simply set the standard deviation of the Gaussian to a very
     high value and then all morphology locations are equally likely.
 
@@ -266,8 +276,8 @@ def generate_neurite_locations_on(m, n_centers, n_per_center, srcs_per_center,
       - normalized section offset
       - center id
       - source id
-    
-    where "center id" is an identifier for the center that a location is associated with. Even if 
+
+    where "center id" is an identifier for the center that a location is associated with. Even if
     'max_dist_from_center' is set to None, center ids are still generated.
 
     "source id" is defining a conceptual grouping that is generated according to specifications. For
@@ -280,12 +290,12 @@ def generate_neurite_locations_on(m, n_centers, n_per_center, srcs_per_center,
 
         n_per_center (int): Number of locations to generate for each center.
 
-        srcs_per_center (int): Number of source ids per center. Used to generate the source id. 
+        srcs_per_center (int): Number of source ids per center. Used to generate the source id.
         If not needed, set to 1.
 
         center_pd_mean (float): Mean of the Gaussian determining center path distances
 
-        center_pd_sd (float): Standard deviation of the same Gaussian. If path distances are no concern, 
+        center_pd_sd (float): Standard deviation of the same Gaussian. If path distances are no concern,
         then set this to 1E20 or a similarly large number
 
         max_dist_from_center (float): Maximum path distance from the center for the generated locations.
@@ -295,33 +305,34 @@ def generate_neurite_locations_on(m, n_centers, n_per_center, srcs_per_center,
 
         seed (optional): Random seed. For reproducability.
     """
-    if seed is not None: 
+    if seed is not None:
         numpy.random.seed(seed)
 
     PD = MorphologyPathDistanceCalculator(m)
 
-    soma = pandas.DataFrame({
-            _SEC_ID: [0],
-            _SEG_ID: [0],
-            _SEG_OFF: [0]
-        })
+    soma = pandas.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0]})
     # print("Calculating distances from the soma...")
     locs = path_distance_all_segments_from(soma, m, PD, lst_sec_types=lst_section_types).loc[0]
 
-    if max_dist_from_center is None: # Simpler case. If clustering around a center is not a concern.
+    if (
+        max_dist_from_center is None
+    ):  # Simpler case. If clustering around a center is not a concern.
         _cands_all_morph = candidate_segments_all_morphology(locs)
-        lst_candidates_per_center = pandas.concat([
-            _cands_all_morph for _ in range(n_centers)
-            ], axis=0, keys=range(n_centers), names=[_CEN_IDX])
+        lst_candidates_per_center = pandas.concat(
+            [_cands_all_morph for _ in range(n_centers)],
+            axis=0,
+            keys=range(n_centers),
+            names=[_CEN_IDX],
+        )
     else:
         distr = stats.norm(center_pd_mean, center_pd_sd)
         # print("Selecting {0} centers".format(n_centers))
         centers = select_segments_as_cluster_centers(n_centers, locs, distr, lst_sec_types=None)
         # print("Building candidates for {0} centers".format(n_centers))
-        lst_candidates_per_center = candidate_segments_for_center(centers.index,
-                                                                  locs, max_dist_from_center, 
-                                                                  m, PD, lst_sec_types=lst_section_types)
-    
+        lst_candidates_per_center = candidate_segments_for_center(
+            centers.index, locs, max_dist_from_center, m, PD, lst_sec_types=lst_section_types
+        )
+
     # print("Building groups of {0} for {1} centers".format(n_per_center, n_centers))
     all_clusters = select_places_from_candidate_list(n_per_center, lst_candidates_per_center, locs)
 
