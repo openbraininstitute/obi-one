@@ -26,9 +26,9 @@ class MorphologyLocationsForm(Form):
 
     class Initialize(Block):
         morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] | Path | list[Path]
-        morph_locations: MorphologyLocationsBlock | list[MorphologyLocationsBlock]
 
     initialize: Initialize
+    morph_locations: MorphologyLocationsBlock
 
     def save(self, circuit_entities):
         """
@@ -78,7 +78,7 @@ class MorphologyLocations(MorphologyLocationsForm,SingleCoordinateMixin):
                 m = morphio.Morphology(self.initialize.morphology)
             else:
                 m = self.initialize.morphology.morphio_morphology
-            df = self.initialize.morph_locations.points_on(m)
+            df = self.morph_locations.points_on(m)
             
             fig = self._generate_plot(m, df)
             fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdf"))
