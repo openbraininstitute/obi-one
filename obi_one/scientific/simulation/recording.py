@@ -53,11 +53,6 @@ class VoltageRecording(Recording):
     dt: float | list[float] = 0.1
 
 
-class SpikeRecording(Recording):
-    recording_type: str = "spike"
-    spike_detection_location: Literal["AIS", "soma"]
-
-
 class IntracellularLocationSetVoltageRecording(VoltageRecording):
     intracellular_location_set: IntracellularLocationSetUnion
 

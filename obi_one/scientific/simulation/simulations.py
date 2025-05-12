@@ -44,6 +44,7 @@ class SimulationsForm(Form):
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
+        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
 
         sonata_version: list[int] | int = 1
         target_simulator: list[str] | str = "CORENEURON"
@@ -124,6 +125,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self.initialize.extracellular_calcium_concentration
         )
         self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
+        self._sonata_config["conditions"]["spike_location"] = self.initialize.spike_location
 
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
