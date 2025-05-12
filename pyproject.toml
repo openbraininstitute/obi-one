@@ -39,7 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 connectivity = [
     "connectome-analysis>=1.0.1",
-    "connectome-utilities>=0.4.10",
+    "connectome-utilities>=0.4.11",
 ]
 
 

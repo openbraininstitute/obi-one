@@ -50,12 +50,12 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology):
         locs = generate_neurite_locations_on(
             morphology,
-            1,
-            self.number_of_locations,
-            1,
-            0.0,
-            0.0,
-            None,
+            n_centers=1,
+            n_per_center=self.number_of_locations,
+            srcs_per_center=1,
+            center_pd_mean=0.0,
+            center_pd_sd=0.0,
+            max_dist_from_center=None,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         ).drop(columns=[_CEN_IDX])
@@ -77,12 +77,12 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology):
         locs = generate_neurite_locations_on(
             morphology,
-            1,
-            self.number_of_locations,
-            self.n_groups,
-            0.0,
-            0.0,
-            None,
+            n_centers=1,
+            n_per_center=self.number_of_locations,
+            srcs_per_center=self.n_groups,
+            center_pd_mean=0.0,
+            center_pd_sd=0.0,
+            max_dist_from_center=None,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         ).drop(columns=[_CEN_IDX])
@@ -109,12 +109,12 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology):
         locs = generate_neurite_locations_on(
             morphology,
-            self.number_of_locations,
-            1,
-            1,
-            self.path_dist_mean,
-            0.1 * self.path_dist_tolerance,
-            0.9 * self.path_dist_tolerance,
+            n_centers=self.number_of_locations,
+            n_per_center=1,
+            srcs_per_center=1,
+            center_pd_mean=self.path_dist_mean,
+            center_pd_sd=0.1 * self.path_dist_tolerance,
+            max_dist_from_center=0.9 * self.path_dist_tolerance,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         ).drop(columns=[_CEN_IDX])
@@ -148,12 +148,12 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            self.n_clusters,
-            n_per_cluster,
-            1,
-            0.0,
-            1e20,
-            self.cluster_max_distance,
+            n_centers=self.n_clusters,
+            n_per_center=n_per_cluster,
+            srcs_per_center=1,
+            center_pd_mean=0.0,
+            center_pd_sd=1e20,
+            max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         ).drop(columns=[_CEN_IDX])
@@ -180,12 +180,12 @@ class ClusteredGroupedMorphologyLocations(
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            self.n_clusters,
-            n_per_cluster,
-            self.n_groups,
-            0.0,
-            1e20,
-            self.cluster_max_distance,
+            n_centers=self.n_clusters,
+            n_per_center=n_per_cluster,
+            srcs_per_center=self.n_groups,
+            center_pd_mean=0.0,
+            center_pd_sd=1e20,
+            max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         ).drop(columns=[_CEN_IDX])
@@ -221,12 +221,12 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            self.n_clusters,
-            n_per_cluster,
-            self.n_groups_per_cluster,
-            self.path_dist_mean,
-            self.path_dist_sd,
-            self.cluster_max_distance,
+            n_centers=self.n_clusters,
+            n_per_center=n_per_cluster,
+            srcs_per_center=self.n_groups_per_cluster,
+            center_pd_mean=self.path_dist_mean,
+            center_pd_sd=self.path_dist_sd,
+            max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
             seed=self.random_seed,
         )

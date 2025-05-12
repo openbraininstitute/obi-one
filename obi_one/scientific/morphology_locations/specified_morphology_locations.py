@@ -262,7 +262,7 @@ def generate_neurite_locations_on(
     """Generates a specified number of morphology locations according to complex specifications.
     Locations are defined along morphology skeleton, i.e. they are 1d locations, not membrane locations.
 
-    Locations are 'clustered' around center locations on the morphology. If that is notr required, the
+    Locations are 'clustered' around center locations on the morphology. If that is not required, the
     parameter 'max_dist_from_center' can be set to None and clustering is ignored.
 
     Otherwise, the locations of the centers can be parameterized by specifying the mean and standard deviation

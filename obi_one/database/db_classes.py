@@ -187,3 +187,8 @@ Add the neurom_morphology property to the classes
 """
 ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
 ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
+"""
+Add the morphio_morphology property to the classes
+"""
+ReconstructionMorphology.morphio_morphology = property(morphio_morphology_getter)
+ReconstructionMorphologyFromID.morphio_morphology = property(morphio_morphology_getter)

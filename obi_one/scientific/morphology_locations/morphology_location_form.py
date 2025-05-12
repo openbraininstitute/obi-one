@@ -11,6 +11,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.db_classes import ReconstructionMorphologyFromID
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 from .morphology_location_block import MorphologyLocationsBlock
 
@@ -33,7 +34,7 @@ class MorphologyLocationsForm(Form):
         ) = Field(title="Morphology", description="The morphology skeleton to place locations on")
 
     initialize: Initialize
-    morph_locations: MorphologyLocationsBlock = Field(
+    morph_locations: MorphologyLocationUnion = Field(
         title="Morphology locations",
         description="Parameterization of locations on the neurites of the morphology",
     )
