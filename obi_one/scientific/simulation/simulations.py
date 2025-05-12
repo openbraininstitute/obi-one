@@ -133,7 +133,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         for recording_key, recording in self.recordings.items():
             self._sonata_config["reports"][recording_key] = recording.generate_config()
 
-        # Write SONATA node sets file (.json)
+        # Resolve neuron sets and add them to the SONATA circuit object
+        # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
+        # set, even for a PredefinedNeuronSet in which case a new node set will be created which just
+        # references the existing one. This is the most consistent behavior since it will behave
+        # exactly the same no matter if random subsampling is used or not. But this also means that
+        # existing names cannot be used as dict keys.
         os.makedirs(self.coordinate_output_root, exist_ok=True)
         c = self.initialize.circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
@@ -142,7 +147,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # FIXME: Inconsistency possible in case a node set definition would span multiple populations
             #        May consider force_resolve_ids=False to enforce resolving into given population
             #        (but which won't be a human-readable representation any more)
-            assert _name == _nset.name, "Neuron set name mismatch!"
+            assert _name == _nset.name, (
+                "Neuron set name mismatch!"
+            )  # This should never happen if properly initialized
 
             if self.initialize.node_set.name == _name:
                 assert self._sonata_config.get("node_set") is None, (
