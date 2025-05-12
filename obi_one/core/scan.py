@@ -181,7 +181,7 @@ class Scan(OBIBaseModel):
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(
-                    coordinate_instance.coordinate_output_root / "run_coordinate_instance.json"
+                    coordinate_instance.coordinate_output_root + "run_coordinate_instance.json"
                 )
 
             else:
@@ -193,11 +193,11 @@ class Scan(OBIBaseModel):
                 raise NotImplementedError(msg)
 
         # Serialize the scan
-        self.serialize(self.output_root / "run_scan_config.json")
+        self.serialize(self.output_root + "run_scan_config.json")
 
         # Create a bbp_workflow_campaign_config
         self.create_bbp_workflow_campaign_config(
-            self.output_root / "bbp_workflow_campaign_config.json"
+            self.output_root + "bbp_workflow_campaign_config.json"
         )
 
         return return_dict
@@ -236,6 +236,13 @@ class Scan(OBIBaseModel):
 
     def create_bbp_workflow_campaign_config(self, output_path: str = "") -> None:
         """Description."""
+
+        msg = (
+            "create_bbp_workflow_campaign_config() not yet complete."
+        )
+        print(msg)
+        return
+
         # Dictionary intialization
         campaign_config = {"dims": [], "attrs": {}, "data": [], "coords": {}, "name": ""}
 
