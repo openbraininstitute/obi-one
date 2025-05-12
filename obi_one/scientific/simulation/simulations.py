@@ -69,6 +69,13 @@ class SimulationsForm(Form):
         return self
 
     @model_validator(mode="after")
+    def initialize_recordings(self) -> Self:
+        """Initializes recordings within simulation campaign."""
+        for _k, _v in self.recordings.items():
+            _v.simulation_level_name = _k
+        return self
+
+    @model_validator(mode="after")
     def initialize_neuron_sets(self) -> Self:
         """Initializes neuron sets within simulation campaign."""
         for _k, _v in self.neuron_sets.items():
