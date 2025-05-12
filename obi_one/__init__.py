@@ -68,7 +68,6 @@ __all__ = [
     "SingleBlockGenerateTestForm",
     "SingleCoordinateMixin",
     "SinusoidalCurrentClampSomaticStimulus",
-    "SpikeRecording",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSet",
@@ -132,7 +131,6 @@ from obi_one.scientific.simulation.recording import (
     ExtraceullarLocationSetVoltageRecording,
     IntracellularLocationSetVoltageRecording,
     Recording,
-    SpikeRecording,
     VoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
