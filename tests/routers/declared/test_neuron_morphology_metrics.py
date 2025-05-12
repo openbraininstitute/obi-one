@@ -1,0 +1,65 @@
+import json
+import uuid
+from unittest.mock import MagicMock
+
+import entitysdk.client
+import pytest
+from entitysdk.models.morphology import ReconstructionMorphology
+
+from app.dependencies.entitysdk import get_client
+
+from tests.utils import DATA_DIR
+
+ROUTE = "/declared/neuron-morphology-metrics"
+
+
+@pytest.fixture
+def morphology_json():
+    return json.loads((DATA_DIR / "reconstruction_morphology.json").read_bytes())
+
+
+@pytest.fixture
+def morphology_asc():
+    return (DATA_DIR / "reconstruction_morphology.asc").read_bytes()
+
+
+def test_get(client, morphology_json, morphology_asc, monkeypatch):
+    morphology = ReconstructionMorphology.model_validate(morphology_json)
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+    entitysdk_client_mock.download_content.return_value = morphology_asc
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
+
+    entity_id = uuid.uuid4()
+    response = client.get(f"{ROUTE}/{entity_id}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "aspect_ratio": 0.1788397393119357,
+        "circularity": 0.32157527986322876,
+        "length_fraction_above_soma": 0.34711724519729614,
+        "max_radial_distance": 324.51275634765625,
+        "number_of_neurites": 6,
+        "soma_radius": 5.360222339630127,
+        "soma_surface_area": 361.0567626953125,
+    }
+    assert entitysdk_client_mock.get_entity.call_count == 1
+    assert entitysdk_client_mock.download_content.call_count == 1
+
+
+def test_get_not_found(client, morphology_json, monkeypatch):
+    morphology = ReconstructionMorphology.model_validate(morphology_json)
+    morphology = morphology.model_copy(update={"assets": []})
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
+
+    entity_id = uuid.uuid4()
+    response = client.get(f"{ROUTE}/{entity_id}")
+    assert response.status_code == 404
+    assert response.json() == {
+        "message": "Asset not found",
+        "error_code": "NOT_FOUND",
+        "details": None,
+    }
+    assert entitysdk_client_mock.get_entity.call_count == 1
+    assert entitysdk_client_mock.download_content.call_count == 0
