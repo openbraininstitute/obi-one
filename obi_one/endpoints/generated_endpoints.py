@@ -1,5 +1,5 @@
 import re
-from typing import Annotated
+from typing import Annotated, get_type_hints
 
 import entitysdk.client
 import entitysdk.common
@@ -8,11 +8,50 @@ from fastapi import APIRouter, Depends
 from app.config import settings
 from app.dependencies.entitysdk import get_client
 from app.logger import L
+from obi_one import *
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
-from obi_one.scientific.unions.unions_form import (
-    check_implmentations_of_single_coordinate_class_and_methods_and_return_types,
-)
+
+
+def check_implementations_of_single_coordinate_class(
+    model: type[Form], processing_method: str, data_postprocessing_method: str
+):
+    """Return the class of the return type of a processing_method of the single coordinate class.
+
+    Returns None if return type not specified
+    Returns message strings if the processing_method
+    or data_postprocessing_method not implemented.
+    """
+    return_class = None
+
+    # Check that the single_coord_class_name is set
+    if not model.single_coord_class_name:
+        return f"single_coord_class_name is not set in the form: {model.__name__}"
+    single_coordinate_cls = globals().get(model.single_coord_class_name)
+    if single_coordinate_cls is None:
+        return f"Class {model.single_coord_class_name} not found in globals"
+
+    # Check that the method is a method of the single coordinate class
+
+    if not (
+        hasattr(single_coordinate_cls, processing_method)
+        and callable(getattr(single_coordinate_cls, processing_method))
+    ):
+        return f"{processing_method} is not a method of {single_coordinate_cls.__name__}"
+    if not data_postprocessing_method:
+        return None
+
+    # Check that the data_postprocessing_method is a method of the single coordinate class
+    if not (
+        hasattr(single_coordinate_cls, data_postprocessing_method)
+        and callable(getattr(single_coordinate_cls, data_postprocessing_method))
+    ):
+        return f"{data_postprocessing_method} is not a method of {single_coordinate_cls.__name__}"
+    return_class = get_type_hints(getattr(single_coordinate_cls, data_postprocessing_method)).get(
+        "return"
+    )
+
+    return return_class
 
 
 def create_endpoints_for_form(model: type[Form], router: APIRouter):
@@ -32,10 +71,8 @@ def create_endpoints_for_form(model: type[Form], router: APIRouter):
     for processing_method in processing_methods:
         for data_postprocessing_method in data_postprocessing_methods:
             # Check which of single coordinate class, method, data_handling_method and return type are implemented
-            return_class = (
-                check_implmentations_of_single_coordinate_class_and_methods_and_return_types(
-                    model, processing_method, data_postprocessing_method
-                )
+            return_class = check_implementations_of_single_coordinate_class(
+                model, processing_method, data_postprocessing_method
             )
 
             if not isinstance(return_class, str):
