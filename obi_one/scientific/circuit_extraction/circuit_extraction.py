@@ -4,7 +4,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
-
+from obi_one.scientific.circuit.circuit import Circuit
 
 class CircuitExtractions(Form):
     """ """
@@ -16,7 +16,7 @@ class CircuitExtractions(Form):
     )
 
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
+        circuit: Circuit | list[Circuit]
         node_set: str | list[str]
 
     initialize: Initialize
@@ -33,8 +33,8 @@ import os
 import shutil
 import traceback
 
+import bluepysnap as snap
 import tqdm
-from bluepysnap import Circuit
 from brainbuilder.utils.sonata import split_population
 
 
@@ -50,11 +50,11 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def run(self) -> str:
         try:
             # Create subcircuit using "brainbuilder"
-            print(f"Extracting subcircuit from '{self.initialize.circuit_path}'")
+            print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
             split_population.split_subcircuit(
                 self.coordinate_output_root,
                 self.initialize.node_set,
-                self.initialize.circuit_path.path,
+                self.initialize.circuit.path,
                 True,
                 False,
             )
@@ -74,7 +74,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                         for _v in value:
                             rebase_config(_v, old_base, new_base)
 
-            old_base = os.path.split(self.initialize.circuit_path.path)[0]
+            old_base = os.path.split(self.initialize.circuit.path)[0]
 
             # Quick fix to deal with symbolic links in base circuit (not usually required)
             # alt_base = old_base  # Alternative old base
@@ -82,7 +82,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             #     alt_base = alt_base.removesuffix(_sfix)
 
             new_base = "$BASE_DIR"
-            new_circuit_path = self.coordinate_output_root + "circuit_config.json"
+            new_circuit_path = os.path.join(self.coordinate_output_root, "circuit_config.json")
             # shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")  # Create backup before modifying
 
             with open(new_circuit_path) as config_file:
@@ -94,8 +94,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 json.dump(config_dict, config_file, indent=4)
 
             # Copy subcircuit morphologies and e-models (separately per node population)
-            original_circuit = Circuit(self.initialize.circuit_path.path)
-            new_circuit = Circuit(new_circuit_path)
+            original_circuit = self.initialize.circuit.sonata_circuit
+            new_circuit = snap.Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
                 if pop.config["type"] == "biophysical":
                     # Copying morphologies of any (supported) format
@@ -161,7 +161,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             # Copy .mod files, if any
             mod_folder = "mod"
             source_dir = os.path.join(
-                os.path.split(self.initialize.circuit_path.path)[0], mod_folder
+                os.path.split(self.initialize.circuit.path)[0], mod_folder
             )
             if os.path.exists(source_dir):
                 print("Copying mod files")
