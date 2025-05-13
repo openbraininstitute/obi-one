@@ -1,3 +1,3 @@
-from obi_one.scientific.simulation.recording import VoltageRecording
+from obi_one.scientific.simulation.recording import SomaVoltageRecording
 
-RecordingUnion = VoltageRecording
+RecordingUnion = SomaVoltageRecording

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Literal, Self
+from typing import Annotated, Self
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
@@ -47,19 +47,17 @@ class Recording(Block, ABC):
         pass
 
 
-class VoltageRecording(Recording):
+class SomaVoltageRecording(Recording):
     neuron_set: NeuronSetUnion = Field(description="Neuron set to record from.")
-    section: Literal["soma", "axon", "dend", "apic", "all"] = Field(
-        default="soma", description="Section(s) to record from."
-    )
 
     def _generate_config(self) -> dict:
         sonata_config = {}
 
         sonata_config[self.name] = {
             "cells": self.neuron_set.name,
-            "sections": self.section,
+            "sections": "soma",
             "type": "compartment",
+            "compartments": "center",
             "variable_name": "v",
             "unit": "mV",
             "dt": self.dt,

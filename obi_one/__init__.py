@@ -66,6 +66,7 @@ __all__ = [
     "SingleBlockGenerateTestForm",
     "SingleCoordinateMixin",
     "SinusoidalCurrentClampSomaticStimulus",
+    "SomaVoltageRecording",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSet",
@@ -73,7 +74,6 @@ __all__ = [
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsUnion",
-    "VoltageRecording",
     "XYZExtracellularLocationSet",
     "db",
     "deserialize_obi_object_from_json_data",
@@ -127,7 +127,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 )
 from obi_one.scientific.simulation.recording import (
     Recording,
-    VoltageRecording,
+    SomaVoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 from obi_one.scientific.simulation.stimulus import (
