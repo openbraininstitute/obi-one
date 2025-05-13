@@ -14,7 +14,7 @@ from obi_one.core.param import SingleValueScanParam
 
 class SingleCoordinateScanParams(OBIBaseModel):
     scan_params: list[SingleValueScanParam] = []
-    nested_coordinate_subpath_str: str = ""
+    nested_coordinate_subpath_str: Path = Path("")
 
     @property
     def nested_param_name_and_value_subpath(self) -> Path:
@@ -56,7 +56,7 @@ class SingleCoordinateMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""
 
     idx: int = -1
-    scan_output_root: Path = ""
+    scan_output_root: Path = Path("")
     coordinate_output_root: Path = Path("")
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
