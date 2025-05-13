@@ -13,10 +13,10 @@ from obi_one.scientific.folder_compression.folder_compression import (
 from obi_one.scientific.morphology_containerization.morphology_containerization import (
     MorphologyContainerizationsForm,
 )
+from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
 )
-from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.simulation.simulations import SimulationsForm
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTestForm,

@@ -1,10 +1,13 @@
 from .morphology_location_block import (
-    MorphologyLocationsBlock,
-    RandomMorphologyLocations,
-    ClusteredMorphologyLocations,
-    PathDistanceMorphologyLocations,
-    RandomGroupedMorphologyLocations,
-    ClusteredGroupedMorphologyLocations,
-    ClusteredPathDistanceMorphologyLocations,
+    ClusteredGroupedMorphologyLocations as ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations as ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations as ClusteredPathDistanceMorphologyLocations,
+    MorphologyLocationsBlock as MorphologyLocationsBlock,
+    PathDistanceMorphologyLocations as PathDistanceMorphologyLocations,
+    RandomGroupedMorphologyLocations as RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations as RandomMorphologyLocations,
 )
-from .morphology_location_form import MorphologyLocationsForm, MorphologyLocations
+from .morphology_location_form import (
+    MorphologyLocations as MorphologyLocations,
+    MorphologyLocationsForm as MorphologyLocationsForm,
+)

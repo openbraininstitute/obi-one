@@ -18,6 +18,9 @@ __all__ = [
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
+    "ClusteredGroupedMorphologyLocations",
+    "ClusteredMorphologyLocations",
+    "ClusteredPathDistanceMorphologyLocations",
     "CombinedNeuronSet",
     "ConnectivityMatrixExtraction",
     "ConnectivityMatrixExtractions",
@@ -38,6 +41,8 @@ __all__ = [
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
+    "MorphologyLocations",
+    "MorphologyLocationsForm",
     "MorphologyMetrics",
     "MorphologyMetricsForm",
     "MorphologyMetricsOutput",
@@ -52,6 +57,8 @@ __all__ = [
     "PercentageNoiseCurrentClampSomaticStimulus",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
+    "RandomGroupedMorphologyLocations",
+    "RandomMorphologyLocations",
     "Recording",
     "RecordingUnion",
     "RegularTimestamps",
@@ -120,6 +127,17 @@ from obi_one.scientific.morphology_containerization.morphology_containerization 
     MorphologyContainerization,
     MorphologyContainerizationsForm,
 )
+from obi_one.scientific.morphology_locations.morphology_location_block import (
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations,
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+)
+from obi_one.scientific.morphology_locations.morphology_location_form import (
+    MorphologyLocations,
+    MorphologyLocationsForm,
+)
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
@@ -154,17 +172,6 @@ from obi_one.scientific.test_forms.test_form_single_block import (
 )
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
-)
-from obi_one.scientific.morphology_locations.morphology_location_form import (
-    MorphologyLocationsForm,
-    MorphologyLocations,
-)
-from obi_one.scientific.morphology_locations.morphology_location_block import (
-    RandomGroupedMorphologyLocations,
-    RandomMorphologyLocations,
-    ClusteredGroupedMorphologyLocations,
-    ClusteredMorphologyLocations,
-    ClusteredPathDistanceMorphologyLocations,
 )
 from obi_one.scientific.unions.unions_form import (
     FormUnion,
