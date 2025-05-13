@@ -161,6 +161,17 @@ from obi_one.scientific.test_forms.test_form_single_block import (
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
+from obi_one.scientific.morphology_locations.morphology_location_form import (
+    MorphologyLocationsForm,
+    MorphologyLocations,
+)
+from obi_one.scientific.morphology_locations.morphology_location_block import (
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations,
+)
 from obi_one.scientific.unions.unions_form import (
     FormUnion,
 )
