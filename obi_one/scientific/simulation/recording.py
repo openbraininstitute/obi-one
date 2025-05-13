@@ -4,12 +4,6 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_extracellular_location_sets import (
-    ExtracellularLocationSetUnion,
-)
-from obi_one.scientific.unions.unions_intracellular_location_sets import (
-    IntracellularLocationSetUnion,
-)
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 
@@ -73,24 +67,3 @@ class VoltageRecording(Recording):
             "end_time": self.end_time,
         }
         return sonata_config
-
-
-class IntracellularLocationSetVoltageRecording(VoltageRecording):
-    intracellular_location_set: IntracellularLocationSetUnion
-
-    def _generate_config(self) -> dict:
-        sonata_config = {
-            "type": "compartment",
-            "sections": self.intracellular_location_set.section,
-            "cells": self.intracellular_location_set.neuron_ids,
-            "variable_name": "v",
-            "dt": self.dt,
-            "compartments": "center",
-            "start_time": self.start_time,
-            "end_time": self.end_time,
-        }
-        return sonata_config
-
-
-class ExtraceullarLocationSetVoltageRecording(VoltageRecording):
-    extracellular_location_set: ExtracellularLocationSetUnion

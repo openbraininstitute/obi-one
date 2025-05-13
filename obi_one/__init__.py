@@ -25,7 +25,6 @@ __all__ = [
     "CoupledScan",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
-    "ExtraceullarLocationSetVoltageRecording",
     "FolderCompression",
     "FolderCompressions",
     "Form",
@@ -36,7 +35,6 @@ __all__ = [
     "IDSynapseSet",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
-    "IntracellularLocationSetVoltageRecording",
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
@@ -128,8 +126,6 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsOutput,
 )
 from obi_one.scientific.simulation.recording import (
-    ExtraceullarLocationSetVoltageRecording,
-    IntracellularLocationSetVoltageRecording,
     Recording,
     VoltageRecording,
 )
