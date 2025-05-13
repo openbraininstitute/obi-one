@@ -25,7 +25,6 @@ __all__ = [
     "CoupledScan",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
-    "ExtraceullarLocationSetVoltageRecording",
     "FolderCompression",
     "FolderCompressions",
     "Form",
@@ -36,7 +35,6 @@ __all__ = [
     "IDSynapseSet",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
-    "IntracellularLocationSetVoltageRecording",
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
@@ -68,7 +66,7 @@ __all__ = [
     "SingleBlockGenerateTestForm",
     "SingleCoordinateMixin",
     "SinusoidalCurrentClampSomaticStimulus",
-    "SpikeRecording",
+    "SomaVoltageRecording",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSet",
@@ -76,7 +74,6 @@ __all__ = [
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsUnion",
-    "VoltageRecording",
     "XYZExtracellularLocationSet",
     "db",
     "deserialize_obi_object_from_json_data",
@@ -129,11 +126,8 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsOutput,
 )
 from obi_one.scientific.simulation.recording import (
-    ExtraceullarLocationSetVoltageRecording,
-    IntracellularLocationSetVoltageRecording,
     Recording,
-    SpikeRecording,
-    VoltageRecording,
+    SomaVoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 from obi_one.scientific.simulation.stimulus import (
