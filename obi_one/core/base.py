@@ -1,7 +1,7 @@
+from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ValidatorFunctionWrapHandler, model_validator, ConfigDict
-from pathlib import Path
+from pydantic import BaseModel, ConfigDict, ValidatorFunctionWrapHandler, model_validator
 
 
 def get_subclasses_recursive[T](cls: type[T]) -> list[type[T]]:
@@ -26,9 +26,7 @@ class OBIBaseModel(BaseModel):
 
     type: str = ""
 
-    model_config = ConfigDict(
-        json_encoders={Path: lambda v: str(v)}
-    )
+    model_config = ConfigDict(json_encoders={Path: lambda v: str(v)})
 
     @model_validator(mode="before")
     @classmethod
@@ -59,7 +57,8 @@ class OBIBaseModel(BaseModel):
             sub_cls_name = modified_value.pop("type", None)
             if sub_cls_name is not None:
                 sub_cls = get_subclass_recursive(
-                    cls=OBIBaseModel, name=sub_cls_name #, allow_same_class=True
+                    cls=OBIBaseModel,
+                    name=sub_cls_name,  # , allow_same_class=True
                 )
                 return sub_cls(**modified_value)
             return handler(value)

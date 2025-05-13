@@ -13,8 +13,6 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.db_classes import ReconstructionMorphologyFromID
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
-from .morphology_location_block import MorphologyLocationsBlock
-
 
 class MorphologyLocationsForm(Form):
     """ """
@@ -40,8 +38,7 @@ class MorphologyLocationsForm(Form):
     )
 
     def save(self, circuit_entities):
-        """Add entitysdk calls to save the collection
-        """
+        """Add entitysdk calls to save the collection"""
 
 
 class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
@@ -74,7 +71,6 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
 
     def run(self):
         try:
-
             if isinstance(self.initialize.morphology, Path):
                 import morphio
 

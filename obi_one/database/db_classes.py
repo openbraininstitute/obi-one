@@ -167,8 +167,7 @@ def neurom_morphology_getter(self):
 
 
 def morphio_morphology_getter(self):
-    """
-    Getter for the morphio_morphology property.
+    """Getter for the morphio_morphology property.
     Downloads the application/asc asset if not already downloaded
     and initializes it as morphio.Morphology([...]).
     """

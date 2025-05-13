@@ -1,7 +1,7 @@
-import numpy
-import pandas
 import warnings
 
+import numpy
+import pandas
 from scipy import stats
 
 try:

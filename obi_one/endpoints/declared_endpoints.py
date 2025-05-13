@@ -32,7 +32,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
         )
 
-        # Iterate through the assets of the morphology to find the one with content 
+        # Iterate through the assets of the morphology to find the one with content
         # type "application/asc"
         for asset in morphology.assets:
             if asset.content_type == "application/asc":

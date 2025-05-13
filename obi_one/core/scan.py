@@ -14,6 +14,7 @@ from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi_one.scientific.unions.unions_form import FormUnion
 
+
 class Scan(OBIBaseModel):
     """Takes a Form & output_root as input.
 
@@ -23,7 +24,7 @@ class Scan(OBIBaseModel):
     """
 
     form: FormUnion
-    output_root: Path = Path("")
+    output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
@@ -161,7 +162,6 @@ class Scan(OBIBaseModel):
         for coordinate_instance in self.coordinate_instances():
             # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, processing_method):
-
                 # Initialize the coordinate_instance's coordinate_output_root
                 coordinate_instance.initialize_coordinate_output_root(self.output_root)
 
@@ -212,7 +212,7 @@ class Scan(OBIBaseModel):
         # Important to use model_dump_json() instead of model_dump()
         # so OBIBaseModel's custom encoder is used to seri
         # PosixPaths as strings
-        model_dump = self.model_dump_json() 
+        model_dump = self.model_dump_json()
 
         # Now load it back into an ordered dict to do some additional modifications
         model_dump = OrderedDict(json.loads(model_dump))
@@ -241,10 +241,7 @@ class Scan(OBIBaseModel):
 
     def create_bbp_workflow_campaign_config(self, output_path: str = "") -> None:
         """Description."""
-
-        msg = (
-            "create_bbp_workflow_campaign_config() not yet complete."
-        )
+        msg = "create_bbp_workflow_campaign_config() not yet complete."
         print(msg)
         return
 
