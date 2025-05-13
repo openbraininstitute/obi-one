@@ -1,6 +1,6 @@
 import json
 import os
-from typing import ClassVar, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import Field, PrivateAttr, model_validator
 
@@ -44,6 +44,7 @@ class SimulationsForm(Form):
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
+        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
 
         sonata_version: list[int] | int = 1
         target_simulator: list[str] | str = "CORENEURON"
@@ -65,6 +66,13 @@ class SimulationsForm(Form):
     def initialize_stimuli(self) -> Self:
         """Initializes stimuli within simulation campaign."""
         for _k, _v in self.stimuli.items():
+            _v.simulation_level_name = _k
+        return self
+
+    @model_validator(mode="after")
+    def initialize_recordings(self) -> Self:
+        """Initializes recordings within simulation campaign."""
+        for _k, _v in self.recordings.items():
             _v.simulation_level_name = _k
         return self
 
@@ -117,6 +125,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self.initialize.extracellular_calcium_concentration
         )
         self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
+        self._sonata_config["conditions"]["spike_location"] = self.initialize.spike_location
 
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
@@ -131,7 +140,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config["reports"][recording_key] = recording.generate_config()
+            self._sonata_config["reports"].update(recording.config())
 
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
