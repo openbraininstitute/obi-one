@@ -2,7 +2,7 @@ import requests
 
 import obi_one as obi
 
-grid_scan = obi.deserialize_obi_object_from_json_file("../obi_output/circuit_simulations/grid_scan/generate_scan_config.json")
+grid_scan = obi.deserialize_obi_object_from_json_file("../obi-output/circuit_simulations/grid_scan/generate_scan_config.json")
 grid_scan_obi_json_serialization = grid_scan.serialize()
 
 # print(grid_scan_obi_json_serialization)

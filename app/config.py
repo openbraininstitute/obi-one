@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     AUTH_CACHE_MAX_TTL: int = 300  # seconds
     AUTH_CACHE_INFO: bool = False
 
-    OUTPUT_DIR: Path = Path("../obi_output")
+    OUTPUT_DIR: Path = Path("../obi-output")
     ENTITYCORE_URL: str = "http://127.0.0.1:8000"
 
 
