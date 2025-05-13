@@ -161,7 +161,8 @@ def neurom_morphology_getter(self):
         if swc_file:
             self._neurom_morphology = load_morphology(swc_file)
         else:
-            raise ValueError("No valid application/asc asset found for morphology.")
+            msg = "No valid application/asc asset found for morphology."
+            raise ValueError(msg)
     return self._neurom_morphology
 
 

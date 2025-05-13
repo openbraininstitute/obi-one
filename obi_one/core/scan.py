@@ -3,6 +3,8 @@ import json
 import os
 from collections import OrderedDict
 from importlib.metadata import version
+from itertools import product
+from pathlib import Path
 
 from pydantic import PrivateAttr, ValidationError
 
@@ -12,23 +14,24 @@ from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi_one.scientific.unions.unions_form import FormUnion
 
-
 class Scan(OBIBaseModel):
-    """- Takes a Form & output_root as input
+    """Takes a Form & output_root as input.
+
     - Creates multi-dimensional parameter scans through calls to generate and run
     - Includes several intermediate functions for computing multi-dimensional parameter scans:
         i.e. multiple_value_parameters, coordinate_parameters, coordinate_instances
     """
 
     form: FormUnion
-    output_root: str
+    output_root: Path = Path("")
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
-    def multiple_value_parameters(self, display=False) -> list[MultiValueScanParam]:
-        """- Iterates through Blocks of self.form to find "multi value parameters"
+    def multiple_value_parameters(self, *, display: bool = False) -> list[MultiValueScanParam]:
+        """Iterates through Blocks of self.form to find "multi value parameters".
+
             (i.e. parameters with list values of length greater than 1)
         - Returns a list of MultiValueScanParam objects
         """
@@ -52,7 +55,8 @@ class Scan(OBIBaseModel):
                     if len(block_multi_value_parameters):
                         self._multiple_value_parameters.extend(block_multi_value_parameters)
 
-            # Else if the attribute is a Block instance, call the _multiple_value_parameters method of the Block instance
+            # Else if the attribute is a Block instance, call the _multiple_value_parameters method
+            # of the Block instance
             if isinstance(attr_value, Block):
                 block_name = attr_name
                 block = attr_value
@@ -74,20 +78,24 @@ class Scan(OBIBaseModel):
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
 
-    def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
-        """Must be implemented by a subclass of Scan"""
-        raise NotImplementedError("Subclasses must implement this method")
+    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
+        """Must be implemented by a subclass of Scan."""
+        msg = "coordinate_parameters() must be implemented by a subclass of Scan."
+        raise NotImplementedError(msg)
 
-    def coordinate_instances(self, display=False) -> list[SingleCoordinateMixin]:
-        """Coordinate instance
+    def coordinate_instances(self, *, display: bool = False) -> list[SingleCoordinateMixin]:
+        """Coordinate instance.
+
         - Returns a list of "coordinate instances" by:
             - Iterating through self.coordinate_parameters()
             - Creating a single "coordinate instance" for each single coordinate parameter
 
         - Each "coordinate instance" is created by:
             - Making a deep copy of the form
-            - Editing the multi value parameters (lists) to have the values of the single coordinate parameters
-                (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] -> timestamps.timestamps_1.interval = 1.0)
+            - Editing the multi value parameters (lists) to have the values of the single
+                coordinate parameters
+                (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] ->
+                    timestamps.timestamps_1.interval = 1.0)
             - Casting the form to its single_coord_class_name type
                 (i.e. SimulationsForm -> Simulation)
         """
@@ -98,8 +106,9 @@ class Scan(OBIBaseModel):
             # Make a deep copy of self.form
             single_coordinate_form = copy.deepcopy(self.form)
 
-            # Iterate through the parameters in the single_coordinate_parameters tuple
-            # Change the value of the multi parameter from a list to the single value of the coordinate
+            # Iterate through parameters in the single_coordinate_parameters tuple
+            # Change the value of the multi parameter from a list to the single value of the
+            # coordinate
             for scan_param in single_coordinate_scan_params.scan_params:
                 level_0_val = single_coordinate_form.__dict__[scan_param.location_list[0]]
 
@@ -113,7 +122,9 @@ class Scan(OBIBaseModel):
                     if isinstance(level_1_val, Block):
                         level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
                     else:
-                        raise ValueError("Non Block options should not be used here.")
+                        msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
+                            {level_0_val}"
+                        raise ValueError(msg)
 
             try:
                 # Cast the form to its single_coord_class_name type
@@ -138,68 +149,78 @@ class Scan(OBIBaseModel):
         # Return self._coordinate_instances
         return self._coordinate_instances
 
-    def execute(self, processing_method="", data_postprocessing_method=""):
-        """Description"""
+    def execute(self, processing_method: str = "", data_postprocessing_method: str = "") -> dict:
+        """Description."""
         return_dict = {}
 
-        if processing_method == "":
-            raise ValueError("Method of SingleCoordMixin must be specified.")
+        if not processing_method:
+            msg = "Processing method must be specified."
+            raise ValueError(msg)
 
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
             # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, processing_method):
-                # Set scan_output_root
-                coordinate_instance.scan_output_root = self.output_root
+
+                # Initialize the coordinate_instance's coordinate_output_root
+                coordinate_instance.initialize_coordinate_output_root(self.output_root)
 
                 # Create the coordinate_output_root directory
                 coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
                 os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
 
                 # Call the coordinate_instance's processing_method (i.e. run, generate)
-                result = getattr(coordinate_instance, processing_method)()
+                return_dict[coordinate_instance.idx] = getattr(
+                    coordinate_instance, processing_method
+                )()
 
-                # Call either save() or data() for the instance
-                return_dict[coordinate_instance.idx] = None
-                if data_postprocessing_method != "":
+                # If a data_postprocessing_method is specified, call it
+                if data_postprocessing_method:
                     return_dict[coordinate_instance.idx] = getattr(
                         coordinate_instance, data_postprocessing_method
                     )()
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(
-                    os.path.join(
-                        coordinate_instance.coordinate_output_root, "run_coordinate_instance.json"
-                    )
+                    coordinate_instance.coordinate_output_root / "run_coordinate_instance.json"
                 )
 
             else:
                 # Raise an error if run() not implemented for the coordinate instance
-                raise NotImplementedError(
-                    f'Function "run" function not implemented for type:{type(coordinate_instance)}'
+                msg = (
+                    f"Coordinate instance of type {type(coordinate_instance)} does not have a "
+                    f"function {processing_method}."
                 )
+                raise NotImplementedError(msg)
 
         # Serialize the scan
-        self.serialize(os.path.join(self.output_root, "run_scan_config.json"))
+        self.serialize(self.output_root / "run_scan_config.json")
 
-        # # Create a bbp_workflow_campaign_config
-        # self.create_bbp_workflow_campaign_config(os.path.join(self.output_root, "bbp_workflow_campaign_config.json"))
+        # Create a bbp_workflow_campaign_config
+        self.create_bbp_workflow_campaign_config(
+            self.output_root / "bbp_workflow_campaign_config.json"
+        )
 
         return return_dict
 
-    def serialize(self, output_path=""):
-        """Serialize a Scan object
+    def serialize(self, output_path: str = "") -> dict:
+        """Serialize a Scan object.
+
         - type name added to each subobject of type
             inheriting from OBIBaseModel for future deserialization
         """
-        # Dict representation of the scan object
-        model_dump = self.model_dump(mode="json")
+        # Important to use model_dump_json() instead of model_dump()
+        # so OBIBaseModel's custom encoder is used to seri
+        # PosixPaths as strings
+        model_dump = self.model_dump_json() 
 
-        # Add the OBI version
+        # Now load it back into an ordered dict to do some additional modifications
+        model_dump = OrderedDict(json.loads(model_dump))
+
+        # Add the obi_one version to the model_dump
         model_dump["obi_one_version"] = version("obi-one")
 
         # Order keys in dict
-        model_dump = OrderedDict(model_dump)
         model_dump.move_to_end("output_root", last=False)
         model_dump.move_to_end("type", last=False)
         model_dump.move_to_end("obi_one_version", last=False)
@@ -209,15 +230,24 @@ class Scan(OBIBaseModel):
         model_dump["form"].move_to_end("type", last=False)
 
         # Create the directory and write dict to json file
-        if output_path != "":
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            with open(output_path, "w") as json_file:
+        if output_path:
+            output_path = Path(output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with output_path.open("w") as json_file:
                 json.dump(model_dump, json_file, indent=4)
 
         return model_dump
 
-    def create_bbp_workflow_campaign_config(self, output_path):
-        """Description"""
+    def create_bbp_workflow_campaign_config(self, output_path: str = "") -> None:
+        """Description."""
+
+        msg = (
+            "create_bbp_workflow_campaign_config() not yet complete."
+        )
+        print(msg)
+        return
+
         # Dictionary intialization
         campaign_config = {"dims": [], "attrs": {}, "data": [], "coords": {}, "name": ""}
 
@@ -256,18 +286,19 @@ class Scan(OBIBaseModel):
         # data
         campaign_config["data"] = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
 
-        # Write json to file
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as json_file:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_path.open("w") as json_file:
             json.dump(campaign_config, json_file, indent=4)
 
-    def display_coordinate_parameters(self):
-        """Description"""
+    def display_coordinate_parameters(self) -> None:
+        """Description."""
         print("\nCOORDINATE PARAMETERS")
         for single_coordinate_parameters in self._coordinate_parameters:
             single_coordinate_parameters.display_parameters()
 
-    def save(self):
+    def save(self) -> None:
         coordinate_instance_entities = []
         for coordinate_instance in self.coordinate_instances():
             coordinate_instance_entity = coordinate_instance.save()
@@ -276,23 +307,20 @@ class Scan(OBIBaseModel):
         self.form.save(coordinate_instance_entities)
 
 
-from itertools import product
-
-
 class GridScan(Scan):
-    """Description"""
+    """Description."""
 
-    def coordinate_parameters(self, display=False) -> list[SingleCoordinateScanParams]:
-        """Description"""
+    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
+        """Description."""
         single_values_by_multi_value = []
         multi_value_parameters = self.multiple_value_parameters()
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
-                single_values = []
-                for value in multi_value.values:
-                    single_values.append(
-                        SingleValueScanParam(location_list=multi_value.location_list, value=value)
-                    )
+                single_values = [
+                    SingleValueScanParam(location_list=multi_value.location_list, value=value)
+                    for value in multi_value.values
+                ]
+
                 single_values_by_multi_value.append(single_values)
 
             self._coordinate_parameters = []
@@ -317,18 +345,20 @@ class GridScan(Scan):
 
 
 class CoupledScan(Scan):
-    """Description"""
+    """Description."""
 
-    def coordinate_parameters(self, display=False) -> list:
-        """Description"""
+    def coordinate_parameters(self, *, display: bool = False) -> list:
+        """Description."""
         previous_len = -1
 
         multi_value_parameters = self.multiple_value_parameters()
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 current_len = len(multi_value.values)
-                if previous_len != -1 and current_len != previous_len:
-                    raise ValueError("All multi parameters must have the same number of values.")
+                if previous_len not in {-1, current_len}:
+                    msg = f"Multi value parameters have different lengths: {previous_len} and \
+                            {current_len}"
+                    raise ValueError(msg)
 
                 previous_len = current_len
 
@@ -336,14 +366,13 @@ class CoupledScan(Scan):
 
             self._coordinate_parameters = []
             for coord_i in range(n_coords):
-                scan_params = []
-                for multi_value in multi_value_parameters:
-                    scan_params.append(
-                        SingleValueScanParam(
-                            location_list=multi_value.location_list,
-                            value=multi_value.values[coord_i],
-                        )
+                scan_params = [
+                    SingleValueScanParam(
+                        location_list=multi_value.location_list,
+                        value=multi_value.values[coord_i],
                     )
+                    for multi_value in multi_value_parameters
+                ]
                 self._coordinate_parameters.append(
                     SingleCoordinateScanParams(scan_params=scan_params)
                 )

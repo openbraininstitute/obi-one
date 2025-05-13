@@ -1,4 +1,3 @@
-import traceback
 from typing import ClassVar
 
 from pydantic import Field
@@ -26,13 +25,9 @@ class SingleBlockGenerateTestForm(Form):
 class SingleBlockGenerateTest(SingleBlockGenerateTestForm, SingleCoordinateMixin):
     """Test."""
 
-    def run(self):
-        try:
-            with open(self.initialize.morphology_path, "w") as file:
-                file.write("Hello world!")
-
-        except Exception as e:
-            traceback.print_exception(e)
+    @staticmethod
+    def run() -> None:
+        L.info("Running SingleBlockGenerateTest")
 
 
 """
@@ -56,8 +51,9 @@ class SingleBlockEntityTestForm(Form):
 class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin):
     """Test."""
 
-    def run(self) -> None:
-        return None
+    @staticmethod
+    def run() -> None:
+        L.info("Running SingleBlockEntitySDKTest")
 
 
 class BlockForMultiBlockEntitySDKTest(Block):
@@ -82,5 +78,6 @@ class MultiBlockEntitySDKTestForm(Form):
 class MultiBlockEntitySDKTest(MultiBlockEntitySDKTestForm, SingleCoordinateMixin):
     """Test."""
 
-    def run(self) -> None:
-        return None
+    @staticmethod
+    def run() -> None:
+        L.info("Running MultiBlockEntitySDKTest")

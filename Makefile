@@ -38,13 +38,16 @@ check-deps:  ## Check that the dependencies in the existing lock file are valid
 	uv lock --locked
 
 format:  ## Run formatters
-	uv run -m ruff format
-	uv run -m ruff check --fix
+	uv run -m ruff format $(FILE)
+	uv run -m ruff check --fix $(FILE)
 
 lint:  ## Run linters
 	#uv run -m ruff format --check
 	#uv run -m ruff check
 	#uv run -m pyright obi
+
+format_count:
+	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
 
 build:  ## Build the Docker image
 	docker compose --progress=plain build app

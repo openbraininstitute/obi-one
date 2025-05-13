@@ -5,6 +5,8 @@ from importlib.metadata import version
 
 from pydantic import field_validator
 
+from pathlib import Path
+
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
@@ -12,10 +14,10 @@ from obi_one.core.param import SingleValueScanParam
 
 class SingleCoordinateScanParams(OBIBaseModel):
     scan_params: list[SingleValueScanParam] = []
-    nested_coordinate_subpath_str: str = ""
+    nested_coordinate_subpath_str: Path = Path("")
 
     @property
-    def nested_param_name_and_value_subpath(self):
+    def nested_param_name_and_value_subpath(self) -> Path:
         if len(self.scan_params):
             self.nested_coordinate_subpath_str = ""
             for scan_param in self.scan_params:
@@ -23,19 +25,19 @@ class SingleCoordinateScanParams(OBIBaseModel):
                     self.nested_coordinate_subpath_str
                     + f"{scan_param.location_str}={scan_param.value}/"
                 )
-            return self.nested_coordinate_subpath_str
-        return self.nested_coordinate_subpath_str
+            return Path(self.nested_coordinate_subpath_str)
+        return Path(self.nested_coordinate_subpath_str)
 
     @property
-    def nested_param_value_subpath(self):
+    def nested_param_value_subpath(self) -> Path:
         if len(self.scan_params):
             self.nested_coordinate_subpath_str = ""
             for scan_param in self.scan_params:
                 self.nested_coordinate_subpath_str = (
                     self.nested_coordinate_subpath_str + f"{scan_param.value}/"
                 )
-            return self.nested_coordinate_subpath_str
-        return self.nested_coordinate_subpath_str
+            return Path(self.nested_coordinate_subpath_str)
+        return Path(self.nested_coordinate_subpath_str)
 
     def display_parameters(self):
         output = ""
@@ -54,8 +56,8 @@ class SingleCoordinateMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""
 
     idx: int = -1
-    scan_output_root: str = ""
-    _coordinate_output_root: str = ""
+    scan_output_root: Path = Path("")
+    coordinate_output_root: Path = Path("")
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
@@ -74,38 +76,37 @@ class SingleCoordinateMixin:
 
         return value
 
-    @property
-    def coordinate_output_root(self):
-        if self._coordinate_output_root == "":
-            if self.coordinate_directory_option == "NAME_EQUALS_VALUE":
-                self._coordinate_output_root = os.path.join(
-                    self.scan_output_root,
-                    self.single_coordinate_scan_params.nested_param_name_and_value_subpath,
-                )
-            elif self.coordinate_directory_option == "VALUE":
-                self._coordinate_output_root = os.path.join(
-                    self.scan_output_root,
-                    self.single_coordinate_scan_params.nested_param_value_subpath,
-                )
-            elif self.coordinate_directory_option == "ZERO_INDEX":
-                self._coordinate_output_root = os.path.join(self.scan_output_root, f"{self.idx}")
-            else:
-                raise ValueError(
-                    f"Invalid coordinate_directory_option: {self.coordinate_directory_option}"
-                )
 
-        return self._coordinate_output_root
+    def initialize_coordinate_output_root(self, scan_output_root: Path):
+        """
+        Initialize the output root paths for the scan and coordinate directories.
+        """
+        self.scan_output_root = scan_output_root
+        if self.coordinate_directory_option == "NAME_EQUALS_VALUE":
+            self.coordinate_output_root = \
+                self.scan_output_root / self.single_coordinate_scan_params.nested_param_name_and_value_subpath
 
-    @coordinate_output_root.setter
-    def coordinate_output_root(self, value):
-        self._coordinate_output_root = value
+        elif self.coordinate_directory_option == "VALUE":
+            self.coordinate_output_root = \
+                self.scan_output_root / self.single_coordinate_scan_params.nested_param_value_subpath,
+        elif self.coordinate_directory_option == "ZERO_INDEX":
+            self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
+        else:
+            raise ValueError(
+                f"Invalid coordinate_directory_option: {self.coordinate_directory_option}"
+            )
 
     def serialize(self, output_path):
-        model_dump = self.model_dump(mode="json")
-        model_dump = OrderedDict(model_dump)
-        model_dump["obi_one_version"] = version("obi-one")
-        model_dump["coordinate_output_root"] = self.coordinate_output_root
 
+        # Important to use model_dump_json() instead of model_dump()
+        # so OBIBaseModel's custom encoder is used to seri
+        # PosixPaths as strings
+        model_dump = self.model_dump_json() 
+
+        # Now load it back into a dict to do some additional modifications
+        model_dump = OrderedDict(json.loads(model_dump))
+
+        model_dump["obi_one_version"] = version("obi-one")
         model_dump.move_to_end("scan_output_root", last=False)
         model_dump.move_to_end("coordinate_output_root", last=False)
         model_dump.move_to_end("idx", last=False)
