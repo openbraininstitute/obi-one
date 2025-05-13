@@ -14,6 +14,7 @@ class Form(OBIBaseModel):
         module = __import__(self.__module__)
         class_to_cast_to = getattr(module, self.single_coord_class_name)
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
+        single_coord.type = self.single_coord_class_name
         return single_coord
 
     @property

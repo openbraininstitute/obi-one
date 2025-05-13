@@ -14,7 +14,6 @@ from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi_one.scientific.unions.unions_form import FormUnion
 
-
 class Scan(OBIBaseModel):
     """Takes a Form & output_root as input.
 
@@ -24,7 +23,7 @@ class Scan(OBIBaseModel):
     """
 
     form: FormUnion
-    output_root: str
+    output_root: Path = ""
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
@@ -162,8 +161,9 @@ class Scan(OBIBaseModel):
         for coordinate_instance in self.coordinate_instances():
             # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, processing_method):
-                # Set scan_output_root
-                coordinate_instance.scan_output_root = self.output_root
+
+                # Initialize the coordinate_instance's coordinate_output_root
+                coordinate_instance.initialize_coordinate_output_root(self.output_root)
 
                 # Create the coordinate_output_root directory
                 coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
@@ -174,6 +174,7 @@ class Scan(OBIBaseModel):
                     coordinate_instance, processing_method
                 )()
 
+                # If a data_postprocessing_method is specified, call it
                 if data_postprocessing_method:
                     return_dict[coordinate_instance.idx] = getattr(
                         coordinate_instance, data_postprocessing_method
@@ -181,7 +182,7 @@ class Scan(OBIBaseModel):
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(
-                    coordinate_instance.coordinate_output_root + "run_coordinate_instance.json"
+                    coordinate_instance.coordinate_output_root / "run_coordinate_instance.json"
                 )
 
             else:
@@ -193,11 +194,11 @@ class Scan(OBIBaseModel):
                 raise NotImplementedError(msg)
 
         # Serialize the scan
-        self.serialize(self.output_root + "run_scan_config.json")
+        self.serialize(self.output_root / "run_scan_config.json")
 
         # Create a bbp_workflow_campaign_config
         self.create_bbp_workflow_campaign_config(
-            self.output_root + "bbp_workflow_campaign_config.json"
+            self.output_root / "bbp_workflow_campaign_config.json"
         )
 
         return return_dict
@@ -208,14 +209,18 @@ class Scan(OBIBaseModel):
         - type name added to each subobject of type
             inheriting from OBIBaseModel for future deserialization
         """
-        # Dict representation of the scan object
-        model_dump = self.model_dump(mode="json")
+        # Important to use model_dump_json() instead of model_dump()
+        # so OBIBaseModel's custom encoder is used to seri
+        # PosixPaths as strings
+        model_dump = self.model_dump_json() 
 
-        # Add the OBI version
+        # Now load it back into an ordered dict to do some additional modifications
+        model_dump = OrderedDict(json.loads(model_dump))
+
+        # Add the obi_one version to the model_dump
         model_dump["obi_one_version"] = version("obi-one")
 
         # Order keys in dict
-        model_dump = OrderedDict(model_dump)
         model_dump.move_to_end("output_root", last=False)
         model_dump.move_to_end("type", last=False)
         model_dump.move_to_end("obi_one_version", last=False)
