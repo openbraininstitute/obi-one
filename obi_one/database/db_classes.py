@@ -166,8 +166,30 @@ def neurom_morphology_getter(self):
     return self._neurom_morphology
 
 
+def morphio_morphology_getter(self):
+    """
+    Getter for the morphio_morphology property.
+    Downloads the application/asc asset if not already downloaded
+    and initializes it as morphio.Morphology([...]).
+    """
+    if not hasattr(self, "_morphio_morphology"):
+        swc_file = self.swc_file
+        if swc_file:
+            from morphio import Morphology
+
+            self._morphio_morphology = Morphology(swc_file)
+        else:
+            raise ValueError("No valid application/asc asset found for morphology.")
+    return self._morphio_morphology
+
+
 """
 Add the neurom_morphology property to the classes
 """
 ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
 ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
+"""
+Add the morphio_morphology property to the classes
+"""
+ReconstructionMorphology.morphio_morphology = property(morphio_morphology_getter)
+ReconstructionMorphologyFromID.morphio_morphology = property(morphio_morphology_getter)
