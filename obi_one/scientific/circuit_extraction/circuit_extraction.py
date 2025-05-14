@@ -23,6 +23,7 @@ class CircuitExtractions(Form):
 
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
+        run_validation: bool = False
 
     initialize: Initialize
 
@@ -45,6 +46,7 @@ import shutil
 import traceback
 
 import bluepysnap as snap
+import bluepysnap.circuit_validation
 import tqdm
 from brainbuilder.utils.sonata import split_population
 
@@ -187,6 +189,12 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
                 shutil.copytree(source_dir, dest_dir)
+
+            # Run circuit validation
+            if self.initialize.run_validation:
+                errors = snap.circuit_validation.validate(new_circuit_path, skip_slow=True)
+                assert len(errors) == 0, f"Circuit validation error(s) found: {errors}"
+                print ("No validation errors found!")
 
             print("Extraction DONE")
 
