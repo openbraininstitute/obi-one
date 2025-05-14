@@ -24,6 +24,8 @@ class CircuitExtractions(Form):
                                               description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
         create_external: bool | list[bool] = Field(default=True, name="Create external",
                                                    description="whether to create new virtual populations of all the incoming connections")
+        node_delete_prefix: str | list[str]
+        edge_delete_prefix: str | list[str]
 
     initialize: Initialize
     
@@ -43,6 +45,8 @@ import tqdm
 from bluepysnap import Circuit
 from brainbuilder.utils.sonata import split_population
 
+from .post_process_helpers import preprocess, postprocess
+
 
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain
@@ -55,12 +59,15 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
     def run(self) -> str:
         try:
+            new_path, biophys_pop_name = preprocess(self.initialize.circuit_path.path,
+                       self.initialize.node_delete_prefix,
+                       self.initialize.edge_delete_prefix)
             # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit_path}'")
             split_population.split_subcircuit(
                 self.coordinate_output_root,
                 self.initialize.node_set,
-                self.initialize.circuit_path.path,
+                new_path,
                 self.initialize.do_virtual,
                 self.initialize.create_external,
             )
@@ -173,6 +180,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
                 shutil.copytree(source_dir, dest_dir)
+
+            postprocess(new_circuit, biophys_pop_name)
 
             print("Extraction DONE")
 
