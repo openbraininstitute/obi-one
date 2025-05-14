@@ -1,9 +1,7 @@
-from pydantic import model_validator
-from typing import ClassVar, Self
+from typing import ClassVar
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
@@ -63,7 +61,9 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 self.initialize.circuit, self.initialize.circuit.default_population_name
             )
             sonata_circuit = self.initialize.circuit.sonata_circuit
-            NeuronSet.add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+            NeuronSet.add_node_set_to_circuit(
+                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+            )
 
             # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
@@ -176,9 +176,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
             # Copy .mod files, if any
             mod_folder = "mod"
-            source_dir = os.path.join(
-                os.path.split(self.initialize.circuit.path)[0], mod_folder
-            )
+            source_dir = os.path.join(os.path.split(self.initialize.circuit.path)[0], mod_folder)
             if os.path.exists(source_dir):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
@@ -188,7 +186,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             if self.initialize.run_validation:
                 errors = snap.circuit_validation.validate(new_circuit_path, skip_slow=True)
                 assert len(errors) == 0, f"Circuit validation error(s) found: {errors}"
-                print ("No validation errors found!")
+                print("No validation errors found!")
 
             print("Extraction DONE")
 
