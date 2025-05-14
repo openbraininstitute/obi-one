@@ -1,10 +1,14 @@
-from typing import ClassVar
+from pydantic import model_validator
+from typing import ClassVar, Self
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+
 
 class CircuitExtractions(Form):
     """ """
@@ -15,11 +19,18 @@ class CircuitExtractions(Form):
         "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain all morphologies, hoc files, and mod files that are required to simulate the extracted circuit."
     )
 
+    neuron_set: NeuronSetUnion
+
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
-        node_set: str | list[str]
 
     initialize: Initialize
+
+    @model_validator(mode="after")
+    def initialize_neuron_set(self) -> Self:
+        """Initializes neuron set within circuit extraction."""
+        self.neuron_set.simulation_level_name = self.neuron_set.__class__.__name__
+        return self
 
     def save_collection(self, circuit_entities):
         pass
@@ -49,12 +60,21 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
     def run(self) -> str:
         try:
+            # Add neuron set to SONATA circuit object
+            # (will raise an error in case already existing)
+            nset_name = self.neuron_set.name
+            nset_def = self.neuron_set.get_node_set_definition(
+                self.initialize.circuit, self.initialize.circuit.default_population_name
+            )
+            sonata_circuit = self.initialize.circuit.sonata_circuit
+            NeuronSet.add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+
             # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
             split_population.split_subcircuit(
                 self.coordinate_output_root,
-                self.initialize.node_set,
-                self.initialize.circuit.path,
+                nset_name,
+                sonata_circuit,
                 True,
                 False,
             )
@@ -174,7 +194,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             if str(e) == "Unable to synchronously create group (name already exists)":
                 print(
                     "Error:",
-                    f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.",
+                    f"Subcircuit {self.neuron_set} already exists. Subcircuit must be deleted before running the extraction.",
                 )
             else:
                 traceback.print_exception(e)
