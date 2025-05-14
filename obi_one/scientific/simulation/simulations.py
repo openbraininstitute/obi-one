@@ -20,6 +20,7 @@ from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 
 class SimulationsForm(Form):
@@ -34,7 +35,7 @@ class SimulationsForm(Form):
     recordings: dict[str, RecordingUnion]
     neuron_sets: dict[str, NeuronSetUnion]
     synapse_sets: dict[str, SynapseSetUnion]
-    intracellular_location_sets: dict[str, IntracellularLocationSetUnion]
+    intracellular_location_sets: dict[str, MorphologyLocationUnion]
     extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
