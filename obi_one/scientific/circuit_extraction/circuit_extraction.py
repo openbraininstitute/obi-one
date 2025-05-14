@@ -27,12 +27,6 @@ class CircuitExtractions(Form):
 
     initialize: Initialize
 
-    @model_validator(mode="after")
-    def initialize_neuron_set(self) -> Self:
-        """Initializes neuron set within circuit extraction."""
-        self.neuron_set.simulation_level_name = self.neuron_set.__class__.__name__
-        return self
-
     def save_collection(self, circuit_entities):
         pass
         """
@@ -64,7 +58,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
         try:
             # Add neuron set to SONATA circuit object
             # (will raise an error in case already existing)
-            nset_name = self.neuron_set.name
+            nset_name = self.neuron_set.__class__.__name__
             nset_def = self.neuron_set.get_node_set_definition(
                 self.initialize.circuit, self.initialize.circuit.default_population_name
             )
