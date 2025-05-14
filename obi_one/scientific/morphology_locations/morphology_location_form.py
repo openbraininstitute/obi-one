@@ -69,7 +69,7 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
         plt.axis("equal")
         return fig
 
-    def run(self):
+    def run(self) -> None:
         try:
             if isinstance(self.initialize.morphology, Path):
                 import morphio
