@@ -1,3 +1,6 @@
+import os
+import numpy as np
+
 from abc import ABC, abstractmethod
 from typing import Annotated
 
@@ -346,6 +349,44 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
             }
         return sonata_config
 
+class SpikeStimulus(Stimulus):
+    gids = gids  # list of neuron IDs (integers) # TODO: use NeuronSet
+    output_path = output_path # where to save out.dat
+    output_file = os.path.join(self.output_path, "out.dat") # TODO: convert to sonata out.h5
+
+        # Ensure the output directory exists
+        os.makedirs(self.output_path, exist_ok=True)
+
+    def generate_spikes(self):
+        raise NotImplementedError("Subclasses should implement this method.")
+
+    def write_spikes(self, spikes):
+        """
+        spikes: list of tuples (gid, spike_time)
+        """
+        with open(self.output_file, 'w') as f:
+            f.write('/scatter\n')
+            for gid, spike_time in sorted(spikes, key=lambda x: (x[1], x[0])):
+                f.write(f"{gid} {spike_time:.3f}\n")
+
+class PoissonSpikeStimulus(SpikeStimulus):
+    def __init__(self, gids, output_path, start_time, duration, frequency):
+        super().__init__(gids, output_path, start_time, duration)
+        self.frequency = frequency  # Hz
+        self.generate_spikes()  # Automatically generate and write spikes upon instantiation
+
+    def generate_spikes(self):
+        spikes = []
+        for gid in self.gids:
+            start_time, end_time = self.timestamps.timestamps()
+            t = start_time
+            while t < end_time:
+                # Draw next spike time from exponential distribution
+                interval = np.random.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                t += interval
+                if t < end_time:
+                    spikes.append((gid, t))
+        self.write_spikes(spikes)
 
 class SynchronousSingleSpikeStimulus(Stimulus):
     spike_probability: float | list[float]
