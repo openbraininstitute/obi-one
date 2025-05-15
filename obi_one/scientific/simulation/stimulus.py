@@ -1,4 +1,7 @@
 import os
+from typing import List
+from pathlib import Path
+
 import numpy as np
 
 from abc import ABC, abstractmethod
@@ -350,12 +353,22 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 class SpikeStimulus(Stimulus):
-    gids = gids  # list of neuron IDs (integers) # TODO: use NeuronSet
-    output_path = output_path # where to save out.dat
-    output_file = os.path.join(self.output_path, "out.dat") # TODO: convert to sonata out.h5
+    gids: List[int]  # list of neuron IDs (integers) # TODO: use NeuronSet
+    duration: float
+    output_path: Path # where to save out.dat
 
-        # Ensure the output directory exists
-        os.makedirs(self.output_path, exist_ok=True)
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp,
+                "duration": self.duration,
+                "cells": self.neuron_set.name,
+                "module": self._module,
+                "input_type": self._input_type,
+            }
+        return sonata_config
 
     def generate_spikes(self):
         raise NotImplementedError("Subclasses should implement this method.")
@@ -364,21 +377,41 @@ class SpikeStimulus(Stimulus):
         """
         spikes: list of tuples (gid, spike_time)
         """
-        with open(self.output_file, 'w') as f:
+        # Ensure the output directory exists
+        os.makedirs(self.output_path, exist_ok=True)
+
+        output_file = os.path.join(self.output_path, "out.dat")  # TODO: convert to sonata out.h5
+
+        with open(output_file, 'w') as f:
             f.write('/scatter\n')
             for gid, spike_time in sorted(spikes, key=lambda x: (x[1], x[0])):
                 f.write(f"{gid} {spike_time:.3f}\n")
 
 class PoissonSpikeStimulus(SpikeStimulus):
-    def __init__(self, gids, output_path, start_time, duration, frequency):
-        super().__init__(gids, output_path, start_time, duration)
-        self.frequency = frequency  # Hz
-        self.generate_spikes()  # Automatically generate and write spikes upon instantiation
+    frequency: float  # Hz
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp,
+                "duration": self.duration,
+                "cells": self.neuron_set.name,
+                "module": self._module,
+                "input_type": self._input_type,
+            }
+        return sonata_config
+
+    # def __init__(self):
+        # Automatically generate and write spikes upon instantiation
+    #   self.generate_spikes()
 
     def generate_spikes(self):
         spikes = []
+        start_time = self.timestamps.timestamps()
+        end_time = start_time + self.duration
         for gid in self.gids:
-            start_time, end_time = self.timestamps.timestamps()
             t = start_time
             while t < end_time:
                 # Draw next spike time from exponential distribution
