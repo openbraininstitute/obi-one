@@ -134,6 +134,19 @@ from obi_one.scientific.morphology_locations.morphology_location_block import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
+from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
+    AfferentSynapsesBlock,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
+    PathDistanceConstrainedFractionOfSynapses,
+    PathDistanceConstrainedNumberOfSynapses,
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
+    ClusteredSynapsesByCount,
+    ClusteredSynapsesByMaxDistance
+)
 from obi_one.scientific.morphology_locations.morphology_location_form import (
     MorphologyLocations,
     MorphologyLocationsForm,
@@ -184,3 +197,4 @@ from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_synapse_set import AfferentSynapseSetUnion
