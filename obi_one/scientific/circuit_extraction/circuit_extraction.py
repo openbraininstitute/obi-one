@@ -152,6 +152,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                         assert len(src_morph_dirs) > 0, "ERROR: No morphologies of any supported format found!"
                         for _morph_ext in src_morph_dirs:
                             if _morph_ext == "h5" and os.path.isfile(src_morph_dirs[_morph_ext]):
+                                # FIXME: If there is only one neuron extracted, consider removing the container!!
                                 # Copy containerized morphologies into new container
                                 os.makedirs(os.path.split(dest_morph_dirs[_morph_ext])[0], exist_ok=True)
                                 src_container = src_morph_dirs[_morph_ext]
