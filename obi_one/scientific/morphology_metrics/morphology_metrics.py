@@ -1,7 +1,11 @@
+import io
 from typing import Annotated, ClassVar
 
+import entitysdk
 import neurom
+from entitysdk.models.morphology import ReconstructionMorphology
 from fastapi import HTTPException
+from neurom import load_morphology
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
@@ -98,3 +102,33 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 
         except Exception as e:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+
+
+def get_morphology_metrics(
+    reconstruction_morphology_id: str, entity_client: entitysdk.client.Client
+) -> MorphologyMetricsOutput:
+    morphology = entity_client.get_entity(
+        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
+    )
+
+    # Iterate through the assets of the morphology to find the one with content
+    # type "application/asc"
+    for asset in morphology.assets:
+        if asset.content_type == "application/asc":
+            # Download the content into memory
+            content = entity_client.download_content(
+                entity_id=morphology.id,
+                entity_type=ReconstructionMorphology,
+                asset_id=asset.id,
+            ).decode(encoding="utf-8")
+
+            # Use StringIO to create a file-like object in memory from the string content
+            neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
+
+            # Calculate the metrics using neurom
+            morphology_metrics = MorphologyMetricsOutput.from_morphology(neurom_morphology)
+
+            return morphology_metrics
+    return None
+
+

@@ -1,17 +1,16 @@
-import io
 from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
-import entitysdk.common
-from entitysdk.models.morphology import ReconstructionMorphology
 from fastapi import APIRouter, Depends
-from neurom import load_morphology
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsOutput
+from obi_one.scientific.morphology_metrics.morphology_metrics import (
+    MorphologyMetricsOutput,
+    get_morphology_metrics,
+)
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
@@ -25,32 +24,17 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
     ) -> MorphologyMetricsOutput:
-        L.info("neurom_metrics")
+        L.info("get_morphology_metrics")
 
-        # Get the reconstruction morphology from entity core
-        morphology = entity_client.get_entity(
-            entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
+        metrics = get_morphology_metrics(
+            reconstruction_morphology_id=reconstruction_morphology_id,
+            entity_client=entity_client,
         )
-
-        # Iterate through the assets of the morphology to find the one with content
-        # type "application/asc"
-        for asset in morphology.assets:
-            if asset.content_type == "application/asc":
-                # Download the content into memory
-                content = entity_client.download_content(
-                    entity_id=morphology.id,
-                    entity_type=ReconstructionMorphology,
-                    asset_id=asset.id,
-                ).decode(encoding="utf-8")
-
-                # Use StringIO to create a file-like object in memory from the string content
-                neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
-
-                # Calculate the metrics using neurom
-                morphology_metrics = MorphologyMetricsOutput.from_morphology(neurom_morphology)
-
-                return morphology_metrics
-
+        if metrics:
+            return metrics
+        L.error(
+            f"Reconstruction morphology {reconstruction_morphology_id} metrics computation issue"
+        )
         raise ApiError(
             message="Asset not found",
             error_code=ApiErrorCode.NOT_FOUND,
