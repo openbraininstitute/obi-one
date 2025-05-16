@@ -2,9 +2,12 @@ from typing import ClassVar
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 class CircuitExtractions(Form):
     """ """
@@ -15,11 +18,14 @@ class CircuitExtractions(Form):
         "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain all morphologies, hoc files, and mod files that are required to simulate the extracted circuit."
     )
 
+    neuron_set: NeuronSetUnion
+
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
-        node_set: str | list[str]
+        circuit: Circuit | list[Circuit]
+        run_validation: bool = False
 
     initialize: Initialize
+    neuron_set: NeuronSetUnion
 
     def save_collection(self, circuit_entities):
         pass
@@ -33,8 +39,9 @@ import os
 import shutil
 import traceback
 
+import bluepysnap as snap
+import bluepysnap.circuit_validation
 import tqdm
-from bluepysnap import Circuit
 from brainbuilder.utils.sonata import split_population
 
 
@@ -49,12 +56,23 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
     def run(self) -> str:
         try:
+            # Add neuron set to SONATA circuit object
+            # (will raise an error in case already existing)
+            nset_name = self.neuron_set.__class__.__name__
+            nset_def = self.neuron_set.get_node_set_definition(
+                self.initialize.circuit, self.initialize.circuit.default_population_name
+            )
+            sonata_circuit = self.initialize.circuit.sonata_circuit
+            NeuronSet.add_node_set_to_circuit(
+                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+            )
+
             # Create subcircuit using "brainbuilder"
-            print(f"Extracting subcircuit from '{self.initialize.circuit_path}'")
+            print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
             split_population.split_subcircuit(
                 self.coordinate_output_root,
-                self.initialize.node_set,
-                self.initialize.circuit_path.path,
+                nset_name,
+                sonata_circuit,
                 True,
                 False,
             )
@@ -74,7 +92,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                         for _v in value:
                             rebase_config(_v, old_base, new_base)
 
-            old_base = os.path.split(self.initialize.circuit_path.path)[0]
+            old_base = os.path.split(self.initialize.circuit.path)[0]
 
             # Quick fix to deal with symbolic links in base circuit (not usually required)
             # alt_base = old_base  # Alternative old base
@@ -82,7 +100,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             #     alt_base = alt_base.removesuffix(_sfix)
 
             new_base = "$BASE_DIR"
-            new_circuit_path = self.coordinate_output_root + "circuit_config.json"
+            new_circuit_path = os.path.join(self.coordinate_output_root, "circuit_config.json")
             # shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")  # Create backup before modifying
 
             with open(new_circuit_path) as config_file:
@@ -94,8 +112,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 json.dump(config_dict, config_file, indent=4)
 
             # Copy subcircuit morphologies and e-models (separately per node population)
-            original_circuit = Circuit(self.initialize.circuit_path.path)
-            new_circuit = Circuit(new_circuit_path)
+            original_circuit = self.initialize.circuit.sonata_circuit
+            new_circuit = snap.Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
                 if pop.config["type"] == "biophysical":
                     # Copying morphologies of any (supported) format
@@ -160,13 +178,17 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
             # Copy .mod files, if any
             mod_folder = "mod"
-            source_dir = os.path.join(
-                os.path.split(self.initialize.circuit_path.path)[0], mod_folder
-            )
+            source_dir = os.path.join(os.path.split(self.initialize.circuit.path)[0], mod_folder)
             if os.path.exists(source_dir):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
                 shutil.copytree(source_dir, dest_dir)
+
+            # Run circuit validation
+            if self.initialize.run_validation:
+                errors = snap.circuit_validation.validate(new_circuit_path, skip_slow=True)
+                assert len(errors) == 0, f"Circuit validation error(s) found: {errors}"
+                print("No validation errors found!")
 
             print("Extraction DONE")
 
@@ -174,7 +196,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             if str(e) == "Unable to synchronously create group (name already exists)":
                 print(
                     "Error:",
-                    f"Subcircuit {self.initialize.node_set} already exists. Subcircuit must be deleted before running the extraction.",
+                    f"Subcircuit {self.neuron_set} already exists. Subcircuit must be deleted before running the extraction.",
                 )
             else:
                 traceback.print_exception(e)
