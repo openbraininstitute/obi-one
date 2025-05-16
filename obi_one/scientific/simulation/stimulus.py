@@ -357,23 +357,28 @@ class SynchronousSingleSpikeStimulus(Stimulus):
 
 
 class SpikeStimulus(Stimulus):
-    # _module: str = "noise"
-    # _input_type: str = "current_clamp"
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
     duration: float
     output_path: Path # where to save out.dat
     neuron_set: NeuronSetUnion
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
+    def prepare_output(self):
+        os.makedirs(self.output_path, exist_ok=True) # Ensure the output directory exists
+        return self.output_path / "out.dat" # TODO: convert to sonata out.h5
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+    def _generate_config(self) -> dict:
+        output_file = self.prepare_output()
+        sonata_config = {}
+        sonata_config[self.name] = {
+                "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
                 "duration": self.duration,
                 "cells": self.neuron_set.name,
-                # "module": self._module,
-                # "input_type": self._input_type,
+                "module": self._module,
+                "input_type": self._input_type,
+                "spike_file": str(output_file)
             }
+        
         return sonata_config
 
     def generate_spikes(self):
@@ -384,30 +389,27 @@ class SpikeStimulus(Stimulus):
         spikes: list of tuples (gid, spike_time)
         """
         # Ensure the output directory exists
-        os.makedirs(self.output_path, exist_ok=True)
-
-        output_file = os.path.join(self.output_path, "out.dat")  # TODO: convert to sonata out.h5
-
+        output_file = self.prepare_output()
         with open(output_file, 'w') as f:
             f.write('/scatter\n')
             for gid, spike_time in sorted(spikes, key=lambda x: (x[1], x[0])):
                 f.write(f"{gid} {spike_time:.3f}\n")
 
 class PoissonSpikeStimulus(SpikeStimulus):
-    # _module: str = "noise"
-    # _input_type: str = "current_clamp"
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
     frequency: float  # Hz
 
     def _generate_config(self) -> dict:
+        output_file = self.prepare_output()
         sonata_config = {}
-
-        timestamp = self.timestamps.timestamps()
-        sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp, # maybe it is not needed because I have the times in out.dat
+        sonata_config[self.name] = {
+                "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
                 "duration": self.duration,
                 "cells": self.neuron_set.name,
-                # "module": self._module,
-                # "input_type": self._input_type,
+                "module": self._module,
+                "input_type": self._input_type,
+                "spike_file": str(output_file)
             }
         # TODO: add a block for the spike reply
         self.generate_spikes()
@@ -415,10 +417,11 @@ class PoissonSpikeStimulus(SpikeStimulus):
         return sonata_config
 
     def generate_spikes(self):
-        gids = self.neuron_set.get_neuron_ids()
+        gids = self.neuron_set.get_neuron_ids(circuit, population)
         spikes = []
         start_time = self.timestamps.timestamps()
         end_time = start_time + self.duration
+        output_file = self.prepare_output()
         for gid in self.gids:
             t = start_time
             while t < end_time:
