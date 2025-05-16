@@ -1,5 +1,4 @@
 import os
-from typing import List
 from pathlib import Path
 
 import numpy as np
@@ -352,10 +351,17 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
             }
         return sonata_config
 
+
+class SynchronousSingleSpikeStimulus(Stimulus):
+    spike_probability: float | list[float]
+
+
 class SpikeStimulus(Stimulus):
-    gids: List[int]  # list of neuron IDs (integers) # TODO: use NeuronSet
+    # _module: str = "noise"
+    # _input_type: str = "current_clamp"
     duration: float
     output_path: Path # where to save out.dat
+    neuron_set: NeuronSetUnion
 
     def _generate_config(self) -> dict:
         sonata_config = {}
@@ -365,8 +371,8 @@ class SpikeStimulus(Stimulus):
                 "delay": timestamp,
                 "duration": self.duration,
                 "cells": self.neuron_set.name,
-                "module": self._module,
-                "input_type": self._input_type,
+                # "module": self._module,
+                # "input_type": self._input_type,
             }
         return sonata_config
 
@@ -388,26 +394,28 @@ class SpikeStimulus(Stimulus):
                 f.write(f"{gid} {spike_time:.3f}\n")
 
 class PoissonSpikeStimulus(SpikeStimulus):
+    # _module: str = "noise"
+    # _input_type: str = "current_clamp"
     frequency: float  # Hz
 
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+        timestamp = self.timestamps.timestamps()
+        sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp, # maybe it is not needed because I have the times in out.dat
                 "duration": self.duration,
                 "cells": self.neuron_set.name,
-                "module": self._module,
-                "input_type": self._input_type,
+                # "module": self._module,
+                # "input_type": self._input_type,
             }
+        # TODO: add a block for the spike reply
+        self.generate_spikes()
+        
         return sonata_config
 
-    # def __init__(self):
-        # Automatically generate and write spikes upon instantiation
-    #   self.generate_spikes()
-
     def generate_spikes(self):
+        gids = self.neuron_set.get_neuron_ids()
         spikes = []
         start_time = self.timestamps.timestamps()
         end_time = start_time + self.duration
@@ -420,6 +428,3 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 if t < end_time:
                     spikes.append((gid, t))
         self.write_spikes(spikes)
-
-class SynchronousSingleSpikeStimulus(Stimulus):
-    spike_probability: float | list[float]
