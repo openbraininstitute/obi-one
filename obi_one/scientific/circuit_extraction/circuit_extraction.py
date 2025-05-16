@@ -34,6 +34,7 @@ class CircuitExtractions(Form):
         """
 
 
+import h5py
 import json
 import os
 import shutil
@@ -127,39 +128,61 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                             try:
                                 morph_folder = original_circuit.nodes[
                                     pop_name
-                                ].morph.get_morphology_dir(_morph_ext)
+                                ].morph._get_morphology_base(_morph_ext)
+                                # FIXME: Should not use private function!! But required to get path even if h5 container.
+
                                 assert os.path.exists(morph_folder), (
-                                    f"ERROR: {_morph_ext} morphology folder does not exist!"
+                                    f"ERROR: {_morph_ext} morphology folder/container does not exist!"
                                 )
-                                assert (
-                                    len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0
-                                ), (
-                                    f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
-                                )
-                                dest_morph_dirs[_morph_ext] = pop.morph.get_morphology_dir(
+
+                                if os.path.isdir(morph_folder):
+                                    assert (
+                                        len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0
+                                    ), (
+                                        f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+                                    )
+
+                                dest_morph_dirs[_morph_ext] = pop.morph._get_morphology_base(
                                     _morph_ext
-                                )
+                                )  # FIXME: Should not use private function!!
                                 src_morph_dirs[_morph_ext] = morph_folder
                             except:
                                 morph_folder = None
 
+                        assert len(src_morph_dirs) > 0, "ERROR: No morphologies of any supported format found!"
                         for _morph_ext in src_morph_dirs:
-                            os.makedirs(dest_morph_dirs[_morph_ext], exist_ok=True)
-                            for morphology_name in tqdm.tqdm(
-                                morphology_list, desc=f"Copying .{_morph_ext} morphologies"
-                            ):
-                                src_file = os.path.join(
-                                    src_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}"
-                                )
-                                dest_file = os.path.join(
-                                    dest_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}"
-                                )
-                                assert os.path.exists(src_file), (
-                                    f"ERROR: Morphology '{src_file}' missing!"
-                                )
-                                if not os.path.exists(dest_file):
-                                    # Copy only, if not yet existing (could happen for shared morphologies among populations)
-                                    shutil.copyfile(src_file, dest_file)
+                            if _morph_ext == "h5" and os.path.isfile(src_morph_dirs[_morph_ext]):
+                                # Copy containerized morphologies into new container
+                                os.makedirs(os.path.split(dest_morph_dirs[_morph_ext])[0], exist_ok=True)
+                                src_container = src_morph_dirs[_morph_ext]
+                                dest_container = dest_morph_dirs[_morph_ext]
+                                with h5py.File(src_container) as f_src:
+                                    with h5py.File(dest_container, "a") as f_dest:
+                                        skip_counter = 0
+                                        for morphology_name in tqdm.tqdm(morphology_list, desc=f"Copying containerized .{_morph_ext} morphologies"):
+                                            if morphology_name in f_dest:
+                                                skip_counter += 1
+                                            else:
+                                                f_src.copy(f_src[morphology_name], f_dest, name=morphology_name)
+                                print(f"Copied {len(morphology_list) - skip_counter} morphologies into container ({skip_counter} already existed)")
+                            else:
+                                # Copy morphology files
+                                os.makedirs(dest_morph_dirs[_morph_ext], exist_ok=True)
+                                for morphology_name in tqdm.tqdm(
+                                    morphology_list, desc=f"Copying .{_morph_ext} morphologies"
+                                ):
+                                    src_file = os.path.join(
+                                        src_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}"
+                                    )
+                                    dest_file = os.path.join(
+                                        dest_morph_dirs[_morph_ext], f"{morphology_name}.{_morph_ext}"
+                                    )
+                                    assert os.path.exists(src_file), (
+                                        f"ERROR: Morphology '{src_file}' missing!"
+                                    )
+                                    if not os.path.exists(dest_file):
+                                        # Copy only, if not yet existing (could happen for shared morphologies among populations)
+                                        shutil.copyfile(src_file, dest_file)
 
                     # Copy .hoc file directory
                     if (
