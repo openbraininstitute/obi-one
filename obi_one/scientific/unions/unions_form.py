@@ -23,6 +23,8 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockEntityTestForm,
     SingleBlockGenerateTestForm,
 )
+from obi_one.scientific.microns_to_sonata.microns_nodes_form import EMSonataNodesFiles
+from obi_one.scientific.microns_to_sonata.microns_edges_form import EMSonataEdgesFiles
 
 FormUnion = (
     BasicConnectivityPlots
@@ -36,4 +38,6 @@ FormUnion = (
     | SingleBlockEntityTestForm
     | MultiBlockEntitySDKTestForm
     | MorphologyLocationsForm
+    | EMSonataNodesFiles
+    | EMSonataEdgesFiles
 )
