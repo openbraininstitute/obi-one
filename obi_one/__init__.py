@@ -170,6 +170,17 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTest,
     SingleBlockGenerateTestForm,
 )
+from obi_one.scientific.microns_to_sonata.microns_nodes_form import (
+    EMSonataNodesFile,
+    EMSonataNodesFiles
+)
+from obi_one.scientific.microns_to_sonata.microns_edges_block import(
+    EMEdgesMappingBlock
+)
+from obi_one.scientific.microns_to_sonata.microns_edges_form import (
+    EMSonataEdgesFiles,
+    EMSonataEdgesFile
+)
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
