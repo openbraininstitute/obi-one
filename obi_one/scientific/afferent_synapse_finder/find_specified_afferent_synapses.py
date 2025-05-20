@@ -2,9 +2,14 @@ import numpy
 import pandas
 import os
 import morphio
+import warnings
 
 from scipy import stats
-from conntility.subcellular import MorphologyPathDistanceCalculator
+try:
+    from conntility.subcellular import MorphologyPathDistanceCalculator
+except ImportError:
+    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
+
 
 def morphology_and_pathdistance_calculator(circ, node_population, node_id):
     """
