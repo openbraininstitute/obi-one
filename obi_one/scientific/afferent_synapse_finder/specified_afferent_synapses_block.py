@@ -16,7 +16,8 @@ from .find_specified_afferent_synapses import (
     select_randomly,
     select_by_path_distance,
     select_clusters_by_max_distance,
-    select_clusters_by_count
+    select_clusters_by_count,
+    merge_multiple_syns_per_connection
 )
 
 
@@ -46,6 +47,11 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         name="Presynaptic populations",
         description="Names of presynaptic node populations to allow"
     )
+    merge_multiple_syns_con: bool | list[bool] = Field(
+        default=False,
+        name="Merge multiple synapses per connection",
+        description="If True, multiple synapses from the same source neuron are merged by averaging."
+    )
 
     def gather_synapse_info(self, circ, node_population, node_id):
         prop_filters = {}
@@ -64,6 +70,8 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         drop_nan = not self.consider_nan_pass
         syns = apply_filters(syns, prop_filters, drop_nan=drop_nan)
         soma_pds, pw_pds = relevant_path_distances(PD, syns)
+        if self.merge_multiple_syns_con:
+            syns, soma_pds, pw_pds = merge_multiple_syns_per_connection(syns, soma_pds, pw_pds)
         return syns, soma_pds, pw_pds
 
     @abc.abstractmethod

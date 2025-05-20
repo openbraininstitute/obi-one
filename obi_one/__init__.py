@@ -110,7 +110,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     PredefinedNeuronSet,
     PropertyNeuronSet,
 )
-from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
     CircuitExtractions,
@@ -195,6 +194,5 @@ from obi_one.scientific.unions.unions_intracellular_location_sets import (
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
-from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
-from obi_one.scientific.unions.unions_synapse_set import AfferentSynapseSetUnion
+from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion

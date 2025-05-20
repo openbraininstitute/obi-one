@@ -344,3 +344,15 @@ def select_clusters_by_count(syns, soma_pds, pw_pds, n_clusters, n_per_cluster,
         if soma_pds is not None:
             soma_pds = soma_pds[other_ids]
     return pandas.concat(syns_out, axis=0, names=["cluster_id"], keys=range(len(syns_out))).reset_index(0)
+
+
+def merge_multiple_syns_per_connection(syns, soma_pds, pw_pds):
+    syns = syns.reset_index(drop=True)
+    _grp = syns.reset_index(drop=False).groupby(["source_population", "@source_node"])["index"].apply(list)
+    mn_soma_pd = _grp.apply(lambda _x: soma_pds[_x].mean())
+    mn_pw_pds = _grp.apply(lambda _x: _grp.apply(lambda _y: pw_pds[numpy.ix_(_x, _y)].mean()))
+
+    syns_out = mn_soma_pd.index.to_frame().reset_index(drop=True)
+    mn_soma_pd = mn_soma_pd.values
+    mn_pw_pds = mn_pw_pds.values
+    return syns_out, mn_soma_pd, mn_pw_pds

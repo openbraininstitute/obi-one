@@ -1,6 +1,3 @@
-from obi_one.scientific.circuit.synapse_sets import (
-    IDSynapseSet,
-)
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
     RandomlySelectedFractionOfSynapses,
@@ -15,9 +12,7 @@ from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_bloc
     PathDistanceConstrainedFractionOfSynapses
 )
 
-SynapseSetUnion = IDSynapseSet
-
-AfferentSynapseSetUnion = (
+SynapseSetUnion = (
     AfferentSynapsesBlock |
     RandomlySelectedFractionOfSynapses |
     RandomlySelectedNumberOfSynapses |
