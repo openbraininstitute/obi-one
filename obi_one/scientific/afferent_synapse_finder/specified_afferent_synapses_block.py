@@ -1,4 +1,5 @@
 import abc
+import numpy
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -81,6 +82,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
 
     def synapses_on(self, circ, node_population, node_id):
         self.enforce_no_lists()
+        numpy.random.seed(self.random_seed)
         args = self.gather_synapse_info(circ, node_population, node_id)
         return self._select_syns(*args)
 
@@ -97,7 +99,6 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
         return select_randomly(syns, n=self.n, raise_insufficient=False)
         
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.n, list):
             assert self.n > 0, "Number of synapses must be at least one!"
 
@@ -113,7 +114,6 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
         return select_randomly(syns, p=self.p, raise_insufficient=False)
         
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.p, list):
             assert self.p > 0, "Fraction of synapses must be > 0!"
             assert self.p <= 1.0, "Number of synapses must be <= 1.0!"
@@ -165,7 +165,6 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
     
@@ -188,7 +187,6 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
     
@@ -212,7 +210,6 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.n_clusters, list):
             assert self.n_clusters > 0, "Must generate at least one cluster!"
         if not isinstance(self.cluster_max_distance, list):
@@ -238,7 +235,6 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.n_clusters, list):
             assert self.n_clusters > 0, "Must generate at least one cluster!"
         if not isinstance(self.n_per_cluster, list):
@@ -263,7 +259,6 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
     
@@ -288,7 +283,6 @@ class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
     )
 
     def _check_parameter_values(self):
-        # Only check whenever list are resolved to individual objects
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
     
