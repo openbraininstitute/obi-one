@@ -2,9 +2,11 @@ import os
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from abc import ABC, abstractmethod
 from typing import Annotated
+import h5py
 
 from pydantic import Field
 
@@ -361,26 +363,28 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     duration: float
     gid_spike_map: dict = {}
-    spike_file_path: Path # where to save out.dat
+    spike_file: Path | None = None
     neuron_set: NeuronSetUnion
 
     def _generate_config(self) -> dict:
+        assert self.spike_file is not None
         sonata_config = {}
         sonata_config[self.name] = {
-                "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
+                "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
                 "duration": self.duration,
                 "cells": self.neuron_set.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "spike_file": str(self.spike_file_path)
+                "spike_file": str(self.spike_file)
             }
         
         return sonata_config
 
-    def generate_spikes(self):
+    def generate_spikes(self, circuit, population, spike_file_path):
         raise NotImplementedError("Subclasses should implement this method.")
 
-    def write_spike_file(self, gid_spike_map, spike_file_path, neuron_set):
+    @staticmethod
+    def write_spike_file(gid_spike_map, spike_file, neuron_set):
         """
         Writes SONATA output spike trains to file.
         
@@ -390,11 +394,11 @@ class SpikeStimulus(Stimulus):
         # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
         gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
     
-        out_path = os.path.split(spike_file_path)[0]
+        out_path = os.path.split(spike_file)[0]
         if not os.path.exists(out_path):
             os.makedirs(out_path)
 
-        popul_name = self.neuron_set.name()
+        popul_name = neuron_set.name
         time_list = []
         gid_list = []
         for gid, spike_times in gid_spike_map.items():
@@ -405,7 +409,7 @@ class SpikeStimulus(Stimulus):
         spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=['t', 'gid'])
         spike_df = spike_df.astype({'t': float, 'gid': int})
         spike_df.sort_values(by=['t', 'gid'], inplace=True)  # Sort by time
-        with h5py.File(spike_file_path, 'w') as f:
+        with h5py.File(spike_file, 'w') as f:
             pop = f.create_group(f"/spikes/{popul_name}")
             ts = pop.create_dataset("timestamps", data=spike_df['t'].values, dtype=np.float64)
             nodes = pop.create_dataset("node_ids", data=spike_df['gid'].values, dtype=np.uint64)
@@ -416,28 +420,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
     _input_type: str = "spikes"
     frequency: float  # Hz
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-        sonata_config[self.name] = {
-                "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
-                "duration": self.duration,
-                "cells": self.neuron_set.name,
-                "module": self._module,
-                "input_type": self._input_type,
-                "spike_file": str(self.spike_file_path)
-            }
-        # TODO: add a block for the spike reply
-        self.generate_spikes()
-        
-        return sonata_config
-
-    def generate_spikes(self, circuit, population):
+    def generate_spikes(self, circuit, population, spike_file_path):
         gids = self.neuron_set.get_neuron_ids(circuit, population)
-        spikes = []
         gid_spike_map = {}
-        start_time = self.timestamps.timestamps()
+        start_time = self.timestamps.timestamps()[0]
         end_time = start_time + self.duration
-        for gid in self.gids:
+        for gid in gids:
+            spikes = []
             t = start_time
             while t < end_time:
                 # Draw next spike time from exponential distribution
@@ -446,4 +435,6 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 if t < end_time:
                     spikes.append(t)
             gid_spike_map[gid] = spikes
-        self.write_spike_file(self, gid_spike_map, spike_file_path, neuron_set)
+        self.spike_file = spike_file_path / f"{self.name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, self.spike_file, self.neuron_set)
+        
