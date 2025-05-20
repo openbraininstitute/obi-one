@@ -55,6 +55,7 @@ __all__ = [
     "NoiseCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "PercentageNoiseCurrentClampSomaticStimulus",
+    "PoissonSpikeStimulus",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -160,6 +161,7 @@ from obi_one.scientific.simulation.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
     SynchronousSingleSpikeStimulus,
+    PoissonSpikeStimulus
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps
 from obi_one.scientific.test_forms.test_form_single_block import (
