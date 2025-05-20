@@ -360,15 +360,11 @@ class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     duration: float
-    output_path: Path # where to save out.dat
+    gid_spike_map: dict = {}
+    spike_file_path: Path # where to save out.dat
     neuron_set: NeuronSetUnion
 
-    def prepare_output(self):
-        os.makedirs(self.output_path, exist_ok=True) # Ensure the output directory exists
-        return self.output_path / "out.dat" # TODO: convert to sonata out.h5
-
     def _generate_config(self) -> dict:
-        output_file = self.prepare_output()
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
@@ -376,7 +372,7 @@ class SpikeStimulus(Stimulus):
                 "cells": self.neuron_set.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "spike_file": str(output_file)
+                "spike_file": str(self.spike_file_path)
             }
         
         return sonata_config
@@ -384,16 +380,36 @@ class SpikeStimulus(Stimulus):
     def generate_spikes(self):
         raise NotImplementedError("Subclasses should implement this method.")
 
-    def write_spikes(self, spikes):
+    def write_spike_file(self, gid_spike_map, spike_file_path, neuron_set):
         """
-        spikes: list of tuples (gid, spike_time)
+        Writes SONATA output spike trains to file.
+        
+        Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
         """
-        # Ensure the output directory exists
-        output_file = self.prepare_output()
-        with open(output_file, 'w') as f:
-            f.write('/scatter\n')
-            for gid, spike_time in sorted(spikes, key=lambda x: (x[1], x[0])):
-                f.write(f"{gid} {spike_time:.3f}\n")
+        # IMPORTANT: Convert SONATA node IDs (0-based) to NEURON cell IDs (1-based)!!
+        # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
+        gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
+    
+        out_path = os.path.split(spike_file_path)[0]
+        if not os.path.exists(out_path):
+            os.makedirs(out_path)
+
+        popul_name = self.neuron_set.name()
+        time_list = []
+        gid_list = []
+        for gid, spike_times in gid_spike_map.items():
+            if spike_times is not None:
+                for t in spike_times:
+                    time_list.append(t)
+                    gid_list.append(gid)
+        spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=['t', 'gid'])
+        spike_df = spike_df.astype({'t': float, 'gid': int})
+        spike_df.sort_values(by=['t', 'gid'], inplace=True)  # Sort by time
+        with h5py.File(spike_file_path, 'w') as f:
+            pop = f.create_group(f"/spikes/{popul_name}")
+            ts = pop.create_dataset("timestamps", data=spike_df['t'].values, dtype=np.float64)
+            nodes = pop.create_dataset("node_ids", data=spike_df['gid'].values, dtype=np.uint64)
+            ts.attrs['units'] = 'ms'
 
 class PoissonSpikeStimulus(SpikeStimulus):
     _module: str = "synapse_replay"
@@ -401,7 +417,6 @@ class PoissonSpikeStimulus(SpikeStimulus):
     frequency: float  # Hz
 
     def _generate_config(self) -> dict:
-        output_file = self.prepare_output()
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": self.timestamps.timestamps(), # If it is present, then the simulation filters out those times that are before the delay
@@ -409,19 +424,19 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 "cells": self.neuron_set.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "spike_file": str(output_file)
+                "spike_file": str(self.spike_file_path)
             }
         # TODO: add a block for the spike reply
         self.generate_spikes()
         
         return sonata_config
 
-    def generate_spikes(self):
+    def generate_spikes(self, circuit, population):
         gids = self.neuron_set.get_neuron_ids(circuit, population)
         spikes = []
+        gid_spike_map = {}
         start_time = self.timestamps.timestamps()
         end_time = start_time + self.duration
-        output_file = self.prepare_output()
         for gid in self.gids:
             t = start_time
             while t < end_time:
@@ -429,5 +444,6 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 interval = np.random.exponential(1.0 / self.frequency) * 1000  # convert s → ms
                 t += interval
                 if t < end_time:
-                    spikes.append((gid, t))
-        self.write_spikes(spikes)
+                    spikes.append(t)
+            gid_spike_map[gid] = spikes
+        self.write_spike_file(self, gid_spike_map, spike_file_path, neuron_set)
