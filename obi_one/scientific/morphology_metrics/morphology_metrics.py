@@ -130,5 +130,3 @@ def get_morphology_metrics(
 
             return morphology_metrics
     return None
-
-

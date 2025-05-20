@@ -1,6 +1,5 @@
 import copy
 import json
-import os
 from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
@@ -163,11 +162,9 @@ class Scan(OBIBaseModel):
             # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, processing_method):
                 # Initialize the coordinate_instance's coordinate_output_root
-                coordinate_instance.initialize_coordinate_output_root(self.output_root)
-
-                # Create the coordinate_output_root directory
-                coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
-                os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
+                coordinate_instance.initialize_coordinate_output_root(
+                    self.output_root, self.coordinate_directory_option
+                )
 
                 # Call the coordinate_instance's processing_method (i.e. run, generate)
                 return_dict[coordinate_instance.idx] = getattr(
