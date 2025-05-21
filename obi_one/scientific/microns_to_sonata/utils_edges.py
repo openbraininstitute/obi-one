@@ -22,6 +22,9 @@ _STR_SPINE_ID = "spine_id"
 _STR_SYN_ID = "syn_id"
 _STR_SEG_OFF = "seg_off"
 _STR_SEC_OFF = "sec_off"
+_STR_SPINE_X = "spine_pos_x"
+_STR_SPINE_Y = "spine_pos_y"
+_STR_SPINE_Z = "spine_pos_z"
 
 _STR_PRE_NODE = _PF_PRE + "node_id"
 _STR_POST_NODE = _PF_POST + "node_id"
@@ -107,12 +110,16 @@ def map_points_to_spines(spine_pos, spine_orient, pts, max_dist=4.0, mx_per_pos=
     pw_d_xyz = pts.values.reshape((-1, 1, 3)) - spine_pos.reshape((1, -1, 3))  # syns X spines
     surf_dist = numpy.sqrt(numpy.sum(pw_d_xyz ** 2, axis=-1))
 
+    # syn - spine combinations where the synapse is close enough
     nz_syn, nz_spine = numpy.nonzero(surf_dist < max_dist)
 
     cand_pw_d = pw_d_xyz[nz_syn, nz_spine]
     cand_pw_d = cand_pw_d / numpy.linalg.norm(cand_pw_d, axis=1, keepdims=True)
     cand_align = numpy.sum(cand_pw_d * orient_n[nz_spine], axis=1)
 
+    # For all candidates, i.e., synapses that are close enough to a spine,
+    # we calculate how well the location of the synapse aligns with the overall
+    # direction of the spine
     C = pandas.DataFrame({
     "cos_angle": cand_align, 
     _STR_SYN_ID: nz_syn, 
@@ -120,12 +127,16 @@ def map_points_to_spines(spine_pos, spine_orient, pts, max_dist=4.0, mx_per_pos=
     })
     C = C.sort_values("cos_angle", ascending=False)
 
+    # Greedy mapping: We start with the best alignment and move on to the next best,
+    # etc. 
     mapped = []
     syn_m_counts = {}
     spine_m_counts = {}
     while True:
+        # Stop mapping if everything is mapped ...
         if len(C) == 0:
             break
+        # or if the alignment is poor (values are sorted).
         if C.iloc[0]["cos_angle"] < 0.0:
             break
 
@@ -143,6 +154,11 @@ def map_points_to_spines(spine_pos, spine_orient, pts, max_dist=4.0, mx_per_pos=
         C = C.loc[keep]
     
     mapped = pandas.concat(mapped, axis=1).transpose()
+    mapped_pos = spine_pos[mapped[_STR_SPINE_ID].values]
+    mapped[_STR_SPINE_X] = mapped_pos[:, 0]
+    mapped[_STR_SPINE_Y] = mapped_pos[:, 1]
+    mapped[_STR_SPINE_Z] = mapped_pos[:, 2]
+
     return mapped.reset_index(drop=True)
 
 
@@ -150,9 +166,9 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
     segs = morph_to_segs_df(morph)
     spines_on_morph = map_points_to_segs_df(segs, spine_dend_pos).reset_index(drop=True)
 
-    # cols syn_id, spine_id. Only where spine is found
+    # cols syn_id, spine_id, spine_pos_x, spine_pos_y, spine_pos_z. Only where spine is found
     syns_on_spines = map_points_to_spines(spine_srf_pos, spine_orient, syns[_C_P_LOCS]).reset_index(drop=True)
-    # cols syn_id, spine_id, sec_id, seg_id, seg_off. Only where spine is found
+    # cols syn_id, spine_id, [x, y, z], sec_id, seg_id, seg_off. Only where spine is found
     syns_on_spines = pandas.concat([syns_on_spines,
                 spines_on_morph.loc[syns_on_spines[_STR_SPINE_ID]].reset_index(drop=True)
     ], axis=1)
@@ -236,7 +252,10 @@ def format_for_edges_output(syns):
         _STR_SEC_ID: "afferent_section_id",
         _STR_SEG_ID: "afferent_segment_id",
         _STR_SEG_OFF: "afferent_segment_offset",
-        _STR_SEC_OFF: "afferent_section_offset"
+        _STR_SEC_OFF: "afferent_section_offset",
+        _STR_SPINE_X: "spine_root_x",
+        _STR_SPINE_Y: "spine_root_y",
+        _STR_SPINE_Z: "spine_root_z",
     }
     cols_keep = [_STR_SPINE_ID]
     cols_keep = cols_keep + list(synapse_col_renaming.keys())

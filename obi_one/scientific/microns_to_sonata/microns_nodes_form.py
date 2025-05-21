@@ -10,7 +10,14 @@ from obi_one.core.form import Form
 from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 
-from .utils_nodes import neuron_info_df, neuron_info_to_collection
+from .utils_nodes import (
+    neuron_info_df, 
+    neuron_info_to_collection, 
+    estimate_volume_rotation,
+    transform_and_copy_morphologies,
+    _STR_MORPH,
+    _STR_ORIENT
+)
 
 
 class EMSonataNodesFiles(Form, abc.ABC):
@@ -42,6 +49,10 @@ class EMSonataNodesFiles(Form, abc.ABC):
         population_name: str = Field(
             name="Population name",
             description="Name of the SONATA node population"
+        )
+        morphology_root: str = Field(
+            name="Morphology locations",
+            description="Folder in which the skeletonized morphologies and spine infos are found"
         )
 
     initialize: Initialize
@@ -75,8 +86,17 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                                  add_position=False)
             nrns.append(nrn)
         nrns = pandas.concat(nrns, axis=1)
+        
+        # More of a place holder. We estimate a global rotation of the entire volume
+        volume_rot = estimate_volume_rotation(nrns).as_matrix()
+        nrns["orientation"] = [volume_rot for _ in range(len(nrns))]
+        transform_and_copy_morphologies(nrns, self.initialize.morphology_root,
+                                        os.path.join(self.coordinate_output_root,
+                                                     "morphologies"),
+                                        out_formats=(".h5", ".swc"))
+
 
         coll = neuron_info_to_collection(nrns, self.initialize.population_name,
                                   list(self.initialize.table_cols),
-                                  ["x", "y", "z"])
+                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH])
         coll.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
