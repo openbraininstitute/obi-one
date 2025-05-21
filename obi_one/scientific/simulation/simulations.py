@@ -12,15 +12,12 @@ from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_intracellular_location_sets import (
-    IntracellularLocationSetUnion,
-)
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 
 class SimulationsForm(Form):
