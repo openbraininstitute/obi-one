@@ -75,7 +75,6 @@ __all__ = [
     "SomaVoltageRecording",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
-    "SynapseSet",
     "SynapseSetUnion",
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
