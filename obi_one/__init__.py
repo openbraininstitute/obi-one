@@ -35,7 +35,6 @@ __all__ = [
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
-    "IDSynapseSet",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
