@@ -109,6 +109,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     NeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet
 )
 from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
@@ -178,10 +180,6 @@ from obi_one.scientific.unions.unions_form import (
 )
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
-)
-from obi_one.scientific.circuit_parameterized_neuron_sets.volumetric_neuron_set_block import (
-    VolumetricNeuronSetBlock,
-    NeuronPropertyFilterBlock
 )
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion

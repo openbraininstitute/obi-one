@@ -5,9 +5,44 @@ from typing import Annotated, Self
 
 import bluepysnap as snap
 import numpy as np
+import pandas
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+
+
+class NeuronPropertyFilterBlock(Block, abc.ABC):
+
+    property_name: str | list[str] = Field(
+        name="Property name",
+        description="Property name"
+    )
+
+    property_values : tuple[str, ...] | list[tuple[str, ...]] = Field(
+        name="Property values",
+        description="Valid values for the property"
+    )
+
+    def filter(self, df_in, reindex=True):
+        self.enforce_no_lists()
+        vld = df_in[self.property_name].isin(self.property_values)
+        ret = df_in.loc[vld]
+        if reindex:
+            ret = ret.reset_index(drop=True)
+        return ret
+    
+    def test_validity(self, circuit, node_population):
+        self.enforce_no_lists()
+        prop_names = circuit.sonata_circuit.nodes[node_population].property_names
+        if isinstance(self.property_name, list):
+            assert all(_prop in prop_names for _prop in self.property_name), (
+                f"Invalid neuron properties! Available properties: {prop_names}"
+            ) 
+        else:
+            assert self.property_name in prop_names, (
+                f"Invalid neuron property! Available properties: {prop_names}"
+            ) 
+
 
 
 class NeuronSet(Block, abc.ABC):
@@ -269,10 +304,10 @@ class IDNeuronSet(NeuronSet):
 
 class PropertyNeuronSet(NeuronSet):
     """Neuron set definition based on neuron properties, optionally combined with (named) node sets."""
-
-    property_specs: (
-        Annotated[dict, Field(min_length=1)]
-        | Annotated[list[Annotated[dict, Field(min_length=1)]], Field(min_length=1)]
+    property_filters: tuple[NeuronPropertyFilterBlock, ...] | list[tuple[NeuronPropertyFilterBlock, ...]] = Field(
+        name="Neuron property filters",
+        description="Any number of property filter blocks",
+        default=()
     )
     node_sets: (
         tuple[Annotated[str, Field(min_length=1)], ...]
@@ -280,32 +315,148 @@ class PropertyNeuronSet(NeuronSet):
     ) = tuple()
 
     def check_properties(self, circuit, population):
-        prop_names = circuit.sonata_circuit.nodes[population].property_names
-        assert all(_prop in prop_names for _prop in self.property_specs.keys()), (
-            f"Invalid neuron properties! Available properties: {prop_names}"
-        )  # Assumed that all (outer) lists have been resolved
+        # Assuming all lists have been resolved
+        for fltr in self.property_filters:
+            fltr.test_validity(circuit, population)
 
     def check_node_sets(self, circuit, population):
         for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
             assert _nset in circuit.node_sets, (
                 f"Node set '{_nset}' not found in circuit '{circuit}'!"
             )
+    
+    def _get_resolved_expression(self, circuit, population):
+        """A helper function used to make subclasses work."""
+        c = circuit.sonata_circuit
+        node_ids = np.array([]).astype(int)
+        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
+            node_ids = np.union1d(node_ids, c.nodes[population].ids(_nset))
+
+        required_props = []
+        for fltr in self.property_filters:
+            fltr.enforce_no_lists()
+            required_props.append(fltr.property_name)
+        df = c.nodes[population].get(properties=required_props).reset_index()
+        for fltr in self.property_filters:
+            df = fltr.filter(df)
+
+        node_ids = df["node_ids"].values
+
+        expression = {"population": population, "node_id": node_ids.tolist()}
+        return expression
+
 
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
+        def __resolve_sngl(prop_vals):
+            if len(prop_vals) == 1:
+                return prop_vals[0]
+            return list(prop_vals)
+        
         if len(self.node_sets) == 0:
             # Symbolic expression can be preserved
-            expression = self.property_specs
+            expression = dict([
+                (_fltr.property_name, __resolve_sngl(_fltr.property_values))
+                for _fltr in self.property_filters
+            ])
         else:
             # Individual IDs need to be resolved
-            c = circuit.sonata_circuit
-            node_ids = np.array([]).astype(int)
-            for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
-                node_ids = np.union1d(node_ids, c.nodes[population].ids(_nset))
-            node_ids = np.intersect1d(node_ids, c.nodes[population].ids(self.property_specs))
+            return self._get_resolved_expression(circuit, population)
 
-            expression = {"population": population, "node_id": node_ids.tolist()}
+        return expression
 
+
+class VolumetricCountNeuronSet(PropertyNeuronSet):
+    ox : float | list[float] = Field(
+        name="Offset: x",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    oy : float | list[float] = Field(
+        name="Offset: y",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    oz : float | list[float] = Field(
+        name="Offset: z",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    n : int | list[int] = Field(
+        name="Number of neurons",
+        description="Number of neurons to find"
+    )
+    columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
+        name="x/y/z column names",
+        description="Names of the three neuron (node) properties used for volumetric tests",
+        default=("x", "y", "z")
+    )
+
+    def _get_expression(self, circuit, population):
+        self.check_properties(circuit, population)
+        self.check_node_sets(circuit, population)
+        # Always needs to be resolved
+        base_expression = self._get_resolved_expression(circuit, population)
+        
+        cols_xyz = list(self.columns_xyz)
+        df = circuit.sonata_circuit.nodes[population].get(base_expression["node_id"], properties=cols_xyz)
+        df = df.reset_index(drop=False)
+        o_df = pandas.Series({
+            cols_xyz[0]: self.ox,
+            cols_xyz[1]: self.oy,
+            cols_xyz[2]: self.oz
+        })
+        tgt_center = df[cols_xyz].mean() + o_df
+
+        D = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
+        idxx = np.argsort(D)[:self.n]
+        df = df.iloc[idxx]
+
+        expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
+        return expression
+
+
+class VolumetricRadiusNeuronSet(PropertyNeuronSet):
+    ox : float | list[float] = Field(
+        name="Offset: x",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    oy : float | list[float] = Field(
+        name="Offset: y",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    oz : float | list[float] = Field(
+        name="Offset: z",
+        description="Offset of the center of the volume, relative to the centroid of the node population"
+    )
+    radius : float | list[float] = Field(
+        name="Radius",
+        description="Radius in um of volumetric sample"
+    )
+    columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
+        name="x/y/z column names",
+        description="Names of the three neuron (node) properties used for volumetric tests",
+        default=("x", "y", "z")
+    )
+
+    def _get_expression(self, circuit, population):
+        self.check_properties(circuit, population)
+        self.check_node_sets(circuit, population)
+        # Always needs to be resolved
+        base_expression = self._get_resolved_expression(circuit, population)
+        
+        cols_xyz = list(self.columns_xyz)
+        df = circuit.sonata_circuit.nodes[population].get(base_expression["node_id"], properties=cols_xyz)
+        df = df.reset_index(drop=False)
+        o_df = pandas.Series({
+            cols_xyz[0]: self.ox,
+            cols_xyz[1]: self.oy,
+            cols_xyz[2]: self.oz
+        })
+        tgt_center = df[cols_xyz].mean() + o_df
+
+        D = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
+        idxx = np.nonzero(D < self.radius)[0]
+        df = df.iloc[idxx]
+
+        expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
         return expression
