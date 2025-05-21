@@ -7,7 +7,6 @@ from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 class CircuitExtractions(Form):
     """ """

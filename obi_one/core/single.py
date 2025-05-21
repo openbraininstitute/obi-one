@@ -57,7 +57,7 @@ class SingleCoordinateMixin:
     idx: int = -1
     scan_output_root: Path = Path()
     coordinate_output_root: Path = Path()
-    coordinate_directory_option: str = "NAME_EQUALS_VALUE"
+    _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
     @field_validator("*", mode="before")
@@ -75,27 +75,34 @@ class SingleCoordinateMixin:
 
         return value
 
-    def initialize_coordinate_output_root(self, scan_output_root: Path):
-        """Initialize the output root paths for the scan and coordinate directories.
-        """
+    def initialize_coordinate_output_root(
+        self, scan_output_root: Path, coordinate_directory_option: str = "NAME_EQUALS_VALUE"
+    ):
+        """Initialize the output root paths for the scan and coordinate directories."""
         self.scan_output_root = scan_output_root
-        if self.coordinate_directory_option == "NAME_EQUALS_VALUE":
+
+        self._coordinate_directory_option = coordinate_directory_option
+
+        if self._coordinate_directory_option == "NAME_EQUALS_VALUE":
             self.coordinate_output_root = (
                 self.scan_output_root
                 / self.single_coordinate_scan_params.nested_param_name_and_value_subpath
             )
 
-        elif self.coordinate_directory_option == "VALUE":
+        elif self._coordinate_directory_option == "VALUE":
             self.coordinate_output_root = (
                 self.scan_output_root
-                / self.single_coordinate_scan_params.nested_param_value_subpath,
+                / self.single_coordinate_scan_params.nested_param_value_subpath
             )
-        elif self.coordinate_directory_option == "ZERO_INDEX":
+        elif self._coordinate_directory_option == "ZERO_INDEX":
             self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
         else:
             raise ValueError(
-                f"Invalid coordinate_directory_option: {self.coordinate_directory_option}"
+                f"Invalid coordinate_directory_option: {self._coordinate_directory_option}"
             )
+
+        # Create the coordinate_output_root directory
+        os.makedirs(self.coordinate_output_root, exist_ok=True)
 
     def serialize(self, output_path):
         # Important to use model_dump_json() instead of model_dump()
