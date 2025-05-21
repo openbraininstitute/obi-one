@@ -42,6 +42,8 @@ __all__ = [
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
+    "MorphologyDecontainerization",
+    "MorphologyDecontainerizationsForm",
     "MorphologyLocations",
     "MorphologyLocationsForm",
     "MorphologyMetrics",
@@ -128,6 +130,10 @@ from obi_one.scientific.folder_compression.folder_compression import (
 from obi_one.scientific.morphology_containerization.morphology_containerization import (
     MorphologyContainerization,
     MorphologyContainerizationsForm,
+)
+from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
+    MorphologyDecontainerization,
+    MorphologyDecontainerizationsForm,
 )
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredGroupedMorphologyLocations,
