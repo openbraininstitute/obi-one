@@ -34,6 +34,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
+    "bluepyefe>=2.3.44",
 ]
 
 [project.optional-dependencies]
