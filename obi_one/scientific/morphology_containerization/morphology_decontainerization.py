@@ -57,7 +57,14 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
-                for nid in nodes.ids()[[0, -1]]:  # First/last node ID
+                all_nids = nodes.ids()
+                if len(all_nids) < 20:
+                    nid_list = all_nids  # Check all node IDs
+                    print(f"Checking all morphologies in population '{npop}'")
+                else:
+                    nid_list = all_nids[[0, -1]]  # Check first/last node ID only
+                    print(f"Checking first/last morphologies in population '{npop}'")
+                for nid in nid_list:
                     try:
                         morph = nodes.morph.get(
                             nid, transform=True, extension=extension
@@ -202,10 +209,10 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             for _folder in morph_folders_to_delete:
                 shutil.rmtree(_folder)
 
-            # # Reload and check morphologies in modified circuit
-            # assert self._check_morphologies(circuit_config), (
-            #     "ERROR: Morphology check not successful!"
-            # )
+            # Reload and check morphologies in modified circuit
+            assert self._check_morphologies(circuit_config, self.initialize.output_format), (
+                "ERROR: Morphology check not successful!"
+            )
             print("Morphology decontainerization DONE")
 
         except Exception as e:
