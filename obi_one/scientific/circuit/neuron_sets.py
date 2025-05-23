@@ -9,39 +9,41 @@ import pandas
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.base import OBIBaseModel
 
 
-class NeuronPropertyFilterBlock(Block, abc.ABC):
+class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 
-    property_name: str | list[str] = Field(
-        name="Property name",
-        description="Property name"
+    filter_dict: dict[str, str] | dict[str, list[str]] = Field(
+        name="Filter",
+        description="Filter dictionary",
+        default={}
     )
 
-    property_values : tuple[str, ...] | list[tuple[str, ...]] = Field(
-        name="Property values",
-        description="Valid values for the property"
-    )
+    @property
+    def filter_keys(self):
+        return list(self.filter_dict.keys())
+
+    @property
+    def filter_values(self):
+        return list(self.filter_dict.values())
 
     def filter(self, df_in, reindex=True):
-        self.enforce_no_lists()
-        vld = df_in[self.property_name].isin(self.property_values)
-        ret = df_in.loc[vld]
-        if reindex:
-            ret = ret.reset_index(drop=True)
+        ret = df_in
+        for filter_key, filter_value in self.filter_dict.items():
+            vld = ret[filter_key].isin(filter_value)
+            ret = ret.loc[vld]
+            if reindex:
+                ret = ret.reset_index(drop=True)
         return ret
     
     def test_validity(self, circuit, node_population):
-        self.enforce_no_lists()
-        prop_names = circuit.sonata_circuit.nodes[node_population].property_names
-        if isinstance(self.property_name, list):
-            assert all(_prop in prop_names for _prop in self.property_name), (
-                f"Invalid neuron properties! Available properties: {prop_names}"
-            ) 
-        else:
-            assert self.property_name in prop_names, (
-                f"Invalid neuron property! Available properties: {prop_names}"
-            ) 
+        circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
+        filter_keys = list(self.filter_dict.keys())
+
+        assert all(_prop in circuit_prop_names for _prop in self.filter_keys), (
+            f"Invalid neuron properties! Available properties: {prop_names}"
+        ) 
 
 
 
@@ -304,9 +306,9 @@ class IDNeuronSet(NeuronSet):
 
 class PropertyNeuronSet(NeuronSet):
     """Neuron set definition based on neuron properties, optionally combined with (named) node sets."""
-    property_filters: tuple[NeuronPropertyFilterBlock, ...] | list[tuple[NeuronPropertyFilterBlock, ...]] = Field(
-        name="Neuron property filters",
-        description="Any number of property filter blocks",
+    property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
+        name="Neuron property filter",
+        description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=()
     )
     node_sets: (
@@ -315,9 +317,7 @@ class PropertyNeuronSet(NeuronSet):
     ) = tuple()
 
     def check_properties(self, circuit, population):
-        # Assuming all lists have been resolved
-        for fltr in self.property_filters:
-            fltr.test_validity(circuit, population)
+        self.property_filter.test_validity(circuit, population)
 
     def check_node_sets(self, circuit, population):
         for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
@@ -332,13 +332,8 @@ class PropertyNeuronSet(NeuronSet):
         for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
             node_ids = np.union1d(node_ids, c.nodes[population].ids(_nset))
 
-        required_props = []
-        for fltr in self.property_filters:
-            fltr.enforce_no_lists()
-            required_props.append(fltr.property_name)
-        df = c.nodes[population].get(properties=required_props).reset_index()
-        for fltr in self.property_filters:
-            df = fltr.filter(df)
+        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
+        df = self.property_filter.filter(df)
 
         node_ids = df["node_ids"].values
 
@@ -358,8 +353,8 @@ class PropertyNeuronSet(NeuronSet):
         if len(self.node_sets) == 0:
             # Symbolic expression can be preserved
             expression = dict([
-                (_fltr.property_name, __resolve_sngl(_fltr.property_values))
-                for _fltr in self.property_filters
+                (property_key, __resolve_sngl(property_value))
+                for property_key, property_value in self.property_filter.filter_dict.items()
             ])
         else:
             # Individual IDs need to be resolved
