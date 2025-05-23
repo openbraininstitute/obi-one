@@ -1,6 +1,7 @@
 import abc
 from typing import Self
 
+import morphio
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
@@ -19,14 +20,14 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         name="Number of locations",
         description="Number of locations to generate on morphology",
     )
-    section_types: None | tuple[int, ...] | list[tuple[int, ...]] = Field(
+    section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
         default=None,
         name="Section types",
         description="Types of sections to generate locations on. 2: axon, 3: basal, 4: apical",
     )
 
     @abc.abstractmethod
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         """Returns a generated list of points for the morphology."""
 
     @abc.abstractmethod
@@ -39,15 +40,15 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
-    def points_on(self, morphology):
+    def points_on(self, morphology: morphio.Morphology):
         self.enforce_no_lists()
         return self._make_points(morphology)
 
 
 class RandomMorphologyLocations(MorphologyLocationsBlock):
-    """Completely random locations without constraint"""
+    """Completely random locations without constraint."""
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -68,13 +69,16 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 
 
 class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
-    """Completely random locations, but grouped into abstract groups"""
+    """Completely random locations, but grouped into abstract groups."""
 
     n_groups: int | list[int] = Field(
-        default=1, name="Number of groups", description="Number of groups of locations to generate"
+        default=1,
+        name="Number of groups",
+        description="Number of groups of locations to \
+            generate",
     )
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -95,18 +99,20 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
 
 class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
-    """Locations around a specified path distance"""
+    """Locations around a specified path distance."""
 
     path_dist_mean: float | list[float] = Field(
         name="Path distance mean",
-        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine locations.",
+        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
+            locations.",
     )
     path_dist_tolerance: float | list[float] = Field(
         name="Path distance tolerance",
-        description="Amount of deviation in um from mean path distance that is tolerated. Must be > 1.0",
+        description="Amount of deviation in um from mean path distance that is tolerated. Must be \
+            > 1.0",
     )
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=self.number_of_locations,
@@ -132,17 +138,18 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
 
 
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
-    """Clustered random locations"""
+    """Clustered random locations."""
 
     n_clusters: int | list[int] = Field(
         name="Number of clusters", description="Number of location clusters to generate"
     )
     cluster_max_distance: float | list[float] = Field(
         name="Cluster maximum distance",
-        description="Maximum distance in um of generated locations from the center of their cluster",
+        description="Maximum distance in um of generated locations from the center of their \
+            cluster",
     )
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         # FIXME: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
@@ -174,7 +181,7 @@ class ClusteredGroupedMorphologyLocations(
 ):
     """Clustered random locations, grouped in to conceptual groups."""
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         # FIXME: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
@@ -203,11 +210,13 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
 
     path_dist_mean: float | list[float] = Field(
         name="Path distance mean",
-        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine locations.",
+        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
+            locations.",
     )
     path_dist_sd: float | list[float] = Field(
         name="Path distance mean",
-        description="SD of a Gaussian, defined on soma path distance in um. Used to determine locations.",
+        description="SD of a Gaussian, defined on soma path distance in um. Used to determine \
+            locations.",
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
@@ -215,7 +224,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         description="Number of conceptual groups per location cluster to generate",
     )
 
-    def _make_points(self, morphology):
+    def _make_points(self, morphology: morphio.Morphology):
         # FIXME: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
