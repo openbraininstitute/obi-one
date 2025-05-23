@@ -124,7 +124,7 @@ class Scan(OBIBaseModel):
                     else:
                         msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
                             {level_0_val}"
-                        raise ValueError(msg)
+                        raise TypeError(msg)
 
             try:
                 # Cast the form to its single_coord_class_name type
@@ -138,7 +138,7 @@ class Scan(OBIBaseModel):
                 self._coordinate_instances.append(coordinate_instance)
 
             except ValidationError as e:
-                raise ValidationError(e)
+                raise ValidationError(e) from e
 
         # Optionally display the coordinate instances
         if display:
@@ -228,9 +228,6 @@ class Scan(OBIBaseModel):
 
         # Create the directory and write dict to json file
         if output_path:
-            output_path = Path(output_path)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
             with output_path.open("w") as json_file:
                 json.dump(model_dump, json_file, indent=4)
 

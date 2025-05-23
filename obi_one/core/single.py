@@ -1,5 +1,4 @@
 import json
-import os
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
@@ -95,12 +94,14 @@ class SingleCoordinateMixin:
         elif self._coordinate_directory_option == "ZERO_INDEX":
             self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
         else:
-            raise ValueError(
-                f"Invalid coordinate_directory_option: {self._coordinate_directory_option}"
+            msg = (
+                f"Invalid coordinate_directory_option: {self._coordinate_directory_option}. "
+                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX."
             )
+            raise ValueError(msg)
 
         # Create the coordinate_output_root directory
-        os.makedirs(self.coordinate_output_root, exist_ok=True)
+        Path.mkdir(self.coordinate_output_root, parents=True, exist_ok=True)
 
     def serialize(self, output_path: Path) -> None:
         """Serialize the object to a JSON file."""
@@ -119,6 +120,5 @@ class SingleCoordinateMixin:
         model_dump.move_to_end("type", last=False)
         model_dump.move_to_end("obi_one_version", last=False)
 
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as json_file:
+        with Path.open(output_path, "w") as json_file:
             json.dump(model_dump, json_file, indent=4)
