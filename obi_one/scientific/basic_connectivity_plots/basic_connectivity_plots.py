@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 import warnings
@@ -6,6 +7,8 @@ from typing import ClassVar
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+
+L = logging.getLogger(__name__)
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -57,19 +60,19 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             plot_formats = self.initialize.plot_formats
             plot_types = self.initialize.plot_types
             dpi = self.initialize.dpi
-            print("Plot Formats:", plot_formats)
-            print("Plot Types:", plot_types)
+            L.info("Plot Formats:", plot_formats)
+            L.info("Plot Types:", plot_types)
 
-            print(f"Info: Running idx {self.idx}, plots for {plot_types}")
+            L.info(f"Info: Running idx {self.idx}, plots for {plot_types}")
 
             # Load matrix
-            print(f"Info: Loading matrix '{self.initialize.matrix_path}'")
+            L.info(f"Info: Loading matrix '{self.initialize.matrix_path}'")
             conn = ConnectivityMatrix.from_h5(self.initialize.matrix_path.path)
 
             # Size metrics
             size = np.array([len(conn.vertices), conn.matrix.nnz, conn.matrix.sum()])
-            print("Neuron, connection and synapse counts")
-            print(size)
+            L.info("Neuron, connection and synapse counts")
+            L.info(size)
             output_file = os.path.join(self.coordinate_output_root, "size.npy")
             np.save(output_file, size)
 
@@ -133,7 +136,7 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                     )
                     fig_network_global.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
-            print(f"Done with {self.idx}")
+            L.info(f"Done with {self.idx}")
 
         except Exception as e:
             traceback.print_exception(e)
