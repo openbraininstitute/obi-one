@@ -73,6 +73,9 @@ Once the service has been launched, the generated gui can additionally be launch
 
 <br>
 
+
+# Contributions:
+The goal of OBI-ONE is to build up a standardized modeling library with the community. Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to contribute.
  
 # Acknowledgements
 Copyright © 2025 Open Brain Institute
