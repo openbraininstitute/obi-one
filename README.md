@@ -38,22 +38,20 @@ Example notebooks are available in the [**examples**](examples/) directory
 
 [Writing in progress]
 
-Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi/modeling/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally add the type of objects when they are serialized to json. This allows objects referenced in a parent object to be correctly deserialized.
+Specific modeling use cases are built upon several key classes, which each inherit from [OBIBaseModel](obi_one/core/base.py). OBIBaseModel extends Pydantic's BaseModel (which supports type checking, json serialization and standardized generation of endpoints) to additionally add the type of objects when they are serialized to json. This allows objects referenced in a parent object to be correctly deserialized.
 
 obi-one has the following base classes, which inherit from OBIBaseModel and from which specific functionalities/components inherit:
 
-- [**Form**](obi/modeling/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi/modeling/simulation/simulations.py) for designing a simulation campaign or [CircuitExtractions](obi/modeling/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case. Dictionaries of Blocks of a particular type are used where the Form can accept an unspecified number of this Block type, such as Stimulus Blocks.
+- [**Form**](obi_one/core/form.py): defines a single modeling use case such as a [SimulationsForm](obi_one/scientific/simulation/simulations.py) for designing a simulation campaign or [CircuitExtractions](obi_one/scientific/circuit_extraction/circuit_extraction.py) for specifying a set of circuit extractions. A Form is composed of one or multiple Blocks (see next), which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. Each Form, for example, has its own Initialize Block for specifying the base parameters of the use case. Dictionaries of Blocks of a particular type are used where the Form can accept an unspecified number of this Block type, such as Stimulus Blocks.
 
-- [**Block**](obi/modeling/core/block.py): defines a component of a Form. Blocks are the components which support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. When using the Form (in a Jupter Notebook for example). Any parameter which is specified as a list is used as a dimension of a multi-dimensional parameter scan when passed to a Scan object (see below).
+- [**Block**](obi_one/core/block.py): defines a component of a Form. Blocks are the components which support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. When using the Form (in a Jupter Notebook for example). Any parameter which is specified as a list is used as a dimension of a multi-dimensional parameter scan when passed to a Scan object (see below).
 
-- [**Scan**](obi/modeling/core/scan.py): takes a single Form as input, an output path and a string for specifying how output files should be stored. Then the function Scan.execute(processing_method) function can then be called which generates the multiple dimensional scan and calls processing_method.
+- [**Scan**](obi_one/core/scan.py): takes a single Form as input, an output path and a string for specifying how output files should be stored. Then the function Scan.execute(processing_method) function can then be called which generates the multiple dimensional scan and calls processing_method.
 
-- [**SingleCoordinateMixin**](obi/modeling/core/single.py): (Todo)
+- [**SingleCoordinateMixin**](obi_one/core/single.py): (Todo)
 
 
 <br>
-
-
 
 
 # Launching the FAST API Service
