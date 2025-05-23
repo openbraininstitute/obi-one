@@ -184,20 +184,28 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                                         # Copy only, if not yet existing (could happen for shared morphologies among populations)
                                         shutil.copyfile(src_file, dest_file)
 
-                    # Copy .hoc file directory
-                    if (
-                        "biophysical_neuron_models_dir" in pop.config
-                    ):  # Even if defined globally, shows up under pop.config
+                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                    if ("biophysical_neuron_models_dir" in pop.config):
+                        hoc_file_list = [_hoc.split(":")[-1] + ".hoc" for _hoc in pop.get(properties="model_template").unique()]
                         print(
-                            f"Copying biophysical_neuron_models for population '{pop_name}' ({pop.size})"
+                            f"Copying {len(hoc_file_list)} biophysical neuron models (.hoc) for population '{pop_name}' ({pop.size})"
                         )
 
                         source_dir = original_circuit.nodes[pop_name].config[
                             "biophysical_neuron_models_dir"
                         ]
                         dest_dir = pop.config["biophysical_neuron_models_dir"]
+                        os.makedirs(dest_dir, exist_ok=True)
 
-                        shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
+                        for _hoc_file in hoc_file_list:
+                            src_file = os.path.join(source_dir, _hoc_file)
+                            dest_file = os.path.join(dest_dir, _hoc_file)
+                            assert os.path.exists(src_file), (
+                                f"ERROR: HOC file '{src_file}' missing!"
+                            )
+                            if not os.path.exists(dest_file):
+                                # Copy only, if not yet existing (could happen for shared hoc files among populations)
+                                shutil.copyfile(src_file, dest_file)
 
             # Copy .mod files, if any
             mod_folder = "mod"
