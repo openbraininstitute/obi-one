@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
@@ -9,6 +10,8 @@ from pydantic import Field, field_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
+
+L = logging.getLogger(__name__)
 
 
 class SingleCoordinateScanParams(OBIBaseModel):
@@ -39,13 +42,13 @@ class SingleCoordinateScanParams(OBIBaseModel):
         output = ""
 
         if len(self.scan_params) == 0:
-            print("No coordinate parameters.")
+            L.info("No coordinate parameters.")
         else:
             for j, scan_param in enumerate(self.scan_params):
                 output = output + scan_param.location_str + ": " + str(scan_param.value)
                 if j < len(self.scan_params) - 1:
                     output += ", "
-            print(output)
+            L.info(output)
 
 
 class SingleCoordinateMixin:
