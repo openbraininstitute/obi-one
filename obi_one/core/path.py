@@ -7,5 +7,6 @@ class NamedPath(OBIBaseModel):
     name: str
     path: str
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return a string representation of the NamedPath object."""
         return self.name
