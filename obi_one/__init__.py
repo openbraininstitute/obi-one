@@ -109,6 +109,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     NeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet
 )
 from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
