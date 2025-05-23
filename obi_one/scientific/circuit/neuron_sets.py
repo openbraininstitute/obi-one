@@ -14,9 +14,12 @@ from obi_one.core.base import OBIBaseModel
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 
-    filter_dict: dict[str, str] | dict[str, list[str]] = Field(
+    # 
+    filter_dict: dict[str, list[str]] = Field(
         name="Filter",
-        description="Filter dictionary",
+        description="Filter dictionary. Note as this is NOT a Block, the list here is \
+                    not to support multi-dimensional parameters but to support a key pair \
+                    with multiple values i.e. {'layer': ['2', '3']}}",
         default={}
     )
 
