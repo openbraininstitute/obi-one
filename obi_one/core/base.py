@@ -30,7 +30,7 @@ class OBIBaseModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def set_type(cls, data: dict | BaseModel) -> dict[str, Any]:
+    def set_type(cls, data: Any) -> dict[str, Any]:
         """Automatically sets `type` when instantiated in Python if a dictionary."""
         if isinstance(data, dict) and "type" not in data:
             data["type"] = cls.__qualname__

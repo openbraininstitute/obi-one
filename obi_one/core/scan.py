@@ -200,7 +200,7 @@ class Scan(OBIBaseModel):
 
         return return_dict
 
-    def serialize(self, output_path: str = "") -> dict:
+    def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
 
         - type name added to each subobject of type
