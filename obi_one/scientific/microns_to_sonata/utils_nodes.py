@@ -89,7 +89,9 @@ def unrotate(node_series, morph):
     return tl_morph
 
 
-def transform_and_copy_morphologies(nrns, in_root, out_root, out_formats=(".h5", ".swc")):
+def transform_and_copy_morphologies(nrns, in_root, out_root,
+                                    out_formats=(".h5", ".swc"),
+                                    do_transform=True):
     if not os.path.isdir(out_root):
         os.makedirs(out_root)
     morph_name_pat = "{0}.swc"
@@ -105,12 +107,16 @@ def transform_and_copy_morphologies(nrns, in_root, out_root, out_formats=(".h5",
         morph_fn = morph_name_pat.format(_idx)
         morph = neurom.io.utils.load_morphology(os.path.join(in_root, morph_fn),
                                                 mutable=True)
-        new_morph = untranslate(nrns.loc[_idx], morph)
-        new_morph = unrotate(nrns.loc[_idx], new_morph)
-        new_morph.name = str(_idx)
-        nrns.loc[_idx, _STR_MORPH] = new_morph.name
+        if do_transform:
+            morph = untranslate(nrns.loc[_idx], morph)
+            morph = unrotate(nrns.loc[_idx], morph)
+        else:
+            nrns.loc[_idx, _C_NRN_LOCS] = 0.0
+            nrns.loc[[_idx], _STR_ORIENT] = [__unit_rot]
+        morph.name = str(_idx)
+        nrns.loc[_idx, _STR_MORPH] = morph.name
         for ext in out_formats:
-            new_morph.to_morphio().write(os.path.join(out_root, new_morph.name + ext))
+            morph.to_morphio().write(os.path.join(out_root, morph.name + ext))
 
 
 def neuron_info_to_collection(nrn, name, cols_to_rename, cols_to_keep):
@@ -122,7 +128,6 @@ def neuron_info_to_collection(nrn, name, cols_to_rename, cols_to_keep):
                 nrn[cols_to_keep]
     ], axis=1)
     nrn_out["pt_root_id"] = nrn_out.index
-    # nrn_out["morphology"] = nrn_out["pt_root_id"].astype(str)
     nrn_out.index = pandas.RangeIndex(1, len(nrn_out) + 1)
 
     coll = CellCollection.from_dataframe(nrn_out)

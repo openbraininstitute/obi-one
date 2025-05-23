@@ -13,7 +13,7 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleCoordinateMixin
 
 from .utils_nodes import collection_to_neuron_info, _STR_MORPH, _STR_NONE
-from .utils_edges import pt_root_to_sonata_id, format_for_edges_output
+from .utils_edges import pt_root_to_sonata_id, format_for_edges_output, find_edges_resume_point
 from .sonata_edges_write import write_edges
 
 
@@ -24,9 +24,10 @@ class EMSonataEdgesFiles(Form, abc.ABC):
     description: ClassVar[str] = (
         "Converts the synaptic connection information from an EM release to a SONATA edges file."
     )
-    cave_client_token: str = Field(
+    cave_client_token: str | None = Field(
         name="CAVE client acces token",
-        description="CAVE client access token"
+        description="CAVE client access token",
+        default=None
     )
 
     class Initialize(Block):
@@ -77,18 +78,21 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
             raise RuntimeError("Optional dependency 'cavelient' not installed!")
         client = CAVEclient(self.initialize.client_name)
         client.version = self.initialize.client_version
-        client.auth.token = self.cave_client_token
+        if self.cave_client_token is not None:
+            client.auth.token = self.cave_client_token
 
         tmp_blck = EMEdgesMappingBlock(
                 client_name=self.initialize.client_name,
-                client_version=self.initialize.client_version,
-                pt_root_id=-1
+                client_version=self.initialize.client_version
             )
         
         if os.path.isabs(self.initialize.extrinsic_nodes):
             extrinsics_fn = self.initialize.extrinsic_nodes
         else:
             extrinsics_fn = os.path.join(self.coordinate_output_root, self.initialize.extrinsic_nodes)
+        intrinsic_edges_fn = os.path.join(self.coordinate_output_root, "intrinsic_edges.h5")
+        extrinsic_edges_fn = os.path.join(self.coordinate_output_root, "extrinsic_edges.h5")
+
         # Load intrinsic and currently exisint extrinsic nodes
         intrinsics, intrinsic_name = collection_to_neuron_info(self.initialize.intrinsic_nodes,
                                                                must_exist=True)
@@ -99,7 +103,8 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         intrinsic_edge_pop_name = intrinsic_name + "__" + intrinsic_name + "__chemical"
         extrinsic_edge_pop_name = extrinsic_name + "__" + intrinsic_name + "__chemical"
 
-        pt_root_ids = intrinsics.loc[intrinsics[_STR_MORPH] != _STR_NONE]#, "pt_root_id"].values
+        pt_root_ids = find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_name)
+
         syns = []
         for _, pt_root_id in pt_root_ids.iterrows():
             #tmp_blck.pt_root_id = pt_root_id
@@ -127,12 +132,12 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         # Bring DataFrame into output format. Mainly renames columns.
         intrinsic_syn_map, intrinsic_syn_prop = format_for_edges_output(intrinsic_syns)
         extrinsic_syn_map, extrinsic_syn_prop = format_for_edges_output(extrinsic_syns)
-        intrinsic_edges_fn = os.path.join(self.coordinate_output_root, "intrinsic_edges.h5")
-        extrinsic_edges_fn = os.path.join(self.coordinate_output_root, "extrinsic_edges.h5")
 
         write_edges(intrinsic_edges_fn, intrinsic_edge_pop_name, 
-                    intrinsic_syn_map, intrinsic_syn_prop)
+                    intrinsic_syn_map, intrinsic_syn_prop,
+                    intrinsic_name, intrinsic_name)
         write_edges(extrinsic_edges_fn, extrinsic_edge_pop_name, 
-                    extrinsic_syn_map, extrinsic_syn_prop)
+                    extrinsic_syn_map, extrinsic_syn_prop,
+                    extrinsic_name, intrinsic_name)
 
 

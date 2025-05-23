@@ -27,9 +27,10 @@ class EMSonataNodesFiles(Form, abc.ABC):
     description: ClassVar[str] = (
         "Converts the neuron information from an EM release to a SONATA nodes file."
     )
-    cave_client_token: str = Field(
+    cave_client_token: str | None = Field(
         name="CAVE client acces token",
-        description="CAVE client access token"
+        description="CAVE client access token",
+        default=None
     )
 
     class Initialize(Block):
@@ -54,6 +55,11 @@ class EMSonataNodesFiles(Form, abc.ABC):
             name="Morphology locations",
             description="Folder in which the skeletonized morphologies and spine infos are found"
         )
+        transform_morphology: bool = Field(
+            name="Transform morphology to local coordinates",
+            description="Whether to rotate the morphology according to local orientation and translate to the origin",
+            default=True
+        )
 
     initialize: Initialize
 
@@ -71,7 +77,8 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
             raise RuntimeError("Optional dependency 'cavelient' not installed!")
         client = CAVEclient(self.initialize.client_name)
         client.version = self.initialize.client_version
-        client.auth.token = self.cave_client_token
+        if self.cave_client_token is not None:
+            client.auth.token = self.cave_client_token
         filters = {
             "classification_system": "aibs_neuronal"
         }
@@ -93,7 +100,8 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
         transform_and_copy_morphologies(nrns, self.initialize.morphology_root,
                                         os.path.join(self.coordinate_output_root,
                                                      "morphologies"),
-                                        out_formats=(".h5", ".swc"))
+                                        out_formats=(".h5", ".swc"),
+                                        do_transform=self.initialize.transform_morphology)
 
 
         coll = neuron_info_to_collection(nrns, self.initialize.population_name,

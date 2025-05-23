@@ -5,6 +5,7 @@ import neurom.io
 import connalysis
 import neurom.io.utils
 import pandas
+import h5py
 
 from scipy.spatial.transform import Rotation
 
@@ -253,9 +254,9 @@ def format_for_edges_output(syns):
         _STR_SEG_ID: "afferent_segment_id",
         _STR_SEG_OFF: "afferent_segment_offset",
         _STR_SEC_OFF: "afferent_section_offset",
-        _STR_SPINE_X: "spine_root_x",
-        _STR_SPINE_Y: "spine_root_y",
-        _STR_SPINE_Z: "spine_root_z",
+        _STR_SPINE_X: "afferent_surface_x",
+        _STR_SPINE_Y: "afferent_surface_y",
+        _STR_SPINE_Z: "afferent_surface_z",
     }
     cols_keep = [_STR_SPINE_ID]
     cols_keep = cols_keep + list(synapse_col_renaming.keys())
@@ -263,3 +264,15 @@ def format_for_edges_output(syns):
     syn_props = syns[cols_keep].rename(columns=synapse_col_renaming)
     syn_maps = syns[[_STR_PRE_NODE, _STR_POST_NODE]]
     return syn_maps, syn_props
+
+def find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_name):
+    from .utils_nodes import _STR_NONE, _STR_MORPH
+
+    with h5py.File(intrinsic_edges_fn, "r") as h5:
+        node_ranges = h5["edges"][intrinsic_edge_pop_name]["indices/target_to_source/node_id_to_ranges"][:]
+        assert len(node_ranges) == len(intrinsics), "Invalid edge poplation index!"
+        # Nodes without edges so far
+        intrinsics = intrinsics.loc[numpy.diff(node_ranges, axis=1)[:, 0] == 0]
+        # Nodes with associated morphologies
+        pt_root_ids = intrinsics.loc[intrinsics[_STR_MORPH] != _STR_NONE]
+    return pt_root_ids

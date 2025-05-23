@@ -19,14 +19,16 @@ def create_or_resize_dataset(grp, name, data):
         grp.create_dataset(name, data=data, maxshape=(None, ))
 
 
-def write_edges(fn_out, population_name, syn_pre_post, syn_data):
+def write_edges(fn_out, population_name, syn_pre_post, syn_data, source_pop_name, tgt_pop_name):
     h5 = h5py.File(fn_out, "a")
 
     grp_root = h5.require_group("edges/{0}".format(population_name))
     grp_0 = grp_root.require_group("0")
 
     create_or_resize_dataset(grp_root, "source_node_id", syn_pre_post[_STR_PRE_NODE].values)
+    grp_root["source_node_id"].attrs["node_population"] = source_pop_name
     create_or_resize_dataset(grp_root, "target_node_id", syn_pre_post[_STR_POST_NODE].values)
+    grp_root["target_node_id"].attrs["node_population"] = tgt_pop_name
 
     for _col in syn_data.columns:
         create_or_resize_dataset(grp_0, _col, syn_data[_col].values)
