@@ -7,6 +7,10 @@ from fastapi import APIRouter, Depends
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from obi_one.scientific.ephys_extraction.ephys_extraction import (
+    ElectrophysFeatureToolOutput,
+    get_electrophysiology_metrics,
+)
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
@@ -41,4 +45,27 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
+    @router.get(
+        "/electrophysiologyrecording-metrics/{trace_id}",
+        summary="electrophysiology recording metrics",
+        description="This calculates electrophysiology traces metrics for a particular recording",
+    )
+    def electrophysiologyrecording_metrics_endpoint(
+        entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        trace_id: str,
+    ) -> ElectrophysFeatureToolOutput:
+        L.info("get_electrophysiology_metrics")
+
+        metrics = get_electrophysiology_metrics(
+            trace_id=trace_id,
+            entity_client=entity_client,
+        )
+        if metrics:
+            return metrics
+        L.error(f"electrophysiology recording {trace_id} metrics computation issue")
+        raise ApiError(
+            message="Asset not found",
+            error_code=ApiErrorCode.NOT_FOUND,
+            http_status_code=HTTPStatus.NOT_FOUND,
+        )
     return router
