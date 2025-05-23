@@ -1,7 +1,6 @@
+
 import obi_one as obi
-import shutil
-import os
-from pathlib import Path
+
 
 def test_simulation_campaign():
     # circuit_path_prefix = "/Users/james/Documents/obi/additional_data/"
@@ -11,8 +10,6 @@ def test_simulation_campaign():
 
     # circuit2 = obi.Circuit(name="nbS1-HEX0-beta", path=circuit_path_prefix + "ToyCircuit-S1-6k/circuit_config.json")
     # print(f"Circuit '{circuit2}' with {circuit2.sonata_circuit.nodes.size} neurons and {circuit2.sonata_circuit.edges.size} synapses")
-
-    
 
     # Simulation init
     sim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1")
@@ -25,13 +22,21 @@ def test_simulation_campaign():
 
     # Stimuli
     stim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=[10, 20])
-    stim_times = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=1000.0)  # in ms!!
-    current_stimulus = obi.ConstantCurrentClampSomaticStimulus(timestamps=stim_times, duration=5.0, neuron_set=stim_neuron_set, amplitude=[0.2, 0.5])
-    sync_current_stimulus = obi.ConstantCurrentClampSomaticStimulus(timestamps=stim_times, duration=100.0, neuron_set=stim_neuron_set, amplitude=0.1)
+    stim_times = obi.RegularTimestamps(
+        start_time=0.0, number_of_repetitions=3, interval=1000.0
+    )  # in ms!!
+    current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
+        timestamps=stim_times, duration=5.0, neuron_set=stim_neuron_set, amplitude=[0.2, 0.5]
+    )
+    sync_current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
+        timestamps=stim_times, duration=100.0, neuron_set=stim_neuron_set, amplitude=0.1
+    )
 
     # Recordings
     rec_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=100)
-    v_recording = obi.SomaVoltageRecording(start_time=0.0, end_time=sim_duration, neuron_set=rec_neuron_set)
+    v_recording = obi.SomaVoltageRecording(
+        start_time=0.0, end_time=sim_duration, neuron_set=rec_neuron_set
+    )
 
     # """
     # Fill form with Blocks
