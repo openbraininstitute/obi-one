@@ -1,5 +1,7 @@
 from typing import Any
 
+from pydantic import Field
+
 from obi_one.core.base import OBIBaseModel
 
 
@@ -14,7 +16,7 @@ def nested_param_short(nested_param_list: list) -> str:
 
 
 class ScanParam(OBIBaseModel):
-    location_list: list = []
+    location_list: list = Field(default_factory=list)
     _location_str: str = ""
 
     @property
@@ -24,7 +26,7 @@ class ScanParam(OBIBaseModel):
 
 
 class MultiValueScanParam(ScanParam):
-    values: list[Any] = [None]
+    values: list[Any] = Field(default_factory=lambda: [None])
 
 
 class SingleValueScanParam(ScanParam):
