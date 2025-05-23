@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-
+from obi_one.core.list import NamedList
 
 class NeuronSet(Block, abc.ABC):
     """Base class representing a neuron set which can be turned into a SONATA node set by either
@@ -250,21 +250,18 @@ class CombinedNeuronSet(NeuronSet):
 class IDNeuronSet(NeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
 
-    neuron_ids: (
-        Annotated[tuple[int, ...], Field(min_length=1)]
-        | Annotated[list[Annotated[tuple[int, ...], Field(min_length=1)]], Field(min_length=1)]
-    )
+    neuron_ids: NamedList | Annotated[list[NamedList], Field(min_length=1)]
 
     def check_neuron_ids(self, circuit, population):
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
-        assert all(_nid in popul_ids for _nid in self.neuron_ids), (
+        assert all(_nid in popul_ids for _nid in self.neuron_ids.elements), (
             f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"
         )  # Assumed that all (outer) lists have been resolved
 
     def _get_expression(self, circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_neuron_ids(circuit, population)
-        return {"population": population, "node_id": list(self.neuron_ids)}
+        return {"population": population, "node_id": list(self.neuron_ids.elements)}
 
 
 class PropertyNeuronSet(NeuronSet):

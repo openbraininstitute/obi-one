@@ -1,6 +1,7 @@
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.form import Form
+from obi_one.core.list import NamedList
 from obi_one.core.path import NamedPath
 from obi_one.core.scan import CoupledScan, GridScan
 from obi_one.core.serialization import (
@@ -41,6 +42,8 @@ __all__ = [
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
+    "MorphologyDecontainerization",
+    "MorphologyDecontainerizationsForm",
     "MorphologyLocations",
     "MorphologyLocationsForm",
     "MorphologyMetrics",
@@ -49,6 +52,7 @@ __all__ = [
     "MultiBlockEntitySDKTest",
     "MultiBlockEntitySDKTestForm",
     "MultiPulseCurrentClampSomaticStimulus",
+    "NamedList",
     "NamedPath",
     "NeuronSet",
     "NeuronSetUnion",
@@ -126,6 +130,10 @@ from obi_one.scientific.folder_compression.folder_compression import (
 from obi_one.scientific.morphology_containerization.morphology_containerization import (
     MorphologyContainerization,
     MorphologyContainerizationsForm,
+)
+from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
+    MorphologyDecontainerization,
+    MorphologyDecontainerizationsForm,
 )
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredGroupedMorphologyLocations,

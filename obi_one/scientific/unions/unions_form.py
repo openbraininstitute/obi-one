@@ -13,6 +13,9 @@ from obi_one.scientific.folder_compression.folder_compression import (
 from obi_one.scientific.morphology_containerization.morphology_containerization import (
     MorphologyContainerizationsForm,
 )
+from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
+    MorphologyDecontainerizationsForm,
+)
 from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
@@ -30,6 +33,7 @@ FormUnion = (
     | ConnectivityMatrixExtractions
     | FolderCompressions
     | MorphologyContainerizationsForm
+    | MorphologyDecontainerizationsForm
     | MorphologyMetricsForm
     | SimulationsForm
     | SingleBlockGenerateTestForm
