@@ -235,9 +235,11 @@ def select_places_from_candidate_list(
         consistent with the index of 'cands'.
     """
 
-    def randomly_pick_with_p(df_in: pd.DataFrame) -> pd.DataFrame:
-        df_in = df_in.droplevel(0)
-        selected = df_in.loc[np.random.choice(df_in.index, n, p=df_in["p"] / df_in["p"].sum())]
+    def randomly_pick_with_p(dataframe_in: pd.DataFrame) -> pd.DataFrame:
+        dataframe_in = dataframe_in.droplevel(0)
+        selected = dataframe_in.loc[
+            np.random.choice(dataframe_in.index, n, p=dataframe_in["p"] / dataframe_in["p"].sum())
+        ]
         selected = selected[_SEG_MIN] + np.random.rand(n) * (
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
@@ -253,7 +255,7 @@ def select_places_from_candidate_list(
     return cands.groupby(_CEN_IDX).apply(randomly_pick_with_p)
 
 
-def map_presynaptic_ids(df: pd.DataFrame, n_per_center: int) -> None:
+def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
     """Assign ids to generated locations.
 
     Locations around the same center are split into the specified number of groups and assigned \
@@ -262,24 +264,24 @@ def map_presynaptic_ids(df: pd.DataFrame, n_per_center: int) -> None:
     Does not return an output, instead adds a column to the input dataframe.
 
     Args:
-        df (pd.DataFrame): Contains the selected locations. Defined by section id,
+        dataframe (pd.DataFrame): Contains the selected locations. Defined by section id,
         segment id, segment offset, etc.
 
         n_per_center (int): Numner of unique identifiers per center.
     """
-    rnd = np.random.randint(0, n_per_center, len(df))
-    df[_PRE_IDX] = df[_CEN_IDX] * n_per_center + rnd
+    rnd = np.random.randint(0, n_per_center, len(dataframe))
+    dataframe[_PRE_IDX] = dataframe[_CEN_IDX] * n_per_center + rnd
 
 
 def add_normalized_section_offset(
-    df: pd.DataFrame,
+    dataframe: pd.DataFrame,
     m: morphio.Morphology,
     path_distance_calculator: MorphologyPathDistanceCalculator,
 ) -> None:
     """Adds the normalized section offset to a dataframe that defines morphology locations.
 
     Args:
-        df (pd.DataFrame): Contains the selected locations. Defined by section id,
+        dataframe (pd.DataFrame): Contains the selected locations. Defined by section id,
         segment id, segment offset, etc.
 
         m (morphio.Morphology): morphology used
@@ -290,9 +292,9 @@ def add_normalized_section_offset(
     sec_lengths = np.array(
         [np.linalg.norm(np.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
     )
-    sec_o = path_distance_calculator.O[df[_SEC_ID] - 1, df[_SEG_ID]]
-    sec_l = sec_lengths[df[_SEC_ID] - 1]
-    df[_SEC_LOC] = sec_o / sec_l
+    sec_o = path_distance_calculator.O[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
+    sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
+    dataframe[_SEC_LOC] = sec_o / sec_l
 
 
 def generate_neurite_locations_on(
