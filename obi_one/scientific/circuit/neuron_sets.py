@@ -22,6 +22,14 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         default={},
     )
 
+    @model_validator(mode="after")
+    def check_filter_dict_values(self) -> Self:
+        for key, values in self.filter_dict.items():
+            assert isinstance(values, list) and len(values) >= 1, (
+                f"Filter key '{key}' must have a non-empty list of values."
+            )
+        return self
+
     @property
     def filter_keys(self) -> list[str]:
         return list(self.filter_dict.keys())
@@ -46,6 +54,18 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         assert all(_prop in circuit_prop_names for _prop in self.filter_keys), (
             f"Invalid neuron properties! Available properties: {prop_names}"
         )
+
+    def __repr__(self) -> str:
+        """Return a string representation of the NamedPath object."""
+        if len(self.filter_dict) == 0:
+            return "NoFilter"
+        else:
+            string_rep = ""
+            for filter_key, filter_value in self.filter_dict.items():
+                string_rep += f"{filter_key}="
+                for value in filter_value:
+                    string_rep += f"{value},"
+            return string_rep[:-1]  # Remove trailing comma and space
 
 
 class NeuronSet(Block, abc.ABC):
