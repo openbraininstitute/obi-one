@@ -8,6 +8,7 @@ from obi_one.core.serialization import (
     deserialize_obi_object_from_json_file,
 )
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_classes import db_classes
 from obi_one.database.db_manager import db
 
@@ -41,6 +42,8 @@ __all__ = [
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
+    "MorphologyDecontainerization",
+    "MorphologyDecontainerizationsForm",
     "MorphologyLocations",
     "MorphologyLocationsForm",
     "MorphologyMetrics",
@@ -50,6 +53,7 @@ __all__ = [
     "MultiBlockEntitySDKTestForm",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
+    "NamedTuple",
     "NeuronSet",
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
@@ -126,6 +130,10 @@ from obi_one.scientific.folder_compression.folder_compression import (
 from obi_one.scientific.morphology_containerization.morphology_containerization import (
     MorphologyContainerization,
     MorphologyContainerizationsForm,
+)
+from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
+    MorphologyDecontainerization,
+    MorphologyDecontainerizationsForm,
 )
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredGroupedMorphologyLocations,
