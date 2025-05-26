@@ -56,7 +56,7 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         )
 
     def __repr__(self) -> str:
-        """Return a string representation of the NamedPath object."""
+        """Return a string representation of the NeuronPropertyFilter object."""
         if len(self.filter_dict) == 0:
             return "NoFilter"
         else:
