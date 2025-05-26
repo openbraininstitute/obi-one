@@ -71,6 +71,12 @@ Once the service has been launched, the generated gui can additionally be launch
 
 <br>
 
+# Logging: 
+The package's logging level can be set like this from your script / notebook:
+```
+L = logging.getLogger(obi.__name__)
+L.setLevel(logging.WARNING) 
+```
 
 # Contributions:
 The goal of OBI-ONE is to build up a standardized modeling library with the community. Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to contribute.
