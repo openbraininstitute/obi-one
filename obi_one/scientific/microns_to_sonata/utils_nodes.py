@@ -19,18 +19,21 @@ __unit_rot = numpy.array([
 ]).astype(float)
 
 def estimate_vertical(nrns):
-    def estimate_layer(ct_in):
+    def estimate_layer(ct_in, _idx=0):
         try:
-            return int(ct_in[0])
+            return int(ct_in[_idx])
         except:
             return numpy.nan
         
-    l = nrns["cell_type"].apply(estimate_layer)
+    if "layer" in nrns.columns:
+        l = nrns["layer"].apply(estimate_layer, _idx=-1)
+    else:
+        l = nrns["cell_type"].apply(estimate_layer, _idx=0)
     l.name = "layer"
     mn_layer_pos = pandas.concat([nrns[_C_NRN_LOCS], l], axis=1).groupby("layer")[_C_NRN_LOCS].mean().sort_index(ascending=False)
     mn_delta_vec = mn_layer_pos.diff(axis=0).mean()
     vertical = mn_delta_vec.values / numpy.linalg.norm(mn_delta_vec.values)
-    return vertical 
+    return vertical
 
 def estimate_volume_rotation(nrns, volume_vertical=None):
     if volume_vertical is None:
@@ -41,6 +44,13 @@ def estimate_volume_rotation(nrns, volume_vertical=None):
     rot = transform.Rotation.align_vectors(v, neutral)[0] # transform [0, 1, 0] into "vertical"
     return rot
 
+def apply_filters(df, filters):
+    for k, v in filters.items():
+        if isinstance(v, tuple) or isinstance(v, list):
+            df = df.loc[df[k].isin(v)]
+        else:
+            df = df.loc[df[k] == v]
+    return df
 
 def source_resolution(client):
     resolutions = numpy.array(
@@ -52,11 +62,7 @@ def source_resolution(client):
 def neuron_info_df(client, table_name, filters, add_position=True):
     q_cells = client.materialize.query_table(table_name)
 
-    for k, v in filters.items():
-        if isinstance(v, tuple) or isinstance(v, list):
-            q_cells = q_cells.loc[q_cells[k].isin(v)]
-        else:
-            q_cells = q_cells.loc[q_cells[k] == v]
+    q_cells = apply_filters(q_cells, filters)
 
     vc = q_cells["pt_root_id"].value_counts()
     q_cells = q_cells.set_index("pt_root_id").loc[vc[vc == 1].index]

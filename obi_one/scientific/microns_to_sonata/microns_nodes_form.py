@@ -16,6 +16,7 @@ from .utils_nodes import (
     estimate_volume_rotation,
     transform_and_copy_morphologies,
     neuron_info_from_somas_file,
+    apply_filters,
     _STR_MORPH,
     _STR_ORIENT
 )
@@ -105,7 +106,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
         #     client.auth.token = self.cave_client_token
         
         nrns = neuron_info_df(client, self.initialize.table_names[0],
-                              filters=self.initialize.nodes_filters,
+                              filters={}, # self.initialize.nodes_filters,
                               add_position=True)
         assert len(nrns) > 0, "No neurons found!"
         for _tbl in self.initialize.table_names[1:]:
@@ -123,6 +124,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
             )
             nrn = nrn[[_col for _col in nrn.columns if _col not in nrns.columns]]
             nrns = pandas.concat([nrns, nrn], axis=1)
+        nrns = apply_filters(nrns, self.initialize.nodes_filters)
 
         # More of a place holder. We estimate a global rotation of the entire volume
         volume_rot = estimate_volume_rotation(nrns, volume_vertical=self.initialize.volume_vertical).as_matrix()
