@@ -86,6 +86,8 @@ __all__ = [
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsUnion",
+    "VolumetricCountNeuronSet",
+    "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocationSet",
     "db",
     "deserialize_obi_object_from_json_data",
@@ -116,7 +118,7 @@ from obi_one.scientific.circuit.neuron_sets import (
     PredefinedNeuronSet,
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet
+    VolumetricRadiusNeuronSet,
 )
 from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (

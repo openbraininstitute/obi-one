@@ -6,12 +6,12 @@ from typing import Annotated, Self
 import bluepysnap as snap
 import numpy as np
 import pandas
-from pydantic import Field, model_validator, NonNegativeFloat, NonNegativeInt
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.circuit.circuit import Circuit
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
@@ -60,13 +60,12 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         """Return a string representation of the NeuronPropertyFilter object."""
         if len(self.filter_dict) == 0:
             return "NoFilter"
-        else:
-            string_rep = ""
-            for filter_key, filter_value in self.filter_dict.items():
-                string_rep += f"{filter_key}="
-                for value in filter_value:
-                    string_rep += f"{value},"
-            return string_rep[:-1]  # Remove trailing comma and space
+        string_rep = ""
+        for filter_key, filter_value in self.filter_dict.items():
+            string_rep += f"{filter_key}="
+            for value in filter_value:
+                string_rep += f"{value},"
+        return string_rep[:-1]  # Remove trailing comma and space
 
 
 class NeuronSet(Block, abc.ABC):
@@ -419,7 +418,9 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
-    n: NonNegativeInt | list[NonNegativeInt] = Field(name="Number of neurons", description="Number of neurons to find")
+    n: NonNegativeInt | list[NonNegativeInt] = Field(
+        name="Number of neurons", description="Number of neurons to find"
+    )
     columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
         name="x/y/z column names",
         description="Names of the three neuron (node) properties used for volumetric tests",
