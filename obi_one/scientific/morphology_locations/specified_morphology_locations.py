@@ -81,7 +81,7 @@ def path_distance_all_segments_from(
 
 
 def select_segments_as_cluster_centers(n_pick, locs, distr, lst_sec_types: list = None):
-    p = distr.path_distancesf(locs[_SOM_PAD])
+    p = distr.pdf(locs[_SOM_PAD])
     if lst_sec_types is not None:
         p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)
 

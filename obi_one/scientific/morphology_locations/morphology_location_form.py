@@ -53,7 +53,8 @@ class MorphologyLocationsForm(Form):
 class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
     """Generates locations on a morphology skeleton."""
 
-    def _generate_plot(self, m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:
+    @staticmethod
+    def generate_plot(m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:
         """Generate a plot of the morphology with locations on it."""
 
         def location_xyz(row: pd.Series) -> plt.figure:
@@ -82,8 +83,8 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
                 m = self.initialize.morphology.morphio_morphology
             dataframe = self.morph_locations.points_on(m)
 
-            fig = self._generate_plot(m, dataframe)
-            fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdataframe"))
+            fig = MorphologyLocations.generate_plot(m, dataframe)
+            fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdf"))
             dataframe.to_csv(os.path.join(self.coordinate_output_root, "morphology_locations.csv"))
 
         except Exception as e:  # noqa: BLE001
