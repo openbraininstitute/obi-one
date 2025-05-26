@@ -69,6 +69,30 @@ def neuron_info_df(client, table_name, filters, add_position=True):
 
     return q_cells
 
+def neuron_info_from_somas_file(client, fn_somas_file, reference_df):
+    # I have independently validated that this method of matching neurons by
+    # locations provides meaningful results. --MWR
+    from scipy.spatial import KDTree
+    somas = pandas.read_csv(fn_somas_file)
+    # Hard coded filter. Sorry.
+    somas.loc[somas["c3_rep_strict"].dropna().index]
+    somas["proofread_104_rep"] = somas["proofread_104_rep"].fillna(0)
+    somas["proofread_104_rep"] = somas["proofread_104_rep"].astype(int)
+
+    res = source_resolution(client)
+    for _res, _col in zip(res, _C_NRN_LOCS):
+        somas[_col] = _res * somas[_col] / 1000.0
+    
+    t_soma_file = KDTree(somas[_C_NRN_LOCS])
+    t_reference = KDTree(reference_df[_C_NRN_LOCS])
+    matched = t_soma_file.query_ball_tree(t_reference, 1E-6) # For each entry in "somas" its matches
+    assert numpy.all([len(_x) <= 1 for _x in matched]) # No more than a single match
+    somas["pt_root_id"] = numpy.hstack([reference_df.index[_x[0]]
+                                        if len(_x) > 0 else -1 for _x in matched])
+    somas = somas.loc[somas["pt_root_id"] > 0]
+    somas = somas.loc[somas["pt_root_id"].isin(reference_df.index)]
+    return somas.set_index("pt_root_id").drop(columns=["x", "y", "z"])
+
 
 def translate(node_series, morph):
     node_loc = node_series[["x", "y", "z"]].values.reshape((1, -1))

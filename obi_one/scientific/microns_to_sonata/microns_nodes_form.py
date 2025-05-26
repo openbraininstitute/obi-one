@@ -15,6 +15,7 @@ from .utils_nodes import (
     neuron_info_to_collection, 
     estimate_volume_rotation,
     transform_and_copy_morphologies,
+    neuron_info_from_somas_file,
     _STR_MORPH,
     _STR_ORIENT
 )
@@ -48,9 +49,14 @@ class EMSonataNodesFiles(Form, abc.ABC):
         table_names: tuple[str, ...] = Field(
             name="Neuron info tables", description="Names of the data tables to collect neuron info from"
         )
+        somas_file: str | None = Field(
+            name="External somas file",
+            description="Path to a .csv file with additional info about neuron somas in the volume (soma.csv)",
+            default=None
+        )
         table_cols: tuple[str, ...] = Field(
             name="Table columns",
-            description="Names of neuron properties to keep from the source."
+            description="Names of neuron properties to keep from the sources."
         )
         nodes_filters: dict = Field(
             name="Node population filters",
@@ -101,6 +107,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
         nrns = neuron_info_df(client, self.initialize.table_names[0],
                               filters=self.initialize.nodes_filters,
                               add_position=True)
+        assert len(nrns) > 0, "No neurons found!"
         for _tbl in self.initialize.table_names[1:]:
             nrn = neuron_info_df(client, _tbl,
                                  filters={"pt_root_id": list(nrns.index.values)},
@@ -108,6 +115,15 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
             nrn = nrn[[_col for _col in nrn.columns if _col not in nrns.columns]]
             nrns = pandas.concat([nrns, nrn], axis=1)
         
+        if self.initialize.somas_file is not None:
+            nrn = neuron_info_from_somas_file(
+                client,
+                self.initialize.somas_file,
+                nrns
+            )
+            nrn = nrn[[_col for _col in nrn.columns if _col not in nrns.columns]]
+            nrns = pandas.concat([nrns, nrn], axis=1)
+
         # More of a place holder. We estimate a global rotation of the entire volume
         volume_rot = estimate_volume_rotation(nrns, volume_vertical=self.initialize.volume_vertical).as_matrix()
         nrns["orientation"] = [volume_rot for _ in range(len(nrns))]
