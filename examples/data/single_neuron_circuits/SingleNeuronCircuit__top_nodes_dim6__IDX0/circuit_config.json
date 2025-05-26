@@ -1,0 +1,47 @@
+{
+  "components": {
+    "biophysical_neuron_models_dir": "",
+    "mechanisms_dir": "",
+    "morphologies_dir": "",
+    "point_neuron_models_dir": "",
+    "synaptic_models_dir": "",
+    "templates_dir": ""
+  },
+  "networks": {
+    "edges": [],
+    "nodes": [
+      {
+        "nodes_file": "$BASE_DIR/S1nonbarrel_neurons/nodes.h5",
+        "populations": {
+          "S1nonbarrel_neurons": {
+            "alternate_morphologies": {},
+            "biophysical_neuron_models_dir": "$BASE_DIR/emodels_hoc",
+            "morphologies_dir": "$BASE_DIR/morphologies/swc",
+            "type": "biophysical"
+          }
+        }
+      },
+      {
+        "nodes_file": "$BASE_DIR/POm/nodes.h5",
+        "populations": {
+          "POm": {
+            "type": "virtual"
+          }
+        }
+      },
+      {
+        "nodes_file": "$BASE_DIR/VPM/nodes.h5",
+        "populations": {
+          "VPM": {
+            "type": "virtual"
+          }
+        }
+      }
+    ]
+  },
+  "node_sets_file": "$BASE_DIR/node_sets.json",
+  "version": 2.3,
+  "manifest": {
+    "$BASE_DIR": "./"
+  }
+}
