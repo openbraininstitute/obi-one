@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.list import NamedTuple
+from obi_one.core.tuple import NamedTuple
 
 
 class NeuronSet(Block, abc.ABC):
