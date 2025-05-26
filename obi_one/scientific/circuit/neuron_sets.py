@@ -6,7 +6,7 @@ from typing import Annotated, Self
 import bluepysnap as snap
 import numpy as np
 import pandas
-from pydantic import Field, model_validator, NonNegativeInt
+from pydantic import Field, model_validator, NonNegativeFloat, NonNegativeInt
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
@@ -464,7 +464,7 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
-    radius: float | list[float] = Field(
+    radius: NonNegativeFloat | list[NonNegativeFloat] = Field(
         name="Radius", description="Radius in um of volumetric sample"
     )
     columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
