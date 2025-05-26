@@ -363,14 +363,17 @@ class PropertyNeuronSet(NeuronSet):
     def _get_resolved_expression(self, circuit: Circuit, population: str) -> dict:
         """A helper function used to make subclasses work."""
         c = circuit.sonata_circuit
-        node_ids = np.array([]).astype(int)
-        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
-            node_ids = np.union1d(node_ids, c.nodes[population].ids(_nset))
 
         df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
         df = self.property_filter.filter(df)
 
         node_ids = df["node_ids"].values
+
+        if len(self.node_sets) > 0:
+            node_ids_nset = np.array([]).astype(int)
+            for _nset in self.node_sets:
+                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(_nset))
+            node_ids = np.intersect1d(node_ids, node_ids_nset)
 
         expression = {"population": population, "node_id": node_ids.tolist()}
         return expression
