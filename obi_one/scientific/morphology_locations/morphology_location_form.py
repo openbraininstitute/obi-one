@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import ClassVar
 
@@ -46,9 +45,6 @@ class MorphologyLocationsForm(Form):
         description="Parameterization of locations on the neurites of the morphology",
     )
 
-    def save(self, circuit_entities) -> None:
-        """Add entitysdk calls to save the collection."""
-
 
 class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
     """Generates locations on a morphology skeleton."""
@@ -84,9 +80,9 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
             dataframe = self.morph_locations.points_on(m)
 
             fig = MorphologyLocations.generate_plot(m, dataframe)
-            fig.savefig(os.path.join(self.coordinate_output_root, "locations_plot.pdf"))
-            dataframe.to_csv(os.path.join(self.coordinate_output_root, "morphology_locations.csv"))
+            fig.savefig(self.coordinate_output_root / "locations_plot.pdf")
+            dataframe.to_csv(self.coordinate_output_root / "morphology_locations.csv")
 
-        except Exception as e:  # noqa: BLE001
-            print(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+        except Exception as e:
+            L.error(f"An error occurred: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
