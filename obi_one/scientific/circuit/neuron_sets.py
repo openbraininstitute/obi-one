@@ -16,8 +16,8 @@ from obi_one.scientific.circuit.circuit import Circuit
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list[str]] = Field(
         name="Filter",
-        description="Filter dictionary. Note as this is NOT a Block, the list here is \
-                    not to support multi-dimensional parameters but to support a key pair \
+        description="Filter dictionary. Note as this is NOT a Block and the list here is \
+                    not to support multi-dimensional parameters but to support a key-value pair \
                     with multiple values i.e. {'layer': ['2', '3']}}",
         default={},
     )
