@@ -34,6 +34,11 @@ class EMSonataNodesFiles(Form, abc.ABC):
     )
 
     class Initialize(Block):
+        client_server: str | None = Field(
+            default=None,
+            name="Server name",
+            description="Name of data release server. If None, the default of CAVE client is used."
+        )
         client_name: str = Field(
             default='minnie65_public', name="Release name", description="Name of the data release CAVE client"
         )
@@ -47,9 +52,20 @@ class EMSonataNodesFiles(Form, abc.ABC):
             name="Table columns",
             description="Names of neuron properties to keep from the source."
         )
+        nodes_filters: dict = Field(
+            name="Node population filters",
+            description="Key/value filters to apply to the tables of the data release to generate the node population."
+        )
         population_name: str = Field(
             name="Population name",
             description="Name of the SONATA node population"
+        )
+        volume_vertical: tuple[float, float, float] | None = Field(
+            default=None,
+            name="Volume vertical vector",
+            description="A vector of len 3 that defines the vertical of the data volume. Used to assign a \
+                single global rotation to all morphologies. If not provided, instead it will trye to  \
+                    estimate an orientation field based on neuron layers."
         )
         morphology_root: str = Field(
             name="Morphology locations",
@@ -75,27 +91,25 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
             from caveclient import CAVEclient
         except ImportError:
             raise RuntimeError("Optional dependency 'cavelient' not installed!")
-        client = CAVEclient(self.initialize.client_name)
+        client = CAVEclient(server_address=self.initialize.client_server,
+                            datastack_name=self.initialize.client_name,
+                            auth_token=self.cave_client_token)
         client.version = self.initialize.client_version
-        if self.cave_client_token is not None:
-            client.auth.token = self.cave_client_token
-        filters = {
-            "classification_system": "aibs_neuronal"
-        }
-        nrns = [
-            neuron_info_df(client, self.initialize.table_names[0],
-                           filters=filters,
-                           add_position=True)
-        ]
+        # if self.cave_client_token is not None:
+        #     client.auth.token = self.cave_client_token
+        
+        nrns = neuron_info_df(client, self.initialize.table_names[0],
+                              filters=self.initialize.nodes_filters,
+                              add_position=True)
         for _tbl in self.initialize.table_names[1:]:
             nrn = neuron_info_df(client, _tbl,
-                                 filters=filters,
+                                 filters={"pt_root_id": list(nrns.index.values)},
                                  add_position=False)
-            nrns.append(nrn)
-        nrns = pandas.concat(nrns, axis=1)
+            nrn = nrn[[_col for _col in nrn.columns if _col not in nrns.columns]]
+            nrns = pandas.concat([nrns, nrn], axis=1)
         
         # More of a place holder. We estimate a global rotation of the entire volume
-        volume_rot = estimate_volume_rotation(nrns).as_matrix()
+        volume_rot = estimate_volume_rotation(nrns, volume_vertical=self.initialize.volume_vertical).as_matrix()
         nrns["orientation"] = [volume_rot for _ in range(len(nrns))]
         transform_and_copy_morphologies(nrns, self.initialize.morphology_root,
                                         os.path.join(self.coordinate_output_root,

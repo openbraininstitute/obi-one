@@ -32,8 +32,11 @@ def estimate_vertical(nrns):
     vertical = mn_delta_vec.values / numpy.linalg.norm(mn_delta_vec.values)
     return vertical 
 
-def estimate_volume_rotation(nrns):
-    v = estimate_vertical(nrns)
+def estimate_volume_rotation(nrns, volume_vertical=None):
+    if volume_vertical is None:
+        v = estimate_vertical(nrns)
+    else:
+        v = numpy.array(list(volume_vertical))
     neutral = numpy.array([0, 1, 0])
     rot = transform.Rotation.align_vectors(v, neutral)[0] # transform [0, 1, 0] into "vertical"
     return rot
@@ -50,7 +53,10 @@ def neuron_info_df(client, table_name, filters, add_position=True):
     q_cells = client.materialize.query_table(table_name)
 
     for k, v in filters.items():
-        q_cells = q_cells.loc[q_cells[k] == v]
+        if isinstance(v, tuple) or isinstance(v, list):
+            q_cells = q_cells.loc[q_cells[k].isin(v)]
+        else:
+            q_cells = q_cells.loc[q_cells[k] == v]
 
     vc = q_cells["pt_root_id"].value_counts()
     q_cells = q_cells.set_index("pt_root_id").loc[vc[vc == 1].index]
@@ -126,7 +132,7 @@ def neuron_info_to_collection(nrn, name, cols_to_rename, cols_to_keep):
 
     nrn_out = pandas.concat([nrn[list(rename_dict.keys())].rename(columns=rename_dict),
                 nrn[cols_to_keep]
-    ], axis=1)
+    ], axis=1).dropna()
     nrn_out["pt_root_id"] = nrn_out.index
     nrn_out.index = pandas.RangeIndex(1, len(nrn_out) + 1)
 
