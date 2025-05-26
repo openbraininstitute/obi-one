@@ -6,7 +6,7 @@ from typing import Annotated, Self
 import bluepysnap as snap
 import numpy as np
 import pandas
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, NonNegativeInt
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
@@ -419,7 +419,7 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
-    n: int | list[int] = Field(name="Number of neurons", description="Number of neurons to find")
+    n: NonNegativeInt | list[NonNegativeInt] = Field(name="Number of neurons", description="Number of neurons to find")
     columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
         name="x/y/z column names",
         description="Names of the three neuron (node) properties used for volumetric tests",
