@@ -1,8 +1,8 @@
 from obi_one.core.base import OBIBaseModel
 
 
-class NamedList(OBIBaseModel):
-    """Helper class to assign a name to a list of elements."""
+class NamedTuple(OBIBaseModel):
+    """Helper class to assign a name to a tuple of elements."""
 
     name: str
     elements: tuple
