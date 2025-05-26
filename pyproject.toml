@@ -34,13 +34,12 @@ dependencies = [
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-    # CONNECTOME-UTILITIES
-    "connectome-utilities>=0.4.11",
 ]
 
 [project.optional-dependencies]
 connectivity = [
-    "connectome-analysis>=1.0.1"
+    "connectome-analysis>=1.0.1",
+    "connectome-utilities>=0.4.11",
 ]
 
 
