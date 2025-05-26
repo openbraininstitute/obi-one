@@ -54,6 +54,7 @@ __all__ = [
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
+    "NeuronPropertyFilter",
     "NeuronSet",
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
@@ -85,6 +86,8 @@ __all__ = [
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsUnion",
+    "VolumetricCountNeuronSet",
+    "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocationSet",
     "db",
     "deserialize_obi_object_from_json_data",
@@ -110,9 +113,12 @@ from obi_one.scientific.circuit.intracellular_location_sets import (
 from obi_one.scientific.circuit.neuron_sets import (
     CombinedNeuronSet,
     IDNeuronSet,
+    NeuronPropertyFilter,
     NeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
 )
 from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
