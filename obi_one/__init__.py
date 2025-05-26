@@ -1,8 +1,8 @@
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.list import NamedList
 from obi_one.core.path import NamedPath
+from obi_one.core.tuple import NamedTuple
 from obi_one.core.scan import CoupledScan, GridScan
 from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
@@ -52,8 +52,8 @@ __all__ = [
     "MultiBlockEntitySDKTest",
     "MultiBlockEntitySDKTestForm",
     "MultiPulseCurrentClampSomaticStimulus",
-    "NamedList",
     "NamedPath",
+    "NamedTuple",
     "NeuronSet",
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
