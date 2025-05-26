@@ -50,7 +50,12 @@ class AfferentSynapsesBlock(Block, abc.ABC):
     merge_multiple_syns_con: bool | list[bool] = Field(
         default=False,
         name="Merge multiple synapses per connection",
-        description="If True, multiple synapses from the same source neuron are merged by averaging."
+        description="""
+        If True, multiple synapses from the same source neuron are merged by averaging.
+        In this mode, it is not individual synapses that are selected, but presynaptic neurons.
+        Where, if a neuron is selected, it is implied that all its synapses onto the target
+        neuron are to be considered as selected.
+        """
     )
 
     def gather_synapse_info(self, circ, node_population, node_id):
@@ -96,7 +101,10 @@ class AfferentSynapsesBlock(Block, abc.ABC):
 
 
 class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
-    """Completely random synapses without constraint"""
+    """
+    Completely random synapses without constraint.
+    Specified number picked without bias.
+    """
     n: int | list[int] = Field(
         default=1,
         name="Number of synapses",
@@ -111,7 +119,10 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
             assert self.n > 0, "Number of synapses must be at least one!"
 
 class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
-    """Completely random synapses without constraint"""
+    """
+    Completely random synapses without constraint.
+    Each picked with specified probability.
+    """
     p: int | list[int] = Field(
         default=1.0,
         name="Fracton of synapses",
@@ -127,6 +138,10 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
             assert self.p <= 1.0, "Number of synapses must be <= 1.0!"
 
 class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
+    """
+    Pick from synapses between specified minimum and maximum path distances from the soma.
+    Specified number of synapses within the path distance interval are picked without bias.
+    """
     soma_pd_min: float | list[float] = Field(
         default=0.0,
         name="Minimum soma path distance",
@@ -145,6 +160,10 @@ class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
                                       n=self.n, raise_insufficient=False)
 
 class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynapses):
+    """
+    Pick from synapses between specified minimum and maximum path distances from the soma.
+    From the synapses within the path distance interval a specified fractio is picked.
+    """
     soma_pd_min: float | list[float] = Field(
         default=0.0,
         name="Minimum soma path distance",
@@ -163,6 +182,11 @@ class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynaps
                                       n=self.p, raise_insufficient=False)
 
 class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
+    """
+    Pick synapses with path distance-dependent bias. A specified number of synapses
+    is picked, with synapses close to a specified path distance from the soma being
+    more likely to be selected. The bias is expressed by a Gaussian mean and std.
+    """
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses"
@@ -185,6 +209,11 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         )
 
 class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses):
+    """
+    Pick synapses with path distance-dependent bias. A specified fraction of all synapses
+    is picked, with synapses close to a specified path distance from the soma being
+    more likely to be selected. The bias is expressed by a Gaussian mean and std.
+    """
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses"
@@ -207,13 +236,18 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
         )
 
 class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
+    """
+    Pick clusters of synapses. A cluster in this context comprises all synapses
+    closer than a maximum path distance to a synapse that has been picked as a
+    cluster center. The center is picked randomly without bias.
+    """
     n_clusters: int | list[int] = Field(
         default=1,
         name="Number of clusters",
         description="Number of synapse clusters to find"
     )
     cluster_max_distance : float | list[float] = Field(
-        name="Maximum cluster distance",
+        name="Maximum distance of synapses from cluster center",
         description="Synapses within a cluster will be closer than this value from the cluster center (in um)"
     )
 
@@ -232,6 +266,12 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
         )
 
 class ClusteredSynapsesByCount(AfferentSynapsesBlock):
+    """
+    Pick clusters of synapses. A cluster in this context comprises
+    n_per_cluster synapses that are closest in path distance to a synapse that
+    has been picked as a cluster center.
+    The center is picked randomly without bias.
+    """
     n_clusters: int | list[int] = Field(
         default=1,
         name="Number of clusters",
@@ -257,6 +297,14 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
         )
     
 class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
+    """
+    Pick clusters of synapses. A cluster in this context comprises all synapses
+    closer than a maximum path distance to a synapse that has been picked as a
+    cluster center. 
+    The center is picked with a bias that depends on path distance to the soma.
+    That is, synapse close to a specified path distance are more likely to be 
+    selected. 
+    """
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses"
@@ -281,6 +329,14 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
         )
     
 class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
+    """
+    Pick clusters of synapses. A cluster in this context comprises
+    n_per_cluster synapses that are closest in path distance to a synapse that
+    has been picked as a cluster center.
+    The center is picked with a bias that depends on path distance to the soma.
+    That is, synapse close to a specified path distance are more likely to be 
+    selected. 
+    """
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses"
