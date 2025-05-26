@@ -10,6 +10,7 @@ from pydantic import Field, model_validator
 from obi_one.core.block import Block
 from obi_one.core.list import NamedList
 
+
 class NeuronSet(Block, abc.ABC):
     """Base class representing a neuron set which can be turned into a SONATA node set by either
     adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a

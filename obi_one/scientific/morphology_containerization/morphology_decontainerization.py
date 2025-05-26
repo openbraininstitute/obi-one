@@ -22,13 +22,11 @@ class MorphologyDecontainerizationsForm(Form):
     initialize: Initialize
 
 
-import datetime
 import json
 import logging
 import os
 import shutil
 import traceback
-from importlib.metadata import version
 from typing import ClassVar
 
 import h5py
@@ -50,6 +48,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
     Important: The original circuit won't be modified! The circuit will be copied
                to the output location where all operations take place.
     """
+
     @staticmethod
     def _check_morphologies(circuit_config, extension):
         """Check modified circuit by loading some morphologies from each node population."""
@@ -106,17 +105,25 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                     f"> {len(morph_names)} unique morphologies in population '{npop}' ({nodes.size})"
                 )
 
-                h5_container = nodes.morph._get_morphology_base("h5")  # FIXME: Should not use private function!!
-                assert os.path.splitext(h5_container)[1].lower() == ".h5", "ERROR: .h5 morphology path is not a container!"
+                h5_container = nodes.morph._get_morphology_base(
+                    "h5"
+                )  # FIXME: Should not use private function!!
+                assert os.path.splitext(h5_container)[1].lower() == ".h5", (
+                    "ERROR: .h5 morphology path is not a container!"
+                )
                 h5_folder = os.path.join(os.path.split(h5_container)[0], "h5")
-                target_folder = os.path.join(os.path.split(h5_container)[0], self.initialize.output_format)
+                target_folder = os.path.join(
+                    os.path.split(h5_container)[0], self.initialize.output_format
+                )
                 os.makedirs(h5_folder, exist_ok=True)
                 os.makedirs(target_folder, exist_ok=True)
 
                 # Extract from .h5 container
                 with h5py.File(h5_container, "r") as f_container:
                     skip_counter = 0
-                    for _m in tqdm.tqdm(morph_names, desc="Extracting/converting from .h5 container"):
+                    for _m in tqdm.tqdm(
+                        morph_names, desc="Extracting/converting from .h5 container"
+                    ):
                         _h5_file = os.path.join(h5_folder, _m + ".h5")
                         if os.path.exists(_h5_file):
                             skip_counter += 1
@@ -129,7 +136,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                             # Convert to required output format
                             if self.initialize.output_format != "h5":
                                 src_file = os.path.join(h5_folder, _m + ".h5")
-                                dest_file = os.path.join(target_folder, _m + f".{self.initialize.output_format}")
+                                dest_file = os.path.join(
+                                    target_folder, _m + f".{self.initialize.output_format}"
+                                )
                                 if not os.path.exists(dest_file):
                                     convert(src_file, dest_file)
                 print(
@@ -146,31 +155,45 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 # (but removing all other references to the original morphology folders)
                 cname, cext = os.path.splitext(circuit_config)
                 # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # Save original config file
-    
+
                 with open(circuit_config) as f:
                     cfg_dict = json.load(f)
 
-                assert "manifest" in cfg_dict and "$BASE_DIR" in cfg_dict["manifest"], "ERROR: $BASE_DIR not defined!"
-                assert cfg_dict["manifest"]["$BASE_DIR"] == "." or cfg_dict["manifest"]["$BASE_DIR"] == "./", "ERROR: $BASE_DIR is not corcuit root directory!"
+                assert "manifest" in cfg_dict and "$BASE_DIR" in cfg_dict["manifest"], (
+                    "ERROR: $BASE_DIR not defined!"
+                )
+                assert (
+                    cfg_dict["manifest"]["$BASE_DIR"] == "."
+                    or cfg_dict["manifest"]["$BASE_DIR"] == "./"
+                ), "ERROR: $BASE_DIR is not corcuit root directory!"
                 root_path = os.path.split(circuit_config)[0]
-                rel_target_folder = os.path.join("$BASE_DIR", os.path.relpath(target_folder, root_path))
-                
+                rel_target_folder = os.path.join(
+                    "$BASE_DIR", os.path.relpath(target_folder, root_path)
+                )
+
                 # Check if there is a global entry for morphologies (initially not set)
                 if global_morph_entry is None:
                     global_morph_entry = False
                     if "components" in cfg_dict:
                         if "alternate_morphologies" in cfg_dict["components"]:
                             if "h5v1" in cfg_dict["components"]["alternate_morphologies"]:
-                                if len(cfg_dict["components"]["alternate_morphologies"]["h5v1"]) > 0:
+                                if (
+                                    len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+                                    > 0
+                                ):
                                     global_morph_entry = True
 
                     if global_morph_entry:  # Set morphology path globally
                         if self.initialize.output_format == "h5":
-                            cfg_dict["components"]["alternate_morphologies"] = {"h5v1": rel_target_folder}
+                            cfg_dict["components"]["alternate_morphologies"] = {
+                                "h5v1": rel_target_folder
+                            }
                             if "morphologies_dir" in cfg_dict["components"]:
                                 cfg_dict["components"]["morphologies_dir"] = ""
                         elif self.initialize.output_format == "asc":
-                            cfg_dict["components"]["alternate_morphologies"] = {"neurolucida-asc": rel_target_folder}
+                            cfg_dict["components"]["alternate_morphologies"] = {
+                                "neurolucida-asc": rel_target_folder
+                            }
                             if "morphologies_dir" in cfg_dict["components"]:
                                 cfg_dict["components"]["morphologies_dir"] = ""
                         else:
@@ -187,7 +210,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                                 if "morphologies_dir" in _pop:
                                     _pop["morphologies_dir"] = ""
                             elif self.initialize.output_format == "asc":
-                                _pop["alternate_morphologies"] = {"neurolucida-asc": rel_target_folder}
+                                _pop["alternate_morphologies"] = {
+                                    "neurolucida-asc": rel_target_folder
+                                }
                                 if "morphologies_dir" in _pop:
                                     _pop["morphologies_dir"] = ""
                             else:
