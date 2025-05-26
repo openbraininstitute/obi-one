@@ -50,6 +50,7 @@ __all__ = [
     "MultiBlockEntitySDKTestForm",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
+    "NeuronPropertyFilter",
     "NeuronSet",
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
@@ -106,6 +107,7 @@ from obi_one.scientific.circuit.intracellular_location_sets import (
 from obi_one.scientific.circuit.neuron_sets import (
     CombinedNeuronSet,
     IDNeuronSet,
+    NeuronPropertyFilter,
     NeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
