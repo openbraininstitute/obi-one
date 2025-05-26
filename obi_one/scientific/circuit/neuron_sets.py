@@ -170,7 +170,7 @@ class NeuronSet(Block, abc.ABC):
         self.enforce_no_lists()
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if self.random_sample is not None:
+        if len(ids) > 0 and self.random_sample is not None:
             np.random.seed(self.random_seed)
 
             if isinstance(self.random_sample, int):
