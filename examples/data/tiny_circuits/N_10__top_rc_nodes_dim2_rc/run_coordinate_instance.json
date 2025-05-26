@@ -15,7 +15,7 @@
                     "neuron_ids"
                 ],
                 "value": {
-                    "type": "NamedList",
+                    "type": "NamedTuple",
                     "name": "N_10__top_rc_nodes_dim2_rc",
                     "elements": [
                         13124,
@@ -40,7 +40,7 @@
         "random_sample": null,
         "random_seed": 0,
         "neuron_ids": {
-            "type": "NamedList",
+            "type": "NamedTuple",
             "name": "N_10__top_rc_nodes_dim2_rc",
             "elements": [
                 13124,

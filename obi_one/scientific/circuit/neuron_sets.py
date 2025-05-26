@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.list import NamedList
+from obi_one.core.list import NamedTuple
 
 
 class NeuronSet(Block, abc.ABC):
@@ -251,7 +251,7 @@ class CombinedNeuronSet(NeuronSet):
 class IDNeuronSet(NeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
 
-    neuron_ids: NamedList | Annotated[list[NamedList], Field(min_length=1)]
+    neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 
     def check_neuron_ids(self, circuit, population):
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
