@@ -363,7 +363,7 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     duration: float | list[float]
     gid_spike_map: dict = {}
-    spike_file: Path | None = None
+    _spike_file: Path | None = None
     neuron_set: NeuronSetUnion
 
     def _generate_config(self) -> dict:
