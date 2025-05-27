@@ -355,27 +355,26 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SynchronousSingleSpikeStimulus(Stimulus):
-    spike_probability: float | list[float]
+   spike_probability: float | list[float]
 
 
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: float | list[float]
-    gid_spike_map: dict = {}
+    stim_duration: float | list[float]
     _spike_file: Path | None = None
     neuron_set: NeuronSetUnion
 
     def _generate_config(self) -> dict:
-        assert self.spike_file is not None
+        assert self._spike_file is not None
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
-                "duration": self.duration,
+                "duration": self.stim_duration,
                 "cells": self.neuron_set.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "spike_file": str(self.spike_file)
+                "spike_file": str(self._spike_file) # os.path.relpath # 
             }
         
         return sonata_config
@@ -418,28 +417,32 @@ class SpikeStimulus(Stimulus):
 class PoissonSpikeStimulus(SpikeStimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    frequency: float  # Hz
-
+    random_seed: int | list[int] = 0
+    frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
+    
     def generate_spikes(self, circuit, population, spike_file_path):
+        np.random.seed(self.random_seed)
         gids = self.neuron_set.get_neuron_ids(circuit, population)
         gid_spike_map = {}
         timestamps = self.timestamps.timestamps()
         for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.duration
+            end_time = start_time + self.stim_duration
             if t_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
                 assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
-            ...
-        for gid in gids:
-            spikes = []
-            t = start_time
-            while t < end_time:
-                # Draw next spike time from exponential distribution
-                interval = np.random.exponential(1.0 / self.frequency) * 1000  # convert s → ms
-                t += interval
-                if t < end_time:
-                    spikes.append(t)
-            gid_spike_map[gid] = spikes
-        self.spike_file = spike_file_path / f"{self.name}_spikes.h5"
-        self.write_spike_file(gid_spike_map, self.spike_file, self.neuron_set)
+            for gid in gids:
+                spikes = []
+                t = start_time
+                while t < end_time:
+                    # Draw next spike time from exponential distribution
+                    interval = np.random.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                    t += interval
+                    if t < end_time:
+                        spikes.append(t)
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] = gid_spike_map[gid] + spikes
+                else:
+                    gid_spike_map[gid] = spikes
+        self._spike_file = f"{self.name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, self.neuron_set)
         
