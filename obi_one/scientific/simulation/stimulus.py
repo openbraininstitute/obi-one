@@ -361,7 +361,7 @@ class SynchronousSingleSpikeStimulus(Stimulus):
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: float
+    duration: float | list[float]
     gid_spike_map: dict = {}
     spike_file: Path | None = None
     neuron_set: NeuronSetUnion
