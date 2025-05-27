@@ -31,6 +31,11 @@ class EMSonataEdgesFiles(Form, abc.ABC):
     )
 
     class Initialize(Block):
+        client_server: str | None = Field(
+            default=None,
+            name="Server name",
+            description="Name of data release server. If None, the default of CAVE client is used."
+        )
         client_name: str = Field(
             default='minnie65_public', name="Release name", description="Name of the data release CAVE client"
         )
@@ -72,17 +77,19 @@ from obi_one.scientific.microns_to_sonata.microns_edges_block import EMEdgesMapp
 class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
 
     def run(self) -> str:
-        try:
-            from caveclient import CAVEclient
-        except ImportError:
-            raise RuntimeError("Optional dependency 'cavelient' not installed!")
-        client = CAVEclient(self.initialize.client_name)
-        client.version = self.initialize.client_version
-        if self.cave_client_token is not None:
-            client.auth.token = self.cave_client_token
+        # try:
+        #     from caveclient import CAVEclient
+        # except ImportError:
+        #     raise RuntimeError("Optional dependency 'cavelient' not installed!")
+        # client = CAVEclient(server_address=self.initialize.client_server,
+        #                     datastack_name=self.initialize.client_name,
+        #                     auth_token=self.cave_client_token)
+        # client.version = self.initialize.client_version
 
         tmp_blck = EMEdgesMappingBlock(
+                client_server=self.initialize.client_server,
                 client_name=self.initialize.client_name,
+                cave_client_token=self.cave_client_token,
                 client_version=self.initialize.client_version
             )
         

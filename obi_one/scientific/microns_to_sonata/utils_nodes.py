@@ -126,21 +126,21 @@ def unrotate(node_series, morph):
 
 
 def transform_and_copy_morphologies(nrns, in_root, out_root,
+                                    naming_patters=("{pt_root_id}.swc", "{pt_root_id}-spines.json"),
                                     out_formats=(".h5", ".swc"),
                                     do_transform=True):
     if not os.path.isdir(out_root):
         os.makedirs(out_root)
-    morph_name_pat = "{0}.swc"
-    spines_name_pat = "{0}-spines.json"
+    morph_name_pat, spines_name_pat = naming_patters
 
-    for _idx in nrns.index:
-        morph_fn = morph_name_pat.format(_idx)
-        if not (os.path.isfile(os.path.join(in_root, morph_fn)) and
-                os.path.isfile(os.path.join(in_root, spines_name_pat.format(_idx)))):
+    for _, _row in nrns.reset_index().iterrows():
+        _idx = _row["pt_root_id"]
+        morph_fn = morph_name_pat.format(**_row.to_dict())
+        spines_fn = spines_name_pat.format(**_row.to_dict())
+        if not os.path.isfile(os.path.join(in_root, morph_fn)):
             nrns.loc[_idx, _STR_MORPH] = _STR_NONE
             continue
 
-        morph_fn = morph_name_pat.format(_idx)
         morph = neurom.io.utils.load_morphology(os.path.join(in_root, morph_fn),
                                                 mutable=True)
         if do_transform:
@@ -186,4 +186,4 @@ def collection_to_neuron_info(path_to_file, must_exist=True):
         "z": numpy.empty((0,), dtype=float),
         "pt_root_id": numpy.empty((0,), dtype=int)
     })
-    return empty_df, "microns_extrinsic"
+    return empty_df, "em_extrinsic"

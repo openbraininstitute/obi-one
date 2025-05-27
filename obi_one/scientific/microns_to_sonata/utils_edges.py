@@ -32,10 +32,10 @@ _STR_PRE_NODE = _PF_PRE + "node_id"
 _STR_POST_NODE = _PF_POST + "node_id"
 
 
-def synapse_info_df(client, pt_root_id, resolutions):
+def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_position"):
     syns = client.materialize.synapse_query(post_ids=[pt_root_id])
 
-    syn_locs = syns["post_pt_position"].apply(lambda _x: pandas.Series(_x * resolutions / 1000.0,
+    syn_locs = syns[col_location].apply(lambda _x: pandas.Series(_x * resolutions / 1000.0,
                                                                        index=_C_P_LOCS))
     syns = pandas.concat([syns, syn_locs], axis=1)
     return syns
@@ -155,6 +155,14 @@ def map_points_to_spines(spine_pos, spine_orient, pts, max_dist=4.0, mx_per_pos=
             keep = keep & (C[_STR_SPINE_ID] != C.iloc[0][_STR_SPINE_ID])
         C = C.loc[keep]
     
+    if len(mapped) == 0:
+        return pandas.DataFrame({
+            _STR_SYN_ID: [],
+            _STR_SPINE_ID: [],
+            _STR_SPINE_X: [],
+            _STR_SPINE_Y: [],
+            _STR_SPINE_Z: []
+        })
     mapped = pandas.concat(mapped, axis=1).transpose()
     mapped_pos = spine_pos[mapped[_STR_SPINE_ID].values]
     mapped[_STR_SPINE_X] = mapped_pos[:, 0]
@@ -197,7 +205,9 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
 
 
 def map_to_pt_root_ids(existing_ids, ids_to_map):
+    # index: pt_roo_id. All unique. Values: 0-n
     existing_mapping = existing_ids.reset_index().set_index("pt_root_id")["index"]
+    # index: existing_ids.index, not all unique. values: bool
     is_contained = ids_to_map.isin(existing_ids)
 
     mapped = existing_mapping[ids_to_map[is_contained]]
@@ -220,10 +230,16 @@ def map_and_extend_mapping(existing_ids, ids_to_map):
 
 
 def pt_root_to_sonata_id(syns, intrinsic_ids, extrinsic_ids):
+    syns = syns.reset_index(drop=True)
+    # Resolve postsynaptic ids
     post_node_ids, cntnd = map_to_pt_root_ids(intrinsic_ids, syns["post_pt_root_id"])
+    # They must be all intrinsic
     assert cntnd.all()
 
+    # Try to resolve presynaptic ids
     pre_node_ids_intrinsic, is_intrinsic = map_to_pt_root_ids(intrinsic_ids, syns["pre_pt_root_id"]) 
+    # The ones that are not resolved are extrinsic and are resolved against that population.
+    # In doing so, new extrinsic nodes may be created.
     pre_node_ids_extrinsic, new_extrinsics = map_and_extend_mapping(extrinsic_ids, syns["pre_pt_root_id"][~is_intrinsic])
 
     intrinsic_syns = syns.loc[pre_node_ids_intrinsic.index]

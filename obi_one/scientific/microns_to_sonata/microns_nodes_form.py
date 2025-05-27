@@ -78,6 +78,11 @@ class EMSonataNodesFiles(Form, abc.ABC):
             name="Morphology locations",
             description="Folder in which the skeletonized morphologies and spine infos are found"
         )
+        naming_patterns: tuple[str, str] = Field(
+            default=("{pt_root_id}.swc", "{pt_root_id}-spines.json"),
+            name="Morphology naming patterns",
+            description="File name scheme for morphologies and spines info files"
+        )
         transform_morphology: bool = Field(
             name="Transform morphology to local coordinates",
             description="Whether to rotate the morphology according to local orientation and translate to the origin",
@@ -132,6 +137,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
         transform_and_copy_morphologies(nrns, self.initialize.morphology_root,
                                         os.path.join(self.coordinate_output_root,
                                                      "morphologies"),
+                                        naming_patters=self.initialize.naming_patterns,
                                         out_formats=(".h5", ".swc"),
                                         do_transform=self.initialize.transform_morphology)
 
