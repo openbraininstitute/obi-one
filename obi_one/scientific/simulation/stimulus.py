@@ -423,8 +423,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
     def generate_spikes(self, circuit, population, spike_file_path):
         gids = self.neuron_set.get_neuron_ids(circuit, population)
         gid_spike_map = {}
-        start_time = self.timestamps.timestamps()[0]
-        end_time = start_time + self.duration
+        timestamps = self.timestamps.timestamps()
+        for t_idx, start_time in enumerate(timestamps):
+            end_time = start_time + self.duration
+            if t_idx < len(timestamps) - 1:
+                # Check that interval not overlapping with next stimulus onset
+                assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
+            ...
         for gid in gids:
             spikes = []
             t = start_time
