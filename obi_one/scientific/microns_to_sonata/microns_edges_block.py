@@ -12,7 +12,8 @@ from pydantic import Field, model_validator
 from obi_one.core.block import Block
 
 from .utils_edges import (
-    synapse_info_df, map_synapses_onto_spiny_morphology, _STR_SEC_ID
+    synapse_info_df, map_synapses_onto_spiny_morphology, 
+    dummy_mapping_without_morphology, _STR_SEC_ID
 )
 from .utils_nodes import (
     source_resolution,
@@ -68,31 +69,31 @@ class EMEdgesMappingBlock(Block, abc.ABC):
             dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
             orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
         else:
-            print("Warning: No spines for {0}".format(node_info["morphology"]))
+            # print("Warning: No spines for {0}".format(node_info["morphology"]))
             srf_pos = numpy.empty((0, 3), dtype=float)
             dend_pos = numpy.empty((0, 3), dtype=float)
             orient = numpy.empty((0, 3), dtype=float)
         
-        if morphologies_are_transformed:
-            morph = neurom.io.utils.load_morphology(fn_morph, mutable=True)
-            morph = translate(node_info, rotate(node_info, morph))
-            morph = neurom.core.Morphology(morph.to_morphio().as_immutable())
-        else:
-            morph = neurom.io.utils.load_morphology(fn_morph)
-
         resolutions = source_resolution(client)
-        # syns = synapse_info_df(client, self.pt_root_id, resolutions)
         syns = synapse_info_df(client, node_info["pt_root_id"], resolutions)
-        print("{0} synapses to be mapped...".format(len(syns)))
 
-        ret = map_synapses_onto_spiny_morphology(
-            syns, morph, dend_pos, srf_pos, orient
-        )
-        unmapped = ret[_STR_SEC_ID] == -1
-        if unmapped.any():
-            if strict:
-                raise RuntimeError("{0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
+        if os.path.isfile(fn_morph):
+            if morphologies_are_transformed:
+                morph = neurom.io.utils.load_morphology(fn_morph, mutable=True)
+                morph = translate(node_info, rotate(node_info, morph))
+                morph = neurom.core.Morphology(morph.to_morphio().as_immutable())
             else:
-                print("Warning: {0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
-        return ret[~unmapped]
+                morph = neurom.io.utils.load_morphology(fn_morph)
+
+            ret = map_synapses_onto_spiny_morphology(
+                syns, morph, dend_pos, srf_pos, orient
+            )
+            unmapped = ret[_STR_SEC_ID] == -1
+            if unmapped.any():
+                if strict:
+                    raise RuntimeError("{0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
+                else:
+                    print("Warning: {0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
+            return ret[~unmapped]
+        return dummy_mapping_without_morphology(syns)
     

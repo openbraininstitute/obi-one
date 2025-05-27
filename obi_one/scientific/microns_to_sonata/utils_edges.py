@@ -171,6 +171,13 @@ def map_points_to_spines(spine_pos, spine_orient, pts, max_dist=4.0, mx_per_pos=
 
     return mapped.reset_index(drop=True)
 
+def dummy_mapping_without_morphology(syns):
+    syns[_STR_SEC_ID] = numpy.zeros(len(syns), dtype=int)
+    syns[_STR_SEG_ID] = numpy.zeros(len(syns), dtype=int)
+    syns[_STR_SPINE_ID] = -numpy.ones(len(syns), dtype=int)
+    syns[_STR_SEG_OFF] = numpy.zeros(len(syns), dtype=int)
+    syns[_STR_SEC_OFF] = numpy.zeros(len(syns), dtype=int)
+    return syns
 
 def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_pos, spine_orient):
     segs = morph_to_segs_df(morph)
@@ -282,7 +289,7 @@ def format_for_edges_output(syns):
     syn_maps = syns[[_STR_PRE_NODE, _STR_POST_NODE]]
     return syn_maps, syn_props
 
-def find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_name):
+def find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_name, with_morphologies=True):
     from .utils_nodes import _STR_NONE, _STR_MORPH
 
     if os.path.isfile(intrinsic_edges_fn):
@@ -291,6 +298,7 @@ def find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_n
             assert len(node_ranges) == len(intrinsics), "Invalid edge poplation index!"
             # Nodes without edges so far
             intrinsics = intrinsics.loc[numpy.diff(node_ranges, axis=1)[:, 0] == 0]
-    # Nodes with associated morphologies
-    pt_root_ids = intrinsics.loc[intrinsics[_STR_MORPH] != _STR_NONE]
-    return pt_root_ids
+    if with_morphologies:
+        # Nodes with associated morphologies
+        return intrinsics.loc[intrinsics[_STR_MORPH] != _STR_NONE]
+    return intrinsics

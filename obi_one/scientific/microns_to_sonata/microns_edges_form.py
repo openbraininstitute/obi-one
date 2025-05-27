@@ -2,6 +2,7 @@ import abc
 import pandas
 import glob
 import os.path
+import tqdm
 from typing import Self
 from typing import ClassVar
 
@@ -110,10 +111,11 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         intrinsic_edge_pop_name = intrinsic_name + "__" + intrinsic_name + "__chemical"
         extrinsic_edge_pop_name = extrinsic_name + "__" + intrinsic_name + "__chemical"
 
-        pt_root_ids = find_edges_resume_point(intrinsics, intrinsic_edges_fn, intrinsic_edge_pop_name)
+        pt_root_ids = find_edges_resume_point(intrinsics, intrinsic_edges_fn,
+                                              intrinsic_edge_pop_name, with_morphologies=True)
 
         syns = []
-        for _, pt_root_id in pt_root_ids.iterrows():
+        for _, pt_root_id in tqdm.tqdm(pt_root_ids.iterrows()):
             #tmp_blck.pt_root_id = pt_root_id
             syns.append(tmp_blck.map_synapses_to_morphology(self.initialize.morphologies_dir,
                                                             self.initialize.spines_dir,
