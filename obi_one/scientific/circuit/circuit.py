@@ -27,7 +27,7 @@ class Circuit(OBIBaseModel):
     def connectivity_matrix(self):
         """Provide access to corresponding ConnectivityMatrix object."""
         if self.matrix_path is None:
-            raise ValueError("Connectivity matrix has not been found")
+            raise FileNotFoundError("Connectivity matrix has not been found")
         return ConnectivityMatrix.from_h5(self.matrix_path)
 
     @property
