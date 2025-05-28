@@ -1,13 +1,15 @@
 import bluepysnap as snap
+from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
 
 
 class Circuit(OBIBaseModel):
-    """Class representing a circuit, i.e., pointing to a SONATA config."""
+    """Class representing a circuit, i.e., pointing to a SONATA config and possible additional assets."""
 
     name: str
     path: str
+    matrix_path: str = None
 
     def __init__(self, name, path, **kwargs):
         super().__init__(name=name, path=path, **kwargs)
@@ -20,6 +22,13 @@ class Circuit(OBIBaseModel):
     def sonata_circuit(self):
         """Provide access to SONATA circuit object."""
         return snap.Circuit(self.path)
+    
+    @property
+    def connectivity_matrix(self):
+        """Provide access to corresponding ConnectivityMatrix object."""
+        if self.matrix_path is None:
+            raise ValueError("Connectivity matrix has not been found")
+        return ConnectivityMatrix.from_h5(self.matrix_path)
 
     @property
     def node_sets(self):
