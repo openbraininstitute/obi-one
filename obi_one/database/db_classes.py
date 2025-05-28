@@ -32,7 +32,60 @@ db_classes.extend(struct_classes)
 
 
 from neurom import load_morphology
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, PrivateAttr
+from typing import Optional
+
+# def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
+#     """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
+#     that initializes from an id_str, fetches the full entity from the database,
+#     and populates its attributes.
+#     """
+#     # New class name
+#     new_cls_name = f"{cls.__name__}FromID"
+
+#     # Create a basic Pydantic model with just id_str
+#     new_cls = create_model(
+#         new_cls_name,
+#         id_str=(str, Field(..., description="ID of the entity in string format.")),
+#         __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
+#     )
+
+#     # Store original __init__
+#     original_init = new_cls.__init__
+
+#     def __init__(self, **data):
+#         # Call the original __init__ (to set id_str)
+#         original_init(self, **data)
+
+#         # Fetch the full entity only once
+#         entity = cls.fetch(self.id_str)
+
+#         # Hydrate all attributes except id_str
+#         for key, value in entity.dict().items():
+#             if key != "id_str":
+#                 setattr(self, key, value)
+
+#         # Save original entity class reference
+#         self._entitysdk_type = cls
+
+#     # Replace the __init__ method
+#     new_cls.__init__ = __init__
+
+#     # Add a property for accessing original class
+#     @property
+#     def entitysdk_type(self):
+#         return self._entitysdk_type
+
+#     new_cls.entitysdk_type = entitysdk_type
+
+#     # Assign the same module to make debugging and imports easier
+#     new_cls.__module__ = cls.__module__
+
+#     return new_cls
+
+
+
+
 
 
 def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
@@ -40,49 +93,52 @@ def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseMode
     that initializes from an id_str, fetches the full entity from the database,
     and populates its attributes.
     """
+
+    class EntityFromIDBase(BaseModel):
+        _entity: Optional[cls] = PrivateAttr(default=None)
+
+        @property
+        def entity(self):
+            if self._entity is None:
+                self._entity = cls.fetch(self.id_str)
+            return self._entity
+
+
     # New class name
     new_cls_name = f"{cls.__name__}FromID"
 
-    # Create a basic Pydantic model with just id_str
+    # Create a new Pydantic model with id_str and base class EntityFromIDBase
     new_cls = create_model(
         new_cls_name,
-        id_str=(str, Field(..., description="ID of the entity in string format.")),
-        __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
+        id_str = (str, Field(..., description="ID of the entity in string format.")),
+        __base__=EntityFromIDBase,
     )
 
-    # Store original __init__
-    original_init = new_cls.__init__
+    # # Create a basic Pydantic model with just id_str
+    # new_cls = create_model(
+    #     new_cls_name,
+    #     id_str = (str, Field(..., description="ID of the entity in string format.")),
+    #     __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
+    # )
 
-    def __init__(self, **data):
-        # Call the original __init__ (to set id_str)
-        original_init(self, **data)
+    # # Declare _entity as a typed private attribute
+    # new_cls.__private_attributes__ = {
+    #     "_entity": PrivateAttr(default=None)
+    # }
+    # new_cls.__annotations__["_entity"] = Optional[cls]
 
-        # Fetch the full entity only once
-        entity = cls.fetch(self.id_str)
-
-        # Hydrate all attributes except id_str
-        for key, value in entity.dict().items():
-            if key != "id_str":
-                setattr(self, key, value)
-
-        # Save original entity class reference
-        self._entitysdk_type = cls
-
-    # Replace the __init__ method
-    new_cls.__init__ = __init__
-
-    # Add a property for accessing original class
     @property
-    def entitysdk_type(self):
-        return self._entitysdk_type
+    def entity(self):
+        """Property to access the original entity class."""
+        if self._entity is None:
+            self._entity=cls.fetch(self.id_str)
+        return self._entity
 
-    new_cls.entitysdk_type = entitysdk_type
-
-    # Assign the same module to make debugging and imports easier
-    new_cls.__module__ = cls.__module__
+    new_cls.entity = entity
 
     return new_cls
 
+# obi_one.ReconstructionMorphologyFromID(id_str="dfa")
 
 """
 Iterate through entitysdk Entity classes
