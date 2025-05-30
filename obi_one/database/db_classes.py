@@ -114,19 +114,6 @@ def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseMode
         __base__=EntityFromIDBase,
     )
 
-    # # Create a basic Pydantic model with just id_str
-    # new_cls = create_model(
-    #     new_cls_name,
-    #     id_str = (str, Field(..., description="ID of the entity in string format.")),
-    #     __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
-    # )
-
-    # # Declare _entity as a typed private attribute
-    # new_cls.__private_attributes__ = {
-    #     "_entity": PrivateAttr(default=None)
-    # }
-    # new_cls.__annotations__["_entity"] = Optional[cls]
-
     @property
     def entity(self):
         """Property to access the original entity class."""
@@ -179,31 +166,30 @@ for cls in entity_classes:
 
 def download_swc(morphology):
     """Temporary function for downloading SWC files of a morphology"""
-    for asset in morphology.assets:
-        if asset["content_type"] == "application/asc":
-            file_output_path = Path(db.entity_file_store_path) / asset["full_path"]
+    for asset in morphology.entity.assets:
+        if asset.content_type == "application/asc":
+            file_output_path = Path(db.entity_file_store_path) / asset.full_path
             file_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            entity_type = type(morphology)
+            entity_type = type(morphology.entity)
             if hasattr(morphology, "entitysdk_type"):
                 entity_type = morphology.entitysdk_type
 
             db.client.download_file(
-                entity_id=morphology.id,
+                entity_id=morphology.entity.id,
                 entity_type=entity_type,
-                asset_id=asset["id"],
+                asset_id=asset.id,
                 output_path=file_output_path,
                 token=db.token,
             )
 
             return file_output_path
-        break
 
 
 """
 Add the swc_file property to the Morphology classes
 """
-ReconstructionMorphology.swc_file = property(download_swc)
+# ReconstructionMorphology.swc_file = property(download_swc)
 ReconstructionMorphologyFromID.swc_file = property(download_swc)
 
 
@@ -241,10 +227,10 @@ def morphio_morphology_getter(self):
 """
 Add the neurom_morphology property to the classes
 """
-ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
+# ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
 ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
 """
 Add the morphio_morphology property to the classes
 """
-ReconstructionMorphology.morphio_morphology = property(morphio_morphology_getter)
+# ReconstructionMorphology.morphio_morphology = property(morphio_morphology_getter)
 ReconstructionMorphologyFromID.morphio_morphology = property(morphio_morphology_getter)
