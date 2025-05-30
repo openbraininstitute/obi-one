@@ -24,10 +24,11 @@ class DatabaseManager:
 
         # Staging
         self.token = get_token(environment="staging")
-        project_context = ProjectContext.from_vlab_url(
-            f"https://staging.openbraininstitute.org/app/virtual-lab/lab/{virtual_lab_id}/project/{project_id}/home"
+        project_context = ProjectContext(
+            virtual_lab_id=virtual_lab_id, project_id=project_id
         )
-        self.client = Client(environment="staging", project_context=project_context)
+        
+        self.client = Client(api_url=entitycore_api_url, project_context=project_context)
 
         # Local. Not fully working
         # project_context = ProjectContext(virtual_lab_id=virtual_lab_id, project_id=project_id)
