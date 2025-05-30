@@ -36,7 +36,6 @@ __all__ = [
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
-    "IDSynapseSet",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
@@ -81,7 +80,6 @@ __all__ = [
     "SomaVoltageRecording",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
-    "SynapseSet",
     "SynapseSetUnion",
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
@@ -120,7 +118,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
 )
-from obi_one.scientific.circuit.synapse_sets import IDSynapseSet, SynapseSet
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
     CircuitExtractions,
@@ -147,6 +144,19 @@ from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredPathDistanceMorphologyLocations,
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
+)
+from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
+    AfferentSynapsesBlock,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
+    PathDistanceConstrainedFractionOfSynapses,
+    PathDistanceConstrainedNumberOfSynapses,
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
+    ClusteredSynapsesByCount,
+    ClusteredSynapsesByMaxDistance
 )
 from obi_one.scientific.morphology_locations.morphology_location_form import (
     MorphologyLocations,
@@ -196,5 +206,5 @@ from obi_one.scientific.unions.unions_intracellular_location_sets import (
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
-from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
