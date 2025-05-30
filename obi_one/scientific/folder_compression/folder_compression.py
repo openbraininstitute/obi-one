@@ -1,4 +1,7 @@
+import logging
 from typing import ClassVar
+
+L = logging.getLogger(__name__)
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -55,10 +58,8 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
 
             # Compress using specified file format
-            print(
+            L.info(
                 f"Info: Running {self.initialize.file_format} compression on '{self.initialize.folder_path}'...",
-                end="",
-                flush=True,
             )
             t0 = time.time()
             with tarfile.open(output_file, f"w:{self.initialize.file_format}") as tar:
@@ -76,7 +77,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             else:
                 file_size = file_size / 1024
                 file_unit = "GB"
-            print(f"DONE (Duration {t_str}; File size {file_size:.1f}{file_unit})", flush=True)
+            L.info(f"DONE (Duration {t_str}; File size {file_size:.1f}{file_unit})", flush=True)
 
         except Exception as e:
             traceback.print_exception(e)

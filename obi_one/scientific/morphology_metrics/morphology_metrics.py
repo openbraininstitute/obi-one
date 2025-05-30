@@ -1,5 +1,8 @@
 import io
+import logging
 from typing import Annotated, ClassVar
+
+L = logging.getLogger(__name__)
 
 import entitysdk
 import neurom
@@ -94,7 +97,7 @@ class MorphologyMetricsOutput(BaseModel):
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
     def run(self):
         try:
-            print(
+            L.info(
                 MorphologyMetricsOutput.from_morphology(
                     self.initialize.morphology.neurom_morphology
                 )
