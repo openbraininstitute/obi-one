@@ -3,9 +3,9 @@ from pathlib import Path
 
 from entitysdk.models.core import Struct
 from entitysdk.models.entity import Entity
-from entitysdk.models.morphology import (
-    ReconstructionMorphology,
-)
+from morphio import Morphology
+from neurom import load_morphology
+from pydantic import BaseModel, Field, PrivateAttr, create_model
 
 from obi_one.database.db_manager import db
 
@@ -31,18 +31,11 @@ db_classes = []
 db_classes.extend(struct_classes)
 
 
-from neurom import load_morphology
-from pydantic import BaseModel, ConfigDict, Field, create_model, PrivateAttr
-from typing import Optional
-
 def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
-    """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
-    that initializes from an id_str, fetches the full entity from the database,
-    and populates its attributes.
-    """
+    """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID."""
 
     class EntityFromIDBase(BaseModel):
-        _entity: Optional[cls] = PrivateAttr(default=None)
+        _entity: cls | None = PrivateAttr(default=None)
 
         @property
         def entity(self):
@@ -50,14 +43,13 @@ def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseMode
                 self._entity = cls.fetch(self.id_str)
             return self._entity
 
-
     # New class name
     new_cls_name = f"{cls.__name__}FromID"
 
     # Create a new Pydantic model with id_str and base class EntityFromIDBase
     new_cls = create_model(
         new_cls_name,
-        id_str = (str, Field(..., description="ID of the entity in string format.")),
+        id_str=(str, Field(..., description="ID of the entity in string format.")),
         __base__=EntityFromIDBase,
     )
 
@@ -65,7 +57,7 @@ def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseMode
     def entity(self):
         """Property to access the original entity class."""
         if self._entity is None:
-            self._entity=cls.fetch(self.id_str)
+            self._entity = cls.fetch(self.id_str)
         return self._entity
 
     new_cls.entity = entity
@@ -83,7 +75,8 @@ Iterate through entitysdk Entity classes
 for cls in entity_classes:
     # Add a find method to the class
     # This method will search for entities of the class
-    # and can be called as ClassName.find(), ClassName.find(limit=5) or ClassName.find(kwargs=kwargs)
+    # and can be called as ClassName.find(), ClassName.find(limit=5)
+    # or ClassName.find(kwargs=kwargs)
     def find(cls, limit=10, **kwargs):
         return db.client.search_entity(
             entity_type=cls, query=kwargs, token=db.token, limit=limit
@@ -111,7 +104,7 @@ for cls in entity_classes:
 
 
 def download_swc(morphology):
-    """Temporary function for downloading SWC files of a morphology"""
+    """Temporary function for downloading SWC files of a morphology."""
     for asset in morphology.entity.assets:
         if asset.content_type == "application/asc":
             file_output_path = Path(db.entity_file_store_path) / asset.full_path
@@ -135,12 +128,12 @@ def download_swc(morphology):
 """
 Add the swc_file property to the Morphology classes
 """
-# ReconstructionMorphology.swc_file = property(download_swc)
 ReconstructionMorphologyFromID.swc_file = property(download_swc)
 
 
 def neurom_morphology_getter(self):
     """Getter for the neurom_morphology property.
+
     Downloads the application/asc asset if not already downloaded
     and loads it using neurom.load_morphology.
     """
@@ -156,14 +149,13 @@ def neurom_morphology_getter(self):
 
 def morphio_morphology_getter(self):
     """Getter for the morphio_morphology property.
+
     Downloads the application/asc asset if not already downloaded
     and initializes it as morphio.Morphology([...]).
     """
     if not hasattr(self, "_morphio_morphology"):
         swc_file = self.swc_file
         if swc_file:
-            from morphio import Morphology
-
             self._morphio_morphology = Morphology(swc_file)
         else:
             raise ValueError("No valid application/asc asset found for morphology.")
