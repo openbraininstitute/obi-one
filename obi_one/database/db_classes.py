@@ -35,59 +35,6 @@ from neurom import load_morphology
 from pydantic import BaseModel, ConfigDict, Field, create_model, PrivateAttr
 from typing import Optional
 
-# def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
-#     """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
-#     that initializes from an id_str, fetches the full entity from the database,
-#     and populates its attributes.
-#     """
-#     # New class name
-#     new_cls_name = f"{cls.__name__}FromID"
-
-#     # Create a basic Pydantic model with just id_str
-#     new_cls = create_model(
-#         new_cls_name,
-#         id_str=(str, Field(..., description="ID of the entity in string format.")),
-#         __config__=ConfigDict(arbitrary_types_allowed=True, extra="allow"),
-#     )
-
-#     # Store original __init__
-#     original_init = new_cls.__init__
-
-#     def __init__(self, **data):
-#         # Call the original __init__ (to set id_str)
-#         original_init(self, **data)
-
-#         # Fetch the full entity only once
-#         entity = cls.fetch(self.id_str)
-
-#         # Hydrate all attributes except id_str
-#         for key, value in entity.dict().items():
-#             if key != "id_str":
-#                 setattr(self, key, value)
-
-#         # Save original entity class reference
-#         self._entitysdk_type = cls
-
-#     # Replace the __init__ method
-#     new_cls.__init__ = __init__
-
-#     # Add a property for accessing original class
-#     @property
-#     def entitysdk_type(self):
-#         return self._entitysdk_type
-
-#     new_cls.entitysdk_type = entitysdk_type
-
-#     # Assign the same module to make debugging and imports easier
-#     new_cls.__module__ = cls.__module__
-
-#     return new_cls
-
-
-
-
-
-
 def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseModel]:
     """Given an EntitySDK class, create a new Pydantic model [EntityClassName]FromID
     that initializes from an id_str, fetches the full entity from the database,
@@ -125,7 +72,6 @@ def create_from_id_class_for_entitysdk_class(cls: type[Entity]) -> type[BaseMode
 
     return new_cls
 
-# obi_one.ReconstructionMorphologyFromID(id_str="dfa")
 
 """
 Iterate through entitysdk Entity classes
@@ -227,10 +173,9 @@ def morphio_morphology_getter(self):
 """
 Add the neurom_morphology property to the classes
 """
-# ReconstructionMorphology.neurom_morphology = property(neurom_morphology_getter)
 ReconstructionMorphologyFromID.neurom_morphology = property(neurom_morphology_getter)
+
 """
 Add the morphio_morphology property to the classes
 """
-# ReconstructionMorphology.morphio_morphology = property(morphio_morphology_getter)
 ReconstructionMorphologyFromID.morphio_morphology = property(morphio_morphology_getter)
