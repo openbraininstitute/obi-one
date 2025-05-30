@@ -3,7 +3,10 @@ Last modified 03.2025
 Author: Daniela Egas Santander
 """
 
+import logging
 import warnings
+
+L = logging.getLogger(__name__)
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -271,7 +274,7 @@ def plot_global_connection_probability(ax1, densities):
     ax1.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     ax2.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     # ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
-    print(bars1)
+    L.info(bars1)
     return ax1, bars1, labels
 
 

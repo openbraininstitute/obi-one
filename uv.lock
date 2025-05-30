@@ -1758,6 +1758,7 @@ dependencies = [
     { name = "bluepysnap" },
     { name = "brainbuilder" },
     { name = "cachetools" },
+    { name = "connectome-utilities" },
     { name = "entitysdk" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -1779,7 +1780,6 @@ dependencies = [
 [package.optional-dependencies]
 connectivity = [
     { name = "connectome-analysis" },
-    { name = "connectome-utilities" },
 ]
 
 [package.dev-dependencies]
@@ -1800,7 +1800,7 @@ requires-dist = [
     { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git?branch=split_popul_fix" },
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-utilities", marker = "extra == 'connectivity'", specifier = ">=0.4.11" },
+    { name = "connectome-utilities", specifier = ">=0.4.11" },
     { name = "entitysdk" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
