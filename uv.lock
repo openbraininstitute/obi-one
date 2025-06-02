@@ -259,8 +259,8 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.2.dev8+g9ca5b1f"
-source = { git = "https://github.com/openbraininstitute/brainbuilder.git?branch=split_popul_fix#9ca5b1f6eac20319fade1048387c69904db572f2" }
+version = "0.20.2.dev4+ga32f29a"
+source = { git = "https://github.com/openbraininstitute/brainbuilder.git#a32f29ae7d4927718b8c6575ba012e169436700d" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "click" },
@@ -1797,7 +1797,7 @@ dev = [
 requires-dist = [
     { name = "blueetl" },
     { name = "bluepysnap", git = "https://github.com/openbraininstitute/snap.git" },
-    { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git?branch=split_popul_fix" },
+    { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git" },
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
