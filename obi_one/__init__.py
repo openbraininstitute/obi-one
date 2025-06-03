@@ -9,10 +9,10 @@ from obi_one.core.serialization import (
 )
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
-# from obi_one.database.db_classes import db_classes
 from obi_one.database.db_manager import db
 
 __all__ = [
+    "AfferentSynapsesBlock",
     "BasicConnectivityPlot",
     "BasicConnectivityPlots",
     "Block",
@@ -21,7 +21,11 @@ __all__ = [
     "CircuitExtractions",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
+    "ClusteredPDSynapsesByCount",
+    "ClusteredPDSynapsesByMaxDistance",
     "ClusteredPathDistanceMorphologyLocations",
+    "ClusteredSynapsesByCount",
+    "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
     "ConnectivityMatrixExtraction",
     "ConnectivityMatrixExtractions",
@@ -59,15 +63,21 @@ __all__ = [
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
     "OBIBaseModel",
+    "PathDistanceConstrainedFractionOfSynapses",
+    "PathDistanceConstrainedNumberOfSynapses",
+    "PathDistanceWeightedFractionOfSynapses",
+    "PathDistanceWeightedNumberOfSynapses",
     "PercentageNoiseCurrentClampSomaticStimulus",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
     "RandomMorphologyLocations",
+    "RandomlySelectedFractionOfSynapses",
+    "RandomlySelectedNumberOfSynapses",
+    "ReconstructionMorphologyFromID",
     "Recording",
     "RecordingUnion",
     "RegularTimestamps",
-    "ReconstructionMorphologyFromID",
     "RelativeConstantCurrentClampSomaticStimulus",
     "RelativeLinearCurrentClampSomaticStimulus",
     "SectionIntracellularLocationSet",
@@ -94,14 +104,25 @@ __all__ = [
     "deserialize_obi_object_from_json_file",
 ]
 
-# for cls in db_classes:
-#     globals()[cls.__name__] = cls
-
-from obi_one.database.db_classes import (
+from obi_one.database.entity_from_id import (
     EntityFromID,
+)
+from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
-
+from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
+    AfferentSynapsesBlock,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
+    ClusteredSynapsesByCount,
+    ClusteredSynapsesByMaxDistance,
+    PathDistanceConstrainedFractionOfSynapses,
+    PathDistanceConstrainedNumberOfSynapses,
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
+)
 from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
     BasicConnectivityPlot,
     BasicConnectivityPlots,
@@ -152,19 +173,6 @@ from obi_one.scientific.morphology_locations.morphology_location_block import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
-from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
-    AfferentSynapsesBlock,
-    RandomlySelectedFractionOfSynapses,
-    RandomlySelectedNumberOfSynapses,
-    PathDistanceConstrainedFractionOfSynapses,
-    PathDistanceConstrainedNumberOfSynapses,
-    PathDistanceWeightedFractionOfSynapses,
-    PathDistanceWeightedNumberOfSynapses,
-    ClusteredPDSynapsesByCount,
-    ClusteredPDSynapsesByMaxDistance,
-    ClusteredSynapsesByCount,
-    ClusteredSynapsesByMaxDistance
-)
 from obi_one.scientific.morphology_locations.morphology_location_form import (
     MorphologyLocations,
     MorphologyLocationsForm,
@@ -213,5 +221,5 @@ from obi_one.scientific.unions.unions_intracellular_location_sets import (
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
