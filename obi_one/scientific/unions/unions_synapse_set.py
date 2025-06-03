@@ -1,27 +1,27 @@
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
-    RandomlySelectedFractionOfSynapses,
-    RandomlySelectedNumberOfSynapses,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
     ClusteredSynapsesByCount,
     ClusteredSynapsesByMaxDistance,
-    ClusteredPDSynapsesByMaxDistance,
-    ClusteredPDSynapsesByCount,
-    PathDistanceWeightedNumberOfSynapses,
-    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceConstrainedFractionOfSynapses,
     PathDistanceConstrainedNumberOfSynapses,
-    PathDistanceConstrainedFractionOfSynapses
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
 )
 
 SynapseSetUnion = (
-    AfferentSynapsesBlock |
-    RandomlySelectedFractionOfSynapses |
-    RandomlySelectedNumberOfSynapses |
-    PathDistanceConstrainedFractionOfSynapses |
-    PathDistanceConstrainedNumberOfSynapses |
-    PathDistanceWeightedFractionOfSynapses |
-    PathDistanceWeightedNumberOfSynapses |
-    ClusteredPDSynapsesByCount |
-    ClusteredPDSynapsesByMaxDistance |
-    ClusteredSynapsesByCount |
-    ClusteredSynapsesByMaxDistance
+    AfferentSynapsesBlock
+    | RandomlySelectedFractionOfSynapses
+    | RandomlySelectedNumberOfSynapses
+    | PathDistanceConstrainedFractionOfSynapses
+    | PathDistanceConstrainedNumberOfSynapses
+    | PathDistanceWeightedFractionOfSynapses
+    | PathDistanceWeightedNumberOfSynapses
+    | ClusteredPDSynapsesByCount
+    | ClusteredPDSynapsesByMaxDistance
+    | ClusteredSynapsesByCount
+    | ClusteredSynapsesByMaxDistance
 )

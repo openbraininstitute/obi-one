@@ -33,13 +33,16 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 entity_client=entity_client,
             )
         except entitysdk.exception.EntitySDKError:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={
-                "code": ApiErrorCode.NOT_FOUND,
-                "detail": (
-                    f"Reconstruction morphology {reconstruction_morphology_id} not found."
-                ),
-            },)
-        
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": (
+                        f"Reconstruction morphology {reconstruction_morphology_id} not found."
+                    ),
+                },
+            )
+
         if metrics:
             return metrics
         L.error(
