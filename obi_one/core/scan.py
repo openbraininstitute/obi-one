@@ -1,6 +1,6 @@
 import copy
 import json
-import os
+import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
@@ -13,6 +13,8 @@ from obi_one.core.block import Block
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi_one.scientific.unions.unions_form import FormUnion
+
+L = logging.getLogger(__name__)
 
 
 class Scan(OBIBaseModel):
@@ -69,12 +71,12 @@ class Scan(OBIBaseModel):
 
         # Optionally display the multiple_value_parameters
         if display:
-            print("\nMULTIPLE VALUE PARAMETERS")
+            L.info("\nMULTIPLE VALUE PARAMETERS")
             if len(self._multiple_value_parameters) == 0:
-                print("No multiple value parameters found.")
+                L.info("No multiple value parameters found.")
             else:
                 for multi_value in self._multiple_value_parameters:
-                    print(f"{multi_value.location_str}: {multi_value.values}")
+                    L.info(f"{multi_value.location_str}: {multi_value.values}")
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
@@ -125,7 +127,7 @@ class Scan(OBIBaseModel):
                     else:
                         msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
                             {level_0_val}"
-                        raise ValueError(msg)
+                        raise TypeError(msg)
 
             try:
                 # Cast the form to its single_coord_class_name type
@@ -139,13 +141,13 @@ class Scan(OBIBaseModel):
                 self._coordinate_instances.append(coordinate_instance)
 
             except ValidationError as e:
-                raise ValidationError(e)
+                raise ValidationError(e) from e
 
         # Optionally display the coordinate instances
         if display:
-            print("\nCOORDINATE INSTANCES")
+            L.info("\nCOORDINATE INSTANCES")
             for coordinate_instance in self._coordinate_instances:
-                print(coordinate_instance)
+                L.info(coordinate_instance)
 
         # Return self._coordinate_instances
         return self._coordinate_instances
@@ -163,11 +165,9 @@ class Scan(OBIBaseModel):
             # Check if coordinate instance has function "run"
             if hasattr(coordinate_instance, processing_method):
                 # Initialize the coordinate_instance's coordinate_output_root
-                coordinate_instance.initialize_coordinate_output_root(self.output_root)
-
-                # Create the coordinate_output_root directory
-                coordinate_instance.coordinate_directory_option = self.coordinate_directory_option
-                os.makedirs(coordinate_instance.coordinate_output_root, exist_ok=True)
+                coordinate_instance.initialize_coordinate_output_root(
+                    self.output_root, self.coordinate_directory_option
+                )
 
                 # Call the coordinate_instance's processing_method (i.e. run, generate)
                 return_dict[coordinate_instance.idx] = getattr(
@@ -203,7 +203,7 @@ class Scan(OBIBaseModel):
 
         return return_dict
 
-    def serialize(self, output_path: str = "") -> dict:
+    def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
 
         - type name added to each subobject of type
@@ -231,9 +231,6 @@ class Scan(OBIBaseModel):
 
         # Create the directory and write dict to json file
         if output_path:
-            output_path = Path(output_path)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
             with output_path.open("w") as json_file:
                 json.dump(model_dump, json_file, indent=4)
 
@@ -242,7 +239,7 @@ class Scan(OBIBaseModel):
     def create_bbp_workflow_campaign_config(self, output_path: str = "") -> None:
         """Description."""
         msg = "create_bbp_workflow_campaign_config() not yet complete."
-        print(msg)
+        L.info(msg)
         return
 
         # Dictionary intialization
@@ -291,7 +288,7 @@ class Scan(OBIBaseModel):
 
     def display_coordinate_parameters(self) -> None:
         """Description."""
-        print("\nCOORDINATE PARAMETERS")
+        L.info("\nCOORDINATE PARAMETERS")
         for single_coordinate_parameters in self._coordinate_parameters:
             single_coordinate_parameters.display_parameters()
 

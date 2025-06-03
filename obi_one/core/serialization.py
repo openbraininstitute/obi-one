@@ -1,6 +1,10 @@
+import json
+from pathlib import Path
 from typing import Any
 
 from entitysdk.models.entity import Entity
+
+import obi_one as obi
 
 
 def entity_encoder(obj: Any) -> dict[str, str]:
@@ -10,20 +14,16 @@ def entity_encoder(obj: Any) -> dict[str, str]:
         return {"type": f"{cls_name}FromID", "id_str": str(obj.id)}
     if "FromID" in cls_name:
         return {"type": cls_name, "id_str": str(obj.id)}
-    raise TypeError(f"Object of type {cls_name} is not JSON serializable")
+    msg = f"Object of type {cls_name} is not JSON serializable"
+    raise TypeError(msg)
 
 
-import json
-
-import obi_one as obi
-
-
-def deserialize_obi_object_from_json_data(json_data):
-    obi_object = getattr(obi, json_data["type"]).model_validate(json_data)
+def deserialize_obi_object_from_json_data(json_dict: dict) -> obi.OBIBaseModel:
+    obi_object = getattr(obi, json_dict["type"]).model_validate(json_dict)
     return obi_object
 
 
-def deserialize_obi_object_from_json_file(json_path):
-    with open(json_path) as file:
-        data = json.load(file)
-        return deserialize_obi_object_from_json_data(data)
+def deserialize_obi_object_from_json_file(json_path: Path) -> obi.OBIBaseModel:
+    with Path.open(json_path) as file:
+        json_dict = json.load(file)
+    return deserialize_obi_object_from_json_data(json_dict)
