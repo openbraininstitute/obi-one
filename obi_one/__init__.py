@@ -9,7 +9,7 @@ from obi_one.core.serialization import (
 )
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
-from obi_one.database.db_classes import db_classes
+# from obi_one.database.db_classes import db_classes
 from obi_one.database.db_manager import db
 
 __all__ = [
@@ -27,6 +27,7 @@ __all__ = [
     "ConnectivityMatrixExtractions",
     "ConstantCurrentClampSomaticStimulus",
     "CoupledScan",
+    "EntityFromID",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
     "FolderCompression",
@@ -66,6 +67,7 @@ __all__ = [
     "Recording",
     "RecordingUnion",
     "RegularTimestamps",
+    "ReconstructionMorphologyFromID",
     "RelativeConstantCurrentClampSomaticStimulus",
     "RelativeLinearCurrentClampSomaticStimulus",
     "SectionIntracellularLocationSet",
@@ -92,8 +94,13 @@ __all__ = [
     "deserialize_obi_object_from_json_file",
 ]
 
-for cls in db_classes:
-    globals()[cls.__name__] = cls
+# for cls in db_classes:
+#     globals()[cls.__name__] = cls
+
+from obi_one.database.db_classes import (
+    EntityFromID,
+    ReconstructionMorphologyFromID,
+)
 
 from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
     BasicConnectivityPlot,
