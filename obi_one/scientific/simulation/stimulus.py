@@ -421,7 +421,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
     
     def generate_spikes(self, circuit, population, spike_file_path):
-        np.random.seed(self.random_seed)
+        rng = np.random.default_rng(self.random_seed)
         gids = self.neuron_set.get_neuron_ids(circuit, population)
         gid_spike_map = {}
         timestamps = self.timestamps.timestamps()
@@ -435,7 +435,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 t = start_time
                 while t < end_time:
                     # Draw next spike time from exponential distribution
-                    interval = np.random.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                    interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
                     t += interval
                     if t < end_time:
                         spikes.append(t)
