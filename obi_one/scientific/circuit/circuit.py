@@ -55,15 +55,12 @@ class Circuit(OBIBaseModel):
     def _default_population_name(c):
         """Returns the default node population name of a SONATA circuit c."""
         popul_names = Circuit.get_node_population_names(c, incl_virtual=False)
-        #popul_names = ["A"]
         assert len(popul_names) == 1, "Default node population unknown!"
         return popul_names[0]
 
     @property
     def default_population_name(self):
         """Returns the default node population name."""
-        #popul_names = self.get_node_population_names(incl_virtual=False)
-        #assert len(popul_names) == 1, "Default node population unknown!"
         return self._default_population_name(self.sonata_circuit)
 
     def get_edge_population_names(self, incl_virtual=True):
