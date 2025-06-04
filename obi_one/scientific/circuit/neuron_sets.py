@@ -170,7 +170,7 @@ class NeuronSet(Block, abc.ABC):
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
         if len(ids) > 0 and self.random_sample is not None:
-            np.random.seed(self.random_seed)
+            rng = np.random.default_rng(self.random_seed)
 
             if isinstance(self.random_sample, int):
                 num_sample = np.minimum(self.random_sample, len(ids))
@@ -178,7 +178,7 @@ class NeuronSet(Block, abc.ABC):
                 num_sample = np.round(self.random_sample * len(ids)).astype(int)
 
             ids = ids[
-                np.random.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
+                rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
             ]
 
         return ids

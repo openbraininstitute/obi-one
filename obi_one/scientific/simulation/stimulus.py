@@ -1,5 +1,12 @@
+import os
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 from abc import ABC, abstractmethod
 from typing import Annotated
+import h5py
 
 from pydantic import Field
 
@@ -348,4 +355,94 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SynchronousSingleSpikeStimulus(Stimulus):
-    spike_probability: float | list[float]
+   spike_probability: float | list[float]
+
+
+class SpikeStimulus(Stimulus):
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+    stim_duration: float | list[float]
+    _spike_file: Path | None = None
+    neuron_set: NeuronSetUnion
+
+    def _generate_config(self) -> dict:
+        assert self._spike_file is not None
+        sonata_config = {}
+        sonata_config[self.name] = {
+                "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
+                "duration": self.stim_duration,
+                "cells": self.neuron_set.name,
+                "module": self._module,
+                "input_type": self._input_type,
+                "spike_file": str(self._spike_file) # os.path.relpath # 
+            }
+        
+        return sonata_config
+
+    def generate_spikes(self, circuit, population, spike_file_path):
+        raise NotImplementedError("Subclasses should implement this method.")
+
+    @staticmethod
+    def write_spike_file(gid_spike_map, spike_file, neuron_set):
+        """
+        Writes SONATA output spike trains to file.
+        
+        Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
+        """
+        # IMPORTANT: Convert SONATA node IDs (0-based) to NEURON cell IDs (1-based)!!
+        # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
+        gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
+    
+        out_path = os.path.split(spike_file)[0]
+        if not os.path.exists(out_path):
+            os.makedirs(out_path)
+
+        popul_name = neuron_set.name
+        time_list = []
+        gid_list = []
+        for gid, spike_times in gid_spike_map.items():
+            if spike_times is not None:
+                for t in spike_times:
+                    time_list.append(t)
+                    gid_list.append(gid)
+        spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=['t', 'gid'])
+        spike_df = spike_df.astype({'t': float, 'gid': int})
+        spike_df.sort_values(by=['t', 'gid'], inplace=True)  # Sort by time
+        with h5py.File(spike_file, 'w') as f:
+            pop = f.create_group(f"/spikes/{popul_name}")
+            ts = pop.create_dataset("timestamps", data=spike_df['t'].values, dtype=np.float64)
+            nodes = pop.create_dataset("node_ids", data=spike_df['gid'].values, dtype=np.uint64)
+            ts.attrs['units'] = 'ms'
+
+class PoissonSpikeStimulus(SpikeStimulus):
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+    random_seed: int | list[int] = 0
+    frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
+    
+    def generate_spikes(self, circuit, population, spike_file_path):
+        rng = np.random.default_rng(self.random_seed)
+        gids = self.neuron_set.get_neuron_ids(circuit, population)
+        gid_spike_map = {}
+        timestamps = self.timestamps.timestamps()
+        for t_idx, start_time in enumerate(timestamps):
+            end_time = start_time + self.stim_duration
+            if t_idx < len(timestamps) - 1:
+                # Check that interval not overlapping with next stimulus onset
+                assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
+            for gid in gids:
+                spikes = []
+                t = start_time
+                while t < end_time:
+                    # Draw next spike time from exponential distribution
+                    interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                    t += interval
+                    if t < end_time:
+                        spikes.append(t)
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] = gid_spike_map[gid] + spikes
+                else:
+                    gid_spike_map[gid] = spikes
+        self._spike_file = f"{self.name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, self.neuron_set)
+        
