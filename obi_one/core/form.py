@@ -25,3 +25,29 @@ class Form(OBIBaseModel):
     @property
     def single_coord_scan_default_subpath(self) -> str:
         return self.single_coord_class_name + "/"
+
+    class Config:
+        json_encoders = {}
+
+
+
+from obi_one.core.block import Block
+import json
+def block_encoder(obj):
+
+    if isinstance(obj, Block):
+
+        block_dict = obj.__dict__.copy()
+        for attr_name, attr_value in obj.__dict__.items():
+
+            if isinstance(attr_value, Block):
+                block_dict[attr_name] = attr_value.simulation_level_name
+            else:
+                block_dict[attr_name] = attr_value
+
+        return block_dict
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+Form.Config.json_encoders.update({
+    Block: block_encoder
+})
