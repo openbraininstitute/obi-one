@@ -133,6 +133,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate stimulus input configs
         self._sonata_config["inputs"] = {}
         for stimulus_key, stimulus in self.stimuli.items():
+            if hasattr (stimulus, "generate_spikes"):
+                stimulus.generate_spikes(self.initialize.circuit, self.initialize.circuit.default_population_name, self.coordinate_output_root)
             self._sonata_config["inputs"].update(stimulus.config())
 
         # Generate recording configs

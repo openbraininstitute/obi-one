@@ -6,7 +6,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.db_classes import ReconstructionMorphologyFromID
+from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
 
 class SingleBlockGenerateTestForm(Form):

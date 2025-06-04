@@ -1,23 +1,23 @@
 import abc
-import numpy
 from typing import Self
 
+import numpy
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 
 from .find_specified_afferent_synapses import (
-    morphology_and_pathdistance_calculator,
-    all_syns_on,
     add_section_types,
+    all_syns_on,
     apply_filters,
+    merge_multiple_syns_per_connection,
+    morphology_and_pathdistance_calculator,
     relevant_path_distances,
+    select_by_path_distance,
+    select_clusters_by_count,
+    select_clusters_by_max_distance,
     select_minmax_distance,
     select_randomly,
-    select_by_path_distance,
-    select_clusters_by_max_distance,
-    select_clusters_by_count,
-    merge_multiple_syns_per_connection
 )
 
 
@@ -40,12 +40,12 @@ class AfferentSynapsesBlock(Block, abc.ABC):
     consider_nan_pass: bool | list[bool] = Field(
         default=True,
         name="Consider nan to pass",
-        description="If False, synapses with no 'synapse_class' pass, else not."
+        description="If False, synapses with no 'synapse_class' pass, else not.",
     )
     pre_node_populations: None | tuple[str, ...] | list[tuple[str, ...]] = Field(
         default=None,
         name="Presynaptic populations",
-        description="Names of presynaptic node populations to allow"
+        description="Names of presynaptic node populations to allow",
     )
     merge_multiple_syns_con: bool | list[bool] = Field(
         default=False,
@@ -55,7 +55,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         In this mode, it is not individual synapses that are selected, but presynaptic neurons.
         Where, if a neuron is selected, it is implied that all its synapses onto the target
         neuron are to be considered as selected.
-        """
+        """,
     )
 
     def gather_synapse_info(self, circ, node_population, node_id):
@@ -101,10 +101,10 @@ class AfferentSynapsesBlock(Block, abc.ABC):
 
 
 class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
-    """
-    Completely random synapses without constraint.
+    """Completely random synapses without constraint.
     Specified number picked without bias.
     """
+
     n: int | list[int] = Field(
         default=1,
         name="Number of synapses",
@@ -113,16 +113,17 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
 
     def _select_syns(self, syns, *args):
         return select_randomly(syns, n=self.n, raise_insufficient=False)
-        
+
     def _check_parameter_values(self):
         if not isinstance(self.n, list):
             assert self.n > 0, "Number of synapses must be at least one!"
 
+
 class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
-    """
-    Completely random synapses without constraint.
+    """Completely random synapses without constraint.
     Each picked with specified probability.
     """
+
     p: int | list[int] = Field(
         default=1.0,
         name="Fracton of synapses",
@@ -131,124 +132,139 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
 
     def _select_syns(self, syns, *args):
         return select_randomly(syns, p=self.p, raise_insufficient=False)
-        
+
     def _check_parameter_values(self):
         if not isinstance(self.p, list):
             assert self.p > 0, "Fraction of synapses must be > 0!"
             assert self.p <= 1.0, "Number of synapses must be <= 1.0!"
 
+
 class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
-    """
-    Pick from synapses between specified minimum and maximum path distances from the soma.
+    """Pick from synapses between specified minimum and maximum path distances from the soma.
     Specified number of synapses within the path distance interval are picked without bias.
     """
+
     soma_pd_min: float | list[float] = Field(
         default=0.0,
         name="Minimum soma path distance",
-        description="Minimum path distance in um to the soma for synapses"
+        description="Minimum path distance in um to the soma for synapses",
     )
     soma_pd_max: float | list[float] = Field(
-        default=1E12,
+        default=1e12,
         name="Maximum soma path distance",
-        description="Maximm path distance in um to the soma for synapses"
+        description="Maximm path distance in um to the soma for synapses",
     )
 
     def _select_syns(self, syns, soma_pds, *args):
-        return select_minmax_distance(syns, soma_pds,
-                                      soma_pd_min=self.soma_pd_min,
-                                      soma_pd_max=self.soma_pd_max,
-                                      n=self.n, raise_insufficient=False)
+        return select_minmax_distance(
+            syns,
+            soma_pds,
+            soma_pd_min=self.soma_pd_min,
+            soma_pd_max=self.soma_pd_max,
+            n=self.n,
+            raise_insufficient=False,
+        )
+
 
 class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynapses):
-    """
-    Pick from synapses between specified minimum and maximum path distances from the soma.
+    """Pick from synapses between specified minimum and maximum path distances from the soma.
     From the synapses within the path distance interval a specified fractio is picked.
     """
+
     soma_pd_min: float | list[float] = Field(
         default=0.0,
         name="Minimum soma path distance",
-        description="Minimum path distance in um to the soma for synapses"
+        description="Minimum path distance in um to the soma for synapses",
     )
     soma_pd_max: float | list[float] = Field(
-        default=1E12,
+        default=1e12,
         name="Maximum soma path distance",
-        description="Maximm path distance in um to the soma for synapses"
+        description="Maximm path distance in um to the soma for synapses",
     )
 
     def _select_syns(self, syns, soma_pds, *args):
-        return select_minmax_distance(syns, soma_pds,
-                                      soma_pd_min=self.soma_pd_min,
-                                      soma_pd_max=self.soma_pd_max,
-                                      n=self.p, raise_insufficient=False)
+        return select_minmax_distance(
+            syns,
+            soma_pds,
+            soma_pd_min=self.soma_pd_min,
+            soma_pd_max=self.soma_pd_max,
+            n=self.p,
+            raise_insufficient=False,
+        )
+
 
 class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
-    """
-    Pick synapses with path distance-dependent bias. A specified number of synapses
+    """Pick synapses with path distance-dependent bias. A specified number of synapses
     is picked, with synapses close to a specified path distance from the soma being
     more likely to be selected. The bias is expressed by a Gaussian mean and std.
     """
+
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
-        description="Mean of a Gaussian for soma path distance in um for selecting synapses"
+        description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
         name="SD for soma path distance",
-        description="SD of a Gaussian for soma path distance in um for selecting synapses"
+        description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
     def _check_parameter_values(self):
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
-    
+
     def _select_syns(self, syns, soma_pds, *args):
         return select_by_path_distance(
-            syns, soma_pds,
+            syns,
+            soma_pds,
             soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd, n=self.n,
-            raise_insufficient=False
+            soma_pd_sd=self.soma_pd_sd,
+            n=self.n,
+            raise_insufficient=False,
         )
+
 
 class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses):
-    """
-    Pick synapses with path distance-dependent bias. A specified fraction of all synapses
+    """Pick synapses with path distance-dependent bias. A specified fraction of all synapses
     is picked, with synapses close to a specified path distance from the soma being
     more likely to be selected. The bias is expressed by a Gaussian mean and std.
     """
+
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
-        description="Mean of a Gaussian for soma path distance in um for selecting synapses"
+        description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
         name="SD for soma path distance",
-        description="SD of a Gaussian for soma path distance in um for selecting synapses"
+        description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
     def _check_parameter_values(self):
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
-    
+
     def _select_syns(self, syns, soma_pds, *args):
         return select_by_path_distance(
-            syns, soma_pds,
+            syns,
+            soma_pds,
             soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd, n=self.p,
-            raise_insufficient=False
+            soma_pd_sd=self.soma_pd_sd,
+            n=self.p,
+            raise_insufficient=False,
         )
 
+
 class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
-    """
-    Pick clusters of synapses. A cluster in this context comprises all synapses
+    """Pick clusters of synapses. A cluster in this context comprises all synapses
     closer than a maximum path distance to a synapse that has been picked as a
     cluster center. The center is picked randomly without bias.
     """
+
     n_clusters: int | list[int] = Field(
-        default=1,
-        name="Number of clusters",
-        description="Number of synapse clusters to find"
+        default=1, name="Number of clusters", description="Number of synapse clusters to find"
     )
-    cluster_max_distance : float | list[float] = Field(
+    cluster_max_distance: float | list[float] = Field(
         name="Maximum distance of synapses from cluster center",
-        description="Synapses within a cluster will be closer than this value from the cluster center (in um)"
+        description="Synapses within a cluster will be closer than this value from the cluster center (in um)",
     )
 
     def _check_parameter_values(self):
@@ -256,30 +272,31 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
             assert self.n_clusters > 0, "Must generate at least one cluster!"
         if not isinstance(self.cluster_max_distance, list):
             assert self.cluster_max_distance >= 0, "Cluster distance must be >= 0"
-    
+
     def _select_syns(self, syns, soma_pds, pw_pds):
         return select_clusters_by_max_distance(
-            syns, soma_pds, pw_pds,
+            syns,
+            soma_pds,
+            pw_pds,
             n_clusters=self.n_clusters,
-            cluster_max_distance=self.cluster_max_distance, 
-            raise_insufficient=False
+            cluster_max_distance=self.cluster_max_distance,
+            raise_insufficient=False,
         )
 
+
 class ClusteredSynapsesByCount(AfferentSynapsesBlock):
-    """
-    Pick clusters of synapses. A cluster in this context comprises
+    """Pick clusters of synapses. A cluster in this context comprises
     n_per_cluster synapses that are closest in path distance to a synapse that
     has been picked as a cluster center.
     The center is picked randomly without bias.
     """
+
     n_clusters: int | list[int] = Field(
-        default=1,
-        name="Number of clusters",
-        description="Number of synapse clusters to find"
+        default=1, name="Number of clusters", description="Number of synapse clusters to find"
     )
-    n_per_cluster : int | list[int] = Field(
+    n_per_cluster: int | list[int] = Field(
         name="Number of synapses per cluster",
-        description="This number of synapses per cluster will be selected by proximity to a center synapse."
+        description="This number of synapses per cluster will be selected by proximity to a center synapse.",
     )
 
     def _check_parameter_values(self):
@@ -287,75 +304,83 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
             assert self.n_clusters > 0, "Must generate at least one cluster!"
         if not isinstance(self.n_per_cluster, list):
             assert self.n_per_cluster > 0, "Must select at least one synapse per cluster!"
-    
+
     def _select_syns(self, syns, soma_pds, pw_pds):
         return select_clusters_by_count(
-            syns, soma_pds, pw_pds,
+            syns,
+            soma_pds,
+            pw_pds,
             n_clusters=self.n_clusters,
             n_per_cluster=self.n_per_cluster,
-            raise_insufficient=False
+            raise_insufficient=False,
         )
-    
+
+
 class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
-    """
-    Pick clusters of synapses. A cluster in this context comprises all synapses
+    """Pick clusters of synapses. A cluster in this context comprises all synapses
     closer than a maximum path distance to a synapse that has been picked as a
-    cluster center. 
+    cluster center.
     The center is picked with a bias that depends on path distance to the soma.
-    That is, synapse close to a specified path distance are more likely to be 
-    selected. 
+    That is, synapse close to a specified path distance are more likely to be
+    selected.
     """
+
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
-        description="Mean of a Gaussian for soma path distance in um for selecting synapses"
+        description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
         name="SD for soma path distance",
-        description="SD of a Gaussian for soma path distance in um for selecting synapses"
+        description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
     def _check_parameter_values(self):
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
-    
+
     def _select_syns(self, syns, soma_pds, pw_pds):
         return select_clusters_by_max_distance(
-            syns, soma_pds, pw_pds,
+            syns,
+            soma_pds,
+            pw_pds,
             n_clusters=self.n_clusters,
-            cluster_max_distance=self.cluster_max_distance, 
+            cluster_max_distance=self.cluster_max_distance,
             soma_pd_mean=self.soma_pd_mean,
             soma_pd_sd=self.soma_pd_sd,
-            raise_insufficient=False
+            raise_insufficient=False,
         )
-    
+
+
 class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
-    """
-    Pick clusters of synapses. A cluster in this context comprises
+    """Pick clusters of synapses. A cluster in this context comprises
     n_per_cluster synapses that are closest in path distance to a synapse that
     has been picked as a cluster center.
     The center is picked with a bias that depends on path distance to the soma.
-    That is, synapse close to a specified path distance are more likely to be 
-    selected. 
+    That is, synapse close to a specified path distance are more likely to be
+    selected.
     """
+
     soma_pd_mean: float | list[float] = Field(
         name="Mean soma path distance",
-        description="Mean of a Gaussian for soma path distance in um for selecting synapses"
+        description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
         name="SD for soma path distance",
-        description="SD of a Gaussian for soma path distance in um for selecting synapses"
+        description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
     def _check_parameter_values(self):
         if not isinstance(self.soma_pd_sd, list):
             assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
-    
+
     def _select_syns(self, syns, soma_pds, pw_pds):
         return select_clusters_by_count(
-            syns, soma_pds, pw_pds,
+            syns,
+            soma_pds,
+            pw_pds,
             n_clusters=self.n_clusters,
             n_per_cluster=self.n_per_cluster,
             soma_pd_mean=self.soma_pd_mean,
             soma_pd_sd=self.soma_pd_sd,
-            raise_insufficient=False
+            raise_insufficient=False,
         )
