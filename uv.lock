@@ -658,14 +658,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.2.4"
+version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/48/bb7f87a4bea3c75e0ffec482c1dc1af3fbc2e25f6ad6806afaea99f5c3e2/entitysdk-0.2.4.tar.gz", hash = "sha256:49ffa1257afc64ee8df0cec81595e8f201ddfae5530ba305f3002c4036109f95", size = 43146 }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/26/81f0769b2e08099148a65aa4a31b0aa337e9baa07f8346fe3ad5464c8779/entitysdk-0.2.5.tar.gz", hash = "sha256:23bb04d83903312c6f74162e5b86959dd80622ff7c17dbc23f1b75e7b97694fa", size = 43186 }
 
 [[package]]
 name = "executing"
@@ -1801,7 +1801,7 @@ requires-dist = [
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk" },
+    { name = "entitysdk", specifier = ">=0.2.5" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel" },

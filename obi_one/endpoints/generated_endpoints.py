@@ -88,11 +88,12 @@ def create_endpoint_for_form(
                 grid_scan = GridScan(
                     form=form,
                     output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
-                    coordinate_directory_option="ZERO_INDEX",
+                    coordinate_directory_option="ZERO_INDEX"
                 )
                 result = grid_scan.execute(
                     processing_method=processing_method,
                     data_postprocessing_method=data_postprocessing_method,
+                    entity_client=entity_client,
                 )
             except Exception:  # noqa: BLE001
                 L.exception("Generic exception")
