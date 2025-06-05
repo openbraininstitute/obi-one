@@ -1,5 +1,7 @@
 from typing import ClassVar
 
+from pydantic import Field
+
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
@@ -22,9 +24,14 @@ class CircuitExtractions(Form):
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
         run_validation: bool = False
+        do_virtual: bool | list[bool] = Field(default=True, name="Do virtual",
+                                              description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
+        create_external: bool | list[bool] = Field(default=True, name="Create external",
+                                                   description="whether to create new virtual populations of all the incoming connections")
+        node_delete_prefix: str | list[str]
+        edge_delete_prefix: str | list[str]
 
     initialize: Initialize
-    neuron_set: NeuronSetUnion
 
     def save_collection(self, circuit_entities):
         pass
@@ -43,6 +50,8 @@ import bluepysnap.circuit_validation
 import h5py
 import tqdm
 from brainbuilder.utils.sonata import split_population
+
+from .post_process_helpers import preprocess, postprocess
 
 
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
@@ -67,14 +76,20 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
 
+            # FIXME: Preprocess in-place
+            # preprocess(sonata_circuit,
+            #            self.initialize.node_delete_prefix,
+            #            self.initialize.edge_delete_prefix)
+
             # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
             split_population.split_subcircuit(
                 self.coordinate_output_root,
                 nset_name,
                 sonata_circuit,
-                True,
-                False,
+                self.initialize.do_virtual,
+                self.initialize.create_external,
+                # TODO: Add list_of_virtual_sources_to_ignore
             )
 
             # Custom edit of the circuit config so that all paths are relative to the new base directory
@@ -233,6 +248,9 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
                 shutil.copytree(source_dir, dest_dir)
+
+            # TODO: CHECK IF STILL REQUIRED?
+            # postprocess(new_circuit, biophys_pop_name)
 
             # Run circuit validation
             if self.initialize.run_validation:
