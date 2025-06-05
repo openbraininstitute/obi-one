@@ -28,8 +28,10 @@ class CircuitExtractions(Form):
                                               description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
         create_external: bool | list[bool] = Field(default=True, name="Create external",
                                                    description="whether to create new virtual populations of all the incoming connections")
-        node_delete_prefix: str | list[str]
-        edge_delete_prefix: str | list[str]
+        # node_delete_prefix: str | list[str] = ""
+        # edge_delete_prefix: str | list[str] = ""
+
+        virtual_sources_to_ignore: list[str] | list[list[str]] = []
 
     initialize: Initialize
 
@@ -76,8 +78,8 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
 
-            # FIXME: Preprocess in-place
-            # preprocess(sonata_circuit,
+            # TODO: CHECK IF STILL REQUIRED?
+            # preprocess(sonata_circuit,  # FIXME: Preprocess in-place
             #            self.initialize.node_delete_prefix,
             #            self.initialize.edge_delete_prefix)
 
@@ -89,7 +91,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 sonata_circuit,
                 self.initialize.do_virtual,
                 self.initialize.create_external,
-                # TODO: Add list_of_virtual_sources_to_ignore
+                self.initialize.virtual_sources_to_ignore
             )
 
             # Custom edit of the circuit config so that all paths are relative to the new base directory
