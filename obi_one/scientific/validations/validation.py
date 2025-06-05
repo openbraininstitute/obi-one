@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 import abc
+from typing import ClassVar, Annotated
+from pydantic import BaseModel
 
 class Validation(BaseModel, abc.ABC):
 
@@ -8,8 +10,8 @@ class Validation(BaseModel, abc.ABC):
     This class is used to define the structure of validation objects.
     It can be extended to create specific validation types.
     """
-    name: str
-    description: str | None = None
+    name: ClassVar[str]
+    description: ClassVar[str]
 
     def run(self) -> None:
         """Validate the provided data against the validation rules."""

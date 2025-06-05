@@ -76,6 +76,7 @@ __all__ = [
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
     "ReconstructionMorphologyFromID",
+    "ReconstructionMorphologyValidation",
     "Recording",
     "RecordingUnion",
     "RegularTimestamps",
