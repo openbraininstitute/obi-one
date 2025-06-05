@@ -1,6 +1,6 @@
 from obi_one.scientific.validations.validation import Validation
 
-class ValidateReconstructionMorphology(Validation):
+class ReconstructionMorphologyValidation(Validation):
     """Validate the morphology of a reconstruction.
 
     This validation checks if the morphology of a reconstruction is valid.

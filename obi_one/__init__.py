@@ -227,6 +227,6 @@ from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 
 
-from obi_one.scientific.validations.validate_reconstruction_morphology import (
-    ValidateReconstructionMorphology,
+from obi_one.scientific.validations.reconstruction_morphology_validation import (
+    ReconstructionMorphologyValidation,
 )
