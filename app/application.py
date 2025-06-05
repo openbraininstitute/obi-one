@@ -131,7 +131,7 @@ declared_endpoints_router = APIRouter(
 )
 app.include_router(activate_declared_endpoints(declared_endpoints_router))
 
-generated_router = APIRouter(
-    prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
-)
-app.include_router(activate_generated_endpoints(generated_router))
+# generated_router = APIRouter(
+#     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
+# )
+# app.include_router(activate_generated_endpoints(generated_router))
