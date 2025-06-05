@@ -1,17 +1,15 @@
-from obi_one.scientific.validations.validation import Validation
+import logging
+from pathlib import Path
+from typing import Annotated, ClassVar
 
-import neurom
 import morphio
-
-from typing import ClassVar, Annotated
-
+import neurom
 from pydantic import BaseModel, Field
 
-from pathlib import Path
-
-import logging
+from obi_one.scientific.validations.validation import Validation
 
 L = logging.getLogger(__name__)
+
 
 class ReconstructionMorphologyValidationOutput(BaseModel):
     validation_a: Annotated[
@@ -45,7 +43,6 @@ class ReconstructionMorphologyValidation(Validation):
 
     def run(self) -> None:
         """Run the validation logic."""
-
         L.info("Running Reconstruction Morphology Validation")
 
         if not self.morphology_file_path:
@@ -60,17 +57,12 @@ class ReconstructionMorphologyValidation(Validation):
         )
 
         # Implement the validation logic here
-        pass
 
     def save(self) -> None:
         """Save the result of the validation."""
-        
         L.info("Saving Reconstruction Morphology Validation Output")
 
         if self._validation_output is None:
             raise ValueError("Validation output must be set before saving.")
-        
+
         # Example: Save the validation output to a database or file
-
-        pass
-
