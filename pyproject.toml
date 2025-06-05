@@ -68,7 +68,7 @@ include = ["obi_one*"]
 
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
-brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
+brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git", branch = "some_split_subcircuit_fixes" }
 
 [tool.ruff]
 line-length = 100
