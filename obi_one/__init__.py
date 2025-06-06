@@ -10,8 +10,11 @@ from obi_one.core.serialization import (
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_manager import db
+from obi_one.core.activity import Activity
+from obi_one.core.validation import Validation
 
 __all__ = [
+    "Activity",
     "AfferentSynapsesBlock",
     "BasicConnectivityPlot",
     "BasicConnectivityPlots",
@@ -98,6 +101,7 @@ __all__ = [
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsUnion",
+    "Validation",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocationSet",

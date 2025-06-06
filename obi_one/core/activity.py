@@ -4,7 +4,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 
 
-class Validation(BaseModel, abc.ABC):
+class Activity(BaseModel, abc.ABC):
     """Base class for validation objects.
 
     This class is used to define the structure of validation objects.
