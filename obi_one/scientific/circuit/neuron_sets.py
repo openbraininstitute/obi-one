@@ -112,7 +112,7 @@ class NeuronSet(Block, abc.ABC):
 
     @staticmethod
     def check_population(circuit: Circuit, population: str) -> None:
-        assert population in circuit.get_node_population_names(), (
+        assert population in circuit.get_node_population_names(circuit.sonata_circuit), (
             f"Node population '{population}' not found in circuit '{circuit}'!"
         )
 
