@@ -56,8 +56,16 @@ class ReconstructionMorphologyValidation(Validation):
         morphio_morphology = morphio.Morphology(self.morphology_file_path)
 
         self._validation_output = ReconstructionMorphologyValidationOutput(
-            validation_a=True,
-            validation_b=False,
+            validation_a=SingleReconstructionMorphologyValidationOutput(
+                name="Morphology Validation A",
+                passed=True,
+                validation_details="Morphology is valid.",
+            ),
+            validation_b=SingleReconstructionMorphologyValidationOutput(
+                name="Morphology Validation B",
+                passed=False,
+                validation_details="Axon section is missing.",
+            ),
         )
 
         # Implement the validation logic here
