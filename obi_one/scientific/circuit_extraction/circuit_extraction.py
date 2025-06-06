@@ -263,13 +263,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             print("Extraction DONE")
 
         except Exception as e:
-            if str(e) == "Unable to synchronously create group (name already exists)":
-                print(
-                    "Error:",
-                    f"Subcircuit {self.neuron_set} already exists. Subcircuit must be deleted before running the extraction.",
-                )
-            else:
-                traceback.print_exception(e)
+            traceback.print_exception(e)
             return
 
     def save(self):
