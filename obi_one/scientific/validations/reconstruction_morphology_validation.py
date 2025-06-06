@@ -6,21 +6,25 @@ import morphio
 import neurom
 from pydantic import BaseModel, Field
 
-from obi_one.core.validation import Validation
+from obi_one.core.validation import SingleValidationOutput, Validation
 
 L = logging.getLogger(__name__)
 
 
+class SingleReconstructionMorphologyValidationOutput(SingleValidationOutput):
+    """Single output for a reconstruction morphology validation."""
+
+
 class ReconstructionMorphologyValidationOutput(Validation):
     validation_a: Annotated[
-        bool,
+        SingleReconstructionMorphologyValidationOutput,
         Field(
             title="validation_a",
             description="description of validation_a",
         ),
     ]
     validation_b: Annotated[
-        bool,
+        SingleReconstructionMorphologyValidationOutput,
         Field(
             title="validation_b",
             description="description of validation_b",
