@@ -84,34 +84,26 @@ class MorphologyMetricsOutput(BaseModel):
     @classmethod
     def from_morphology(cls, neurom_morphology):
         return cls(
-            aspect_ratio=0.0,
-            circularity=0.0,
-            length_fraction_above_soma=0.0,
-            max_radial_distance=0.0,
-            number_of_neurites=0,
-            soma_radius=0.0,
-            soma_surface_area=0.0,
+            aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
+            circularity=neurom.get("circularity", neurom_morphology),
+            length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
+            max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
+            number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
+            soma_radius=neurom.get("soma_radius", neurom_morphology),
+            soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
         )
-        # return cls(
-        #     aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
-        #     circularity=neurom.get("circularity", neurom_morphology),
-        #     length_fraction_above_soma=neurom.get("length_fraction_above_soma", neurom_morphology),
-        #     max_radial_distance=neurom.get("max_radial_distance", neurom_morphology),
-        #     number_of_neurites=neurom.get("number_of_neurites", neurom_morphology),
-        #     soma_radius=neurom.get("soma_radius", neurom_morphology),
-        #     soma_surface_area=neurom.get("soma_surface_area", neurom_morphology),
-        # )
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
     def run(self, entity_client: entitysdk.client.Client = None):
         try:
             print("Running Morphology Metrics...")
-            L.info(
-                MorphologyMetricsOutput.from_morphology(
+            morphology_metrics = MorphologyMetricsOutput.from_morphology(
                     self.initialize.morphology.neurom_morphology(client=entity_client)
                 )
-            )
+            L.info(morphology_metrics)
+
+            return morphology_metrics
 
         except Exception as e:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
