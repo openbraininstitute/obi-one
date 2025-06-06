@@ -31,7 +31,7 @@ class CircuitExtractions(Form):
         # node_delete_prefix: str | list[str] = ""
         # edge_delete_prefix: str | list[str] = ""
 
-        virtual_sources_to_ignore: list[str] | list[list[str]] = []
+        virtual_sources_to_ignore: tuple[str] | list[tuple[str]] = ()
 
     initialize: Initialize
 
