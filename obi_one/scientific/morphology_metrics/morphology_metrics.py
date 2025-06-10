@@ -95,11 +95,11 @@ class MorphologyMetricsOutput(BaseModel):
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self, entity_client: entitysdk.client.Client = None):
+    def run(self, db_client: entitysdk.client.Client = None):
         try:
             print("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                    self.initialize.morphology.neurom_morphology(client=entity_client)
+                    self.initialize.morphology.neurom_morphology(db_client=db_client)
                 )
             L.info(morphology_metrics)
 
@@ -111,10 +111,10 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 
 def get_morphology_metrics(
                 reconstruction_morphology_id: str, 
-                entity_client: entitysdk.client.Client
+                db_client: entitysdk.client.Client
             ) -> MorphologyMetricsOutput:
 
-    morphology = entity_client.get_entity(
+    morphology = db_client.get_entity(
         entity_id=reconstruction_morphology_id, 
         entity_type=ReconstructionMorphology
     )
@@ -124,7 +124,7 @@ def get_morphology_metrics(
     for asset in morphology.assets:
         if asset.content_type == "application/asc":
             # Download the content into memory
-            content = entity_client.download_content(
+            content = db_client.download_content(
                 entity_id=morphology.id,
                 entity_type=ReconstructionMorphology,
                 asset_id=asset.id,

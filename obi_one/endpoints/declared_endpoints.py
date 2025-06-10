@@ -22,7 +22,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                     morphology.",
     )
     def neuron_morphology_metrics_endpoint(
-        entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
     ):
         L.info("get_morphology_metrics")
@@ -30,7 +30,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         try:
             metrics = get_morphology_metrics(
                 reconstruction_morphology_id=reconstruction_morphology_id,
-                entity_client=entity_client,
+                db_client=db_client,
             )
         except entitysdk.exception.EntitySDKError:
             raise HTTPException(

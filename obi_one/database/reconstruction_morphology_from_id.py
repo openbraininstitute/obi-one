@@ -26,19 +26,19 @@ class ReconstructionMorphologyFromID(EntityFromID):
     _swc_file_content: str | None = PrivateAttr(default=None) 
 
     # @property
-    def swc_file_content(self, entity_client) -> None:
+    def swc_file_content(self, db_client) -> None:
         """Function for downloading SWC files of a morphology into memory."""
         print("Downloading SWC file for morphology...")
         
         if self._swc_file_content is None:
-            for asset in self.entity(entity_client=entity_client).assets:
+            for asset in self.entity(db_client=db_client).assets:
                 if asset.content_type == "application/asc":
 
                     load_asset_method = LoadAssetMethod.MEMORY
                     if load_asset_method == LoadAssetMethod.MEMORY:
                         # Download the content into memory
-                        content = entity_client.download_content(
-                            entity_id=self.entity(entity_client=entity_client).id,
+                        content = db_client.download_content(
+                            entity_id=self.entity(db_client=db_client).id,
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
@@ -73,7 +73,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         # return self._swc_file_path
 
     # @property
-    def neurom_morphology(self, client) -> neurom.core.Morphology:
+    def neurom_morphology(self, db_client) -> neurom.core.Morphology:
         """Getter for the neurom_morphology property.
 
         Downloads the application/asc asset if not already downloaded
@@ -81,7 +81,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         """
         
         if self._neurom_morphology is None:
-            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(client)))
+            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)))
         return self._neurom_morphology
 
     @property

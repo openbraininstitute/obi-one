@@ -15,8 +15,8 @@ class EntityFromID(BaseModel, abc.ABC):
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
-    def fetch(cls, entity_id: str, entity_client: entitysdk.client.Client) -> Entity:
-        return entity_client.get_entity(
+    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
+        return db_client.get_entity(
             entity_id=entity_id, entity_type=cls.entitysdk_class
         )
 
@@ -26,9 +26,9 @@ class EntityFromID(BaseModel, abc.ABC):
             entity_type=cls.entitysdk_class, query=kwargs, token=db.token, limit=limit
         ).all()
 
-    def entity(self, entity_client) -> Entity:
+    def entity(self, db_client) -> Entity:
         if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, entity_client=entity_client)
+            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
         return self._entity
 
     @property

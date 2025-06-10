@@ -153,11 +153,11 @@ class Scan(OBIBaseModel):
         # Return self._coordinate_instances
         return self._coordinate_instances
 
-    def execute(self, processing_method: str = "", data_postprocessing_method: str = "", entity_client: entitysdk.client.Client = None) -> dict:
+    def execute(self, processing_method: str = "", data_postprocessing_method: str = "", db_client: entitysdk.client.Client = None) -> dict:
         """Description."""
         return_dict = {}
 
-        L.info(entity_client)
+        L.info(db_client)
 
         if not processing_method:
             msg = "Processing method must be specified."
@@ -175,7 +175,7 @@ class Scan(OBIBaseModel):
                 # Call the coordinate_instance's processing_method (i.e. run, generate)
                 return_dict[coordinate_instance.idx] = getattr(
                     coordinate_instance, processing_method
-                )(entity_client)
+                )(db_client)
 
                 # If a data_postprocessing_method is specified, call it
                 if data_postprocessing_method:
