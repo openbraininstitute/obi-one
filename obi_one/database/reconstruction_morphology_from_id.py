@@ -28,7 +28,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
     # @property
     def swc_file_content(self, db_client) -> None:
         """Function for downloading SWC files of a morphology into memory."""
-        print("Downloading SWC file for morphology...")
+        
         
         if self._swc_file_content is None:
             for asset in self.entity(db_client=db_client).assets:
@@ -36,6 +36,8 @@ class ReconstructionMorphologyFromID(EntityFromID):
 
                     load_asset_method = LoadAssetMethod.MEMORY
                     if load_asset_method == LoadAssetMethod.MEMORY:
+                        print("Downloading SWC file for morphology...")
+
                         # Download the content into memory
                         content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,
@@ -46,6 +48,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
                         type(content)
 
                         self._swc_file_content = content
+                        break
 
                     #     # Use StringIO to create a file-like object in memory from the string content
                     #     neurom_morphology = neurom.load_morphology(io.StringIO(content), reader="asc")
@@ -70,7 +73,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
                 msg = "No valid application/asc asset found for morphology."
                 raise ValueError(msg)
 
-        # return self._swc_file_path
+        return self._swc_file_content
 
     # @property
     def neurom_morphology(self, db_client) -> neurom.core.Morphology:
@@ -81,7 +84,8 @@ class ReconstructionMorphologyFromID(EntityFromID):
         """
         
         if self._neurom_morphology is None:
-            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)))
+            # print(io.StringIO(self.swc_file_content(db_client)))
+            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="asc")
         return self._neurom_morphology
 
     @property
