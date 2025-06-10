@@ -84,17 +84,16 @@ class ReconstructionMorphologyFromID(EntityFromID):
         """
         
         if self._neurom_morphology is None:
-            # print(io.StringIO(self.swc_file_content(db_client)))
             self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="asc")
         return self._neurom_morphology
 
-    @property
-    def morphio_morphology(self) -> morphio.Morphology:
-        """Getter for the morphio_morphology property.
+    # # @property
+    # def morphio_morphology(self, db_client) -> morphio.Morphology:
+    #     """Getter for the morphio_morphology property.
 
-        Downloads the application/asc asset if not already downloaded
-        and initializes it as morphio.Morphology([...]).
-        """
-        if self._morphio_morphology is None:
-            self._morphio_morphology = morphio.Morphology(self.swc_file)
-        return self._morphio_morphology
+    #     Downloads the application/asc asset if not already downloaded
+    #     and initializes it as morphio.Morphology([...]).
+    #     """
+    #     if self._morphio_morphology is None:
+    #         self._morphio_morphology = morphio.Morphology(io.StringIO(self.swc_file_content(db_client)), reader="asc")
+    #     return self._morphio_morphology
