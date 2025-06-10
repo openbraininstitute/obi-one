@@ -1,0 +1,22 @@
+{
+    "name": "Search and download morphologies",
+    "authors": ["OBI", "Lida Kanari"],
+    "description": "This notebook downloads a set of morphologies using the entitysdk.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python3.11",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "CellMorphology",
+                "required_properties": []
+            },
+            "class": "list"
+        }
+    ],
+    "requirements": [
+	"rich==14.0.0"
+	"obi_auth==0.2.2"
+	"entitysdk"
+    ]
+}
