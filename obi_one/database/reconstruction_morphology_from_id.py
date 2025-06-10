@@ -31,14 +31,14 @@ class ReconstructionMorphologyFromID(EntityFromID):
         print("Downloading SWC file for morphology...")
         
         if self._swc_file_content is None:
-            for asset in self.entity(entity_client).assets:
+            for asset in self.entity(entity_client=entity_client).assets:
                 if asset.content_type == "application/asc":
 
                     load_asset_method = LoadAssetMethod.MEMORY
                     if load_asset_method == LoadAssetMethod.MEMORY:
                         # Download the content into memory
                         content = entity_client.download_content(
-                            entity_id=self.entity(entity_client).id,
+                            entity_id=self.entity(entity_client=entity_client).id,
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
