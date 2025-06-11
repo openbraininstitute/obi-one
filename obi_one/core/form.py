@@ -1,4 +1,5 @@
 from typing import ClassVar
+from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
 
@@ -13,6 +14,28 @@ class Form(OBIBaseModel):
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
     single_coord_class_name: ClassVar[str] = ""
+
+
+    @model_validator(mode="after")
+    def fill_block_references(self):
+
+        for attr_name, attr_value in self.__dict__.items():
+            # Check if the attribute is a dictionary of Block instances
+            if isinstance(attr_value, dict) and all(
+                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+            ):
+                category_blocks_dict = attr_value
+
+                # If so iterate through the dictionary's Block instances
+                for block_key, block in category_blocks_dict.items():
+                    for block_attr_name, block_attr_value in block.__dict__.items():
+                        # If the Block instance has a `block` attribute, set it to the Form instance
+                        if isinstance(block_attr_value, BlockReference):
+                            block_reference = block_attr_value
+
+                            block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+        return self
+
 
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
