@@ -42,7 +42,7 @@ class Circuit(OBIBaseModel):
         return list(self.sonata_circuit.node_sets.content.keys())
 
     @staticmethod
-    def get_node_population_names(c, incl_virtual=True):
+    def get_node_population_names(c: snap.Circuit,incl_virtual=True):
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
@@ -52,7 +52,7 @@ class Circuit(OBIBaseModel):
         return popul_names
     
     @staticmethod
-    def _default_population_name(c):
+    def _default_population_name(c: snap.Circuit):
         """Returns the default node population name of a SONATA circuit c."""
         popul_names = Circuit.get_node_population_names(c, incl_virtual=False)
         assert len(popul_names) == 1, "Default node population unknown!"

@@ -99,7 +99,7 @@ class NeuronSet(Block, abc.ABC):
 
     @staticmethod
     def check_population(circuit: Circuit, population: str) -> None:
-        assert population in circuit.get_node_population_names(), (
+        assert population in Circuit.get_node_population_names(circuit.sonata_circuit), (
             f"Node population '{population}' not found in circuit '{circuit}'!"
         )
 
@@ -200,11 +200,15 @@ class NeuronSet(Block, abc.ABC):
         append_if_exists=False,
         force_resolve_ids=False,
         init_empty=False,
+        optional_node_set_name=None,
     ):
         """Resolves the node set for a given circuit/population and writes it to a .json node \
             set file.
         """
-        assert self.name is not None, "NeuronSet name must be set!"
+        if optional_node_set_name is not None:
+            self.set_simulation_level_name(optional_node_set_name)
+        assert self.name is not None, "NeuronSet name must be set through the Simulation or optional_node_set_name parameter!"
+
         if file_name is None:
             # Use circuit's node set file name by default
             file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
