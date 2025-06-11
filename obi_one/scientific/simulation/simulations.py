@@ -13,7 +13,7 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetBlockReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
@@ -30,22 +30,22 @@ class SimulationsForm(Form):
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion]
     recordings: dict[str, RecordingUnion]
-    neuron_sets: dict[str, NeuronSetUnion]
-    synapse_sets: dict[str, SynapseSetUnion]
-    intracellular_location_sets: dict[str, MorphologyLocationUnion]
-    extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
+    neuron_sets: dict[str, NeuronSetBlockReference]
+    # synapse_sets: dict[str, SynapseSetUnion]
+    # intracellular_location_sets: dict[str, MorphologyLocationUnion]
+    # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit
         simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetUnion  # NOTE: Must be member of the neuron_sets dict!
+        node_set: NeuronSetUnion
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
-        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        # spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
 
-        sonata_version: list[int] | int = 1
-        target_simulator: list[str] | str = "CORENEURON"
+        # sonata_version: list[int] | int = 1
+        # target_simulator: list[str] | str = "CORENEURON"
         timestep: list[float] | float = 0.025
 
     initialize: Initialize

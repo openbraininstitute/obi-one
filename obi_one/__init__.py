@@ -99,6 +99,7 @@ __all__ = [
     "SynapseSetUnion",
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
+    "TimestampsBlockReference",
     "TimestampsUnion",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
@@ -227,4 +228,4 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronS
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsBlockReference
