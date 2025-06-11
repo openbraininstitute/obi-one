@@ -18,25 +18,12 @@ class Recording(Block, ABC):
         NonNegativeFloat | list[NonNegativeFloat],
         Field(description="Interval between recording time steps in ms."),
     ] = 0.1
-    simulation_level_name: (
-        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
-    ) = None
 
     @model_validator(mode="after")
     def check_times(self) -> Self:
         """Checks start/end times."""
         assert self.end_time > self.start_time, "Recording end time must be later than start time!"
         return self
-
-    def check_simulation_init(self):
-        assert self.simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
-
-    @property
-    def name(self):
-        self.check_simulation_init()
-        return self.simulation_level_name
 
     def config(self) -> dict:
         self.check_simulation_init()

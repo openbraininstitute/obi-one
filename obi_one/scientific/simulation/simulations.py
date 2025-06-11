@@ -60,28 +60,28 @@ class SimulationsForm(Form):
     def initialize_timestamps(self) -> Self:
         """Initializes timestamps within simulation campaign."""
         for _k, _v in self.timestamps.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_stimuli(self) -> Self:
         """Initializes stimuli within simulation campaign."""
         for _k, _v in self.stimuli.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_recordings(self) -> Self:
         """Initializes recordings within simulation campaign."""
         for _k, _v in self.recordings.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_neuron_sets(self) -> Self:
         """Initializes neuron sets within simulation campaign."""
         for _k, _v in self.neuron_sets.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
 

@@ -77,9 +77,6 @@ class NeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    simulation_level_name: (
-        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
-    ) = None
     random_sample: None | int | float | list[None | int | float] = None
     random_seed: int | list[int] = 0
 
@@ -96,19 +93,9 @@ class NeuronSet(Block, abc.ABC):
                     )
         return self
 
-    def check_simulation_init(self) -> None:
-        assert self.simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
-
     @abc.abstractmethod
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
-
-    @property
-    def name(self) -> str:
-        self.check_simulation_init()
-        return self.simulation_level_name
 
     @staticmethod
     def check_population(circuit: Circuit, population: str) -> None:

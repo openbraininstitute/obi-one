@@ -17,19 +17,6 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 class Stimulus(Block, ABC):
     timestamps: TimestampsReference
-    simulation_level_name: (
-        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
-    ) = None
-
-    def check_simulation_init(self):
-        assert self.simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
-
-    @property
-    def name(self):
-        self.check_simulation_init()
-        return self.simulation_level_name
 
     def config(self) -> dict:
         self.check_simulation_init()
