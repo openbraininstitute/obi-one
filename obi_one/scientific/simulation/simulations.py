@@ -42,10 +42,10 @@ class SimulationsForm(Form):
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
-        # spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
-
-        # sonata_version: list[int] | int = 1
-        # target_simulator: list[str] | str = "CORENEURON"
+        
+        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        sonata_version: list[int] | int = 1
+        target_simulator: list[str] | str = "CORENEURON"
         timestep: list[float] | float = 0.025
 
     initialize: Initialize

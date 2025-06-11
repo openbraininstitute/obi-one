@@ -31,11 +31,18 @@ class Form(OBIBaseModel):
                 # If so iterate through the dictionary's Block instances
                 for block_key, block in category_blocks_dict.items():
                     for block_attr_name, block_attr_value in block.__dict__.items():
-                        # If the Block instance has a `block` attribute, set it to the Form instance
+                        # If the Block instance has a `BlockReference` attribute, set it the object it references
                         if isinstance(block_attr_value, BlockReference):
                             block_reference = block_attr_value
-
                             block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+            
+            elif isinstance(attr_value, Block):
+                for block_attr_name, block_attr_value in attr_value.__dict__.items():
+                    # If the Block instance has a `BlockReference` attribute, set it the object it references
+                    if isinstance(block_attr_value, BlockReference):
+                        block_reference = block_attr_value
+                        block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+
         return self
 
 
