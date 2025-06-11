@@ -7,6 +7,7 @@ from pydantic import Field, PrivateAttr, model_validator
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.info import Info
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
@@ -19,6 +20,7 @@ from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
 
+from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -30,15 +32,15 @@ class SimulationsForm(Form):
     timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion]
     recordings: dict[str, RecordingUnion]
-    neuron_sets: dict[str, NeuronSetBlockReference]
+    neuron_sets: dict[str, NeuronSetUnion]
     # synapse_sets: dict[str, SynapseSetUnion]
     # intracellular_location_sets: dict[str, MorphologyLocationUnion]
     # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit
+        circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
         simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetUnion
+        node_set: NeuronSetBlockReference
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
@@ -49,6 +51,7 @@ class SimulationsForm(Form):
         timestep: list[float] | float = 0.025
 
     initialize: Initialize
+    info: Info
 
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI

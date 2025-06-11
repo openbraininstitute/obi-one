@@ -6,6 +6,8 @@ from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 
 
+
+
 class Form(OBIBaseModel):
     """A Form is a configuration for single or multi-dimensional parameter scans.
 
@@ -18,6 +20,24 @@ class Form(OBIBaseModel):
     single_coord_class_name: ClassVar[str] = ""
 
 
+    def fill_block_reference_for_block(self, block: Block):
+        """Fill the block reference with the actual Block object it references."""
+
+        for block_attr_name, block_attr_value in block.__dict__.items():
+            # If the Block instance has a `BlockReference` attribute, set it the object it references
+            if isinstance(block_attr_value, BlockReference):
+                block_reference = block_attr_value
+
+                if block_reference.block_dict_name != "" and block_reference.block_name != "":
+                    block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+                elif block_reference.block_dict_name == "" and block_reference.block_name != "":
+                    # If the block_dict_name is empty, we assume the block_name is a direct reference to a Block instance
+                    if block_reference.block_name == "neuron_set_extra":
+                        block_reference.block = self.__dict__[block_reference.block_name]
+                else:
+                    raise ValueError("BlockReference must have a non-empty block_dict_name and block_name.")
+        
+
     @model_validator(mode="after")
     def fill_block_references(self):
 
@@ -29,19 +49,12 @@ class Form(OBIBaseModel):
                 category_blocks_dict = attr_value
 
                 # If so iterate through the dictionary's Block instances
-                for block_key, block in category_blocks_dict.items():
-                    for block_attr_name, block_attr_value in block.__dict__.items():
-                        # If the Block instance has a `BlockReference` attribute, set it the object it references
-                        if isinstance(block_attr_value, BlockReference):
-                            block_reference = block_attr_value
-                            block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+                for _, block in category_blocks_dict.items():
+                    self.fill_block_reference_for_block(block)
             
             elif isinstance(attr_value, Block):
-                for block_attr_name, block_attr_value in attr_value.__dict__.items():
-                    # If the Block instance has a `BlockReference` attribute, set it the object it references
-                    if isinstance(block_attr_value, BlockReference):
-                        block_reference = block_attr_value
-                        block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+                block = attr_value
+                self.fill_block_reference_for_block(block)
 
         return self
 
