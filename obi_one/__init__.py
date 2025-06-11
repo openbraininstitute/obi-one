@@ -2,6 +2,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.form import Form
+from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan import CoupledScan, GridScan
 from obi_one.core.serialization import (
@@ -43,6 +44,7 @@ __all__ = [
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
+    "Info",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
