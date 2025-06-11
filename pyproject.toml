@@ -1,6 +1,6 @@
 [project]
 name = "obi-one"
-version = "2025.5.3"
+version = "2025.5.4"
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -28,18 +28,19 @@ dependencies = [
     # NEUROM
     "neurom",
     # ENTITYSDK
-    "entitysdk",
+    "entitysdk>=0.3.1",
     "obi-auth",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
+    # CONNECTOME-UTILITIES
+    "connectome-utilities>=0.4.11",
 ]
 
 [project.optional-dependencies]
 connectivity = [
     "connectome-analysis>=1.0.1",
-    "connectome-utilities>=0.4.11",
 ]
 
 
@@ -67,7 +68,7 @@ include = ["obi_one*"]
 
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
-brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git", branch = "split_popul_fix" }
+brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
 
 [tool.ruff]
 line-length = 100

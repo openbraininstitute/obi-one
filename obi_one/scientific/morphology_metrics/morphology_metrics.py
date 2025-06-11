@@ -1,5 +1,8 @@
 import io
+import logging
 from typing import Annotated, ClassVar
+
+L = logging.getLogger(__name__)
 
 import entitysdk
 import neurom
@@ -11,7 +14,7 @@ from pydantic import BaseModel, Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.db_classes import ReconstructionMorphologyFromID
+from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
 
 class MorphologyMetricsForm(Form):
@@ -92,23 +95,28 @@ class MorphologyMetricsOutput(BaseModel):
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self):
+    def run(self, db_client: entitysdk.client.Client = None):
         try:
-            print(
-                MorphologyMetricsOutput.from_morphology(
-                    self.initialize.morphology.neurom_morphology
+            print("Running Morphology Metrics...")
+            morphology_metrics = MorphologyMetricsOutput.from_morphology(
+                    self.initialize.morphology.neurom_morphology(db_client=db_client)
                 )
-            )
+            L.info(morphology_metrics)
+
+            return morphology_metrics
 
         except Exception as e:  # noqa: BLE001
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 
 def get_morphology_metrics(
-    reconstruction_morphology_id: str, entity_client: entitysdk.client.Client
-) -> MorphologyMetricsOutput:
-    morphology = entity_client.get_entity(
-        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
+                reconstruction_morphology_id: str, 
+                db_client: entitysdk.client.Client
+            ) -> MorphologyMetricsOutput:
+
+    morphology = db_client.get_entity(
+        entity_id=reconstruction_morphology_id, 
+        entity_type=ReconstructionMorphology
     )
 
     # Iterate through the assets of the morphology to find the one with content
@@ -116,7 +124,7 @@ def get_morphology_metrics(
     for asset in morphology.assets:
         if asset.content_type == "application/asc":
             # Download the content into memory
-            content = entity_client.download_content(
+            content = db_client.download_content(
                 entity_id=morphology.id,
                 entity_type=ReconstructionMorphology,
                 asset_id=asset.id,

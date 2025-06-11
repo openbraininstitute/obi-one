@@ -71,6 +71,23 @@ Once the service has been launched, the generated gui can additionally be launch
 
 <br>
 
+# Logging: 
+The package's logging level can be set like this from your script / notebook:
+```
+L = logging.getLogger(obi.__name__)
+L.setLevel(logging.WARNING) 
+```
+
+or written to file:
+```
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='app.log',  # optional: logs to a file instead of console
+    filemode='w'         # optional: overwrite the log file each time
+    force=True
+)
+```
 
 # Contributions:
 The goal of OBI-ONE is to build up a standardized modeling library with the community. Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to contribute.

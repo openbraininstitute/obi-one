@@ -53,7 +53,7 @@ format_types: ## Count the number of errors by type
 	uv run -m ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
 build:  ## Build the Docker image
-	docker compose --progress=plain build app
+	docker compose --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app

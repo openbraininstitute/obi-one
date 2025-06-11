@@ -1,8 +1,11 @@
+import logging
 import os
 import warnings
 from typing import ClassVar
 
 from bluepysnap import Circuit
+
+L = logging.getLogger(__name__)
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -50,13 +53,13 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
 
     def run(self) -> None:
         try:
-            print(f"Info: Running idx {self.idx}")
+            L.info(f"Info: Running idx {self.idx}")
 
             output_file = os.path.join(self.coordinate_output_root, "connectivity_matrix.h5")
             assert not os.path.exists(output_file), f"Output file '{output_file}' already exists!"
 
             # Load circuit
-            print(f"Info: Loading circuit '{self.initialize.circuit_path}'")
+            L.info(f"Info: Loading circuit '{self.initialize.circuit_path}'")
             c = Circuit(self.initialize.circuit_path.path)
             popul_names = c.edges.population_names
             assert len(popul_names) > 0, "Circuit does not have any edge populations!"
@@ -81,8 +84,8 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
                     "properties": node_props,
                 }
             }
-            print(f"Info: Node properties to extract: {node_props}")
-            print(f"Info: Extracting connectivity from edge population '{edge_popul}'")
+            L.info(f"Node properties to extract: {node_props}")
+            L.info(f"Extracting connectivity from edge population '{edge_popul}'")
             dummy_edge_prop = next(
                 filter(lambda x: "@" not in x, c.edges[edge_popul].property_names)
             )  # Select any existing edge property w/o "@"
@@ -94,7 +97,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
             # Save to file
             cmat.to_h5(output_file)
             if os.path.exists(output_file):
-                print(f"Info: Connectivity matrix successfully written to '{output_file}'")
+                L.info(f"Connectivity matrix successfully written to '{output_file}'")
 
         except Exception as e:
-            print(f"Error: {e}")
+            L.error(f"Error: {e}")
