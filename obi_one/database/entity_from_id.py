@@ -10,7 +10,7 @@ from obi_one.core.base import OBIBaseModel
 
 class EntityFromID(OBIBaseModel, abc.ABC):
     entitysdk_class: ClassVar[type[Entity]] = None
-    id_str: str = Field(..., description="ID of the entity in string format.")
+    id_str: str = Field(description="ID of the entity in string format.")
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
