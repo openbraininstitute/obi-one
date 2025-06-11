@@ -2,6 +2,8 @@ from typing import ClassVar
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 
 
 class Form(OBIBaseModel):

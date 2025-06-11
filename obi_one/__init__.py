@@ -62,6 +62,7 @@ __all__ = [
     "NamedTuple",
     "NeuronPropertyFilter",
     "NeuronSet",
+    "NeuronSetBlockReference",
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
     "OBIBaseModel",
@@ -222,7 +223,7 @@ from obi_one.scientific.unions.unions_form import (
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetBlockReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
