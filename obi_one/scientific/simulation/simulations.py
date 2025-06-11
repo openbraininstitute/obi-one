@@ -14,7 +14,7 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetBlockReference
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
@@ -40,7 +40,7 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
         simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetBlockReference
+        node_set: NeuronSetReference
         random_seed: list[int] | int = 1
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0

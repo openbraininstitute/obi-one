@@ -4,7 +4,7 @@ from typing import Annotated, Self
 from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetBlockReference
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
 
 
 class Recording(Block, ABC):
@@ -48,7 +48,7 @@ class Recording(Block, ABC):
 
 
 class SomaVoltageRecording(Recording):
-    neuron_set: NeuronSetBlockReference = Field(description="Neuron set to record from.")
+    neuron_set: NeuronSetReference = Field(description="Neuron set to record from.")
 
     def _generate_config(self) -> dict:
         sonata_config = {}

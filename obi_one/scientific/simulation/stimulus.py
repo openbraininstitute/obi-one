@@ -11,12 +11,12 @@ import h5py
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetBlockReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsBlockReference
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
-    timestamps: TimestampsBlockReference
+    timestamps: TimestampsReference
     simulation_level_name: (
         None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
     ) = None
@@ -49,7 +49,7 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetBlockReference = Field(description="Neuron set to which the stimulus is applied.")
+    neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
     represents_physical_electrode: bool = Field(
         default=False,
         description="Default is False. If True, the signal will be implemented \
@@ -363,7 +363,7 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     stim_duration: float | list[float]
     _spike_file: Path | None = None
-    neuron_set: NeuronSetBlockReference
+    neuron_set: NeuronSetReference
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
@@ -383,7 +383,7 @@ class SpikeStimulus(Stimulus):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @staticmethod
-    def write_spike_file(gid_spike_map, spike_file, neuron_set: NeuronSetBlockReference):
+    def write_spike_file(gid_spike_map, spike_file, neuron_set: NeuronSetReference):
         """
         Writes SONATA output spike trains to file.
         
