@@ -2,7 +2,7 @@ from obi_one.core.block import Block
 from obi_one.core.base import OBIBaseModel
 
 
-from typing import Union, ClassVar, get_args, Any
+from typing import Union, ClassVar, get_args, Any, Literal
 from pydantic import Field
 import abc
 class BlockReference(OBIBaseModel, abc.ABC):
@@ -25,6 +25,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
             # Dynamically get allowed_block_types from subclass
             allowed_block_types = getattr(model, 'allowed_block_types', [])
             schema['allowed_block_types'] = [t.__name__ for t in get_args(allowed_block_types)]
+            schema['is_block_reference'] = True
 
     @property
     def block(self) -> Block:
