@@ -163,7 +163,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 "Neuron set name mismatch!"
             )  # This should never happen if properly initialized
 
-            if self.initialize.node_set.name == _name:
+            if self.initialize.node_set.block.name == _name:
                 assert self._sonata_config.get("node_set") is None, (
                     "Node set config entry already defined!"
                 )
