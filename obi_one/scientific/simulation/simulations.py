@@ -18,7 +18,7 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronS
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
@@ -29,30 +29,48 @@ class SimulationsForm(Form):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
-    stimuli: dict[str, StimulusUnion]
-    recordings: dict[str, RecordingUnion]
-    neuron_sets: dict[str, NeuronSetUnion]
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, description="Timestamps for the simulation")
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict)
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict)
+    neuron_sets: dict[str, NeuronSetUnion] = Field(default_factory=dict)
+
     # synapse_sets: dict[str, SynapseSetUnion]
     # intracellular_location_sets: dict[str, MorphologyLocationUnion]
     # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
-        simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetReference
-        random_seed: list[int] | int = 1
-        extracellular_calcium_concentration: list[float] | float = 1.1
-        v_init: list[float] | float = -80.0
+        # circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        # simulation_length: list[float] | float = 100.0
+        node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
+        # random_seed: list[int] | int = 1
+        # extracellular_calcium_concentration: list[float] | float = 1.1
+        # v_init: list[float] | float = -80.0
         
-        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
-        sonata_version: list[int] | int = 1
-        target_simulator: list[str] | str = "CORENEURON"
-        timestep: list[float] | float = 0.025
+        # spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        # sonata_version: list[int] | int = 1
+        # target_simulator: list[str] | str = "CORENEURON"
+        timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
 
-    initialize: Initialize
+    initialize: Initialize = Field(default_factory=Initialize, description="Simulation initialization parameters")
     info: Info
 
+
+    def add(self, block: Block, name:str='', category:str=None) -> None:
+        self.__dict__[category][name] = block        
+
+        # TO BE IMPROVED POST CNS
+        if category == "timestamps":
+            block.set_ref(TimestampsReference(block_dict_name=category, block_name=name))
+
+        if category == "neuron_sets":
+            block.set_ref(NeuronSetReference(block_dict_name=category, block_name=name))
+
+    def set(self, block: Block, name: str = '') :
+        """Sets a block in the form."""
+        self.__dict__[name] = block
+
+
+    
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters

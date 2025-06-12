@@ -17,6 +17,8 @@ class Block(OBIBaseModel):
 
     _simulation_level_name: Optional[str] = PrivateAttr(default=None)
 
+    _ref = None
+
     def check_simulation_init(self):
         assert self._simulation_level_name is not None, (
             f"'{self.__class__.__name__}' initialization within a simulation required!"
@@ -31,6 +33,15 @@ class Block(OBIBaseModel):
         if not isinstance(value, str) or not value:
             raise ValueError("Simulation level name must be a non-empty string.")
         self._simulation_level_name = value
+
+    @property
+    def ref(self):
+        if self._ref is None:
+            raise ValueError("Block reference has not been set.")
+        return self._ref
+    
+    def set_ref(self, value):
+        self._ref = value
 
 
     def multiple_value_parameters(
