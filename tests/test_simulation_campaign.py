@@ -11,31 +11,31 @@ def test_simulation_campaign():
     # print(f"Circuit '{circuit2}' with {circuit2.sonata_circuit.nodes.size} neurons and {circuit2.sonata_circuit.edges.size} synapses")
 
     # Simulation init
-    sim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1")
-    sim_duration = 3000.0  # ms
+    # sim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1")
+    # sim_duration = 3000.0  # ms
     # simulations_initialize = obi.SimulationsForm.Initialize(
     #     circuit=[circuit, circuit2],
     #     node_set=sim_neuron_set,
     #     simulation_length=sim_duration,
     # )
 
-    # Stimuli
-    stim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=[10, 20])
-    stim_times = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=3, interval=1000.0
-    )  # in ms!!
-    current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
-        timestamps=stim_times, duration=5.0, neuron_set=stim_neuron_set, amplitude=[0.2, 0.5]
-    )
-    sync_current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
-        timestamps=stim_times, duration=100.0, neuron_set=stim_neuron_set, amplitude=0.1
-    )
+    # # Stimuli
+    # stim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=[10, 20])
+    # stim_times = obi.RegularTimestamps(
+    #     start_time=0.0, number_of_repetitions=3, interval=1000.0
+    # )  # in ms!!
+    # current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
+    #     timestamps=stim_times, duration=5.0, neuron_set=stim_neuron_set, amplitude=[0.2, 0.5]
+    # )
+    # sync_current_stimulus = obi.ConstantCurrentClampSomaticStimulus(
+    #     timestamps=stim_times, duration=100.0, neuron_set=stim_neuron_set, amplitude=0.1
+    # )
 
-    # Recordings
-    rec_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=100)
-    v_recording = obi.SomaVoltageRecording(
-        start_time=0.0, end_time=sim_duration, neuron_set=rec_neuron_set
-    )
+    # # Recordings
+    # rec_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=100)
+    # v_recording = obi.SomaVoltageRecording(
+    #     start_time=0.0, end_time=sim_duration, neuron_set=rec_neuron_set
+    # )
 
     # """
     # Fill form with Blocks
