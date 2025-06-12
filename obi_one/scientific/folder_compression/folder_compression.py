@@ -77,7 +77,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
             else:
                 file_size = file_size / 1024
                 file_unit = "GB"
-            L.info(f"DONE (Duration {t_str}; File size {file_size:.1f}{file_unit})", flush=True)
+            L.info(f"DONE (Duration {t_str}; File size {file_size:.1f}{file_unit})")
 
         except Exception as e:
             traceback.print_exception(e)
