@@ -259,8 +259,8 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.2.dev4+ga32f29a"
-source = { git = "https://github.com/openbraininstitute/brainbuilder.git#a32f29ae7d4927718b8c6575ba012e169436700d" }
+version = "0.20.2.dev6+g4e77aca"
+source = { git = "https://github.com/openbraininstitute/brainbuilder.git#4e77acaba3242b1a73163e556f946373c6502f4b" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "click" },
