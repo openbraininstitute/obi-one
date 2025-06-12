@@ -2,7 +2,7 @@ import obi_one as obi
 
 
 def test_simulation_campaign():
-    pass
+    print("Testing Simulation Campaign... To be filled in later.")
     # circuit_path_prefix = "/Users/james/Documents/obi/additional_data/"
 
     # circuit = obi.Circuit(name="ToyCircuit-S1-6k", path=circuit_path_prefix + "ToyCircuit-S1-6k/circuit_config.json")
