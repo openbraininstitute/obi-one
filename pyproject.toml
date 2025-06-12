@@ -34,12 +34,9 @@ dependencies = [
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-<<<<<<< HEAD
     "bluepyefe>=2.3.44",
-=======
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
->>>>>>> main
 ]
 
 [project.optional-dependencies]
