@@ -12,15 +12,12 @@ from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_intracellular_location_sets import (
-    IntracellularLocationSetUnion,
-)
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 
 class SimulationsForm(Form):
@@ -136,6 +133,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate stimulus input configs
         self._sonata_config["inputs"] = {}
         for stimulus_key, stimulus in self.stimuli.items():
+            if hasattr (stimulus, "generate_spikes"):
+                stimulus.generate_spikes(self.initialize.circuit, self.initialize.circuit.default_population_name, self.coordinate_output_root)
             self._sonata_config["inputs"].update(stimulus.config())
 
         # Generate recording configs

@@ -46,11 +46,14 @@ lint:  ## Run linters
 	#uv run -m ruff check
 	#uv run -m pyright obi
 
-format_count:
+format_count: ## Count the number of errors by file
 	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
 
+format_types: ## Count the number of errors by type
+	uv run -m ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
+
 build:  ## Build the Docker image
-	docker compose --progress=plain build app
+	docker compose --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app

@@ -26,22 +26,23 @@ class OBIBaseModel(BaseModel):
 
     type: str = ""
 
-    model_config = ConfigDict(json_encoders={Path: lambda v: str(v)})
+    model_config = ConfigDict(json_encoders={Path: str})
 
     @model_validator(mode="before")
     @classmethod
-    def set_type(cls, data):
-        """Automatically sets `type` when instantiated in Python."""
+    def set_type(cls, data: Any) -> dict[str, Any]:
+        """Automatically sets `type` when instantiated in Python if a dictionary."""
         if isinstance(data, dict) and "type" not in data:
             data["type"] = cls.__qualname__
         return data
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
         """Dynamically set the `type` field to the class name."""
         super().__init_subclass__(**kwargs)
         cls.__annotations__["type"] = Literal[cls.__qualname__]
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a string representation of the OBIBaseModel object."""
         return self.__repr__()
 
     @model_validator(mode="wrap")  # the decorator position is correct

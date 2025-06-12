@@ -2,7 +2,8 @@ from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
-from fastapi import APIRouter, Depends
+import entitysdk.exception
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -25,15 +26,27 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                     morphology.",
     )
     def neuron_morphology_metrics_endpoint(
-        entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
-    ) -> MorphologyMetricsOutput:
+    ):
         L.info("get_morphology_metrics")
 
-        metrics = get_morphology_metrics(
-            reconstruction_morphology_id=reconstruction_morphology_id,
-            entity_client=entity_client,
-        )
+        try:
+            metrics = get_morphology_metrics(
+                reconstruction_morphology_id=reconstruction_morphology_id,
+                db_client=db_client,
+            )
+        except entitysdk.exception.EntitySDKError:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": (
+                        f"Reconstruction morphology {reconstruction_morphology_id} not found."
+                    ),
+                },
+            )
+
         if metrics:
             return metrics
         L.error(
