@@ -29,26 +29,26 @@ class SimulationsForm(Form):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, description="Timestamps for the simulation")
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict)
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict)
-    neuron_sets: dict[str, NeuronSetUnion] = Field(default_factory=dict)
+    neuron_sets: dict[str, NeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
     # synapse_sets: dict[str, SynapseSetUnion]
     # intracellular_location_sets: dict[str, MorphologyLocationUnion]
     # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
-        # circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
-        # simulation_length: list[float] | float = 100.0
+        circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        simulation_length: list[float] | float = 100.0
         node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
-        # random_seed: list[int] | int = 1
-        # extracellular_calcium_concentration: list[float] | float = 1.1
-        # v_init: list[float] | float = -80.0
+        random_seed: list[int] | int = 1
+        extracellular_calcium_concentration: list[float] | float = 1.1
+        v_init: list[float] | float = -80.0
         
-        # spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
-        # sonata_version: list[int] | int = 1
-        # target_simulator: list[str] | str = "CORENEURON"
+        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        sonata_version: list[int] | int = 1
+        target_simulator: list[str] | str = "CORENEURON"
         timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
 
     initialize: Initialize = Field(default_factory=Initialize, description="Simulation initialization parameters")
