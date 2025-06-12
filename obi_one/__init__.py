@@ -12,8 +12,11 @@ from obi_one.core.serialization import (
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_manager import db
+from obi_one.core.activity import Activity
+from obi_one.core.validation import Validation
 
 __all__ = [
+    "Activity",
     "AfferentSynapsesBlock",
     "BasicConnectivityPlot",
     "BasicConnectivityPlots",
@@ -81,6 +84,7 @@ __all__ = [
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
     "ReconstructionMorphologyFromID",
+    "ReconstructionMorphologyValidation",
     "Recording",
     "RecordingUnion",
     "RegularTimestamps",
@@ -103,6 +107,7 @@ __all__ = [
     "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
+    "Validation",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocationSet",
@@ -231,3 +236,7 @@ from obi_one.scientific.unions.unions_recordings import RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
+
+from obi_one.scientific.validations.reconstruction_morphology_validation import (
+    ReconstructionMorphologyValidation,
+)

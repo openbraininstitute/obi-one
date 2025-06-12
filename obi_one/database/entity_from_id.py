@@ -4,6 +4,8 @@ from typing import ClassVar
 from entitysdk.models.entity import Entity
 from pydantic import Field, PrivateAttr
 
+import entitysdk
+
 from obi_one.database.db_manager import db
 from obi_one.core.base import OBIBaseModel
 
@@ -14,9 +16,9 @@ class EntityFromID(OBIBaseModel, abc.ABC):
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
-    def fetch(cls, entity_id: str) -> Entity:
-        return db.client.get_entity(
-            entity_id=entity_id, entity_type=cls.entitysdk_class, token=db.token
+    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
+        return db_client.get_entity(
+            entity_id=entity_id, entity_type=cls.entitysdk_class
         )
 
     @classmethod
@@ -25,10 +27,9 @@ class EntityFromID(OBIBaseModel, abc.ABC):
             entity_type=cls.entitysdk_class, query=kwargs, token=db.token, limit=limit
         ).all()
 
-    @property
-    def entity(self) -> Entity:
+    def entity(self, db_client) -> Entity:
         if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str)
+            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
         return self._entity
 
     @property
