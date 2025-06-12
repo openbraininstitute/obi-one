@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import Field
 
@@ -31,7 +31,7 @@ class CircuitExtractions(Form):
         # node_delete_prefix: str | list[str] = ""
         # edge_delete_prefix: str | list[str] = ""
 
-        virtual_sources_to_ignore: tuple[str] | list[tuple[str]] = ()
+        virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
     initialize: Initialize
 
