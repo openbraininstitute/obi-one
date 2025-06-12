@@ -7,7 +7,7 @@ from pydantic import Field
 import abc
 class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(default="")
-    block_name: str = Field(default="")
+    block_name: str = Field()
 
     allowed_block_types: ClassVar[Any] = None
     
