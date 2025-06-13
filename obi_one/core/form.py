@@ -30,7 +30,6 @@ class Form(OBIBaseModel):
         return cls.model_construct()
     
     def validated_config(self):
-        print(self.__class__)
         return self.__class__.model_validate(self.model_dump())
 
     @property
