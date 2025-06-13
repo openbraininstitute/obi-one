@@ -24,6 +24,15 @@ class Form(OBIBaseModel):
 
     _block_mapping: dict = None
 
+    @classmethod
+    def empty_config(cls):
+        # Here you use model_construct or build custom behavior
+        return cls.model_construct()
+    
+    def validated_config(self):
+        print(self.__class__)
+        return self.__class__.model_validate(self.model_dump())
+
     @property
     def block_mapping(self) -> dict:
         """Returns a mapping of block class names to block_dict_name and reference_type."""
