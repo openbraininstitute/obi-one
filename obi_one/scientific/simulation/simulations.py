@@ -48,10 +48,10 @@ class SimulationsForm(Form):
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
         
-        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
-        _sonata_version: list[float] | float = 2.4
-        _target_simulator: list[str] | str = "NEURON"
-        _timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
+        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
+        _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
+        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
+        _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
     initialize: Initialize
     info: Info

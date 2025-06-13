@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated
 import h5py
 
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
@@ -37,19 +37,17 @@ class SomaticStimulus(Stimulus, ABC):
         description="Time duration in ms for how long input is activated.",
     )
     neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
-    _represents_physical_electrode: bool = Field(
-        default=False,
-        description="Default is False. If True, the signal will be implemented \
-                        using a NEURON IClamp mechanism. The IClamp produce an \
-                        electrode current which is not included in the calculation of \
-                        extracellular signals, so this option should be used to \
-                        represent a physical electrode. If the noise signal represents \
-                        synaptic input, represents_physical_electrode should be set to \
-                        False, in which case the signal will be implemented using a \
-                        MembraneCurrentSource mechanism, which is identical to IClamp, \
-                        but produce a membrane current, which is included in the \
-                        calculation of the extracellular signal.",
-    )
+    _represents_physical_electrode: bool = PrivateAttr(default=False) 
+    """Default is False. If True, the signal will be implemented \
+    using a NEURON IClamp mechanism. The IClamp produce an \
+    electrode current which is not included in the calculation of \
+    extracellular signals, so this option should be used to \
+    represent a physical electrode. If the noise signal represents \
+    synaptic input, represents_physical_electrode should be set to \
+    False, in which case the signal will be implemented using a \
+    MembraneCurrentSource mechanism, which is identical to IClamp, \
+    but produce a membrane current, which is included in the \
+    calculation of the extracellular signal."""
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
