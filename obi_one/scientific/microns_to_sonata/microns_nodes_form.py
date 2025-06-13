@@ -17,6 +17,7 @@ from .utils_nodes import (
     transform_and_copy_morphologies,
     neuron_info_from_somas_file,
     apply_filters,
+    split_into_intrinsic_and_virtual,
     _STR_MORPH,
     _STR_ORIENT
 )
@@ -88,12 +89,20 @@ class EMSonataNodesFiles(Form, abc.ABC):
             description="Whether to rotate the morphology according to local orientation and translate to the origin",
             default=True
         )
+        intrinsic_population_parameter: float = Field(
+            name="Parameter defining which neurons will be part of the intrinsic node population",
+            description="This parameter determines which neurons will be part of the intrinsic node population.\
+                Afferent synapses will be extracted only for the intrinsic population. For other neurons,\
+                only efferent synapses onto the intrinsic population will be extracted.\
+                If the value is below 0, then only neurons with available skeletonized morphologies will be\
+                considered intrinsic. If the value is above or equal to 0, then an axis aligned bounding box around\
+                all neurons with morphologies will be considered. The box is then expanded along all dimensions by\
+                a factor that is equal to the value of this parameter. All somata within the resulting box are\
+                then considered intrinsic.",
+            default=-1.0
+        )
 
     initialize: Initialize
-
-    # def intrinsic_node_population(self, morphology):
-    #     self.enforce_no_lists()
-    #     return self._make_points(morphology)
 
 
 class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
@@ -107,8 +116,6 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                             datastack_name=self.initialize.client_name,
                             auth_token=self.cave_client_token)
         client.version = self.initialize.client_version
-        # if self.cave_client_token is not None:
-        #     client.auth.token = self.cave_client_token
         
         nrns = neuron_info_df(client, self.initialize.table_names[0],
                               filters={}, # self.initialize.nodes_filters,
@@ -141,8 +148,14 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                                         out_formats=(".h5", ".swc"),
                                         do_transform=self.initialize.transform_morphology)
 
-
-        coll = neuron_info_to_collection(nrns, self.initialize.population_name,
+        use_bounding_box = self.initialize.intrinsic_population_parameter >= 0
+        nrn_i, nrn_v = split_into_intrinsic_and_virtual(nrns, use_bounding_box,
+                                                        self.initialize.intrinsic_population_parameter)
+        coll_i = neuron_info_to_collection(nrn_i, self.initialize.population_name,
                                   list(self.initialize.table_cols),
                                   ["x", "y", "z", _STR_ORIENT, _STR_MORPH])
-        coll.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
+        coll_v = neuron_info_to_collection(nrn_v, "virtual_" + self.initialize.population_name,
+                                  list(self.initialize.table_cols),
+                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH])
+        coll_i.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
+        coll_v.save_sonata(os.path.join(self.coordinate_output_root, "virtual_nodes.h5"))

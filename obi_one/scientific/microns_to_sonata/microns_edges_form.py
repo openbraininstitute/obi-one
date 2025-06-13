@@ -46,6 +46,10 @@ class EMSonataEdgesFiles(Form, abc.ABC):
         intrinsic_nodes: str | list[str] = Field(
             name="Intrinsic nodes file", description="Path to sonata nodes file for intrinsic neurons"
         )
+        virtual_nodes: str | list[str] | None = Field(
+            name="Virtual nodes file", description="Path to sonata nodes file for virtual neurons",
+            default=None
+        )
         extrinsic_nodes: str | list[str] = Field(
             name="extrinsic nodes file", description="Path to sonata nodes file for extrinsic neurons. Will be created if it does not exists, otherwise appended."
         )
@@ -78,14 +82,6 @@ from obi_one.scientific.microns_to_sonata.microns_edges_block import EMEdgesMapp
 class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
 
     def run(self) -> str:
-        # try:
-        #     from caveclient import CAVEclient
-        # except ImportError:
-        #     raise RuntimeError("Optional dependency 'cavelient' not installed!")
-        # client = CAVEclient(server_address=self.initialize.client_server,
-        #                     datastack_name=self.initialize.client_name,
-        #                     auth_token=self.cave_client_token)
-        # client.version = self.initialize.client_version
 
         tmp_blck = EMEdgesMappingBlock(
                 client_server=self.initialize.client_server,
@@ -99,6 +95,7 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         else:
             extrinsics_fn = os.path.join(self.coordinate_output_root, self.initialize.extrinsic_nodes)
         intrinsic_edges_fn = os.path.join(self.coordinate_output_root, "intrinsic_edges.h5")
+        virtual_edges_fn = os.path.join(self.coordinate_output_root, "virtual_edges.h5")
         extrinsic_edges_fn = os.path.join(self.coordinate_output_root, "extrinsic_edges.h5")
 
         # Load intrinsic and currently exisint extrinsic nodes
@@ -111,12 +108,21 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         intrinsic_edge_pop_name = intrinsic_name + "__" + intrinsic_name + "__chemical"
         extrinsic_edge_pop_name = extrinsic_name + "__" + intrinsic_name + "__chemical"
 
+        if self.initialize.virtual_nodes is not None:
+            virtuals, virtual_name = collection_to_neuron_info(self.initialize.virtual_nodes,
+                                                               must_exist=True)
+        else:
+            virtuals, virtual_name = collection_to_neuron_info(".", must_exist=False)
+            virtual_name = "em_virtual"
+        virtual_ids = virtuals["pt_root_id"]
+        virtual_edge_pop_name = virtual_name + "__" + intrinsic_name + "__chemical"
+
         pt_root_ids = find_edges_resume_point(intrinsics, intrinsic_edges_fn,
-                                              intrinsic_edge_pop_name, with_morphologies=True)
+                                              intrinsic_edge_pop_name,
+                                              with_morphologies=False)
 
         syns = []
         for _, pt_root_id in tqdm.tqdm(pt_root_ids.iterrows()):
-            #tmp_blck.pt_root_id = pt_root_id
             syns.append(tmp_blck.map_synapses_to_morphology(self.initialize.morphologies_dir,
                                                             self.initialize.spines_dir,
                                                             pt_root_id,
@@ -125,7 +131,8 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
 
         # Determine which synapases are intrinsic and which are extrinsic.
         # Also determine which new extrinsic pt_root_ids are references and must be created.
-        intrinsic_syns, extrinsic_syns, new_extrinsics = pt_root_to_sonata_id(syns, intrinsic_ids, extrinsic_ids)
+        intrinsic_syns, virtual_syns, extrinsic_syns, new_extrinsics =\
+            pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids)
         
         # Overwrite exising extrinsics with concatenation of existing and new extrinsics
         new_extrinsics["x"] = 0.0
@@ -140,11 +147,16 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
 
         # Bring DataFrame into output format. Mainly renames columns.
         intrinsic_syn_map, intrinsic_syn_prop = format_for_edges_output(intrinsic_syns)
+        virtual_syn_map, virtual_syn_prop = format_for_edges_output(virtual_syns)
         extrinsic_syn_map, extrinsic_syn_prop = format_for_edges_output(extrinsic_syns)
 
         write_edges(intrinsic_edges_fn, intrinsic_edge_pop_name, 
                     intrinsic_syn_map, intrinsic_syn_prop,
                     intrinsic_name, intrinsic_name)
+        if len(virtual_syns) > 0:
+            write_edges(virtual_edges_fn, virtual_edge_pop_name, 
+                        virtual_syn_map, virtual_syn_prop,
+                        virtual_name, intrinsic_name)
         write_edges(extrinsic_edges_fn, extrinsic_edge_pop_name, 
                     extrinsic_syn_map, extrinsic_syn_prop,
                     extrinsic_name, intrinsic_name)

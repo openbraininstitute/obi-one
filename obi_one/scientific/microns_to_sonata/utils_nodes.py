@@ -154,6 +154,18 @@ def transform_and_copy_morphologies(nrns, in_root, out_root,
         for ext in out_formats:
             morph.to_morphio().write(os.path.join(out_root, morph.name + ext))
 
+def split_into_intrinsic_and_virtual(nrn, use_bounding_box=True, expand_bounding_box=0.0):
+    has_morphology = nrn[_STR_MORPH] != _STR_NONE
+    if not use_bounding_box:
+        return nrn.loc[has_morphology], nrn.loc[~has_morphology]
+    nrn_morph = nrn.loc[has_morphology]
+    bb_min = nrn_morph[_C_NRN_LOCS].min()
+    bb_max = nrn_morph[_C_NRN_LOCS].max()
+    bb_min = bb_min - expand_bounding_box * (bb_max - bb_min)
+    bb_max = bb_max + expand_bounding_box * (bb_max - bb_min)
+
+    in_bb = ((nrn[["x", "y", "z"]] >= bb_min) & (nrn[["x", "y", "z"]] <= bb_max)).all(axis=1)
+    return nrn.loc[in_bb], nrn.loc[~in_bb]
 
 def neuron_info_to_collection(nrn, name, cols_to_rename, cols_to_keep):
     rename_dict = {}

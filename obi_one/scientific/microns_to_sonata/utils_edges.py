@@ -236,7 +236,7 @@ def map_and_extend_mapping(existing_ids, ids_to_map):
     return mapped, new_ids
 
 
-def pt_root_to_sonata_id(syns, intrinsic_ids, extrinsic_ids):
+def pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids):
     syns = syns.reset_index(drop=True)
     # Resolve postsynaptic ids
     post_node_ids, cntnd = map_to_pt_root_ids(intrinsic_ids, syns["post_pt_root_id"])
@@ -245,13 +245,22 @@ def pt_root_to_sonata_id(syns, intrinsic_ids, extrinsic_ids):
 
     # Try to resolve presynaptic ids
     pre_node_ids_intrinsic, is_intrinsic = map_to_pt_root_ids(intrinsic_ids, syns["pre_pt_root_id"]) 
+    # Next, try to resolve them as part of the virtual population
+    pre_node_ids_virtual, is_virtual = map_to_pt_root_ids(virtual_ids, syns["pre_pt_root_id"])
+    # If a source is intrinsic it cannot be virtual. Those populations should not overlap
+    assert (is_virtual & is_intrinsic).sum() == 0
+    neither_v_nor_i = ~is_intrinsic & ~is_virtual
     # The ones that are not resolved are extrinsic and are resolved against that population.
     # In doing so, new extrinsic nodes may be created.
-    pre_node_ids_extrinsic, new_extrinsics = map_and_extend_mapping(extrinsic_ids, syns["pre_pt_root_id"][~is_intrinsic])
+    pre_node_ids_extrinsic, new_extrinsics = map_and_extend_mapping(extrinsic_ids, syns["pre_pt_root_id"][neither_v_nor_i])
 
     intrinsic_syns = syns.loc[pre_node_ids_intrinsic.index]
     intrinsic_syns["pre_node_id"] = pre_node_ids_intrinsic
     intrinsic_syns["post_node_id"] = post_node_ids[pre_node_ids_intrinsic.index]
+
+    virtual_syns = syns.loc[pre_node_ids_virtual.index]
+    virtual_syns["pre_node_id"] = pre_node_ids_virtual
+    virtual_syns["post_node_id"] = post_node_ids[pre_node_ids_virtual.index]
 
     extrinsic_syns = syns.loc[pre_node_ids_extrinsic.index]
     extrinsic_syns["pre_node_id"] = pre_node_ids_extrinsic
@@ -260,7 +269,7 @@ def pt_root_to_sonata_id(syns, intrinsic_ids, extrinsic_ids):
     new_extrinsics.name = "pt_root_id"
     new_extrinsics = pandas.concat([new_extrinsics], axis=1)
 
-    return intrinsic_syns, extrinsic_syns, new_extrinsics
+    return intrinsic_syns, virtual_syns, extrinsic_syns, new_extrinsics
 
 
 def format_for_edges_output(syns):
