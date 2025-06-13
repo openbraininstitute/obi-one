@@ -42,7 +42,8 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     def filter(self, df_in, reindex=True) -> pandas.DataFrame:
         ret = df_in
         for filter_key, filter_value in self.filter_dict.items():
-            vld = ret[filter_key].isin(filter_value)
+            filter_value = [str(_entry) for _entry in filter_value]
+            vld = ret[filter_key].astype(str).isin(filter_value)
             ret = ret.loc[vld]
             if reindex:
                 ret = ret.reset_index(drop=True)
@@ -50,10 +51,10 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 
     def test_validity(self, circuit, node_population: str) -> None:
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
-        filter_keys = list(self.filter_dict.keys())
+        # filter_keys = list(self.filter_dict.keys())
 
         assert all(_prop in circuit_prop_names for _prop in self.filter_keys), (
-            f"Invalid neuron properties! Available properties: {prop_names}"
+            f"Invalid neuron properties! Available properties: {circuit_prop_names}"
         )
 
     def __repr__(self) -> str:
@@ -79,6 +80,7 @@ class NeuronSet(Block, abc.ABC):
 
     random_sample: None | int | float | list[None | int | float] = None
     random_seed: int | list[int] = 0
+    node_population: str | list[str] | None = None
 
     @model_validator(mode="after")
     def check_random_sample(self) -> Self:
@@ -142,18 +144,30 @@ class NeuronSet(Block, abc.ABC):
 
         with open(output_file, "w") as f:
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
+    
+    def _population(self, population: str | None=None):
+        if population is not None and self.node_population is not None:
+            if population != self.node_population:
+                raise ValueError("The node population has already been set for this block!")
+        population = self.node_population or population
+        if population is None:
+            raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
+        return population
 
-    def _resolve_ids(self, circuit: Circuit, population: str) -> list[int]:
+    def _resolve_ids(self, circuit: Circuit, population: str | None=None) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
+        population = self._population(population)
         c = circuit.sonata_circuit
         expression = self._get_expression(circuit, population)
+        print(expression)
         name = "__TMP_NODE_SET__"
         self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
 
-    def get_neuron_ids(self, circuit: Circuit, population: str):
+    def get_neuron_ids(self, circuit: Circuit, population: str | None=None):
         """Returns list of neuron IDs (with subsampling, if specified)."""
         self.enforce_no_lists()
+        population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
         if len(ids) > 0 and self.random_sample is not None:
@@ -171,12 +185,13 @@ class NeuronSet(Block, abc.ABC):
         return ids
 
     def get_node_set_definition(
-        self, circuit: Circuit, population: str, force_resolve_ids=False
+        self, circuit: Circuit, population: str | None=None, force_resolve_ids=False
     ) -> dict:
         """Returns the SONATA node set definition, optionally forcing to resolve individual \
             IDs.
         """
         self.enforce_no_lists()
+        population = self._population(population)
         self.check_population(circuit, population)
         if self.random_sample is None and not force_resolve_ids:
             # Symbolic expression can be preserved
@@ -225,7 +240,7 @@ class NeuronSet(Block, abc.ABC):
         assert not (overwrite_if_exists and append_if_exists), (
             "Append and overwrite options are mutually exclusive!"
         )
-
+        population = self._population(population)
         expression = self.get_node_set_definition(
             circuit, population, force_resolve_ids=force_resolve_ids
         )
@@ -322,6 +337,7 @@ class IDNeuronSet(NeuronSet):
 
     def _get_expression(self, circuit: Circuit, population) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
+        population = self._population(population)
         self.check_neuron_ids(circuit, population)
         return {"population": population, "node_id": list(self.neuron_ids.elements)}
 
@@ -341,7 +357,8 @@ class PropertyNeuronSet(NeuronSet):
         | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
     ) = tuple()
 
-    def check_properties(self, circuit: Circuit, population: str) -> None:
+    def check_properties(self, circuit: Circuit, population: str | None=None) -> None:
+        population = self._population(population)
         self.property_filter.test_validity(circuit, population)
 
     def check_node_sets(self, circuit: Circuit, population: str) -> None:
@@ -350,9 +367,10 @@ class PropertyNeuronSet(NeuronSet):
                 f"Node set '{_nset}' not found in circuit '{circuit}'!"
             )
 
-    def _get_resolved_expression(self, circuit: Circuit, population: str) -> dict:
+    def _get_resolved_expression(self, circuit: Circuit, population: str | None=None) -> dict:
         """A helper function used to make subclasses work."""
         c = circuit.sonata_circuit
+        population = self._population(population)
 
         df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
         df = self.property_filter.filter(df)
@@ -370,6 +388,7 @@ class PropertyNeuronSet(NeuronSet):
 
     def _get_expression(self, circuit: Circuit, population) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
+        population = self._population(population)
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
 
@@ -418,7 +437,8 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         default=("x", "y", "z"),
     )
 
-    def _get_expression(self, circuit: Circuit, population: str) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str | None=None) -> dict:
+        population = self._population(population)
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
         # Always needs to be resolved
@@ -465,7 +485,8 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         default=("x", "y", "z"),
     )
 
-    def _get_expression(self, circuit: Circuit, population: str) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str | None=None) -> dict:
+        population = self._population(population)
         self.check_node_sets(circuit, population)
         # Always needs to be resolved
         base_expression = self._get_resolved_expression(circuit, population)
