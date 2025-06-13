@@ -446,7 +446,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
     center: int = Field(
         name="Center node",
         description="Node index that will be source or target of the simplices extracted",
-    )#TODO valid gids
+    )
     dim: int = Field(
         name="Dimension",
         description="Dimension of the simplices to be extracted",
@@ -501,7 +501,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
                 raise ValueError(f"Number of nodes is too small to form a single {dim}-simplex")
         return self
 
-    def _get_expression(self, circuit: Circuit, population: str) -> dict: #Do I need a population here?
+    def _get_expression(self, circuit: Circuit, population: str) -> dict:
         try: # Try to import connalysis
             from obi_one.scientific.circuit.simplex_extractors import (simplex_submat)
         except ImportError as e:
