@@ -23,6 +23,7 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, Timesta
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
 import entitysdk
+from collections import OrderedDict
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -31,11 +32,25 @@ class SimulationsForm(Form):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
-    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=SimulationNeuronSetUnion.__name__, description="Neuron sets for the simulation")
 
+
+    
+    class Config:
+        json_schema_extra = {
+            "gui_order": [
+                ["info", ["info"],
+                "base", ["initialize", "stimuli", "recordings"],
+                "Auxiliary", ["neuron_sets", "timestamps"]],
+            ]
+        }
+
+    
+
+        
     # synapse_sets: dict[str, SynapseSetUnion]
     # intracellular_location_sets: dict[str, MorphologyLocationUnion]
     # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
@@ -53,8 +68,8 @@ class SimulationsForm(Form):
         _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
-    initialize: Initialize
-    info: Info
+    initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
+    info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
     
     def add(self, block: Block, name:str='') -> None:
