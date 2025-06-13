@@ -27,3 +27,10 @@ StimulusUnion = (
     | RelativeLinearCurrentClampSomaticStimulus
     | PoissonSpikeStimulus
 )
+
+from obi_one.core.block_reference import BlockReference
+from typing import ClassVar, Any
+class StimulusReference(BlockReference):
+    """A reference to a StimulusUnion block."""
+    
+    allowed_block_types: ClassVar[Any] = StimulusUnion
