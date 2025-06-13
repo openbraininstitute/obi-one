@@ -159,7 +159,6 @@ class NeuronSet(Block, abc.ABC):
         population = self._population(population)
         c = circuit.sonata_circuit
         expression = self._get_expression(circuit, population)
-        print(expression)
         name = "__TMP_NODE_SET__"
         self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
