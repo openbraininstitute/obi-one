@@ -94,6 +94,7 @@ __all__ = [
     "SectionIntracellularLocationSet",
     "Simulation",
     "SimulationsForm",
+    "SimulationNeuronSetUnion",
     "SingleBlockEntitySDKTest",
     "SingleBlockEntityTestForm",
     "SingleBlockGenerateTest",
@@ -233,7 +234,7 @@ from obi_one.scientific.unions.unions_form import (
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, SimulationNeuronSetUnion, NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
 from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
