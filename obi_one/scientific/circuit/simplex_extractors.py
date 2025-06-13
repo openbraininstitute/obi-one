@@ -76,14 +76,14 @@ def simplex_submat(adj, v, dim, v_position="source", subsample=False, n_count_ma
         else: 
             # Sub-sampling if there are too many neurons 
             if subsample_method=="random": 
-                selection = subsample_random(selection_test,n_count_max, seed)
+                selection = subsample_random(v, selection_test,n_count_max, seed)
             elif subsample_method=="node_participation":
                 selection = subsample_by_node_participation(adj,selection_test, n_count_max, dim, simplex_type=simplex_type)
             elif subsample_method=="sample_simplices": 
                 selection = subsample_simplices(sl,n_count_max, dim)
         return selection, selection_test
 
-def subsample_random(selection_test,n_count_max, seed):
+def subsample_random(v, selection_test,n_count_max, seed):
     rng = np.random.default_rng(seed)
     subsample=rng.choice(selection_test[selection_test!=v], size=n_count_max-1, replace=False)
     return np.append(v, subsample)
