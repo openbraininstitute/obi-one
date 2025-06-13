@@ -86,6 +86,7 @@ __all__ = [
     "ReconstructionMorphologyFromID",
     "ReconstructionMorphologyValidation",
     "Recording",
+    "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
     "RelativeConstantCurrentClampSomaticStimulus",
@@ -100,6 +101,7 @@ __all__ = [
     "SingleCoordinateMixin",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",
+    "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSetUnion",
@@ -232,8 +234,8 @@ from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
-from obi_one.scientific.unions.unions_recordings import RecordingUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusUnion
+from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 

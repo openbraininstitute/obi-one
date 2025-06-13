@@ -15,12 +15,14 @@ from obi_one.scientific.unions.unions_extracellular_location_sets import (
 )
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
-from obi_one.scientific.unions.unions_recordings import RecordingUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusUnion
+from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+
+import entitysdk
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -30,8 +32,8 @@ class SimulationsForm(Form):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
-    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict)
-    recordings: dict[str, RecordingUnion] = Field(default_factory=dict)
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
     neuron_sets: dict[str, NeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
     # synapse_sets: dict[str, SynapseSetUnion]
@@ -51,19 +53,24 @@ class SimulationsForm(Form):
         target_simulator: list[str] | str = "CORENEURON"
         timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
 
-    initialize: Initialize = Field(default_factory=Initialize, description="Simulation initialization parameters")
+    initialize: Initialize
     info: Info
 
+    
+    def add(self, block: Block, name:str='') -> None:
 
-    def add(self, block: Block, name:str='', category:str=None) -> None:
-        self.__dict__[category][name] = block        
+        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
+        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
 
-        # TO BE IMPROVED POST CNS
-        if category == "timestamps":
-            block.set_ref(TimestampsReference(block_dict_name=category, block_name=name))
+        if name in self.__dict__.get(block_dict_name).keys():
+            raise ValueError(f"Block with name '{name}' already exists in '{block_dict_name}'!")
+        
+        else: 
+            reference_type = globals()[reference_type_name]
+            ref = reference_type(block_dict_name=block_dict_name, block_name=name)
+            block.set_ref(ref)
+            self.__dict__[block_dict_name][name] = block
 
-        if category == "neuron_sets":
-            block.set_ref(NeuronSetReference(block_dict_name=category, block_name=name))
 
     def set(self, block: Block, name: str = '') :
         """Sets a block in the form."""
@@ -126,7 +133,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         dictionary = {name: nset_def}
         return name, dictionary
 
-    def generate(self):
+    def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
         self._sonata_config = {}
         self._sonata_config["version"] = self.initialize.sonata_version
