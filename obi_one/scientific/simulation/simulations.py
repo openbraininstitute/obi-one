@@ -51,7 +51,7 @@ class SimulationsForm(Form):
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
         _sonata_version: list[float] | float = 2.4
         _target_simulator: list[str] | str = "NEURON"
-        _timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms", unit)
+        _timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
 
     initialize: Initialize
     info: Info
