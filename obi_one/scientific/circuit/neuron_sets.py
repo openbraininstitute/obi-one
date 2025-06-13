@@ -1,12 +1,12 @@
 import abc
 import json
 import os
-from typing import Annotated, Self
+from typing import Annotated, Self, Literal, Optional
 
 import bluepysnap as snap
 import numpy as np
 import pandas
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, model_validator
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, model_validator, field_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
@@ -438,6 +438,101 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
         return expression
+
+class SimplexNeuronSet(PropertyNeuronSet):
+    """
+    Get neurons that form simplices of a given dimension with a chosen source or target neuron.
+    """
+    center: int = Field(
+        name="Center node",
+        description="Node index that will be source or target of the simplices extracted",
+    )#TODO valid gids
+    dim: int = Field(
+        name="Dimension",
+        description="Dimension of the simplices to be extracted",
+    )
+    position: Literal['source', 'target'] = Field('source',
+        name="Position",
+        description="Position of the center node in the simplex, it can be either source or target",
+    )
+    subsample: bool = Field(False,
+        name="subsample",
+        description="Whether to subsample to set of nodes in the simplex lists or not",
+    )
+    n_count_max: Optional[int] = Field(None,
+        name="Max node count",
+        description="Maximum number of nodes to be subsampled",
+    )
+    subsample_method: Literal['node_participation', 'random', 'sample_simplices'] = Field('node_participation',
+        name="Method to subsample nodes the extracted simplices",
+        description="""
+        **Method to subsample nodes**:
+        - `random`: randomly selects nodes from all nodes
+        - `node_participation`: selects nodes with highest node participation in dimension `dim`, \
+            in the submatrix on the nodes in the simplices
+        - `sample_simplices`: samples simplices while the number of nodes on them is still \
+            smaller or equal to the required size
+            """,
+    )
+    simplex_type: Literal['directed', 'reciprocal', 'undirected'] = Field('directed',
+        name="Simplex type",
+        description="Type of simplex to consider. See more at \
+            https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
+    )
+    seed: Optional[int] = Field(None,
+        name="seed",
+        description="Seed used for random subsampling method",
+    )
+
+    @field_validator('dim')
+    def dim_check(cls, v):
+        if v <= 1:
+            raise ValueError('Simplex dimension must be greater than 1')
+        return v
+    @model_validator(mode="after")
+    def check_enough_nodes(self) -> Self:
+        n_count_max = self.n_count_max
+        dim = self.dim
+        subsample = self.subsample
+        if subsample:
+            if n_count_max is None:
+                raise ValueError("n_count_max must be specified when subsample is True")
+            if n_count_max <= dim:
+                raise ValueError(f"Number of nodes is too small to form a single {dim}-simplex")
+        return self
+
+    def _get_expression(self, circuit: Circuit, population: str) -> dict: #Do I need a population here?
+        try: # Try to import connalysis
+            from obi_one.scientific.circuit.simplex_extractors import (simplex_submat)
+        except ImportError as e:
+            print(f"Import failed: {e}. You probably need to install connalysis locally")
+
+        self.check_properties(circuit, population)
+        self.check_node_sets(circuit, population)
+        # Always needs to be resolved
+        base_expression = self._get_resolved_expression(circuit, population)
+
+        # Restrict connectivity matrix to chosen subpopulation and find index of center
+        conn=circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
+        index = np.where(conn.vertices["node_ids"] == self.center)[0]
+        if len(index) == 0:
+            raise ValueError(f"The neuron of index {self.center} is not in the subpopulation selected")
+        index = index[0]    
+            
+        # Get nodes on simplices index by 0 ... conn._shape[0] 
+        out = simplex_submat(
+            conn.matrix, index, self.dim, self.position,
+            self.subsample, self.n_count_max, self.subsample_method,
+            self.simplex_type, self.seed
+        )
+        selection = out[0] if self.subsample else out
+
+        # Get node_ids (i.e., get correct index) and build expression dict 
+        selection=conn.vertices["node_ids"].iloc[selection]
+        expression = {"population": population, "node_id": selection.tolist()}        
+        return expression
+    
+
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):

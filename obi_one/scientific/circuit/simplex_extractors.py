@@ -28,7 +28,7 @@ def simplex_submat(adj, v, dim, v_position="source", subsample=False, n_count_ma
         Maximum number of nodes to return if subsampling (required if subsample=True).
     subsample_method : {'node_participation', 'random', 'sample_simplices'}, optional
         Method for subsampling nodes if needed (default: 'node_participation').
-    simplex_type : {'directed', 'reciprocal'}, optional
+    simplex_type : {'directed', 'reciprocal', 'undirected'}, optional
         Type of simplex to extract (default: 'directed').
     seed : int, optional
         Random seed for reproducibility for random subsampling.
