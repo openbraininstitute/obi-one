@@ -242,7 +242,7 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
     with (tempfile.NamedTemporaryFile(suffix=".nwb") as temp_file,
             tempfile.TemporaryDirectory() as temp_dir):
         for asset in trace_metadata.assets:
-            print(dir(asset))
+            logger.debug("Asset object: %s", asset)
             if asset.content_type == "application/nwb":
                 trace_content = entity_client.download_content(
                     entity_id=trace_id,
@@ -252,6 +252,10 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
                 temp_file.write(trace_content)
                 temp_file.flush()
                 break
+        else:
+            raise ValueError(
+                f"No asset with content type 'application/nwb' found for trace {trace_id}."
+            )
 
         # LNMC traces need to be adjusted by an output voltage of 14mV due to their experimental protocol
         files_metadata = {
@@ -275,22 +279,15 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
             absolute_amplitude=True,
         )
         output_features = {}
-        print(efeatures)
+        logger.debug("Efeatures: %s", efeatures)
         # Format the extracted features into a readable dict for the model
         for protocol_name in protocol_definitions:
             efeatures_values = efeatures[protocol_name]
             protocol_def = protocol_definitions[protocol_name]
             output_features[protocol_name] = {
                 f"{f['efeature_name']} (avg on n={f['n']} trace(s))": (
-                    (
-                        f"{f['val'][0]} "
-                        (
-                            f"{get_unit(f['efeature_name'])}"
-                            if get_unit(f["efeature_name"]) != "constant"
-                            else ""
-                        )
-                    ).strip()
-                )
+                    f"{f['val'][0]} {get_unit(f['efeature_name']) if get_unit(f['efeature_name']) != 'constant' else ''}"
+                ).strip()
                 for f in efeatures_values["soma"]
             }
 
