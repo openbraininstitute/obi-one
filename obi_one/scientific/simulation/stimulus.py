@@ -37,7 +37,7 @@ class SomaticStimulus(Stimulus, ABC):
         description="Time duration in ms for how long input is activated.",
     )
     neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
-    represents_physical_electrode: bool = Field(
+    _represents_physical_electrode: bool = Field(
         default=False,
         description="Default is False. If True, the signal will be implemented \
                         using a NEURON IClamp mechanism. The IClamp produce an \
@@ -71,7 +71,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -101,7 +101,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
                 "amp_end": self.amplitude_end,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -127,7 +127,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -157,7 +157,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current_start,
                 "percent_end": self.percentage_of_threshold_current_end,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -190,7 +190,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
                 "amp_start": self.amplitude,
                 "width": self.width,
                 "frequency": self.frequency,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -222,7 +222,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
                 "amp_start": self.peak_amplitude,
                 "frequency": self.frequency,
                 "dt": self.dt,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -250,7 +250,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_less": self.percentage_below_threshold,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -274,7 +274,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
                 "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -304,7 +304,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
                 "input_type": self._input_type,
                 "mean": self.mean_amplitude,
                 "variance": self.variance,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -336,7 +336,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
                 "input_type": self._input_type,
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "variance": self.variance,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
