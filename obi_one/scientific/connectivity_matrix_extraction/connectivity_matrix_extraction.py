@@ -1,3 +1,4 @@
+import entitysdk.client
 import logging
 import os
 import warnings
@@ -51,7 +52,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
         "synapse_class",
     )
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
             L.info(f"Info: Running idx {self.idx}")
 
