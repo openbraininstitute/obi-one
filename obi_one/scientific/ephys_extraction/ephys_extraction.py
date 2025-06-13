@@ -39,6 +39,12 @@ POSSIBLE_PROTOCOLS = {
     "sinespec": ["sinespec"],
 }
 
+EFEL_SETTINGS = {
+    'strict_stiminterval': True,
+    'Threshold': -20.,
+    'interp_step': 0.025
+}
+
 
 STIMULI_TYPES = list[
     Literal[
@@ -184,9 +190,9 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
 
     # Deal with cases where user did not specify stimulus type or/and feature
     if not stimuli_types:
-        # Default to IDRest if protocol not specified
-        logger.warning("No stimulus type specified. Defaulting to IDRest.")
-        stimuli_types = ["idrest"]
+        # Default to all protocol types if not specified
+        logger.warning("No stimulus type specified. Iterating over all POSSIBLE_PROTOCOLS.")
+        stimuli_types = list(POSSIBLE_PROTOCOLS.keys())
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
@@ -277,6 +283,7 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
             files_metadata=files_metadata,
             targets=targets,
             absolute_amplitude=True,
+            efel_settings=EFEL_SETTINGS,
         )
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)
