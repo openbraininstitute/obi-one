@@ -48,10 +48,10 @@ class SimulationsForm(Form):
         extracellular_calcium_concentration: list[float] | float = 1.1
         v_init: list[float] | float = -80.0
         
-        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
-        sonata_version: list[int] | int = 1
-        target_simulator: list[str] | str = "CORENEURON"
-        timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms")
+        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        _sonata_version: list[float] | float = 2.4
+        _target_simulator: list[str] | str = "NEURON"
+        _timestep: list[float] | float = Field(default=0.025, description="Simulation time step in ms", unit)
 
     initialize: Initialize
     info: Info
@@ -136,13 +136,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
         self._sonata_config = {}
-        self._sonata_config["version"] = self.initialize.sonata_version
-        self._sonata_config["target_simulator"] = self.initialize.target_simulator
+        self._sonata_config["version"] = self.initialize._sonata_version
+        self._sonata_config["target_simulator"] = self.initialize._target_simulator
 
         self._sonata_config["network"] = self.initialize.circuit.path
 
         self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.initialize.timestep
+        self._sonata_config["run"]["dt"] = self.initialize._timestep
         self._sonata_config["run"]["random_seed"] = self.initialize.random_seed
         self._sonata_config["run"]["tstop"] = self.initialize.simulation_length
 
@@ -151,7 +151,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self.initialize.extracellular_calcium_concentration
         )
         self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
-        self._sonata_config["conditions"]["spike_location"] = self.initialize.spike_location
+        self._sonata_config["conditions"]["spike_location"] = self.initialize._spike_location
 
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
