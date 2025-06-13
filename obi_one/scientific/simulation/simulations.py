@@ -42,10 +42,10 @@ class SimulationsForm(Form):
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
-        simulation_length: list[float] | float = 100.0
+        simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
         node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
-        random_seed: list[int] | int = 1
-        extracellular_calcium_concentration: list[float] | float = 1.1
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
+        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = -80.0
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
