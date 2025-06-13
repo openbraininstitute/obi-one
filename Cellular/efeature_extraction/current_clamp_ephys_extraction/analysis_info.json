@@ -1,6 +1,6 @@
 {
     "name": "Current clamp efeature extraction",
-    "authors": ["OBI", "Darshan Mandge"],
+    "authors": ["OBI", "Darshan Mandge", "Aurélien Jaquier"],
     "description": "This notebook demonstrates how to load electrophysiology data using h5py for eFEL e-feature extraction.",
     "scale": "cellular",
     "type": "notebook",
@@ -19,6 +19,8 @@
         "aws-cli>=2.23.2",
         "matplotlib>=3.10.0",
         "h5py>=3.12.1",
-        "efel>=5.7.13"
+        "efel>=5.7.13",
+        "entitysdk>=0.4.0",
+        "obi-auth>=0.3.0"
     ]
 }
