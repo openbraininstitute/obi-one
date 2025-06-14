@@ -146,9 +146,9 @@ class NeuronSet(Block, abc.ABC):
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
     
     def _population(self, population: str | None=None):
-        if population is not None and self.node_population is not None:
-            if population != self.node_population:
-                raise ValueError("The node population has already been set for this block!")
+        # if population is not None and self.node_population is not None:
+        #     if population != self.node_population:
+        #         raise ValueError("The node population has already been set for this block!")
         population = self.node_population or population
         if population is None:
             raise ValueError("Must specify name of a node population to resolve the NeuronSet!")

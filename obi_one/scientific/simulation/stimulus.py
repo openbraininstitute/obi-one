@@ -350,39 +350,29 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     stim_duration: float | list[float]
     _spike_file: Path | None = None
-    _targeted_population_name: str | None = None
-    source_neuron_set: NeuronSetReference
+    source_neuron_set: NeuronSetReference | None = None
     targeted_neuron_set: NeuronSetReference | None = None
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
-        assert self._targeted_population_name is not None
-        assert self.source_neuron_set.block.node_population is not None, "Must specify node population name for the neuron set!"
+        # assert self.source_neuron_set.block.node_population is not None, "Must specify node population name for the neuron set!"
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
                 "duration": self.stim_duration,
-                "node_set": self._targeted_population_name,
+                "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "spike_file": str(self._spike_file) # os.path.relpath # 
             }
         
         return sonata_config
-    
-    def generate_spikes(self, circuit, spike_file_path):
-        # Doing this here because we have access to the circuit object.
-        if self.targeted_neuron_set is None:
-            self._targeted_population_name = circuit._default_population_name(circuit.sonata_circuit)
-        else:
-            self._targeted_population_name = self.targeted_neuron_set.block.name
-        self._generate_spikes(circuit, spike_file_path)
 
-    def _generate_spikes(self, circuit, spike_file_path):
+    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @staticmethod
-    def write_spike_file(gid_spike_map, spike_file, neuron_set: NeuronSetReference):
+    def write_spike_file(gid_spike_map, spike_file, source_node_population):
         """
         Writes SONATA output spike trains to file.
         
@@ -396,7 +386,6 @@ class SpikeStimulus(Stimulus):
         if not os.path.exists(out_path):
             os.makedirs(out_path)
 
-        popul_name = neuron_set.block.node_population
         time_list = []
         gid_list = []
         for gid, spike_times in gid_spike_map.items():
@@ -408,7 +397,7 @@ class SpikeStimulus(Stimulus):
         spike_df = spike_df.astype({'t': float, 'gid': int})
         spike_df.sort_values(by=['t', 'gid'], inplace=True)  # Sort by time
         with h5py.File(spike_file, 'w') as f:
-            pop = f.create_group(f"/spikes/{popul_name}")
+            pop = f.create_group(f"/spikes/{source_node_population}")
             ts = pop.create_dataset("timestamps", data=spike_df['t'].values, dtype=np.float64)
             nodes = pop.create_dataset("node_ids", data=spike_df['gid'].values, dtype=np.uint64)
             ts.attrs['units'] = 'ms'
@@ -419,9 +408,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
     random_seed: int | list[int] = 0
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
     
-    def _generate_spikes(self, circuit, spike_file_path):
+    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
         rng = np.random.default_rng(self.random_seed)
-        gids = self.source_neuron_set.block.get_neuron_ids(circuit)
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block._population(source_node_population)
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
@@ -443,5 +433,5 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 else:
                     gid_spike_map[gid] = spikes
         self._spike_file = f"{self.name}_spikes.h5"
-        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, self.source_neuron_set)
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
         
