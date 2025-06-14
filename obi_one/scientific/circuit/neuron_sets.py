@@ -13,6 +13,8 @@ from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
 
+_SSCX_VPM_NODE_POP = "VPM"
+_SSCX_POM_NODE_POP = "POm"
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -69,7 +71,7 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         return string_rep[:-1]  # Remove trailing comma and space
 
 
-class NeuronSet(Block, abc.ABC):
+class AbstractNeuronSet(Block, abc.ABC):
     """Base class representing a neuron set which can be turned into a SONATA node set by either
     adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
     SONATA node set .json file (write_circuit_node_set_file).
@@ -80,7 +82,6 @@ class NeuronSet(Block, abc.ABC):
 
     random_sample: None | int | float | list[None | int | float] = None
     random_seed: int | list[int] = 0
-    node_population: str | list[str] | None = None
 
     @model_validator(mode="after")
     def check_random_sample(self) -> Self:
@@ -146,12 +147,7 @@ class NeuronSet(Block, abc.ABC):
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
     
     def _population(self, population: str | None=None):
-        # if population is not None and self.node_population is not None:
-        #     if population != self.node_population:
-        #         raise ValueError("The node population has already been set for this block!")
-        population = self.node_population or population
-        if population is None:
-            raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
+        assert population is not None, "Must specify a node population name!"
         return population
 
     def _resolve_ids(self, circuit: Circuit, population: str | None=None) -> list[int]:
@@ -279,6 +275,24 @@ class NeuronSet(Block, abc.ABC):
         return output_file
 
 
+class NeuronSet(AbstractNeuronSet):
+    """
+    Extension of abstract neuron set with the ability to specify the node population upon creation.
+    This is optional, all functions requiring a node population can be optionally called with the name of
+    a default population to be used in case no name was set upon creation.
+    """
+    node_population: str | list[str] | None = None
+
+    def _population(self, population: str | None=None):
+        # if population is not None and self.node_population is not None:
+        #     if population != self.node_population:
+        #         raise ValueError("The node population has already been set for this block!")
+        population = self.node_population or population
+        if population is None:
+            raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
+        return population
+    
+
 class PredefinedNeuronSet(NeuronSet):
     """Neuron set wrapper of an existing (named) node sets already predefined in the node \
         sets file.
@@ -299,6 +313,26 @@ class PredefinedNeuronSet(NeuronSet):
         self.check_node_set(circuit, population)
         return [self.node_set]
 
+
+class SSCxVPMInputs(AbstractNeuronSet):
+    
+    def _population(self, population: str | None=None):
+        # Ignore default node population name. This is always VPM.
+        return _SSCX_VPM_NODE_POP
+    
+    def _get_expression(self, circuit: Circuit, population):
+        return {"population": _SSCX_VPM_NODE_POP}
+    
+
+class SSCxPOmInputs(AbstractNeuronSet):
+    
+    def _population(self, population: str | None=None):
+        # Ignore default node population name. This is always POm.
+        return _SSCX_POM_NODE_POP
+    
+    def _get_expression(self, circuit: Circuit, population):
+        return {"population": _SSCX_POM_NODE_POP}
+    
 
 class CombinedNeuronSet(NeuronSet):
     """Neuron set definition based on a combination of existing (named) node sets."""

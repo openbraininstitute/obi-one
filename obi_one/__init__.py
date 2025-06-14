@@ -104,6 +104,8 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SSCxPOmInputs",
+    "SSCxVPMInputs",
     "SynapseSetUnion",
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
@@ -159,6 +161,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SSCxVPMInputs,
+    SSCxPOmInputs
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,

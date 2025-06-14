@@ -5,6 +5,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SSCxVPMInputs,
+    SSCxPOmInputs
 )
 
 NeuronSetUnion = (
@@ -14,6 +16,8 @@ NeuronSetUnion = (
     | PropertyNeuronSet
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
+    | SSCxVPMInputs
+    | SSCxPOmInputs
 )
 
 from obi_one.core.block_reference import BlockReference

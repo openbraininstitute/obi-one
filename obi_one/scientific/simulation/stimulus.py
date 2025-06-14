@@ -350,8 +350,8 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     stim_duration: float | list[float]
     _spike_file: Path | None = None
-    source_neuron_set: NeuronSetReference | None = None
-    targeted_neuron_set: NeuronSetReference | None = None
+    source_neuron_set: NeuronSetReference = None
+    targeted_neuron_set: NeuronSetReference = None
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
