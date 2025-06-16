@@ -35,7 +35,7 @@ class SimulationsForm(Form):
     timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=SimulationNeuronSetUnion.__name__, description="Neuron sets for the simulation")
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
 
     
