@@ -32,6 +32,7 @@ class CircuitExtractions(Form):
         virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
     initialize: Initialize
+    neuron_set: NeuronSetUnion
 
     def save_collection(self, circuit_entities):
         pass
