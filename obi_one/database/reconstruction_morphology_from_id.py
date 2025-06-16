@@ -8,14 +8,9 @@ from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
 from obi_one.database.db_manager import db
-from obi_one.database.entity_from_id import EntityFromID
+from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 
 import io
-
-from enum import Enum
-class LoadAssetMethod(Enum):
-    MEMORY = "memory"
-    FILE = "file"
 
 class ReconstructionMorphologyFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = ReconstructionMorphology

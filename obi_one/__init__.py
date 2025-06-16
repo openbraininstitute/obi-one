@@ -25,6 +25,7 @@ __all__ = [
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
+    "CircuitFromID",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -50,6 +51,7 @@ __all__ = [
     "Info",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
+    "LoadAssetMethod",
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
@@ -120,11 +122,14 @@ __all__ = [
 ]
 
 from obi_one.database.entity_from_id import (
-    EntityFromID,
+    EntityFromID, LoadAssetMethod
 )
 from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
+
+from obi_one.database.circuit_from_id import CircuitFromID
+
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,

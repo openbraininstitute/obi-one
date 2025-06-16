@@ -28,7 +28,7 @@ dependencies = [
     # NEUROM
     "neurom",
     # ENTITYSDK
-    "entitysdk>=0.3.1",
+    "entitysdk>=0.5.0",
     "obi-auth",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
