@@ -9,7 +9,7 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
-    ElectrophysFeatureToolOutput,
+    ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
@@ -65,7 +65,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def electrophysiologyrecording_metrics_endpoint(
         entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         trace_id: str,
-    ) -> ElectrophysFeatureToolOutput:
+    ) -> ElectrophysiologyMetricsOutput:
         L.info("get_electrophysiology_metrics")
 
         try:

@@ -3,13 +3,18 @@
 import logging
 import tempfile
 from statistics import mean
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import entitysdk.client
 from bluepyefe.extract import extract_efeatures
 from efel.units import get_unit
 from entitysdk.models import ElectricalCellRecording
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
+
+from obi_one.core.block import Block
+from obi_one.core.form import Form
+from obi_one.core.single import SingleCoordinateMixin
 
 POSSIBLE_PROTOCOLS = {
     "idrest": ["idrest"],
@@ -38,9 +43,9 @@ POSSIBLE_PROTOCOLS = {
     "spikerec": ["spikerec"],
     "sinespec": ["sinespec"],
 }
+POSSIBLE_PROTOCOLS_STR = "', '".join(POSSIBLE_PROTOCOLS.keys())
 
 EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
-
 
 STIMULI_TYPES = list[
     Literal[
@@ -111,34 +116,28 @@ CALCULATED_FEATURES = list[
 class AmplitudeInput(BaseModel):
     """Amplitude class."""
 
-    min_value: float
-    max_value: float
+    min_value: float = Field(description="Minimum amplitude (nA)")
+    max_value: float = Field(description="Maximum amplitude (nA)")
 
 
-class ElectrophysInput(BaseModel):
-    """Inputs of the NeuroM API."""
+class ElectrophysiologyMetricsForm(Form):
+    """Form for extracting electrophysiological metrics from a trace."""
 
-    trace_id: str = Field(
-        description=(
-            "ID of the trace of interest. The trace ID is in the form of an HTTP(S)"
-            " link such as 'https://bbp.epfl.ch/neurosciencegraph/data/traces...'."
+    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetrics"
+    name: ClassVar[str] = "Electrophysiology Metrics"
+    description: ClassVar[str] = "Calculates ephys metrics for a given trace."
+
+    class Initialize(Block):
+        trace_id: str = Field(
+            description="ID of the trace of interest."
         )
-    )
-    stimuli_types: STIMULI_TYPES | None = Field(
-        default=None,
-        description=(
-            "Type of stimuli requested by the user. Should be one of 'spontaneous',"
-            " 'idrest', 'idthres', 'apwaveform', 'iv', 'step', 'spontaps',"
-            " 'firepattern', 'sponnohold30','sponhold30', 'starthold', 'startnohold',"
-            " 'delta', 'sahp', 'idhyperpol', 'irdepol', 'irhyperpol','iddepol', 'ramp',"
-            " 'ap_thresh', 'hyperdepol', 'negcheops', 'poscheops',"
-            " 'spikerec', 'sinespec'."
-        ),
-    )
-    calculated_feature: CALCULATED_FEATURES | None = Field(
-        default=None,
-        description=(
-            "Feature requested by the user. Should be one of 'spike_count',"
+        protocols: STIMULI_TYPES | None = Field(
+            default=None,
+            description=f"Type of stimuli requested by the user. Should be one of: '{POSSIBLE_PROTOCOLS_STR}'."
+        )
+        requested_metrics: CALCULATED_FEATURES | None = Field(
+            default=None,
+            description="Feature requested by the user. Should be one of 'spike_count',"
             "'time_to_first_spike', 'time_to_last_spike',"
             "'inv_time_to_first_spike', 'doublet_ISI', 'inv_first_ISI',"
             "'ISI_log_slope', 'ISI_CV', 'irregularity_index', 'adaptation_index',"
@@ -149,11 +148,10 @@ class ElectrophysInput(BaseModel):
             "'voltage_after_stim', 'ohmic_input_resistance_vb_ssse',"
             "'steady_state_voltage_stimend', 'sag_amplitude',"
             "'decay_time_constant_after_stim', 'depol_block_bool'"
-        ),
-    )
-    amplitude: AmplitudeInput | None = Field(
-        default=None,
-        description=(
+        )
+        amplitude: AmplitudeInput | None = Field(
+            default=None,
+            description=(
             "Amplitude of the protocol (should be specified in nA)."
             "Can be a range of amplitudes with min and max values"
             "Can be None (if the user does not specify it)"
@@ -161,13 +159,35 @@ class ElectrophysInput(BaseModel):
         ),
     )
 
+    initialize: Initialize
 
-class ElectrophysFeatureToolOutput(BaseModel):
-    """Output schema for the neurom tool."""
 
-    brain_region: str
-    feature_dict: dict[str, Any]
+class ElectrophysiologyMetricsOutput(BaseModel):
+    """Output schema for electrophysiological metrics extracted using BluePyEfe."""
 
+    feature_dict: dict[str, dict[str, Any]] = Field(
+        description="Mapping of feature name to its metric values. "
+                    "Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
+    )
+
+    @classmethod
+    def from_efeatures(cls, raw: dict[str, Any]) -> "ElectrophysiologyMetricsOutput":
+        return cls(feature_dict=raw)
+
+
+class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMixin):
+    def run(self, db_client: entitysdk.client.Client = None):
+        try:
+            ephys_metrics = get_electrophysiology_metrics(
+                trace_id=self.initialize.trace_id,
+                entity_client=db_client,
+                calculated_feature=self.initialize.requested_metrics,
+                amplitude=self.initialize.amplitude,
+                stimuli_types=self.initialize.protocols,
+            )
+            return ephys_metrics
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     trace_id: str,
@@ -175,7 +195,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     calculated_feature: CALCULATED_FEATURES | None = None,
     amplitude: AmplitudeInput | None = None,
     stimuli_types: STIMULI_TYPES | None = None,
-) -> ElectrophysFeatureToolOutput:
+) -> ElectrophysiologyMetricsOutput:
     """Compute electrophys features for a given trace."""
     logger = logging.getLogger(__name__)
 
@@ -302,6 +322,4 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
             # Add the stimulus current of the protocol to the output
             output_features[protocol_name]["stimulus_current"] = f"{protocol_def['step']['amp']} nA"
-    return ElectrophysFeatureToolOutput(
-        brain_region=trace_metadata.brain_region.name, feature_dict=output_features
-    )
+    return ElectrophysiologyMetricsOutput.from_efeatures(output_features)

@@ -37,7 +37,6 @@ def test_get(client, ephys_json, ephys_nwb, monkeypatch):
     response_json = response.json()
     features = response_json["feature_dict"]["step_0"]
 
-    assert response_json["brain_region"] == "Primary somatosensory area"
     assert features["spike_count"]["avg"] == pytest.approx(1.6667, abs=1e-3)
     assert features["spike_count"]["num_traces"] == 3
     assert features["time_to_first_spike"]["avg"] == pytest.approx(6.625, abs=1e-4)
