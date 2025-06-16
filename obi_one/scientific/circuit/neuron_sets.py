@@ -16,9 +16,9 @@ from obi_one.scientific.circuit.circuit import Circuit
 
 
 L = logging.getLogger("obi-one")
-_SSCX_VPM_NODE_POP = "VPM"
-_SSCX_POM_NODE_POP = "POm"
-_HIPPOCAMPUS_CA3_NODE_POP = "CA3_projections"
+_NBS1_VPM_NODE_POP = "VPM"
+_NBS1_POM_NODE_POP = "POm"
+_RCA1_NODE_POP = "CA1_projections"
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -319,34 +319,34 @@ class PredefinedNeuronSet(NeuronSet):
         return [self.node_set]
 
 
-class SSCxVPMInputs(AbstractNeuronSet):
+class nbS1VPMInputs(AbstractNeuronSet):
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
-        return _SSCX_VPM_NODE_POP
+        return _NBS1_VPM_NODE_POP
     
     def _get_expression(self, circuit: Circuit, population):
-        return {"population": _SSCX_VPM_NODE_POP}
+        return {"population": _NBS1_VPM_NODE_POP}
     
 
-class SSCxPOmInputs(AbstractNeuronSet):
+class nbS1POmInputs(AbstractNeuronSet):
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
-        return _SSCX_POM_NODE_POP
+        return _NBS1_POM_NODE_POP
     
     def _get_expression(self, circuit: Circuit, population):
-        return {"population": _SSCX_POM_NODE_POP}
+        return {"population": _NBS1_POM_NODE_POP}
 
 
 class HippocampusCA3Inputs(AbstractNeuronSet):
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
-        return _HIPPOCAMPUS_CA3_NODE_POP
+        return _RCA1_NODE_POP
     
     def _get_expression(self, circuit: Circuit, population):
-        return {"population": _HIPPOCAMPUS_CA3_NODE_POP}
+        return {"population": _RCA1_NODE_POP}
     
 
 class CombinedNeuronSet(NeuronSet):
