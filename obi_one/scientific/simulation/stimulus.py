@@ -8,28 +8,15 @@ from abc import ABC, abstractmethod
 from typing import Annotated
 import h5py
 
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
-    timestamps: TimestampsUnion
-    simulation_level_name: (
-        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
-    ) = None
-
-    def check_simulation_init(self):
-        assert self.simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
-
-    @property
-    def name(self):
-        self.check_simulation_init()
-        return self.simulation_level_name
+    timestamps: TimestampsReference
 
     def config(self) -> dict:
         self.check_simulation_init()
@@ -49,20 +36,18 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetUnion = Field(description="Neuron set to which the stimulus is applied.")
-    represents_physical_electrode: bool = Field(
-        default=False,
-        description="Default is False. If True, the signal will be implemented \
-                        using a NEURON IClamp mechanism. The IClamp produce an \
-                        electrode current which is not included in the calculation of \
-                        extracellular signals, so this option should be used to \
-                        represent a physical electrode. If the noise signal represents \
-                        synaptic input, represents_physical_electrode should be set to \
-                        False, in which case the signal will be implemented using a \
-                        MembraneCurrentSource mechanism, which is identical to IClamp, \
-                        but produce a membrane current, which is included in the \
-                        calculation of the extracellular signal.",
-    )
+    neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
+    _represents_physical_electrode: bool = PrivateAttr(default=False) 
+    """Default is False. If True, the signal will be implemented \
+    using a NEURON IClamp mechanism. The IClamp produce an \
+    electrode current which is not included in the calculation of \
+    extracellular signals, so this option should be used to \
+    represent a physical electrode. If the noise signal represents \
+    synaptic input, represents_physical_electrode should be set to \
+    False, in which case the signal will be implemented using a \
+    MembraneCurrentSource mechanism, which is identical to IClamp, \
+    but produce a membrane current, which is included in the \
+    calculation of the extracellular signal."""
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
@@ -76,15 +61,15 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -105,16 +90,16 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
                 "amp_end": self.amplitude_end,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -132,15 +117,15 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -161,16 +146,16 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current_start,
                 "percent_end": self.percentage_of_threshold_current_end,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -193,17 +178,17 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
                 "width": self.width,
                 "frequency": self.frequency,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -225,17 +210,17 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.peak_amplitude,
                 "frequency": self.frequency,
                 "dt": self.dt,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -255,15 +240,15 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_less": self.percentage_below_threshold,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -280,14 +265,14 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -308,16 +293,16 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean": self.mean_amplitude,
                 "variance": self.variance,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -340,16 +325,16 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.timestamps()):
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
                 "delay": timestamp,
                 "duration": self.duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "variance": self.variance,
-                "represents_physical_electrode": self.represents_physical_electrode,
+                "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
 
@@ -363,7 +348,7 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     stim_duration: float | list[float]
     _spike_file: Path | None = None
-    neuron_set: NeuronSetUnion
+    neuron_set: NeuronSetReference
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
@@ -371,7 +356,7 @@ class SpikeStimulus(Stimulus):
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
                 "duration": self.stim_duration,
-                "cells": self.neuron_set.name,
+                "cells": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
                 "spike_file": str(self._spike_file) # os.path.relpath # 
@@ -383,7 +368,7 @@ class SpikeStimulus(Stimulus):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @staticmethod
-    def write_spike_file(gid_spike_map, spike_file, neuron_set):
+    def write_spike_file(gid_spike_map, spike_file, neuron_set: NeuronSetReference):
         """
         Writes SONATA output spike trains to file.
         
@@ -397,7 +382,7 @@ class SpikeStimulus(Stimulus):
         if not os.path.exists(out_path):
             os.makedirs(out_path)
 
-        popul_name = neuron_set.name
+        popul_name = neuron_set.block.name
         time_list = []
         gid_list = []
         for gid, spike_times in gid_spike_map.items():
@@ -422,9 +407,9 @@ class PoissonSpikeStimulus(SpikeStimulus):
     
     def generate_spikes(self, circuit, population, spike_file_path):
         rng = np.random.default_rng(self.random_seed)
-        gids = self.neuron_set.get_neuron_ids(circuit, population)
+        gids = self.neuron_set.block.get_neuron_ids(circuit, population)
         gid_spike_map = {}
-        timestamps = self.timestamps.timestamps()
+        timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
             end_time = start_time + self.stim_duration
             if t_idx < len(timestamps) - 1:

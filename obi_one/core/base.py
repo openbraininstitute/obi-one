@@ -14,7 +14,6 @@ def get_subclasses_recursive[T](cls: type[T]) -> list[type[T]]:
 
 
 def get_subclass_recursive[T](cls: type[T], name: str) -> type[T]:
-    # I oversimplified this to keep it short (there are checks for 0 or more than 1 subclasses
     return next(c for c in get_subclasses_recursive(cls=cls) if c.__qualname__ == name)
 
 
@@ -45,22 +44,31 @@ class OBIBaseModel(BaseModel):
         """Return a string representation of the OBIBaseModel object."""
         return self.__repr__()
 
-    @model_validator(mode="wrap")  # the decorator position is correct
+
+    @model_validator(mode="wrap")
     @classmethod
-    def retrieve_type_on_deserialization(
-        cls, value: Any, handler: ValidatorFunctionWrapHandler
-    ) -> "OBIBaseModel":
+    def retrieve_type_on_deserialization(cls, 
+                                        value: Any, 
+                                        handler: ValidatorFunctionWrapHandler
+                ) -> "OBIBaseModel":
+
         if isinstance(value, dict):
-            # WARNING: we do not want to modify `value` which will come from the outer scope
-            # WARNING2: `sub_cls(**modified_value)` will trigger a recursion, and thus we need to
-            # remove `obi_class`
+
+            # `sub_cls(**modified_value)` will trigger a recursion, and thus we need to
+            # remove `type` from the dictionary before passing it to the subclass constructor
+            
             modified_value = value.copy()
             sub_cls_name = modified_value.pop("type", None)
+            
             if sub_cls_name is not None:
+
                 sub_cls = get_subclass_recursive(
                     cls=OBIBaseModel,
                     name=sub_cls_name,  # , allow_same_class=True
                 )
+
                 return sub_cls(**modified_value)
+
             return handler(value)
+
         return handler(value)

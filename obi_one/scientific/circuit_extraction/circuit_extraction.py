@@ -18,9 +18,7 @@ class CircuitExtractions(Form):
     description: ClassVar[str] = (
         "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain all morphologies, hoc files, and mod files that are required to simulate the extracted circuit."
     )
-
-    neuron_set: NeuronSetUnion
-
+    
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
         run_validation: bool = False

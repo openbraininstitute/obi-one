@@ -78,21 +78,22 @@ def create_endpoint_for_form(
 
         @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)
         def endpoint(
-            entity_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+            db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
             form: model,
         ) -> return_type:
             L.info("generate_grid_scan")
-            L.info(entity_client)
+            L.info(db_client)
 
             try:
                 grid_scan = GridScan(
                     form=form,
                     output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
-                    coordinate_directory_option="ZERO_INDEX",
+                    coordinate_directory_option="ZERO_INDEX"
                 )
                 result = grid_scan.execute(
                     processing_method=processing_method,
                     data_postprocessing_method=data_postprocessing_method,
+                    db_client=db_client,
                 )
             except Exception:  # noqa: BLE001
                 L.exception("Generic exception")
