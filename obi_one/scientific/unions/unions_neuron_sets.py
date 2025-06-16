@@ -6,6 +6,7 @@ from obi_one.scientific.circuit.neuron_sets import (
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
     SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
 )
 
 NeuronSetUnion = (
@@ -16,6 +17,7 @@ NeuronSetUnion = (
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
     | SimplexNeuronSet
+    | SimplexMembershipBasedNeuronSet
 )
 
 from obi_one.core.block_reference import BlockReference

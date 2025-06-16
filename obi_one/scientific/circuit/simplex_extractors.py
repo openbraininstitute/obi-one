@@ -5,6 +5,7 @@ Last updated: 06.2024
 """
 
 import numpy as np
+import pandas as pd
 from conntility import ConnectivityMatrix
 from connalysis.network.topology import list_simplices_by_dimension, node_participation
 
@@ -78,7 +79,7 @@ def simplex_submat(adj, v, dim, v_position="source", subsample=False, n_count_ma
             if subsample_method=="random": 
                 selection = subsample_random(v, selection_test,n_count_max, seed)
             elif subsample_method=="node_participation":
-                selection = subsample_by_node_participation(adj,selection_test, n_count_max, dim, simplex_type=simplex_type)
+                selection = subsample_by_node_participation(sl, n_count_max, dim, simplex_type=simplex_type)
             elif subsample_method=="sample_simplices": 
                 selection = subsample_simplices(sl,n_count_max, dim)
         return selection, selection_test
@@ -87,11 +88,10 @@ def subsample_random(v, selection_test,n_count_max, seed):
     rng = np.random.default_rng(seed)
     subsample=rng.choice(selection_test[selection_test!=v], size=n_count_max-1, replace=False)
     return np.append(v, subsample)
-def subsample_by_node_participation(adj,selection_test, n_count_max, dim,simplex_type="directed"):
-    sub_adj=adj[np.ix_(selection_test, selection_test)]
-    node_par=node_participation(sub_adj,  simplex_type=simplex_type)
-    node_par["original_index"]=selection_test
-    selection=node_par.sort_values(by=dim, ascending=False).set_index("original_index")[dim].index[:n_count_max]
+def subsample_by_node_participation(sl, n_count_max, dim,simplex_type="directed"):
+    node, par = np.unique(sl.loc[dim], return_counts=True)
+    node_par = pd.Series(par, index=node, name=dim).sort_values(ascending=False)
+    selection=node_par.index[:n_count_max]
     return selection
 
 def subsample_simplices(sl, n_count_max,dim):
