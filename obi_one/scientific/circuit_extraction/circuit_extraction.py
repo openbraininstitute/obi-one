@@ -9,6 +9,8 @@ from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
+import entitysdk.client
+
 
 class CircuitExtractions(Form):
     """ """
@@ -64,7 +66,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def _filter_ext(file_list, ext):
         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
 
-    def run(self) -> str:
+    def run(self, db_client: entitysdk.client.Client = None) -> str:
         try:
             # Add neuron set to SONATA circuit object
             # (will raise an error in case already existing)
