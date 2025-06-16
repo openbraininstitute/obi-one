@@ -7,7 +7,7 @@ from obi_one.scientific.circuit.neuron_sets import (
     VolumetricRadiusNeuronSet,
     nbS1VPMInputs,
     nbS1POmInputs,
-    CA1CA3Inputs
+    rCA1CA3Inputs
 )
 
 NeuronSetUnion = (
@@ -19,14 +19,14 @@ NeuronSetUnion = (
     | VolumetricRadiusNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
-    | CA1CA3Inputs
+    | rCA1CA3Inputs
 )
 
 SimulationNeuronSetUnion = (
     IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
-    | CA1CA3Inputs
+    | rCA1CA3Inputs
 )
 
 from obi_one.core.block_reference import BlockReference
