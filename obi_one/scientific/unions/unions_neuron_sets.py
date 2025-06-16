@@ -22,9 +22,19 @@ NeuronSetUnion = (
     | HippocampusCA3Inputs
 )
 
+SimulationNeuronSetUnion = (
+    IDNeuronSet
+)
+
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any
 class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
     
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
+
+
+# class SimulationNeuronSetReference(BlockReference):
+#     """A reference to a NeuronSet block for simulation."""
+    
+#     allowed_block_types: ClassVar[Any] = SimulationNeuronSetUnion
