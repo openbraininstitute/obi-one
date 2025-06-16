@@ -22,6 +22,7 @@ __all__ = [
     "BasicConnectivityPlots",
     "Block",
     "BlockReference",
+    "rCA1CA3Inputs",
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
@@ -105,6 +106,8 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "nbS1POmInputs",
+    "nbS1VPMInputs",
     "SynapseSetUnion",
     "SynchronousSingleSpikeStimulus",
     "Timestamps",
@@ -160,6 +163,9 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    nbS1VPMInputs,
+    nbS1POmInputs,
+    rCA1CA3Inputs
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
