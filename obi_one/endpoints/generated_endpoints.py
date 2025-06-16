@@ -104,20 +104,18 @@ def create_endpoint_for_form(
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI Form subclass.
-    for form in Form.__subclasses__():
-        # methods and data_handling types to iterate over
-        processing_methods = ["run", "generate"]
-        data_postprocessing_methods = [""]  # , "save", "data"
+    for form, processing_method, data_postprocessing_method in [
+                    (SimulationsForm, "generate", ""),
+                    (SimulationsForm, "generate", "save"),
+                    (MorphologyMetricsForm, "run", "")
+                ]:
 
-        # Iterate over processing_methods and data_postprocessing_methods
-        for processing_method in processing_methods:
-            for data_postprocessing_method in data_postprocessing_methods:
-                # Create endpoint
-                create_endpoint_for_form(
-                    form,
-                    router,
-                    processing_method=processing_method,
-                    data_postprocessing_method=data_postprocessing_method,
-                )
+        # Create endpoint
+        create_endpoint_for_form(
+            form,
+            router,
+            processing_method=processing_method,
+            data_postprocessing_method=data_postprocessing_method,
+        )
 
     return router
