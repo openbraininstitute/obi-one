@@ -487,13 +487,13 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
 
 
 class PairMotifNeuronSet(NeuronSet):
-    neuron1_filter: dict = Field(default={}, name="Neuron1 filter", description="Filter for first neuron in a pair")
-    neuron2_filter: dict = Field(default={}, name="Neuron2 filter", description="Filter for second neuron in a pair")
+    neuron1_filter: dict | list[dict] = Field(default={}, name="Neuron1 filter", description="Filter for first neuron in a pair")
+    neuron2_filter: dict | list[dict] = Field(default={}, name="Neuron2 filter", description="Filter for second neuron in a pair")
 
-    conn_ff_filter: dict = Field(default={}, name="Feedforward connection filter", description="Filter for feedforward connections from the first to the second neuron in a pair")
-    conn_fb_filter: dict = Field(default={}, name="Feedback connection filter", description="Filter for feedback connections from the second to the first neuron in a pair")
+    conn_ff_filter: dict | list[dict] = Field(default={}, name="Feedforward connection filter", description="Filter for feedforward connections from the first to the second neuron in a pair")
+    conn_fb_filter: dict | list[dict] = Field(default={}, name="Feedback connection filter", description="Filter for feedback connections from the second to the first neuron in a pair")
 
-    pair_selection: dict = Field(default={}, name="Selection of pairs", description="Selection of pairs among all potential pairs")
+    pair_selection: dict | list[dict] = Field(default={}, name="Selection of pairs", description="Selection of pairs among all potential pairs")
 
     @staticmethod
     def _add_nsynconn_fb(conn_mat_filt, conn_mat):
