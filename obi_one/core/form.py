@@ -31,6 +31,7 @@ class Form(OBIBaseModel):
     
     def validated_config(self):
         return self.__class__.model_validate(self.model_dump())
+    
 
     @property
     def block_mapping(self) -> dict:
