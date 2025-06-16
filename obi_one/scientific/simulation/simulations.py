@@ -20,7 +20,7 @@ from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusRefe
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.circuit_from_id import CircuitFromID
 
 import entitysdk
 from collections import OrderedDict
@@ -56,7 +56,7 @@ class SimulationsForm(Form):
     # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
         node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
@@ -149,6 +149,14 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         return name, dictionary
 
     def generate(self, db_client: entitysdk.client.Client = None):
+
+        if isinstance(self.initialize.circuit, Circuit):
+            print("initialize.circuit is a Circuit instance.")
+
+        if isinstance(self.initialize.circuit, CircuitFromID):
+            print("initialize.circuit is a CircuitFromID instance.")
+
+
         """Generates SONATA simulation config .json file."""
         self._sonata_config = {}
         self._sonata_config["version"] = self.initialize._sonata_version
