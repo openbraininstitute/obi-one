@@ -561,7 +561,7 @@ class PairMotifNeuronSet(NeuronSet):
         pair_tab["nsyn_all"] = pair_tab["nsyn_ff"] + pair_tab["nsyn_fb"]
         pair_tab["is_rc"] = pair_tab["nsyn_fb"] > 0
         return pair_tab
-
+    
     @staticmethod
     def _select_pairs(conn_mat, nrn1_sel, nrn2_sel, ff_sel, fb_sel):
         """Filter pairs based on neuron and connection properties.
@@ -581,6 +581,29 @@ class PairMotifNeuronSet(NeuronSet):
     
         return pair_tab
 
+    @staticmethod
+    def _prepare_node_set_filter(conn_mat, nrn1_sel: dict, nrn2_sel: dict, circuit: Circuit, population: str):
+        """Prepare filtering based on node sets.
+           Note: Modifies the connectivity matrix in-place!
+        """
+        nrn1_sel = nrn1_sel.copy()
+        nrn2_sel = nrn2_sel.copy()
+
+        nset1 = nrn1_sel.pop("node_set", None)
+        nset2 = nrn2_sel.pop("node_set", None)
+
+        if nset1 is not None:
+            nids1 = circuit.sonata_circuit.nodes[population].ids(nset1)
+            conn_mat.add_vertex_property("node_set1", np.isin(conn_mat.vertices["node_ids"], nids1))
+            nrn1_sel.update({"node_set1": True})
+
+        if nset2 is not None:
+            nids2 = circuit.sonata_circuit.nodes[population].ids(nset2)
+            conn_mat.add_vertex_property("node_set2", np.isin(conn_mat.vertices["node_ids"], nids2))
+            nrn2_sel.update({"node_set2": True})
+
+        return nrn1_sel, nrn2_sel
+
     def get_pair_table(self, circuit: Circuit, population: str) -> pandas.DataFrame:
         conn_mat = circuit.connectivity_matrix
         assert np.array_equal(conn_mat.vertices.index, circuit.sonata_circuit.nodes[population].ids()), "ERROR: Neuron ID mismatch in ConnectivityMatrix!"
@@ -588,8 +611,11 @@ class PairMotifNeuronSet(NeuronSet):
         conn_mat.edges.columns = ["nsyn_ff_"]  # Rename to represent #synapses/connection in feedforward connection
         conn_mat.add_edge_property("iloc_ff_", np.arange(conn_mat.edges.shape[0]))  # Add iloc (position index) based on which to subselect edges later on
 
+        # Prepare node set filtering
+        nrn1_filter, nrn2_filter = PairMotifNeuronSet._prepare_node_set_filter(conn_mat, self.neuron1_filter, self.neuron2_filter, circuit, population)
+        
         # Get table with all potential pairs
-        pair_tab = PairMotifNeuronSet._select_pairs(conn_mat, self.neuron1_filter, self.neuron2_filter, self.conn_ff_filter, self.conn_fb_filter)
+        pair_tab = PairMotifNeuronSet._select_pairs(conn_mat, nrn1_filter, nrn2_filter, self.conn_ff_filter, self.conn_fb_filter)
 
         # Subsample/select among these pairs
         if len(self.pair_selection) > 0:
