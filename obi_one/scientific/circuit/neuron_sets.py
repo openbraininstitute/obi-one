@@ -6,6 +6,7 @@ from typing import Annotated, Self
 import bluepysnap as snap
 import numpy as np
 import pandas
+import logging
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, model_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -13,8 +14,11 @@ from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
 
+
+L = logging.getLogger("obi-one")
 _SSCX_VPM_NODE_POP = "VPM"
 _SSCX_POM_NODE_POP = "POm"
+_HIPPOCAMPUS_CA3_NODE_POP = "CA3_projections"
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -284,9 +288,10 @@ class NeuronSet(AbstractNeuronSet):
     node_population: str | list[str] | None = None
 
     def _population(self, population: str | None=None):
-        # if population is not None and self.node_population is not None:
-        #     if population != self.node_population:
-        #         raise ValueError("The node population has already been set for this block!")
+        if population is not None and self.node_population is not None:
+            if population != self.node_population:
+                L.warning("Node population %s has been set for this block and will be used. Ignoring %s",
+                          self.node_population, population)
         population = self.node_population or population
         if population is None:
             raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
@@ -332,6 +337,16 @@ class SSCxPOmInputs(AbstractNeuronSet):
     
     def _get_expression(self, circuit: Circuit, population):
         return {"population": _SSCX_POM_NODE_POP}
+
+
+class HippocampusCA3Inputs(AbstractNeuronSet):
+    
+    def _population(self, population: str | None=None):
+        # Ignore default node population name. This is always CA3_projections.
+        return _HIPPOCAMPUS_CA3_NODE_POP
+    
+    def _get_expression(self, circuit: Circuit, population):
+        return {"population": _HIPPOCAMPUS_CA3_NODE_POP}
     
 
 class CombinedNeuronSet(NeuronSet):
@@ -357,7 +372,7 @@ class CombinedNeuronSet(NeuronSet):
         return list(self.node_sets)
 
 
-class IDNeuronSet(NeuronSet):
+class IDNeuronSet(AbstractNeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
