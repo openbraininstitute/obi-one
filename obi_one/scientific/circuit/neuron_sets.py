@@ -18,7 +18,7 @@ from obi_one.scientific.circuit.circuit import Circuit
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
-_RCA1_NODE_POP = "CA1_projections"
+_CA1_CA3_NODE_POP = "CA3_projections"
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -339,14 +339,14 @@ class nbS1POmInputs(AbstractNeuronSet):
         return {"population": _NBS1_POM_NODE_POP}
 
 
-class HippocampusCA3Inputs(AbstractNeuronSet):
+class CA1CA3Inputs(AbstractNeuronSet):
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
-        return _RCA1_NODE_POP
+        return _CA1_CA3_NODE_POP
     
     def _get_expression(self, circuit: Circuit, population):
-        return {"population": _RCA1_NODE_POP}
+        return {"population": _CA1_CA3_NODE_POP}
     
 
 class CombinedNeuronSet(NeuronSet):

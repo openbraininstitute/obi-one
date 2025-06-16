@@ -22,6 +22,7 @@ __all__ = [
     "BasicConnectivityPlots",
     "Block",
     "BlockReference",
+    "CA1CA3Inputs",
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
@@ -163,7 +164,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
     nbS1VPMInputs,
-    nbS1POmInputs
+    nbS1POmInputs,
+    CA1CA3Inputs
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
