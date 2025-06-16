@@ -7,18 +7,23 @@ from pydantic import Field, PrivateAttr, model_validator
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.info import Info
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
-from obi_one.scientific.unions.unions_recordings import RecordingUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusUnion
+from obi_one.scientific.unions.unions_neuron_sets import SimulationNeuronSetUnion, NeuronSetReference
+from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
+from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+
+import entitysdk
+from collections import OrderedDict
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -27,29 +32,67 @@ class SimulationsForm(Form):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    timestamps: dict[str, TimestampsUnion] = Field(description="Timestamps for the simulation")
-    stimuli: dict[str, StimulusUnion]
-    recordings: dict[str, RecordingUnion]
-    neuron_sets: dict[str, NeuronSetUnion]
-    synapse_sets: dict[str, SynapseSetUnion]
-    intracellular_location_sets: dict[str, MorphologyLocationUnion]
-    extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
+
+
+    
+    class Config:
+        json_schema_extra = {
+            "gui_order": [
+                ["info", ["info"],
+                "base", ["initialize", "stimuli", "recordings"],
+                "Auxiliary", ["neuron_sets", "timestamps"]],
+            ]
+        }
+
+    
+
+        
+    # synapse_sets: dict[str, SynapseSetUnion]
+    # intracellular_location_sets: dict[str, MorphologyLocationUnion]
+    # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit
-        simulation_length: list[float] | float = 100.0
-        node_set: NeuronSetUnion  # NOTE: Must be member of the neuron_sets dict!
-        random_seed: list[int] | int = 1
-        extracellular_calcium_concentration: list[float] | float = 1.1
+        circuit: list[Circuit] | Circuit | ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
+        node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
+        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = -80.0
-        spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = "soma"
+        
+        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
+        _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
+        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
+        _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
-        sonata_version: list[int] | int = 1
-        target_simulator: list[str] | str = "CORENEURON"
-        timestep: list[float] | float = 0.025
+    initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
+    info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
-    initialize: Initialize
+    
+    def add(self, block: Block, name:str='') -> None:
 
+        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
+        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
+
+        if name in self.__dict__.get(block_dict_name).keys():
+            raise ValueError(f"Block with name '{name}' already exists in '{block_dict_name}'!")
+        
+        else: 
+            reference_type = globals()[reference_type_name]
+            ref = reference_type(block_dict_name=block_dict_name, block_name=name)
+            block.set_ref(ref)
+            self.__dict__[block_dict_name][name] = block
+
+
+    def set(self, block: Block, name: str = '') :
+        """Sets a block in the form."""
+        self.__dict__[name] = block
+
+
+    
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
@@ -57,28 +100,28 @@ class SimulationsForm(Form):
     def initialize_timestamps(self) -> Self:
         """Initializes timestamps within simulation campaign."""
         for _k, _v in self.timestamps.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_stimuli(self) -> Self:
         """Initializes stimuli within simulation campaign."""
         for _k, _v in self.stimuli.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_recordings(self) -> Self:
         """Initializes recordings within simulation campaign."""
         for _k, _v in self.recordings.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
     @model_validator(mode="after")
     def initialize_neuron_sets(self) -> Self:
         """Initializes neuron sets within simulation campaign."""
         for _k, _v in self.neuron_sets.items():
-            _v.simulation_level_name = _k
+            _v.set_simulation_level_name(_k)
         return self
 
 
@@ -105,16 +148,16 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         dictionary = {name: nset_def}
         return name, dictionary
 
-    def generate(self):
+    def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
         self._sonata_config = {}
-        self._sonata_config["version"] = self.initialize.sonata_version
-        self._sonata_config["target_simulator"] = self.initialize.target_simulator
+        self._sonata_config["version"] = self.initialize._sonata_version
+        self._sonata_config["target_simulator"] = self.initialize._target_simulator
 
         self._sonata_config["network"] = self.initialize.circuit.path
 
         self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.initialize.timestep
+        self._sonata_config["run"]["dt"] = self.initialize._timestep
         self._sonata_config["run"]["random_seed"] = self.initialize.random_seed
         self._sonata_config["run"]["tstop"] = self.initialize.simulation_length
 
@@ -123,7 +166,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self.initialize.extracellular_calcium_concentration
         )
         self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
-        self._sonata_config["conditions"]["spike_location"] = self.initialize.spike_location
+        self._sonata_config["conditions"]["spike_location"] = self.initialize._spike_location
 
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
@@ -134,7 +177,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["inputs"] = {}
         for stimulus_key, stimulus in self.stimuli.items():
             if hasattr (stimulus, "generate_spikes"):
-                stimulus.generate_spikes(self.initialize.circuit, self.initialize.circuit.default_population_name, self.coordinate_output_root)
+                stimulus.generate_spikes(self.initialize.circuit,
+                                         self.coordinate_output_root,
+                                         self.initialize.circuit.default_population_name)
             self._sonata_config["inputs"].update(stimulus.config())
 
         # Generate recording configs
@@ -160,7 +205,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 "Neuron set name mismatch!"
             )  # This should never happen if properly initialized
 
-            if self.initialize.node_set.name == _name:
+            if self.initialize.node_set.block.name == _name:
                 assert self._sonata_config.get("node_set") is None, (
                     "Node set config entry already defined!"
                 )

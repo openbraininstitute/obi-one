@@ -2,16 +2,17 @@ import abc
 from typing import ClassVar
 
 from entitysdk.models.entity import Entity
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import Field, PrivateAttr
 
 import entitysdk
 
 from obi_one.database.db_manager import db
+from obi_one.core.base import OBIBaseModel
 
 
-class EntityFromID(BaseModel, abc.ABC):
+class EntityFromID(OBIBaseModel, abc.ABC):
     entitysdk_class: ClassVar[type[Entity]] = None
-    id_str: str = Field(..., description="ID of the entity in string format.")
+    id_str: str = Field(description="ID of the entity in string format.")
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
