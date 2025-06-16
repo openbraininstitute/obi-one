@@ -13,7 +13,6 @@ from obi_one.scientific.ephys_extraction.ephys_extraction import (
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
-    MorphologyMetricsOutput,
     get_morphology_metrics,
 )
 
@@ -69,10 +68,25 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     ) -> ElectrophysFeatureToolOutput:
         L.info("get_electrophysiology_metrics")
 
-        metrics = get_electrophysiology_metrics(
-            trace_id=trace_id,
-            entity_client=entity_client,
-        )
+        try:
+            metrics = get_electrophysiology_metrics(
+                trace_id=trace_id,
+                entity_client=entity_client,
+            )
+        except entitysdk.exception.EntitySDKError:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": (f"Electrical cell recording {trace_id} not found."),
+                },
+            )
+        except ValueError:
+            raise ApiError(
+                message="Asset not found",
+                error_code=ApiErrorCode.NOT_FOUND,
+                http_status_code=HTTPStatus.NOT_FOUND,
+            )
         if metrics:
             return metrics
         L.error(f"electrophysiology recording {trace_id} metrics computation issue")

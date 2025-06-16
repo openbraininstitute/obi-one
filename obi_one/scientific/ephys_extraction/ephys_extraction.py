@@ -39,11 +39,7 @@ POSSIBLE_PROTOCOLS = {
     "sinespec": ["sinespec"],
 }
 
-EFEL_SETTINGS = {
-    'strict_stiminterval': True,
-    'Threshold': -20.,
-    'interp_step': 0.025
-}
+EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
 
 
 STIMULI_TYPES = list[
@@ -173,7 +169,7 @@ class ElectrophysFeatureToolOutput(BaseModel):
     feature_dict: dict[str, Any]
 
 
-def get_electrophysiology_metrics(# noqa: PLR0914, C901
+def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     trace_id: str,
     entity_client: entitysdk.client.Client,
     calculated_feature: CALCULATED_FEATURES | None = None,
@@ -185,7 +181,10 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
 
     logger.info(
         "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, stimuli_types=%r",
-        trace_id, calculated_feature, amplitude, stimuli_types
+        trace_id,
+        calculated_feature,
+        amplitude,
+        stimuli_types,
     )
 
     # Deal with cases where user did not specify stimulus type or/and feature
@@ -241,19 +240,18 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
     logger.info("Generated %d targets.", len(targets))
     logger.info("Trace ID: %s", trace_id)
     trace_metadata = entity_client.get_entity(
-        entity_id=trace_id,
-        entity_type=ElectricalCellRecording
+        entity_id=trace_id, entity_type=ElectricalCellRecording
     )
     # Download the .nwb file associated to the trace from the KG
-    with (tempfile.NamedTemporaryFile(suffix=".nwb") as temp_file,
-            tempfile.TemporaryDirectory() as temp_dir):
+    with (
+        tempfile.NamedTemporaryFile(suffix=".nwb") as temp_file,
+        tempfile.TemporaryDirectory() as temp_dir,
+    ):
         for asset in trace_metadata.assets:
             logger.debug("Asset object: %s", asset)
             if asset.content_type == "application/nwb":
                 trace_content = entity_client.download_content(
-                    entity_id=trace_id,
-                    entity_type=ElectricalCellRecording,
-                    asset_id=asset.id
+                    entity_id=trace_id, entity_type=ElectricalCellRecording, asset_id=asset.id
                 )
                 temp_file.write(trace_content)
                 temp_file.flush()
@@ -292,9 +290,13 @@ def get_electrophysiology_metrics(# noqa: PLR0914, C901
             efeatures_values = efeatures[protocol_name]
             protocol_def = protocol_definitions[protocol_name]
             output_features[protocol_name] = {
-                f"{f['efeature_name']} (avg on n={f['n']} trace(s))": (
-                    f"{f['val'][0]} {get_unit(f['efeature_name']) if get_unit(f['efeature_name']) != 'constant' else ''}"
-                ).strip()
+                f["efeature_name"]: {
+                    "avg": f["val"][0],
+                    "num_traces": f["n"],
+                    "unit": get_unit(f["efeature_name"])
+                    if get_unit(f["efeature_name"]) != "constant"
+                    else None,
+                }
                 for f in efeatures_values["soma"]
             }
 
