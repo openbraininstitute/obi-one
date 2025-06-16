@@ -1,6 +1,7 @@
 from obi_one.scientific.circuit.neuron_sets import (
     CombinedNeuronSet,
     IDNeuronSet,
+    PairMotifNeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
@@ -11,6 +12,7 @@ NeuronSetUnion = (
     PredefinedNeuronSet
     | CombinedNeuronSet
     | IDNeuronSet
+    | PairMotifNeuronSet
     | PropertyNeuronSet
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
