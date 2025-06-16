@@ -24,6 +24,9 @@ NeuronSetUnion = (
 
 SimulationNeuronSetUnion = (
     IDNeuronSet
+    | SSCxVPMInputs
+    | SSCxPOmInputs
+    | HippocampusCA3Inputs
 )
 
 from obi_one.core.block_reference import BlockReference
