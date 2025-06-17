@@ -1,7 +1,7 @@
 import abc
 import json
 import os
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 import bluepysnap as snap
 import numpy as np
@@ -564,6 +564,8 @@ class PairMotifNeuronSet(NeuronSet):
 
     pair_selection: dict | list[dict] = Field(default={}, name="Selection of pairs", description="Selection of pairs among all potential pairs")
 
+    node_set_list_op: Literal["union", "intersect"] = Field(default="union", name="Node set list operation", description="Operation how to combine lists of node sets; can be 'union' or 'intersect'.")
+    
     @staticmethod
     def _add_nsynconn_fb(conn_mat_filt, conn_mat):
         """Adds #syn/conn for reciprocal connections (i.e., in feedback direction) even if they are not part of the filtered selection."""
@@ -649,6 +651,25 @@ class PairMotifNeuronSet(NeuronSet):
         # print(f"<select_pairs>: {pair_tab.shape[0]} pairs selected ({np.sum(pair_tab['is_rc'] == True)} reciprocal, {np.sum(pair_tab['is_rc'] == False)} feedforward only)")
     
         return pair_tab
+
+    @staticmethod
+    def _get_node_sets_ids(node_sets, node_set_list_op, circuit: Circuit, population: str):
+        nodes = circuit.sonata_circuit.nodes[population]
+        if isinstance(node_sets, str):
+            node_ids = nodes.ids(node_sets)
+        elif isinstance(node_sets, list):  # Combine node sets
+            node_ids = None
+            for _nset in node_sets:
+                if node_ids is None:
+                    node_ids = nodes.ids(_nset)
+                else:
+                    if node_set_list_op == "union":
+                        node_ids = np.union1d(node_ids, nodes.ids(_nset))
+                    elif node_set_list_op == "intersect":
+                        node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
+                    else:
+                        assert False, f"Node set list operation '{node_set_list_op}' unknown!"
+        return node_ids
 
     @staticmethod
     def _prepare_node_set_filter(conn_mat, nrn1_sel: dict, nrn2_sel: dict, circuit: Circuit, population: str):
