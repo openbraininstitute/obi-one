@@ -4,7 +4,7 @@ Author: Darshan Mandge, Open Brain Institute
 
 Copyright (c) 2025 Open Brain Institute
 
-Last Modified: 02.2025
+Last Modified: 06.2025
 
 ## Summary
 Notebook to compare final parameter values for different sections such as apical, basal dendrites and soma of a single cell electrical model (e-model).
@@ -30,14 +30,4 @@ Notebook to compare final parameter values for different sections such as apical
 ## Use
 
 ### Get the data
-To plot your own, model, replace the `em_file` variable with the path to the downloaded `EM__*.json` file for an e-model from Open Brain Platform (OBP). 
-
-To get a `EM__*.json` file from OBP, go to any e-model page on the platform and click download. It will download a download.zip file. Unzip the file to find the `EM__*.json` file.
-
-
-Alternatively, the `EM__*.json` can be downloaded from the [Blue Brain Open Data](https://registry.opendata.aws/bluebrain_opendata/). We'll it to run the notebook. 
-
-
-1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) based on [instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for your operating system if you are running locally on your PC.
-1. Run the following command:
-!aws s3 cp --no-sign-request s3://openbluebrain/Model_Data/Electrophysiological_models/SSCx/OBP_SSCx/emodels/detailed/cADpyr/EM__emodel=cADpyr__etype=cADpyr__mtype=L5_TPC_A__species=mouse__brain_region=grey__iteration=1372346__13.json ./
+- The data downloading is done in the notebook. Simply follow the instructions there.

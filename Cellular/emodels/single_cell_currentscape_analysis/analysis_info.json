@@ -19,6 +19,8 @@
         "aws-cli>=2.23.2",
         "bluecellulab>=2.6.39",
         "matplotlib>=3.7.1",
-        "currentscape>=1.0.10"
+        "currentscape>=1.0.10",
+        "entitysdk>=0.4.0",
+        "obi-auth>=0.3.0"
     ]
 }
