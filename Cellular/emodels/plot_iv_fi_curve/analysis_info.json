@@ -16,10 +16,9 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
-        "aws-cli>=2.23.2",
         "bluecellulab>=2.6.36",
         "NEURON>=8.0.2,<9.0.0",
-        "entitysdk>=0.4.0",
+        "entitysdk>=0.5.0",
         "obi-auth>=0.3.0"
     ]
 }

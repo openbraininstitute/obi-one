@@ -16,12 +16,11 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
-        "aws-cli>=2.23.2",
         "bluecellulab>=2.6.39",
         "bluepyemodel>=1.0.32",
         "numpy>=1.24.3",
         "matplotlib>=3.7.1",
-        "entitysdk>=0.4.0",
+        "entitysdk>=0.5.0",
         "obi-auth>=0.3.0"
     ]
 }
