@@ -71,6 +71,15 @@ class SimulationsForm(Form):
     initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
     info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
+    def save_collection(self, db_client: entitysdk.client.Client, collection_name: str = "simulations") -> None:
+
+        print(self.coordinate_parameters)
+
+        # campaign = entitysdk.models.SimulationCampaign(
+        #     name=self.info.campaign_name, description=self.info.campaign_description, scan_parameters={"foo": "bar"}
+        # )
+        # campaign = db_client.register_entity(campaign)
+
     
     def add(self, block: Block, name:str='') -> None:
 
@@ -239,5 +248,16 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         with open(simulation_config_path, "w") as f:
             json.dump(self._sonata_config, f, indent=2)
 
-    def save():
+
+    def save(self, db_client: entitysdk.client.Client, campaign: entitysdk.models.SimulationCampaign) -> None:
         """Saves the simulation to the database."""
+        print(self.single_coordinate_scan_params.scan_params)
+
+        # simulation = entitysdk.models.Simulation(
+        #     name=f"sim-{self.idx}",
+        #     description=f"sim-{self.idx}",
+        #     scan_parameters={"foo": "bar"},
+        #     entity_id=self.circuit.id,
+        #     simulation_campaign_id=campaign.id,
+        # )
+        # db_client.register_entity(simulation)
