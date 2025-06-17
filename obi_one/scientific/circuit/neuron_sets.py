@@ -683,12 +683,12 @@ class PairMotifNeuronSet(NeuronSet):
         nset2 = nrn2_sel.pop("node_set", None)
 
         if nset1 is not None:
-            nids1 = _get_node_sets_ids(nset1, node_set_list_op, circuit, population)
+            nids1 = PairMotifNeuronSet._get_node_sets_ids(nset1, node_set_list_op, circuit, population)
             conn_mat.add_vertex_property("node_set1", np.isin(conn_mat.vertices["node_ids"], nids1))
             nrn1_sel.update({"node_set1": True})
 
         if nset2 is not None:
-            nids2 = _get_node_sets_ids(nset2, node_set_list_op, circuit, population)
+            nids2 = PairMotifNeuronSet._get_node_sets_ids(nset2, node_set_list_op, circuit, population)
             conn_mat.add_vertex_property("node_set2", np.isin(conn_mat.vertices["node_ids"], nids2))
             nrn2_sel.update({"node_set2": True})
 
