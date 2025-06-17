@@ -4,20 +4,20 @@ Author: Darshan Mandge, Open Brain Institute
 
 Copyright (c) 2025 Open Brain Institute
 
-Last modified: 02.2025
+Last modified: 06.2025
 
 
 ## Summary
 This notebook demonstrates how to load electrophysiology data using h5py for eFEL e-features extraction.
 
 ## Use
-To run the notebook, you will need a current clamp experiment NWB file. After getting the data follow the instructions in the notebook.
+To run the notebook, you will need a current clamp experiment NWB file. The notebook contains the instructions to get the file.
 
-We will use the recordings obtained from the recording file C291001A2-MT-C1.nwb. The traces come electrophysiological patch clamp slice recordings of a bSTUT eleectrical firing type (e-type) cell of rat isocortex. The file can be obtained by visiting the Electrophysiology Data page of the portal.
+We will use the recordings obtained from the recording file C291001A2-MT-C1.nwb. The traces come electrophysiological patch clamp slice recordings of a bSTUT eleectrical firing type (e-type) cell of rat isocortex. 
 
-We'll obtain this file from the [Blue Brain Open Data](https://registry.opendata.aws/bluebrain_opendata/). 
+### Alternative way to get the data
+If you cannot get the file with the notebook, follow these instructions to get it from the [Blue Brain Open Data on AWS](https://registry.opendata.aws/bluebrain_opendata/):
 
-### Get the data
 - Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) based on [instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for your operating system if you are running locally on your PC.
 - Run the following commands:
 
