@@ -193,8 +193,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["target_simulator"] = self.initialize._target_simulator
 
         self._sonata_config["manifest"] = {}
-        self._sonata_config["manifest"]["$OUTPUT_DIR"] = ""
-        self._sonata_config["manifest"]["$INPUT_DIR"] = ""
+        self._sonata_config["manifest"]["$OUTPUT_DIR"] = "./reporting"
+        self._sonata_config["manifest"]["$INPUT_DIR"] = "./inputs"
         self._sonata_config["manifest"]["$CIRCUIT_DIR"] = Path(self.initialize.circuit.path).parent.as_posix()
 
         self._sonata_config["network"] = "$CIRCUIT_DIR" + "/" + Path(self.initialize.circuit.path).name
@@ -267,7 +267,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             file_name=self.NODE_SETS_FILE_NAME,
             overwrite_if_exists=False,
         )
-        self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
+        self._sonata_config["node_sets_file"] = "$INPUT_DIR/" + self.NODE_SETS_FILE_NAME
 
         # Write simulation config file (.json)
         simulation_config_path = os.path.join(self.coordinate_output_root, self.CONFIG_FILE_NAME)
