@@ -121,6 +121,8 @@ __all__ = [
     "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
+    "SimplexNeuronSet", 
+    "SimplexMembershipBasedNeuronSet"
 ]
 
 from obi_one.database.entity_from_id import (
@@ -165,9 +167,12 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
     nbS1VPMInputs,
     nbS1POmInputs,
     rCA1CA3Inputs
+
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
