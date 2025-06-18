@@ -555,15 +555,10 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
             raise ValueError('Simplex dimension must be greater than 1')
         return v
     @model_validator(mode="after")
-    def check_enough_nodes(self) -> Self:
+    def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
-        dim = self.dim
-        subsample = self.subsample
-        if subsample:
-            if n_count_max is None:
-                raise ValueError("n_count_max must be specified when subsample is True")
-            if n_count_max <= dim:
-                raise ValueError(f"Number of nodes is too small to form a single {dim}-simplex")
+        if self.subsample and n_count_max is None:
+            raise ValueError("n_count_max must be specified when subsample is True")
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -640,15 +635,10 @@ class SimplexNeuronSet(PropertyNeuronSet):
             raise ValueError('Simplex dimension must be greater than 1')
         return v
     @model_validator(mode="after")
-    def check_enough_nodes(self) -> Self:
+    def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
-        dim = self.dim
-        subsample = self.subsample
-        if subsample:
-            if n_count_max is None:
-                raise ValueError("n_count_max must be specified when subsample is True")
-            if n_count_max <= dim:
-                raise ValueError(f"Number of nodes is too small to form a single {dim}-simplex")
+        if self.subsample and n_count_max is None:
+            raise ValueError("n_count_max must be specified when subsample is True")
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:

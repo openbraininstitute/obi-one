@@ -56,16 +56,20 @@ def simplex_submat(adj, v, dim, v_position="source", subsample=False, n_count_ma
     assert 0 <= v < adj.shape[0], f"v must be between 0 and {adj.shape[0]-1} since its a node in adj"
     if subsample:
         assert isinstance(n_count_max, int), "n_count_max must be an integer when subsampling"
-        assert n_count_max>dim, f"n_count is too small to form a single {dim}-simplex"
     if v_position=="target": 
         adj=adj.transpose()
     adj=adj.astype(bool).astype(int).tocsr()
 
     # Get simplex list on v 
     sl=list_simplices_by_dimension(adj,max_dim=dim,nodes=np.array([v]),simplex_type=simplex_type)
+    # Check if dimension and n_count_max are valid
     if dim > sl.index.max(): 
         dim=sl.index.max()
-        print(f"Dimension not attained using dimension {dim} instead.")
+        print(f"> Dimension not attained using dimension {dim} instead.")
+    if subsample and (n_count_max <= dim + 1):
+        n_count_max = dim+1
+        print(f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = {n_count_max} neurons instead.")
+        
     # Get nodes 
     selection_test=np.unique(sl.loc[dim])
     if not subsample: 
@@ -96,7 +100,7 @@ def subsample_by_node_participation(sl, n_count_max, dim,simplex_type="directed"
 
 def subsample_simplices(sl, n_count_max,dim):
     l=len(sl.loc[dim])
-    temp=np.unique(sl.loc[dim][l-1:])
+    selection=np.unique(sl.loc[dim][l-1:])
     i = 2
     while i < sl.loc[dim].shape[0]:
         temp=np.unique(sl.loc[dim][l-i:])
