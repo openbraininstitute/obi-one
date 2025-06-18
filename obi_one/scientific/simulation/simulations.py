@@ -27,6 +27,8 @@ from collections import OrderedDict
 
 from datetime import UTC, datetime
 
+from pathlib import Path
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -67,7 +69,7 @@ class SimulationsForm(Form):
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
-        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
+        _target_simulator: list[str] | str = PrivateAttr(default="bluecellulab") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
     initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
@@ -190,7 +192,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["version"] = self.initialize._sonata_version
         self._sonata_config["target_simulator"] = self.initialize._target_simulator
 
-        self._sonata_config["network"] = self.initialize.circuit.path
+        self._sonata_config["manifest"] = {}
+        self._sonata_config["manifest"]["$OUTPUT_DIR"] = ""
+        self._sonata_config["manifest"]["$INPUT_DIR"] = ""
+        self._sonata_config["manifest"]["$CIRCUIT_DIR"] = Path(self.initialize.circuit.path).parent.as_posix()
+
+        self._sonata_config["network"] = "$CIRCUIT_DIR" + "/" + Path(self.initialize.circuit.path).name
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.initialize._timestep
