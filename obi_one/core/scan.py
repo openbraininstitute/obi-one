@@ -162,7 +162,15 @@ class Scan(OBIBaseModel):
         if not processing_method:
             msg = "Processing method must be specified."
             raise ValueError(msg)
+        
 
+        campaign = None
+        if data_postprocessing_method == 'save':
+            campaign = self.form.initialize_db_campaign(db_client)
+        
+        
+        single_entities = []
+        
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
             # Check if coordinate instance has function "run"
@@ -179,9 +187,10 @@ class Scan(OBIBaseModel):
 
                 # If a data_postprocessing_method is specified, call it
                 if data_postprocessing_method:
-                    return_dict[coordinate_instance.idx] = getattr(
+                    single_entity = return_dict[coordinate_instance.idx] = getattr(
                         coordinate_instance, data_postprocessing_method
-                    )()
+                    )(campaign, db_client)
+                    single_entities.append(single_entity)
 
                 # Serialize the coordinate instance
                 coordinate_instance.serialize(
@@ -203,6 +212,11 @@ class Scan(OBIBaseModel):
         self.create_bbp_workflow_campaign_config(
             self.output_root / "bbp_workflow_campaign_config.json"
         )
+
+        if data_postprocessing_method:
+            getattr(
+                self.form, data_postprocessing_method
+            )(single_entities, db_client)
 
         return return_dict
 
@@ -296,12 +310,14 @@ class Scan(OBIBaseModel):
             single_coordinate_parameters.display_parameters()
 
     def save(self) -> None:
+        self.form.save(coordinate_instance_entities)
+
         coordinate_instance_entities = []
         for coordinate_instance in self.coordinate_instances():
             coordinate_instance_entity = coordinate_instance.save()
             coordinate_instance_entities.append(coordinate_instance_entity)
 
-        self.form.save(coordinate_instance_entities)
+        
 
 
 class GridScan(Scan):

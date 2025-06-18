@@ -95,7 +95,7 @@ class MorphologyMetricsOutput(BaseModel):
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self, db_client: entitysdk.client.Client = None):
+    def run(self, campaign=None, db_client: entitysdk.client.Client = None):
         try:
             print("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
@@ -122,7 +122,7 @@ def get_morphology_metrics(
     # Iterate through the assets of the morphology to find the one with content
     # type "application/asc"
     for asset in morphology.assets:
-        if asset.content_type == "application/asc":
+        if asset.content_type == "application/swc":
             # Download the content into memory
             content = db_client.download_content(
                 entity_id=morphology.id,
@@ -131,7 +131,7 @@ def get_morphology_metrics(
             ).decode(encoding="utf-8")
 
             # Use StringIO to create a file-like object in memory from the string content
-            neurom_morphology = load_morphology(io.StringIO(content), reader="asc")
+            neurom_morphology = load_morphology(io.StringIO(content), reader="swc")
 
             # Calculate the metrics using neurom
             morphology_metrics = MorphologyMetricsOutput.from_morphology(neurom_morphology)

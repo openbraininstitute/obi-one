@@ -25,6 +25,8 @@ from obi_one.database.circuit_from_id import CircuitFromID
 import entitysdk
 from collections import OrderedDict
 
+from datetime import UTC, datetime
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -35,7 +37,7 @@ class SimulationsForm(Form):
     timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=SimulationNeuronSetUnion.__name__, description="Neuron sets for the simulation")
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
 
     
@@ -71,14 +73,29 @@ class SimulationsForm(Form):
     initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
     info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
-    def save_collection(self, db_client: entitysdk.client.Client, collection_name: str = "simulations") -> None:
 
-        print(self.coordinate_parameters)
+    def initialize_db_campaign(self, db_client: entitysdk.client.Client):
 
-        # campaign = entitysdk.models.SimulationCampaign(
-        #     name=self.info.campaign_name, description=self.info.campaign_description, scan_parameters={"foo": "bar"}
-        # )
-        # campaign = db_client.register_entity(campaign)
+        self._campaign = db_client.register_entity(
+            entitysdk.models.SimulationCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
+                scan_parameters={"foo": "bar"},
+            )
+        )
+
+        return self._campaign
+    
+    def save(self, simulations, db_client: entitysdk.client.Client) -> None:
+
+        db_client.register_entity(
+            entitysdk.models.SimulationGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=simulations,
+            )
+        )
 
     
     def add(self, block: Block, name:str='') -> None:
@@ -164,6 +181,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         if isinstance(self.initialize.circuit, CircuitFromID):
             print("initialize.circuit is a CircuitFromID instance.")
+            self._circuit_id = self.initialize.circuit.id_str
+            self.initialize.circuit = Circuit(name="O1", path="/Users/james/Documents/obi/additional_data/O1_data/O1_data/circuit_config.json")
 
 
         """Generates SONATA simulation config .json file."""
@@ -249,15 +268,21 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             json.dump(self._sonata_config, f, indent=2)
 
 
-    def save(self, db_client: entitysdk.client.Client, campaign: entitysdk.models.SimulationCampaign) -> None:
+    def save(self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client) -> None:
         """Saves the simulation to the database."""
-        print(self.single_coordinate_scan_params.scan_params)
+        
+        print("Saving simulation to database...")
 
-        # simulation = entitysdk.models.Simulation(
-        #     name=f"sim-{self.idx}",
-        #     description=f"sim-{self.idx}",
-        #     scan_parameters={"foo": "bar"},
-        #     entity_id=self.circuit.id,
-        #     simulation_campaign_id=campaign.id,
-        # )
-        # db_client.register_entity(simulation)
+        simulation = db_client.register_entity(
+            entitysdk.models.Simulation(
+                name=f"sim-{self.idx}",
+                description=f"sim-{self.idx}",
+                scan_parameters={"foo": "bar"},
+                entity_id=self._circuit_id,
+                simulation_campaign_id=campaign.id,
+            )
+        )
+
+        return simulation
+
+

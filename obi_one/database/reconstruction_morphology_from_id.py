@@ -27,7 +27,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         
         if self._swc_file_content is None:
             for asset in self.entity(db_client=db_client).assets:
-                if asset.content_type == "application/asc":
+                if asset.content_type == "application/swc":
 
                     load_asset_method = LoadAssetMethod.MEMORY
                     if load_asset_method == LoadAssetMethod.MEMORY:
