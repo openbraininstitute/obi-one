@@ -66,7 +66,7 @@ def simplex_submat(adj, v, dim, v_position="source", subsample=False, n_count_ma
     if dim > sl.index.max(): 
         dim=sl.index.max()
         print(f"> Dimension not attained using dimension {dim} instead.")
-    if subsample and (n_count_max <= dim + 1):
+    if subsample and (n_count_max < dim + 1):
         n_count_max = dim+1
         print(f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = {n_count_max} neurons instead.")
         
