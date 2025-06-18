@@ -5,6 +5,8 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
     nbS1VPMInputs,
     nbS1POmInputs,
     rCA1CA3Inputs
@@ -17,6 +19,8 @@ NeuronSetUnion = (
     | PropertyNeuronSet
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
+    | SimplexNeuronSet
+    | SimplexMembershipBasedNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
     | rCA1CA3Inputs
