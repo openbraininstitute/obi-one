@@ -1,5 +1,5 @@
 {
-    "name": "LFPy: passive e-model with synapse -- plot LFP",
+    "name": "LFPy: passive single cell model with synapse -- plot LFP",
     "authors": ["OBI", "Darshan Mandge", "Aurélien Jaquier"],
     "description": "Notebook to apply synapses and using LFPy, recording local field potentials and plotting local field lines.",
     "scale": "cellular",

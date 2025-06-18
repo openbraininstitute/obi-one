@@ -1,7 +1,7 @@
 {
-    "name": "LFPy: active e-model synapses",
+    "name": "LFPy: active single cell model synapses",
     "authors": ["OBI", "Darshan Mandge", "Aurélien Jaquier"],
-    "description": "In this notebook, you will be able to add a synapse on the soma of an e-model using LFPy. This notebook shows the users how they can use different synapses with the OBP e-models.",
+    "description": "In this notebook, you will be able to add a synapse on the soma of an single cell model using LFPy. This notebook shows the users how they can use different synapses with the OBP single cell models.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python",
