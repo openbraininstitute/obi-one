@@ -45,6 +45,7 @@ __all__ = [
     "FolderCompressions",
     "Form",
     "FormUnion",
+    "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
@@ -225,7 +226,8 @@ from obi_one.scientific.simulation.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
     SynchronousSingleSpikeStimulus,
-    PoissonSpikeStimulus
+    PoissonSpikeStimulus,
+    FullySynchronousSpikeStimulus
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps
 from obi_one.scientific.test_forms.test_form_single_block import (
