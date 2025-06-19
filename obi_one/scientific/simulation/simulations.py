@@ -29,6 +29,9 @@ from datetime import UTC, datetime
 
 from pathlib import Path
 
+import logging
+L = logging.getLogger(__name__)
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -78,26 +81,41 @@ class SimulationsForm(Form):
 
     def initialize_db_campaign(self, db_client: entitysdk.client.Client):
 
-        self._campaign = db_client.register_entity(
-            entitysdk.models.SimulationCampaign(
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
-                scan_parameters={"foo": "bar"},
-            )
-        )
+        """Initializes the simulation campaign in the database."""
+        L.info("1. Initializing simulation campaign in the database...")
 
-        return self._campaign
+        L.info(f"-- Register SimulationCampaign Entity")
+        # self._campaign = db_client.register_entity(
+        #     entitysdk.models.SimulationCampaign(
+        #         name=self.info.campaign_name,
+        #         description=self.info.campaign_description,
+        #         entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
+        #         scan_parameters={"foo": "bar"},
+        #     )
+        # )
+
+        L.info(f"-- Upload campaign_generation_config")
+
+        L.info(f"-- Upload campaign_summary")
+
+        # return self._campaign
+        return None
     
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
 
-        db_client.register_entity(
-            entitysdk.models.SimulationGeneration(
-                start_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=simulations,
-            )
-        )
+        L.info("3. Saving completed simulation campaign generation")
+
+        L.info(f"-- Register SimulationGeneration Entity")
+        # db_client.register_entity(
+        #     entitysdk.models.SimulationGeneration(
+        #         start_time=datetime.now(UTC),
+        #         used=[self._campaign],
+        #         generated=simulations,
+        #     )
+        # )
+
+        L.info(f"")
+        return None
 
     
     def add(self, block: Block, name:str='') -> None:
@@ -278,18 +296,28 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def save(self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client) -> None:
         """Saves the simulation to the database."""
         
-        print("Saving simulation to database...")
+        L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
+        
+        L.info(f"-- Register Simulation Entity")
+        # simulation = db_client.register_entity(
+        #     entitysdk.models.Simulation(
+        #         name=f"sim-{self.idx}",
+        #         description=f"sim-{self.idx}",
+        #         scan_parameters={"foo": "bar"},
+        #         entity_id=self._circuit_id,
+        #         simulation_campaign_id=campaign.id,
+        #     )
+        # )
 
-        simulation = db_client.register_entity(
-            entitysdk.models.Simulation(
-                name=f"sim-{self.idx}",
-                description=f"sim-{self.idx}",
-                scan_parameters={"foo": "bar"},
-                entity_id=self._circuit_id,
-                simulation_campaign_id=campaign.id,
-            )
-        )
+        L.info(f"-- Upload simulation_generation_config")
 
-        return simulation
+        L.info(f"-- Upload sonata_simulation_config")
+        
+        L.info(f"-- Upload custom_node_sets")
+
+        L.info(f"-- Upload spike replay files")
+
+        # return simulation
+        return None
 
 
