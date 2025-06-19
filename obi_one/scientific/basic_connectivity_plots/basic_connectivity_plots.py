@@ -58,16 +58,24 @@ class BasicConnectivityPlots(Form):
                                        "connectivity_global", "connectivity_pathway", # for medium and large connectomes
                                        "small_adj_and_stats", "network_in_2D", "property_table", # for small connectomes only
                                        )
-        rendering_colors: Optional[str] = None
+        rendering_cmap: Optional[str] = None # Color map of the node identities
+        rendering_color_file: Optional[str] = None # Color map file of the nod identities
         dpi: int = 300
 
         @model_validator(mode="after")
         def check_rendering_colors_for_property_table(self):
             if "property_table" in self.plot_types:
-                if not self.rendering_colors or not Path(self.rendering_colors).is_file():
-                    raise ValueError(
-                        "If 'property_table' is in plot_types, rendering_colors must be a path to an existing file."
-                    )
+                if self.rendering_cmap == "custom":
+                    if not Path(self.rendering_color_file).is_file():
+                        raise ValueError(
+                            "The rendering_color_file is not an existing file.")
+                elif self.rendering_cmap is not None: 
+                    cmap = plt.get_cmap(self.rendering_cmap)
+                    if not hasattr(cmap, "colors"):
+                        raise ValueError(f"You need to use a discrete color map")
+                else: 
+                    raise ValueError("When plotting `property_table` either a discrete colormap or a color map file must be passed.")
+                
             return self
 
     initialize: Initialize
@@ -81,6 +89,9 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
       - "nodes": Node statistics (e.g., synapse class, layer, mtype).
       - "connectivity_pathway": Connection probabilities per pathway/grouping.  Not useful for small circuits.
       - "connectivity_global": Global connection probabilities across the network. Not useful for small circuits 
+    - "small_adj_and_stats": Adjacency matrix and node statistics for small connectomes only (<= 20 nodes).
+    - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
+    - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
 
     Raises:
         Exception: If any error occurs during processing or plotting.
@@ -208,7 +219,8 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                     L.warning("Your network is too large for this table.") 
                 else:
                     fig_property_table= plot_node_table(conn, figsize=(5,2), 
-                    colors_fname=self.initialize.rendering_colors,
+                    colors_cmap = self.initialize.rendering_cmap,
+                    colors_file = self.initialize.rendering_color_file,
                     h_scale = 2.5, 
                     v_scale = 2.5
                     )

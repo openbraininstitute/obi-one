@@ -859,7 +859,8 @@ def plot_smallMC(conn, cmap, full_width ,textsize=14):
     return fig
 
 def plot_node_table(conn, figsize, 
-                    colors_fname, # path to rgba colors file
+                    colors_cmap, # name of discrete colormap from matplotlib
+                    colors_file = None, # path to rgba colors file
                     h_scale = 2.5, 
                     v_scale = 2.5
                     ):
@@ -872,11 +873,18 @@ def plot_node_table(conn, figsize,
     df = df.copy().rename(columns={"node_ids":"Node id", "layer": "Layer", "mtype": "M-type"})
     df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 
-    # Load colors from file 
-    colors_df = pd.read_csv(colors_fname, header=None)
-    colors = [tuple(row) for row in colors_df.values]
-
-    assert len(colors) == len(df), "Number of colors must match number of nodes"
+    # Get colors
+    if colors_cmap != "custom": # From color map
+        colors = plt.get_cmap(colors_cmap)
+        N = conn._shape[0]
+        if not (hasattr(colors, "colors") and colors.N >= N):
+            raise ValueError(f"The rendering color map must contain at least as many colors as there are neurons.")
+        colors = [colors(i) for i in range(colors.N)]
+    else:  # Load colors from file 
+        colors_df = pd.read_csv(colors_file, header=None)
+        colors = [tuple(row) for row in colors_df.values]
+        if not len(colors) >= len(df): 
+            raise ValueError("The rendering color map must contain at least as many colors as there are neurons.")
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.axis('off')
