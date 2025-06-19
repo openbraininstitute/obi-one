@@ -8,6 +8,8 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+import entitysdk.client
+
 
 class FolderCompressions(Form):
     """ """
@@ -38,7 +40,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
 
     FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
             # Initial checks
             assert os.path.isdir(self.initialize.folder_path.path), (
