@@ -511,27 +511,27 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     """
     Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron.
     """
-    central_neuron_id: int = Field(
+    central_neuron_id: int | list[int] = Field(
         name="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
     )
-    dim: int = Field(
+    dim: int | list[int] = Field(
         name="Dimension",
         description="Dimension of the simplices to be extracted",
     )
-    central_neuron_simplex_position: Literal['source', 'target'] = Field('source',
+    central_neuron_simplex_position: Literal['source', 'target'] | list[Literal['source', 'target']] = Field('source',
         name="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
     )
-    subsample: bool = Field(True,
+    subsample: bool | list[bool] = Field(True,
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
-    n_count_max: Optional[int] = Field(False,
+    n_count_max: Optional[int | list[int]] = Field(False,
         name="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
-    subsample_method: Literal['node_participation', 'random'] = Field('node_participation',
+    subsample_method: Literal['node_participation', 'random'] | list[Literal['node_participation', 'random']] = Field('node_participation',
         name="Method to subsample nodes from the extracted simplices",
         description="""
         **Method to subsample nodes**:
@@ -539,12 +539,12 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         - `node_participation`: selects nodes with highest node participation 
             """,
     )
-    simplex_type: Literal['directed', 'reciprocal', 'undirected'] = Field('directed',
+    simplex_type: Literal['directed', 'reciprocal', 'undirected'] | list[Literal['directed', 'reciprocal', 'undirected']] = Field('directed',
         name="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
-    seed: Optional[int] = Field(None,
+    seed: Optional[int | list[int]] = Field(None,
         name="seed",
         description="Seed used for random subsampling method",
     )
@@ -599,15 +599,15 @@ class SimplexNeuronSet(PropertyNeuronSet):
     If a smaller sample is required, it samples simplices while the number of nodes on them is still 
     smaller or equal than a set target size.
     """
-    central_neuron_id: int = Field(
+    central_neuron_id: int | list[int] = Field(
         name="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
     )
-    dim: int = Field(
+    dim: int | list[int] = Field(
         name="Dimension",
         description="Dimension of the simplices to be extracted",
     )
-    central_neuron_simplex_position: Literal['source', 'target'] = Field('source',
+    central_neuron_simplex_position: Literal['source', 'target'] | list[Literal['source', 'target']] = Field('source',
         name="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
     )
@@ -615,16 +615,16 @@ class SimplexNeuronSet(PropertyNeuronSet):
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
-    n_count_max: Optional[int] = Field(None,
+    n_count_max: Optional[int | list[int]] = Field(None,
         name="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
-    simplex_type: Literal['directed', 'reciprocal', 'undirected'] = Field('directed',
+    simplex_type: Literal['directed', 'reciprocal', 'undirected'] | list[Literal['directed', 'reciprocal', 'undirected']] = Field('directed',
         name="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
-    seed: Optional[int] = Field(None,
+    seed: Optional[int | list[int]] = Field(None,
         name="seed",
         description="Seed used for random subsampling method",
     )
