@@ -1,9 +1,31 @@
 [project]
 name = "obi-one"
-version = "2025.6.1"
+version = "2025.6.2"
+authors = [
+  { name="James Isbister", email="james.isbister@openbraininstitute.org" },
+  { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
+  { name="Daniela Egas Santander", email="daniela.egassantander@openbraininstitute.org" },
+  { name="Gianluca Ficarelli", email="gianluca.ficarelli@openbraininstitute.org" },
+  { name="Michael Reimann", email="michael.reimann@openbraininstitute.org" },
+  { name="Darshan Mandge", email="darshan.mandge@openbraininstitute.org" },
+  { name="Ilkan Kilic", email="ilkan.kilic@openbraininstitute.org" },
+  { name="Aurélien Jaquier", email="aurelien.jaquier@openbraininstitute.org" },
+  { name="Dries Verachtert", email="dries.verachtert@openbraininstitute.org" },
+  { name="Jean-Denis Courcol", email="jean-denis.courcol@openbraininstitute.org"},
+  { name="Armando Romani", email="armando.romani@openbraininstitute.org" },
+  { name="Mike Geveart", email="michael.gevaert@openbraininstitute.org" },
+  { name="Nicolas Frank", email="nicolas.frank@openbraininstitute.org" }
+]
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
 dependencies = [
     # PYDANTIC
     "pydantic>=2.10.6",
@@ -61,6 +83,10 @@ requires = [
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/openbraininstitute/obi-one"
+Issues = "https://github.com/openbraininstitute/obi-one/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
