@@ -10,7 +10,8 @@ from obi_one.scientific.simulation.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
     SynchronousSingleSpikeStimulus,
-    PoissonSpikeStimulus
+    PoissonSpikeStimulus,
+    FullySynchronousSpikeStimulus
 )
 
 StimulusUnion = (
@@ -26,6 +27,7 @@ StimulusUnion = (
     | PercentageNoiseCurrentClampSomaticStimulus
     | RelativeLinearCurrentClampSomaticStimulus
     | PoissonSpikeStimulus
+    | FullySynchronousSpikeStimulus
 )
 
 from obi_one.core.block_reference import BlockReference
