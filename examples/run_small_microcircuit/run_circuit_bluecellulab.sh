@@ -8,7 +8,7 @@ nrnivmodl ../data/tiny_circuits/N_10__top_nodes_dim6__asc/mod
 
 echo "Running 10 cells circuit simulation"
 simulation_config="../data/tiny_circuits/N_10__top_nodes_dim6__asc/simulation_config.json"
-population_name="S1nonbarrel_neurons" # Optional: Set the node population name. Default: NodeA
+population_name="S1nonbarrel_neurons" # Optional: Set the node population name. Default: "S1nonbarrel_neurons"
 gid=0 # Optional: Set the cell GID. Default: 0
 num_cores=4
 num_cells=10

@@ -60,11 +60,6 @@ def run_simulation_sonata(simulation_config, cell_ids, pc, rank, logger):
     # Plotting and saving should be done by a single rank (e.g., rank 0)
     # to avoid file overwriting and manage resources.
     if rank == 0:
-        
-        # save soma report
-        logger.info(f"Rank {rank}: Saving soma report...")
-        sim.write_reports()
-        logger.info(f"Rank {rank}: Soma report done.")
 
         plotting_start_time = time.perf_counter()
         # --- Plotting ---

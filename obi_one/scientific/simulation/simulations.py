@@ -22,8 +22,8 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, Timesta
 
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 from obi_one.scientific.simulation.execution import (
-    run_simulation, 
-    save_results_to_nwb,
+    run_bluecellulab,
+    run_neurodamus, 
     SimulatorBackend
 )
 import logging
@@ -246,10 +246,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def run(
         self,
         simulation_config: Union[str, Path],
-        cell_ids: Optional[List[Tuple[str, int]]] = None,
         simulator: SimulatorBackend = "bluecellulab",
-        results_dir: Optional[Union[str, Path]] = None,
-        save_nwb: bool = True
+        save_nwb: bool = False
     ) -> None:
         """Run the simulation with the specified backend.
         
@@ -257,31 +255,31 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         
         Args:
             simulation_config: Path to the simulation configuration file
-            cell_ids: Optional list of (population, gid) tuples for the cells to simulate.
-                     If None (default), all cells in the circuit will be simulated.
-                     Mainly used with BlueCelluLab backend.
             simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
                       Note: Currently, only 'bluecellulab' is implemented.
-            results_dir: Directory to save results. If None, will create a 'results' 
-                       directory in the simulation directory.
             save_nwb: Whether to save results in NWB format.
-            **backend_kwargs: Additional backend-specific arguments.
-            
         Raises:
-            NotImplementedError: If the requested backend is not implemented.
+            ValueError: If the requested backend is not implemented.
         """
         
         self._logger.info(f"Starting simulation with {simulator} backend")
-        
-        # Run the simulation - results are saved to the results directory
-        run_simulation(
-            simulation_config=simulation_config,
-            cell_ids=cell_ids,
-            simulator=simulator,
-            results_dir=results_dir,
-        )
+        # Convert to lowercase for case-insensitive comparison
+        simulator = simulator.lower()
+
+        if simulator == "bluecellulab":
+            run_bluecellulab(
+                simulation_config=simulation_config,
+                save_nwb=save_nwb
+            )
+        elif simulator == "neurodamus":
+            run_neurodamus(
+                simulation_config=simulation_config,
+                save_nwb=save_nwb,
+            )
+        else:
+            raise ValueError(f"Unsupported backend: {simulator}")
         
         # save NWB files with soma traces
-        if save_nwb and simulator == "bluecellulab":
+        if save_nwb:
             self._logger.info("NWB file output not implemented yet")
 
