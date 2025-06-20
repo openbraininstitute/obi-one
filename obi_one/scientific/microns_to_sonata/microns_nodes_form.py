@@ -18,6 +18,8 @@ from .utils_nodes import (
     neuron_info_from_somas_file,
     apply_filters,
     split_into_intrinsic_and_virtual,
+    post_process_neuron_info,
+    get_node_prop_post_processors,
     _STR_MORPH,
     _STR_ORIENT
 )
@@ -101,6 +103,11 @@ class EMSonataNodesFiles(Form, abc.ABC):
                 then considered intrinsic.",
             default=-1.0
         )
+        specific_column_rename_profile: str = Field(
+            name="name",
+            description="description",
+            default="none"
+        )
 
     initialize: Initialize
 
@@ -134,8 +141,11 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                 self.initialize.somas_file,
                 nrns
             )
+            # nrn.to_csv("_somas.csv")
             nrn = nrn[[_col for _col in nrn.columns if _col not in nrns.columns]]
             nrns = pandas.concat([nrns, nrn], axis=1)
+        # lst_column_pp = get_node_prop_post_processors(self.initialize.property_post_processors)
+        # nrns = post_process_neuron_info(nrns, lst_column_pp)
         nrns = apply_filters(nrns, self.initialize.nodes_filters)
 
         # More of a place holder. We estimate a global rotation of the entire volume
@@ -153,9 +163,12 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                                                         self.initialize.intrinsic_population_parameter)
         coll_i = neuron_info_to_collection(nrn_i, self.initialize.population_name,
                                   list(self.initialize.table_cols),
-                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH])
+                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH],
+                                  self.initialize.specific_column_rename_profile)
+        coll_i.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
+        if len(nrn_v) == 0: return
         coll_v = neuron_info_to_collection(nrn_v, "virtual_" + self.initialize.population_name,
                                   list(self.initialize.table_cols),
-                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH])
-        coll_i.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
+                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH],
+                                  self.initialize.specific_column_rename_profile)
         coll_v.save_sonata(os.path.join(self.coordinate_output_root, "virtual_nodes.h5"))

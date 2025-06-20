@@ -32,8 +32,17 @@ _STR_PRE_NODE = _PF_PRE + "node_id"
 _STR_POST_NODE = _PF_POST + "node_id"
 
 
+def synapse_info_from_h5_dump(fn, pt_root_ids, name_pat="post_pt_root_id_{0}"):
+    names = [name_pat.format(_id) for _id in pt_root_ids]
+    dfs = []
+    for _name in names:
+        dfs.append(pandas.read_hdf(fn, _name))
+    return pandas.concat(dfs, axis=0).reset_index(drop=True)
+
 def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_position"):
-    syns = client.materialize.synapse_query(post_ids=[pt_root_id])
+    if not isinstance(pt_root_id, list):
+        pt_root_id = [pt_root_id]
+    syns = client.materialize.synapse_query(post_ids=pt_root_id)
 
     syn_locs = syns[col_location].apply(lambda _x: pandas.Series(_x * resolutions / 1000.0,
                                                                        index=_C_P_LOCS))
@@ -58,6 +67,31 @@ def morph_to_segs_df(morph):
     return segs
 
 def map_points_to_segs_df(segs, pts, soma_center=None, soma_radius=None, seg_end_buf=0.1, soma_buf=0.1, max_dist=4.0):
+    chunk_sz = 1000
+    if len(pts) <= chunk_sz:
+        res = _map_points_to_segs_df(
+            segs,
+            pts,
+            soma_center=soma_center, soma_radius=soma_radius,
+            seg_end_buf=seg_end_buf, soma_buf=soma_buf, max_dist=max_dist
+            )
+    else:
+        chunk_ab = numpy.arange(0, len(pts) + chunk_sz, chunk_sz)
+        res = []
+        for a, b in zip(chunk_ab[:-1], chunk_ab[1:]):
+            res.append(
+                _map_points_to_segs_df(
+                    segs,
+                    pts[a:b],
+                    soma_center=soma_center, soma_radius=soma_radius,
+                    seg_end_buf=seg_end_buf, soma_buf=soma_buf, max_dist=max_dist
+                )
+            )
+        res = pandas.concat(res, axis=0).reset_index(drop=True)
+    assert len(res) == len(pts)
+    return res
+
+def _map_points_to_segs_df(segs, pts, soma_center=None, soma_radius=None, seg_end_buf=0.1, soma_buf=0.1, max_dist=4.0):
     d_seg = segs[_C_SEG_E].values - segs[_C_SEG_S].values
     l_seg = numpy.linalg.norm(d_seg, axis=1)
     d_seg = d_seg / l_seg.reshape((-1, 1))
@@ -177,15 +211,22 @@ def dummy_mapping_without_morphology(syns):
     syns[_STR_SPINE_ID] = -numpy.ones(len(syns), dtype=int)
     syns[_STR_SEG_OFF] = numpy.zeros(len(syns), dtype=int)
     syns[_STR_SEC_OFF] = numpy.zeros(len(syns), dtype=int)
+    syns[_STR_SPINE_X] = -numpy.ones(len(syns), dtype=float)
+    syns[_STR_SPINE_Y] = -numpy.ones(len(syns), dtype=float)
+    syns[_STR_SPINE_Z] = -numpy.ones(len(syns), dtype=float)
     return syns
 
 def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_pos, spine_orient):
     segs = morph_to_segs_df(morph)
+    print("Mapping spines to morphology...")
     spines_on_morph = map_points_to_segs_df(segs, spine_dend_pos).reset_index(drop=True)
+    print("Done!")
 
     # cols syn_id, spine_id, spine_pos_x, spine_pos_y, spine_pos_z. Only where spine is found
+    print("Mapping synapses to spines...")
     syns_on_spines = map_points_to_spines(spine_srf_pos, spine_orient, syns[_C_P_LOCS]).reset_index(drop=True)
     # cols syn_id, spine_id, [x, y, z], sec_id, seg_id, seg_off. Only where spine is found
+    print("Done!")
     syns_on_spines = pandas.concat([syns_on_spines,
                 spines_on_morph.loc[syns_on_spines[_STR_SPINE_ID]].reset_index(drop=True)
     ], axis=1)
@@ -195,6 +236,7 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
     syns = pandas.concat([syns, mapped], axis=1)
 
     shaft_syn_locs = syns.loc[syns[_STR_SPINE_ID] == -1][_C_P_LOCS]
+    print("Mapping remaining synapses to shafts...")
     syns_on_morph = map_points_to_segs_df(segs,
                                         shaft_syn_locs.values,
                                         soma_center=morph.soma.center,
@@ -203,6 +245,7 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
                                         soma_buf=0.2,
                                         max_dist=10.0
     ).set_index(shaft_syn_locs.index)
+    print("Done!")
 
     syns.loc[shaft_syn_locs.index, _STR_SEC_ID] = syns_on_morph[_STR_SEC_ID]
     syns.loc[shaft_syn_locs.index, _STR_SEG_ID] = syns_on_morph[_STR_SEG_ID]

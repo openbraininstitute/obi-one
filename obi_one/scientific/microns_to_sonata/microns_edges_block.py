@@ -39,43 +39,68 @@ class EMEdgesMappingBlock(Block, abc.ABC):
         description="CAVE client access token",
         default=None
     )
+    morphologies_are_transformed: bool = Field(
+        description="Whether the morphology skeletons have been moved to the origin and rotated upwards or remain at their global coordinates",
+        name="Morphologies are transformed"
+    ),
+    naming_patterns: tuple[str, str] = Field(
+            default=("{pt_root_id}.swc", "{pt_root_id}-spines.json"),
+            name="Morphology naming patterns",
+            description="File name scheme for morphologies and spines info files"
+        )
     
 
     @model_validator(mode="after")
     def check_parameter_values(self) -> Self:
         return self
-
-    def map_synapses_to_morphology(self, morph_root, spine_root, node_info, 
-                                   morphologies_are_transformed=True, strict=False):
+    
+    def _setup_client(self):
         try:
             from caveclient import CAVEclient
         except ImportError:
             raise RuntimeError("Optional dependency 'caveclient' not installed!")
-        client = CAVEclient(server_address=self.client_server,
+        self._client = CAVEclient(server_address=self.client_server,
                             datastack_name=self.client_name,
                             auth_token=self.cave_client_token)
-        client.version = self.client_version
+        self._client.version = self.client_version
+        self._resolutions = source_resolution(self._client)
+    
+    def prefetch(self, lst_pt_root_ids):
+        if not hasattr(self, "_client"):
+            print("Creating client...")
+            self._setup_client()
+
+        self._buf_df = synapse_info_df(self._client,
+                                       lst_pt_root_ids,
+                                       self._resolutions)
+        self._buffered_ids = tuple(lst_pt_root_ids)
+        print(f"Prefetched {len(self._buf_df)} synapses for {len(lst_pt_root_ids)} neurons!")
+
+    def map_synapses_to_morphology(self, morph_root, spine_root, node_info, 
+                                   strict=False):
+        morphologies_are_transformed = self.morphologies_are_transformed
+        naming_morph, naming_spine = self.naming_patterns
+        
+        assert node_info["pt_root_id"] in self._buffered_ids
+        syns = self._buf_df[self._buf_df["post_pt_root_id"] == node_info["pt_root_id"]].reset_index(drop=True)
+        # print(f"Mapping {len(syns)} synapses...")
         
         self.enforce_no_lists()
-        # fn_spines = os.path.join(morph_root, "{0}-spines.json".format(self.pt_root_id))
-        # fn_morph = os.path.join(morph_root, "{0}.swc".format(self.pt_root_id))
-        fn_spines = os.path.join(spine_root, "{0}-spines.json".format(node_info["morphology"]))
-        fn_morph = os.path.join(morph_root, "{0}.swc".format(node_info["morphology"]))
+        fn_spines = os.path.join(spine_root, naming_spine.format(**node_info.to_dict()))
+        fn_morph = os.path.join(morph_root, naming_morph.format(**node_info.to_dict()))
 
         if os.path.isfile(fn_spines):
             with open(fn_spines, "r") as fid:
                 spines = json.load(fid)
+            # print(f"{len(spines)} spines loaded!")
             srf_pos = numpy.vstack([_spine["surface_sample_position"] for _spine in spines])
             dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
             orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
         else:
-            # print("Warning: No spines for {0}".format(node_info["morphology"]))
+            # print(f"Warning: No spine file at {fn_spines}!")
             srf_pos = numpy.empty((0, 3), dtype=float)
             dend_pos = numpy.empty((0, 3), dtype=float)
             orient = numpy.empty((0, 3), dtype=float)
-        
-        resolutions = source_resolution(client)
-        syns = synapse_info_df(client, node_info["pt_root_id"], resolutions)
 
         if os.path.isfile(fn_morph):
             if morphologies_are_transformed:
