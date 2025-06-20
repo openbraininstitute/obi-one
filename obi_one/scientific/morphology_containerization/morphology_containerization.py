@@ -38,6 +38,8 @@ import tqdm
 from bluepysnap import Circuit
 from morph_tool import convert
 
+import entitysdk.client
+
 
 class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordinateMixin):
     """Creates a circuit with containerized morphologies instead of individual morphology files,
@@ -135,7 +137,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             with open(hoc_file, "w") as f:
                 f.write(hoc_new)
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
             print(f"Running morphology containerization for '{self.initialize.circuit_path}'")
 
