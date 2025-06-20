@@ -901,7 +901,7 @@ def plot_node_table(conn, figsize,
     table.set_fontsize(12)
     table.scale(h_scale, v_scale)
 
-    plt.draw()  # Draw table
+    fig.canvas.draw()  # Draw table
 
     # Add color coding from the rendered image
     for i in range(len(df)):
