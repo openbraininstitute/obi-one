@@ -439,13 +439,13 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     _input_type: str = "spikes"
 
     def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
-    gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-    source_node_population = self.source_neuron_set.block._population(source_node_population)
-    gid_spike_map = {}
-    timestamps = self.timestamps.block.timestamps()
-    for t_idx, start_time in enumerate(timestamps):
-        for gid in gids:
-            gid_spike_map[gid] = start_time
-    self._spike_file = f"{self.name}_spikes.h5"
-    self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block._population(source_node_population)
+        gid_spike_map = {}
+        timestamps = self.timestamps.block.timestamps()
+        for t_idx, start_time in enumerate(timestamps):
+            for gid in gids:
+                gid_spike_map[gid] = start_time
+        self._spike_file = f"{self.name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
 
