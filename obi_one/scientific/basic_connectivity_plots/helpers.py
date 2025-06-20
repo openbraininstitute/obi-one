@@ -490,8 +490,8 @@ def plot_smallMC_network_stats(conn, full_width,
     adj_plot[adj_plot == 0] = np.nan
     # Connectivity matrix 
     plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=0, vmax=np.nanmax(adj_plot))
-    axs[0].set_xlabel("Target neuron id")
-    axs[0].set_ylabel("Source neuron id")
+    axs[0].set_xlabel("Target neuron ID")
+    axs[0].set_ylabel("Source neuron ID")
     axs[0].set_title("Connectivity matrix")
     bbox = axs[0].get_position()
     cbar_height = 0.03  # Height of colorbar axis
