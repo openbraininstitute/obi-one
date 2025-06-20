@@ -870,7 +870,7 @@ def plot_node_table(conn, figsize,
 
     # Get data frame of properties
     df = conn.vertices[["node_ids", "layer", "mtype"]]
-    df = df.copy().rename(columns={"node_ids":"Node id", "layer": "Layer", "mtype": "M-type"})
+    df = df.copy().rename(columns={"node_ids":"Neuron ID", "layer": "Layer", "mtype": "M-type"})
     df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 
     # Get colors
