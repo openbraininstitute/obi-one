@@ -10,6 +10,8 @@ jobs:
   build_sdist:
     name: Build sdist
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
