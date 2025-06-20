@@ -1,9 +1,9 @@
 # Circuit composition
 Copyright (c) 2025 Open Brain Institute
 
-Authors: Michael W. Reimann
+Authors: Armando Romani
 
-last modified: 01.2025
+last modified: 06.2025
 
 ## Summary
 This analysis displays the composition of a circuit model with respect to user-selected neuron properties, such as morphological types, electrical types, home layers, etc. It is displayed as a Sankey plot, allowing the user to see, e.g., how many neurons of a given morphological type have a given electrical type.
