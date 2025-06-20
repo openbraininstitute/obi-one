@@ -42,7 +42,7 @@ class SimulationsForm(Form):
     timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=SimulationNeuronSetUnion.__name__, description="Neuron sets for the simulation")
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
 
     
@@ -189,7 +189,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["inputs"] = {}
         for stimulus_key, stimulus in self.stimuli.items():
             if hasattr (stimulus, "generate_spikes"):
-                stimulus.generate_spikes(self.initialize.circuit, self.initialize.circuit.default_population_name, self.coordinate_output_root)
+                stimulus.generate_spikes(self.initialize.circuit,
+                                         self.coordinate_output_root,
+                                         self.initialize.circuit.default_population_name)
             self._sonata_config["inputs"].update(stimulus.config())
 
         # Generate recording configs
