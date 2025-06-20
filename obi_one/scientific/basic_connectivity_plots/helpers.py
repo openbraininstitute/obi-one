@@ -170,7 +170,7 @@ def make_pie_plot(ax, conn, grouping_prop, cmaps):
     cmap = cmaps[grouping_prop]
     if grouping_prop == "synapse_class":
         # Fix red/blue for EXC/INH, if NA make it black
-        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0), "NA":"black"}
+        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0), "NA":"gray"}
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
