@@ -203,7 +203,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             print("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
-            print(self.initialize.circuit.entity(db_client=db_client))
+            # print(self.initialize.circuit.entity(db_client=db_client))
+            print(self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root / "circuit", db_client=db_client))
             # self.initialize.circuit = Circuit(name="O1", path="/Users/james/Documents/obi/additional_data/O1_data/O1_data/circuit_config.json")
 
 
