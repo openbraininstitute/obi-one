@@ -91,7 +91,7 @@ class Scan(OBIBaseModel):
     @property
     def multiple_value_parameters_dictionary(self, *, display: bool = False) -> dict:
         d = {}
-        for multi_value in self._multiple_value_parameters:
+        for multi_value in self.multiple_value_parameters():
             d[multi_value.location_str] = multi_value.values
 
         return d
@@ -235,6 +235,7 @@ class Scan(OBIBaseModel):
             )(single_entities, db_client)
 
         return campaign
+        
 
     def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.

@@ -113,7 +113,6 @@ class SimulationsForm(Form):
         # )
 
         return self._campaign
-        # return None
     
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
 

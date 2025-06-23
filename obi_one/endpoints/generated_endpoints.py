@@ -1,5 +1,6 @@
 import re
 from typing import Annotated, get_type_hints
+import tempfile
 
 import entitysdk.client
 import entitysdk.common
@@ -86,22 +87,29 @@ def create_endpoint_for_form(
 
             try:
                 with tempfile.TemporaryDirectory() as tdir:
+
                     grid_scan = GridScan(
                         form=form,
                         # output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
                         output_root=tdir,
                         coordinate_directory_option="ZERO_INDEX"
                     )
-                    result = grid_scan.execute(
+                    campaign = grid_scan.execute(
                         processing_method=processing_method,
                         data_postprocessing_method=data_postprocessing_method,
                         db_client=db_client,
                     )
+
+                    
             except Exception:  # noqa: BLE001
                 L.exception("Generic exception")
             else:
                 L.info("Grid scan generated successfully")
-                return result
+                return str(campaign.id)
+                # if campaign is not None:
+                #     return campaign.id
+                # else:
+                #     return None
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
