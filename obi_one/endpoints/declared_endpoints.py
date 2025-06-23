@@ -13,6 +13,7 @@ from obi_one.scientific.ephys_extraction.ephys_extraction import (
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
+    MorphologyMetricsOutput,
     get_morphology_metrics,
 )
 
@@ -27,7 +28,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def neuron_morphology_metrics_endpoint(
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
-    ):
+    ) -> MorphologyMetricsOutput:
         L.info("get_morphology_metrics")
 
         try:
