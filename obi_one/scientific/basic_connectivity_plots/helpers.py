@@ -531,8 +531,8 @@ def plot_smallMC_network_stats(conn, full_width,
     if unique_degrees.size == 1:
         axs[2].set_xticks(unique_degrees)  # Otherwise it gives non-integer x-ticks
 
-    axs[2].set_xlabel("Neuron")
-    axs[2].set_ylabel("Degree")
+    axs[2].set_xlabel("Degree")
+    axs[2].set_ylabel("Count")
     axs[2].set_title("Node degrees")
 
     # Put legend below, otherwise sometimes it's over the bars
