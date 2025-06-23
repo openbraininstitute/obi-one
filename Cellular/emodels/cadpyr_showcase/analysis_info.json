@@ -1,7 +1,7 @@
 {
-    "name": "cADpyr e-model showcase",
-    "authors": ["OBI", "Darshan Mandge"],
-    "description": "The notebook showcases various properties of detailed morphology cADpyr (continuosly adapting type pyramidal neuron) e-model of the Open Brain Institute (OBI). It plots: optimisation protocol responses, currentscape analysis, frequency-current (F-I) curve, current-voltage (V-I) curve, recordings in different sections of the neuron using BlueCellulab, dendritic potential decay, backpropagating action potential (bAP) recordings, excitatory postsynaptic potential (EPSP) recordings and EPSP ratio.",
+    "name": "cADpyr single cell model showcase",
+    "authors": ["OBI", "Darshan Mandge", "Aurélien Jaquier"],
+    "description": "The notebook showcases various properties of detailed morphology cADpyr (continuosly adapting type pyramidal neuron) single cell model of the Open Brain Institute (OBI). It plots: optimisation protocol responses, currentscape analysis, frequency-current (F-I) curve, current-voltage (V-I) curve, recordings in different sections of the neuron using BlueCellulab, dendritic potential decay, backpropagating action potential (bAP) recordings, excitatory postsynaptic potential (EPSP) recordings and EPSP ratio.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python",
@@ -16,12 +16,13 @@
     ],
     "requires-python": ">=3.9,<3.13",
     "requirements": [
-        "aws-cli>=2.23.2",
         "bluecellulab>=2.6.40",
         "neuron>=8.0<9.0",
         "seaborn>=0.13.2",
         "matplotlib>=3.7.1",
         "currentscape>=1.0.20",
-        "scipy>=1.15.1"
+        "scipy>=1.15.1",
+        "entitysdk>=0.5.0",
+        "obi-auth>=0.3.0"
     ]
 }
