@@ -79,7 +79,7 @@ class SimulationsForm(Form):
     info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
 
-    def initialize_db_campaign(self, output_root = Path(), db_client: entitysdk.client.Client):
+    def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):
 
         """Initializes the simulation campaign in the database."""
         L.info("1. Initializing simulation campaign in the database...")
@@ -90,7 +90,7 @@ class SimulationsForm(Form):
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
-                scan_parameters={"foo": "bar"},
+                scan_parameters=multiple_value_parameters_dictionary,
             )
         )
 
@@ -98,7 +98,7 @@ class SimulationsForm(Form):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SimulationCampaign,
-            file_path=Path(output_root, "run_scan_config.json"),
+            file_path=output_root / "run_scan_config.json",
             file_content_type="application/json",
             asset_label='campaign_generation_config'
         )
@@ -212,10 +212,15 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     
 
     def generate(self, db_client: entitysdk.client.Client = None):
+        """Generates SONATA simulation config .json file."""
+
+        self._sonata_config = {}
+
 
         if isinstance(self.initialize.circuit, Circuit):
             print("initialize.circuit is a Circuit instance.")
             _circuit = self.initialize.circuit
+            self._sonata_config["network"] = self.initialize.circuit.path
 
         if isinstance(self.initialize.circuit, CircuitFromID):
             print("initialize.circuit is a CircuitFromID instance.")
@@ -223,10 +228,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
             self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
             _circuit = self.initialize.circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
+            self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 
-
-        """Generates SONATA simulation config .json file."""
-        self._sonata_config = {}
+        
         
         self._sonata_config["output"] = {
             "output_dir": "output",
@@ -235,13 +239,6 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         self._sonata_config["version"] = self.initialize._sonata_version
         self._sonata_config["target_simulator"] = self.initialize._target_simulator
-
-        self._sonata_config["manifest"] = {}
-        # self._sonata_config["manifest"]["$BASE_DIR"] = "."
-        # self._sonata_config["manifest"]["$OUTPUT_DIR"] = "./reporting"
-        # self._sonata_config["manifest"]["$CIRCUIT_DIR"] = Path(_circuit.path).parent.as_posix()
-        # self._sonata_config["network"] = "$CIRCUIT_DIR" + "/" + Path(_circuit.path).name
-        self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.initialize._timestep
@@ -345,36 +342,36 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             asset_label='simulation_generation_config'
         )
 
-        # L.info(f"-- Upload sonata_simulation_config")
-        # _ = db_client.upload_file(
-        #     entity_id=simulation.id,
-        #     entity_type=entitysdk.models.Simulation,
-        #     file_path=Path(self.coordinate_output_root, "sonata_simulation_config.json"),
-        #     file_content_type="application/json",
-            # asset_label='sonata_simulation_config'
-        # )
+        L.info(f"-- Upload sonata_simulation_config")
+        _ = db_client.upload_file(
+            entity_id=simulation.id,
+            entity_type=entitysdk.models.Simulation,
+            file_path=Path(self.coordinate_output_root, "simulation_config.json"),
+            file_content_type="application/json",
+            asset_label='sonata_simulation_config'
+        )
         
-        # L.info(f"-- Upload custom_node_sets")
-        # _ = db_client.upload_file(
-        #     entity_id=simulation.id,
-        #     entity_type=entitysdk.models.Simulation,
-        #     file_path=Path(self.coordinate_output_root, "node_sets.json"),
-        #     file_content_type="application/json",
-            # asset_label='custom_node_sets'
-        # )
+        L.info(f"-- Upload custom_node_sets")
+        _ = db_client.upload_file(
+            entity_id=simulation.id,
+            entity_type=entitysdk.models.Simulation,
+            file_path=Path(self.coordinate_output_root, "node_sets.json"),
+            file_content_type="application/json",
+            asset_label='custom_node_sets'
+        )
 
-        # L.info(f"-- Upload spike replay files")
-        # for input in self._sonata_config["inputs"]:
-        #     if hasattr(self.stimuli[input], "spikes_file"):
-        #         spikes_file = self.stimuli[input].spikes_file
-        #         if spikes_file is not None:
-        #             _ = db_client.upload_file(
-        #                 entity_id=simulation.id,
-        #                 entity_type=entitysdk.models.Simulation,
-        #                 file_path=Path(self.coordinate_output_root, spikes_file),
-        #                 file_content_type="application/h5",
-                        # asset_label='replay_spikes'
-        #             )
+        L.info(f"-- Upload spike replay files")
+        for input in self._sonata_config["inputs"]:
+            if hasattr(self.stimuli[input], "spikes_file"):
+                spikes_file = self.stimuli[input].spikes_file
+                if spikes_file is not None:
+                    _ = db_client.upload_file(
+                        entity_id=simulation.id,
+                        entity_type=entitysdk.models.Simulation,
+                        file_path=Path(self.coordinate_output_root, spikes_file),
+                        file_content_type="application/h5",
+                        asset_label='replay_spikes'
+                    )
 
         return simulation
         # return None

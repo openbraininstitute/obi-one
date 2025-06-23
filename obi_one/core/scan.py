@@ -33,6 +33,12 @@ class Scan(OBIBaseModel):
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
 
+    @property
+    def output_root_absolute(self) -> Path:
+        """Returns the absolute path of the output_root."""
+        print(self.output_root.resolve())
+        return self.output_root.resolve()
+
     def multiple_value_parameters(self, *, display: bool = False) -> list[MultiValueScanParam]:
         """Iterates through Blocks of self.form to find "multi value parameters".
 
@@ -81,6 +87,14 @@ class Scan(OBIBaseModel):
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
+    
+    @property
+    def multiple_value_parameters_dictionary(self, *, display: bool = False) -> dict:
+        d = {}
+        for multi_value in self._multiple_value_parameters:
+            d[multi_value.location_str] = multi_value.values
+
+        return d
 
     def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
         """Must be implemented by a subclass of Scan."""
@@ -153,7 +167,7 @@ class Scan(OBIBaseModel):
         # Return self._coordinate_instances
         return self._coordinate_instances
 
-    def execute(self, processing_method: str = "", data_postprocessing_method: str = "", db_client: entitysdk.client.Client = None) -> dict:
+    def execute(self, processing_method: str = "", data_postprocessing_method: str = "", db_client: entitysdk.client.Client = None):
         """Description."""
         return_dict = {}
 
@@ -175,7 +189,7 @@ class Scan(OBIBaseModel):
 
         campaign = None
         if data_postprocessing_method == 'save':
-            campaign = self.form.initialize_db_campaign(self.output_root, db_client)
+            campaign = self.form.initialize_db_campaign(self.output_root, self.multiple_value_parameters_dictionary, db_client)
         
         single_entities = []
         
@@ -220,7 +234,7 @@ class Scan(OBIBaseModel):
                 self.form, data_postprocessing_method
             )(single_entities, db_client)
 
-        return return_dict
+        return campaign
 
     def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
