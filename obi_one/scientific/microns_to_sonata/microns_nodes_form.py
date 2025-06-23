@@ -21,7 +21,8 @@ from .utils_nodes import (
     post_process_neuron_info,
     get_node_prop_post_processors,
     _STR_MORPH,
-    _STR_ORIENT
+    _STR_ORIENT,
+    _STR_SPINE_INFO
 )
 
 
@@ -156,7 +157,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                                         os.path.join(self.coordinate_output_root,
                                                      "morphologies"),
                                         naming_patters=self.initialize.naming_patterns,
-                                        out_formats=(".h5", ".swc"),
+                                        out_formats=("h5", "swc"),
                                         do_transform=self.initialize.transform_morphology)
 
         use_bounding_box = self.initialize.intrinsic_population_parameter >= 0
@@ -164,12 +165,12 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
                                                         self.initialize.intrinsic_population_parameter)
         coll_i = neuron_info_to_collection(nrn_i, self.initialize.population_name,
                                   list(self.initialize.table_cols),
-                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH],
+                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH, _STR_SPINE_INFO],
                                   self.initialize.specific_column_rename_profile)
         coll_i.save_sonata(os.path.join(self.coordinate_output_root, "intrinsic_nodes.h5"))
         if len(nrn_v) == 0: return
         coll_v = neuron_info_to_collection(nrn_v, "virtual_" + self.initialize.population_name,
                                   list(self.initialize.table_cols),
-                                  ["x", "y", "z", _STR_ORIENT, _STR_MORPH],
+                                  ["x", "y", "z", _STR_ORIENT],
                                   self.initialize.specific_column_rename_profile)
         coll_v.save_sonata(os.path.join(self.coordinate_output_root, "virtual_nodes.h5"))

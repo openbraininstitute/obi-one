@@ -41,7 +41,6 @@ handler = logging.handlers.RotatingFileHandler(
     backupCount=3       # Number of backup files to keep
 )
 L.addHandler(handler)
-print(L.handlers)
 
 
 def synapse_info_from_h5_dump(fn, pt_root_ids, name_pat="post_pt_root_id_{0}"):

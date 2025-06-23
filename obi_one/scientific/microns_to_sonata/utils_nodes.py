@@ -1,6 +1,7 @@
 import pandas
 import numpy
 import neurom
+import shutil
 import os.path
 
 from voxcell import CellCollection
@@ -10,6 +11,7 @@ _C_NRN_LOCS = ["x", "y", "z"]
 _STR_ORIENT = "orientation"
 _STR_NONE = "_NONE"
 _STR_MORPH = "morphology"
+_STR_SPINE_INFO = "spine_info"
 _PREF_SRC = "source__"
 
 __unit_rot = numpy.array([
@@ -142,10 +144,14 @@ def unrotate(node_series, morph):
 
 def transform_and_copy_morphologies(nrns, in_root, out_root,
                                     naming_patters=("{pt_root_id}.swc", "{pt_root_id}-spines.json"),
-                                    out_formats=(".h5", ".swc"),
+                                    out_formats=("h5", "swc"),
                                     do_transform=True):
-    if not os.path.isdir(out_root):
-        os.makedirs(out_root)
+    for out_format in out_formats:
+        if not os.path.isdir(os.path.join(out_root, out_format)):
+            os.makedirs(os.path.join(out_root, out_format))
+    spine_out_root = out_root
+    if len(out_formats) > 0:
+        spine_out_root = os.path.join(out_root, out_formats[0])
     morph_name_pat, spines_name_pat = naming_patters
 
     for _, _row in nrns.reset_index().iterrows():
@@ -153,6 +159,7 @@ def transform_and_copy_morphologies(nrns, in_root, out_root,
         morph_fn = morph_name_pat.format(**_row.to_dict())
         spines_fn = spines_name_pat.format(**_row.to_dict())
         nrns.loc[_idx, _STR_MORPH] = _STR_NONE
+        nrns.loc[_idx, _STR_SPINE_INFO] = _STR_NONE
         if not os.path.isfile(os.path.join(in_root, morph_fn)):
             continue
         try:
@@ -167,9 +174,14 @@ def transform_and_copy_morphologies(nrns, in_root, out_root,
             morph.name = str(_idx)
             
             for ext in out_formats:
-                morph.to_morphio().write(os.path.join(out_root, morph.name + ext))
+                morph.to_morphio().write(os.path.join(out_root, ext, morph.name + "." + ext))
             nrns.loc[_idx, _STR_MORPH] = morph.name
             print(f"Morphology {morph_fn} found and moved!")
+            if os.path.isfile(os.path.join(in_root, spines_fn)):
+                spines_name = "spines_" + morph.name
+                shutil.copy(os.path.join(in_root, spines_fn),
+                            os.path.join(spine_out_root, spines_name + ".json"))
+                nrns.loc[_idx, _STR_SPINE_INFO] = spines_name
         except:
             print(f"Morphology {morph_fn} found but an error was encountered!")
             pass
