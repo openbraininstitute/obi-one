@@ -171,20 +171,12 @@ class SimulationsForm(Form):
         return self
 
 
-class Simulation(SimulationsForm, SingleCoordinateMixin):
-    """Only allows single values and ensures nested attributes follow the same rule."""
-
-    CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
-    NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
-
-    _sonata_config: dict = PrivateAttr(default={})
-
-    def _resolve_neuron_set_dictionary(self, neuron_set):
+def _resolve_neuron_set_dictionary(neuron_set, _circuit):
         """Resolves a neuron set based on current coordinate circuit's default node population and \
             returns its dictionary.
         """
         nset_def = neuron_set.get_node_set_definition(
-            self.initialize.circuit, self.initialize.circuit.default_population_name
+            _circuit, _circuit.default_population_name
         )
         # FIXME: Better handling of (default) node population in case there is more than one
         # FIXME: Inconsistency possible in case a node set definition would span multiple populations
@@ -194,111 +186,123 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         dictionary = {name: nset_def}
         return name, dictionary
 
+
+class Simulation(SimulationsForm, SingleCoordinateMixin):
+    """Only allows single values and ensures nested attributes follow the same rule."""
+
+    CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
+    NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
+
+    _sonata_config: dict = PrivateAttr(default={})
+
+    
+
     def generate(self, db_client: entitysdk.client.Client = None):
 
         if isinstance(self.initialize.circuit, Circuit):
             print("initialize.circuit is a Circuit instance.")
+            _circuit = self.initialize.circuit
 
         if isinstance(self.initialize.circuit, CircuitFromID):
             print("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
-            # print(self.initialize.circuit.entity(db_client=db_client))
-            print(self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root / "circuit", db_client=db_client))
-            # self.initialize.circuit = Circuit(name="O1", path="/Users/james/Documents/obi/additional_data/O1_data/O1_data/circuit_config.json")
+            self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
+            _circuit = self.initialize.circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
 
 
-        # """Generates SONATA simulation config .json file."""
-        # self._sonata_config = {}
+        """Generates SONATA simulation config .json file."""
+        self._sonata_config = {}
         
-        # self._sonata_config["output"] = {
-        #     "output_dir": "output",
-        #     "spikes_file": "spikes.h5"
-        # }
+        self._sonata_config["output"] = {
+            "output_dir": "output",
+            "spikes_file": "spikes.h5"
+        }
 
-        # self._sonata_config["version"] = self.initialize._sonata_version
-        # self._sonata_config["target_simulator"] = self.initialize._target_simulator
+        self._sonata_config["version"] = self.initialize._sonata_version
+        self._sonata_config["target_simulator"] = self.initialize._target_simulator
 
-        # self._sonata_config["manifest"] = {}
-        # # self._sonata_config["manifest"]["$BASE_DIR"] = "."
-        # # self._sonata_config["manifest"]["$OUTPUT_DIR"] = "./reporting"
-        # # self._sonata_config["manifest"]["$CIRCUIT_DIR"] = Path(self.initialize.circuit.path).parent.as_posix()
-        # # self._sonata_config["network"] = "$CIRCUIT_DIR" + "/" + Path(self.initialize.circuit.path).name
+        self._sonata_config["manifest"] = {}
+        # self._sonata_config["manifest"]["$BASE_DIR"] = "."
+        # self._sonata_config["manifest"]["$OUTPUT_DIR"] = "./reporting"
+        # self._sonata_config["manifest"]["$CIRCUIT_DIR"] = Path(_circuit.path).parent.as_posix()
+        # self._sonata_config["network"] = "$CIRCUIT_DIR" + "/" + Path(_circuit.path).name
+        self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 
-        # self._sonata_config["run"] = {}
-        # self._sonata_config["run"]["dt"] = self.initialize._timestep
-        # self._sonata_config["run"]["random_seed"] = self.initialize.random_seed
-        # self._sonata_config["run"]["tstop"] = self.initialize.simulation_length
+        self._sonata_config["run"] = {}
+        self._sonata_config["run"]["dt"] = self.initialize._timestep
+        self._sonata_config["run"]["random_seed"] = self.initialize.random_seed
+        self._sonata_config["run"]["tstop"] = self.initialize.simulation_length
 
-        # self._sonata_config["conditions"] = {}
-        # self._sonata_config["conditions"]["extracellular_calcium"] = (
-        #     self.initialize.extracellular_calcium_concentration
-        # )
-        # self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
-        # self._sonata_config["conditions"]["spike_location"] = self.initialize._spike_location
+        self._sonata_config["conditions"] = {}
+        self._sonata_config["conditions"]["extracellular_calcium"] = (
+            self.initialize.extracellular_calcium_concentration
+        )
+        self._sonata_config["conditions"]["v_init"] = self.initialize.v_init
+        self._sonata_config["conditions"]["spike_location"] = self.initialize._spike_location
 
-        # self._sonata_config["conditions"]["mechanisms"] = {
-        #     "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        #     "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        # }
+        self._sonata_config["conditions"]["mechanisms"] = {
+            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+        }
 
-        # # Generate stimulus input configs
-        # self._sonata_config["inputs"] = {}
-        # for stimulus_key, stimulus in self.stimuli.items():
-        #     if hasattr (stimulus, "generate_spikes"):
-        #         stimulus.generate_spikes(self.initialize.circuit, self.initialize.circuit.default_population_name, self.coordinate_output_root)
-        #     self._sonata_config["inputs"].update(stimulus.config())
+        # Generate stimulus input configs
+        self._sonata_config["inputs"] = {}
+        for stimulus_key, stimulus in self.stimuli.items():
+            if hasattr (stimulus, "generate_spikes"):
+                stimulus.generate_spikes(_circuit, _circuit.default_population_name, self.coordinate_output_root)
+            self._sonata_config["inputs"].update(stimulus.config())
 
-        # # Generate recording configs
-        # self._sonata_config["reports"] = {}
-        # for recording_key, recording in self.recordings.items():
-        #     self._sonata_config["reports"].update(recording.config())
+        # Generate recording configs
+        self._sonata_config["reports"] = {}
+        for recording_key, recording in self.recordings.items():
+            self._sonata_config["reports"].update(recording.config())
 
-        # # Resolve neuron sets and add them to the SONATA circuit object
-        # # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
-        # # set, even for a PredefinedNeuronSet in which case a new node set will be created which just
-        # # references the existing one. This is the most consistent behavior since it will behave
-        # # exactly the same no matter if random subsampling is used or not. But this also means that
-        # # existing names cannot be used as dict keys.
-        # os.makedirs(self.coordinate_output_root, exist_ok=True)
-        # c = self.initialize.circuit.sonata_circuit
-        # for _name, _nset in self.neuron_sets.items():
-        #     # Resolve node set based on current coordinate circuit's default node population
-        #     # FIXME: Better handling of (default) node population in case there is more than one
-        #     # FIXME: Inconsistency possible in case a node set definition would span multiple populations
-        #     #        May consider force_resolve_ids=False to enforce resolving into given population
-        #     #        (but which won't be a human-readable representation any more)
-        #     assert _name == _nset.name, (
-        #         "Neuron set name mismatch!"
-        #     )  # This should never happen if properly initialized
+        # Resolve neuron sets and add them to the SONATA circuit object
+        # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
+        # set, even for a PredefinedNeuronSet in which case a new node set will be created which just
+        # references the existing one. This is the most consistent behavior since it will behave
+        # exactly the same no matter if random subsampling is used or not. But this also means that
+        # existing names cannot be used as dict keys.
+        os.makedirs(self.coordinate_output_root, exist_ok=True)
+        c = _circuit.sonata_circuit
+        for _name, _nset in self.neuron_sets.items():
+            # Resolve node set based on current coordinate circuit's default node population
+            # FIXME: Better handling of (default) node population in case there is more than one
+            # FIXME: Inconsistency possible in case a node set definition would span multiple populations
+            #        May consider force_resolve_ids=False to enforce resolving into given population
+            #        (but which won't be a human-readable representation any more)
+            assert _name == _nset.name, (
+                "Neuron set name mismatch!"
+            )  # This should never happen if properly initialized
 
-        #     if self.initialize.node_set.block.name == _name:
-        #         assert self._sonata_config.get("node_set") is None, (
-        #             "Node set config entry already defined!"
-        #         )
-        #         self._sonata_config["node_set"] = _name
+            if self.initialize.node_set.block.name == _name:
+                assert self._sonata_config.get("node_set") is None, (
+                    "Node set config entry already defined!"
+                )
+                self._sonata_config["node_set"] = _name
 
-        #     # Add node set to SONATA circuit object
-        #     # (will raise an error in case already existing)
-        #     nset_def = _nset.get_node_set_definition(
-        #         self.initialize.circuit, self.initialize.circuit.default_population_name
-        #     )
-        #     NeuronSet.add_node_set_to_circuit(c, {_name: nset_def}, overwrite_if_exists=False)
+            # Add node set to SONATA circuit object
+            # (will raise an error in case already existing)
+            nset_def = _nset.get_node_set_definition(
+                _circuit, _circuit.default_population_name
+            )
+            NeuronSet.add_node_set_to_circuit(c, {_name: nset_def}, overwrite_if_exists=False)
 
-        # # Write node sets from SONATA circuit object to .json file
-        # # (will raise an error if file already exists)
-        # NeuronSet.write_circuit_node_set_file(
-        #     c,
-        #     self.coordinate_output_root,
-        #     file_name=self.NODE_SETS_FILE_NAME,
-        #     overwrite_if_exists=False,
-        # )
-        # self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
+        # Write node sets from SONATA circuit object to .json file
+        # (will raise an error if file already exists)
+        NeuronSet.write_circuit_node_set_file(
+            c,
+            self.coordinate_output_root,
+            file_name=self.NODE_SETS_FILE_NAME,
+            overwrite_if_exists=False,
+        )
+        self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-        # # Write simulation config file (.json)
-        # simulation_config_path = os.path.join(self.coordinate_output_root, self.CONFIG_FILE_NAME)
-        # with open(simulation_config_path, "w") as f:
-        #     json.dump(self._sonata_config, f, indent=2)
+        # Write simulation config file (.json)
+        simulation_config_path = os.path.join(self.coordinate_output_root, self.CONFIG_FILE_NAME)
+        with open(simulation_config_path, "w") as f:
+            json.dump(self._sonata_config, f, indent=2)
 
 
     def save(self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client) -> None:

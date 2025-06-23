@@ -26,17 +26,12 @@ class CircuitFromID(EntityFromID):
                 #     print("Downloading SWC file for morphology...")
 
                 # Download the content into memory
-                content = db_client.download_content(
+                db_client.download_directory(
                     entity_id=self.entity(db_client=db_client).id,
                     entity_type=self.entitysdk_type,
                     asset_id=asset.id,
                     output_path=dest_dir,
-                ).decode(encoding="utf-8")
-
-                type(content)
-
-                self._swc_file_content = content
-                break
+                )
 
     # with tempfile.TemporaryDirectory() as tdir:
 

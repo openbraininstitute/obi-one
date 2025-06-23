@@ -28,7 +28,7 @@ dependencies = [
     # NEUROM
     "neurom",
     # ENTITYSDK
-    "entitysdk>=0.6.1",
+    "entitysdk>=0.6.1.dev4",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
@@ -69,7 +69,7 @@ include = ["obi_one*"]
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
 brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
-entitysdk = {git = "https://github.com/openbraininstitute/entitysdk.git", branch = "activity"}
+entitysdk = {git = "https://github.com/openbraininstitute/entitysdk.git", branch = "more-retries"}
 
 [tool.ruff]
 line-length = 100
