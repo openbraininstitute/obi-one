@@ -500,7 +500,8 @@ def plot_smallMC_network_stats(conn, full_width,
     cbar_pad = 0.125     # Padding below the main axis (fraction of figure height)
     cbar_y = bbox.y0 - cbar_pad - cbar_height
     cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])
-    plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
+    cbar = plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
+    cbar.ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
 
     # Synapse per connection
