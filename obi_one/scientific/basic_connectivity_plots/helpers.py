@@ -489,7 +489,9 @@ def plot_smallMC_network_stats(conn, full_width,
     adj_plot=adj.toarray().astype(float)
     adj_plot[adj_plot == 0] = np.nan
     # Connectivity matrix 
-    plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=0, vmax=np.nanmax(adj_plot))
+    min_val = int(np.nanmin(adj_plot[adj_plot > 0]))
+    max_val = int(np.nanmax(adj_plot))
+    plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=min_val, vmax=max_val)
     axs[0].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axs[0].yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axs[0].set_xlabel("Target neuron ID")
@@ -502,7 +504,6 @@ def plot_smallMC_network_stats(conn, full_width,
     cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])
     cbar = plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
     cbar.ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-
 
     # Synapse per connection
     unique_weights, counts = np.unique(adj.toarray(), return_counts=True)
@@ -526,6 +527,7 @@ def plot_smallMC_network_stats(conn, full_width,
     
     axs[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     unique_degrees=np.unique(degree)
+    unique_degrees = unique_degrees[unique_degrees!=0]
     if unique_degrees.size == 1:
         axs[2].set_xticks(unique_degrees)  # Otherwise it gives non-integer x-ticks
 
