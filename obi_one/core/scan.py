@@ -163,11 +163,19 @@ class Scan(OBIBaseModel):
             msg = "Processing method must be specified."
             raise ValueError(msg)
         
+        Path.mkdir(self.output_root, parents=True, exist_ok=True)
+
+        # Serialize the scan
+        self.serialize(self.output_root / "run_scan_config.json")
+
+        # Create a bbp_workflow_campaign_config
+        self.create_bbp_workflow_campaign_config(
+            self.output_root / "bbp_workflow_campaign_config.json"
+        )
 
         campaign = None
         if data_postprocessing_method == 'save':
-            campaign = self.form.initialize_db_campaign(db_client)
-        
+            campaign = self.form.initialize_db_campaign(self.output_root, db_client)
         
         single_entities = []
         
@@ -178,6 +186,11 @@ class Scan(OBIBaseModel):
                 # Initialize the coordinate_instance's coordinate_output_root
                 coordinate_instance.initialize_coordinate_output_root(
                     self.output_root, self.coordinate_directory_option
+                )
+
+                # Serialize the coordinate instance
+                coordinate_instance.serialize(
+                    coordinate_instance.coordinate_output_root / "run_coordinate_instance.json"
                 )
 
                 # Call the coordinate_instance's processing_method (i.e. run, generate)
@@ -192,10 +205,7 @@ class Scan(OBIBaseModel):
                     )(campaign, db_client)
                     single_entities.append(single_entity)
 
-                # Serialize the coordinate instance
-                coordinate_instance.serialize(
-                    coordinate_instance.coordinate_output_root / "run_coordinate_instance.json"
-                )
+                
 
             else:
                 # Raise an error if run() not implemented for the coordinate instance
@@ -204,14 +214,6 @@ class Scan(OBIBaseModel):
                     f"function {processing_method}."
                 )
                 raise NotImplementedError(msg)
-
-        # Serialize the scan
-        self.serialize(self.output_root / "run_scan_config.json")
-
-        # Create a bbp_workflow_campaign_config
-        self.create_bbp_workflow_campaign_config(
-            self.output_root / "bbp_workflow_campaign_config.json"
-        )
 
         if data_postprocessing_method:
             getattr(

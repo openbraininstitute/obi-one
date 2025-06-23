@@ -79,40 +79,54 @@ class SimulationsForm(Form):
     info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
 
-    def initialize_db_campaign(self, db_client: entitysdk.client.Client):
+    def initialize_db_campaign(self, output_root = Path(), db_client: entitysdk.client.Client):
 
         """Initializes the simulation campaign in the database."""
         L.info("1. Initializing simulation campaign in the database...")
 
         L.info(f"-- Register SimulationCampaign Entity")
-        # self._campaign = db_client.register_entity(
-        #     entitysdk.models.SimulationCampaign(
-        #         name=self.info.campaign_name,
-        #         description=self.info.campaign_description,
-        #         entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
-        #         scan_parameters={"foo": "bar"},
-        #     )
-        # )
+        self._campaign = db_client.register_entity(
+            entitysdk.models.SimulationCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                entity_id=self.initialize.circuit.id_str if isinstance(self.initialize.circuit, CircuitFromID) else self.initialize.circuit[0].id_str,
+                scan_parameters={"foo": "bar"},
+            )
+        )
 
         L.info(f"-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.SimulationCampaign,
+            file_path=Path(output_root, "run_scan_config.json"),
+            file_content_type="application/json",
+            asset_label='campaign_generation_config'
+        )
 
-        L.info(f"-- Upload campaign_summary")
+        # L.info(f"-- Upload campaign_summary")
+        # _ = db_client.upload_file(
+        #     entity_id=self._campaign.id,
+        #     entity_type=entitysdk.models.SimulationCampaign,
+        #     file_path=Path(output_root, "bbp_workflow_campaign_config.json"),
+        #     file_content_type="application/json",
+        #     asset_label='campaign_summary'
+        # )
 
-        # return self._campaign
-        return None
+        return self._campaign
+        # return None
     
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
 
         L.info("3. Saving completed simulation campaign generation")
 
         L.info(f"-- Register SimulationGeneration Entity")
-        # db_client.register_entity(
-        #     entitysdk.models.SimulationGeneration(
-        #         start_time=datetime.now(UTC),
-        #         used=[self._campaign],
-        #         generated=simulations,
-        #     )
-        # )
+        db_client.register_entity(
+            entitysdk.models.SimulationGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=simulations,
+            )
+        )
 
         L.info(f"")
         return None
@@ -311,26 +325,58 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
         
         L.info(f"-- Register Simulation Entity")
-        # simulation = db_client.register_entity(
-        #     entitysdk.models.Simulation(
-        #         name=f"sim-{self.idx}",
-        #         description=f"sim-{self.idx}",
-        #         scan_parameters={"foo": "bar"},
-        #         entity_id=self._circuit_id,
-        #         simulation_campaign_id=campaign.id,
-        #     )
-        # )
+        simulation = db_client.register_entity(
+            entitysdk.models.Simulation(
+                name=f"sim-{self.idx}",
+                description=f"sim-{self.idx}",
+                scan_parameters={"foo": "bar"},
+                entity_id=self._circuit_id,
+                simulation_campaign_id=campaign.id,
+                
+            )
+        )
 
         L.info(f"-- Upload simulation_generation_config")
+        _ = db_client.upload_file(
+            entity_id=simulation.id,
+            entity_type=entitysdk.models.Simulation,
+            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_content_type="application/json",
+            asset_label='simulation_generation_config'
+        )
 
-
-        L.info(f"-- Upload sonata_simulation_config")
+        # L.info(f"-- Upload sonata_simulation_config")
+        # _ = db_client.upload_file(
+        #     entity_id=simulation.id,
+        #     entity_type=entitysdk.models.Simulation,
+        #     file_path=Path(self.coordinate_output_root, "sonata_simulation_config.json"),
+        #     file_content_type="application/json",
+            # asset_label='sonata_simulation_config'
+        # )
         
-        L.info(f"-- Upload custom_node_sets")
+        # L.info(f"-- Upload custom_node_sets")
+        # _ = db_client.upload_file(
+        #     entity_id=simulation.id,
+        #     entity_type=entitysdk.models.Simulation,
+        #     file_path=Path(self.coordinate_output_root, "node_sets.json"),
+        #     file_content_type="application/json",
+            # asset_label='custom_node_sets'
+        # )
 
-        L.info(f"-- Upload spike replay files")
+        # L.info(f"-- Upload spike replay files")
+        # for input in self._sonata_config["inputs"]:
+        #     if hasattr(self.stimuli[input], "spikes_file"):
+        #         spikes_file = self.stimuli[input].spikes_file
+        #         if spikes_file is not None:
+        #             _ = db_client.upload_file(
+        #                 entity_id=simulation.id,
+        #                 entity_type=entitysdk.models.Simulation,
+        #                 file_path=Path(self.coordinate_output_root, spikes_file),
+        #                 file_content_type="application/h5",
+                        # asset_label='replay_spikes'
+        #             )
 
-        # return simulation
-        return None
+        return simulation
+        # return None
 
 

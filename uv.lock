@@ -658,8 +658,8 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.6.1.dev4"
-source = { git = "https://github.com/openbraininstitute/entitysdk.git?branch=more-retries#7452a699b378d09465b8baf1f57c1d8b9be76598" }
+version = "0.6.2.dev1"
+source = { git = "https://github.com/openbraininstitute/entitysdk.git?branch=upload-label#5cccb360a70bf6a6c17222ef512bdcfcf8991f0b" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -1806,7 +1806,7 @@ requires-dist = [
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk", git = "https://github.com/openbraininstitute/entitysdk.git?branch=more-retries" },
+    { name = "entitysdk", git = "https://github.com/openbraininstitute/entitysdk.git?branch=upload-label" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel" },

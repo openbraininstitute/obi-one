@@ -69,7 +69,7 @@ include = ["obi_one*"]
 [tool.uv.sources]
 bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
 brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
-entitysdk = {git = "https://github.com/openbraininstitute/entitysdk.git", branch = "more-retries"}
+entitysdk = {git = "https://github.com/openbraininstitute/entitysdk.git", branch = "upload-label"}
 
 [tool.ruff]
 line-length = 100
