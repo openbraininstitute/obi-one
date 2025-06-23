@@ -1,3 +1,4 @@
+import logging.handlers
 import numpy
 import json
 import conntility
@@ -7,6 +8,7 @@ import neurom.io.utils
 import pandas
 import h5py
 import os
+import logging
 
 from scipy.spatial.transform import Rotation
 
@@ -30,6 +32,16 @@ _STR_SPINE_Z = "spine_pos_z"
 
 _STR_PRE_NODE = _PF_PRE + "node_id"
 _STR_POST_NODE = _PF_POST + "node_id"
+
+L = logging.getLogger(__name__)
+L.setLevel(logging.INFO)
+handler = logging.handlers.RotatingFileHandler(
+    'EMEdgesToSonata.log',          # Log file name
+    maxBytes=10000000,    # Maximum size of a log file in bytes before rotation
+    backupCount=3       # Number of backup files to keep
+)
+L.addHandler(handler)
+print(L.handlers)
 
 
 def synapse_info_from_h5_dump(fn, pt_root_ids, name_pat="post_pt_root_id_{0}"):
@@ -218,15 +230,13 @@ def dummy_mapping_without_morphology(syns):
 
 def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_pos, spine_orient):
     segs = morph_to_segs_df(morph)
-    print("Mapping spines to morphology...")
+    L.debug("Mapping spines to morphology...")
     spines_on_morph = map_points_to_segs_df(segs, spine_dend_pos).reset_index(drop=True)
-    print("Done!")
-
+    
     # cols syn_id, spine_id, spine_pos_x, spine_pos_y, spine_pos_z. Only where spine is found
-    print("Mapping synapses to spines...")
+    L.debug("Mapping synapses to spines...")
     syns_on_spines = map_points_to_spines(spine_srf_pos, spine_orient, syns[_C_P_LOCS]).reset_index(drop=True)
     # cols syn_id, spine_id, [x, y, z], sec_id, seg_id, seg_off. Only where spine is found
-    print("Done!")
     syns_on_spines = pandas.concat([syns_on_spines,
                 spines_on_morph.loc[syns_on_spines[_STR_SPINE_ID]].reset_index(drop=True)
     ], axis=1)
@@ -236,7 +246,7 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
     syns = pandas.concat([syns, mapped], axis=1)
 
     shaft_syn_locs = syns.loc[syns[_STR_SPINE_ID] == -1][_C_P_LOCS]
-    print("Mapping remaining synapses to shafts...")
+    L.debug("Mapping remaining synapses to shafts...")
     syns_on_morph = map_points_to_segs_df(segs,
                                         shaft_syn_locs.values,
                                         soma_center=morph.soma.center,
@@ -245,7 +255,8 @@ def map_synapses_onto_spiny_morphology(syns, morph, spine_dend_pos, spine_srf_po
                                         soma_buf=0.2,
                                         max_dist=10.0
     ).set_index(shaft_syn_locs.index)
-    print("Done!")
+    L.debug("Mapping done!")
+    L.info(f"Ran mapping for {len(syns)} synapses. {len(syns_on_morph)} on shafts.")
 
     syns.loc[shaft_syn_locs.index, _STR_SEC_ID] = syns_on_morph[_STR_SEC_ID]
     syns.loc[shaft_syn_locs.index, _STR_SEG_ID] = syns_on_morph[_STR_SEG_ID]
@@ -279,7 +290,7 @@ def map_and_extend_mapping(existing_ids, ids_to_map):
     return mapped, new_ids
 
 
-def pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids):
+def pt_root_to_sonata_id(syns, morphology_ids, intrinsic_ids, virtual_ids, extrinsic_ids):
     syns = syns.reset_index(drop=True)
     # Resolve postsynaptic ids
     post_node_ids, cntnd = map_to_pt_root_ids(intrinsic_ids, syns["post_pt_root_id"])
@@ -295,7 +306,11 @@ def pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids):
     neither_v_nor_i = ~is_intrinsic & ~is_virtual
     # The ones that are not resolved are extrinsic and are resolved against that population.
     # In doing so, new extrinsic nodes may be created.
-    pre_node_ids_extrinsic, new_extrinsics = map_and_extend_mapping(extrinsic_ids, syns["pre_pt_root_id"][neither_v_nor_i])
+    extrinsic_syns = syns.loc[neither_v_nor_i]
+    # Extrinics are only interesting for neurons with morphologies
+    # print(extrinsic_syns["post_pt_root_id"].isin(morphology_ids.values).mean())
+    extrinsic_syns = extrinsic_syns.loc[extrinsic_syns["post_pt_root_id"].isin(morphology_ids.values)]
+    pre_node_ids_extrinsic, new_extrinsics = map_and_extend_mapping(extrinsic_ids, extrinsic_syns["pre_pt_root_id"])
 
     intrinsic_syns = syns.loc[pre_node_ids_intrinsic.index]
     intrinsic_syns["pre_node_id"] = pre_node_ids_intrinsic

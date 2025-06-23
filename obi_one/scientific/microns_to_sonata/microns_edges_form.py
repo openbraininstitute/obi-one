@@ -17,6 +17,7 @@ from obi_one.core.single import SingleCoordinateMixin
 from .utils_nodes import collection_to_neuron_info, _STR_MORPH, _STR_NONE
 from .utils_edges import pt_root_to_sonata_id, format_for_edges_output, find_edges_resume_point
 from .sonata_edges_write import write_edges
+from .utils_edges import L
 
 
 class EMSonataEdgesFiles(Form, abc.ABC):
@@ -90,16 +91,20 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
     @staticmethod
     def write_synapses_and_extrinsics(syns,
                                       extrinsic_node_pop, extrinsic_nodes_fn,
+                                      morphology_ids,
                                       intrinsic_name, intrinsic_edge_pop_name, intrinsic_ids, intrinsic_edges_fn,
                                       virtual_name, virtual_edge_pop_name, virtual_ids, virtual_edges_fn,
                                       extrinsic_name, extrinsic_edge_pop_name, extrinsic_ids, extrinsic_edges_fn):
         if len(syns) == 0:
+            L.warning("Empty chunk!")
             return collection_to_neuron_info(extrinsic_nodes_fn, must_exist=False)
         # Determine which synapases are intrinsic and which are extrinsic.
         # Also determine which new extrinsic pt_root_ids are references and must be created.
         intrinsic_syns, virtual_syns, extrinsic_syns, new_extrinsics =\
-            pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids)
-        
+            pt_root_to_sonata_id(syns, morphology_ids, intrinsic_ids, virtual_ids, extrinsic_ids)
+        L.info(f"Writing {len(intrinsic_syns)}, {len(virtual_syns)}, {len(extrinsic_syns)} synapses")
+        L.info(f"Creating {len(new_extrinsics)} new extrinsic nodes")
+
         # Overwrite exising extrinsics with concatenation of existing and new extrinsics
         new_extrinsics["x"] = 0.0
         new_extrinsics["y"] = 0.0
@@ -130,7 +135,7 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         return collection_to_neuron_info(extrinsic_nodes_fn, must_exist=True)
 
     def run(self) -> str:
-
+        
         tmp_blck = EMEdgesMappingBlock(
                 client_server=self.initialize.client_server,
                 client_name=self.initialize.client_name,
@@ -151,9 +156,13 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         # Load intrinsic and currently exisint extrinsic nodes
         intrinsics, intrinsic_name = collection_to_neuron_info(self.initialize.intrinsic_nodes,
                                                                must_exist=True)
+        L.info(f"Loaded {len(intrinsics)} intrinsic nodes.")
         extrinsics, extrinsic_name = collection_to_neuron_info(extrinsics_fn,
                                                                must_exist=False)
+        L.info(f"Loaded {len(extrinsics)} extrinsic nodes.")
         intrinsic_ids = intrinsics["pt_root_id"]
+        morphology_ids = intrinsics.loc[intrinsics[_STR_MORPH] != _STR_NONE, "pt_root_id"]
+        L.info(f"{len(morphology_ids)} intrinsic nodes have morphologies.")
         extrinsic_ids = extrinsics["pt_root_id"]
         intrinsic_edge_pop_name = intrinsic_name + "__" + intrinsic_name + "__chemical"
         extrinsic_edge_pop_name = extrinsic_name + "__" + intrinsic_name + "__chemical"
@@ -161,17 +170,18 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         if self.initialize.virtual_nodes is not None:
             virtuals, virtual_name = collection_to_neuron_info(self.initialize.virtual_nodes,
                                                                must_exist=True)
+            L.info(f"Loaded {len(virtuals)} virtual nodes.")
         else:
             virtuals, virtual_name = collection_to_neuron_info(".", must_exist=False)
             virtual_name = "em_virtual"
+            L.info(f"No virtual nodes found.")
         virtual_ids = virtuals["pt_root_id"]
         virtual_edge_pop_name = virtual_name + "__" + intrinsic_name + "__chemical"
-        print(f"{len(intrinsics)} intrinsic neurons found!")
 
-        pt_root_ids = find_edges_resume_point(intrinsics, extrinsic_edges_fn,
-                                              extrinsic_edge_pop_name,
+        pt_root_ids = find_edges_resume_point(intrinsics, intrinsic_edges_fn,
+                                              intrinsic_edge_pop_name,
                                               with_morphologies=False)
-        print(f"Iterating over {len(pt_root_ids)} neurons!")
+        L.info(f"Iterating over {len(pt_root_ids)} neurons!")
 
         syns = []
         chunk_sz = 50
@@ -180,25 +190,24 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         for chunk in tqdm.tqdm(chunks):
             tmp_blck.prefetch(chunk["pt_root_id"].to_list())
             for _, pt_root_id in chunk.iterrows():
+                L.debug(f'--> neuron {pt_root_id["pt_root_id"]}')
                 try:
                     new_syns = tmp_blck.map_synapses_to_morphology(self.initialize.morphologies_dir,
                                                                     self.initialize.spines_dir,
                                                                     pt_root_id)
                     if len(new_syns) > 0:
                         syns.append(new_syns)
-                    # print(f"Mapped {len(syns[-1])} synapses!")
+                    L.debug(f"Mapped {len(syns[-1])} synapses!")
                 except Exception as e:
-                    print("Problem with neuron {0}".format(pt_root_id["pt_root_id"]))
-                    print(e)
+                    L.warning(f'Problem with neuron {pt_root_id["pt_root_id"]}')
+                    L.warning(str(e))
                     # raise
                 
             if len(syns) > 0:
-                # print("Writing chunk to disk!")
-                # print(len(syns))
-                # print([len(_syns) for _syns in syns])
+                L.info("Writing chunk to disk...")
                 extrinsics, extrinsic_name = self.write_synapses_and_extrinsics(
                     pandas.concat(syns, axis=0),
-                    extrinsics, extrinsics_fn,
+                    extrinsics, extrinsics_fn, morphology_ids,
                     intrinsic_name, intrinsic_edge_pop_name, intrinsic_ids, intrinsic_edges_fn,
                     virtual_name, virtual_edge_pop_name, virtual_ids, virtual_edges_fn,
                     extrinsic_name, extrinsic_edge_pop_name, extrinsic_ids, extrinsic_edges_fn
@@ -206,48 +215,3 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
                 extrinsic_ids = extrinsics["pt_root_id"]
                 syns = []
             
-        # syns = pandas.concat(syns, axis=0)
-        # extrinsics, extrinsic_name = self.write_synapses_and_extrinsics(
-        #     syns,
-        #     extrinsics, extrinsics_fn,
-        #     intrinsic_name, intrinsic_edge_pop_name, intrinsic_ids, intrinsic_edges_fn,
-        #     virtual_name, virtual_edge_pop_name, virtual_ids, virtual_edges_fn,
-        #     extrinsic_name, extrinsic_edge_pop_name, extrinsic_ids, extrinsic_edges_fn
-        # )
-        
-        
-        # syns = pandas.concat(syns, axis=0)
-
-        # # Determine which synapases are intrinsic and which are extrinsic.
-        # # Also determine which new extrinsic pt_root_ids are references and must be created.
-        # intrinsic_syns, virtual_syns, extrinsic_syns, new_extrinsics =\
-        #     pt_root_to_sonata_id(syns, intrinsic_ids, virtual_ids, extrinsic_ids)
-        
-        # # Overwrite exising extrinsics with concatenation of existing and new extrinsics
-        # new_extrinsics["x"] = 0.0
-        # new_extrinsics["y"] = 0.0
-        # new_extrinsics["z"] = 0.0
-        # comb_extrinsics = pandas.concat([extrinsics, new_extrinsics], axis=0)
-        # comb_extrinsics.index = comb_extrinsics.index + 1
-
-        # new_ext_coll = CellCollection.from_dataframe(comb_extrinsics)
-        # new_ext_coll.population_name = extrinsic_name
-        # new_ext_coll.save_sonata(extrinsics_fn)
-
-        # # Bring DataFrame into output format. Mainly renames columns.
-        # intrinsic_syn_map, intrinsic_syn_prop = format_for_edges_output(intrinsic_syns)
-        # virtual_syn_map, virtual_syn_prop = format_for_edges_output(virtual_syns)
-        # extrinsic_syn_map, extrinsic_syn_prop = format_for_edges_output(extrinsic_syns)
-
-        # write_edges(intrinsic_edges_fn, intrinsic_edge_pop_name, 
-        #             intrinsic_syn_map, intrinsic_syn_prop,
-        #             intrinsic_name, intrinsic_name)
-        # if len(virtual_syns) > 0:
-        #     write_edges(virtual_edges_fn, virtual_edge_pop_name, 
-        #                 virtual_syn_map, virtual_syn_prop,
-        #                 virtual_name, intrinsic_name)
-        # write_edges(extrinsic_edges_fn, extrinsic_edge_pop_name, 
-        #             extrinsic_syn_map, extrinsic_syn_prop,
-        #             extrinsic_name, intrinsic_name)
-
-

@@ -13,7 +13,7 @@ from obi_one.core.block import Block
 
 from .utils_edges import (
     synapse_info_df, map_synapses_onto_spiny_morphology, 
-    dummy_mapping_without_morphology, _STR_SEC_ID
+    dummy_mapping_without_morphology, _STR_SEC_ID, L
 )
 from .utils_nodes import (
     source_resolution,
@@ -67,14 +67,14 @@ class EMEdgesMappingBlock(Block, abc.ABC):
     
     def prefetch(self, lst_pt_root_ids):
         if not hasattr(self, "_client"):
-            print("Creating client...")
+            L.info("Creating client...")
             self._setup_client()
 
         self._buf_df = synapse_info_df(self._client,
                                        lst_pt_root_ids,
                                        self._resolutions)
         self._buffered_ids = tuple(lst_pt_root_ids)
-        print(f"Prefetched {len(self._buf_df)} synapses for {len(lst_pt_root_ids)} neurons!")
+        L.info(f"Prefetched {len(self._buf_df)} synapses for {len(lst_pt_root_ids)} neurons!")
 
     def map_synapses_to_morphology(self, morph_root, spine_root, node_info, 
                                    strict=False):
@@ -83,7 +83,9 @@ class EMEdgesMappingBlock(Block, abc.ABC):
         
         assert node_info["pt_root_id"] in self._buffered_ids
         syns = self._buf_df[self._buf_df["post_pt_root_id"] == node_info["pt_root_id"]].reset_index(drop=True)
-        # print(f"Mapping {len(syns)} synapses...")
+        L.debug(f"Mapping {len(syns)} synapses...")
+        if len(syns) == 0:
+            L.warning(f"No synapses to be mapped for {node_info['pt_root_id']}!")
         
         self.enforce_no_lists()
         fn_spines = os.path.join(spine_root, naming_spine.format(**node_info.to_dict()))
@@ -92,12 +94,13 @@ class EMEdgesMappingBlock(Block, abc.ABC):
         if os.path.isfile(fn_spines):
             with open(fn_spines, "r") as fid:
                 spines = json.load(fid)
-            # print(f"{len(spines)} spines loaded!")
+            L.info(f"{len(spines)} spines loaded!")
             srf_pos = numpy.vstack([_spine["surface_sample_position"] for _spine in spines])
             dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
             orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
         else:
-            # print(f"Warning: No spine file at {fn_spines}!")
+            if os.path.isfile(fn_morph):
+                L.warning(f"No spine file at {fn_spines}, although morphology exists!")
             srf_pos = numpy.empty((0, 3), dtype=float)
             dend_pos = numpy.empty((0, 3), dtype=float)
             orient = numpy.empty((0, 3), dtype=float)
@@ -118,7 +121,8 @@ class EMEdgesMappingBlock(Block, abc.ABC):
                 if strict:
                     raise RuntimeError("{0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
                 else:
-                    print("Warning: {0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
+                    L.warning("Warning: {0} synapses could not be mapped to the morphology!".format(unmapped.sum()))
             return ret[~unmapped]
+        L.debug("No morphology found at {fn_morph}")
         return dummy_mapping_without_morphology(syns)
     

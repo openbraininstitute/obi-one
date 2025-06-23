@@ -234,10 +234,12 @@ def collection_to_neuron_info(path_to_file, must_exist=True):
 def get_node_prop_post_processors(str_type):
     if str_type == "h01":
         def parse_layer(str_in):
-            if isinstance(str_in, float): return -1
+            if isinstance(str_in, float): return "N/A"
             if str_in.startswith("Layer"):
-                return int(str_in[5:])
-            return 7
+                return str(int(str_in[5:]))
+            if str_in.startswith("White"):
+                return "white_matter"
+            return "N/A"
 
         def pp_layer(series_in):
             series_out = series_in.apply(parse_layer)
@@ -280,9 +282,10 @@ def get_node_prop_post_processors(str_type):
         
         def parse_layer(str_in):
             try:
-                return int(str_in[1])
+                layer_int = int(str_in[1])
+                return str(layer_int)
             except:
-                return -1
+                return "N/A"
 
         def pp_layer(series_in):
             series_out = series_in.apply(parse_layer)

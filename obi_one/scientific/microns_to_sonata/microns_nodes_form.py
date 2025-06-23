@@ -151,6 +151,7 @@ class EMSonataNodesFile(EMSonataNodesFiles, SingleCoordinateMixin):
         # More of a place holder. We estimate a global rotation of the entire volume
         volume_rot = estimate_volume_rotation(nrns, volume_vertical=self.initialize.volume_vertical).as_matrix()
         nrns["orientation"] = [volume_rot for _ in range(len(nrns))]
+
         transform_and_copy_morphologies(nrns, self.initialize.morphology_root,
                                         os.path.join(self.coordinate_output_root,
                                                      "morphologies"),
