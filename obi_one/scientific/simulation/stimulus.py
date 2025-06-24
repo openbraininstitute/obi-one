@@ -16,6 +16,9 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
+    delay: float | list[float] = Field(
+        default=0.0, title="Delay", description="Time in ms when input is activated."
+    )
     timestamps: TimestampsReference
 
     def config(self) -> dict:
@@ -28,9 +31,6 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    delay: float | list[float] = Field(
-        default=0.0, title="Delay", description="Time in ms when input is activated."
-    )
     duration: float | list[float] = Field(
         default=1.0,
         title="Duration",
@@ -413,13 +413,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.stim_duration
+            end_time = start_time + self.delay + self.stim_duration
             if t_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
                 assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
             for gid in gids:
                 spikes = []
-                t = start_time
+                t = start_time + self.delay
                 while t < end_time:
                     # Draw next spike time from exponential distribution
                     interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
@@ -445,7 +445,7 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
             for gid in gids:
-                gid_spike_map[gid] = start_time
+                gid_spike_map[gid] = start_time + self.delay
         self._spike_file = f"{self.name}_spikes.h5"
         self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
 
