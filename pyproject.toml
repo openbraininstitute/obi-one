@@ -1,6 +1,6 @@
 [project]
 name = "obi-one"
-version = "2025.6.5"
+version = "2025.6.6"
 authors = [
   { name="James Isbister", email="james.isbister@openbraininstitute.org" },
   { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
@@ -50,8 +50,8 @@ dependencies = [
     # NEUROM
     "neurom",
     # ENTITYSDK
-    "entitysdk>=0.3.1",
-    "obi-auth",
+    "entitysdk>=0.7.0",
+    "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",

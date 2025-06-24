@@ -8,14 +8,9 @@ from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
 from obi_one.database.db_manager import db
-from obi_one.database.entity_from_id import EntityFromID
+from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 
 import io
-
-from enum import Enum
-class LoadAssetMethod(Enum):
-    MEMORY = "memory"
-    FILE = "file"
 
 class ReconstructionMorphologyFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = ReconstructionMorphology
@@ -32,7 +27,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         
         if self._swc_file_content is None:
             for asset in self.entity(db_client=db_client).assets:
-                if asset.content_type == "application/asc":
+                if asset.content_type == "application/swc":
 
                     load_asset_method = LoadAssetMethod.MEMORY
                     if load_asset_method == LoadAssetMethod.MEMORY:
@@ -84,7 +79,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         """
         
         if self._neurom_morphology is None:
-            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="asc")
+            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="swc")
         return self._neurom_morphology
 
     # # @property
