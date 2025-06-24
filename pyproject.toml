@@ -1,6 +1,6 @@
 [project]
 name = "obi-one"
-version = "2025.6.2"
+version = "2025.6.5"
 authors = [
   { name="James Isbister", email="james.isbister@openbraininstitute.org" },
   { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
@@ -56,6 +56,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
+    "bluepyefe>=2.3.44",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
 ]
