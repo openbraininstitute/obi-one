@@ -189,6 +189,7 @@ class Scan(OBIBaseModel):
 
         campaign = None
         if data_postprocessing_method == 'save':
+            # Initialize the campaign in the database
             campaign = self.form.initialize_db_campaign(self.output_root, self.multiple_value_parameters_dictionary, db_client)
         
         single_entities = []

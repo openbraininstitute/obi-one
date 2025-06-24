@@ -44,8 +44,6 @@ class SimulationsForm(Form):
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
 
-
-    
     class Config:
         json_schema_extra = {
             "gui_order": [
@@ -54,13 +52,6 @@ class SimulationsForm(Form):
                 "Auxiliary", ["neuron_sets", "timestamps"]],
             ]
         }
-
-    
-
-        
-    # synapse_sets: dict[str, SynapseSetUnion]
-    # intracellular_location_sets: dict[str, MorphologyLocationUnion]
-    # extracellular_location_sets: dict[str, ExtracellularLocationSetUnion]
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
@@ -127,7 +118,6 @@ class SimulationsForm(Form):
             )
         )
 
-        L.info(f"")
         return None
 
     
@@ -208,29 +198,26 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     _sonata_config: dict = PrivateAttr(default={})
 
-    
-
     def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
 
-        self._sonata_config = {}
-
-
+        # Set _circuit parameter based on the type of initialize.circuit
+        # _circuit is used through-out generate rather than self.initialize.circuit
+        _circuit = None
         if isinstance(self.initialize.circuit, Circuit):
-            print("initialize.circuit is a Circuit instance.")
+            L.info("initialize.circuit is a Circuit instance.")
             _circuit = self.initialize.circuit
             self._sonata_config["network"] = self.initialize.circuit.path
 
         if isinstance(self.initialize.circuit, CircuitFromID):
-            print("initialize.circuit is a CircuitFromID instance.")
+            L.info("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
             self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
             _circuit = self.initialize.circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
             self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 
-        
-        
+
         self._sonata_config["output"] = {
             "output_dir": "output",
             "spikes_file": "spikes.h5"
@@ -373,6 +360,3 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     )
 
         return simulation
-        # return None
-
-
