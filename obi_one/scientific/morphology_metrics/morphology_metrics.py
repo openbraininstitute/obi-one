@@ -95,7 +95,7 @@ class MorphologyMetricsOutput(BaseModel):
 
 
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self, campaign=None, db_client: entitysdk.client.Client = None):
+    def run(self, db_client: entitysdk.client.Client = None):
         try:
             print("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(

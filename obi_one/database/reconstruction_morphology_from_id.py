@@ -34,7 +34,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
                         print("Downloading SWC file for morphology...")
 
                         # Download the content into memory
-                        content = db_client.download_file(
+                        content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,

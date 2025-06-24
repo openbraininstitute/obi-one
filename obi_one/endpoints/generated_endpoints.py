@@ -85,6 +85,7 @@ def create_endpoint_for_form(
             L.info("generate_grid_scan")
             L.info(db_client)
 
+            campaign = None
             try:
                 with tempfile.TemporaryDirectory() as tdir:
 
@@ -105,7 +106,11 @@ def create_endpoint_for_form(
                 L.exception("Generic exception")
             else:
                 L.info("Grid scan generated successfully")
-                return str(campaign.id)
+                if campaign is not None:
+                    return str(campaign.id)
+                else:
+                    print("No campaign generated")
+                    return "Success but no campaign generated."
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
