@@ -109,8 +109,8 @@ def create_endpoint_for_form(
                 if campaign is not None:
                     return str(campaign.id)
                 else:
-                    print("No campaign generated")
-                    return "Success but no campaign generated."
+                    L.info("No campaign generated")
+                    return ""
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:

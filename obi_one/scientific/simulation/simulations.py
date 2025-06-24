@@ -213,7 +213,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             L.info("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
-            self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
+            self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
             _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
             self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 

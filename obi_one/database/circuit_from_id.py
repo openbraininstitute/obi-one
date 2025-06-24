@@ -17,9 +17,14 @@ class CircuitFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = Circuit
     _entity: Circuit | None = PrivateAttr(default=None)
 
-    def circuit_directory(self, dest_dir=Path(), db_client: entitysdk.client.Client = None) -> None:
+    def download_circuit_directory(self, dest_dir=Path(), db_client: entitysdk.client.Client = None) -> None: 
+
         for asset in self.entity(db_client=db_client).assets:
             if asset.content_type == "application/vnd.directory":
+
+                circuit_dir = dest_dir / asset.path
+                if circuit_dir.exists():
+                    raise FileExistsError(f"Circuit directory '{circuit_dir}' already exists and is not empty.")
 
                 # Download the content into memory
                 db_client.download_directory(
