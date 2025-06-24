@@ -79,7 +79,7 @@ class ReconstructionMorphologyFromID(EntityFromID):
         """
         
         if self._neurom_morphology is None:
-            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="asc")
+            self._neurom_morphology = neurom.load_morphology(io.StringIO(self.swc_file_content(db_client)), reader="swc")
         return self._neurom_morphology
 
     # # @property
