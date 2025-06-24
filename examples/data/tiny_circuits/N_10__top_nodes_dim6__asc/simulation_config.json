@@ -58,15 +58,6 @@
       "amp_start": 0.5,
       "amp_end": 0.5,
       "represents_physical_electrode": false
-    },
-    "spikeReplay_ml_noise": {
-      "module": "synapse_replay",
-      "delay": 0.0,
-      "duration": 3000.0,
-      "input_type": "spikes",
-      "spike_file": "/Users/mandge/Desktop/circuit_simulation/obi-one/examples/data/tiny_circuits/N_10__top_nodes_dim6__asc/output/out.h5",
-      "spike_location": "soma",
-      "node_set": "hex0"
     }
   },
   "reports": {

@@ -24,13 +24,15 @@ from obi_one.database.reconstruction_morphology_from_id import ReconstructionMor
 from obi_one.scientific.simulation.execution import (
     run_bluecellulab,
     run_neurodamus, 
-    SimulatorBackend
 )
 import logging
 from pathlib import Path
 
 import entitysdk
 from collections import OrderedDict
+
+# Type alias for simulator backends
+SimulatorBackend = Literal["bluecellulab", "neurodamus"]
 
 class SimulationsForm(Form):
     """Simulations Form."""
