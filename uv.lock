@@ -222,7 +222,7 @@ wheels = [
 
 [[package]]
 name = "bluepyefe"
-version = "2.3.44"
+version = "2.3.45"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "efel" },
@@ -233,9 +233,9 @@ dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/4c/4903c104c882c6e8f92ab80a2191b958550ba86b34132efc6bd5e30a7e15/bluepyefe-2.3.44.tar.gz", hash = "sha256:b65c32d16146f2037bb97f042242d85ca056dc41a30bd8bed139733c320de61f", size = 1027762 }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/e9/d43136f1cae6549409e9df56e9b715df6298ed864270abbbdea4d1dc75e9/bluepyefe-2.3.45.tar.gz", hash = "sha256:0194caa959c5ef58d46e57f07665d78de3bcd6ae39736722bd6fb707bf30170e", size = 1027944 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/8c/c7c27622623a5d0cce9877b5fb9e4a94be70b367656c7c0014d232a67696/bluepyefe-2.3.44-py3-none-any.whl", hash = "sha256:d9a7f97510c16dfe209d0cc086082666eb137afb78d2d02f9d6e2396cf54f6aa", size = 65244 },
+    { url = "https://files.pythonhosted.org/packages/50/1a/ab899dbfacb146891345bc6a3375ef8d5bb8df64432306b3a62745e60364/bluepyefe-2.3.45-py3-none-any.whl", hash = "sha256:32ae6cd6f80ae7effc0a4b45bbda9feacc6016d3edc733172d581df1f7ab641b", size = 65845 },
 ]
 
 [[package]]
@@ -1874,7 +1874,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.44" },
+    { name = "bluepyefe", specifier = ">=2.3.45" },
     { name = "bluepysnap", git = "https://github.com/openbraininstitute/snap.git" },
     { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git" },
     { name = "cachetools", specifier = ">=5.5.2" },
