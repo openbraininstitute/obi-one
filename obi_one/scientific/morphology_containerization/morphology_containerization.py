@@ -70,7 +70,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
-                for nid in nodes.ids()[[0, -1]]:  # First/last node ID
+                node_morphs = nodes.get(properties="morphology")
+                node_ids = node_morphs[node_morphs != MorphologyContainerization.NO_MORPH_NAME].index
+                for nid in node_ids[[0, -1]]:  # First/last node ID (with actual morphology!!)
                     try:
                         morph = nodes.morph.get(
                             nid, transform=True, extension="h5"
@@ -167,6 +169,10 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 if nodes.type != "biophysical":
                     continue
                 morph_names = np.unique(nodes.get(properties="morphology"))
+                if self.NO_MORPH_NAME in morph_names:
+                    print(f"WARNING: Biophysical population '{npop}' has neurons without morphologies!")
+                    morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+                    assert len(morph_names) > 0, f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
                 print(
                     f"> {len(morph_names)} unique morphologies in population '{npop}' ({nodes.size})"
                 )
@@ -211,18 +217,14 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
                 with h5py.File(h5_container, "a") as f_container:
                     skip_counter = 0
-                    none_counter = 0
                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
-                        if _m == self.NO_MORPH_NAME:
-                            none_counter += 1
-                        else:
-                            with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
-                                if _m in f_container:
-                                    skip_counter += 1
-                                else:
-                                    f_h5.copy(f_h5, f_container, name=_m)
+                        with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+                            if _m in f_container:
+                                skip_counter += 1
+                            else:
+                                f_h5.copy(f_h5, f_container, name=_m)
                 print(
-                    f"Merged {len(morph_names) - skip_counter - none_counter} morphologies into container ({skip_counter} already existed, {none_counter} no morphology)"
+                    f"Merged {len(morph_names) - skip_counter} morphologies into container ({skip_counter} already existed)"
                 )
 
                 # Update the circuit config so that it points to the .h5 container file,
