@@ -56,6 +56,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
     """
 
     CONTAINER_FILENAME: ClassVar[str] = "merged-morphologies.h5"
+    NO_MORPH_NAME: ClassVar[str] = "_NONE"
 
     @staticmethod
     def _filter_ext(file_list, ext):
@@ -210,14 +211,18 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
                 with h5py.File(h5_container, "a") as f_container:
                     skip_counter = 0
+                    none_counter = 0
                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
-                        with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
-                            if _m in f_container:
-                                skip_counter += 1
-                            else:
-                                f_h5.copy(f_h5, f_container, name=_m)
+                        if _m == self.NO_MORPH_NAME:
+                            none_counter += 1
+                        else:
+                            with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+                                if _m in f_container:
+                                    skip_counter += 1
+                                else:
+                                    f_h5.copy(f_h5, f_container, name=_m)
                 print(
-                    f"Merged {len(morph_names) - skip_counter} morphologies into container ({skip_counter} already existed)"
+                    f"Merged {len(morph_names) - skip_counter - none_counter} morphologies into container ({skip_counter} already existed, {none_counter} no morphology)"
                 )
 
                 # Update the circuit config so that it points to the .h5 container file,
