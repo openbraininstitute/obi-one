@@ -1,257 +1,455 @@
+"""
+Usage:
+    python run_bluecellulab_simulation.py --simulation_config <simulation_config> [--save-nwb]
+"""
+
 import argparse
 import json
-import os
 import logging
-import time
+import sys
 from pathlib import Path
-from matplotlib import pyplot as plt
-import seaborn as sns
-sns.set_style("white")
-from neuron import h  # For MPI parallel context
-from datetime import datetime, timezone
-import uuid # For nwb file writing
+from typing import Dict, Any, Union
+import numpy as np
+from bluecellulab import CircuitSimulation
+from neuron import h
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
-from bluecellulab import CircuitSimulation
-import numpy as np
+from datetime import datetime, timezone
+import uuid
+import matplotlib
+matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
+import matplotlib.pyplot as plt
 
+# Create logs directory if it doesn't exist
+log_dir = Path('logs')
+log_dir.mkdir(exist_ok=True)
 
-def run_simulation_sonata(simulation_config, cell_ids, pc, rank, logger):
-    # To disable HDF5 file locking to prevent BlockingIOError
-    os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
-    
-    # Get the circuit folder name from the simulation_config path
-    # This assumes the simulation_config is structured as "circuit_folder/simulation_config.json"
-    circuit_folder_name = str(simulation_config).split("/")[0]
-    logger.info(f"Rank {rank}: Determined circuit folder name: {circuit_folder_name}")
-    # Create a results directory based on the circuit folder name
-    # This will create a directory named "results/circuit_folder_name"
-    results_dir = f"results/{circuit_folder_name}"
-    # Create the results directory if it doesn't exist
-    
-    if rank == 0:
-        os.makedirs(results_dir, exist_ok=True)
-        logger.info(f"Rank 0: Ensured results directory exists: {results_dir}")
-    pc.barrier() # Ensure directory is created by rank 0 before other ranks might proceed
+# Set up log file with timestamp
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+log_file = log_dir / f'simulation_{timestamp}.log'
 
-    # Load the simulation configuration
-    with open(simulation_config) as f:
-        simulation_config_dict = json.load(f)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(log_file)
+    ]
+)
+logger = logging.getLogger(__name__)
+logger.info(f"Logging to {log_file}")
 
-    sim = CircuitSimulation(simulation_config)
-    logger.info(f"Rank {rank}: CircuitSimulation object created for {simulation_config}")
-
-    # instantiate_gids() supports several arguments which can used for circuit
-    # instantiation. Here, we are adding stimuli from simulation_config.json 
-    # and activating synapses to the cells given by gids.
-    sim.instantiate_gids(cell_ids, add_stimuli=True, add_synapses=True)
-    logger.info(f"Rank {rank}: Cells instantiated for simulation: {cell_ids}")
-
-    t_stop = simulation_config_dict["run"]['tstop']
-    dt = simulation_config_dict["run"]['dt']
-
-    logger.info(f"Rank {rank}: Starting simulation run for t_stop = {t_stop} ms, dt = {dt} ms.")
-    sim_run_start_time = time.perf_counter()
-    sim.run(t_stop=t_stop)
-    sim_run_end_time = time.perf_counter()
-    logger.info(f"Rank {rank}: Simulation run completed in {sim_run_end_time - sim_run_start_time:.2f} seconds.")
-
-
-    # Plotting and saving should be done by a single rank (e.g., rank 0)
-    # to avoid file overwriting and manage resources.
-    if rank == 0:
-
-        plotting_start_time = time.perf_counter()
-        # --- Plotting ---
-        logger.info(f"Rank 0: Generating plot for {len(cell_ids)} cells...")
-        # Create subplots; handle single cell case for axs indexing robustly
-        if not cell_ids:
-            logger.warning("Rank 0: No cells to plot.")
-            plotting_end_time = time.perf_counter()
-            logger.info(f"Rank 0: Plotting took {plotting_end_time - plotting_start_time:.2f} seconds (no cells).")
-            return
-
-        fig, axs_list = plt.subplots(len(cell_ids), 1, figsize=(10, 6 * len(cell_ids)), squeeze=False)
-        axs_list = axs_list.flatten()  # Ensure axs_list is a flat array of axes
-
-        # Get the time array once for both plotting and NWB saving.
-        time_ms = sim.get_time_trace() # Assumes rank 0 can get the global time trace
-        if time_ms is None:
-            logger.error("Rank 0: Error - Time trace is None. Cannot plot or save NWB.")
-            plotting_end_time = time.perf_counter()
-            logger.info(f"Rank 0: Plotting took {plotting_end_time - plotting_start_time:.2f} seconds (time trace error).")
-            return
-
-        for i, cid_tuple in enumerate(cell_ids):
-            voltage_mv = sim.get_voltage_trace(cid_tuple)  # Get the voltage trace for the specific cell ID
-            if voltage_mv is not None:  # Plot if voltage data is available
-                axs_list[i].plot(time_ms, voltage_mv, label=str(cid_tuple))
-                # save the time and voltage in a dat file
-                dat_filename = f"{results_dir}/voltage_{cid_tuple[0]}_{cid_tuple[1]}.dat"
-                try:
-                    np.savetxt(dat_filename, np.column_stack((time_ms, voltage_mv)), header="Time (ms) Voltage (mV)", fmt="%s")
-                    logger.info(f"Rank 0: Saved .dat file for {cid_tuple} to {dat_filename}")
-                except Exception as e:
-                    logger.error(f"Rank 0: Failed to save .dat file for {cid_tuple} to {dat_filename}: {e}")
-            else:
-                logger.warning(f"Rank 0: No voltage trace found for {cid_tuple} for plotting or .dat saving.")
-
-            axs_list[i].set_xlabel("Time (ms)")
-            axs_list[i].set_ylabel("Voltage (mV)")
-            axs_list[i].legend()
-            axs_list[i].set_title(f"Voltage Trace for Cell {cid_tuple[0]} GID {cid_tuple[1]}")
-            axs_list[i].grid()
-        plt.tight_layout()
-        
-        plot_filename = f"{results_dir}/{circuit_folder_name}.png"
-        plt.savefig(plot_filename, dpi=300, bbox_inches='tight', facecolor='w')
-        plt.close(fig)
-        logger.info(f"Rank 0: Saved plot for {len(cell_ids)} cells to {plot_filename}")
-        plotting_end_time = time.perf_counter()
-        logger.info(f"Rank 0: Plotting took {plotting_end_time - plotting_start_time:.2f} seconds.")
-
-        nwb_saving_start_time = time.perf_counter()
-        # --- NWB Saving ---
-        if not cell_ids: # This check is somewhat redundant due to earlier return, but good for clarity
-            logger.warning("Rank 0: No cell data to save to NWB (should have been caught earlier).")
-            nwb_saving_end_time = time.perf_counter()
-            logger.info(f"Rank 0: NWB saving took {nwb_saving_end_time - nwb_saving_start_time:.2f} seconds (no cells).")
-            return
-
-        logger.info(f"Rank 0: Preparing to save {len(cell_ids)} cells to NWB file...")
-        
-        # Write the NWB file
-        nwb_filename = f"{results_dir}/{circuit_folder_name}_num_cells={len(cell_ids)}.nwb"
-
+def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
+    """Save simulation results to NWB format"""
+    try:
         nwbfile = NWBFile(
-            session_description=f'Circuit simulation for {len(cell_ids)} cells of {circuit_folder_name}. Config: {simulation_config.name if simulation_config else "N/A"}',
+            session_description=f'Small Microcircuit Simulation results',
             identifier=str(uuid.uuid4()),
             session_start_time=datetime.now(timezone.utc),
             experimenter='OBI User',
-            lab='My Virtual Lab',
-            institution='My Institution',
-            experiment_description=f'Simulated voltage traces for cells: {cell_ids}',
-            session_id=f"sim_{circuit_folder_name}_{cell_ids[0][0]}_{cell_ids[0][1]}" if cell_ids else f"sim_{circuit_folder_name}_no_cells"
+            lab='Virtual Lab',
+            institution='OBI',
+            experiment_description='Simulation results',
+            session_id=f"small_microcircuit_simulation"
         )
-
-        device = nwbfile.create_device(name='SimulatedIntracellularElectrode', description='Virtual electrode simulation.')
-
-        # time_ms is already fetched above.
-        # Ensure it's not None (already checked, but good practice if sections were more separate)
-        if time_ms is not None:
-            time_s = time_ms / 1000.0  # Convert ms to seconds
-
-            for i, cid_tuple in enumerate(cell_ids):
-                voltage_mv_nwb = sim.get_voltage_trace(cid_tuple) # Re-fetch or ensure data is gathered if needed
-                if voltage_mv_nwb is not None:
-                    voltage_v = voltage_mv_nwb / 1000.0 # Convert mV to Volts
-
-                    intracellular_electrode = IntracellularElectrode(
-                        name=f'electrode_{cid_tuple[0]}_{cid_tuple[1]}',
-                        description=f'Simulated intracellular electrode for cell {cid_tuple[0]} GID {cid_tuple[1]}.',
-                        device=device,
-                        location='Soma',
-                        filtering='none'
-                    )
-                    nwbfile.add_icephys_electrode(intracellular_electrode)
-
-                    voltage_series = CurrentClampSeries(
-                        name=f'Voltage_{cid_tuple[0]}_{cid_tuple[1]}',
-                        data=voltage_v,
-                        electrode=intracellular_electrode,
-                        timestamps=time_s,
-                        conversion=1.0,
-                        resolution=-1.0,
-                        comments=f"Population: {cid_tuple[0]}, GID: {cid_tuple[1]}.",
-                        stimulus_description="A current stimulus was injected during the simulation (not saved as a separate NWB TimeSeries).",
-                    )
-                    nwbfile.add_acquisition(voltage_series)
-                else:
-                    logger.warning(f"Rank 0: No voltage trace found for {cid_tuple} for NWB saving, skipping NWB entry.")
-        else:
-            logger.error("Rank 0: Time trace is None, cannot save NWB data series.")
-
-        with NWBHDF5IO(nwb_filename, "w") as io:
+        
+        # Add device and electrode
+        device = nwbfile.create_device(
+            name='SimulatedElectrode',
+            description='Virtual electrode for simulation recording'
+        )
+        
+        # Add voltage traces
+        for cell_id, trace in results.items():
+            # Create electrode for this cell
+            electrode = IntracellularElectrode(
+                name=f'electrode_{cell_id}',
+                description=f'Simulated electrode for {cell_id}',
+                device=device,
+                location='soma',
+                filtering='none'
+            )
+            nwbfile.add_icephys_electrode(electrode)
+            
+            # Convert time from ms to seconds for NWB
+            time_data = np.array(trace["time"], dtype=float) / 1000.0
+            voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0  # Convert mV to V
+            
+            # Create current clamp series with timestamps
+            ics = CurrentClampSeries(
+                name=f'voltage_{cell_id}',
+                data=voltage_data,
+                electrode=electrode,
+                timestamps=time_data,
+                gain=1.0,
+                unit='volt',
+                description=f'Voltage trace for {cell_id}'
+            )
+            nwbfile.add_acquisition(ics)
+        
+        # Save to file
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Save to file
+        with NWBHDF5IO(str(output_path), 'w') as io:
             io.write(nwbfile)
-        logger.info(f"Rank 0: Saved NWB file to {nwb_filename}")
-        nwb_saving_end_time = time.perf_counter()
-        logger.info(f"Rank 0: NWB saving took {nwb_saving_end_time - nwb_saving_start_time:.2f} seconds.")
+        
+        logger.info(f"Successfully saved results to {output_path}")
+        
+    except Exception as e:
+        logger.error(f"Error saving results to NWB: {str(e)}")
+        raise
 
-    pc.barrier() # Ensure all processes wait until rank 0 is done writing/plotting.
-    logger.info(f"Rank {rank}: run_simulation_sonata finished.")
+def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
+    """Plot voltage traces for all cells in a grid of subplots and save to file.
+    
+    Args:
+        results: Dictionary containing simulation results for each cell
+        output_path: Path where to save the plot (should include .png extension)
+        max_cols: Maximum number of columns in the subplot grid
+    """
+    n_cells = len(results)
+    if n_cells == 0:
+        logger.warning("No voltage traces to plot")
+        return
+    
+    # Calculate grid size
+    n_cols = min(max_cols, n_cells)
+    n_rows = (n_cells + n_cols - 1) // n_cols
+    
+    # Create figure with subplots
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows), 
+                            squeeze=False, constrained_layout=True)
+    
+    # Flatten axes for easier iteration
+    axes = axes.ravel()
+    
+    # Plot each cell's voltage trace in its own subplot
+    for idx, (cell_id, trace) in enumerate(results.items()):
+        ax = axes[idx]
+        time_ms = np.array(trace["time"])
+        voltage_mv = np.array(trace["voltage"])
+        
+        ax.plot(time_ms, voltage_mv, linewidth=1)
+        ax.set_title(f"Cell {cell_id}", fontsize=10)
+        ax.grid(True, alpha=0.3)
+        
+        # Only label bottom row x-axes
+        if idx >= (n_rows - 1) * n_cols:
+            ax.set_xlabel("Time (ms)", fontsize=8)
+        
+        # Only label leftmost column y-axes
+        if idx % n_cols == 0:
+            ax.set_ylabel("mV", fontsize=8)
+    
+    # Turn off unused subplots
+    for idx in range(n_cells, len(axes)):
+        axes[idx].axis('off')
+    
+    # Add a main title
+    fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
+    
+    # Save the figure
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    logger.info(f"Saved voltage traces plot to {output_path}")
+
+def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Determine instantiate_gids parameters from simulation config.
+    
+    This function gives parameters for sim.instantiate_gids() based on the
+    simulation config. See the package BlueCellulab/bluecellulab/circuit_simulation.py
+    for more details.
+    
+    Args:
+        simulation_config_data: Loaded simulation configuration
+    Returns:
+        Dictionary of parameters for instantiate_gids
+    """
+    params = {
+        # Core parameters - these are the main ones we need to set
+        'add_stimuli': False,
+        'add_synapses': False,
+        'add_minis': False,
+        'add_replay': False,
+        'add_projections': False,
+        'interconnect_cells': True,
+        # These will be handled automatically by add_stimuli=True
+        'add_noise_stimuli': False,
+        'add_hyperpolarizing_stimuli': False,
+        'add_relativelinear_stimuli': False,
+        'add_pulse_stimuli': False,
+        'add_shotnoise_stimuli': False,
+        'add_ornstein_uhlenbeck_stimuli': False,
+        'add_sinusoidal_stimuli': False,
+        'add_linear_stimuli': False,
+    }
+    
+    # Check for any inputs in the config
+    if 'inputs' in simulation_config_data and simulation_config_data['inputs']:
+        params['add_stimuli'] = True
+        
+        # Log any unsupported input types
+        supported_types = {
+            'noise', 'hyperpolarizing', 'relativelinear', 'pulse',
+            'sinusoidal', 'linear', 'shotnoise', 'ornstein_uhlenbeck'
+        }
+        
+        for input_def in simulation_config_data['inputs'].values():
+            module = input_def.get('module', '').lower()
+            if module not in supported_types:
+                logger.warning(f"Input type '{module}' may not be fully supported by instantiate_gids")
+    
+    # Check for synapses and minis in conditions
+    if 'conditions' in simulation_config_data:
+        conditions = simulation_config_data['conditions']
+        if 'mechanisms' in conditions and conditions['mechanisms']:
+            params['add_synapses'] = True
+            # Check if any mechanism has minis enabled
+            for mech in conditions['mechanisms'].values():
+                if mech.get('minis_single_vesicle', False):
+                    params['add_minis'] = True
+                    break
+    
+    # Check for spike replay in inputs
+    if 'inputs' in simulation_config_data:
+        for input_def in simulation_config_data['inputs'].values():
+            if input_def.get('module') == 'synapse_replay':
+                params['add_replay'] = True
+                break
+    
+    # Enable projections by default if synapses are enabled
+    params['add_projections'] = params['add_synapses']
+    
+    return params
 
 
-def main():
-    # Initialize MPI and get rank/size
+def run_bluecellulab(
+    simulation_config: Union[str, Path],
+    save_nwb: bool = False,
+) -> None:
+    """Run a simulation using BlueCelluLab backend.
+    
+    Args:
+        simulation_config: Path to the simulation configuration file
+        save_nwb: Whether to save results in NWB format.
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Get MPI info using NEURON's ParallelContext
     h.nrnmpi_init()
     pc = h.ParallelContext()
     rank = int(pc.id())
-    nhost = int(pc.nhost())
-
-    # Setup logging
-    logger = logging.getLogger(__name__) # Get logger for this module
-    log_level = logging.INFO
-    logger.setLevel(log_level)
+    size = int(pc.nhost())
     
-    # StreamHandler for console output
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(log_level)
-    log_format_str = "%(asctime)s - PID:%(process)d - %(levelname)s - %(message)s"
-    if nhost > 1: # Add rank info if running in parallel
-        log_format_str = f"[Rank {rank:02d}/{nhost:02d}] {log_format_str}"
-    formatter = logging.Formatter(log_format_str)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-    
-    # Prevent duplicate logging if root logger also has handlers
-    logger.propagate = False
-
-    overall_start_time = time.perf_counter()
-    logger.info("Starting run10cells_parallel.py script.")
-
-    parser = argparse.ArgumentParser(description="Run BlueCelluLab SONATA simulation and save voltage plots.")
-    parser.add_argument("--config", type=Path, help="Path to the simulation_config JSON file")
-    parser.add_argument("--population_name", type=str, default="S1nonbarrel_neurons", help="Population name (default: S1nonbarrel_neurons)")
-    parser.add_argument("--start_gid", type=int, default=0, help="Cell GID (default: 0)")
-    parser.add_argument("--num_cells", type=int, default=1, help="Number of cells to simulate (default: 1)")
-    args = parser.parse_args()
-    logger.info(f"Parsed arguments: {args}")
-
-    # Create logs directory if it doesn't exist (only by rank 0)
-    logs_dir = Path("logs")
     if rank == 0:
-        logs_dir.mkdir(parents=True, exist_ok=True)
-    pc.barrier() # Ensure directory is created before other ranks proceed to create log files
+        logger.info("Initializing BlueCelluLab simulation")
+    
+    # Load configuration using json
+    with open(simulation_config) as f:
+        simulation_config_data = json.load(f)
+    
+    # Get simulation parameters from config
+    t_stop = simulation_config_data["run"]["tstop"]
+    dt = simulation_config_data["run"]["dt"]
+    
+    try:
+        # Get the directory of the simulation config
+        sim_config_base_dir = Path(simulation_config).parent
+        logger.info(f"sim_config_base_dir: {sim_config_base_dir}")
+        
+        # Get manifest path
+        OUTPUT_DIR = simulation_config_data.get("manifest", {}).get("$OUTPUT_DIR", "./")
+        logger.info(f"OUTPUT_DIR: {OUTPUT_DIR}")
+        
+        # Get the node_set
+        node_set_name = simulation_config_data.get("node_set", "All")
+    
+        node_sets_file = sim_config_base_dir / simulation_config_data["node_sets_file"]
+        logger.info(f"node_sets_file: {node_sets_file}")
+        
+        with open(node_sets_file) as f:
+            node_set_data = json.load(f)
 
-    # FileHandler for rank-specific log files
-    # Using circuit_folder_name in log file name for better organization if multiple circuits are run
-    circuit_folder_name_for_log = "unknown_circuit"
-    if args.config:
+        # Get population and node IDs
+        if node_set_name not in node_set_data:
+            raise KeyError(f"Node set '{node_set_name}' not found in node sets file")
+            
+        population = node_set_data[node_set_name]["population"]
+        all_node_ids = node_set_data[node_set_name]["node_id"]
+        logger.info(f"Population: {population}")
+        logger.info(f"All node IDs: {all_node_ids}")
+    
+        # Distribute nodes across ranks
+        num_nodes = len(all_node_ids)
+        nodes_per_rank = num_nodes // size
+        remainder = num_nodes % size
+        logger.info(f"Total nodes: {num_nodes}, Nodes per rank: {nodes_per_rank}, Remainder: {remainder}")
+    
+        # Calculate start and end indices for this rank
+        start_idx = rank * nodes_per_rank + min(rank, remainder)
+        if rank < remainder:
+            nodes_per_rank += 1
+        end_idx = start_idx + nodes_per_rank
+        logger.info(f"Rank {rank}: start_idx={start_idx}, end_idx={end_idx}")
+        
+        # Get node IDs for this rank
+        rank_node_ids = all_node_ids[start_idx:end_idx]
+        logger.info(f"Rank {rank} node IDs: {rank_node_ids}")
+        # create cell_ids_for_this_rank
+        cell_ids_for_this_rank = [(population, i) for i in rank_node_ids]
+        logger.info(f"Rank {rank}: Handling {len(cell_ids_for_this_rank)} cells")
+        
+        if not cell_ids_for_this_rank:
+            logger.warning(f"Rank {rank}: No cells to process")
+    
+        if rank == 0:
+            logger.info(f"Running BlueCelluLab simulation with {size} MPI processes")
+            logger.info(f"Total cells: {num_nodes}, Cells per rank: ~{num_nodes//size}")
+            logger.info(f"Starting simulation: t_stop={t_stop}ms, dt={dt}ms")
+        
+        logger.info(f"Rank {rank}: Processing {len(rank_node_ids)} cells (IDs: {rank_node_ids[0]}...{rank_node_ids[-1] if rank_node_ids else 'None'})")
+        
+        # Create simulation
+        sim = CircuitSimulation(simulation_config)
+
+        # Get instantiate_gids arguments from config
+        instantiate_params = get_instantiate_gids_params(simulation_config_data)
+        
+        if rank == 0:
+            logger.info("Instantiate arguments from config:")
+            for param, value in instantiate_params.items():
+                if value:  # Only log parameters that are True
+                    logger.info(f"  {param}: {value}")
+    
+    except Exception as e:
+        logger.error(f"Error during initialization: {str(e)}")
+        raise
+        
+    try:
+        logger.info(f"Rank {rank}: Instantiating cells...")
+        # Instantiate cells on this rank with arguments from config
+        sim.instantiate_gids(cell_ids_for_this_rank, **instantiate_params)
+        
+        # Run simulation
+        logger.info(f"Rank {rank}: Running simulation...")
+        sim.run(t_stop, dt, cvode=False)
+        
+        # Get time trace once for all cells
+        time_ms = sim.get_time_trace()
+        if time_ms is None:
+            logger.error(f"Rank {rank}: Time trace is None, cannot proceed with saving.")
+            return
+            
+        time_s = time_ms / 1000.0  # Convert ms to seconds
+        
+        # Get voltage traces for each cell on this rank
+        results = {}
+        for cell_id in cell_ids_for_this_rank:
+            try:
+                voltage = sim.get_voltage_trace(cell_id)
+                if voltage is not None:
+                    # change the cell_id to be Population_ID format
+                    cell_id_key = f"{cell_id[0]}_{cell_id[1]}"
+                    results[cell_id_key] = {
+                        'time': time_s.tolist(),  # Convert numpy array to list for serialization
+                        'voltage': voltage.tolist(),
+                        'unit': 'mV'
+                    }
+                    logger.info(f"Rank {rank}: Successfully got voltage trace for {cell_id_key}")
+                else:
+                    logger.info(f"Rank {rank}: No voltage trace for cell {cell_id}")
+            except Exception as e:
+                logger.error(f"Rank {rank}: Error getting voltage trace for cell {cell_id}: {str(e)}")
+                continue
+        
+        # Gather all results to rank 0
+        logger.info(f"Rank {rank}: Gathering results...")
         try:
-            circuit_folder_name_for_log = str(args.config).split("/")[0]
-        except IndexError:
-            pass # Keep default if path is not as expected
+            gathered_results = pc.py_gather(results, 0)
+        except Exception as e:
+            logger.error(f"Rank {rank}: Error gathering results: {str(e)}")
+            gathered_results = None
+        
+        if rank == 0 and save_nwb and gathered_results is not None:
+            # Merge results from all ranks
+            all_results = {}
+            for rank_results in gathered_results:
+                if rank_results:
+                    all_results.update(rank_results)
+            
+            # Get output directory from config, handling all cases
+            base_dir = Path(simulation_config).parent
+            output_dir = None
+            
+            # if output_dir is explicitly specified in config
+            if "output_dir" in simulation_config_data:
+                output_dir_str = simulation_config_data["output_dir"]
+                # Handle $OUTPUT_DIR variable if present
+                if output_dir_str.startswith("$OUTPUT_DIR"):
+                    if "manifest" in simulation_config_data and "$OUTPUT_DIR" in simulation_config_data["manifest"]:
+                        output_dir = Path(simulation_config_data["manifest"]["$OUTPUT_DIR"]) / output_dir_str.replace("$OUTPUT_DIR/", "")
+                else:
+                    output_dir = Path(output_dir_str)
+                
+                # Make path absolute if it's relative
+                if not output_dir.is_absolute():
+                    output_dir = base_dir / output_dir
+            
+            # if output_dir not specified or invalid
+            if output_dir is None:
+                output_dir = base_dir / "output"
+            
+            # Ensure output directory exists
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save NWB file directly in the output directory
+            output_path = output_dir / "results.nwb"
+            logger.info(f"Saving simulation results to: {output_path}")
+            save_results_to_nwb(all_results, output_path)
+            
+            # Save voltage traces plot
+            plot_path = output_dir / "voltage_traces.png"
+            plot_voltage_traces(all_results, plot_path)
+            logger.info(f"Successfully saved voltage traces plot to {plot_path}")
+            
+    except Exception as e:
+        logger.error(f"Rank {rank} failed: {str(e)}", exc_info=True)
+        raise
+    finally:
+        try:
+            # Ensure proper cleanup
+            logger.info(f"Rank {rank}: Cleaning up...")
+            pc.barrier()
+            if rank == 0:
+                logger.info("All ranks completed. Simulation finished.")
+        except Exception as e:
+            logger.error(f"Error during cleanup in rank {rank}: {str(e)}")
 
-    # FileHandler for a central log file, written only by rank 0
-    if rank == 0:
-        log_file_path = logs_dir / f"{circuit_folder_name_for_log}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        file_handler = logging.FileHandler(log_file_path, mode='w') # 'w' to overwrite
-        file_handler.setLevel(log_level)
-        file_handler.setFormatter(formatter) # Use the same formatter
-        logger.addHandler(file_handler)
-        logger.info(f"Rank 0: Logging to central file: {log_file_path}")
-    # All ranks (including 0) will still log to console via stream_handler
-
-    cell_ids = [(args.population_name, args.start_gid + i) for i in range(args.num_cells)]
-    logger.info(f"Target cell_ids for simulation: {cell_ids}")
-
-    run_simulation_sonata(args.config, cell_ids, pc, rank, logger)
-
-    pc.barrier() # Ensure all ranks have completed run_simulation_sonata
-    overall_end_time = time.perf_counter()
-    if rank == 0:
-        logger.info(f"Total script execution time: {overall_end_time - overall_start_time:.2f} seconds.")
-
+def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run a BlueCelluLab Circuit Simulation.')
+    parser.add_argument('--simulation_config', '--config', type=str, required=True,
+                      help='Path to the simulation configuration file')
+    parser.add_argument('--save-nwb', action='store_true',
+                      help='Save results in NWB format')
+    
+    args = parser.parse_args()
+    
+    # Validate simulation config exists
+    config_path = Path(args.simulation_config)
+    if not config_path.exists():
+        logger.error(f"Configuration file not found: {config_path}")
+        return 1
+    
+    # Run the simulation
+    run_bluecellulab(
+        simulation_config=args.simulation_config,
+        save_nwb=args.save_nwb,
+    )
+    return 0
 
 if __name__ == "__main__":
     main()
