@@ -73,6 +73,16 @@ class EMSonataEdgesFiles(Form, abc.ABC):
             name="Morphology naming patterns",
             description="File name scheme for morphologies and spines info files"
         )
+        synapse_preloaded_h5_file: str | None = Field(
+            description="A local h5 file that holds all synapse info. With the data for each postsynaptic neuron in a separate table.",
+            name="Preloaded synapses hdf5 file",
+            default=None
+        )
+        source_columns_to_keep: tuple[str, ...] = Field(
+            description="Names of columns in the original source table of synapses that are to be kept and written to the output",
+            name="Source columns to keep",
+            default=("id", "size")
+        )
 
     initialize: Initialize
 
@@ -89,7 +99,7 @@ from obi_one.scientific.microns_to_sonata.microns_edges_block import EMEdgesMapp
 class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
 
     @staticmethod
-    def write_synapses_and_extrinsics(syns,
+    def write_synapses_and_extrinsics(syns, columns_to_keep,
                                       extrinsic_node_pop, extrinsic_nodes_fn,
                                       morphology_ids,
                                       intrinsic_name, intrinsic_edge_pop_name, intrinsic_ids, intrinsic_edges_fn,
@@ -117,9 +127,9 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         new_ext_coll.save_sonata(extrinsic_nodes_fn)
 
         # Bring DataFrame into output format. Mainly renames columns.
-        intrinsic_syn_map, intrinsic_syn_prop = format_for_edges_output(intrinsic_syns)
-        virtual_syn_map, virtual_syn_prop = format_for_edges_output(virtual_syns)
-        extrinsic_syn_map, extrinsic_syn_prop = format_for_edges_output(extrinsic_syns)
+        intrinsic_syn_map, intrinsic_syn_prop = format_for_edges_output(intrinsic_syns, columns_to_keep)
+        virtual_syn_map, virtual_syn_prop = format_for_edges_output(virtual_syns, columns_to_keep)
+        extrinsic_syn_map, extrinsic_syn_prop = format_for_edges_output(extrinsic_syns, columns_to_keep)
 
         write_edges(intrinsic_edges_fn, intrinsic_edge_pop_name, 
                     intrinsic_syn_map, intrinsic_syn_prop,
@@ -142,7 +152,8 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
                 cave_client_token=self.cave_client_token,
                 client_version=self.initialize.client_version,
                 naming_patterns=self.initialize.naming_patterns,
-                morphologies_are_transformed=self.initialize.morphologies_are_transformed
+                morphologies_are_transformed=self.initialize.morphologies_are_transformed,
+                synapse_preloaded_h5_file=self.initialize.synapse_preloaded_h5_file
             )
         
         if os.path.isabs(self.initialize.extrinsic_nodes):
@@ -206,7 +217,7 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
             if len(syns) > 0:
                 L.info("Writing chunk to disk...")
                 extrinsics, extrinsic_name = self.write_synapses_and_extrinsics(
-                    pandas.concat(syns, axis=0),
+                    pandas.concat(syns, axis=0), self.initialize.source_columns_to_keep,
                     extrinsics, extrinsics_fn, morphology_ids,
                     intrinsic_name, intrinsic_edge_pop_name, intrinsic_ids, intrinsic_edges_fn,
                     virtual_name, virtual_edge_pop_name, virtual_ids, virtual_edges_fn,

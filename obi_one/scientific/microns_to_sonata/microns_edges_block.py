@@ -13,7 +13,8 @@ from obi_one.core.block import Block
 
 from .utils_edges import (
     synapse_info_df, map_synapses_onto_spiny_morphology, 
-    dummy_mapping_without_morphology, _STR_SEC_ID, L
+    dummy_mapping_without_morphology, synapse_info_df_from_local_file,
+    _STR_SEC_ID, L
 )
 from .utils_nodes import (
     source_resolution,
@@ -47,7 +48,12 @@ class EMEdgesMappingBlock(Block, abc.ABC):
             default=("{pt_root_id}.swc", "{pt_root_id}-spines.json"),
             name="Morphology naming patterns",
             description="File name scheme for morphologies and spines info files"
-        )
+        ),
+    synapse_preloaded_h5_file: str | None = Field(
+        description="A local h5 file that holds all synapse info. With the data for each postsynaptic neuron in a separate table.",
+        name="Preloaded synapses hdf5 file",
+        default=None
+    )
     
 
     @model_validator(mode="after")
@@ -64,15 +70,26 @@ class EMEdgesMappingBlock(Block, abc.ABC):
                             auth_token=self.cave_client_token)
         self._client.version = self.client_version
         self._resolutions = source_resolution(self._client)
+        if self.synapse_preloaded_h5_file is not None:
+            import h5py
+            with h5py.File(self.synapse_preloaded_h5_file, "r") as h5:
+                self._h5_dset_names = tuple(list(h5.keys()))
     
     def prefetch(self, lst_pt_root_ids):
         if not hasattr(self, "_client"):
             L.info("Creating client...")
             self._setup_client()
-
-        self._buf_df = synapse_info_df(self._client,
-                                       lst_pt_root_ids,
-                                       self._resolutions)
+        if self.synapse_preloaded_h5_file is not None:
+            naming_pat = "post_pt_root_id_{0}"
+            use_pt_root_ids = [_id for _id in lst_pt_root_ids if
+                               naming_pat.format(_id) in self._h5_dset_names]
+            self._buf_df = synapse_info_df_from_local_file(use_pt_root_ids, self._resolutions,
+                                                           self.synapse_preloaded_h5_file,
+                                                           dset_name_pat=naming_pat)
+        else:        
+            self._buf_df = synapse_info_df(self._client,
+                                        lst_pt_root_ids,
+                                        self._resolutions)
         self._buffered_ids = tuple(lst_pt_root_ids)
         L.info(f"Prefetched {len(self._buf_df)} synapses for {len(lst_pt_root_ids)} neurons!")
 
@@ -89,7 +106,9 @@ class EMEdgesMappingBlock(Block, abc.ABC):
         
         self.enforce_no_lists()
         fn_spines = os.path.join(spine_root, naming_spine.format(**node_info.to_dict()))
+        fn_spines = os.path.join(spine_root, node_info["spine_info"] + ".json")
         fn_morph = os.path.join(morph_root, naming_morph.format(**node_info.to_dict()))
+        fn_morph = os.path.join(morph_root, node_info["morphology"] + ".swc")
 
         if os.path.isfile(fn_spines):
             with open(fn_spines, "r") as fid:

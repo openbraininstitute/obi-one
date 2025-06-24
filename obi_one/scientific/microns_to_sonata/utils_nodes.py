@@ -182,8 +182,9 @@ def transform_and_copy_morphologies(nrns, in_root, out_root,
                 shutil.copy(os.path.join(in_root, spines_fn),
                             os.path.join(spine_out_root, spines_name + ".json"))
                 nrns.loc[_idx, _STR_SPINE_INFO] = spines_name
-        except:
+        except Exception as e:
             print(f"Morphology {morph_fn} found but an error was encountered!")
+            print(str(e))
             pass
     n_found = (nrns[_STR_MORPH] != _STR_NONE).sum()
     print(f"{n_found} morphologies found and moved!")
@@ -195,7 +196,7 @@ def split_into_intrinsic_and_virtual(nrn, use_bounding_box=True, expand_bounding
     if numpy.isinf(expand_bounding_box):
         return nrn, nrn.iloc[:0]
     nrn_morph = nrn.loc[has_morphology]
-    if len(nrn_morph) == 0:
+    if (len(nrn_morph) == 0):
         print("No morphologies assigned. Using center!")
         bb_mean = nrn[_C_NRN_LOCS].mean()
         sz = pandas.Series({_col: expand_bounding_box for _col in _C_NRN_LOCS})

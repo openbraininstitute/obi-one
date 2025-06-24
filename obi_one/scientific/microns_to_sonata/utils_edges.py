@@ -60,6 +60,17 @@ def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_positi
     syns = pandas.concat([syns, syn_locs], axis=1)
     return syns
 
+def synapse_info_df_from_local_file(pt_root_id, resolutions, h5_fn, dset_name_pat="post_pt_root_id_{0}"):
+    if not isinstance(pt_root_id, list):
+        pt_root_id = [pt_root_id]
+    df = pandas.concat([
+        pandas.read_hdf(h5_fn, dset_name_pat.format(_id))
+        for _id in pt_root_id
+    ], axis=0).reset_index(drop=True)
+    for _col_in, _col_out, _res in zip(["x", "y", "z"], _C_P_LOCS, resolutions):
+        df[_col_out] = df[_col_in] * _res / 1000.0
+    return df
+
 def combined_synape_info(df_syns, df_cells, cols_cells):
     for _col in cols_cells:
         _v = df_cells[_col].reindex(df_syns["pre_pt_root_id"], fill_value=_STR_EXT).values
@@ -329,14 +340,12 @@ def pt_root_to_sonata_id(syns, morphology_ids, intrinsic_ids, virtual_ids, extri
     return intrinsic_syns, virtual_syns, extrinsic_syns, new_extrinsics
 
 
-def format_for_edges_output(syns):
+def format_for_edges_output(syns, columns_to_rename=("id", "size")):
     from obi_one.scientific.microns_to_sonata.utils_nodes import (
         _PREF_SRC
     )
 
     synapse_col_renaming = {
-        "id": _PREF_SRC + "id",
-        "size": _PREF_SRC + "size",
         _C_P_LOCS[0]: "afferent_synapse_x",
         _C_P_LOCS[1]: "afferent_synapse_y",
         _C_P_LOCS[2]: "afferent_synapse_z",
@@ -348,6 +357,9 @@ def format_for_edges_output(syns):
         _STR_SPINE_Y: "afferent_surface_y",
         _STR_SPINE_Z: "afferent_surface_z",
     }
+    for _col in columns_to_rename:
+        synapse_col_renaming[_col] = _PREF_SRC + _col
+    
     cols_keep = [_STR_SPINE_ID]
     cols_keep = cols_keep + list(synapse_col_renaming.keys())
 
