@@ -106,10 +106,6 @@ def create_endpoint_for_form(
             else:
                 L.info("Grid scan generated successfully")
                 return str(campaign.id)
-                # if campaign is not None:
-                #     return campaign.id
-                # else:
-                #     return None
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:

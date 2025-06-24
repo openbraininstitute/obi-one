@@ -214,7 +214,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self._circuit_id = self.initialize.circuit.id_str
 
             self.initialize.circuit.circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
-            _circuit = self.initialize.circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
+            _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
             self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
 
 
@@ -312,7 +312,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             entitysdk.models.Simulation(
                 name=f"sim-{self.idx}",
                 description=f"sim-{self.idx}",
-                scan_parameters={"foo": "bar"},
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,
                 
@@ -348,14 +348,14 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         L.info(f"-- Upload spike replay files")
         for input in self._sonata_config["inputs"]:
-            if hasattr(self.stimuli[input], "spikes_file"):
-                spikes_file = self.stimuli[input].spikes_file
-                if spikes_file is not None:
+            if "spike_file" in list(self._sonata_config["inputs"][input]):
+                spike_file = self._sonata_config["inputs"][input]["spike_file"]
+                if spike_file is not None:
                     _ = db_client.upload_file(
                         entity_id=simulation.id,
                         entity_type=entitysdk.models.Simulation,
-                        file_path=Path(self.coordinate_output_root, spikes_file),
-                        file_content_type="application/h5",
+                        file_path=Path(self.coordinate_output_root, spike_file),
+                        file_content_type="application/x-hdf5",
                         asset_label='replay_spikes'
                     )
 

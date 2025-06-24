@@ -21,10 +21,6 @@ class CircuitFromID(EntityFromID):
         for asset in self.entity(db_client=db_client).assets:
             if asset.content_type == "application/vnd.directory":
 
-                # load_asset_method = LoadAssetMethod.MEMORY
-                # if load_asset_method == LoadAssetMethod.MEMORY:
-                #     print("Downloading SWC file for morphology...")
-
                 # Download the content into memory
                 db_client.download_directory(
                     entity_id=self.entity(db_client=db_client).id,
@@ -32,20 +28,3 @@ class CircuitFromID(EntityFromID):
                     asset_id=asset.id,
                     output_path=dest_dir,
                 )
-
-    # with tempfile.TemporaryDirectory() as tdir:
-
-    # files = client.list_directory(
-    #     entity_id=circuit.id,
-    #     entity_type=models.Circuit,
-    #     asset_id=directory_asset.id
-    # )
-    # rprint(files)
-
-    # client.download_directory(
-    #     entity_id=circuit.id,
-    #     entity_type=models.Circuit,
-    #     asset_id=directory_asset.id,
-    #     output_path=Path(tdir)
-    # )
-    # rprint(list(Path(tdir).iterdir()))
