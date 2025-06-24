@@ -321,9 +321,12 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
                 # Update hoc files (in place)
                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
-                if hoc_folder not in hoc_folders_updated:
-                    self._update_hoc_files(hoc_folder)
-                    hoc_folders_updated.append(hoc_folder)
+                if not os.path.exists(hoc_folder):
+                    print("WARNING: Biophysical neuron models dir missing!")
+                else:
+                    if hoc_folder not in hoc_folders_updated:
+                        self._update_hoc_files(hoc_folder)
+                        hoc_folders_updated.append(hoc_folder)
 
             # Clean up morphology folders with individual morphologies
             print(f"Cleaning morphology folders: {morph_folders_to_delete}")
