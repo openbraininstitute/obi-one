@@ -16,8 +16,8 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
-    delay: float | list[float] = Field(
-        default=0.0, title="Delay", description="Time in ms when input is activated."
+    timestamp_offset: float | list[float] = Field(
+        default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
     )
     timestamps: TimestampsReference
 
@@ -63,7 +63,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -92,7 +92,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -119,7 +119,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -148,7 +148,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -180,7 +180,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -212,7 +212,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -242,7 +242,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -267,7 +267,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -295,7 +295,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -327,7 +327,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.delay,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -409,13 +409,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.delay + self.stim_duration
+            end_time = start_time + self.timestamp_offset + self.stim_duration
             if t_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
                 assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
             for gid in gids:
                 spikes = []
-                t = start_time + self.delay
+                t = start_time + self.timestamp_offset
                 while t < end_time:
                     # Draw next spike time from exponential distribution
                     interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
@@ -441,7 +441,7 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
             for gid in gids:
-                gid_spike_map[gid] = start_time + self.delay
+                gid_spike_map[gid] = start_time + self.timestamp_offset
         self._spike_file = f"{self.name}_spikes.h5"
         self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
 
