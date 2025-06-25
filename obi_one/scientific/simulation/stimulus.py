@@ -19,7 +19,7 @@ class Stimulus(Block, ABC):
     timestamp_offset: float | list[float] = Field(
         default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
     )
-    timestamps: TimestampsReference
+    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
 
     def config(self) -> dict:
         self.check_simulation_init()
@@ -36,7 +36,8 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.")]
+    
     _represents_physical_electrode: bool = PrivateAttr(default=False) 
     """Default is False. If True, the signal will be implemented \
     using a NEURON IClamp mechanism. The IClamp produce an \
@@ -344,8 +345,8 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     stim_duration: float | list[float]
     _spike_file: Path | None = None
-    source_neuron_set: NeuronSetReference
-    targeted_neuron_set: NeuronSetReference
+    source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
+    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None

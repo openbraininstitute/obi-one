@@ -63,7 +63,7 @@ class SimulationsForm(Form):
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
-        _target_simulator: list[str] | str = PrivateAttr(default="bluecellulab") # Target simulator for the simulation
+        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
     initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
