@@ -104,6 +104,7 @@ def create_endpoint_for_form(
 
                     
             except Exception as e:
+                L.info("Error generating grid scan")
                 return JSONResponse(
                     status_code=500,
                     content={"detail": str(e)}
