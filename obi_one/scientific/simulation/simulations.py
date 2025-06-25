@@ -66,7 +66,7 @@ class SimulationsForm(Form):
         _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
-    initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation")
     info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
 
 
