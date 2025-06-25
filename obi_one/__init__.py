@@ -110,7 +110,6 @@ __all__ = [
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "SynapseSetUnion",
-    "SynchronousSingleSpikeStimulus",
     "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
@@ -225,7 +224,6 @@ from obi_one.scientific.simulation.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
-    SynchronousSingleSpikeStimulus,
     PoissonSpikeStimulus,
     FullySynchronousSpikeStimulus
 )

@@ -9,13 +9,11 @@ from obi_one.scientific.simulation.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
-    SynchronousSingleSpikeStimulus,
     PoissonSpikeStimulus,
     FullySynchronousSpikeStimulus
 )
 
 StimulusUnion = (
-    SynchronousSingleSpikeStimulus
     | ConstantCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | RelativeConstantCurrentClampSomaticStimulus
