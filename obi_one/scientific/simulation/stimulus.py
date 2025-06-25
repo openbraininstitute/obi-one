@@ -63,7 +63,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -92,7 +92,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -119,7 +119,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -148,7 +148,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -180,7 +180,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -212,7 +212,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -242,7 +242,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -267,7 +267,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -295,7 +295,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -327,7 +327,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.delay,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
