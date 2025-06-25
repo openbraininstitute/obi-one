@@ -14,7 +14,7 @@ from obi_one.scientific.simulation.stimulus import (
 )
 
 StimulusUnion = (
-    | ConstantCurrentClampSomaticStimulus
+    ConstantCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | RelativeConstantCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
