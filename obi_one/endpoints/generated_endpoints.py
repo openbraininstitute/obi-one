@@ -4,7 +4,9 @@ import tempfile
 
 import entitysdk.client
 import entitysdk.common
+from entitysdk.exception import EntitySDKError
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.dependencies.entitysdk import get_client
@@ -101,9 +103,15 @@ def create_endpoint_for_form(
                         db_client=db_client,
                     )
 
-                    
+            except EntitySDKError as e:
+                L.info("EntitySDKError during grid scan")
+                msg = e.args[0] if e.args else "An error occurred"
+                return JSONResponse(status_code=500, content={"detail": msg})
+
             except Exception:  # noqa: BLE001
-                L.exception("Generic exception")
+                L.info("Unexpected error generating grid scan")
+                return JSONResponse(status_code=500, content={"detail": "Unexpected error generating grid scan"})
+            
             else:
                 L.info("Grid scan generated successfully")
                 if campaign is not None:
