@@ -343,7 +343,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    stim_duration: float | list[float]
+    stimulus_duration: float | list[float]
     _spike_file: Path | None = None
     source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
     targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
