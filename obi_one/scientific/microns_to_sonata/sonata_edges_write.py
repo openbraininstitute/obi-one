@@ -1,11 +1,12 @@
 import h5py
+import numpy
 
 from .utils_edges import (
     _STR_PRE_NODE,
     _STR_POST_NODE
 )
 
-def create_or_resize_dataset(grp, name, data):
+def create_or_resize_dataset(grp, name, data, dtype=None):
     assert data.ndim == 1, "Datasets must be 1-dimensional!"
     l = len(data)
 
@@ -16,7 +17,17 @@ def create_or_resize_dataset(grp, name, data):
         grp[name].resize(s + l, axis=0)
         grp[name][s:] = data
     else:
-        grp.create_dataset(name, data=data, maxshape=(None, ))
+        grp.create_dataset(name, data=data, maxshape=(None, ), dtype=dtype)
+
+def adjust_edge_index_groups(grp_root, n_edges):
+    create_or_resize_dataset(grp_root, "edge_type_id", -numpy.ones(n_edges, dtype=int), dtype="i8")
+    create_or_resize_dataset(grp_root, "edge_group_id", numpy.zeros(n_edges, dtype=int), dtype="i8")
+    start = 0
+    if "edge_group_index" in grp_root.keys():
+        if len(grp_root["edge_group_index"]) > 0:
+            start = grp_root["edge_group_index"][-1] + 1
+    edge_group_index = numpy.arange(start, start + n_edges, dtype=int)
+    create_or_resize_dataset(grp_root, "edge_group_index", edge_group_index, dtype="u8")
 
 
 def write_edges(fn_out, population_name, syn_pre_post, syn_data, source_pop_name, tgt_pop_name):
@@ -32,5 +43,6 @@ def write_edges(fn_out, population_name, syn_pre_post, syn_data, source_pop_name
 
     for _col in syn_data.columns:
         create_or_resize_dataset(grp_0, _col, syn_data[_col].values)
+    adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()
