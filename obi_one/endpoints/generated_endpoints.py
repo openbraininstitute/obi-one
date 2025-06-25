@@ -110,7 +110,7 @@ def create_endpoint_for_form(
 
             except Exception:  # noqa: BLE001
                 L.info("Unexpected error generating grid scan")
-                return "Unexpected error generating grid scan"
+                return JSONResponse(status_code=500, content={"detail": "Unexpected error generating grid scan"})
             
             else:
                 L.info("Grid scan generated successfully")
