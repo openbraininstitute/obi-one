@@ -339,10 +339,6 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SynchronousSingleSpikeStimulus(Stimulus):
-   spike_probability: float | list[float]
-
-
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
