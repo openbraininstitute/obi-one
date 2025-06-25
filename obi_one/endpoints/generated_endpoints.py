@@ -4,7 +4,7 @@ import tempfile
 
 import entitysdk.client
 import entitysdk.common
-from entitysdk.exception import EntitySDKError, RouteNotFoundError, IteratorResultError, DependencyError, StagingError
+from entitysdk.exception import EntitySDKError
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
@@ -105,25 +105,10 @@ def create_endpoint_for_form(
 
             except EntitySDKError as e:
                 L.info("EntitySDKError during grid scan")
-                return JSONResponse(status_code=500, content={"detail": str(e)})
-            
-            except RouteNotFoundError as e:
-                L.info("Route not found during grid scan")
-                return JSONResponse(status_code=404, content={"detail": str(e)})
+                msg = e.args[0] if e.args else "An error occurred"
+                return JSONResponse(status_code=500, content={"detail": msg})
 
-            except IteratorResultError as e:
-                L.info("Unexpected iterator result during grid scan")
-                return JSONResponse(status_code=500, content={"detail": str(e)})
-
-            except DependencyError as e:
-                L.info("Dependency error during grid scan")
-                return JSONResponse(status_code=424, content={"detail": str(e)})
-
-            except StagingError as e:
-                L.info("Staging operation failed during grid scan")
-                return JSONResponse(status_code=500, content={"detail": str(e)})
-
-            except Exception as e:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 L.info("Unexpected error generating grid scan")
                 return "Unexpected error generating grid scan"
             
