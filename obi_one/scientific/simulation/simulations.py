@@ -1,6 +1,6 @@
 import json
 import os
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Literal, Self, Annotated
 
 from pydantic import Field, PrivateAttr, model_validator
 
@@ -56,7 +56,7 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
-        node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
+        node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
         extracellular_calcium_concentration: list[float] | float = Field(default=1.1, description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = -80.0

@@ -354,7 +354,7 @@ class SpikeStimulus(Stimulus):
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
-                "duration": self.stim_duration,
+                "duration": self.stimulus_duration,
                 "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
@@ -410,7 +410,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.timestamp_offset + self.stim_duration
+            end_time = start_time + self.timestamp_offset + self.stimulus_duration
             if t_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
                 assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
