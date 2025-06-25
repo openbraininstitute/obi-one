@@ -31,11 +31,18 @@ def test_get(client, ephys_json, ephys_nwb, monkeypatch):
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     entity_id = uuid.uuid4()
-    response = client.get(f"{ROUTE}/{entity_id}")
+    payload = {
+        "initialize": {
+            "trace_id": str(entity_id),
+            "protocols": ["step"],
+            "requested_metrics": ["spike_count", "time_to_first_spike"],
+            "amplitude": None
+        }
+    }
+    response = client.post(ROUTE, json=payload)
     assert response.status_code == 200
 
-    response_json = response.json()
-    features = response_json["feature_dict"]["step_0"]
+    features = response.json()["feature_dict"]["step_0"]
 
     assert features["spike_count"]["avg"] == pytest.approx(1.6667, abs=1e-3)
     assert features["spike_count"]["num_traces"] == 3
@@ -53,13 +60,16 @@ def test_get_not_found(client, ephys_json, monkeypatch):
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     entity_id = uuid.uuid4()
-    response = client.get(f"{ROUTE}/{entity_id}")
-    print(response.json())
-    assert response.status_code == 404
-    assert response.json() == {
-        "message": "Asset not found",
-        "error_code": "NOT_FOUND",
-        "details": None,
+    payload = {
+        "initialize": {
+            "trace_id": str(entity_id),
+            "protocols": ["step"],
+            "requested_metrics": ["spike_count", "time_to_first_spike"],
+            "amplitude": {"min_value": 0.1, "max_value": 0.2}
+        }
     }
+    response = client.post(ROUTE, json=payload)
+    assert response.status_code == 500
+    assert "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
     assert entitysdk_client_mock.get_entity.call_count == 1
     assert entitysdk_client_mock.download_content.call_count == 0
