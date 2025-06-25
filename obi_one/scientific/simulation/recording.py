@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Self
+from typing import Annotated, Self, ClassVar
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
@@ -35,6 +35,10 @@ class Recording(Block, ABC):
 
 
 class SomaVoltageRecording(Recording):
+    """Records the soma voltage of a neuron set."""
+
+    title: ClassVar[str] = "Soma Voltage Recording"
+
     neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
 
     def _generate_config(self) -> dict:

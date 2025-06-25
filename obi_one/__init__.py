@@ -104,6 +104,7 @@ __all__ = [
     "SingleBlockGenerateTest",
     "SingleBlockGenerateTestForm",
     "SingleCoordinateMixin",
+    "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",
     "StimulusReference",
@@ -232,7 +233,7 @@ from obi_one.scientific.simulation.stimulus import (
     PoissonSpikeStimulus,
     FullySynchronousSpikeStimulus
 )
-from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps
+from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps, SingleTimestamp
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTest,
     MultiBlockEntitySDKTestForm,

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import Field
 
@@ -18,8 +18,19 @@ class Timestamps(Block, ABC):
         pass
 
 
+class SingleTimestamp(Timestamps):
+    """Description to be added."""
+
+    title: ClassVar[str] = "Single Timestamp"
+
+    def _resolve_timestamps(self) -> list[float]:
+        return [self.start_time]
+
+
 class RegularTimestamps(Timestamps):
     """Description to be added."""
+
+    title: ClassVar[str] = "Regular Timestamps"
 
     number_of_repetitions: int | list[int]
     interval: float | list[float]

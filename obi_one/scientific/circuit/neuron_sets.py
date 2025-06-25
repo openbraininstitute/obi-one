@@ -1,7 +1,7 @@
 import abc
 import json
 import os
-from typing import Annotated, Self, Literal, Optional
+from typing import Annotated, Self, Literal, Optional, ClassVar
 
 import bluepysnap as snap
 import numpy as np
@@ -321,6 +321,8 @@ class PredefinedNeuronSet(NeuronSet):
 
 class nbS1VPMInputs(AbstractNeuronSet):
     """Description to be added."""
+
+    title: ClassVar[str] = "nbS1 VPM Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -332,6 +334,8 @@ class nbS1VPMInputs(AbstractNeuronSet):
 
 class nbS1POmInputs(AbstractNeuronSet):
     """Description to be added."""
+
+    title: ClassVar[str] = "nbS1 POm Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -343,6 +347,8 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 class rCA1CA3Inputs(AbstractNeuronSet):
     """Description to be added."""
+
+    title: ClassVar[str] = "rCA1 CA3 Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
@@ -377,6 +383,8 @@ class CombinedNeuronSet(NeuronSet):
 
 class IDNeuronSet(AbstractNeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
+
+    title: ClassVar[str] = "ID Neuron Set"
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 

@@ -4,6 +4,8 @@ from typing import Optional
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
 
+from typing import ClassVar
+
 
 class Block(OBIBaseModel):
     """Defines a component of a Form.
@@ -12,6 +14,15 @@ class Block(OBIBaseModel):
     when a list is used it is used as a dimension in a multi-dimensional parameter scan.
     Tuples should be used when list-like parameter is needed.
     """
+
+    title: ClassVar[Optional[str]] = None  # Optional: subclasses can override
+
+    @classmethod
+    def __init_subclass__(cls):
+        # Use the subclass-provided title, or fall back to the class name
+        cls.model_config = {
+            "title": cls.title or cls.__name__
+        }
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
