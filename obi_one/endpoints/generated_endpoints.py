@@ -5,6 +5,7 @@ import tempfile
 import entitysdk.client
 import entitysdk.common
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.dependencies.entitysdk import get_client
@@ -102,8 +103,12 @@ def create_endpoint_for_form(
                     )
 
                     
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
                 L.exception("Generic exception")
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": str(e)}
+                )
             else:
                 L.info("Grid scan generated successfully")
                 if campaign is not None:
