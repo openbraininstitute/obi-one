@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from abc import ABC, abstractmethod
-from typing import Annotated
+from typing import Annotated, ClassVar
 import h5py
 
 from pydantic import Field, PrivateAttr
@@ -52,6 +52,8 @@ class SomaticStimulus(Stimulus, ABC):
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+    
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
@@ -76,6 +78,8 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class LinearCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
@@ -106,6 +110,8 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
@@ -132,6 +138,8 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
@@ -162,6 +170,8 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "pulse"
     _input_type: str = "current_clamp"
 
@@ -195,6 +205,8 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
 
@@ -227,6 +239,8 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
 
@@ -279,6 +293,8 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
@@ -309,6 +325,8 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Description to be added."""
+
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
@@ -398,6 +416,8 @@ class SpikeStimulus(Stimulus):
             ts.attrs['units'] = 'ms'
 
 class PoissonSpikeStimulus(SpikeStimulus):
+    """Description to be added."""
+
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     random_seed: int | list[int] = 0
@@ -432,6 +452,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
 
 class FullySynchronousSpikeStimulus(SpikeStimulus):
+    """Description to be added."""
+
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
 

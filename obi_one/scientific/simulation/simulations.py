@@ -58,8 +58,8 @@ class SimulationsForm(Form):
         simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
-        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, description="Extracellular calcium concentration in millimoles (mM)", units="mM")
-        v_init: list[float] | float = -80.0
+        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
+        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[float] | float = PrivateAttr(default=2.4) 

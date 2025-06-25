@@ -320,6 +320,7 @@ class PredefinedNeuronSet(NeuronSet):
 
 
 class nbS1VPMInputs(AbstractNeuronSet):
+    """Description to be added."""
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -330,6 +331,7 @@ class nbS1VPMInputs(AbstractNeuronSet):
     
 
 class nbS1POmInputs(AbstractNeuronSet):
+    """Description to be added."""
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -340,6 +342,7 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 
 class rCA1CA3Inputs(AbstractNeuronSet):
+    """Description to be added."""
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
@@ -461,6 +464,8 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
+    """Description to be added."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
@@ -676,6 +681,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
+    """Description to be added."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \

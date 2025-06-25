@@ -19,6 +19,8 @@ class Timestamps(Block, ABC):
 
 
 class RegularTimestamps(Timestamps):
+    """Description to be added."""
+
     number_of_repetitions: int | list[int]
     interval: float | list[float]
 
