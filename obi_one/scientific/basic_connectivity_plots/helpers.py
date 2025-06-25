@@ -489,7 +489,11 @@ def plot_smallMC_network_stats(conn, full_width,
     adj_plot=adj.toarray().astype(float)
     adj_plot[adj_plot == 0] = np.nan
     # Connectivity matrix 
-    plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=0, vmax=np.nanmax(adj_plot))
+    min_val = int(np.nanmin(adj_plot[adj_plot > 0]))
+    max_val = int(np.nanmax(adj_plot))
+    plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=min_val, vmax=max_val)
+    axs[0].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    axs[0].yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axs[0].set_xlabel("Target neuron ID")
     axs[0].set_ylabel("Source neuron ID")
     axs[0].set_title("Connectivity matrix")
@@ -498,27 +502,48 @@ def plot_smallMC_network_stats(conn, full_width,
     cbar_pad = 0.125     # Padding below the main axis (fraction of figure height)
     cbar_y = bbox.y0 - cbar_pad - cbar_height
     cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])
-    plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
-
+    cbar = plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
+    cbar.ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     # Synapse per connection
-    unique_weights, counts = np.unique(adj_plot, return_counts=True)
-    axs[1].bar(unique_weights, counts, color=color_strength)
+    unique_weights, counts = np.unique(adj.toarray(), return_counts=True)
+    mask = (unique_weights != 0)
+    unique_weights, counts = unique_weights[mask], counts[mask]
+    axs[1].bar(unique_weights.astype(int), counts, color=color_strength)
+    axs[1].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    if unique_weights.size == 1:
+        axs[1].set_xticks(unique_weights)  # Otherwise it gives non-integer x-ticks
     axs[1].set_xlabel("Synapses per connection")
     axs[1].set_ylabel("Count")
     axs[1].set_title("Connection strength")
 
     #Plot degrees
     degree=node_degree(adj, direction=('IN', 'OUT'))
-    indices = np.arange(len(degree))
     bar_width = 0.4
+    df = degree["IN"].value_counts().sort_index()
+    axs[2].bar(df.index- bar_width/2 , df, width=bar_width, alpha=1, label="In degree", color=color_indeg)
+    df = degree["OUT"].value_counts().sort_index()
+    axs[2].bar(df.index+ bar_width/2 , df, width=bar_width, alpha=1, label="Out degree", color=color_outdeg)
+    
+    axs[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    unique_degrees=np.unique(degree)
+    unique_degrees = unique_degrees[unique_degrees!=0]
+    if unique_degrees.size == 1:
+        axs[2].set_xticks(unique_degrees)  # Otherwise it gives non-integer x-ticks
 
-    axs[2].bar(indices - bar_width/2, degree["OUT"], width=bar_width, alpha=1, label="Out degree", color=color_indeg)
-    axs[2].bar(indices + bar_width/2, degree["IN"], width=bar_width, alpha=1, label="In degree", color=color_outdeg)
-    axs[2].set_xlabel("Neuron")
-    axs[2].set_ylabel("Degree")
-    axs[2].legend(frameon=False)
+    axs[2].set_xlabel("Degree")
+    axs[2].set_ylabel("Count")
     axs[2].set_title("Node degrees")
+
+    # Put legend below, otherwise sometimes it's over the bars
+    bbox = axs[2].get_position()
+    legend_height = 0.03  # Matching more or less the cbar options
+    legend_pad = 0.125     # Matching more or less the cbar options
+    legend_y = bbox.y0 - cbar_pad - cbar_height
+    legend_ax = fig.add_axes([bbox.x0, legend_y, bbox.width, legend_height])
+    handles, labels = axs[2].get_legend_handles_labels()
+    legend_ax.legend(handles, labels, loc='center', frameon=False, ncol=2)
+    legend_ax.axis('off')
 
     # Make axs[1] square 
     axs[0].set_box_aspect(1)
@@ -528,6 +553,7 @@ def plot_smallMC_network_stats(conn, full_width,
         ax.spines[["top", "right"]].set_visible(False)
 
     return fig
+
 
 def plot_growing_circles(fig, ax, radii, y1 = 0.5, color="black"): 
     # Get axis aspect ratio to make circles instead of ellipses
@@ -901,7 +927,7 @@ def plot_node_table(conn, figsize,
     table.set_fontsize(12)
     table.scale(h_scale, v_scale)
 
-    plt.draw()  # Draw table
+    fig.canvas.draw()  # Draw table
 
     # Add color coding from the rendered image
     for i in range(len(df)):
