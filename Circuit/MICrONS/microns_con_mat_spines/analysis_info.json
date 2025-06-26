@@ -1,0 +1,26 @@
+{
+    "name": "MICrONS data connectivity analysis 1",
+    "authors": ["OBI", "Michael W. Reimann"],
+    "description": "In this notebook we analyze the nonrandom spatial structure of connectivity in the MICrONS data.",
+    "scale": "circuit",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SimulatableCircuit",
+                "required_properties": [
+                ]
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "Connectome-Utilities>=0.4.11",
+        "bluepysnap>=3.0.2",
+        "jupyter>=1.1.1",
+        "matplotlib>=3.10.0",
+        "numpy>=2.2.1",
+        "pandas>=2.2.3"
+    ]
+}
