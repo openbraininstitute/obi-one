@@ -213,9 +213,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             L.info("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
-            self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
-            _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
-            self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
+            for asset in self.initialize.circuit.entity(db_client=db_client).assets:
+                if asset.label == "sonata_circuit":
+                    self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
+                    _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
+                    self._sonata_config["network"] = asset.path + "/" + Path(_circuit.path).name
 
 
         self._sonata_config["output"] = {

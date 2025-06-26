@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from abc import ABC, abstractmethod
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Optional
 import h5py
 
 from pydantic import Field, PrivateAttr
@@ -16,7 +16,7 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
-    timestamp_offset: float | list[float] = Field(
+    timestamp_offset: Optional[float | list[float]] = Field(
         default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
     )
     timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
@@ -381,7 +381,6 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    stimulus_duration: float | list[float]
     _spike_file: Path | None = None
     source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
     targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
@@ -392,7 +391,7 @@ class SpikeStimulus(Stimulus):
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
-                "duration": self.stimulus_duration,
+                "duration": 1000000000.0,
                 "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
@@ -442,6 +441,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
+    duration: float | list[float]
     random_seed: int | list[int] = 0
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
     
@@ -452,7 +452,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.timestamp_offset + self.stimulus_duration
+            end_time = start_time + self.timestamp_offset + self.duration
             if t_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
                 assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"

@@ -18,7 +18,9 @@ class Block(OBIBaseModel):
     title: ClassVar[Optional[str]] = None  # Optional: subclasses can override
 
     @classmethod
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+
         # Use the subclass-provided title, or fall back to the class name
         cls.model_config = {
             "title": cls.title or cls.__name__
