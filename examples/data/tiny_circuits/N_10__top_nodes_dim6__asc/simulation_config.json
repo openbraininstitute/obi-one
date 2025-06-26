@@ -1,6 +1,7 @@
 {
   "manifest": {
-    "$OUTPUT_DIR": "."
+    "$OUTPUT_DIR": ".",
+    "$INPUT_DIR": "./input/"
   },
   "output": {
     "output_dir": "$OUTPUT_DIR/output"
@@ -58,6 +59,14 @@
       "amp_start": 0.5,
       "amp_end": 0.5,
       "represents_physical_electrode": false
+    },
+    "spikeReplay": {
+      "module": "synapse_replay",
+      "delay": 0,
+      "duration": 3000.0,
+      "input_type": "spikes",
+      "spike_file": "$INPUT_DIR/out.h5",
+      "node_set": "hex0"
     }
   },
   "reports": {
