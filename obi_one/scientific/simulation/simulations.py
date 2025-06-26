@@ -1,6 +1,6 @@
 import json
 import os
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Literal, Self, Annotated
 
 from pydantic import Field, PrivateAttr, model_validator
 
@@ -56,18 +56,18 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
-        node_set: NeuronSetReference = Field(default=None, description="Simulation initialization parameters")
+        node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
-        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, description="Extracellular calcium concentration in millimoles (mM)", units="mM")
-        v_init: list[float] | float = -80.0
+        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
+        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
-        _target_simulator: list[str] | str = PrivateAttr(default="bluecellulab") # Target simulator for the simulation
+        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
-    initialize: Initialize = Field(title="Simulation Initialization", description="Parameters for initializing the simulation")
-    info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation")
+    info: Info = Field(title="Info", description="Information about the simulation campaign")
 
 
     def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):
@@ -213,9 +213,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             L.info("initialize.circuit is a CircuitFromID instance.")
             self._circuit_id = self.initialize.circuit.id_str
 
-            self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
-            _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / "circuit/circuit_config.json"))
-            self._sonata_config["network"] = "circuit/" + Path(_circuit.path).name
+            for asset in self.initialize.circuit.entity(db_client=db_client).assets:
+                if asset.label == "sonata_circuit":
+                    self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
+                    _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
+                    self._sonata_config["network"] = asset.path + "/" + Path(_circuit.path).name
+                    break
 
 
         self._sonata_config["output"] = {
@@ -247,7 +250,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["inputs"] = {}
         for stimulus_key, stimulus in self.stimuli.items():
             if hasattr (stimulus, "generate_spikes"):
-                stimulus.generate_spikes(_circuit, self.coordinate_output_root, source_node_population=_circuit.default_population_name)
+                stimulus.generate_spikes(_circuit, self.coordinate_output_root, self.initialize.simulation_length, source_node_population=_circuit.default_population_name)
             self._sonata_config["inputs"].update(stimulus.config())
 
         # Generate recording configs

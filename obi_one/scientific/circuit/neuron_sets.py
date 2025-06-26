@@ -1,7 +1,7 @@
 import abc
 import json
 import os
-from typing import Annotated, Self, Literal, Optional
+from typing import Annotated, Self, Literal, Optional, ClassVar
 
 import bluepysnap as snap
 import numpy as np
@@ -320,6 +320,9 @@ class PredefinedNeuronSet(NeuronSet):
 
 
 class nbS1VPMInputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "nbS1 VPM Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -330,6 +333,9 @@ class nbS1VPMInputs(AbstractNeuronSet):
     
 
 class nbS1POmInputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "nbS1 POm Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -340,6 +346,9 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 
 class rCA1CA3Inputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "rCA1 CA3 Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
@@ -374,6 +383,8 @@ class CombinedNeuronSet(NeuronSet):
 
 class IDNeuronSet(AbstractNeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
+
+    title: ClassVar[str] = "ID Neuron Set"
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 
@@ -461,6 +472,8 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
@@ -676,6 +689,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \

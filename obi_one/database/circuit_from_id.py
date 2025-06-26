@@ -6,6 +6,7 @@ import neurom
 import entitysdk
 from entitysdk.models import Circuit
 from entitysdk.models.entity import Entity
+from entitysdk.staging.circuit import stage_circuit
 from pydantic import PrivateAttr
 
 from obi_one.database.db_manager import db
@@ -20,16 +21,13 @@ class CircuitFromID(EntityFromID):
     def download_circuit_directory(self, dest_dir=Path(), db_client: entitysdk.client.Client = None) -> None: 
 
         for asset in self.entity(db_client=db_client).assets:
-            if asset.content_type == "application/vnd.directory":
+            if asset.label == "sonata_circuit":
 
                 circuit_dir = dest_dir / asset.path
                 if circuit_dir.exists():
                     raise FileExistsError(f"Circuit directory '{circuit_dir}' already exists and is not empty.")
 
-                # Download the content into memory
-                db_client.download_directory(
-                    entity_id=self.entity(db_client=db_client).id,
-                    entity_type=self.entitysdk_type,
-                    asset_id=asset.id,
-                    output_path=dest_dir,
-                )
+                circuit = db_client.get_entity(entity_id=self.id_str, entity_type=Circuit)
+                stage_circuit(client=db_client, model=circuit, output_dir=circuit_dir)
+
+                break

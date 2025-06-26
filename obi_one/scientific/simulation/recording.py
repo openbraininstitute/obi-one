@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Self
+from typing import Annotated, Self, ClassVar
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
@@ -9,14 +9,16 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronS
 
 class Recording(Block, ABC):
     start_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(description="Recording start time in ms.")
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms")
     ]
     end_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(description="Recording end time in ms.")
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
     ]
     dt: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
-        Field(description="Interval between recording time steps in ms."),
+        Field(default=0.1,
+            title="Timestep",
+            description="Interval between recording time steps in milliseconds (ms).", units="ms"),
     ] = 0.1
 
     @model_validator(mode="after")
@@ -35,7 +37,11 @@ class Recording(Block, ABC):
 
 
 class SomaVoltageRecording(Recording):
-    neuron_set: NeuronSetReference = Field(description="Neuron set to record from.")
+    """Records the soma voltage of a neuron set."""
+
+    title: ClassVar[str] = "Soma Voltage Recording"
+
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
 
     def _generate_config(self) -> dict:
         sonata_config = {}
