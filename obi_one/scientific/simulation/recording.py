@@ -9,14 +9,16 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronS
 
 class Recording(Block, ABC):
     start_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(description="Recording start time in ms.")
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms")
     ]
     end_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(description="Recording end time in ms.")
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
     ]
     dt: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
-        Field(description="Interval between recording time steps in ms."),
+        Field(default=0.1,
+            title="Timestep",
+            description="Interval between recording time steps in milliseconds (ms).", units="ms"),
     ] = 0.1
 
     @model_validator(mode="after")

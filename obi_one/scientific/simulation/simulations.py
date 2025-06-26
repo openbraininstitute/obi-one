@@ -67,7 +67,7 @@ class SimulationsForm(Form):
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
     initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation")
-    info: Info = Field(title="Campaign Info", description="Information about the simulation campaign")
+    info: Info = Field(title="Info", description="Information about the simulation campaign")
 
 
     def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):

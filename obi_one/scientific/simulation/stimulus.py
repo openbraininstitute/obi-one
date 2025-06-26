@@ -52,7 +52,7 @@ class SomaticStimulus(Stimulus, ABC):
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Constant Current Clamp Somatic Stimulus"
     
@@ -80,7 +80,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class LinearCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Linear Current Clamp Somatic Stimulus"
 
@@ -114,7 +114,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Relative Constant Current Clamp Somatic Stimulus"
 
@@ -144,7 +144,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Relative Linear Current Clamp Somatic Stimulus"
 
@@ -178,7 +178,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Multi Pulse Current Clamp Somatic Stimulus"
 
@@ -215,7 +215,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp Somatic Stimulus"
 
@@ -251,7 +251,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Subthreshold Current Clamp Somatic Stimulus"
 
@@ -309,7 +309,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Noise Current Clamp Somatic Stimulus"
 
@@ -343,7 +343,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Percentage Noise Current Clamp Somatic Stimulus"
 
@@ -436,7 +436,7 @@ class SpikeStimulus(Stimulus):
             ts.attrs['units'] = 'ms'
 
 class PoissonSpikeStimulus(SpikeStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Poisson Spike Stimulus"
 
@@ -474,7 +474,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
 
 class FullySynchronousSpikeStimulus(SpikeStimulus):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Fully Synchronous Spike Stimulus"
 

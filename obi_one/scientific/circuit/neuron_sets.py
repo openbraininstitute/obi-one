@@ -320,7 +320,7 @@ class PredefinedNeuronSet(NeuronSet):
 
 
 class nbS1VPMInputs(AbstractNeuronSet):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "nbS1 VPM Inputs"
     
@@ -333,7 +333,7 @@ class nbS1VPMInputs(AbstractNeuronSet):
     
 
 class nbS1POmInputs(AbstractNeuronSet):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "nbS1 POm Inputs"
     
@@ -346,7 +346,7 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 
 class rCA1CA3Inputs(AbstractNeuronSet):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "rCA1 CA3 Inputs"
     
@@ -472,7 +472,7 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     ox: float | list[float] = Field(
         name="Offset: x",
@@ -689,7 +689,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
-    """Description to be added."""
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     ox: float | list[float] = Field(
         name="Offset: x",
