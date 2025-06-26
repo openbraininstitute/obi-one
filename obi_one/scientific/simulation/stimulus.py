@@ -382,16 +382,18 @@ class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     _spike_file: Path | None = None
+    _simulation_length: float | None = None
     source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
     targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
+        assert self._simulation_length is not None, "Simulation length must be set before generating SONATA config component for SpikeStimulus."
         # assert self.source_neuron_set.block.node_population is not None, "Must specify node population name for the neuron set!"
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
-                "duration": 1000000000.0,
+                "duration": self._simulation_length,
                 "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
@@ -445,7 +447,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
     random_seed: int | list[int] = 0
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
     
-    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
+        self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
@@ -481,7 +484,8 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
 
-    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
+        self._simulation_length = simulation_length
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
         gid_spike_map = {}
