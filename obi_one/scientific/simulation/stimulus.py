@@ -402,7 +402,7 @@ class SpikeStimulus(Stimulus):
         
         return sonata_config
 
-    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @staticmethod
@@ -491,8 +491,12 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for t_idx, start_time in enumerate(timestamps):
+            spike = [start_time + self.timestamp_offset]
             for gid in gids:
-                gid_spike_map[gid] = start_time + self.timestamp_offset
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] = gid_spike_map[gid] + spike
+                else:
+                    gid_spike_map[gid] = spike
         self._spike_file = f"{self.name}_spikes.h5"
         self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
 
