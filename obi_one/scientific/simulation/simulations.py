@@ -218,6 +218,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
                     _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
                     self._sonata_config["network"] = asset.path + "/" + Path(_circuit.path).name
+                    break
 
 
         self._sonata_config["output"] = {

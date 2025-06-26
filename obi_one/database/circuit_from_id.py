@@ -29,3 +29,5 @@ class CircuitFromID(EntityFromID):
 
                 circuit = db_client.get_entity(entity_id=self.id_str, entity_type=Circuit)
                 stage_circuit(client=db_client, model=circuit, output_dir=circuit_dir)
+
+                break
