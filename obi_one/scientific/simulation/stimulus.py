@@ -454,14 +454,15 @@ class PoissonSpikeStimulus(SpikeStimulus):
         source_node_population = self.source_neuron_set.block._population(source_node_population)
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
-        for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.timestamp_offset + self.duration
-            if t_idx < len(timestamps) - 1:
+        for timestamp_idx, timestamp_t in enumerate(timestamps):
+            start_time = timestamp_t + self.timestamp_offset
+            end_time = start_time + self.duration
+            if timestamp_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
-                assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
+                assert end_time < timestamps[timestamp_idx + 1], "Stimulus time intervals overlap!"
             for gid in gids:
                 spikes = []
-                t = start_time + self.timestamp_offset
+                t = start_time
                 while t < end_time:
                     # Draw next spike time from exponential distribution
                     interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
