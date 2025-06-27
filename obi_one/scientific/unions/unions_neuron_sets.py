@@ -33,13 +33,13 @@ NeuronSetUnion = (
 )
 
 SimulationNeuronSetUnion = (
-    IDNeuronSet
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
     | rCA1CA3Inputs
-    | AllNeurons
-    | ExcitatoryNeurons
-    | InhibitoryNeurons
 )
 
 from obi_one.core.block_reference import BlockReference
