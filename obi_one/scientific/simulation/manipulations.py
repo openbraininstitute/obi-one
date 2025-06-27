@@ -8,6 +8,10 @@ class SynapticManipulation(Block, ABC):
     def _get_override_name(self) -> str:
         pass
 
+    def config(self) -> dict:
+        self.check_simulation_init()
+        return self._generate_config()
+
     def _generate_config(self) -> dict:
         sonata_config = {
             "name": self._get_override_name(),

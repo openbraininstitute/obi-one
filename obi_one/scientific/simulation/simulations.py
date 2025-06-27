@@ -267,6 +267,14 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         for recording_key, recording in self.recordings.items():
             self._sonata_config["reports"].update(recording.config())
 
+        # Generate list of manipulation configs (executed in the order in the list)
+        # FIXME: Check and make sure that the order in the self.manipulations dict is preserved!
+        manipulation_list = []
+        for manipulation_key, manipulation in self.manipulations.items():
+            manipulation_list.append(manipulation.config())
+        if len(manipulation_list) > 0:
+            self._sonata_config["connection_overrides"] = manipulation_list
+
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
         # set, even for a PredefinedNeuronSet in which case a new node set will be created which just
