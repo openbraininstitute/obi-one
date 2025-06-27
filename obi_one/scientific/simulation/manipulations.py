@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from obi_one.core.block import Block
+from pydantic import NonNegativeFloat
 from typing import ClassVar
 
 
@@ -29,7 +30,7 @@ class SynapticUseManipulation(SynapticManipulation):
 
     title: ClassVar[str] = "Synaptic Use Manipulation"
 
-    use_scaling: float | list[float] = 0.7050728631217412
+    use_scaling: NonNegativeFloat | list[NonNegativeFloat] = 0.7050728631217412
 
     def _get_override_name(self) -> str:
         return "ach_use"
@@ -43,7 +44,7 @@ class SynapticMgManipulation(SynapticManipulation):
 
     title: ClassVar[str] = "Synaptic Mg2+ Concentration Manipulation"
 
-    magnesium_value: float | list[float] = 2.4
+    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = 2.4
     
     def _get_override_name(self) -> str:
         return "Mg"
