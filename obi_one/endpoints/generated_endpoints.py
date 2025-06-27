@@ -5,7 +5,7 @@ import tempfile
 import entitysdk.client
 import entitysdk.common
 from entitysdk.exception import EntitySDKError
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config import settings
@@ -90,12 +90,11 @@ def create_endpoint_for_form(
             campaign = None
             try:
                 with tempfile.TemporaryDirectory() as tdir:
-
                     grid_scan = GridScan(
                         form=form,
                         # output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
                         output_root=tdir,
-                        coordinate_directory_option="ZERO_INDEX"
+                        coordinate_directory_option="ZERO_INDEX",
                     )
                     campaign = grid_scan.execute(
                         processing_method=processing_method,
@@ -103,32 +102,32 @@ def create_endpoint_for_form(
                         db_client=db_client,
                     )
 
-            except EntitySDKError as e:
-                L.info("EntitySDKError during grid scan")
-                msg = e.args[0] if e.args else "An error occurred"
-                return JSONResponse(status_code=500, content={"detail": msg})
+            except Exception as e:
+                error_msg = str(e)
 
-            except Exception as e:  # noqa: BLE001
-                L.info("Unexpected error generating grid scan")
-                return JSONResponse(status_code=500, content={"detail": e})
-            
+                if len(e.args) == 1:
+                    error_msg = str(e.args[0])
+                elif len(e.args) > 1:
+                    error_msg = str(e.args)
+
+                raise HTTPException(status_code=500, detail=error_msg) from e
+
             else:
                 L.info("Grid scan generated successfully")
                 if campaign is not None:
                     return str(campaign.id)
-                else:
-                    L.info("No campaign generated")
-                    return ""
+
+                L.info("No campaign generated")
+                return ""
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI Form subclass.
     for form, processing_method, data_postprocessing_method in [
-                    (SimulationsForm, "generate", ""),
-                    (SimulationsForm, "generate", "save"),
-                    (MorphologyMetricsForm, "run", "")
-                ]:
-
+        (SimulationsForm, "generate", ""),
+        (SimulationsForm, "generate", "save"),
+        (MorphologyMetricsForm, "run", ""),
+    ]:
         # Create endpoint
         create_endpoint_for_form(
             form,
