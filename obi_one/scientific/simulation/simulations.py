@@ -13,6 +13,7 @@ from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
+from obi_one.scientific.unions.unions_manipulations import ManipulationsUnion, ManipulationsReference
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from obi_one.scientific.unions.unions_neuron_sets import SimulationNeuronSetUnion, NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
@@ -43,6 +44,7 @@ class SimulationsForm(Form):
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
+    manipulations: dict[str, ManipulationsUnion] = Field(default_factory=dict, reference_type=ManipulationsReference.__name__, description="Manipulations for the simulation")
 
     class Config:
         json_schema_extra = {
@@ -170,6 +172,13 @@ class SimulationsForm(Form):
     def initialize_neuron_sets(self) -> Self:
         """Initializes neuron sets within simulation campaign."""
         for _k, _v in self.neuron_sets.items():
+            _v.set_simulation_level_name(_k)
+        return self
+
+    @model_validator(mode="after")
+    def initialize_manipulations(self) -> Self:
+        """Initializes manipulationms within simulation campaign."""
+        for _k, _v in self.manipulations.items():
             _v.set_simulation_level_name(_k)
         return self
 

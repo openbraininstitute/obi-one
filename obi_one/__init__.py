@@ -110,6 +110,8 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapticUseManipulation",
+    "SynapticMgManipulation",
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "SynapseSetUnion",
@@ -259,4 +261,9 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, Timesta
 
 from obi_one.scientific.validations.reconstruction_morphology_validation import (
     ReconstructionMorphologyValidation,
+)
+
+from obi_one.scientific.unions.unions_manipulations import (
+    SynapticMgManipulation,
+    SynapticUseManipulation,
 )
