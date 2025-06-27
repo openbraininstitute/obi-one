@@ -2,6 +2,7 @@ import pandas
 import numpy
 import neurom
 import shutil
+import h5py
 import os.path
 
 from voxcell import CellCollection
@@ -63,6 +64,17 @@ def source_resolution(client):
         for _coord in ["x", "y", "z"]]
     )
     return resolutions
+
+def get_node_pop_name(fn):
+    with h5py.File(fn, "r") as h5:
+        node_pop_name = list(h5["nodes"].keys())[0]
+    return node_pop_name
+
+def get_node_pop_count(fn):
+    pop_name = get_node_pop_name(fn)
+    with h5py.File(fn, "r") as h5:
+        n = h5["nodes"][pop_name]["node_type_id"].shape[0]
+    return n
 
 def neuron_info_df(client, table_name, filters, add_position=True):
     q_cells = client.materialize.query_table(table_name)

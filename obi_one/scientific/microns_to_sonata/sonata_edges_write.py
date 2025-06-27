@@ -46,3 +46,60 @@ def write_edges(fn_out, population_name, syn_pre_post, syn_data, source_pop_name
     adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()
+
+
+def remove_postsynaptic_ids_from_edges(idx_to_purge, fn_edges_in, fn_edges_out, node_pop_sizes_dict):
+    import h5py
+    from brainbuilder.utils.sonata.split_population import _write_indexes
+
+    h5 = h5py.File(fn_edges_in, "r")
+    grp_root_in = h5["edges"]
+    edge_pop_names = list(grp_root_in.keys())
+    source_target_pop_sizes = {}
+    for edge_pop in edge_pop_names:
+        grp_in = grp_root_in[edge_pop]
+        ranges_to_delete = grp_in["indices/target_to_source/node_id_to_ranges"][idx_to_purge]
+        edge_ids_to_delete = numpy.vstack([grp_in["indices/target_to_source/range_to_edge_id"][a:b]
+                                   for a, b in ranges_to_delete])
+        edge_ids_to_delete = edge_ids_to_delete[numpy.argsort(edge_ids_to_delete[:, 0])]
+        assert (numpy.diff(edge_ids_to_delete[:, 0]) >= 0).all()
+        assert (numpy.diff(edge_ids_to_delete[:, 1]) >= 0).all()
+        l = grp_in["target_node_id"].shape[0]
+
+        edge_ids_to_keep = numpy.vstack(
+            [
+                [0] + edge_ids_to_delete[:, 1].tolist(),
+                edge_ids_to_delete[:, 0].tolist() + [l]
+            ]
+        ).transpose()
+        n_edges = numpy.diff(edge_ids_to_keep, axis=1).sum()
+        
+        with h5py.File(fn_edges_out, "w") as h5_out:
+            grp = h5_out.create_group("edges")
+            grp = grp.create_group(edge_pop)
+            grp0 = grp.create_group("0")
+
+            for k in grp_in["0"].keys():
+                data = numpy.hstack([grp_in["0"][k][a:b]
+                        for a, b in edge_ids_to_keep])
+                grp0.create_dataset(k, data=data, maxshape=(None, ))
+
+            for k in ["source_node_id", "target_node_id"]:
+                data = numpy.hstack([grp_in[k][a:b]
+                            for a, b in edge_ids_to_keep])
+                dset = grp.create_dataset(k,
+                                          data=data,
+                                          maxshape=(None, ))
+                _node_pop = grp_in[k].attrs["node_population"]
+                dset.attrs["node_population"] = _node_pop
+                source_target_pop_sizes.setdefault(edge_pop, {})[k] = node_pop_sizes_dict[_node_pop]
+                
+            adjust_edge_index_groups(grp, n_edges)
+            h5_out.flush()
+    h5.close()
+    for edge_pop in edge_pop_names:
+        _write_indexes(fn_edges_out,
+                       edge_pop,
+                       source_target_pop_sizes[edge_pop]["source_node_id"],
+                       source_target_pop_sizes[edge_pop]["target_node_id"]
+                       )
