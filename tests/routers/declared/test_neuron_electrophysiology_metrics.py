@@ -31,13 +31,7 @@ def test_get(client, ephys_json, ephys_nwb, monkeypatch):
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     entity_id = uuid.uuid4()
-    payload = {
-        "trace_id": str(entity_id),
-        "protocols": ["step"],
-        "requested_metrics": ["spike_count", "time_to_first_spike"],
-        "amplitude": None
-    }
-    response = client.get(ROUTE, json=payload)
+    response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 200
 
     features = response.json()["feature_dict"]["step_0"]
@@ -58,13 +52,7 @@ def test_get_not_found(client, ephys_json, monkeypatch):
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     entity_id = uuid.uuid4()
-    payload = {
-        "trace_id": str(entity_id),
-        "protocols": ["step"],
-        "requested_metrics": ["spike_count", "time_to_first_spike"],
-        "amplitude": {"min_value": 0.1, "max_value": 0.2}
-    }
-    response = client.get(ROUTE, json=payload)
+    response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 500
     assert "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
     assert entitysdk_client_mock.get_entity.call_count == 1
