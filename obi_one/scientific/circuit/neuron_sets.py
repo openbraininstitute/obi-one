@@ -319,6 +319,30 @@ class PredefinedNeuronSet(NeuronSet):
         return [self.node_set]
 
 
+class AllNeurons(PredefinedNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "All Neurons"
+
+    node_set: ClassVar[str] = "All"
+
+
+class ExcitatoryNeurons(PredefinedNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Excitatory Neurons"
+
+    node_set: ClassVar[str] = "Excitatory"
+
+
+class InhibitoryNeurons(PredefinedNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Excitatory Neurons"
+
+    node_set: ClassVar[str] = "Inhibitory"
+
+
 class nbS1VPMInputs(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
