@@ -18,9 +18,9 @@ It then creates two plots: One of excitatory input frequency vs. output spike co
 
 ## Use
 In the first cell, fill in the following:
-1. The path to the results of the simulation with excitatory inputs only as "exc-only".
-2. The path to the results of the simulation combining excitatory inputs with proximal inhibition as "inh-prox".
-3. The path to the results of the simulation combining excitatory inputs with distal inhibition as "inh-dist".
+1. The id of the simulation with excitatory inputs only as "exc-only".
+2. The id of the simulation combining excitatory inputs with proximal inhibition as "inh-prox".
+3. The id of the simulation combining excitatory inputs with distal inhibition as "inh-dist".
 4. The excitatory input frequency used for the simulations combining excitatory inputs with inhibitory inputs as "freq_e_used"
 
 Then, simply run the cells of the notebook. 
