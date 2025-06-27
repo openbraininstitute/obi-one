@@ -20,6 +20,11 @@ _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
 _RCA1_CA3_NODE_POP = "CA3_projections"
 
+_ALL_NODE_SET = "All"
+_EXCITATORY_NODE_SET = "Excitatory"
+_INHIBITORY_NODE_SET = "Inhibitory"
+
+
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
         name="Filter",
@@ -319,28 +324,52 @@ class PredefinedNeuronSet(NeuronSet):
         return [self.node_set]
 
 
-class AllNeurons(PredefinedNeuronSet):
+class AllNeurons(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "All Neurons"
+    
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _ALL_NODE_SET in circuit.node_sets, (
+            f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
 
-    node_set: ClassVar[str] = "All"
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_ALL_NODE_SET]
 
 
-class ExcitatoryNeurons(PredefinedNeuronSet):
+class ExcitatoryNeurons(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Excitatory Neurons"
 
-    node_set: ClassVar[str] = "Excitatory"
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _EXCITATORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_EXCITATORY_NODE_SET]
 
 
-class InhibitoryNeurons(PredefinedNeuronSet):
+class InhibitoryNeurons(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
     title: ClassVar[str] = "Inhibitory Neurons"
 
-    node_set: ClassVar[str] = "Inhibitory"
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _INHIBITORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_INHIBITORY_NODE_SET]
 
 
 class nbS1VPMInputs(AbstractNeuronSet):
