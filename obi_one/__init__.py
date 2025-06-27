@@ -17,6 +17,7 @@ from obi_one.core.validation import Validation
 
 __all__ = [
     "Activity",
+    "AllNeurons",
     "AfferentSynapsesBlock",
     "BasicConnectivityPlot",
     "BasicConnectivityPlots",
@@ -40,6 +41,7 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "CoupledScan",
     "EntityFromID",
+    "ExcitatoryNeurons",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
     "FolderCompression",
@@ -51,6 +53,7 @@ __all__ = [
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
+    "InhibitoryNeurons",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
     "LoadAssetMethod",
@@ -177,8 +180,10 @@ from obi_one.scientific.circuit.neuron_sets import (
     SimplexMembershipBasedNeuronSet,
     nbS1VPMInputs,
     nbS1POmInputs,
-    rCA1CA3Inputs
-
+    rCA1CA3Inputs,
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
