@@ -3,14 +3,14 @@ from obi_one.scientific.simulation.manipulations import (
     SynapticUseManipulation
 )
 
-ManipulationsUnion = (
+SynapticManipulationsUnion = (
     SynapticMgManipulation
     | SynapticUseManipulation
 )
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any
-class ManipulationsReference(BlockReference):
-    """A reference to a Manipulations block."""
-    
-    allowed_block_types: ClassVar[Any] = ManipulationsUnion
+class SynapticManipulationsReference(BlockReference):
+    """A reference to a SynapticManipulations block."""
+
+    allowed_block_types: ClassVar[Any] = SynapticManipulationsUnion

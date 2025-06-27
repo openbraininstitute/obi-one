@@ -13,7 +13,7 @@ from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_manipulations import ManipulationsUnion, ManipulationsReference
+from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsUnion, SynapticManipulationsReference
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from obi_one.scientific.unions.unions_neuron_sets import SimulationNeuronSetUnion, NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
@@ -44,7 +44,7 @@ class SimulationsForm(Form):
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
-    manipulations: dict[str, ManipulationsUnion] = Field(default_factory=dict, reference_type=ManipulationsReference.__name__, description="Manipulations for the simulation")
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation")
 
     class Config:
         json_schema_extra = {
@@ -176,9 +176,9 @@ class SimulationsForm(Form):
         return self
 
     @model_validator(mode="after")
-    def initialize_manipulations(self) -> Self:
+    def initialize_synaptic_manipulations(self) -> Self:
         """Initializes manipulationms within simulation campaign."""
-        for _k, _v in self.manipulations.items():
+        for _k, _v in self.synaptic_manipulations.items():
             _v.set_simulation_level_name(_k)
         return self
 
@@ -267,10 +267,10 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         for recording_key, recording in self.recordings.items():
             self._sonata_config["reports"].update(recording.config())
 
-        # Generate list of manipulation configs (executed in the order in the list)
-        # FIXME: Check and make sure that the order in the self.manipulations dict is preserved!
+        # Generate list of synaptic manipulation configs (executed in the order in the list)
+        # FIXME: Check and make sure that the order in the self.synaptic_manipulations dict is preserved!
         manipulation_list = []
-        for manipulation_key, manipulation in self.manipulations.items():
+        for manipulation_key, manipulation in self.synaptic_manipulations.items():
             manipulation_list.append(manipulation.config())
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
