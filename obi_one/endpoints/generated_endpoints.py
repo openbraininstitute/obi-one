@@ -110,6 +110,8 @@ def create_endpoint_for_form(
                 elif len(e.args) > 1:
                     error_msg = str(e.args)
 
+                L.error(error_msg)
+
                 raise HTTPException(status_code=500, detail=error_msg) from e
 
             else:
