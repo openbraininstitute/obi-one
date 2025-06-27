@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from obi_one.core.block import Block
+from typing import ClassVar
 
 
 class SynapticManipulation(Block, ABC):
