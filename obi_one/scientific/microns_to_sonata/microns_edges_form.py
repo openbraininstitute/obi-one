@@ -198,8 +198,26 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
         chunk_sz = 50
         chunk_splt = numpy.arange(0, len(pt_root_ids) + chunk_sz, chunk_sz)
         chunks = [pt_root_ids.iloc[a:b] for a, b in zip(chunk_splt[:-1], chunk_splt[1:])]
+
+        attempt = 0
+        max_attempts = 12
+        timeout = 30
+        import time
+
         for chunk in tqdm.tqdm(chunks):
-            tmp_blck.prefetch(chunk["pt_root_id"].to_list())
+            success = False
+            while not success:
+                try:
+                    tmp_blck.prefetch(chunk["pt_root_id"].to_list())
+                    success = True
+                except Exception as e:
+                    L.warning("Error fetching data:")
+                    L.warning(str(e))
+                    if attempt > max_attempts:
+                        raise RuntimeError()
+                    time.sleep(int(timeout * (1.5 ** attempt)))
+                    attempt += 1
+            
             for _, pt_root_id in chunk.iterrows():
                 L.debug(f'--> neuron {pt_root_id["pt_root_id"]}')
                 try:
@@ -211,8 +229,8 @@ class EMSonataEdgesFile(EMSonataEdgesFiles, SingleCoordinateMixin):
                     L.debug(f"Mapped {len(syns[-1])} synapses!")
                 except Exception as e:
                     L.warning(f'Problem with neuron {pt_root_id["pt_root_id"]}')
-                    L.warning(str(e))
-                    # raise
+                    L.warning(e)
+                    raise
                 
             if len(syns) > 0:
                 L.info("Writing chunk to disk...")
