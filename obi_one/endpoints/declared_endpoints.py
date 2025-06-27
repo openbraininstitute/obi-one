@@ -1,17 +1,18 @@
 from http import HTTPStatus
-from typing import Annotated, Optional
+from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
-    ElectrophysiologyMetrics,
-    ElectrophysiologyMetricsForm,
+    AmplitudeInput,
+    CALCULATED_FEATURES,
     ElectrophysiologyMetricsOutput,
+    STIMULI_TYPES,
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
@@ -60,14 +61,28 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
-    @router.post("/electrophysiologyrecording-metrics")
+    @router.get(
+        "/electrophysiologyrecording-metrics/{trace_id}",
+        summary="electrophysiology recording metrics",
+        description="This calculates electrophysiology traces metrics for a particular recording",
+    )
     def electrophysiologyrecording_metrics_endpoint(
-        form: ElectrophysiologyMetricsForm,
+        trace_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        requested_metrics: CALCULATED_FEATURES | None = None,
+        amplitude: AmplitudeInput | None = None,
+        protocols: STIMULI_TYPES | None = None,
     ) -> ElectrophysiologyMetricsOutput:
-        data = form.model_dump()
-        data["type"] = "ElectrophysiologyMetrics"
-        metrics_model = ElectrophysiologyMetrics.model_validate(data, by_name=True)
-        return metrics_model.run(db_client=db_client)
+        try:
+            ephys_metrics = get_electrophysiology_metrics(
+                trace_id=trace_id,
+                entity_client=db_client,
+                calculated_feature=requested_metrics,
+                amplitude=amplitude,
+                stimuli_types=protocols,
+            )
+            return ephys_metrics
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
     return router
