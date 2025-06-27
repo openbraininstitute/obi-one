@@ -33,6 +33,17 @@ from pathlib import Path
 import logging
 L = logging.getLogger(__name__)
 
+from enum import StrEnum
+class BlockGroup(StrEnum):
+    """Authentication and authorization errors."""
+
+    SETUP_BLOCK_GROUP = "Setup"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    EVENTS_GROUP = "Events"
+    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
+    
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -40,20 +51,22 @@ class SimulationsForm(Form):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation")
-    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation")
-    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation")
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation")
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation")
-
     class Config:
         json_schema_extra = {
-            "gui_order": [
-                ["info", ["info"],
-                "base", ["initialize", "stimuli", "recordings"],
-                "Auxiliary", ["neuron_sets", "timestamps"]],
-            ]
+            "block_block_group_order": [BlockGroup.SETUP_BLOCK_GROUP,
+                                     BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                                     BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+                                     BlockGroup.EVENTS_GROUP,
+                                     BlockGroup.CIRCUIT_MANIPULATIONS_GROUP]
         }
+
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation", singular_name="Timestamps", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRCUIT_MANIPULATIONS_GROUP, group_order=0)
+
+    
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
@@ -68,8 +81,8 @@ class SimulationsForm(Form):
         _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
 
-    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation")
-    info: Info = Field(title="Info", description="Information about the simulation campaign")
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
+    info: Info = Field(title="Info", description="Information about the simulation campaign", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
 
 
     def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):
