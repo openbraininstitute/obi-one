@@ -24,6 +24,9 @@ class SynapticManipulation(Block, ABC):
 
 
 class SynapticUseManipulation(SynapticManipulation):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Manipulation of the synaptic 'Use' parameter"
 
     use_scaling: float | list[float] = 0.7050728631217412
 
@@ -35,6 +38,9 @@ class SynapticUseManipulation(SynapticManipulation):
 
 
 class SynapticMgManipulation(SynapticManipulation):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Manipulation of the synaptic 'Magnesium' parameter"
 
     magnesium_value: float | list[float] = 2.4
     
