@@ -228,6 +228,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
 
     _sonata_config: dict = PrivateAttr(default={})
+    _logger: logging.Logger = PrivateAttr()
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
@@ -437,7 +442,3 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             )
         else:
             raise ValueError(f"Unsupported backend: {simulator}")
-        
-        # save NWB files with soma traces
-        if save_nwb:
-            self._logger.info("NWB file output not implemented yet")
