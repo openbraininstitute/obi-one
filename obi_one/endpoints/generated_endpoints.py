@@ -1,9 +1,12 @@
 import re
 from typing import Annotated, get_type_hints
+import tempfile
 
 import entitysdk.client
 import entitysdk.common
-from fastapi import APIRouter, Depends
+from entitysdk.exception import EntitySDKError
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.dependencies.entitysdk import get_client
@@ -69,7 +72,7 @@ def create_endpoint_for_form(
     )
 
     if not isinstance(return_class, str):
-        return_type = None if return_class is None else dict[str, return_class]
+        # return_type = None if return_class is None else dict[str, return_class]
 
         # Create endpoint name
         endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
@@ -80,44 +83,59 @@ def create_endpoint_for_form(
         def endpoint(
             db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
             form: model,
-        ) -> return_type:
+        ) -> str:
             L.info("generate_grid_scan")
             L.info(db_client)
 
+            campaign = None
             try:
-                grid_scan = GridScan(
-                    form=form,
-                    output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
-                    coordinate_directory_option="ZERO_INDEX"
-                )
-                result = grid_scan.execute(
-                    processing_method=processing_method,
-                    data_postprocessing_method=data_postprocessing_method,
-                    db_client=db_client,
-                )
-            except Exception:  # noqa: BLE001
-                L.exception("Generic exception")
+                with tempfile.TemporaryDirectory() as tdir:
+                    grid_scan = GridScan(
+                        form=form,
+                        # output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
+                        output_root=tdir,
+                        coordinate_directory_option="ZERO_INDEX",
+                    )
+                    campaign = grid_scan.execute(
+                        processing_method=processing_method,
+                        data_postprocessing_method=data_postprocessing_method,
+                        db_client=db_client,
+                    )
+
+            except Exception as e:
+                error_msg = str(e)
+
+                if len(e.args) == 1:
+                    error_msg = str(e.args[0])
+                elif len(e.args) > 1:
+                    error_msg = str(e.args)
+
+                L.error(error_msg)
+
+                raise HTTPException(status_code=500, detail=error_msg) from e
+
             else:
                 L.info("Grid scan generated successfully")
-                return result
+                if campaign is not None:
+                    return str(campaign.id)
+
+                L.info("No campaign generated")
+                return ""
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI Form subclass.
-    for form in Form.__subclasses__():
-        # methods and data_handling types to iterate over
-        processing_methods = ["run", "generate"]
-        data_postprocessing_methods = [""]  # , "save", "data"
-
-        # Iterate over processing_methods and data_postprocessing_methods
-        for processing_method in processing_methods:
-            for data_postprocessing_method in data_postprocessing_methods:
-                # Create endpoint
-                create_endpoint_for_form(
-                    form,
-                    router,
-                    processing_method=processing_method,
-                    data_postprocessing_method=data_postprocessing_method,
-                )
+    for form, processing_method, data_postprocessing_method in [
+        (SimulationsForm, "generate", ""),
+        (SimulationsForm, "generate", "save"),
+        (MorphologyMetricsForm, "run", ""),
+    ]:
+        # Create endpoint
+        create_endpoint_for_form(
+            form,
+            router,
+            processing_method=processing_method,
+            data_postprocessing_method=data_postprocessing_method,
+        )
 
     return router

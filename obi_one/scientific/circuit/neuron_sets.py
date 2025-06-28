@@ -1,7 +1,7 @@
 import abc
 import json
 import os
-from typing import Annotated, Self, Literal, Optional
+from typing import Annotated, Self, Literal, Optional, ClassVar
 
 import bluepysnap as snap
 import numpy as np
@@ -19,6 +19,11 @@ L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
 _RCA1_CA3_NODE_POP = "CA3_projections"
+
+_ALL_NODE_SET = "All"
+_EXCITATORY_NODE_SET = "Excitatory"
+_INHIBITORY_NODE_SET = "Inhibitory"
+
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -319,7 +324,58 @@ class PredefinedNeuronSet(NeuronSet):
         return [self.node_set]
 
 
+class AllNeurons(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "All Neurons"
+    
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _ALL_NODE_SET in circuit.node_sets, (
+            f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_ALL_NODE_SET]
+
+
+class ExcitatoryNeurons(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Excitatory Neurons"
+
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _EXCITATORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_EXCITATORY_NODE_SET]
+
+
+class InhibitoryNeurons(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Inhibitory Neurons"
+
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _INHIBITORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_INHIBITORY_NODE_SET]
+
+
 class nbS1VPMInputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "nbS1 VPM Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -330,6 +386,9 @@ class nbS1VPMInputs(AbstractNeuronSet):
     
 
 class nbS1POmInputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "nbS1 POm Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -340,6 +399,9 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 
 class rCA1CA3Inputs(AbstractNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "rCA1 CA3 Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
@@ -374,6 +436,8 @@ class CombinedNeuronSet(NeuronSet):
 
 class IDNeuronSet(AbstractNeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
+
+    title: ClassVar[str] = "ID Neuron Set"
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 
@@ -461,6 +525,8 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
@@ -676,6 +742,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \

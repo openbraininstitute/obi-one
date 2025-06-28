@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from abc import ABC, abstractmethod
-from typing import Annotated
+from typing import Annotated, ClassVar, Optional
 import h5py
 
 from pydantic import Field, PrivateAttr
@@ -16,7 +16,10 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Stimulus(Block, ABC):
-    timestamps: TimestampsReference
+    timestamp_offset: Optional[float | list[float]] = Field(
+        default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
+    )
+    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
 
     def config(self) -> dict:
         self.check_simulation_init()
@@ -28,15 +31,13 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    delay: float | list[float] = Field(
-        default=0.0, title="Delay", description="Time in ms when input is activated."
-    )
     duration: float | list[float] = Field(
         default=1.0,
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: NeuronSetReference = Field(description="Neuron set to which the stimulus is applied.")
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.")]
+    
     _represents_physical_electrode: bool = PrivateAttr(default=False) 
     """Default is False. If True, the signal will be implemented \
     using a NEURON IClamp mechanism. The IClamp produce an \
@@ -51,6 +52,10 @@ class SomaticStimulus(Stimulus, ABC):
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Constant Current Clamp Somatic Stimulus"
+    
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
@@ -63,7 +68,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -75,6 +80,10 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class LinearCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Linear Current Clamp Somatic Stimulus"
+
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
@@ -92,7 +101,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -105,6 +114,10 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Relative Constant Current Clamp Somatic Stimulus"
+
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
@@ -119,7 +132,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -131,6 +144,10 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Relative Linear Current Clamp Somatic Stimulus"
+
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
@@ -148,7 +165,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -161,6 +178,10 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Multi Pulse Current Clamp Somatic Stimulus"
+
     _module: str = "pulse"
     _input_type: str = "current_clamp"
 
@@ -180,7 +201,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -194,6 +215,10 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Sinusoidal Current Clamp Somatic Stimulus"
+
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
 
@@ -212,7 +237,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -226,6 +251,10 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Subthreshold Current Clamp Somatic Stimulus"
+
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
 
@@ -242,7 +271,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -259,6 +288,8 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
             “hyperpolarizing”. The holding current applied is defined in the cell model.
     """
 
+    title: ClassVar[str] = "Hyperpolarizing Current Clamp Somatic Stimulus"
+
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
 
@@ -267,7 +298,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -278,6 +309,10 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Noise Current Clamp Somatic Stimulus"
+
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
@@ -295,7 +330,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -308,6 +343,10 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Percentage Noise Current Clamp Somatic Stimulus"
+
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
@@ -327,7 +366,7 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
             sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp,
+                "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
@@ -339,25 +378,22 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SynchronousSingleSpikeStimulus(Stimulus):
-   spike_probability: float | list[float]
-
-
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    stim_duration: float | list[float]
     _spike_file: Path | None = None
-    source_neuron_set: NeuronSetReference = None
-    targeted_neuron_set: NeuronSetReference = None
+    _simulation_length: float | None = None
+    source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
+    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None
+        assert self._simulation_length is not None, "Simulation length must be set before generating SONATA config component for SpikeStimulus."
         # assert self.source_neuron_set.block.node_population is not None, "Must specify node population name for the neuron set!"
         sonata_config = {}
         sonata_config[self.name] = {
                 "delay": 0.0, # If it is present, then the simulation filters out those times that are before the delay
-                "duration": self.stim_duration,
+                "duration": self._simulation_length,
                 "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
@@ -366,7 +402,7 @@ class SpikeStimulus(Stimulus):
         
         return sonata_config
 
-    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
         raise NotImplementedError("Subclasses should implement this method.")
 
     @staticmethod
@@ -401,22 +437,29 @@ class SpikeStimulus(Stimulus):
             ts.attrs['units'] = 'ms'
 
 class PoissonSpikeStimulus(SpikeStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Poisson Spike Stimulus"
+
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
+    duration: float | list[float]
     random_seed: int | list[int] = 0
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
     
-    def generate_spikes(self, circuit, spike_file_path, source_node_population=None):
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
+        self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
-        for t_idx, start_time in enumerate(timestamps):
-            end_time = start_time + self.stim_duration
-            if t_idx < len(timestamps) - 1:
+        for timestamp_idx, timestamp_t in enumerate(timestamps):
+            start_time = timestamp_t + self.timestamp_offset
+            end_time = start_time + self.duration
+            if timestamp_idx < len(timestamps) - 1:
                 # Check that interval not overlapping with next stimulus onset
-                assert end_time < timestamps[t_idx + 1], "Stimulus time intervals overlap!"
+                assert end_time < timestamps[timestamp_idx + 1], "Stimulus time intervals overlap!"
             for gid in gids:
                 spikes = []
                 t = start_time
@@ -432,4 +475,29 @@ class PoissonSpikeStimulus(SpikeStimulus):
                     gid_spike_map[gid] = spikes
         self._spike_file = f"{self.name}_spikes.h5"
         self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
-        
+
+
+class FullySynchronousSpikeStimulus(SpikeStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Fully Synchronous Spike Stimulus"
+
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+
+    def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
+        self._simulation_length = simulation_length
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block._population(source_node_population)
+        gid_spike_map = {}
+        timestamps = self.timestamps.block.timestamps()
+        for t_idx, start_time in enumerate(timestamps):
+            spike = [start_time + self.timestamp_offset]
+            for gid in gids:
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] = gid_spike_map[gid] + spike
+                else:
+                    gid_spike_map[gid] = spike
+        self._spike_file = f"{self.name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
+

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         "https://openbraininstitute.org",
         "https://www.openbraininstitute.org",
         "https://staging.openbraininstitute.org",
+        "https://next.staging.openbraininstitute.org",
     ]
 
     LOG_LEVEL: str = "INFO"
