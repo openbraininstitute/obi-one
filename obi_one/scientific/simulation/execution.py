@@ -4,6 +4,7 @@ This module provides functionality to run simulations using different backends
 (BlueCelluLab, Neurodamus) based on the simulation requirements.
 """
 import argparse
+from collections import defaultdict
 import json
 import logging
 import sys
@@ -11,17 +12,14 @@ from pathlib import Path
 from typing import Dict, Any, Union
 import numpy as np
 from bluecellulab import CircuitSimulation
+from bluecellulab.reports.manager import ReportManager
 from neuron import h
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
 from datetime import datetime, timezone
 import uuid
 import matplotlib
-import sys
-
-# Only use 'Agg' backend if not in an interactive environment (like Jupyter)
-if 'ipykernel' not in sys.modules and 'IPython' not in sys.modules:
-    matplotlib.use('Agg')  # non-interactive backend for matplotlib to avoid display issues
+# matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
 import matplotlib.pyplot as plt
 
 # Create logs directory if it doesn't exist
@@ -43,6 +41,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 logger.info(f"Logging to {log_file}")
+
+# ---- merge helpers ---------------------------------------------
+def _merge_dicts(list_of_dicts):
+    merged: Dict[Any, Any] = {}
+    for d in list_of_dicts:
+        merged.update(d)
+    return merged
+
+def _merge_spikes(list_of_pop_dicts):
+    out: Dict[str, Dict[int, list]] = defaultdict(dict)
+    for pop_dict in list_of_pop_dicts:
+        for pop, gid_map in pop_dict.items():
+            out[pop].update(gid_map)
+    return out
 
 def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[str, Any]:
     """Determine instantiate_gids parameters from simulation config.
@@ -102,11 +114,11 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
                     break
     
     # Check for spike replay in inputs
-    if 'inputs' in simulation_config_data:
-        for input_def in simulation_config_data['inputs'].values():
-            if input_def.get('module') == 'synapse_replay':
-                params['add_replay'] = True
-                break
+    # if 'inputs' in simulation_config_data:
+    #     for input_def in simulation_config_data['inputs'].values():
+    #         if input_def.get('module') == 'synapse_replay':
+    #             params['add_replay'] = True
+    #             break
     
     # Enable projections by default if synapses are enabled
     params['add_projections'] = params['add_synapses']
@@ -210,7 +222,7 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
                 electrode=electrode,
                 timestamps=time_data,
                 gain=1.0,
-                unit='volt',
+                unit='volts',
                 description=f'Voltage trace for {cell_id}'
             )
             nwbfile.add_acquisition(ics)
@@ -348,76 +360,92 @@ def run_bluecellulab(
             
         time_s = time_ms / 1000.0  # Convert ms to seconds
         
-        # Get voltage traces for each cell on this rank
-        results = {}
+        # Get voltage traces and spikes for each cell on this rank
+        results_traces: Dict[str, Any] = {}
+        results_spikes: Dict[str, Dict[int, list]] = defaultdict(dict)  # pop → gid → spikes
         for cell_id in cell_ids_for_this_rank:
+            gid_key = f"{cell_id[0]}_{cell_id[1]}"
+
+            # voltage trace ----------------------------------------------------
+            voltage = sim.get_voltage_trace(cell_id)
+            if voltage is not None:
+                results_traces[gid_key] = {
+                    "time": time_s.tolist(),
+                    "voltage": voltage.tolist(),
+                    "unit": "mV",
+                }
+
+            # spikes -----------------------------------------------------------
             try:
-                voltage = sim.get_voltage_trace(cell_id)
-                if voltage is not None:
-                    # change the cell_id to be Population_ID format
-                    cell_id_key = f"{cell_id[0]}_{cell_id[1]}"
-                    results[cell_id_key] = {
-                        'time': time_s.tolist(),  # Convert numpy array to list for serialization
-                        'voltage': voltage.tolist(),
-                        'unit': 'mV'
-                    }
-                    logger.info(f"Rank {rank}: Successfully got voltage trace for {cell_id_key}")
-                else:
-                    logger.info(f"Rank {rank}: No voltage trace for cell {cell_id}")
-            except Exception as e:
-                logger.error(f"Rank {rank}: Error getting voltage trace for cell {cell_id}: {str(e)}")
-                continue
-        
+                cell_obj = sim.cells[cell_id]
+                spikes = cell_obj.get_recorded_spikes(
+                    location=sim.spike_location, threshold=sim.spike_threshold
+                )
+                if spikes is not None and len(spikes):
+                    pop = cell_id[0]
+                    results_spikes[pop][cell_id[1]] = list(spikes)
+            except Exception:
+                pass  # silently skip cells without spike recordings
+
+
         # Gather all results to rank 0
         logger.info(f"Rank {rank}: Gathering results...")
         try:
-            gathered_results = pc.py_gather(results, 0)
+            # gathered_results = pc.py_gather(results, 0)
+            gathered_traces = pc.py_gather(results_traces, 0)
+            gathered_spikes = pc.py_gather(results_spikes, 0)
         except Exception as e:
             logger.error(f"Rank {rank}: Error gathering results: {str(e)}")
-            gathered_results = None
-        
-        if rank == 0 and save_nwb and gathered_results is not None:
-            # Merge results from all ranks
-            all_results = {}
-            for rank_results in gathered_results:
-                if rank_results:
-                    all_results.update(rank_results)
-            
-            # Get output directory from config, handling all cases
-            base_dir = Path(simulation_config).parent
-            output_dir = None
-            
-            # if output_dir is explicitly specified in config
-            if "output_dir" in simulation_config_data:
-                output_dir_str = simulation_config_data["output_dir"]
-                # Handle $OUTPUT_DIR variable if present
-                if output_dir_str.startswith("$OUTPUT_DIR"):
-                    if "manifest" in simulation_config_data and "$OUTPUT_DIR" in simulation_config_data["manifest"]:
-                        output_dir = Path(simulation_config_data["manifest"]["$OUTPUT_DIR"]) / output_dir_str.replace("$OUTPUT_DIR/", "")
-                else:
-                    output_dir = Path(output_dir_str)
-                
-                # Make path absolute if it's relative
-                if not output_dir.is_absolute():
-                    output_dir = base_dir / output_dir
-            
-            # if output_dir not specified or invalid
-            if output_dir is None:
-                output_dir = base_dir / "output"
-            
-            # Ensure output directory exists
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Save NWB file directly in the output directory
-            output_path = output_dir / "results.nwb"
-            logger.info(f"Saving simulation results to: {output_path}")
-            save_results_to_nwb(all_results, output_path)
-            
-            # Save voltage traces plot
-            plot_path = output_dir / "voltage_traces.png"
-            plot_voltage_traces(all_results, plot_path)
-            logger.info(f"Successfully saved voltage traces plot to {plot_path}")
-            
+
+        if rank == 0:
+
+            # ---- SONATA reports --------------------------------------------
+            all_traces = _merge_dicts(gathered_traces)
+            all_spikes = _merge_spikes(gathered_spikes)
+
+            report_mgr = ReportManager(sim.circuit_access.config, sim.dt)
+            report_mgr.write_all(
+                cells_or_traces   = all_traces,
+                spikes_by_pop     = all_spikes
+            )
+            # ----------------------------------------------------------------
+
+            if save_nwb:
+                # Get output directory from config, handling all cases
+                base_dir = Path(simulation_config).parent
+                output_dir = None
+
+                # if output_dir is explicitly specified in config
+                if "output_dir" in simulation_config_data:
+                    output_dir_str = simulation_config_data["output_dir"]
+                    # Handle $OUTPUT_DIR variable if present
+                    if output_dir_str.startswith("$OUTPUT_DIR"):
+                        if "manifest" in simulation_config_data and "$OUTPUT_DIR" in simulation_config_data["manifest"]:
+                            output_dir = Path(simulation_config_data["manifest"]["$OUTPUT_DIR"]) / output_dir_str.replace("$OUTPUT_DIR/", "")
+                    else:
+                        output_dir = Path(output_dir_str)
+
+                    # Make path absolute if it's relative
+                    if not output_dir.is_absolute():
+                        output_dir = base_dir / output_dir
+
+                # if output_dir not specified or invalid
+                if output_dir is None:
+                    output_dir = base_dir / "output"
+
+                # Ensure output directory exists
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                # Save NWB file directly in the output directory
+                output_path = output_dir / "results.nwb"
+                logger.info(f"Saving simulation results to: {output_path}")
+                save_results_to_nwb(all_traces, output_path)
+
+                # Save voltage traces plot
+                plot_path = output_dir / "voltage_traces.png"
+                plot_voltage_traces(all_traces, plot_path)
+                logger.info(f"Successfully saved voltage traces plot to {plot_path}")
+
     except Exception as e:
         logger.error(f"Rank {rank} failed: {str(e)}", exc_info=True)
         raise

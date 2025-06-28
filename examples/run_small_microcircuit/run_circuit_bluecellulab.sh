@@ -2,6 +2,10 @@
 
 # circuit simulation
 
+# copy the ../data/tiny_circuits/N_10__top_nodes_dim6__asc/input folder to current directory
+echo "Copying Spike replay input folder ../data/tiny_circuits/N_10__top_nodes_dim6__asc/input to current directory"
+cp -r ../data/tiny_circuits/N_10__top_nodes_dim6__asc/input .
+
 # Remove old compiled mod files
 rm -r arm64/
 # Compile mod files

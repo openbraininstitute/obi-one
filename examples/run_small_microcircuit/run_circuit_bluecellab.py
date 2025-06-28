@@ -56,129 +56,13 @@ def _merge_spikes(list_of_pop_dicts):
             out[pop].update(gid_map)
     return out
 
-def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
-    """Save simulation results to NWB format"""
-    try:
-        nwbfile = NWBFile(
-            session_description=f'Small Microcircuit Simulation results',
-            identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now(timezone.utc),
-            experimenter='OBI User',
-            lab='Virtual Lab',
-            institution='OBI',
-            experiment_description='Simulation results',
-            session_id=f"small_microcircuit_simulation"
-        )
-
-        # Add device and electrode
-        device = nwbfile.create_device(
-            name='SimulatedElectrode',
-            description='Virtual electrode for simulation recording'
-        )
-
-        # Add voltage traces
-        for cell_id, trace in results.items():
-            # Create electrode for this cell
-            electrode = IntracellularElectrode(
-                name=f'electrode_{cell_id}',
-                description=f'Simulated electrode for {cell_id}',
-                device=device,
-                location='soma',
-                filtering='none'
-            )
-            nwbfile.add_icephys_electrode(electrode)
-
-            # Convert time from ms to seconds for NWB
-            time_data = np.array(trace["time"], dtype=float) / 1000.0
-            voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0  # Convert mV to V
-
-            # Create current clamp series with timestamps
-            ics = CurrentClampSeries(
-                name=f'voltage_{cell_id}',
-                data=voltage_data,
-                electrode=electrode,
-                timestamps=time_data,
-                gain=1.0,
-                unit='volt',
-                description=f'Voltage trace for {cell_id}'
-            )
-            nwbfile.add_acquisition(ics)
-
-        # Save to file
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Save to file
-        with NWBHDF5IO(str(output_path), 'w') as io:
-            io.write(nwbfile)
-
-        logger.info(f"Successfully saved results to {output_path}")
-
-    except Exception as e:
-        logger.error(f"Error saving results to NWB: {str(e)}")
-        raise
-
-def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
-    """Plot voltage traces for all cells in a grid of subplots and save to file.
-
-    Args:
-        results: Dictionary containing simulation results for each cell
-        output_path: Path where to save the plot (should include .png extension)
-        max_cols: Maximum number of columns in the subplot grid
-    """
-    n_cells = len(results)
-    if n_cells == 0:
-        logger.warning("No voltage traces to plot")
-        return
-
-    # Calculate grid size
-    n_cols = min(max_cols, n_cells)
-    n_rows = (n_cells + n_cols - 1) // n_cols
-
-    # Create figure with subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows),
-                            squeeze=False, constrained_layout=True)
-
-    # Flatten axes for easier iteration
-    axes = axes.ravel()
-
-    # Plot each cell's voltage trace in its own subplot
-    for idx, (cell_id, trace) in enumerate(results.items()):
-        ax = axes[idx]
-        time_ms = np.array(trace["time"])
-        voltage_mv = np.array(trace["voltage"])
-
-        ax.plot(time_ms, voltage_mv, linewidth=1)
-        ax.set_title(f"Cell {cell_id}", fontsize=10)
-        ax.grid(True, alpha=0.3)
-
-        # Only label bottom row x-axes
-        if idx >= (n_rows - 1) * n_cols:
-            ax.set_xlabel("Time (ms)", fontsize=8)
-
-        # Only label leftmost column y-axes
-        if idx % n_cols == 0:
-            ax.set_ylabel("mV", fontsize=8)
-
-    # Turn off unused subplots
-    for idx in range(n_cells, len(axes)):
-        axes[idx].axis('off')
-
-    # Add a main title
-    fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
-
-    # Save the figure
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close(fig)
-    logger.info(f"Saved voltage traces plot to {output_path}")
-
 def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[str, Any]:
     """Determine instantiate_gids parameters from simulation config.
 
     This function gives parameters for sim.instantiate_gids() based on the
     simulation config. See the package BlueCellulab/bluecellulab/circuit_simulation.py
     for more details.
-
+    
     Args:
         simulation_config_data: Loaded simulation configuration
     Returns:
@@ -240,6 +124,121 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
     params['add_projections'] = params['add_synapses']
 
     return params
+
+def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
+    """Plot voltage traces for all cells in a grid of subplots and save to file.
+
+    Args:
+        results: Dictionary containing simulation results for each cell
+        output_path: Path where to save the plot (should include .png extension)
+        max_cols: Maximum number of columns in the subplot grid
+    """
+    n_cells = len(results)
+    if n_cells == 0:
+        logger.warning("No voltage traces to plot")
+        return
+
+    # Calculate grid size
+    n_cols = min(max_cols, n_cells)
+    n_rows = (n_cells + n_cols - 1) // n_cols
+
+    # Create figure with subplots
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows),
+                            squeeze=False, constrained_layout=True)
+
+    # Flatten axes for easier iteration
+    axes = axes.ravel()
+
+    # Plot each cell's voltage trace in its own subplot
+    for idx, (cell_id, trace) in enumerate(results.items()):
+        ax = axes[idx]
+        time_ms = np.array(trace["time"])
+        voltage_mv = np.array(trace["voltage"])
+
+        ax.plot(time_ms, voltage_mv, linewidth=1)
+        ax.set_title(f"Cell {cell_id}", fontsize=10)
+        ax.grid(True, alpha=0.3)
+
+        # Only label bottom row x-axes
+        if idx >= (n_rows - 1) * n_cols:
+            ax.set_xlabel("Time (ms)", fontsize=8)
+
+        # Only label leftmost column y-axes
+        if idx % n_cols == 0:
+            ax.set_ylabel("mV", fontsize=8)
+
+    # Turn off unused subplots
+    for idx in range(n_cells, len(axes)):
+        axes[idx].axis('off')
+
+    # Add a main title
+    fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
+
+    # Save the figure
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    logger.info(f"Saved voltage traces plot to {output_path}")
+def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
+    """Save simulation results to NWB format"""
+    try:
+        nwbfile = NWBFile(
+            session_description=f'Small Microcircuit Simulation results',
+            identifier=str(uuid.uuid4()),
+            session_start_time=datetime.now(timezone.utc),
+            experimenter='OBI User',
+            lab='Virtual Lab',
+            institution='OBI',
+            experiment_description='Simulation results',
+            session_id=f"small_microcircuit_simulation"
+        )
+
+        # Add device and electrode
+        device = nwbfile.create_device(
+            name='SimulatedElectrode',
+            description='Virtual electrode for simulation recording'
+        )
+
+        # Add voltage traces
+        for cell_id, trace in results.items():
+            # Create electrode for this cell
+            electrode = IntracellularElectrode(
+                name=f'electrode_{cell_id}',
+                description=f'Simulated electrode for {cell_id}',
+                device=device,
+                location='soma',
+                filtering='none'
+            )
+            nwbfile.add_icephys_electrode(electrode)
+
+            # Convert time from ms to seconds for NWB
+            time_data = np.array(trace["time"], dtype=float) / 1000.0
+            voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0  # Convert mV to V
+
+            # Create current clamp series with timestamps
+            ics = CurrentClampSeries(
+                name=f'voltage_{cell_id}',
+                data=voltage_data,
+                electrode=electrode,
+                timestamps=time_data,
+                gain=1.0,
+                unit='volts',
+                description=f'Voltage trace for {cell_id}'
+            )
+            nwbfile.add_acquisition(ics)
+
+        # Save to file
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save to file
+        with NWBHDF5IO(str(output_path), 'w') as io:
+            io.write(nwbfile)
+
+        logger.info(f"Successfully saved results to {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error saving results to NWB: {str(e)}")
+        raise
 
 
 def run_bluecellulab(
