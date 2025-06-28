@@ -33,7 +33,10 @@ NeuronSetUnion = (
 )
 
 SimulationNeuronSetUnion = (
-    IDNeuronSet
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
     | rCA1CA3Inputs
