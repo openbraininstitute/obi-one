@@ -3,6 +3,7 @@ import numpy
 import neurom
 import shutil
 import h5py
+import json
 import os.path
 
 from voxcell import CellCollection
@@ -14,6 +15,7 @@ _STR_NONE = "_NONE"
 _STR_MORPH = "morphology"
 _STR_SPINE_INFO = "spine_info"
 _PREF_SRC = "source__"
+_SPINES_H5_FILE = "_SPINES.h5"
 
 __unit_rot = numpy.array([
     [1, 0, 0],
@@ -91,6 +93,11 @@ def neuron_info_df(client, table_name, filters, add_position=True):
         q_cells = pandas.concat([q_cells, nrn_locs], axis=1)
 
     return q_cells
+
+def spines_info_from_file(fn):
+    with open(fn, "r") as fid:
+        df = pandas.DataFrame(json.load(fid))
+    return df
 
 def neuron_info_from_somas_file(client, fn_somas_file, reference_df):
     # I have independently validated that this method of matching neurons by
@@ -191,8 +198,8 @@ def transform_and_copy_morphologies(nrns, in_root, out_root,
             print(f"Morphology {morph_fn} found and moved!")
             if os.path.isfile(os.path.join(in_root, spines_fn)):
                 spines_name = "spines_" + morph.name
-                shutil.copy(os.path.join(in_root, spines_fn),
-                            os.path.join(spine_out_root, spines_name + ".json"))
+                _spines = spines_info_from_file(os.path.join(in_root, spines_fn))
+                _spines.to_hdf(os.path.join(spine_out_root, _SPINES_H5_FILE), spines_name)
                 nrns.loc[_idx, _STR_SPINE_INFO] = spines_name
         except Exception as e:
             print(f"Morphology {morph_fn} found but an error was encountered!")
