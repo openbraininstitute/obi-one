@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, Self, ClassVar
 
-from pydantic import Field, NonNegativeFloat, model_validator
+from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
@@ -20,7 +20,7 @@ class Recording(Block, ABC):
         NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
     ]
     dt: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat],
+        PositiveFloat | list[PositiveFloat],
         Field(default=0.1,
             title="Timestep",
             description="Interval between recording time steps in milliseconds (ms).", units="ms"),
