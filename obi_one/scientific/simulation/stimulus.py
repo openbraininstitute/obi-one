@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Optional
 import h5py
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
@@ -49,7 +49,7 @@ class SomaticStimulus(Stimulus, ABC):
     timestamp_offset: Optional[float | list[float]] = _TIMESTAMPS_OFFSET_FIELD
 
 
-    duration: float | list[float] = Field(
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=1.0,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
@@ -120,7 +120,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
-    percentage_of_threshold_current: float | list[float] = Field(
+    percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
         title="Percentage of Threshold Current",
         description="The percentage of a cell’s threshold current to inject when the stimulus \
@@ -183,23 +183,23 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A current injection which changes linearly as a percentage of each cell's threshold current over time."""
 
     title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
-    percentage_of_threshold_current_start: float | list[float] = Field(
+    percentage_of_threshold_current_start: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
         description="The percentage of a cell's threshold current to inject when the stimulus activates.",
-        title="Start Percentage of Threshold Current",
+        title="Percentage of Threshold Current (Start)",
         units="%",
     )
-    percentage_of_threshold_current_end: float | list[float] = Field(
+    percentage_of_threshold_current_end: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
         description="If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
-        title="End Percentage of Threshold Current",
+        title="Percentage of Threshold Current (End)",
         units="%",
     )
 
@@ -219,8 +219,8 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
             }
         return sonata_config
     
-class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+    """Normally distributed current injection with a mean absolute amplitude."""
 
     title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
 
@@ -233,7 +233,7 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
         title="Mean Amplitude",
         units="nA"
     )
-    variance: float | list[float] = Field(
+    variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
@@ -258,22 +258,22 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeNoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+    """Normally distributed current injection around a mean percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
 
-    mean_percentage_of_threshold_current: float | list[float] = Field(
+    mean_percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.01,
         description="The mean value of current to inject as a percentage of a cell's \
                     threshold current.",
         title="Percentage of Threshold Current (Mean)",
         units="%",
     )
-    variance: float | list[float] = Field(
+    variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
@@ -396,7 +396,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
 
-    percentage_below_threshold: float | list[float] = Field(
+    percentage_below_threshold: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.1,
         description=r"A percentage adjusted from 100 of a cell's threshold current. \
                         E.g. 20 will apply 80% of the threshold current. Using a negative \
@@ -525,12 +525,12 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: float | list[float] = Field(default=1000.0, 
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(default=1000.0, 
                             title="Duration", 
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
-    frequency: float | list[float] = Field(default=0.0, 
+    frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(default=0.0, 
                                            title="Frequency", 
                                            description="Mean frequency (Hz) of the Poisson input",
                                            units="Hz")

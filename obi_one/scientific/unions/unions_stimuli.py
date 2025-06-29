@@ -3,8 +3,8 @@ from obi_one.scientific.simulation.stimulus import (
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
-    NoiseCurrentClampSomaticStimulus,
-    RelativeNoiseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
@@ -18,8 +18,8 @@ StimulusUnion = (
     | RelativeConstantCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | RelativeLinearCurrentClampSomaticStimulus
-    | NoiseCurrentClampSomaticStimulus
-    | RelativeNoiseCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
