@@ -81,9 +81,9 @@ class SomaticStimulus(Stimulus, ABC):
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A constant current injection at a fixed absolute amplitude."""
 
-    title: ClassVar[str] = "Constant Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
     
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -114,9 +114,9 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class LinearCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A current injection which changes linearly in absolute ampltude over time."""
 
-    title: ClassVar[str] = "Linear Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -152,9 +152,9 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A relative """
 
-    title: ClassVar[str] = "Relative Constant Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -186,7 +186,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Relative Linear Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -219,12 +219,90 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
+    
+class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+
+    _module: str = "noise"
+    _input_type: str = "current_clamp"
+
+    mean_amplitude: float | list[float] = Field(
+        default=0.01, 
+        description="The mean value of current to inject. Given in nanoamps (nA).",
+        title="Mean Amplitude",
+        units="nA"
+    )
+    variance: float | list[float] = Field(
+        default=0.01,
+        description="The variance around the mean of current to inject using a \
+                    normal distribution.",
+        title="Variance",
+        units="nA^2"
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "node_set": self.neuron_set.block.name,
+                "module": self._module,
+                "input_type": self._input_type,
+                "mean": self.mean_amplitude,
+                "variance": self.variance,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
+        return sonata_config
+
+
+class RelativeNoiseCurrentClampSomaticStimulus(SomaticStimulus):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+
+    _module: str = "noise"
+    _input_type: str = "current_clamp"
+
+    mean_percentage_of_threshold_current: float | list[float] = Field(
+        default=0.01,
+        description="The mean value of current to inject as a percentage of a cell's \
+                    threshold current.",
+        title="Percentage of Threshold Current (Mean)",
+        units="%",
+    )
+    variance: float | list[float] = Field(
+        default=0.01,
+        description="The variance around the mean of current to inject using a \
+                    normal distribution.",
+        title="Variance",
+        units="nA^2",
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "node_set": self.neuron_set.block.name,
+                "module": self._module,
+                "input_type": self._input_type,
+                "mean_percent": self.mean_percentage_of_threshold_current,
+                "variance": self.variance,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
+        return sonata_config
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Multi Pulse Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
 
     _module: str = "pulse"
     _input_type: str = "current_clamp"
@@ -269,7 +347,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Sinusoidal Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -314,7 +392,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Subthreshold Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
@@ -351,7 +429,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
             “hyperpolarizing”. The holding current applied is defined in the cell model.
     """
 
-    title: ClassVar[str] = "Hyperpolarizing Current Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -366,85 +444,6 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
-
-
-class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
-
-    title: ClassVar[str] = "Noise Current Clamp Somatic Stimulus"
-
-    _module: str = "noise"
-    _input_type: str = "current_clamp"
-
-    mean_amplitude: float | list[float] = Field(
-        default=0.01, 
-        description="The mean value of current to inject. Given in nanoamps (nA).",
-        title="Mean Amplitude",
-        units="nA"
-    )
-    variance: float | list[float] = Field(
-        default=0.01,
-        description="The variance around the mean of current to inject using a \
-                    normal distribution.",
-        title="Variance",
-        units="nA^2"
-    )
-
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": self.neuron_set.block.name,
-                "module": self._module,
-                "input_type": self._input_type,
-                "mean": self.mean_amplitude,
-                "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
-
-
-class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
-
-    title: ClassVar[str] = "Percentage Noise Current Clamp Somatic Stimulus"
-
-    _module: str = "noise"
-    _input_type: str = "current_clamp"
-
-    mean_percentage_of_threshold_current: float | list[float] = Field(
-        default=0.01,
-        description="The mean value of current to inject as a percentage of a cell's \
-                    threshold current.",
-        title="Percentage of Threshold Current (Mean)",
-        units="%",
-    )
-    variance: float | list[float] = Field(
-        default=0.01,
-        description="The variance around the mean of current to inject using a \
-                    normal distribution.",
-        title="Variance",
-        units="nA^2",
-    )
-
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": self.neuron_set.block.name,
-                "module": self._module,
-                "input_type": self._input_type,
-                "mean_percent": self.mean_percentage_of_threshold_current,
-                "variance": self.variance,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
@@ -523,7 +522,7 @@ class SpikeStimulus(Stimulus):
 class PoissonSpikeStimulus(SpikeStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Poisson Spike Stimulus"
+    title: ClassVar[str] = "Poisson Spikes (Efferent)"
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
@@ -575,7 +574,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
 class FullySynchronousSpikeStimulus(SpikeStimulus):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Fully Synchronous Spike Stimulus"
+    title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
