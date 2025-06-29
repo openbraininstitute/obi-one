@@ -15,11 +15,15 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from obi_one.scientific.circuit.circuit import Circuit
 
+
 class Stimulus(Block, ABC):
+
+    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
+
     timestamp_offset: Optional[float | list[float]] = Field(
         default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
     )
-    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
+    
 
     def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
@@ -31,12 +35,15 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
+
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.", supports_virtual=False)]
+
     duration: float | list[float] = Field(
         default=1.0,
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.", supports_virtual=False)]
+    
 
     _represents_physical_electrode: bool = PrivateAttr(default=False) 
     """Default is False. If True, the signal will be implemented \
@@ -465,8 +472,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     duration: float | list[float]
-    random_seed: int | list[int] = 0
     frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
+    random_seed: int | list[int] = 0
     
     def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
         self._simulation_length = simulation_length
