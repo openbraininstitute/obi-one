@@ -115,7 +115,7 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
-    "SynapticAcetylcholineUseManipulation",
+    "AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation",
     "SynapticMgManipulation",
     "nbS1POmInputs",
     "nbS1VPMInputs",
@@ -272,5 +272,5 @@ from obi_one.scientific.validations.reconstruction_morphology_validation import 
 
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticMgManipulation,
-    SynapticAcetylcholineUseManipulation,
+    AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation,
 )

@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from obi_one.core.block import Block
-from pydantic import NonNegativeFloat
+from pydantic import Field, NonNegativeFloat
 from typing import ClassVar
-
 
 class SynapticManipulation(Block, ABC):
 
@@ -25,12 +24,17 @@ class SynapticManipulation(Block, ABC):
         return sonata_config
 
 
-class SynapticAcetylcholineUseManipulation(SynapticManipulation):
-    """Manipulate the synaptic acetylcholine (ACh) U_se scaling."""
 
-    title: ClassVar[str] = "Demo: Synaptic Acetylcholine U_se Manipulation"
+class AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation(SynapticManipulation):
+    """Manipulate the U_se parameter which scales the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.\
+        This is applied for all synapses between biophysical neurons."""
 
-    use_scaling: NonNegativeFloat | list[NonNegativeFloat] = 0.7050728631217412
+    title: ClassVar[str] = "Demo: Acetylcholine Effect on Synaptic Release Probability"
+
+    use: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.7050728631217412,
+        title="Scaling Factor U_se",
+        description="A scaling factor for the effect of acetylcholine on synaptic release probability.")
 
     def _get_override_name(self) -> str:
         return "ach_use"
@@ -40,11 +44,17 @@ class SynapticAcetylcholineUseManipulation(SynapticManipulation):
 
 
 class SynapticMgManipulation(SynapticManipulation):
-    """Manipulate the synaptic magnesium (Mg2+) concentration."""
+    """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.\
+        This is applied for all synapses between biophysical neurons."""
 
     title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
-    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = 2.4
+    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=2.4, 
+        title="Extracellular Magnesium Concentration",
+        description="Extracellular calcium concentration in millimoles (mM)", 
+        units="mM"
+    )
     
     def _get_override_name(self) -> str:
         return "Mg"
