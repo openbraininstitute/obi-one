@@ -10,6 +10,9 @@ from obi_one.core.exception import OBIONE_Error
 
 
 class Recording(Block, ABC):
+
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
+
     start_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms")
     ]
@@ -42,8 +45,6 @@ class SomaVoltageRecording(Recording):
     """Records the soma voltage of a neuron set."""
 
     title: ClassVar[str] = "Soma Voltage Recording"
-
-    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
 
     def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()

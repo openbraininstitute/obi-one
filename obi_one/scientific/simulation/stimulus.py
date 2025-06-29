@@ -17,14 +17,21 @@ from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.core.exception import OBIONE_Error
 
 
+
+# Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
+# But for now this keeps it below the other Block references in the GUI
+# Eventually we can make the GUI always show the Block references at the top
+_TIMESTAMPS_OFFSET_FIELD = Field(
+        default=0.0, 
+        title="Timestamp Offset", 
+        description="The offset of the stimulus relative to each timestamp in milliseconds (ms).", 
+        units="ms"
+    )
+
 class Stimulus(Block, ABC):
 
-    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
-
-    timestamp_offset: Optional[float | list[float]] = Field(
-        default=0.0, title="Timestamp offset", description="The offset of the stimulus relative to each timestamp in ms"
-    )
-    
+    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", 
+                                                     description="Timestamps at which the stimulus is applied.")]    
 
     def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
@@ -39,10 +46,14 @@ class SomaticStimulus(Stimulus, ABC):
 
     neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.", supports_virtual=False)]
 
+    timestamp_offset: Optional[float | list[float]] = _TIMESTAMPS_OFFSET_FIELD
+
+
     duration: float | list[float] = Field(
         default=1.0,
         title="Duration",
-        description="Time duration in ms for how long input is activated.",
+        description="Time duration in milliseconds for how long input is activated.",
+        units="ms",
     )
     
 
@@ -78,7 +89,11 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     _input_type: str = "current_clamp"
 
     amplitude: float | list[float] = Field(
-        default=0.1, description="The injected current. Given in nA."
+        default=0.1, 
+        description="The injected current. Given in nanoamps.",
+        title="Amplitude",
+        units="nA"
+
     )
 
     def _generate_config(self) -> dict:
@@ -108,11 +123,15 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
     amplitude_start: float | list[float] = Field(
         default=0.1,
-        description="The amount of current initially injected when the stimulus activates. Given in nA.",
+        title="Start Amplitude",
+        description="The amount of current initially injected when the stimulus activates. Given in nanoamps.",
+        units="nA",
     )
     amplitude_end: float | list[float] = Field(
         default=0.2,
-        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nA",
+        title="End Amplitude",
+        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nanoamps",
+        units="nA",
     )
 
     def _generate_config(self) -> dict:
@@ -142,8 +161,10 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
 
     percentage_of_threshold_current: float | list[float] = Field(
         default=10.0,
+        title="Percentage of Threshold Current",
         description="The percentage of a cell’s threshold current to inject when the stimulus \
                     activates.",
+        units="%",
     )
 
     def _generate_config(self) -> dict:
@@ -173,10 +194,14 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
     percentage_of_threshold_current_start: float | list[float] = Field(
         default=10.0,
         description="The percentage of a cell's threshold current to inject when the stimulus activates.",
+        title="Start Percentage of Threshold Current",
+        units="%",
     )
     percentage_of_threshold_current_end: float | list[float] = Field(
         default=100.0,
         description="If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
+        title="End Percentage of Threshold Current",
+        units="%",
     )
 
     def _generate_config(self) -> dict:
@@ -206,13 +231,21 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
     amplitude: float | list[float] = Field(
         default=0.1,
-        description="The amount of current initially injected when each pulse activates. Given in nA.",
+        description="The amount of current initially injected when each pulse activates. Given in nanoamps (nA).",
+        title="Amplitude",
+        units="nA",
     )
     width: float | list[float] = Field(
-        default=1.0, description="The length of time each pulse lasts. Given in ms."
+        default=1.0, 
+        description="The length of time each pulse lasts. Given in milliseconds (ms).",
+        title="Pulse Width",
+        units="ms"
     )
     frequency: float | list[float] = Field(
-        default=1.0, description="The frequency of pulse trains. Given in Hz."
+        default=1.0, 
+        description="The frequency of pulse trains. Given in Hertz (Hz).",
+        title="Pulse Frequency",
+        units="Hz"
     )
 
     def _generate_config(self) -> dict:
@@ -242,13 +275,22 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     _input_type: str = "current_clamp"
 
     peak_amplitude: float | list[float] = Field(
-        default=0.1, description="The peak amplitude of the sinusoid. Given in nA."
+        default=0.1, 
+        description="The peak amplitude of the sinusoid. Given in nanoamps (nA).",
+        title="Peak Amplitude",
+        units="nA"
     )
     frequency: float | list[float] = Field(
-        default=1.0, description="The frequency of the waveform. Given in Hz."
+        default=1.0, 
+        description="The frequency of the waveform. Given in Hertz (Hz).",
+        title="Frequency",
+        units="Hz"
     )
     dt: float | list[float] = Field(
-        default=0.025, description="Timestep of generated signal in ms. Default is 0.025 ms."
+        default=0.025, 
+        description="Timestep of generated signal in milliseconds (ms).",
+        title="Timestep",
+        units="ms"
     )
 
     def _generate_config(self) -> dict:
@@ -283,6 +325,8 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
                         E.g. 20 will apply 80% of the threshold current. Using a negative \
                             value will give more than 100. E.g. -20 will inject 120% of the \
                                 threshold current.",
+        title="Percentage Below Threshold",
+        units="%",
     )
 
     def _generate_config(self) -> dict:
@@ -336,12 +380,17 @@ class NoiseCurrentClampSomaticStimulus(SomaticStimulus):
     _input_type: str = "current_clamp"
 
     mean_amplitude: float | list[float] = Field(
-        default=0.01, description="The mean value of current to inject. Given in nA."
+        default=0.01, 
+        description="The mean value of current to inject. Given in nanoamps (nA).",
+        title="Mean Amplitude",
+        units="nA"
     )
     variance: float | list[float] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
+        title="Variance",
+        units="nA^2"
     )
 
     def _generate_config(self) -> dict:
@@ -373,11 +422,15 @@ class PercentageNoiseCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.01,
         description="The mean value of current to inject as a percentage of a cell's \
                     threshold current.",
+        title="Percentage of Threshold Current (Mean)",
+        units="%",
     )
     variance: float | list[float] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
+        title="Variance",
+        units="nA^2",
     )
 
     def _generate_config(self) -> dict:
@@ -404,6 +457,8 @@ class SpikeStimulus(Stimulus):
     _simulation_length: float | None = None
     source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set", supports_virtual=True)]
     targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set", supports_virtual=False)]
+
+    timestamp_offset: Optional[float | list[float]] = _TIMESTAMPS_OFFSET_FIELD
 
     def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
@@ -472,9 +527,20 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: float | list[float]
-    frequency: float | list[float] = Field(default=0.0, title="Frequency", description="Mean frequency (Hz) of the Poisson input" )
-    random_seed: int | list[int] = 0
+    duration: float | list[float] = Field(default=1000.0, 
+                            title="Duration", 
+                            description="Time duration in milliseconds for how long input is activated.",
+                            units="ms"
+                        )
+    frequency: float | list[float] = Field(default=0.0, 
+                                           title="Frequency", 
+                                           description="Mean frequency (Hz) of the Poisson input",
+                                           units="Hz")
+    random_seed: int | list[int] = Field(
+        default=0,
+        title="Random Seed",
+        description="Seed for the random number generator to ensure reproducibility of the spike generation.",
+    )
     
     def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
         self._simulation_length = simulation_length
