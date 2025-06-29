@@ -28,7 +28,7 @@ class SynapticManipulation(Block, ABC):
 class SynapticUseManipulation(SynapticManipulation):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Synaptic Use Manipulation"
+    title: ClassVar[str] = "Demo: Synaptic Use Manipulation"
 
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = 0.7050728631217412
 
@@ -42,7 +42,7 @@ class SynapticUseManipulation(SynapticManipulation):
 class SynapticMgManipulation(SynapticManipulation):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Synaptic Mg2+ Concentration Manipulation"
+    title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = 2.4
     

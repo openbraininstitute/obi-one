@@ -299,7 +299,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A series of current pulses injected at a fixed frequency, with each pulse having a fixed absolute amplitude and temporal width."""
 
     title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
 
@@ -344,17 +344,17 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
 
-    peak_amplitude: float | list[float] = Field(
+    maximum_amplitude: float | list[float] = Field(
         default=0.1, 
-        description="The peak amplitude of the sinusoid. Given in nanoamps (nA).",
-        title="Peak Amplitude",
+        description="The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
+        title="Maximum Amplitude",
         units="nA"
     )
     frequency: float | list[float] = Field(
@@ -389,18 +389,18 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A subthreshold current injection at a percentage below each cell's threshold current."""
 
     title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
 
-    percentage_below_threshold: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    percentage_below_threshold: float | list[float] = Field(
         default=0.1,
-        description=r"A percentage adjusted from 100 of a cell's threshold current. \
-                        E.g. 20 will apply 80% of the threshold current. Using a negative \
-                            value will give more than 100. E.g. -20 will inject 120% of the \
+        description="A percentage adjusted from 100 of a cell's threshold current. \
+                        E.g. 20 will apply 80\% of the threshold current. Using a negative \
+                            value will give more than 100. E.g. -20 will inject 120\% of the \
                                 threshold current.",
         title="Percentage Below Threshold",
         units="%",
@@ -423,9 +423,8 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
-    """A hyperpolarizing current injection which brings a cell to base membrance voltage \
-        used in experiments. Note: No additional parameter are needed when using module \
-            “hyperpolarizing”. The holding current applied is defined in the cell model.
+    """A hyperpolarizing current injection which brings a cell to base membrance voltage. \
+        The holding current is pre-defined for each cell.
     """
 
     title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
@@ -453,8 +452,8 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set", supports_virtual=True)]
-    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set", supports_virtual=False)]
+    source_neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)]
+    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
 
     timestamp_offset: Optional[float | list[float]] = _TIMESTAMPS_OFFSET_FIELD
 
@@ -519,7 +518,9 @@ class SpikeStimulus(Stimulus):
             ts.attrs['units'] = 'ms'
 
 class PoissonSpikeStimulus(SpikeStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Spike times drawn from a Poisson process with a given frequency \
+        sent from all neurons in the source neuron set to efferently connected \
+            neurons in the target neuron set."""
 
     title: ClassVar[str] = "Poisson Spikes (Efferent)"
 
@@ -571,7 +572,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
 
 class FullySynchronousSpikeStimulus(SpikeStimulus):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Spikes sent at the same time from all neurons in the source neuron set \
+        to efferently connected neurons in the target neuron set."""
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
 

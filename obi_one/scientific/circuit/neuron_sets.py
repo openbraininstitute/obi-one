@@ -329,7 +329,7 @@ class PredefinedNeuronSet(NeuronSet):
 
 
 class AllNeurons(AbstractNeuronSet):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """All biophysical neurons."""
 
     title: ClassVar[str] = "All Neurons"
     
@@ -345,9 +345,9 @@ class AllNeurons(AbstractNeuronSet):
 
 
 class ExcitatoryNeurons(AbstractNeuronSet):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """All biophysical excitatory neurons."""
 
-    title: ClassVar[str] = "Excitatory Neurons"
+    title: ClassVar[str] = "All Excitatory Neurons"
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
         assert _EXCITATORY_NODE_SET in circuit.node_sets, (
@@ -361,9 +361,9 @@ class ExcitatoryNeurons(AbstractNeuronSet):
 
 
 class InhibitoryNeurons(AbstractNeuronSet):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """All inhibitory neurons."""
 
-    title: ClassVar[str] = "Inhibitory Neurons"
+    title: ClassVar[str] = "All Inhibitory Neurons"
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
         assert _INHIBITORY_NODE_SET in circuit.node_sets, (
@@ -379,7 +379,7 @@ class InhibitoryNeurons(AbstractNeuronSet):
 class nbS1VPMInputs(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "nbS1 VPM Inputs"
+    title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -392,7 +392,7 @@ class nbS1VPMInputs(AbstractNeuronSet):
 class nbS1POmInputs(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "nbS1 POm Inputs"
+    title: ClassVar[str] = "Demo: nbS1 POm Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -405,7 +405,7 @@ class nbS1POmInputs(AbstractNeuronSet):
 class rCA1CA3Inputs(AbstractNeuronSet):
     """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "rCA1 CA3 Inputs"
+    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
