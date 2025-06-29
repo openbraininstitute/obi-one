@@ -111,6 +111,37 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
+    
+class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+    """A constant current injection at a percentage of each cell's threshold current."""
+
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+
+    _module: str = "relative_linear"
+    _input_type: str = "current_clamp"
+
+    percentage_of_threshold_current: float | list[float] = Field(
+        default=10.0,
+        title="Percentage of Threshold Current",
+        description="The percentage of a cell’s threshold current to inject when the stimulus \
+                    activates.",
+        units="%",
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+            sonata_config[self.name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "node_set": self.neuron_set.block.name,
+                "module": self._module,
+                "input_type": self._input_type,
+                "percent_start": self.percentage_of_threshold_current,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
+        return sonata_config
 
 
 class LinearCurrentClampSomaticStimulus(SomaticStimulus):
@@ -146,38 +177,6 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
                 "amp_end": self.amplitude_end,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
-
-
-class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
-    """A relative """
-
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
-
-    _module: str = "relative_linear"
-    _input_type: str = "current_clamp"
-
-    percentage_of_threshold_current: float | list[float] = Field(
-        default=10.0,
-        title="Percentage of Threshold Current",
-        description="The percentage of a cell’s threshold current to inject when the stimulus \
-                    activates.",
-        units="%",
-    )
-
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
-            sonata_config[self.name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": self.neuron_set.block.name,
-                "module": self._module,
-                "input_type": self._input_type,
-                "percent_start": self.percentage_of_threshold_current,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config

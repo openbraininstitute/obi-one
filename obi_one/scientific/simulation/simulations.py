@@ -2,7 +2,7 @@ import json
 import os
 from typing import ClassVar, Literal, Self, Annotated
 
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -70,15 +70,15 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
-        simulation_length: list[float] | float = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms)", units="ms")
-        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
+        simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms)", units="ms")
+        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
-        _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
-        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
-        _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
+        _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4) 
+        _target_simulator: Literal["NEURON", "CORENEURON"] | list[Literal["NEURON", "CORENEURON"]] = PrivateAttr(default="NEURON") # Target simulator for the simulation
+        _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(default=0.025) # Simulation time step in ms
 
     initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
     info: Info = Field(title="Info", description="Information about the simulation campaign", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
