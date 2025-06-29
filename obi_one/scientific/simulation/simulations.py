@@ -8,6 +8,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.info import Info
+from obi_one.core.exception import OBIONE_Error
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
@@ -140,7 +141,7 @@ class SimulationsForm(Form):
         reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
 
         if name in self.__dict__.get(block_dict_name).keys():
-            raise ValueError(f"Block with name '{name}' already exists in '{block_dict_name}'!")
+            raise OBIONE_Error(f"Block with name '{name}' already exists in '{block_dict_name}'!")
         
         else: 
             reference_type = globals()[reference_type_name]
@@ -312,7 +313,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
                 # Assert that simulation neuron set is biophysical
                 if _nset.population_type(_circuit, _circuit.default_population_name) != "biophysical":
-                    raise ValueError(
+                    raise OBIONE_Error(
                         f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' is not biophysical!"
                     )
 

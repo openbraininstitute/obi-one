@@ -14,6 +14,7 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_manager import db
 from obi_one.core.activity import Activity
 from obi_one.core.validation import Validation
+from obi_one.core.exception import OBIONE_Error
 
 __all__ = [
     "Activity",
@@ -78,6 +79,7 @@ __all__ = [
     "NeuronSetUnion",
     "NoiseCurrentClampSomaticStimulus",
     "OBIBaseModel",
+    "OBIONE_Error",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
     "PathDistanceWeightedFractionOfSynapses",
