@@ -70,11 +70,11 @@ class SimulationsForm(Form):
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
-        simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
-        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
+        simulation_length: list[float] | float = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms)", units="ms")
         extracellular_calcium_concentration: list[float] | float = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
@@ -310,6 +310,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 assert self._sonata_config.get("node_set") is None, (
                     "Node set config entry already defined!"
                 )
+
+                # Assert that simulation neuron set is biophysical
+                assert _nset.population_type(_circuit, _circuit.default_population_name) == "biophysical", (
+                    f"Simulation Neuron Set: '{_name}' is not biophysical!"
+                )
+
                 self._sonata_config["node_set"] = _name
 
             # Add node set to SONATA circuit object

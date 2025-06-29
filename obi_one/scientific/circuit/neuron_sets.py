@@ -208,6 +208,10 @@ class AbstractNeuronSet(Block, abc.ABC):
             }
 
         return expression
+    
+    def population_type(self, circuit: Circuit, population: str | None=None):
+        """Returns the population type (i.e. biophysical / virtual)."""
+        return circuit.sonata_circuit.nodes[self._population(population)].type
 
     def to_node_set_file(
         self,
