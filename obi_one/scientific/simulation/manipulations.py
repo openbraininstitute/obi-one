@@ -25,10 +25,10 @@ class SynapticManipulation(Block, ABC):
         return sonata_config
 
 
-class SynapticUseManipulation(SynapticManipulation):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+class SynapticAcetylcholineUseManipulation(SynapticManipulation):
+    """Manipulate the synaptic acetylcholine (ACh) U_se scaling."""
 
-    title: ClassVar[str] = "Demo: Synaptic Use Manipulation"
+    title: ClassVar[str] = "Demo: Synaptic Acetylcholine U_se Manipulation"
 
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = 0.7050728631217412
 
@@ -40,7 +40,7 @@ class SynapticUseManipulation(SynapticManipulation):
 
 
 class SynapticMgManipulation(SynapticManipulation):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Manipulate the synaptic magnesium (Mg2+) concentration."""
 
     title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
