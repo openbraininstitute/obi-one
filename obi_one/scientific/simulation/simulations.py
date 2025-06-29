@@ -236,7 +236,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             for asset in self.initialize.circuit.entity(db_client=db_client).assets:
                 if asset.label == "sonata_circuit":
                     self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
-                    _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
+                    _circuit = Circuit(name=self.initialize.circuit.entity(db_client=db_client).name, path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
                     self._sonata_config["network"] = asset.path + "/" + Path(_circuit.path).name
                     break
 
