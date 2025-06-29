@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
+from obi_one.scientific.circuit.circuit import Circuit
 
 
 class Recording(Block, ABC):
@@ -27,7 +28,7 @@ class Recording(Block, ABC):
         assert self.end_time > self.start_time, "Recording end time must be later than start time!"
         return self
 
-    def config(self) -> dict:
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
         return self._generate_config()
 
@@ -42,6 +43,16 @@ class SomaVoltageRecording(Recording):
     title: ClassVar[str] = "Soma Voltage Recording"
 
     neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
+
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
+        self.check_simulation_init()
+
+        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+            raise ValueError(
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
+            )
+
+        return self._generate_config()
 
     def _generate_config(self) -> dict:
         sonata_config = {}

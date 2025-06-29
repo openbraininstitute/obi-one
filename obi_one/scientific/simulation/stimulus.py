@@ -13,7 +13,7 @@ from pydantic import Field, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
-
+from obi_one.scientific.circuit.circuit import Circuit
 
 class Stimulus(Block, ABC):
     timestamp_offset: Optional[float | list[float]] = Field(
@@ -21,7 +21,7 @@ class Stimulus(Block, ABC):
     )
     timestamps: Annotated[TimestampsReference, Field(title="Timestamps", description="Timestamps at which the stimulus is applied.")]
 
-    def config(self) -> dict:
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
         return self._generate_config()
 
@@ -36,8 +36,8 @@ class SomaticStimulus(Stimulus, ABC):
         title="Duration",
         description="Time duration in ms for how long input is activated.",
     )
-    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.")]
-    
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to which the stimulus is applied.", supports_virtual=False)]
+
     _represents_physical_electrode: bool = PrivateAttr(default=False) 
     """Default is False. If True, the signal will be implemented \
     using a NEURON IClamp mechanism. The IClamp produce an \
@@ -49,6 +49,16 @@ class SomaticStimulus(Stimulus, ABC):
     MembraneCurrentSource mechanism, which is identical to IClamp, \
     but produce a membrane current, which is included in the \
     calculation of the extracellular signal."""
+
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
+        self.check_simulation_init()
+
+        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+            raise ValueError(
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
+            )
+
+        return self._generate_config()
 
 
 class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
@@ -64,6 +74,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     )
 
     def _generate_config(self) -> dict:
+
         sonata_config = {}
 
         for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
@@ -383,8 +394,18 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set")]
-    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set")]
+    source_neuron_set: Annotated[NeuronSetReference, Field(title="Source Neuron Set", supports_virtual=True)]
+    targeted_neuron_set: Annotated[NeuronSetReference, Field(title="Target Neuron Set", supports_virtual=False)]
+
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
+        self.check_simulation_init()
+
+        if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
+            raise ValueError(
+                f"Target Neuron Set '{self.targeted_neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
+            )
+
+        return self._generate_config()
 
     def _generate_config(self) -> dict:
         assert self._spike_file is not None

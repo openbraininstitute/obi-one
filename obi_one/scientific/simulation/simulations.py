@@ -66,8 +66,6 @@ class SimulationsForm(Form):
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRCUIT_MANIPULATIONS_GROUP, group_order=0)
 
-    
-
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
@@ -273,12 +271,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         for stimulus_key, stimulus in self.stimuli.items():
             if hasattr (stimulus, "generate_spikes"):
                 stimulus.generate_spikes(_circuit, self.coordinate_output_root, self.initialize.simulation_length, source_node_population=_circuit.default_population_name)
-            self._sonata_config["inputs"].update(stimulus.config())
+            self._sonata_config["inputs"].update(stimulus.config(_circuit, _circuit.default_population_name))
+            # 
 
         # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config["reports"].update(recording.config())
+            self._sonata_config["reports"].update(recording.config(_circuit, _circuit.default_population_name))
 
         # Generate list of synaptic manipulation configs (executed in the order in the list)
         # FIXME: Check and make sure that the order in the self.synaptic_manipulations dict is preserved!
@@ -312,9 +311,10 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 )
 
                 # Assert that simulation neuron set is biophysical
-                assert _nset.population_type(_circuit, _circuit.default_population_name) == "biophysical", (
-                    f"Simulation Neuron Set: '{_name}' is not biophysical!"
-                )
+                if _nset.population_type(_circuit, _circuit.default_population_name) != "biophysical":
+                    raise ValueError(
+                        f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' is not biophysical!"
+                    )
 
                 self._sonata_config["node_set"] = _name
 
