@@ -14,6 +14,7 @@ from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.exception import OBIONE_Error
 
 
 class Stimulus(Block, ABC):
@@ -61,7 +62,7 @@ class SomaticStimulus(Stimulus, ABC):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
-            raise ValueError(
+            OBIONE_Error(
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
             )
 
@@ -408,7 +409,7 @@ class SpikeStimulus(Stimulus):
         self.check_simulation_init()
 
         if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
-            raise ValueError(
+            raise OBIONE_Error(
                 f"Target Neuron Set '{self.targeted_neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
             )
 

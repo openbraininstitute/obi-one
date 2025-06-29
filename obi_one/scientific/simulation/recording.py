@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, model_validator
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.exception import OBIONE_Error
 
 
 class Recording(Block, ABC):
@@ -48,7 +49,7 @@ class SomaVoltageRecording(Recording):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
-            raise ValueError(
+            raise OBIONE_Error(
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
             )
 
