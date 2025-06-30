@@ -77,6 +77,18 @@ STIMULI_TYPES = list[
     ]
 ]
 
+STEP_LIKE_STIMULI_TYPES = list[
+    Literal[
+        "idrest",
+        "idthresh",
+        "apwaveform",
+        "iv",
+        "step",
+        "firepattern",
+        "delta",
+    ]
+]
+
 CALCULATED_FEATURES = list[
     Literal[
         "spike_count",
@@ -116,8 +128,8 @@ CALCULATED_FEATURES = list[
 class AmplitudeInput(BaseModel):
     """Amplitude class."""
 
-    min_value: float = Field(description="Minimum amplitude (nA)")
-    max_value: float = Field(description="Maximum amplitude (nA)")
+    min_value: float | None = Field(default=None, description="Minimum amplitude (nA)")
+    max_value: float | None = Field(default=None, description="Maximum amplitude (nA)")
 
 
 class ElectrophysiologyMetricsForm(Form):
@@ -210,8 +222,8 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     # Deal with cases where user did not specify stimulus type or/and feature
     if not stimuli_types:
         # Default to all protocol types if not specified
-        logger.warning("No stimulus type specified. Iterating over all POSSIBLE_PROTOCOLS.")
-        stimuli_types = list(POSSIBLE_PROTOCOLS.keys())
+        logger.warning("No stimulus type specified. Iterating over all STEP_LIKE_STIMULI_TYPES.")
+        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
@@ -219,7 +231,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)  # type: ignore
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
-    if isinstance(amplitude, AmplitudeInput):
+    if (
+        isinstance(amplitude, AmplitudeInput) and
+        amplitude.min_value is not None and
+        amplitude.max_value is not None
+    ):
         # If the user specified amplitude/a range of amplitudes,
         # the target amplitude is centered on the range and the
         # tolerance is set as half the range
