@@ -128,8 +128,8 @@ CALCULATED_FEATURES = list[
 class AmplitudeInput(BaseModel):
     """Amplitude class."""
 
-    min_value: float = Field(description="Minimum amplitude (nA)")
-    max_value: float = Field(description="Maximum amplitude (nA)")
+    min_value: float | None = Field(default=None, description="Minimum amplitude (nA)")
+    max_value: float | None = Field(default=None, description="Maximum amplitude (nA)")
 
 
 class ElectrophysiologyMetricsForm(Form):
