@@ -77,6 +77,18 @@ STIMULI_TYPES = list[
     ]
 ]
 
+STEP_LIKE_STIMULI_TYPES = list[
+    Literal[
+        "idrest",
+        "idthres",
+        "apwaveform",
+        "iv",
+        "step",
+        "firepattern",
+        "delta",
+    ]
+]
+
 CALCULATED_FEATURES = list[
     Literal[
         "spike_count",
@@ -210,8 +222,8 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     # Deal with cases where user did not specify stimulus type or/and feature
     if not stimuli_types:
         # Default to all protocol types if not specified
-        logger.warning("No stimulus type specified. Iterating over all POSSIBLE_PROTOCOLS.")
-        stimuli_types = list(POSSIBLE_PROTOCOLS.keys())
+        logger.warning("No stimulus type specified. Iterating over all STEP_LIKE_STIMULI_TYPES.")
+        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
