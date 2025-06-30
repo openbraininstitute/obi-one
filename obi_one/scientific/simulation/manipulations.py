@@ -25,16 +25,16 @@ class SynapticManipulation(Block, ABC):
 
 
 
-class AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation(SynapticManipulation):
-    """Manipulate the U_se parameter which scales the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.\
+class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
+    """Applying a scaling factor to the U_SE parameter which determines the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.\
         This is applied for all synapses between biophysical neurons."""
 
-    title: ClassVar[str] = "Demo: Acetylcholine Effect on Synaptic Release Probability"
+    title: ClassVar[str] = "Demo: Scale U_SE to Modulate Acetylcholine Effect on Synaptic Release Probability"
 
-    use: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.7050728631217412,
-        title="Scaling Factor U_se",
-        description="A scaling factor for the effect of acetylcholine on synaptic release probability.")
+        title="Scale U_SE (ACh)",
+        description="Scale the U_SE (ACh) parameter of the Tsodyks–Markram synaptic model.")
 
     def _get_override_name(self) -> str:
         return "ach_use"

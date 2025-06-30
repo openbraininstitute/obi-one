@@ -1,11 +1,11 @@
 from obi_one.scientific.simulation.manipulations import (
     SynapticMgManipulation, 
-    AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation
+    ScaleAcetylcholineUSESynapticManipulation
 )
 
 SynapticManipulationsUnion = (
     SynapticMgManipulation
-    | AcetylcholineScalingOfReleaseProbabilitySynapticManiupulation
+    | ScaleAcetylcholineUSESynapticManipulation
 )
 
 from obi_one.core.block_reference import BlockReference
