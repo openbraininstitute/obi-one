@@ -80,111 +80,111 @@ class MorphologyMetricsOutput(BaseModel):
             description="The surface area of the soma in square micrometers.",
         ),
     ]
-	total_length: Annotated[
-		float,
-		Field(
-			title="total_length [μm]",
-			description="The total length of the morphology neurites in micrometers.",
-		),
-	]
-	total_height: Annotated[
-		float,
-		Field(
-			title="total_height [μm]",
-			description="The total height (Y-range) of the morphology in micrometers.",
-		),
-	]
-	total_height: Annotated[
-		float,
-		Field(
-			title="total_width [μm]",
-			description="The total width (X-range) of the morphology in micrometers.",
-		),
-	]
-	total_depth: Annotated[
-		float,
-		Field(
-			title="total_depth [μm]",
-			description="The total depth (Z-range) of the morphology in micrometers.",
-		),
-	]
-	total_area: Annotated[
-		float,
-		Field(
-			title="total_area [μm^2]",
-			description="The total surface area of all sections in square micrometers.",
-		),
-	]
-	total_volume: Annotated[
-		float,
-		Field(
-			title="total_volume [μm^3]",
-			description="The total volume of all sections in cubic micrometers.",
-		),
-	]
-	section_lengths: Annotated[
-		float,
-		Field(
-			title="section_lengths [μm]",
-			description="The distribution of lengths per section in micrometers.",
-		),
-	]
-	segment_radii: Annotated[
-		float,
-		Field(
-			title="segment_radii [μm]",
-			description="The distribution of radii of the morphology in micrometers.",
-		),
-	]
-	number_of_sections: Annotated[
-		float,
-		Field(
-			title="number_of_sections",
-			description="The number of sections in the morphology.",
-		),
-	]
-	local_bifurcation_angles: Annotated[
-		float,
-		Field(
-			title="local_bifurcation_angles [rad]",
-			description="Angles between two sections computed at the bifurcation (local).",
-		),
-	]
-	remote_bifurcation_angles: Annotated[
-		float,
-		Field(
-			title="remote_bifurcation_angles [rad]",
-			description="Angles between two sections computed at the end of the sections (remote).",
-		),
-	]
-	section_path_distances: Annotated[
-		float,
-		Field(
-			title="section_path_distances [μm]",
-			description="Path distances from the soma to section endpoints in micrometers.",
-		),
-	]
-	section_radial_distances: Annotated[
-		float,
-		Field(
-			title="section_radial_distances [μm]",
-			description="Radial distance from the soma to section endpoints in micrometers.",
-		),
-	]
-	section_branch_orders: Annotated[
-		float,
-		Field(
-			title="section_branch_orders",
-			description="The distribution of branch orders of sections, computed from soma.",
-		),
-	]
-	section_strahler_orders: Annotated[
-		float,
-		Field(
-			title="section_strahler_orders",
-			description="The distribution of strahler branch orders of sections, computed from terminals.",
-		),
-	]
+    total_length: Annotated[
+        float,
+        Field(
+            title="total_length [μm]",
+            description="The total length of the morphology neurites in micrometers.",
+        ),
+    ]
+    total_height: Annotated[
+        float,
+        Field(
+            title="total_height [μm]",
+            description="The total height (Y-range) of the morphology in micrometers.",
+        ),
+    ]
+    total_height: Annotated[
+        float,
+        Field(
+            title="total_width [μm]",
+            description="The total width (X-range) of the morphology in micrometers.",
+        ),
+    ]
+    total_depth: Annotated[
+        float,
+        Field(
+            title="total_depth [μm]",
+            description="The total depth (Z-range) of the morphology in micrometers.",
+        ),
+    ]
+    total_area: Annotated[
+        float,
+        Field(
+            title="total_area [μm^2]",
+            description="The total surface area of all sections in square micrometers.",
+        ),
+    ]
+    total_volume: Annotated[
+        float,
+        Field(
+            title="total_volume [μm^3]",
+            description="The total volume of all sections in cubic micrometers.",
+        ),
+    ]
+    section_lengths: Annotated[
+        list[float],
+        Field(
+            title="section_lengths [μm]",
+            description="The distribution of lengths per section in micrometers.",
+        ),
+    ]
+    segment_radii: Annotated[
+        list[float],
+        Field(
+            title="segment_radii [μm]",
+            description="The distribution of radii of the morphology in micrometers.",
+        ),
+    ]
+    number_of_sections: Annotated[
+        float,
+        Field(
+            title="number_of_sections",
+            description="The number of sections in the morphology.",
+        ),
+    ]
+    local_bifurcation_angles: Annotated[
+        list[float],
+        Field(
+            title="local_bifurcation_angles [rad]",
+            description="Angles between two sections computed at the bifurcation (local).",
+        ),
+    ]
+    remote_bifurcation_angles: Annotated[
+        list[float],
+        Field(
+            title="remote_bifurcation_angles [rad]",
+            description="Angles between two sections computed at the end of the sections (remote).",
+        ),
+    ]
+    section_path_distances: Annotated[
+        list[float],
+        Field(
+            title="section_path_distances [μm]",
+            description="Path distances from the soma to section endpoints in micrometers.",
+        ),
+    ]
+    section_radial_distances: Annotated[
+        list[float],
+        Field(
+            title="section_radial_distances [μm]",
+            description="Radial distance from the soma to section endpoints in micrometers.",
+        ),
+    ]
+    section_branch_orders: Annotated[
+        list[float],
+        Field(
+            title="section_branch_orders",
+            description="The distribution of branch orders of sections, computed from soma.",
+        ),
+    ]
+    section_strahler_orders: Annotated[
+        list[float],
+        Field(
+            title="section_strahler_orders",
+            description="The distribution of strahler branch orders of sections, computed from terminals.",
+        ),
+    ]
 	
 	
 
