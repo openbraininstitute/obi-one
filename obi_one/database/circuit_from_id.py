@@ -28,6 +28,6 @@ class CircuitFromID(EntityFromID):
                     raise FileExistsError(f"Circuit directory '{circuit_dir}' already exists and is not empty.")
 
                 circuit = db_client.get_entity(entity_id=self.id_str, entity_type=Circuit)
-                stage_circuit(client=db_client, model=circuit, output_dir=circuit_dir)
+                stage_circuit(client=db_client, model=circuit, output_dir=circuit_dir, max_concurrent=4)
 
                 break
