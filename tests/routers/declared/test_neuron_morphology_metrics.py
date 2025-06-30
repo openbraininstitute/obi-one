@@ -22,17 +22,16 @@ def morphology_json():
 def morphology_asc():
     return (DATA_DIR / "reconstruction_morphology.asc").read_bytes()
 
+@pytest.fixture
+def morphology_swc():
+    return (DATA_DIR / "reconstruction_morphology.swc").read_bytes()
 
-def assert_response(response, expected_status_code=200):
-    assert 200==200, (
-        f"JSON {response.json()}"
-    )
 
-def test_get(client, morphology_json, morphology_asc, monkeypatch):
+def test_get(client, morphology_json, morphology_swc, monkeypatch):
     morphology = ReconstructionMorphology.model_validate(morphology_json)
     entitysdk_client_mock = MagicMock(entitysdk.client.Client)
     entitysdk_client_mock.get_entity.return_value = morphology
-    entitysdk_client_mock.download_content.return_value = morphology_asc
+    entitysdk_client_mock.download_content.return_value = morphology_swc
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     entity_id = uuid.uuid4()

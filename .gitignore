@@ -12,3 +12,5 @@ temp/
 **/arm64/
 examples/new_node_sets.json
 examples/node_sets.json
+dist/*
+.pypirc

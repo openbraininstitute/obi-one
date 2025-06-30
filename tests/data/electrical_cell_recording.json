@@ -1,0 +1,131 @@
+{
+  "type": "electrical_cell_recording",
+  "id": "7b7db396-00cb-4f72-924c-f2676a5ecd6f",
+  "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
+  "authorized_public": true,
+  "license": {
+    "id": "cd613e30-d8f1-4adf-91b7-584a2265b1f5",
+    "creation_date": "2025-05-17T15:41:58.735608Z",
+    "update_date": "2025-05-17T15:41:58.735611Z",
+    "name": "https://bbp.epfl.ch/neurosciencegraph/data/licenses/97521f71-605d-4f42-8f1b-c37e742a30bf",
+    "description": "undefined",
+    "label": "undefined"
+  },
+  "creation_date": "2021-06-15T09:42:25.311000Z",
+  "update_date": "2024-01-11T07:56:56.842835Z",
+  "name": "S1FL_L5_DBC_cIR_4",
+  "description": "This dataset is about simulated electrophysiology traces for cell instance S1FL_L5_DBC_cIR_4. The dataset contains one distribution of the traces in NWB file format.",
+  "ljp": 0.0,
+  "recording_location": [],
+  "recording_type": "intracellular",
+  "recording_origin": "in_silico",
+  "comment": "SSCX Simulation Data",
+  "legacy_id": [
+    "https://bbp.epfl.ch/neurosciencegraph/data/traces/0eae2191-0c15-4261-b2bb-06d753504ac1"
+  ],
+  "subject": {
+    "id": "cef9af44-73ff-4639-8164-4598d982b57f",
+    "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
+    "authorized_public": true,
+    "creation_date": "2025-05-17T15:50:57.215187Z",
+    "update_date": "2025-05-17T15:50:57.215187Z",
+    "name": "Unknown",
+    "description": "",
+    "sex": "unknown",
+    "species": {
+      "id": "157a935b-0f61-4e65-9bfa-0b8585e02dff",
+      "creation_date": "2025-05-17T15:43:33.885603Z",
+      "update_date": "2025-05-17T15:43:33.885603Z",
+      "name": "Rattus norvegicus",
+      "taxonomy_id": "NCBITaxon:10116"
+    },
+    "assets": []
+  },
+  "brain_region": {
+    "creation_date": "2025-05-17T15:41:56.308111Z",
+    "update_date": "2025-05-17T15:41:56.308111Z",
+    "id": "659812bf-4a18-4afe-adf4-a7486e7703ae",
+    "annotation_value": 322,
+    "name": "Primary somatosensory area",
+    "acronym": "SSp",
+    "color_hex_triplet": "188064",
+    "parent_structure_id": "4f73efb1-70dc-4c84-b569-62c2706c360e",
+    "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd"
+  },
+  "assets": [
+    {
+      "path": "S1FL_L5_DBC_cIR_4.nwb",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/electrical_cell_recording/7b7db396-00cb-4f72-924c-f2676a5ecd6f/S1FL_L5_DBC_cIR_4.nwb",
+      "is_directory": false,
+      "content_type": "application/nwb",
+      "size": 1657656,
+      "sha256_digest": "696ffb1e4eb24839c53407d1d5beee030316ef61648bea5a6e15eae6486fd813",
+      "label": "electrical_cell_recording",
+      "meta": {
+        "legacy": {
+          "name": "S1FL_L5_DBC_cIR_4.nwb",
+          "@type": "DataDownload",
+          "digest": {
+            "value": "696ffb1e4eb24839c53407d1d5beee030316ef61648bea5a6e15eae6486fd813",
+            "algorithm": "SHA-256"
+          },
+          "atLocation": {
+            "@type": "Location",
+            "store": {
+              "@id": "https://bbp.epfl.ch/neurosciencegraph/data/4820323e-bee0-48d2-824f-9d9d404dbbee",
+              "_rev": 1,
+              "@type": "RemoteDiskStorage"
+            },
+            "location": "file:///gpfs/bbp.cscs.ch/data/project/proj109/nexus/public/sscx/e/7/8/9/f/1/9/8/S1FL_L5_DBC_cIR_4.nwb"
+          },
+          "contentUrl": "https://bbp.epfl.ch/nexus/v1/files/public/sscx/https%3A%2F%2Fbbp.epfl.ch%2Fneurosciencegraph%2Fdata%2F9d5c0ddd-fa0e-48ad-ac67-a9b795eda811",
+          "contentSize": {
+            "value": 1657656,
+            "unitCode": "bytes"
+          },
+          "encodingFormat": "application/nwb"
+        }
+      },
+      "id": "a5bac9da-2b2f-401c-b109-51194cea7dee",
+      "status": "created"
+    }
+  ],
+  "stimuli": [
+    {
+      "type": "electrical_recording_stimulus",
+      "id": "05ae312f-4ae3-4c07-af1c-387433e37e27",
+      "creation_date": "2025-05-17T15:50:57.242124Z",
+      "update_date": "2025-05-17T15:50:57.242124Z",
+      "name": "GenericStep",
+      "description": "",
+      "injection_type": "current_clamp",
+      "shape": "step",
+      "authorized_public": false,
+      "assets": []
+    },
+    {
+      "type": "electrical_recording_stimulus",
+      "id": "6c5a8c67-6d4e-4d21-993d-2d8a2ee6ff4e",
+      "creation_date": "2025-05-17T15:50:57.245436Z",
+      "update_date": "2025-05-17T15:50:57.245436Z",
+      "name": "GenericStep",
+      "description": "",
+      "injection_type": "current_clamp",
+      "shape": "step",
+      "authorized_public": false,
+      "assets": []
+    },
+    {
+      "type": "electrical_recording_stimulus",
+      "id": "20f93aea-cfd8-4996-b825-7d46b725e98a",
+      "creation_date": "2025-05-17T15:50:57.248745Z",
+      "update_date": "2025-05-17T15:50:57.248745Z",
+      "name": "GenericStep",
+      "description": "",
+      "injection_type": "current_clamp",
+      "shape": "step",
+      "authorized_public": false,
+      "assets": []
+    }
+  ]
+}

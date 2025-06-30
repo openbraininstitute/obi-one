@@ -5,9 +5,14 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
     nbS1VPMInputs,
     nbS1POmInputs,
-    rCA1CA3Inputs
+    rCA1CA3Inputs,
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
 )
 
 NeuronSetUnion = (
@@ -17,13 +22,21 @@ NeuronSetUnion = (
     | PropertyNeuronSet
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
+    | SimplexNeuronSet
+    | SimplexMembershipBasedNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
     | rCA1CA3Inputs
+    | AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
 )
 
 SimulationNeuronSetUnion = (
-    IDNeuronSet
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
     | rCA1CA3Inputs
