@@ -3,7 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -69,9 +69,9 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def electrophysiologyrecording_metrics_endpoint(
         trace_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-        requested_metrics: CALCULATED_FEATURES | None = None,
-        amplitude: AmplitudeInput | None = None,
-        protocols: STIMULI_TYPES | None = None,
+        requested_metrics: CALCULATED_FEATURES | None = Query(default=None),
+        amplitude: AmplitudeInput = Depends(),
+        protocols: STIMULI_TYPES | None = Query(default=None),
     ) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
