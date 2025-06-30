@@ -278,7 +278,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config["reports"].update(recording.config(_circuit, _circuit.default_population_name))
+            self._sonata_config["reports"].update(recording.config(_circuit, _circuit.default_population_name, self.initialize.simulation_length))
 
         # Generate list of synaptic manipulation configs (executed in the order in the list)
         # FIXME: Check and make sure that the order in the self.synaptic_manipulations dict is preserved!

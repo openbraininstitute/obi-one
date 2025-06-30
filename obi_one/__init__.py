@@ -112,6 +112,7 @@ __all__ = [
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",
+    "TimeWindowSomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -226,6 +227,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 from obi_one.scientific.simulation.recording import (
     Recording,
     SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 from obi_one.scientific.simulation.stimulus import (
