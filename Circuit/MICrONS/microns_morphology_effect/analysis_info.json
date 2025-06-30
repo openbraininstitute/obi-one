@@ -1,0 +1,26 @@
+{
+    "name": "MICrONS morphology connectivity effect",
+    "authors": ["OBI", "Michael W. Reimann"],
+    "description": "In this notebook we explain how neuron morphologies implement non-random micro-structure of connectivity",
+    "scale": "circuit",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "ConnectivityMatrix",
+                "required_properties": [
+                ]
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "Connectome-Utilities>=0.4.11",
+        "scipy>=1.13.1",
+        "jupyter>=1.1.1",
+        "matplotlib>=3.10.0",
+        "numpy>=2.2.1",
+        "pandas>=2.2.3"
+    ]
+}
