@@ -26,12 +26,6 @@ class Recording(Block, ABC):
     def config(self, circuit: Circuit, population: str | None=None, end_time: NonNegativeFloat | None = None) -> dict:
         self.check_simulation_init()
 
-        if self._end_time <= self._start_time:
-            raise OBIONE_Error(
-                f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
-                "End time must be later than start time!"
-            )
-
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
             raise OBIONE_Error(
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
@@ -41,7 +35,15 @@ class Recording(Block, ABC):
             raise OBIONE_Error(f"End time must be specified for recording '{self.name}'.")
         self._end_time = end_time
 
-        return self._generate_config()
+        sonata_config = self._generate_config()
+
+        if self._end_time <= self._start_time:
+            raise OBIONE_Error(
+                f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
+                "End time must be later than start time!"
+            )
+        
+        return sonata_config
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -86,5 +88,5 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
 
         self._start_time = self.start_time
         self._end_time = self.end_time
-
+        
         return super()._generate_config()
