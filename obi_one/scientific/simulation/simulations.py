@@ -65,7 +65,7 @@ class SimulationsForm(Form):
     stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
     recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRCUIT_MANIPULATIONS_GROUP, group_order=0)
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=1)
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
