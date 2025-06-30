@@ -231,7 +231,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)  # type: ignore
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
-    if isinstance(amplitude, AmplitudeInput):
+    if (
+        isinstance(amplitude, AmplitudeInput) and
+        amplitude.min_value is not None and
+        amplitude.max_value is not None
+    ):
         # If the user specified amplitude/a range of amplitudes,
         # the target amplitude is centered on the range and the
         # tolerance is set as half the range
