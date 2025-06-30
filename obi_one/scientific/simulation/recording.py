@@ -1,13 +1,18 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, Self, ClassVar
 
-from pydantic import Field, NonNegativeFloat, model_validator
+from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
+from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.exception import OBIONE_Error
 
 
 class Recording(Block, ABC):
+
+    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
+
     start_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms")
     ]
@@ -15,7 +20,7 @@ class Recording(Block, ABC):
         NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
     ]
     dt: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat],
+        PositiveFloat | list[PositiveFloat],
         Field(default=0.1,
             title="Timestep",
             description="Interval between recording time steps in milliseconds (ms).", units="ms"),
@@ -27,7 +32,7 @@ class Recording(Block, ABC):
         assert self.end_time > self.start_time, "Recording end time must be later than start time!"
         return self
 
-    def config(self) -> dict:
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
         return self._generate_config()
 
@@ -41,7 +46,15 @@ class SomaVoltageRecording(Recording):
 
     title: ClassVar[str] = "Soma Voltage Recording"
 
-    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
+    def config(self, circuit: Circuit, population: str | None=None) -> dict:
+        self.check_simulation_init()
+
+        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+            raise OBIONE_Error(
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
+            )
+
+        return self._generate_config()
 
     def _generate_config(self) -> dict:
         sonata_config = {}

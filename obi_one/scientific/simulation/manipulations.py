@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from obi_one.core.block import Block
-from pydantic import NonNegativeFloat
+from pydantic import Field, NonNegativeFloat
 from typing import ClassVar
-
 
 class SynapticManipulation(Block, ABC):
 
@@ -25,12 +24,17 @@ class SynapticManipulation(Block, ABC):
         return sonata_config
 
 
-class SynapticUseManipulation(SynapticManipulation):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
 
-    title: ClassVar[str] = "Synaptic Use Manipulation"
+class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
+    """Applying a scaling factor to the U_SE parameter which determines the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.\
+        This is applied for all synapses between biophysical neurons."""
 
-    use_scaling: NonNegativeFloat | list[NonNegativeFloat] = 0.7050728631217412
+    title: ClassVar[str] = "Demo: Scale U_SE to Modulate Acetylcholine Effect on Synaptic Release Probability"
+
+    use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.7050728631217412,
+        title="Scale U_SE (ACh)",
+        description="Scale the U_SE (ACh) parameter of the Tsodyks–Markram synaptic model.")
 
     def _get_override_name(self) -> str:
         return "ach_use"
@@ -40,11 +44,17 @@ class SynapticUseManipulation(SynapticManipulation):
 
 
 class SynapticMgManipulation(SynapticManipulation):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.\
+        This is applied for all synapses between biophysical neurons."""
 
-    title: ClassVar[str] = "Synaptic Mg2+ Concentration Manipulation"
+    title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
-    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = 2.4
+    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=2.4, 
+        title="Extracellular Magnesium Concentration",
+        description="Extracellular calcium concentration in millimoles (mM)", 
+        units="mM"
+    )
     
     def _get_override_name(self) -> str:
         return "Mg"
