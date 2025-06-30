@@ -80,7 +80,7 @@ STIMULI_TYPES = list[
 STEP_LIKE_STIMULI_TYPES = list[
     Literal[
         "idrest",
-        "idthres",
+        "idthresh",
         "apwaveform",
         "iv",
         "step",
