@@ -14,7 +14,7 @@ class Recording(Block, ABC):
     neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
 
     _start_time: NonNegativeFloat = 0.0
-    _end_time: NonNegativeFloat = 100.0
+    _end_time: PositiveFloat = 100.0
 
     dt: Annotated[
         PositiveFloat | list[PositiveFloat],
@@ -83,6 +83,26 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     end_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
     ]
+
+    @model_validator(mode="after")
+    def check_start_end_time(self) -> Self:
+        """Check that end time is later than start time."""
+        if self.end_time <= self.start_time:
+            if self.has_name():
+                recording_name = f" '{self.name}'"
+            else:
+                recording_name = ""
+
+            if self.neuron_set.has_block() and self.neuron_set.block.has_name():
+                neuron_set_name = f" '{self.neuron_set.block.name}'"
+            else:
+                neuron_set_name = ""
+
+            raise OBIONE_Error(
+                f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
+                "End time must be later than start time!"
+            )
+        return self
 
     def _generate_config(self) -> dict:
 

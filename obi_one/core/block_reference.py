@@ -34,6 +34,9 @@ class BlockReference(OBIBaseModel, abc.ABC):
             raise ValueError("Block has not been set.")
         return self._block
 
+    def has_block(self) -> bool:
+        return self._block is not None
+
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
