@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Optional
 import h5py
 
-from pydantic import Field, PrivateAttr, NonNegativeFloat
+from pydantic import Field, PrivateAttr, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
@@ -531,7 +531,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
-    frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(default=0.0, 
+    frequency: PositiveFloat | list[PositiveFloat] = Field(default=1.0, 
                                            title="Frequency", 
                                            description="Mean frequency (Hz) of the Poisson input",
                                            units="Hz")
