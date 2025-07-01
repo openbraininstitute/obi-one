@@ -127,6 +127,31 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         """
         html_content = get_validation_config_page_content()
         return HTMLResponse(content=html_content, status_code=HTTPStatus.OK)
+
+    @router.get(
+        "/available_validation_functions",
+        summary="Get Available Validation Functions",
+        response_class=JSONResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def get_available_validation_functions():
+        """
+        Returns a list of available validation function names and their associated entity types
+        from predefined classes.
+        """
+        validation_classes = [
+            ReconstructionMorphologyValidation,
+            AnotherValidationClass,
+            YetAnotherValidationClass,            
+        ]
+        function_info = []
+        for cls in validation_classes:
+            function_info.append({
+                "name": cls.__name__,
+                "entity": getattr(cls, 'entity', None)
+            })
+        return JSONResponse({"validation_functions": function_info})
+
     
     
     @router.get(
