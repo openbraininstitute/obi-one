@@ -21,7 +21,7 @@ def test_simulation_campaign():
     # )
 
     # # Stimuli
-    # stim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=[10, 20])
+    # stim_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", sample_percentage=[10, 20])
     # stim_times = obi.RegularTimestamps(
     #     start_time=0.0, number_of_repetitions=3, interval=1000.0
     # )  # in ms!!
@@ -33,7 +33,7 @@ def test_simulation_campaign():
     # )
 
     # # Recordings
-    # rec_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", random_sample=100)
+    # rec_neuron_set = obi.PredefinedNeuronSet(node_set="Layer1", sample_percentage=100)
     # v_recording = obi.SomaVoltageRecording(
     #     start_time=0.0, end_time=sim_duration, neuron_set=rec_neuron_set
     # )
