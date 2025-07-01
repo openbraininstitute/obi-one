@@ -192,11 +192,12 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
 
 
 
+    
     async def update_validation_config(request: Request):
         """
         Updates the validation_config.json file with new configuration.
         """
-        if 1:
+        try:
             new_config = await request.json()
             if "entity_types" not in new_config:
                 raise HTTPException(
@@ -206,8 +207,18 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             with open(VALIDATION_CONFIG_PATH, 'w') as f:
                 json.dump(new_config, f, indent=2)
             return JSONResponse({"message": "Configuration updated successfully!"}, status_code=HTTPStatus.OK)
-       
-    
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": "Invalid JSON format in request body."}
+            )
+        except Exception as e:
+            L.error(f"Failed to write validation_config.json: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Internal server error saving configuration"}
+            )
+
     
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
