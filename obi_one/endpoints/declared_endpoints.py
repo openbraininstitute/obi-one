@@ -112,7 +112,22 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         Returns a list of available entity types from the EntityType enum.
         """
         return JSONResponse({"entity_types": [e.value for e in EntityType]})
-   
+
+
+    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    @router.get(
+        "/configure_validations_page",
+        summary="Configure Validations Webpage",
+        response_class=HTMLResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def configure_validations_webpage():
+        """
+        Serves the HTML page for editing validation configurations.
+        """
+        html_content = get_validation_config_page_content()
+        return HTMLResponse(content=html_content, status_code=HTTPStatus.OK)
+    
     
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
@@ -175,20 +190,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
-
-    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
-    @router.get(
-        "/configure_validations_page",
-        summary="Configure Validations Webpage",
-        response_class=HTMLResponse,
-        status_code=HTTPStatus.OK,
-    )
-    async def configure_validations_webpage():
-        """
-        Serves the HTML page for editing validation configurations.
-        """
-        html_content = get_validation_config_page_content()
-        return HTMLResponse(content=html_content, status_code=HTTPStatus.OK)
 
     @router.get("/test_route", summary="Test Route", status_code=HTTPStatus.OK)
     async def test_route():
