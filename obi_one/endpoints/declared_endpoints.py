@@ -4,6 +4,7 @@ from enum import Enum, auto, StrEnum
 import entitysdk.client
 import entitysdk.exception
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse
 from pathlib import Path
 
 from app.dependencies.entitysdk import get_client
