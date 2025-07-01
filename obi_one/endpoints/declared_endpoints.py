@@ -152,6 +152,71 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             })
         return JSONResponse({"validation_functions": function_info})
 
+
+
+    @router.get(
+        "/validation_config",
+        summary="Get Validation Configuration",
+        response_class=JSONResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def get_validation_config():
+        """
+        Reads and returns the current validation_config.json file.
+        """
+        if not VALIDATION_CONFIG_PATH.exists():
+            return JSONResponse({"entity_types": {}}, status_code=HTTPStatus.OK)
+        try:
+            with open(VALIDATION_CONFIG_PATH, 'r') as f:
+                config_data = json.load(f)
+            return JSONResponse(config_data, status_code=HTTPStatus.OK)
+        except json.JSONDecodeError as e:
+            L.error(f"Error decoding validation_config.json: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Error decoding validation_config.json"}
+            )
+        except Exception as e:
+            L.error(f"Failed to read validation_config.json: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Internal server error reading configuration"}
+            )
+
+    @router.post(
+        "/validation_config",
+        summary="Update Validation Configuration",
+        response_class=JSONResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def update_validation_config(request: Request):
+        """
+        Updates the validation_config.json file with new configuration.
+        """
+        try:
+            new_config = await request.json()
+            if "entity_types" not in new_config:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail={"message": "Invalid configuration format: 'entity_types' key missing."}
+                )
+            with open(VALIDATION_CONFIG_PATH, 'w') as f:
+                json.dump(new_config, f, indent=2)
+            return JSONResponse({"message": "Configuration updated successfully!"}, status_code=HTTPStatus.OK)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": "Invalid JSON format in request body."}
+            )
+        except Exception as e:
+            L.error(f"Failed to write validation_config.json: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Internal server error saving configuration"}
+            )
+
+
+    
     
     
     @router.get(
