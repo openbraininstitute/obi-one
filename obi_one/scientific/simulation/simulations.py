@@ -73,7 +73,7 @@ class SimulationsForm(Form):
         simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms)", units="ms")
         extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
         v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
-        sample_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4) 
@@ -252,7 +252,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.initialize._timestep
-        self._sonata_config["run"]["sample_seed"] = self.initialize.sample_seed
+        self._sonata_config["run"]["random_seed"] = self.initialize.random_seed
         self._sonata_config["run"]["tstop"] = self.initialize.simulation_length
 
         self._sonata_config["conditions"] = {}
