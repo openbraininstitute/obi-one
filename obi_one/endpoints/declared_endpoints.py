@@ -1,17 +1,13 @@
 from http import HTTPStatus
-from typing import Annotated, Dict, List, Any
-import json
-from pathlib import Path
-import inspect
-from enum import Enum, auto, StrEnum
+from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
 
 from app.dependencies.entitysdk import get_client
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     AmplitudeInput,
@@ -35,6 +31,7 @@ from obi_one.endpoints.validation_config_page import get_validation_config_page_
 
 # Define the path to your validation config file
 VALIDATION_CONFIG_PATH = Path("validation_config.json")  # Adjust this path if your file is elsewhere
+
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     @router.get(
