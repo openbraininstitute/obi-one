@@ -31,7 +31,7 @@ from obi_one.scientific.validations.reconstruction_morphology_validation import 
 )
 
 # Import the new function for validation webpage content
-from .validation_config_page import get_validation_config_page_content
+from obi_one.endpoints.validation_config_page import get_validation_config_page_content
 
 # Define the path to your validation config file
 VALIDATION_CONFIG_PATH = Path("validation_config.json")  # Adjust this path if your file is elsewhere
