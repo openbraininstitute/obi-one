@@ -3,7 +3,7 @@ from typing import Annotated
 from enum import Enum, auto, StrEnum
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pathlib import Path
 
