@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from typing import Annotated
-
+from enum import Enum, auto, StrEnum
 import entitysdk.client
 import entitysdk.exception
 from fastapi import APIRouter, Depends, HTTPException, Query
