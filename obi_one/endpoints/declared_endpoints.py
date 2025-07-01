@@ -4,7 +4,7 @@ from typing import Annotated
 import entitysdk.client
 import entitysdk.exception
 from fastapi import APIRouter, Depends, HTTPException, Query
-
+from pathlib import Path
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
