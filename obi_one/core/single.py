@@ -50,6 +50,13 @@ class SingleCoordinateScanParams(OBIBaseModel):
                     output += ", "
             L.info(output)
 
+    def dictionary_representaiton(self) -> dict[str, Any]:
+        """Return a dictionary representation of the scan parameters."""
+        d = {}
+        for scan_param in self.scan_params:
+            d[scan_param.location_str] = scan_param.value
+        return d
+
 
 class SingleCoordinateMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""

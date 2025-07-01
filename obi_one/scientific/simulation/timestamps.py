@@ -1,26 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Annotated
+from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat, NonNegativeInt
 
 from obi_one.core.block import Block
 
 
 class Timestamps(Block, ABC):
-    start_time: float | list[float]
-    simulation_level_name: (
-        None | Annotated[str, Field(min_length=1, description="Name within a simulation.")]
-    ) = None
-
-    def check_simulation_init(self):
-        assert self.simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
-
-    @property
-    def name(self):
-        self.check_simulation_init()
-        return self.simulation_level_name
+    start_time: Annotated[
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Sart time of the timestamps in milliseconds (ms).", units="ms")
+    ]
 
     def timestamps(self):
         self.check_simulation_init()
@@ -31,9 +20,27 @@ class Timestamps(Block, ABC):
         pass
 
 
+class SingleTimestamp(Timestamps):
+    """A single timestamp at a specified time."""
+
+    title: ClassVar[str] = "Single Timestamp"
+
+    def _resolve_timestamps(self) -> list[float]:
+        return [self.start_time]
+
+
 class RegularTimestamps(Timestamps):
-    number_of_repetitions: int | list[int]
-    interval: float | list[float]
+    """A series of timestamps at regular intervals."""
+
+    title: ClassVar[str] = "Regular Timestamps"
+
+    interval: Annotated[
+        NonNegativeFloat | list[NonNegativeFloat], Field(default=10.0, description="Interval between timestamps in milliseconds (ms).", units="ms")
+    ]
+
+    number_of_repetitions: Annotated[
+        NonNegativeInt | list[NonNegativeInt], Field(default=10, description="Number of timestamps to generate.")
+    ]
 
     def _resolve_timestamps(self) -> list[float]:
         return [self.start_time + i * self.interval for i in range(self.number_of_repetitions)]

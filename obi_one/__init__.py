@@ -1,6 +1,8 @@
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.form import Form
+from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan import CoupledScan, GridScan
 from obi_one.core.serialization import (
@@ -12,16 +14,21 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_manager import db
 from obi_one.core.activity import Activity
 from obi_one.core.validation import Validation
+from obi_one.core.exception import OBIONE_Error
 
 __all__ = [
     "Activity",
+    "AllNeurons",
     "AfferentSynapsesBlock",
     "BasicConnectivityPlot",
     "BasicConnectivityPlots",
     "Block",
+    "BlockReference",
+    "rCA1CA3Inputs",
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
+    "CircuitFromID",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -35,17 +42,22 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "CoupledScan",
     "EntityFromID",
+    "ExcitatoryNeurons",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
     "FolderCompression",
     "FolderCompressions",
     "Form",
     "FormUnion",
+    "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
+    "Info",
+    "InhibitoryNeurons",
     "IntracellularLocationSet",
     "IntracellularLocationSetUnion",
+    "LoadAssetMethod",
     "LinearCurrentClampSomaticStimulus",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
@@ -63,14 +75,16 @@ __all__ = [
     "NamedTuple",
     "NeuronPropertyFilter",
     "NeuronSet",
+    "NeuronSetReference",
     "NeuronSetUnion",
-    "NoiseCurrentClampSomaticStimulus",
+    "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
+    "OBIONE_Error",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
-    "PercentageNoiseCurrentClampSomaticStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus",
     "PoissonSpikeStimulus",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
@@ -81,6 +95,7 @@ __all__ = [
     "ReconstructionMorphologyFromID",
     "ReconstructionMorphologyValidation",
     "Recording",
+    "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
     "RelativeConstantCurrentClampSomaticStimulus",
@@ -88,18 +103,26 @@ __all__ = [
     "SectionIntracellularLocationSet",
     "Simulation",
     "SimulationsForm",
+    "SimulationNeuronSetUnion",
     "SingleBlockEntitySDKTest",
     "SingleBlockEntityTestForm",
     "SingleBlockGenerateTest",
     "SingleBlockGenerateTestForm",
     "SingleCoordinateMixin",
+    "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",
+    "TimeWindowSomaVoltageRecording",
+    "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "ScaleAcetylcholineUSESynapticManipulation",
+    "SynapticMgManipulation",
+    "nbS1POmInputs",
+    "nbS1VPMInputs",
     "SynapseSetUnion",
-    "SynchronousSingleSpikeStimulus",
     "Timestamps",
+    "TimestampsReference",
     "TimestampsUnion",
     "Validation",
     "VolumetricCountNeuronSet",
@@ -108,14 +131,19 @@ __all__ = [
     "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
+    "SimplexNeuronSet", 
+    "SimplexMembershipBasedNeuronSet"
 ]
 
 from obi_one.database.entity_from_id import (
-    EntityFromID,
+    EntityFromID, LoadAssetMethod
 )
 from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
+
+from obi_one.database.circuit_from_id import CircuitFromID
+
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
@@ -151,6 +179,14 @@ from obi_one.scientific.circuit.neuron_sets import (
     PropertyNeuronSet,
     VolumetricCountNeuronSet,
     VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
+    nbS1VPMInputs,
+    nbS1POmInputs,
+    rCA1CA3Inputs,
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
 )
 from obi_one.scientific.circuit_extraction.circuit_extraction import (
     CircuitExtraction,
@@ -191,6 +227,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 from obi_one.scientific.simulation.recording import (
     Recording,
     SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 from obi_one.scientific.simulation.stimulus import (
@@ -198,16 +235,16 @@ from obi_one.scientific.simulation.stimulus import (
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
-    NoiseCurrentClampSomaticStimulus,
-    PercentageNoiseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
-    SynchronousSingleSpikeStimulus,
-    PoissonSpikeStimulus
+    PoissonSpikeStimulus,
+    FullySynchronousSpikeStimulus
 )
-from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps
+from obi_one.scientific.simulation.timestamps import RegularTimestamps, Timestamps, SingleTimestamp
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTest,
     MultiBlockEntitySDKTestForm,
@@ -225,13 +262,17 @@ from obi_one.scientific.unions.unions_form import (
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
-from obi_one.scientific.unions.unions_recordings import RecordingUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusUnion
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, SimulationNeuronSetUnion, NeuronSetReference
+from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsUnion
-
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
 from obi_one.scientific.validations.reconstruction_morphology_validation import (
     ReconstructionMorphologyValidation,
+)
+
+from obi_one.scientific.unions.unions_manipulations import (
+    SynapticMgManipulation,
+    ScaleAcetylcholineUSESynapticManipulation,
 )

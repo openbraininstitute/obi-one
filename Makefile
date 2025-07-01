@@ -24,7 +24,7 @@ endef
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Install dependencies into .venv
+install:  ## Create a virtual environment
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra connectivity
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
 
@@ -53,7 +53,7 @@ format_types: ## Count the number of errors by type
 	uv run -m ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
 build:  ## Build the Docker image
-	docker compose --progress=plain build app
+	docker compose --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
