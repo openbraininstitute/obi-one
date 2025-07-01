@@ -19,7 +19,8 @@ from .utils_edges import (
 from .utils_nodes import (
     source_resolution,
     translate,
-    rotate
+    rotate,
+    _SPINES_H5_FILE
 )
 
 
@@ -105,24 +106,42 @@ class EMEdgesMappingBlock(Block, abc.ABC):
             L.warning(f"No synapses to be mapped for {node_info['pt_root_id']}!")
         
         self.enforce_no_lists()
-        fn_spines = os.path.join(spine_root, naming_spine.format(**node_info.to_dict()))
-        fn_spines = os.path.join(spine_root, node_info["spine_info"] + ".json")
+        # fn_spines = os.path.join(spine_root, naming_spine.format(**node_info.to_dict()))
+        # fn_spines = os.path.join(spine_root, node_info["spine_info"] + ".json")
+        fn_spines = os.path.join(spine_root, _SPINES_H5_FILE)
         fn_morph = os.path.join(morph_root, naming_morph.format(**node_info.to_dict()))
         fn_morph = os.path.join(morph_root, node_info["morphology"] + ".swc")
 
-        if os.path.isfile(fn_spines):
-            with open(fn_spines, "r") as fid:
-                spines = json.load(fid)
+        try:
+            spines = pandas.read_hdf(fn_spines, node_info["spine_info"])
             L.info(f"{len(spines)} spines loaded!")
-            srf_pos = numpy.vstack([_spine["surface_sample_position"] for _spine in spines])
-            dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
-            orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
-        else:
+            dend_pos = numpy.vstack(spines["dendritic_sample_position"])
+            srf_pos = numpy.vstack(spines["surface_sample_position"])
+            orient = numpy.vstack(spines["orientation_vector"])
+            # srf_pos = numpy.vstack([_spine["surface_sample_position"] for _spine in spines])
+            # dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
+            # orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
+        except:
             if os.path.isfile(fn_morph):
                 L.warning(f"No spine file at {fn_spines}, although morphology exists!")
             srf_pos = numpy.empty((0, 3), dtype=float)
             dend_pos = numpy.empty((0, 3), dtype=float)
             orient = numpy.empty((0, 3), dtype=float)
+
+
+        # if os.path.isfile(fn_spines):
+        #     with open(fn_spines, "r") as fid:
+        #         spines = json.load(fid)
+        #     L.info(f"{len(spines)} spines loaded!")
+        #     srf_pos = numpy.vstack([_spine["surface_sample_position"] for _spine in spines])
+        #     dend_pos = numpy.vstack([_spine["dendritic_sample_position"] for _spine in spines])
+        #     orient = numpy.vstack([_spine["orientation_vector"] for _spine in spines])
+        # else:
+        #     if os.path.isfile(fn_morph):
+        #         L.warning(f"No spine file at {fn_spines}, although morphology exists!")
+        #     srf_pos = numpy.empty((0, 3), dtype=float)
+        #     dend_pos = numpy.empty((0, 3), dtype=float)
+        #     orient = numpy.empty((0, 3), dtype=float)
 
         if os.path.isfile(fn_morph):
             if morphologies_are_transformed:
