@@ -14,6 +14,7 @@ from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
 
+from obi_one.core.exception import OBIONE_Error
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -89,21 +90,18 @@ class AbstractNeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    random_sample: None | int | float | list[None | int | float] = None
-    random_seed: int | list[int] = 0
+    sample_percentage: Annotated[NonNegativeFloat, Field(le=100)] | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)] = Field(
+        default=100.0,
+        title="Sample (Percentage)",
+        description="Percentage of neurons to sample between 0 and 100%",
+        units='%'
+    )
 
-    @model_validator(mode="after")
-    def check_random_sample(self) -> Self:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.random_sample, list):
-            if self.random_sample is not None:
-                if isinstance(self.random_sample, int):
-                    assert self.random_sample >= 0, "Random sample number must not be negative!"
-                elif isinstance(self.random_sample, float):
-                    assert 0.0 <= self.random_sample <= 1.0, (
-                        "Random sample fraction must be between 0.0 and 1.0!"
-                    )
-        return self
+    sample_seed: int | list[int] = Field(
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling."
+    )
 
     @abc.abstractmethod
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -174,13 +172,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.random_sample is not None:
-            rng = np.random.default_rng(self.random_seed)
+        if len(ids) > 0 and self.sample_percentage < 100.0:
+            rng = np.random.default_rng(self.sample_seed)
 
-            if isinstance(self.random_sample, int):
-                num_sample = np.minimum(self.random_sample, len(ids))
-            elif isinstance(self.random_sample, float):
-                num_sample = np.round(self.random_sample * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage/100.0) * len(ids)).astype(int)
 
             ids = ids[
                 rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
@@ -197,7 +192,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.enforce_no_lists()
         population = self._population(population)
         self.check_population(circuit, population)
-        if self.random_sample is None and not force_resolve_ids:
+        if self.sample_percentage is None and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit, population)
         else:

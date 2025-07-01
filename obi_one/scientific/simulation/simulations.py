@@ -195,20 +195,20 @@ class SimulationsForm(Form):
         return self
 
 
-def _resolve_neuron_set_dictionary(neuron_set, _circuit):
-        """Resolves a neuron set based on current coordinate circuit's default node population and \
-            returns its dictionary.
-        """
-        nset_def = neuron_set.get_node_set_definition(
-            _circuit, _circuit.default_population_name
-        )
-        # FIXME: Better handling of (default) node population in case there is more than one
-        # FIXME: Inconsistency possible in case a node set definition would span multiple populations
-        #        May consider force_resolve_ids=False to enforce resolving into given population
-        #        (but which won't be a human-readable representation any more)
-        name = neuron_set.name
-        dictionary = {name: nset_def}
-        return name, dictionary
+# def _resolve_neuron_set_dictionary(neuron_set, _circuit):
+#         """Resolves a neuron set based on current coordinate circuit's default node population and \
+#             returns its dictionary.
+#         """
+#         nset_def = neuron_set.get_node_set_definition(
+#             _circuit, _circuit.default_population_name
+#         )
+#         # FIXME: Better handling of (default) node population in case there is more than one
+#         # FIXME: Inconsistency possible in case a node set definition would span multiple populations
+#         #        May consider force_resolve_ids=False to enforce resolving into given population
+#         #        (but which won't be a human-readable representation any more)
+#         name = neuron_set.name
+#         dictionary = {name: nset_def}
+#         return name, dictionary
 
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
@@ -322,7 +322,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # Add node set to SONATA circuit object
             # (will raise an error in case already existing)
             nset_def = _nset.get_node_set_definition(
-                _circuit, _circuit.default_population_name
+                _circuit, _circuit.default_population_name, force_resolve_ids=True
             )
             NeuronSet.add_node_set_to_circuit(c, {_name: nset_def}, overwrite_if_exists=False)
 
