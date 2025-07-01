@@ -7,7 +7,7 @@ from enum import Enum, auto, StrEnum
 
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.dependencies.entitysdk import get_client
