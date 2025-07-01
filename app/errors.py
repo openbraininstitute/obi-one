@@ -58,4 +58,3 @@ class ApiError(Exception):
             f"details={self.details!r}"
         )
         
-ApiError=ApiError()
