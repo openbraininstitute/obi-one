@@ -101,6 +101,17 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         response_class=HTMLResponse,
         status_code=HTTPStatus.OK,
     )
+    @router.get(
+        "/available_entity_types",
+        summary="Get Available Entity Types",
+        response_class=JSONResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def get_available_entity_types():
+        """
+        Returns a list of available entity types from the EntityType enum.
+        """
+        return JSONResponse({"entity_types": [e.value for e in EntityType]})
    
     
     @router.get(
@@ -186,17 +197,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         """
         return JSONResponse({"message": "Test route is working!"})
 
-    @router.get(
-        "/available_entity_types",
-        summary="Get Available Entity Types",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
-    )
-    async def get_available_entity_types():
-        """
-        Returns a list of available entity types from the EntityType enum.
-        """
-        return JSONResponse({"entity_types": [e.value for e in EntityType]})
 
     @router.get(
         "/available_validation_functions",
