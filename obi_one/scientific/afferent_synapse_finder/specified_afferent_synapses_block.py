@@ -24,7 +24,7 @@ from .find_specified_afferent_synapses import (
 class AfferentSynapsesBlock(Block, abc.ABC):
     """Base class representing the selection of afferent synapses according to specs."""
 
-    sample_seed: int | list[int] = Field(
+    random_seed: int | list[int] = Field(
         default=0, name="Random seed", description="Seed for the random selection of synapses"
     )
     section_types: None | tuple[int, ...] | list[tuple[int, ...]] = Field(
@@ -95,7 +95,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
 
     def synapses_on(self, circ, node_population, node_id):
         self.enforce_no_lists()
-        numpy.random.seed(self.sample_seed)
+        numpy.random.seed(self.random_seed)
         args = self.gather_synapse_info(circ, node_population, node_id)
         return self._select_syns(*args)
 
