@@ -89,21 +89,19 @@ class AbstractNeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    random_sample: None | int | float | list[None | int | float] = None
-    random_seed: int | list[int] = 0
-
-    @model_validator(mode="after")
-    def check_random_sample(self) -> Self:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.random_sample, list):
-            if self.random_sample is not None:
-                if isinstance(self.random_sample, int):
-                    assert self.random_sample >= 0, "Random sample number must not be negative!"
-                elif isinstance(self.random_sample, float):
-                    assert 0.0 <= self.random_sample <= 1.0, (
-                        "Random sample fraction must be between 0.0 and 1.0!"
-                    )
-        return self
+    random_sample: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=100.0,
+        title="Sample (Percentage)",
+        description="Percentage of neurons to sample between 0 and 100%",
+        units='%',
+        le=100.0,
+        ge=0.0
+    )
+    random_seed: int | list[int] = Field(
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling."
+    )
 
     @abc.abstractmethod
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -174,13 +172,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.random_sample is not None:
+        if len(ids) > 0 and self.random_sample < 100.0:
             rng = np.random.default_rng(self.random_seed)
 
-            if isinstance(self.random_sample, int):
-                num_sample = np.minimum(self.random_sample, len(ids))
-            elif isinstance(self.random_sample, float):
-                num_sample = np.round(self.random_sample * len(ids)).astype(int)
+            num_sample = np.round((self.random_sample/100.0) * len(ids)).astype(int)
 
             ids = ids[
                 rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
