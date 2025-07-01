@@ -94,13 +94,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
-    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
-    @router.get(
-        "/configure_validations_page",
-        summary="Configure Validations Webpage",
-        response_class=HTMLResponse,
-        status_code=HTTPStatus.OK,
-    )
+   
     
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
@@ -162,7 +156,13 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
-
+ # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    @router.get(
+        "/configure_validations_page",
+        summary="Configure Validations Webpage",
+        response_class=HTMLResponse,
+        status_code=HTTPStatus.OK,
+    )
     # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
     @router.get(
         "/configure_validations_page",
