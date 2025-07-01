@@ -32,7 +32,28 @@ from obi_one.endpoints.validation_config_page import get_validation_config_page_
 # Define the path to your validation config file
 VALIDATION_CONFIG_PATH = Path("validation_config.json")  # Adjust this path if your file is elsewhere
 
-
+#we will later import this from entitycore directly
+#but entitycore has no PyPi package currently
+class EntityType(StrEnum):
+    """Entity types."""
+    age = auto()
+    analysis_software_source_code = auto()
+    emodel = auto()
+    experimental_bouton_density = auto()
+    experimental_neuron_density = auto()
+    experimental_synapses_per_connection = auto()
+    memodel = auto()
+    mesh = auto()
+    cell_morphology = auto()
+    electrical_cell_recording = auto()
+    electrical_recording_stimulus = auto()
+    scientific_artifact = auto()
+    single_neuron_simulation = auto()
+    single_neuron_synaptome = auto()
+    single_neuron_synaptome_simulation = auto()
+    subject = auto()
+    synaptic_pathway = auto()
+    
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
@@ -73,6 +94,14 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
+    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    @router.get(
+        "/configure_validations_page",
+        summary="Configure Validations Webpage",
+        response_class=HTMLResponse,
+        status_code=HTTPStatus.OK,
+    )
+    
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="electrophysiology recording metrics",
@@ -99,27 +128,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
 
     return router
 '''
-#we will later import this from entitycore directly
-#but entitycore has no PyPi package currently
-class EntityType(StrEnum):
-    """Entity types."""
-    age = auto()
-    analysis_software_source_code = auto()
-    emodel = auto()
-    experimental_bouton_density = auto()
-    experimental_neuron_density = auto()
-    experimental_synapses_per_connection = auto()
-    memodel = auto()
-    mesh = auto()
-    cell_morphology = auto()
-    electrical_cell_recording = auto()
-    electrical_recording_stimulus = auto()
-    scientific_artifact = auto()
-    single_neuron_simulation = auto()
-    single_neuron_synaptome = auto()
-    single_neuron_synaptome_simulation = auto()
-    subject = auto()
-    synaptic_pathway = auto()
+
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     @router.get(
