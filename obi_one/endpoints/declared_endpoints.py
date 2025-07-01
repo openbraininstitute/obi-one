@@ -1,17 +1,14 @@
 from http import HTTPStatus
-from typing import Annotated, Dict, List, Any
-import json
-from pathlib import Path
-import inspect
+from typing import Annotated
 from enum import Enum, auto, StrEnum
-
 import entitysdk.client
 import entitysdk.exception
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from pathlib import Path
 
 from app.dependencies.entitysdk import get_client
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     AmplitudeInput,
@@ -57,18 +54,20 @@ class EntityType(StrEnum):
     single_neuron_synaptome_simulation = auto()
     subject = auto()
     synaptic_pathway = auto()
-
+    
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
-        description="This calculates neuron morphology metrics for a given reconstruction morphology.",
+        description="This calculates neuron morphology metrics for a given reconstruction \
+                    morphology.",
     )
     def neuron_morphology_metrics_endpoint(
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
     ) -> MorphologyMetricsOutput:
         L.info("get_morphology_metrics")
+
         try:
             metrics = get_morphology_metrics(
                 reconstruction_morphology_id=reconstruction_morphology_id,
@@ -79,17 +78,41 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 status_code=HTTPStatus.NOT_FOUND,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Reconstruction morphology {reconstruction_morphology_id} not found.",
+                    "detail": (
+                        f"Reconstruction morphology {reconstruction_morphology_id} not found."
+                    ),
                 },
             )
+
         if metrics:
             return metrics
-        L.error(f"Reconstruction morphology {reconstruction_morphology_id} metrics computation issue")
+        L.error(
+            f"Reconstruction morphology {reconstruction_morphology_id} metrics computation issue"
+        )
         raise ApiError(
             message="Asset not found",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
+ # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    @router.get(
+        "/configure_validations_page",
+        summary="Configure Validations Webpage",
+        response_class=HTMLResponse,
+        status_code=HTTPStatus.OK,
+    )
+    @router.get(
+        "/available_entity_types",
+        summary="Get Available Entity Types",
+        response_class=JSONResponse,
+        status_code=HTTPStatus.OK,
+    )
+    async def get_available_entity_types():
+        """
+        Returns a list of available entity types from the EntityType enum.
+        """
+        return JSONResponse({"entity_types": [e.value for e in EntityType]})
+
 
     # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
     @router.get(
@@ -104,25 +127,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         """
         html_content = get_validation_config_page_content()
         return HTMLResponse(content=html_content, status_code=HTTPStatus.OK)
-
-    @router.get("/test_route", summary="Test Route", status_code=HTTPStatus.OK)
-    async def test_route():
-        """
-        A simple test route to check if new endpoints are being registered.
-        """
-        return JSONResponse({"message": "Test route is working!"})
-
-    @router.get(
-        "/available_entity_types",
-        summary="Get Available Entity Types",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
-    )
-    async def get_available_entity_types():
-        """
-        Returns a list of available entity types from the EntityType enum.
-        """
-        return JSONResponse({"entity_types": [e.value for e in EntityType]})
 
     @router.get(
         "/available_validation_functions",
@@ -147,6 +151,8 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 "entity": getattr(cls, 'entity', None)
             })
         return JSONResponse({"validation_functions": function_info})
+
+
 
     @router.get(
         "/validation_config",
@@ -183,6 +189,10 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         response_class=JSONResponse,
         status_code=HTTPStatus.OK,
     )
+
+
+
+    
     async def update_validation_config(request: Request):
         """
         Updates the validation_config.json file with new configuration.
@@ -209,6 +219,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 detail={"message": "Internal server error saving configuration"}
             )
 
+    
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="electrophysiology recording metrics",
@@ -233,5 +244,5 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
-
     return router
+
