@@ -9,7 +9,6 @@ from entitysdk.models.morphology import ReconstructionMorphology
 from app.dependencies.entitysdk import get_client
 
 from tests.utils import DATA_DIR
-from app.errors import ApiError, ApiErrorCode, AuthErrorReason
 
 ROUTE = "/declared/neuron-morphology-metrics"
 
