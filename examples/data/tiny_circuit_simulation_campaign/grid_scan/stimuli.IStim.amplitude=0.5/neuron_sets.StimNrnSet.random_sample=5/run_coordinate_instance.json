@@ -2,7 +2,7 @@
     "obi_one_version": "2025.5.2",
     "type": "Simulation",
     "idx": 2,
-    "coordinate_output_root": "../../../obi-output/tiny_circuit_simulation_campaign/grid_scan/stimuli.IStim.amplitude=0.5/neuron_sets.StimNrnSet.random_sample=5",
+    "coordinate_output_root": "../../../obi-output/tiny_circuit_simulation_campaign/grid_scan/stimuli.IStim.amplitude=0.5/neuron_sets.StimNrnSet.sample_percentage=5",
     "scan_output_root": "../../../obi-output/tiny_circuit_simulation_campaign/grid_scan",
     "coordinate_directory_option": "NAME_EQUALS_VALUE",
     "single_coordinate_scan_params": {
@@ -22,12 +22,12 @@
                 "location_list": [
                     "neuron_sets",
                     "StimNrnSet",
-                    "random_sample"
+                    "sample_percentage"
                 ],
                 "value": 5
             }
         ],
-        "nested_coordinate_subpath_str": "stimuli.IStim.amplitude=0.5/neuron_sets.StimNrnSet.random_sample=5/"
+        "nested_coordinate_subpath_str": "stimuli.IStim.amplitude=0.5/neuron_sets.StimNrnSet.sample_percentage=5/"
     },
     "timestamps": {
         "StimTimes": {
@@ -54,8 +54,8 @@
             "neuron_set": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "StimNrnSet",
-                "random_sample": 5,
-                "random_seed": 0,
+                "sample_percentage": 5,
+                "sample_seed": 0,
                 "node_set": "All"
             },
             "represents_physical_electrode": false,
@@ -72,8 +72,8 @@
             "neuron_set": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "RecNrnSet",
-                "random_sample": null,
-                "random_seed": 0,
+                "sample_percentage": null,
+                "sample_seed": 0,
                 "node_set": "All"
             }
         }
@@ -82,22 +82,22 @@
         "SimNrnSet": {
             "type": "PredefinedNeuronSet",
             "simulation_level_name": "SimNrnSet",
-            "random_sample": null,
-            "random_seed": 0,
+            "sample_percentage": null,
+            "sample_seed": 0,
             "node_set": "All"
         },
         "StimNrnSet": {
             "type": "PredefinedNeuronSet",
             "simulation_level_name": "StimNrnSet",
-            "random_sample": 5,
-            "random_seed": 0,
+            "sample_percentage": 5,
+            "sample_seed": 0,
             "node_set": "All"
         },
         "RecNrnSet": {
             "type": "PredefinedNeuronSet",
             "simulation_level_name": "RecNrnSet",
-            "random_sample": null,
-            "random_seed": 0,
+            "sample_percentage": null,
+            "sample_seed": 0,
             "node_set": "All"
         }
     },
@@ -115,11 +115,11 @@
         "node_set": {
             "type": "PredefinedNeuronSet",
             "simulation_level_name": "SimNrnSet",
-            "random_sample": null,
-            "random_seed": 0,
+            "sample_percentage": null,
+            "sample_seed": 0,
             "node_set": "All"
         },
-        "random_seed": 1,
+        "sample_seed": 1,
         "extracellular_calcium_concentration": 1.1,
         "v_init": -80.0,
         "spike_location": "soma",

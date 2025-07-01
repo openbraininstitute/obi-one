@@ -14,6 +14,7 @@ from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
 
+from obi_one.core.exception import OBIONE_Error
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -89,15 +90,14 @@ class AbstractNeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    random_sample: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    sample_percentage: Annotated[NonNegativeFloat, Field(le=100)] | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)] = Field(
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units='%',
-        le=100.0,
-        ge=0.0
+        units='%'
     )
-    random_seed: int | list[int] = Field(
+
+    sample_seed: int | list[int] = Field(
         default=1,
         title="Sample Seed",
         description="Seed for random sampling."
@@ -172,10 +172,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.random_sample < 100.0:
-            rng = np.random.default_rng(self.random_seed)
+        if len(ids) > 0 and self.sample_percentage < 100.0:
+            rng = np.random.default_rng(self.sample_seed)
 
-            num_sample = np.round((self.random_sample/100.0) * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage/100.0) * len(ids)).astype(int)
 
             ids = ids[
                 rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
@@ -192,7 +192,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.enforce_no_lists()
         population = self._population(population)
         self.check_population(circuit, population)
-        if self.random_sample is None and not force_resolve_ids:
+        if self.sample_percentage is None and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit, population)
         else:

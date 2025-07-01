@@ -37,8 +37,8 @@
     "neuron_set": {
         "type": "IDNeuronSet",
         "simulation_level_name": null,
-        "random_sample": null,
-        "random_seed": 0,
+        "sample_percentage": null,
+        "sample_seed": 0,
         "neuron_ids": {
             "type": "NamedTuple",
             "name": "N_10__top_nodes_dim6",

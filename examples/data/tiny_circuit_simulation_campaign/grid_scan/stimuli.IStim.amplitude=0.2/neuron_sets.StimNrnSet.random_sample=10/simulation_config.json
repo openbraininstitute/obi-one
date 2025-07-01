@@ -4,7 +4,7 @@
   "network": "../../examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",
   "run": {
     "dt": 0.025,
-    "random_seed": 1,
+    "sample_seed": 1,
     "tstop": 3000.0
   },
   "conditions": {

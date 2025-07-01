@@ -12,7 +12,7 @@ from .specified_morphology_locations import _CEN_IDX, generate_neurite_locations
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
-    random_seed: int | list[int] = Field(
+    sample_seed: int | list[int] = Field(
         default=0, name="Random seed", description="Seed for the random generation of locations"
     )
     number_of_locations: int | list[int] = Field(
@@ -58,7 +58,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
             center_path_distances_sd=0.0,
             max_dist_from_center=None,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -88,7 +88,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
             center_path_distances_sd=0.0,
             max_dist_from_center=None,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -122,7 +122,7 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
             center_path_distances_sd=0.1 * self.path_dist_tolerance,
             max_dist_from_center=0.9 * self.path_dist_tolerance,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -162,7 +162,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             center_path_distances_sd=1e20,
             max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -194,7 +194,7 @@ class ClusteredGroupedMorphologyLocations(
             center_path_distances_sd=1e20,
             max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -237,7 +237,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             center_path_distances_sd=self.path_dist_sd,
             max_dist_from_center=self.cluster_max_distance,
             lst_section_types=self.section_types,
-            seed=self.random_seed,
+            seed=self.sample_seed,
         )
         return locs
 

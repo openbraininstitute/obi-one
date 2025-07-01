@@ -29,11 +29,11 @@
                 "neuron_set": {
                     "type": "PredefinedNeuronSet",
                     "simulation_level_name": "StimNrnSet",
-                    "random_sample": [
+                    "sample_percentage": [
                         5,
                         10
                     ],
-                    "random_seed": 0,
+                    "sample_seed": 0,
                     "node_set": "All"
                 },
                 "represents_physical_electrode": false,
@@ -53,8 +53,8 @@
                 "neuron_set": {
                     "type": "PredefinedNeuronSet",
                     "simulation_level_name": "RecNrnSet",
-                    "random_sample": null,
-                    "random_seed": 0,
+                    "sample_percentage": null,
+                    "sample_seed": 0,
                     "node_set": "All"
                 }
             }
@@ -63,25 +63,25 @@
             "SimNrnSet": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "SimNrnSet",
-                "random_sample": null,
-                "random_seed": 0,
+                "sample_percentage": null,
+                "sample_seed": 0,
                 "node_set": "All"
             },
             "StimNrnSet": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "StimNrnSet",
-                "random_sample": [
+                "sample_percentage": [
                     5,
                     10
                 ],
-                "random_seed": 0,
+                "sample_seed": 0,
                 "node_set": "All"
             },
             "RecNrnSet": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "RecNrnSet",
-                "random_sample": null,
-                "random_seed": 0,
+                "sample_percentage": null,
+                "sample_seed": 0,
                 "node_set": "All"
             }
         },
@@ -99,11 +99,11 @@
             "node_set": {
                 "type": "PredefinedNeuronSet",
                 "simulation_level_name": "SimNrnSet",
-                "random_sample": null,
-                "random_seed": 0,
+                "sample_percentage": null,
+                "sample_seed": 0,
                 "node_set": "All"
             },
-            "random_seed": 1,
+            "sample_seed": 1,
             "extracellular_calcium_concentration": 1.1,
             "v_init": -80.0,
             "spike_location": "soma",
