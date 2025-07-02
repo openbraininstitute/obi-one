@@ -6,11 +6,11 @@ Darshan Mandge
 
 The example folder `run_small_microcircuit` has:
 
-- A Notebook `run_small_microcircuit.ipynb` to run a small microcircuit simulation using [obi-one](https://github.com/openbraininstitute/obi-one) via [BlueCellulab](https://github.com/openbraininstitute/BlueCelluLab). 
+- A Notebook `run_small_microcircuit.ipynb` to run a small microcircuit simulation using [obi-one](https://github.com/openbraininstitute/obi-one) via [BlueCellulab](https://github.com/openbraininstitute/BlueCelluLab).
 
 - A shell script `run_small_microcircuit.sh` to run a small microcircuit simulation directly using BlueCellulab.
     - This script calls `run_circuit_bluecellulab.py`.
-    - The shell script compiles the NEURON mod files, runs the simulation parallelly using MPI and saves the results as: 
+    - The shell script compiles the NEURON mod files, runs the simulation parallelly using MPI and saves the results as:
         - SONATA spike and soma reports files,
         - an NWB file,
         - a plot of voltage traces for all simulated cells.
@@ -19,7 +19,7 @@ The example folder `run_small_microcircuit` has:
 
 - This `README.md` file to explain the example.
 
-- The spike replay file in `input` folder: `out.h5`. 
+- The spike replay file in `input` folder: `spike_replay.h5`.
 
 ## Output
 
@@ -32,5 +32,5 @@ The shell script saves the results in the `output` folder in the circuit directo
 ## Running the shell script
 
 - You can run a SONATA circuit using obi-one via BlueCellulab using the notebook `run_small_microcircuit.ipynb`. It uses a SONATA simulation config file `simulation_config.json`.
-    
+
 - To run simulation directly using BlueCellulab using the shell script, use the following command:`./run_small_microcircuit.sh`

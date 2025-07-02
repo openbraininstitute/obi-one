@@ -65,7 +65,7 @@
       "delay": 0,
       "duration": 3000.0,
       "input_type": "spikes",
-      "spike_file": "$INPUT_DIR/out.h5",
+      "spike_file": "$INPUT_DIR/spike_replay.h5",
       "node_set": "hex0"
     }
   },
