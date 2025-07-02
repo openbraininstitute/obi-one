@@ -18,8 +18,10 @@
     "requirements": [
         "bluepysnap>=3.0.1",
         "connectome-manipulator>=1.0.2",
+        "entitysdk>=0.7.2",
         "jupyter>=1.1.1",
         "matplotlib>=3.10.0",
-        "numpy>=2.2.1"
+        "numpy>=2.2.1",
+        "obi_auth>=0.3.0"
     ]
 }
