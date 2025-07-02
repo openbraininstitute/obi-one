@@ -1,11 +1,11 @@
-from http import HTTPStatus
-from typing import Annotated
 from enum import Enum, auto, StrEnum
-import entitysdk.client
-import entitysdk.exception
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+import entitysdk.client
+import entitysdk.exception
+from http import HTTPStatus
 from pathlib import Path
+from typing import Annotated
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -94,6 +94,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
+
  # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
     @router.get(
         "/configure_validations_page",
@@ -112,7 +113,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         Returns a list of available entity types from the EntityType enum.
         """
         return JSONResponse({"entity_types": [e.value for e in EntityType]})
-
 
     # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
     @router.get(
@@ -152,8 +152,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             })
         return JSONResponse({"validation_functions": function_info})
 
-
-
     @router.get(
         "/validation_config",
         summary="Get Validation Configuration",
@@ -189,9 +187,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         response_class=JSONResponse,
         status_code=HTTPStatus.OK,
     )
-
-
-
     
     async def update_validation_config(request: Request):
         """
@@ -218,7 +213,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={"message": "Internal server error saving configuration"}
             )
-
     
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
@@ -245,4 +239,3 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
     return router
-
