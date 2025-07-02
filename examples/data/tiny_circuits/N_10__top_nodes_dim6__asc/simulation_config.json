@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "$OUTPUT_DIR": ".",
+    "$OUTPUT_DIR": "../../../run_small_microcircuit/",
     "$INPUT_DIR": "./input/"
   },
   "output": {

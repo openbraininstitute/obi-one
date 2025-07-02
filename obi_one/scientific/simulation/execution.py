@@ -58,11 +58,11 @@ def _merge_spikes(list_of_pop_dicts):
 
 def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[str, Any]:
     """Determine instantiate_gids parameters from simulation config.
-    
+
     This function gives parameters for sim.instantiate_gids() based on the
     simulation config. See the package BlueCellulab/bluecellulab/circuit_simulation.py
     for more details.
-    
+
     Args:
         simulation_config_data: Loaded simulation configuration
     Returns:
@@ -86,22 +86,22 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
         'add_sinusoidal_stimuli': False,
         'add_linear_stimuli': False,
     }
-    
+
     # Check for any inputs in the config
     if 'inputs' in simulation_config_data and simulation_config_data['inputs']:
         params['add_stimuli'] = True
-        
+
         # Log any unsupported input types
         supported_types = {
             'noise', 'hyperpolarizing', 'relativelinear', 'pulse',
             'sinusoidal', 'linear', 'shotnoise', 'ornstein_uhlenbeck'
         }
-        
+
         for input_def in simulation_config_data['inputs'].values():
             module = input_def.get('module', '').lower()
             if module not in supported_types:
                 logger.warning(f"Input type '{module}' may not be fully supported by instantiate_gids")
-    
+
     # Check for synapses and minis in conditions
     if 'conditions' in simulation_config_data:
         conditions = simulation_config_data['conditions']
@@ -112,22 +112,22 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
                 if mech.get('minis_single_vesicle', False):
                     params['add_minis'] = True
                     break
-    
+
     # Check for spike replay in inputs
     # if 'inputs' in simulation_config_data:
     #     for input_def in simulation_config_data['inputs'].values():
     #         if input_def.get('module') == 'synapse_replay':
     #             params['add_replay'] = True
     #             break
-    
+
     # Enable projections by default if synapses are enabled
     params['add_projections'] = params['add_synapses']
-    
+
     return params
 
 def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
     """Plot voltage traces for all cells in a grid of subplots and save to file.
-    
+
     Args:
         results: Dictionary containing simulation results for each cell
         output_path: Path where to save the plot (should include .png extension)
@@ -137,43 +137,43 @@ def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], 
     if n_cells == 0:
         logger.warning("No voltage traces to plot")
         return
-    
+
     # Calculate grid size
     n_cols = min(max_cols, n_cells)
     n_rows = (n_cells + n_cols - 1) // n_cols
-    
+
     # Create figure with subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows), 
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows),
                             squeeze=False, constrained_layout=True)
-    
+
     # Flatten axes for easier iteration
     axes = axes.ravel()
-    
+
     # Plot each cell's voltage trace in its own subplot
     for idx, (cell_id, trace) in enumerate(results.items()):
         ax = axes[idx]
         time_ms = np.array(trace["time"])
         voltage_mv = np.array(trace["voltage"])
-        
+
         ax.plot(time_ms, voltage_mv, linewidth=1)
         ax.set_title(f"Cell {cell_id}", fontsize=10)
         ax.grid(True, alpha=0.3)
-        
+
         # Only label bottom row x-axes
         if idx >= (n_rows - 1) * n_cols:
             ax.set_xlabel("Time (ms)", fontsize=8)
-        
+
         # Only label leftmost column y-axes
         if idx % n_cols == 0:
             ax.set_ylabel("mV", fontsize=8)
-    
+
     # Turn off unused subplots
     for idx in range(n_cells, len(axes)):
         axes[idx].axis('off')
-    
+
     # Add a main title
     fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
-    
+
     # Save the figure
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
@@ -192,13 +192,13 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
             experiment_description='Simulation results',
             session_id=f"small_microcircuit_simulation"
         )
-        
+
         # Add device and electrode
         device = nwbfile.create_device(
             name='SimulatedElectrode',
             description='Virtual electrode for simulation recording'
         )
-        
+
         # Add voltage traces
         for cell_id, trace in results.items():
             # Create electrode for this cell
@@ -210,11 +210,11 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
                 filtering='none'
             )
             nwbfile.add_icephys_electrode(electrode)
-            
+
             # Convert time from ms to seconds for NWB
             time_data = np.array(trace["time"], dtype=float) / 1000.0
             voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0  # Convert mV to V
-            
+
             # Create current clamp series with timestamps
             ics = CurrentClampSeries(
                 name=f'voltage_{cell_id}',
@@ -226,17 +226,17 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
                 description=f'Voltage trace for {cell_id}'
             )
             nwbfile.add_acquisition(ics)
-        
+
         # Save to file
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Save to file
         with NWBHDF5IO(str(output_path), 'w') as io:
             io.write(nwbfile)
-        
+
         logger.info(f"Successfully saved results to {output_path}")
-        
+
     except Exception as e:
         logger.error(f"Error saving results to NWB: {str(e)}")
         raise
@@ -246,120 +246,120 @@ def run_bluecellulab(
     save_nwb: bool = False,
 ) -> None:
     """Run a simulation using BlueCelluLab backend.
-    
+
     Args:
         simulation_config: Path to the simulation configuration file
         save_nwb: Whether to save results in NWB format.
     """
     logger = logging.getLogger(__name__)
-    
+
     # Get MPI info using NEURON's ParallelContext
     h.nrnmpi_init()
     pc = h.ParallelContext()
     rank = int(pc.id())
     size = int(pc.nhost())
-    
+
     if rank == 0:
         logger.info("Initializing BlueCelluLab simulation")
-    
+
     # Load configuration using json
     with open(simulation_config) as f:
         simulation_config_data = json.load(f)
-    
+
     # Get simulation parameters from config
     t_stop = simulation_config_data["run"]["tstop"]
     dt = simulation_config_data["run"]["dt"]
-    
+
     try:
         # Get the directory of the simulation config
         sim_config_base_dir = Path(simulation_config).parent
         logger.info(f"sim_config_base_dir: {sim_config_base_dir}")
-        
+
         # Get manifest path
         OUTPUT_DIR = simulation_config_data.get("manifest", {}).get("$OUTPUT_DIR", "./")
         logger.info(f"OUTPUT_DIR: {OUTPUT_DIR}")
-        
+
         # Get the node_set
         node_set_name = simulation_config_data.get("node_set", "All")
-    
+
         node_sets_file = sim_config_base_dir / simulation_config_data["node_sets_file"]
         logger.info(f"node_sets_file: {node_sets_file}")
-        
+
         with open(node_sets_file) as f:
             node_set_data = json.load(f)
 
         # Get population and node IDs
         if node_set_name not in node_set_data:
             raise KeyError(f"Node set '{node_set_name}' not found in node sets file")
-            
+
         population = node_set_data[node_set_name]["population"]
         all_node_ids = node_set_data[node_set_name]["node_id"]
         logger.info(f"Population: {population}")
         logger.info(f"All node IDs: {all_node_ids}")
-    
+
         # Distribute nodes across ranks
         num_nodes = len(all_node_ids)
         nodes_per_rank = num_nodes // size
         remainder = num_nodes % size
         logger.info(f"Total nodes: {num_nodes}, Nodes per rank: {nodes_per_rank}, Remainder: {remainder}")
-    
+
         # Calculate start and end indices for this rank
         start_idx = rank * nodes_per_rank + min(rank, remainder)
         if rank < remainder:
             nodes_per_rank += 1
         end_idx = start_idx + nodes_per_rank
         logger.info(f"Rank {rank}: start_idx={start_idx}, end_idx={end_idx}")
-        
+
         # Get node IDs for this rank
         rank_node_ids = all_node_ids[start_idx:end_idx]
         logger.info(f"Rank {rank} node IDs: {rank_node_ids}")
         # create cell_ids_for_this_rank
         cell_ids_for_this_rank = [(population, i) for i in rank_node_ids]
         logger.info(f"Rank {rank}: Handling {len(cell_ids_for_this_rank)} cells")
-        
+
         if not cell_ids_for_this_rank:
             logger.warning(f"Rank {rank}: No cells to process")
-    
+
         if rank == 0:
             logger.info(f"Running BlueCelluLab simulation with {size} MPI processes")
             logger.info(f"Total cells: {num_nodes}, Cells per rank: ~{num_nodes//size}")
             logger.info(f"Starting simulation: t_stop={t_stop}ms, dt={dt}ms")
-        
+
         logger.info(f"Rank {rank}: Processing {len(rank_node_ids)} cells (IDs: {rank_node_ids[0]}...{rank_node_ids[-1] if rank_node_ids else 'None'})")
-        
+
         # Create simulation
         sim = CircuitSimulation(simulation_config)
 
         # Get instantiate_gids arguments from config
         instantiate_params = get_instantiate_gids_params(simulation_config_data)
-        
+
         if rank == 0:
             logger.info("Instantiate arguments from config:")
             for param, value in instantiate_params.items():
                 if value:  # Only log parameters that are True
                     logger.info(f"  {param}: {value}")
-    
+
     except Exception as e:
         logger.error(f"Error during initialization: {str(e)}")
         raise
-        
+
     try:
         logger.info(f"Rank {rank}: Instantiating cells...")
         # Instantiate cells on this rank with arguments from config
         sim.instantiate_gids(cell_ids_for_this_rank, **instantiate_params)
-        
+
         # Run simulation
         logger.info(f"Rank {rank}: Running simulation...")
         sim.run(t_stop, dt, cvode=False)
-        
+
         # Get time trace once for all cells
         time_ms = sim.get_time_trace()
         if time_ms is None:
             logger.error(f"Rank {rank}: Time trace is None, cannot proceed with saving.")
             return
-            
+
         time_s = time_ms / 1000.0  # Convert ms to seconds
-        
+
         # Get voltage traces and spikes for each cell on this rank
         results_traces: Dict[str, Any] = {}
         results_spikes: Dict[str, Dict[int, list]] = defaultdict(dict)  # pop → gid → spikes
@@ -416,22 +416,26 @@ def run_bluecellulab(
                 output_dir = None
 
                 # if output_dir is explicitly specified in config
-                if "output_dir" in simulation_config_data:
-                    output_dir_str = simulation_config_data["output_dir"]
-                    # Handle $OUTPUT_DIR variable if present
-                    if output_dir_str.startswith("$OUTPUT_DIR"):
-                        if "manifest" in simulation_config_data and "$OUTPUT_DIR" in simulation_config_data["manifest"]:
-                            output_dir = Path(simulation_config_data["manifest"]["$OUTPUT_DIR"]) / output_dir_str.replace("$OUTPUT_DIR/", "")
-                    else:
-                        output_dir = Path(output_dir_str)
+                output = simulation_config_data.get("output")
+                if isinstance(output, dict):
+                    output_dir_str = output.get("output_dir")
 
-                    # Make path absolute if it's relative
-                    if not output_dir.is_absolute():
-                        output_dir = base_dir / output_dir
+                    if output_dir_str:
+                        # Handle $OUTPUT_DIR variable if present
+                        if output_dir_str.startswith("$OUTPUT_DIR"):
+                            manifest_base = simulation_config_data.get("manifest", {}).get("$OUTPUT_DIR")
+                            if manifest_base:
+                                output_dir = Path(manifest_base) / output_dir_str.replace("$OUTPUT_DIR/", "")
+                        else:
+                            output_dir = Path(output_dir_str)
 
-                # if output_dir not specified or invalid
+                # Fallback if no output_dir set
                 if output_dir is None:
                     output_dir = base_dir / "output"
+
+                # Make path absolute if it's relative
+                if not output_dir.is_absolute():
+                    output_dir = base_dir / output_dir
 
                 # Ensure output directory exists
                 output_dir.mkdir(parents=True, exist_ok=True)
