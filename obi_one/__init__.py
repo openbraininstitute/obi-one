@@ -14,6 +14,7 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.database.db_manager import db
 from obi_one.core.activity import Activity
 from obi_one.core.validation import Validation
+from obi_one.core.exception import OBIONE_Error
 
 __all__ = [
     "Activity",
@@ -76,13 +77,14 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
-    "NoiseCurrentClampSomaticStimulus",
+    "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
+    "OBIONE_Error",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
-    "PercentageNoiseCurrentClampSomaticStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus",
     "PoissonSpikeStimulus",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
@@ -110,10 +112,11 @@ __all__ = [
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",
+    "TimeWindowSomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
-    "SynapticUseManipulation",
+    "ScaleAcetylcholineUSESynapticManipulation",
     "SynapticMgManipulation",
     "nbS1POmInputs",
     "nbS1VPMInputs",
@@ -224,6 +227,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 from obi_one.scientific.simulation.recording import (
     Recording,
     SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 from obi_one.scientific.simulation.stimulus import (
@@ -231,8 +235,8 @@ from obi_one.scientific.simulation.stimulus import (
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
-    NoiseCurrentClampSomaticStimulus,
-    PercentageNoiseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
@@ -270,5 +274,5 @@ from obi_one.scientific.validations.reconstruction_morphology_validation import 
 
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticMgManipulation,
-    SynapticUseManipulation,
+    ScaleAcetylcholineUSESynapticManipulation,
 )

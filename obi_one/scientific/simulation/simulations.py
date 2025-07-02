@@ -2,12 +2,13 @@ import json
 import os
 from typing import ClassVar, Literal, Self, Annotated, Union
 
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.info import Info
+from obi_one.core.exception import OBIONE_Error
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
@@ -24,7 +25,7 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, Timesta
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 from obi_one.scientific.simulation.execution import (
     run_bluecellulab,
-    run_neurodamus, 
+    run_neurodamus,
 )
 import logging
 from pathlib import Path
@@ -51,7 +52,7 @@ class BlockGroup(StrEnum):
     CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-    
+
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -69,29 +70,27 @@ class SimulationsForm(Form):
                                      BlockGroup.CIRCUIT_MANIPULATIONS_GROUP]
         }
 
-    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation", singular_name="Timestamps", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
-    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
-    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRCUIT_MANIPULATIONS_GROUP, group_order=0)
-
-    
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation.", singular_name="Timestamps", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation.", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation.", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation.", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation.", singular_name="Synaptic Manipulation", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=1)
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
-        simulation_length: list[float] | float = Field(default=1000.0, description="Simulation length in milliseconds (ms)", units="ms")
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
-        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
-        extracellular_calcium_concentration: list[float] | float = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
-        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
-        
-        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
-        _sonata_version: list[float] | float = PrivateAttr(default=2.4) 
-        _target_simulator: list[str] | str = PrivateAttr(default="NEURON") # Target simulator for the simulation
-        _timestep: list[float] | float = PrivateAttr(default=0.025) # Simulation time step in ms
+        simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms).", units="ms")
+        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.", units="mM")
+        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV).", units="mV")
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation.")
 
-    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
-    info: Info = Field(title="Info", description="Information about the simulation campaign", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
+        _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4)
+        _target_simulator: Literal["NEURON", "CORENEURON"] | list[Literal["NEURON", "CORENEURON"]] = PrivateAttr(default="NEURON") # Target simulator for the simulation
+        _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(default=0.025) # Simulation time step in ms
+
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
+    info: Info = Field(title="Info", description="Information about the simulation campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
 
 
     def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):
@@ -128,7 +127,7 @@ class SimulationsForm(Form):
         # )
 
         return self._campaign
-    
+
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
 
         L.info("3. Saving completed simulation campaign generation")
@@ -144,16 +143,16 @@ class SimulationsForm(Form):
 
         return None
 
-    
+
     def add(self, block: Block, name:str='') -> None:
 
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
         reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
 
         if name in self.__dict__.get(block_dict_name).keys():
-            raise ValueError(f"Block with name '{name}' already exists in '{block_dict_name}'!")
-        
-        else: 
+            raise OBIONE_Error(f"Block with name '{name}' already exists in '{block_dict_name}'!")
+
+        else:
             reference_type = globals()[reference_type_name]
             ref = reference_type(block_dict_name=block_dict_name, block_name=name)
             block.set_ref(ref)
@@ -165,7 +164,7 @@ class SimulationsForm(Form):
         self.__dict__[name] = block
 
 
-    
+
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
@@ -205,20 +204,20 @@ class SimulationsForm(Form):
         return self
 
 
-    def _resolve_neuron_set_dictionary(neuron_set, _circuit):
-        """Resolves a neuron set based on current coordinate circuit's default node population and \
-            returns its dictionary.
-        """
-        nset_def = neuron_set.get_node_set_definition(
-            _circuit, _circuit.default_population_name
-        )
-        # FIXME: Better handling of (default) node population in case there is more than one
-        # FIXME: Inconsistency possible in case a node set definition would span multiple populations
-        #        May consider force_resolve_ids=False to enforce resolving into given population
-        #        (but which won't be a human-readable representation any more)
-        name = neuron_set.name
-        dictionary = {name: nset_def}
-        return name, dictionary
+# def _resolve_neuron_set_dictionary(neuron_set, _circuit):
+#         """Resolves a neuron set based on current coordinate circuit's default node population and \
+#             returns its dictionary.
+#         """
+#         nset_def = neuron_set.get_node_set_definition(
+#             _circuit, _circuit.default_population_name
+#         )
+#         # FIXME: Better handling of (default) node population in case there is more than one
+#         # FIXME: Inconsistency possible in case a node set definition would span multiple populations
+#         #        May consider force_resolve_ids=False to enforce resolving into given population
+#         #        (but which won't be a human-readable representation any more)
+#         name = neuron_set.name
+#         dictionary = {name: nset_def}
+#         return name, dictionary
 
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
@@ -229,7 +228,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     _sonata_config: dict = PrivateAttr(default={})
     _logger: logging.Logger = PrivateAttr()
-    
+
     def __init__(self, **data):
         super().__init__(**data)
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
@@ -252,7 +251,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             for asset in self.initialize.circuit.entity(db_client=db_client).assets:
                 if asset.label == "sonata_circuit":
                     self.initialize.circuit.download_circuit_directory(dest_dir=self.coordinate_output_root, db_client=db_client)
-                    _circuit = Circuit(name="TempCircuit", path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
+                    _circuit = Circuit(name=self.initialize.circuit.entity(db_client=db_client).name, path=str(self.coordinate_output_root / asset.path / "circuit_config.json"))
                     self._sonata_config["network"] = asset.path + "/" + Path(_circuit.path).name
                     break
 
@@ -287,12 +286,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         for stimulus_key, stimulus in self.stimuli.items():
             if hasattr (stimulus, "generate_spikes"):
                 stimulus.generate_spikes(_circuit, self.coordinate_output_root, self.initialize.simulation_length, source_node_population=_circuit.default_population_name)
-            self._sonata_config["inputs"].update(stimulus.config())
+            self._sonata_config["inputs"].update(stimulus.config(_circuit, _circuit.default_population_name))
+            #
 
         # Generate recording configs
         self._sonata_config["reports"] = {}
         for recording_key, recording in self.recordings.items():
-            self._sonata_config["reports"].update(recording.config())
+            self._sonata_config["reports"].update(recording.config(_circuit, _circuit.default_population_name, self.initialize.simulation_length))
 
         # Generate list of synaptic manipulation configs (executed in the order in the list)
         # FIXME: Check and make sure that the order in the self.synaptic_manipulations dict is preserved!
@@ -324,12 +324,19 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 assert self._sonata_config.get("node_set") is None, (
                     "Node set config entry already defined!"
                 )
+
+                # Assert that simulation neuron set is biophysical
+                if _nset.population_type(_circuit, _circuit.default_population_name) != "biophysical":
+                    raise OBIONE_Error(
+                        f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' is not biophysical!"
+                    )
+
                 self._sonata_config["node_set"] = _name
 
             # Add node set to SONATA circuit object
             # (will raise an error in case already existing)
             nset_def = _nset.get_node_set_definition(
-                _circuit, _circuit.default_population_name
+                _circuit, _circuit.default_population_name, force_resolve_ids=True
             )
             NeuronSet.add_node_set_to_circuit(c, {_name: nset_def}, overwrite_if_exists=False)
 
@@ -350,9 +357,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     def save(self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client) -> None:
         """Saves the simulation to the database."""
-        
+
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
-        
+
         L.info(f"-- Register Simulation Entity")
         simulation = db_client.register_entity(
             entitysdk.models.Simulation(
@@ -361,7 +368,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,
-                
+
             )
         )
 
@@ -382,7 +389,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             file_content_type="application/json",
             asset_label='sonata_simulation_config'
         )
-        
+
         L.info(f"-- Upload custom_node_sets")
         _ = db_client.upload_file(
             entity_id=simulation.id,
@@ -406,7 +413,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     )
 
         return simulation
-    
+
     def run(
         self,
         simulation_config: Union[str, Path],
@@ -414,9 +421,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         save_nwb: bool = False
     ) -> None:
         """Run the simulation with the specified backend.
-        
+
         The simulation results are saved to the specified results directory.
-        
+
         Args:
             simulation_config: Path to the simulation configuration file
             simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
@@ -425,7 +432,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         Raises:
             ValueError: If the requested backend is not implemented.
         """
-        
+
         self._logger.info(f"Starting simulation with {simulator} backend")
         # Convert to lowercase for case-insensitive comparison
         simulator = simulator.lower()

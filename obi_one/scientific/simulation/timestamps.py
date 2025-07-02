@@ -21,7 +21,7 @@ class Timestamps(Block, ABC):
 
 
 class SingleTimestamp(Timestamps):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A single timestamp at a specified time."""
 
     title: ClassVar[str] = "Single Timestamp"
 
@@ -30,15 +30,16 @@ class SingleTimestamp(Timestamps):
 
 
 class RegularTimestamps(Timestamps):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """A series of timestamps at regular intervals."""
 
     title: ClassVar[str] = "Regular Timestamps"
 
-    number_of_repetitions: Annotated[
-        NonNegativeInt | list[NonNegativeInt], Field(default=10, description="Number of timestamps to generate.")
-    ]
     interval: Annotated[
         NonNegativeFloat | list[NonNegativeFloat], Field(default=10.0, description="Interval between timestamps in milliseconds (ms).", units="ms")
+    ]
+
+    number_of_repetitions: Annotated[
+        NonNegativeInt | list[NonNegativeInt], Field(default=10, description="Number of timestamps to generate.")
     ]
 
     def _resolve_timestamps(self) -> list[float]:

@@ -42,6 +42,9 @@ class Block(OBIBaseModel):
         self.check_simulation_init()
         return self._simulation_level_name
 
+    def has_name(self) -> bool:
+        return self._simulation_level_name is not None
+
     def set_simulation_level_name(self, value: str):
         if not isinstance(value, str) or not value:
             raise ValueError("Simulation level name must be a non-empty string.")
