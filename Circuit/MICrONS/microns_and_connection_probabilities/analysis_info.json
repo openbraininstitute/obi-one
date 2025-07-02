@@ -1,7 +1,7 @@
 {
     "name": "MICrONS data connectivity analysis 1",
     "authors": ["OBI", "Michael W. Reimann"],
-    "description": "In this notebook we demonstrate the spine-related data we extracted from the MICrONS data.",
+    "description": "In this notebook we analyze connection probabilities in the MICrONS data and some associated problems.",
     "scale": "circuit",
     "type": "notebook",
     "kernel": "python",
@@ -17,7 +17,7 @@
     ],
     "requirements": [
         "Connectome-Utilities>=0.4.11",
-        "bluepysnap>=3.0.2",
+        "scipy>=1.13.1",
         "jupyter>=1.1.1",
         "matplotlib>=3.10.0",
         "numpy>=2.2.1",
