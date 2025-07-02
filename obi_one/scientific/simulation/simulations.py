@@ -351,8 +351,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         L.info(f"-- Register Simulation Entity")
         simulation = db_client.register_entity(
             entitysdk.models.Simulation(
-                name=f"sim-{self.idx}",
-                description=f"sim-{self.idx}",
+                name=f"Simulation {self.idx}",
+                description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,
