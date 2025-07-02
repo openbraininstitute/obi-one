@@ -161,7 +161,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     amplitude_end: float | list[float] = Field(
         default=0.2,
         title="End Amplitude",
-        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nanoamps.",
+        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at \'Start Amplitude\'. Given in nanoamps.",
         units="nA",
     )
 
