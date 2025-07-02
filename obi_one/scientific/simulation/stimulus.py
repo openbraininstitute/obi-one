@@ -161,7 +161,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     amplitude_end: float | list[float] = Field(
         default=0.2,
         title="End Amplitude",
-        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nanoamps",
+        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at \'Start Amplitude\'. Given in nanoamps.",
         units="nA",
     )
 
@@ -533,7 +533,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                         )
     frequency: PositiveFloat | list[PositiveFloat] = Field(default=1.0, 
                                            title="Frequency", 
-                                           description="Mean frequency (Hz) of the Poisson input",
+                                           description="Mean frequency (Hz) of the Poisson input.",
                                            units="Hz")
     random_seed: int | list[int] = Field(
         default=0,

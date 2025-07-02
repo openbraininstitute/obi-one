@@ -52,7 +52,7 @@ class SynapticMgManipulation(SynapticManipulation):
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=2.4, 
         title="Extracellular Magnesium Concentration",
-        description="Extracellular calcium concentration in millimoles (mM)", 
+        description="Extracellular calcium concentration in millimoles (mM).", 
         units="mM"
     )
     
