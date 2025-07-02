@@ -61,27 +61,27 @@ class SimulationsForm(Form):
                                      BlockGroup.CIRCUIT_MANIPULATIONS_GROUP]
         }
 
-    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation", singular_name="Timestamps", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
-    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
-    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation", singular_name="Synaptic Manipulation", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=1)
+    timestamps: dict[str, TimestampsUnion] = Field(default_factory=dict, title="Timestamps", reference_type=TimestampsReference.__name__, description="Timestamps for the simulation.", singular_name="Timestamps", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    stimuli: dict[str, StimulusUnion] = Field(default_factory=dict, title="Stimuli", reference_type=StimulusReference.__name__, description="Stimuli for the simulation.", singular_name="Stimulus", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=0)
+    recordings: dict[str, RecordingUnion] = Field(default_factory=dict, reference_type=RecordingReference.__name__, description="Recordings for the simulation.", singular_name="Recording", group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP, group_order=1)
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(default_factory=dict, reference_type=NeuronSetReference.__name__, description="Neuron sets for the simulation.", singular_name="Neuron Set", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=0)
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation.", singular_name="Synaptic Manipulation", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=1)
 
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
-        simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms)", units="ms")
-        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration in millimoles (mM)", units="mM")
-        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV)", units="mV")
-        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation")
+        simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms).", units="ms")
+        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.", units="mM")
+        v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV).", units="mV")
+        random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation.")
         
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
         _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4) 
         _target_simulator: Literal["NEURON", "CORENEURON"] | list[Literal["NEURON", "CORENEURON"]] = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(default=0.025) # Simulation time step in ms
 
-    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
-    info: Info = Field(title="Info", description="Information about the simulation campaign", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the simulation.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
+    info: Info = Field(title="Info", description="Information about the simulation campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
 
 
     def initialize_db_campaign(self, output_root: Path, multiple_value_parameters_dictionary={}, db_client: entitysdk.client.Client=None):
