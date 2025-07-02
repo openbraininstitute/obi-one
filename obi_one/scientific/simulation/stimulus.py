@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Optional
 import h5py
 
-from pydantic import Field, PrivateAttr, NonNegativeFloat
+from pydantic import Field, PrivateAttr, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
@@ -161,7 +161,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     amplitude_end: float | list[float] = Field(
         default=0.2,
         title="End Amplitude",
-        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at amp_start. Given in nanoamps",
+        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at \'Start Amplitude\'. Given in nanoamps.",
         units="nA",
     )
 
@@ -531,9 +531,9 @@ class PoissonSpikeStimulus(SpikeStimulus):
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
-    frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(default=0.0, 
+    frequency: PositiveFloat | list[PositiveFloat] = Field(default=1.0, 
                                            title="Frequency", 
-                                           description="Mean frequency (Hz) of the Poisson input",
+                                           description="Mean frequency (Hz) of the Poisson input.",
                                            units="Hz")
     random_seed: int | list[int] = Field(
         default=0,
