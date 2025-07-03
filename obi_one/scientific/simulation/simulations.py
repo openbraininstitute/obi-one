@@ -5,6 +5,7 @@ from typing import ClassVar, Literal, Self, Annotated
 from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
 
 from obi_one.core.block import Block
+from obi_one.core.constants import _MIN_SIMULATION_LENGTH_MILLISECONDS, _MAX_SIMULATION_LENGTH_MILLISECONDS
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.info import Info
@@ -43,9 +44,7 @@ class BlockGroup(StrEnum):
     CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-    
-_MIN_SIMULATION_LENGTH_MILLISECONDS = 1.0
-_MAX_SIMULATION_LENGTH_MILLISECONDS = 100000.0
+
 
 class SimulationsForm(Form):
     """Simulations Form."""

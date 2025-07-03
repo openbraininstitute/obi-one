@@ -14,8 +14,8 @@ from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_VALUE_MILLISECONDS
 from obi_one.core.exception import OBIONE_Error
-
 
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
@@ -28,8 +28,6 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
         units="ms"
     )
 
-_MIN_NON_NEGATIVE_FLOAT_VALUE = 1e-6
-_MIN_TIME_STEP_VALUE = 1e-3
 
 class Stimulus(Block, ABC):
 
@@ -366,7 +364,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         title="Frequency",
         units="Hz"
     )
-    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_VALUE)]] = Field(
+    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_VALUE_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_VALUE_MILLISECONDS)]] = Field(
         default=0.025, 
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
