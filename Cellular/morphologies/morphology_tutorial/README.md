@@ -10,6 +10,6 @@ Three notebooks with examples to explore and download morphologies with a select
 
 ## Use
 Instructions are added in the notebooks. 
-Part1: search and download morphologies in Open Brain Platform
-Part2: perform morphological analysis and comparison
-Part3: perform topological analysis and comparison
+Part1: Data_retrieval - search and download morphologies in Open Brain Platform
+Part2: Morphometrics - perform morphological analysis and comparison
+Part3: Topology - perform topological analysis and comparison
