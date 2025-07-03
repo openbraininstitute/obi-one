@@ -380,7 +380,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "amp_start": self.peak_amplitude,
+                "amp_start": self.maximum_amplitude,
                 "frequency": self.frequency,
                 "dt": self.dt,
                 "represents_physical_electrode": self._represents_physical_electrode,
