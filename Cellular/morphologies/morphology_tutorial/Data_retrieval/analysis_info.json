@@ -1,7 +1,7 @@
 {
     "name": "Search and download morphologies",
     "authors": ["OBI", "Lida Kanari"],
-    "description": "Three series of notebook to download and analyze a set of morphologies.",
+    "description": "A series of notebooks to download a set of morphologies.",
     "scale": "cellular",
     "type": "notebook",
     "kernel": "python3.11",
