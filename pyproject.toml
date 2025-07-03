@@ -18,7 +18,7 @@ authors = [
 ]
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12.2,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -59,6 +59,7 @@ dependencies = [
     "bluepyefe>=2.3.45",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
+    "bluecellulab>=2.6.62"
 ]
 
 [project.optional-dependencies]
