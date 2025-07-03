@@ -8,14 +8,14 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Optional
 import h5py
 
-from pydantic import Field, PrivateAttr, NonNegativeFloat, PositiveFloat
+from pydantic import Field, PrivateAttr, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONE_Error
-
 
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
@@ -27,6 +27,7 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
         description="The offset of the stimulus relative to each timestamp in milliseconds (ms).", 
         units="ms"
     )
+
 
 class Stimulus(Block, ABC):
 
@@ -312,13 +313,13 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         title="Amplitude",
         units="nA",
     )
-    width: PositiveFloat | list[PositiveFloat] = Field(
+    width: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms"
     )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
@@ -357,13 +358,13 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         title="Maximum Amplitude",
         units="nA"
     )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
         units="Hz"
     )
-    dt: PositiveFloat | list[PositiveFloat] = Field(
+    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]] = Field(
         default=0.025, 
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
@@ -531,10 +532,11 @@ class PoissonSpikeStimulus(SpikeStimulus):
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(default=1.0, 
-                                           title="Frequency", 
-                                           description="Mean frequency (Hz) of the Poisson input.",
-                                           units="Hz")
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
+        default=1.0, 
+        title="Frequency",
+        description="Mean frequency (Hz) of the Poisson input.",
+        units="Hz")
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
