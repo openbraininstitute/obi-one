@@ -16,7 +16,7 @@
     ],
     "requirements": [
 	"rich",
-	"obi_auth",
+	"obi-auth",
 	"entitysdk",
 	"tmd",
 	"neurom",
