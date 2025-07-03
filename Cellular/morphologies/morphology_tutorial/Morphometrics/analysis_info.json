@@ -15,11 +15,11 @@
         }
     ],
     "requirements": [
-	"rich"
-	"obi_auth"
-	"entitysdk"
-	"tmd"
-	"neurom"
+	"rich",
+	"obi-auth",
+	"entitysdk",
+	"tmd",
+	"neurom",
 	"matplotlib"
     ]
 }
