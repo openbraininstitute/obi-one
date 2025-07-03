@@ -312,13 +312,13 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         title="Amplitude",
         units="nA",
     )
-    width: float | list[float] = Field(
+    width: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0, 
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms"
     )
-    frequency: float | list[float] = Field(
+    frequency: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0, 
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
@@ -357,13 +357,13 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         title="Maximum Amplitude",
         units="nA"
     )
-    frequency: float | list[float] = Field(
+    frequency: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0, 
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
         units="Hz"
     )
-    dt: float | list[float] = Field(
+    dt: PositiveFloat | list[PositiveFloat] = Field(
         default=0.025, 
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
