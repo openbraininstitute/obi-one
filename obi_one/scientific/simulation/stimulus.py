@@ -76,7 +76,7 @@ class SomaticStimulus(Stimulus, ABC):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
-            OBIONE_Error(
+            raise OBIONE_Error(
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
             )
 
