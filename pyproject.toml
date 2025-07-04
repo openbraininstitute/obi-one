@@ -1,6 +1,6 @@
 [project]
 name = "obi-one"
-version = "2025.7.4"
+version = "2025.7.5"
 authors = [
   { name="James Isbister", email="james.isbister@openbraininstitute.org" },
   { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
