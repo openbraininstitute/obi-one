@@ -39,7 +39,6 @@ SimulationNeuronSetUnion = (
     | IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
-    | rCA1CA3Inputs
 )
 
 from obi_one.core.block_reference import BlockReference
