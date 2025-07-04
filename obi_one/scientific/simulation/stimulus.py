@@ -28,6 +28,8 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
         units="ms"
     )
 
+_MAX_POISSON_SPIKE_LIMIT = 5000000
+
 
 class Stimulus(Block, ABC):
 
@@ -548,8 +550,14 @@ class PoissonSpikeStimulus(SpikeStimulus):
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
-        gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
+
+        if self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps) > _MAX_POISSON_SPIKE_LIMIT:
+            raise OBIONE_Error(
+                f"Poisson input exceeds maximum allowed nunmber of spikes ({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
+
+        gid_spike_map = {}
         for timestamp_idx, timestamp_t in enumerate(timestamps):
             start_time = timestamp_t + self.timestamp_offset
             end_time = start_time + self.duration
