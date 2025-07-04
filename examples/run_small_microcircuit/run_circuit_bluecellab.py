@@ -62,7 +62,7 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
     This function gives parameters for sim.instantiate_gids() based on the
     simulation config. See the package BlueCellulab/bluecellulab/circuit_simulation.py
     for more details.
-    
+
     Args:
         simulation_config_data: Loaded simulation configuration
     Returns:
@@ -350,7 +350,7 @@ def run_bluecellulab(
 
         # Run simulation
         logger.info(f"Rank {rank}: Running simulation...")
-        sim.run(t_stop, dt, cvode=False)
+        sim.run(t_stop, cvode=False)
 
         # Get time trace once for all cells
         time_ms = sim.get_time_trace()
