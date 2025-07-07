@@ -5,6 +5,7 @@ from typing import ClassVar, Literal, Self, Annotated
 from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
 
 from obi_one.core.block import Block
+from obi_one.core.constants import _MIN_SIMULATION_LENGTH_MILLISECONDS, _MAX_SIMULATION_LENGTH_MILLISECONDS
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.info import Info
@@ -43,7 +44,7 @@ class BlockGroup(StrEnum):
     CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-    
+
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -70,7 +71,7 @@ class SimulationsForm(Form):
     class Initialize(Block):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
-        simulation_length: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms).", units="ms")
+        simulation_length: Annotated[NonNegativeFloat, Field(ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS)] | Annotated[list[Annotated[NonNegativeFloat, Field(ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]], Field(min_length=1)] = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms).", units="ms")
         extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.", units="mM")
         v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV).", units="mV")
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation.")
@@ -350,8 +351,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         L.info(f"-- Register Simulation Entity")
         simulation = db_client.register_entity(
             entitysdk.models.Simulation(
-                name=f"sim-{self.idx}",
-                description=f"sim-{self.idx}",
+                name=f"Simulation {self.idx}",
+                description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,

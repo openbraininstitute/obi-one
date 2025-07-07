@@ -60,4 +60,4 @@ class SynapticMgManipulation(SynapticManipulation):
         return "Mg"
 
     def _get_synapse_configure(self) -> str:
-        return f"%%s.mg = {self.magnesium_value}"
+        return f"%s.mg = {self.magnesium_value}"
