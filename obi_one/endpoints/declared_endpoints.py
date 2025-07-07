@@ -21,10 +21,8 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
-from obi_one.scientific.validations.reconstruction_morphology_validation import (
-    ReconstructionMorphologyValidation,    
-    AnotherValidationClass,
-    YetAnotherValidationClass,    
+from obi_one.scientific.validations.validation_functions import (
+    MorphologyValidations,    
 )
 
 # Import the new function for validation webpage content
