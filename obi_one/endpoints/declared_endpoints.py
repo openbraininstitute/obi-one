@@ -1,11 +1,15 @@
-from enum import Enum, auto, StrEnum 
+# declared_endpoints.py
+import json
+from enum import Enum, auto, StrEnum
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import entitysdk.client
 import entitysdk.exception
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Dict, List, Any
+import os
+import inspect
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -22,38 +26,44 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     get_morphology_metrics,
 )
 from obi_one.scientific.validations.validation_functions import (
-    MorphologyValidations,    
+    MorphologyValidations,
+    EntityType,
+    BaseValidations,
+    EntityValidationManager,
+    ValidationQueue
 )
 
-# Import the new function for validation webpage content
 from obi_one.endpoints.validation_config_page import get_validation_config_page_content
 
-# Define the path to your validation config file
-VALIDATION_CONFIG_PATH = Path("validation_config.json")  # Adjust this path if your file is elsewhere
+# Dictionary to store registered validation objects for easy lookup
+REGISTERED_VALIDATION_OBJECTS: Dict[EntityType, BaseValidations] = {}
 
-#we will later import this from entitycore directly
-#but entitycore has no PyPi package currently
-class EntityType(StrEnum):
-    """Entity types."""
-    age = auto()
-    analysis_software_source_code = auto()
-    emodel = auto()
-    experimental_bouton_density = auto()
-    experimental_neuron_density = auto()
-    experimental_synapses_per_connection = auto()
-    memodel = auto()
-    mesh = auto()
-    cell_morphology = auto()
-    electrical_cell_recording = auto()
-    electrical_recording_stimulus = auto()
-    scientific_artifact = auto()
-    single_neuron_simulation = auto()
-    single_neuron_synaptome = auto()
-    single_neuron_synaptome_simulation = auto()
-    subject = auto()
-    synaptic_pathway = auto()
-    
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
+    # Initialize EntityValidationManager and register validation objects here
+    # This ensures it's set up when the router is activated.
+    config_dir = "validation_configs"
+    EntityValidationManager.set_config_directory(config_dir)
+
+    # Ensure the config directory exists
+    os.makedirs(EntityValidationManager._config_directory, exist_ok=True)
+
+    # Register MorphologyValidations (and any other validation classes)
+    morphology_validator = MorphologyValidations()
+    EntityValidationManager.register_validation_object(EntityType.cell_morphology, morphology_validator)
+    REGISTERED_VALIDATION_OBJECTS[EntityType.cell_morphology] = morphology_validator
+
+    # Example of creating a dummy config file if it doesn't exist for cell_morphology
+    # This ensures the frontend has something to load initially for this type
+    config_path = Path(EntityValidationManager._config_directory) / f"{EntityType.cell_morphology.value}.json"
+    if not config_path.exists():
+        default_config = {
+            ValidationQueue.MUST_PASS_TO_UPLOAD: ["is_loadable"]
+        }
+        with open(config_path, "w") as f:
+            json.dump(default_config, f, indent=4)
+        L.info(f"Created default validation config for {EntityType.cell_morphology.value}")
+
+
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
@@ -93,125 +103,256 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
- # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    # --- NEW ENDPOINT FOR THE SIMPLE TEST PAGE (kept from your old file) ---
     @router.get(
-        "/configure_validations_page",
-        summary="Configure Validations Webpage",
+        "/test_page",
+        summary="Simple Test Page",
         response_class=HTMLResponse,
         status_code=HTTPStatus.OK,
     )
-    @router.get(
-        "/available_entity_types",
-        summary="Get Available Entity Types",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
-    )
-    async def get_available_entity_types():
+    async def simple_test_page():
         """
-        Returns a list of available entity types from the EntityType enum.
+        Serves a basic HTML page displaying "Test page".
         """
-        return JSONResponse({"entity_types": [e.value for e in EntityType]})
+        return HTMLResponse(content="<h1>Test page</h1>", status_code=HTTPStatus.OK)
+    # --- END NEW ENDPOINT ---
 
-    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION ---
+    # --- NEW ENDPOINTS FOR VALIDATION CONFIGURATION (updated) ---
+
     @router.get(
-        "/configure_validations_page",
-        summary="Configure Validations Webpage",
+        "/configure-validations-page",
+        summary="Configure Validations Page",
+        description="Serves the HTML page for configuring validation rules.",
         response_class=HTMLResponse,
-        status_code=HTTPStatus.OK,
     )
-    async def configure_validations_webpage():
-        """
-        Serves the HTML page for editing validation configurations.
-        """
-        html_content = get_validation_config_page_content()
-        return HTMLResponse(content=html_content, status_code=HTTPStatus.OK)
+    def configure_validations_page():
+        return get_validation_config_page_content()
 
     @router.get(
-        "/available_validation_functions",
-        summary="Get Available Validation Functions",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
+        "/get-entity-validation-config/{entity_type_str}",
+        summary="Get Entity-Specific Validation Configuration",
+        description="Retrieves the validation configuration for a specific entity type.",
     )
-    async def get_available_validation_functions():
-        """
-        Returns a list of available validation function names and their associated entity types
-        from predefined classes.
-        """
-        validation_classes = [
-            ReconstructionMorphologyValidation,
-            AnotherValidationClass,
-            YetAnotherValidationClass,            
-        ]
-        function_info = []
-        for cls in validation_classes:
-            function_info.append({
-                "name": cls.__name__,
-                "entity": getattr(cls, 'entity', None)
-            })
-        return JSONResponse({"validation_functions": function_info})
-
-    @router.get(
-        "/validation_config",
-        summary="Get Validation Configuration",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
-    )
-    async def get_validation_config():
-        """
-        Reads and returns the current validation_config.json file.
-        """
-        if not VALIDATION_CONFIG_PATH.exists():
-            return JSONResponse({"entity_types": {}}, status_code=HTTPStatus.OK)
+    def get_entity_validation_config(entity_type_str: str):
         try:
-            with open(VALIDATION_CONFIG_PATH, 'r') as f:
-                config_data = json.load(f)
-            return JSONResponse(config_data, status_code=HTTPStatus.OK)
-        except json.JSONDecodeError as e:
-            L.error(f"Error decoding validation_config.json: {e}")
+            entity_type = EntityType(entity_type_str)
+            config_path = Path(EntityValidationManager._config_directory) / f"{entity_type.value}.json"
+
+            if not config_path.exists():
+                return JSONResponse(status_code=HTTPStatus.OK, content={}) # Return empty if no config file
+
+            with open(config_path, "r") as f:
+                config = json.load(f)
+            return JSONResponse(content=config)
+        except ValueError:
             raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={"message": "Error decoding validation_config.json"}
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": f"Invalid entity type: {entity_type_str}"}
+            )
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": "Invalid JSON format in configuration file."}
             )
         except Exception as e:
-            L.error(f"Failed to read validation_config.json: {e}")
+            L.error(f"Failed to read validation config for {entity_type_str}: {e}")
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={"message": "Internal server error reading configuration"}
             )
 
-    @router.post(
-        "/validation_config",
-        summary="Update Validation Configuration",
-        response_class=JSONResponse,
-        status_code=HTTPStatus.OK,
+    @router.get(
+        "/get-all-entity-validation-configs",
+        summary="Get All Entity Validation Configurations",
+        description="Retrieves validation configurations for all registered entity types.",
     )
-    
-    async def update_validation_config(request: Request):
-        """
-        Updates the validation_config.json file with new configuration.
-        """
+    def get_all_entity_validation_configs():
+        all_configs = {}
+        for entity_type in EntityType: # Iterate through all known entity types
+            config_path = Path(EntityValidationManager._config_directory) / f"{entity_type.value}.json"
+            if config_path.exists():
+                try:
+                    with open(config_path, "r") as f:
+                        config = json.load(f)
+                        if config: # Only add if config is not empty
+                            all_configs[entity_type.value] = config
+                except json.JSONDecodeError:
+                    L.error(f"Invalid JSON format in config file for {entity_type.value}: {config_path}")
+                except Exception as e:
+                    L.error(f"Error reading config for {entity_type.value}: {e}")
+        return JSONResponse(content=all_configs)
+
+    @router.post(
+        "/save-validation-config",
+        summary="Save Validation Configuration",
+        description="Saves the validation configuration for a specific entity type.",
+    )
+    async def save_validation_config_endpoint(request: Request):
         try:
-            new_config = await request.json()
-            if "entity_types" not in new_config:
+            config_data = await request.json()
+            entity_type_str = config_data.get("entity_type")
+            validation_function_name = config_data.get("validation_function")
+            status = config_data.get("status")
+
+            if not all([entity_type_str, validation_function_name, status]):
                 raise HTTPException(
                     status_code=HTTPStatus.BAD_REQUEST,
-                    detail={"message": "Invalid configuration format: 'entity_types' key missing."}
+                    detail={"message": "Missing entity_type, validation_function, or status in request."}
                 )
-            with open(VALIDATION_CONFIG_PATH, 'w') as f:
-                json.dump(new_config, f, indent=2)
-            return JSONResponse({"message": "Configuration updated successfully!"}, status_code=HTTPStatus.OK)
+
+            try:
+                entity_type = EntityType(entity_type_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail={"message": f"Invalid entity type: {entity_type_str}"}
+                )
+
+            # Ensure the status is a valid ValidationQueue member
+            # Note: ValidationQueue is now an object with attributes, not an Enum itself.
+            # So, validate against its known attribute values.
+            valid_statuses = [
+                ValidationQueue.MUST_PASS_TO_UPLOAD,
+                ValidationQueue.MUST_RUN_UPON_UPLOAD,
+                ValidationQueue.MUST_PASS_TO_SIMULATE
+            ]
+            if status not in valid_statuses:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail={"message": f"Invalid validation status: {status}. Must be one of: {valid_statuses}"}
+                )
+
+
+            # Get the existing configuration for the specific entity type
+            entity_config_path = Path(EntityValidationManager._config_directory) / f"{entity_type.value}.json"
+            current_entity_config = {}
+            if entity_config_path.exists():
+                with open(entity_config_path, "r") as f:
+                    try:
+                        current_entity_config = json.load(f)
+                    except json.JSONDecodeError:
+                        L.warning(f"Existing config for {entity_type.value} is invalid JSON. Overwriting.")
+                        current_entity_config = {}
+
+
+            # Update the configuration
+            if status not in current_entity_config:
+                current_entity_config[status] = []
+
+            if validation_function_name not in current_entity_config[status]:
+                current_entity_config[status].append(validation_function_name)
+
+            # Save the updated configuration
+            with open(entity_config_path, "w") as f:
+                json.dump(current_entity_config, f, indent=4)
+
+            return JSONResponse(content={"message": f"Validation configuration for {entity_type_str} updated successfully."})
+
         except json.JSONDecodeError:
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={"message": "Invalid JSON format in request body."}
             )
         except Exception as e:
-            L.error(f"Failed to write validation_config.json: {e}")
+            L.error(f"Failed to save validation config: {e}")
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={"message": "Internal server error saving configuration"}
             )
-    
+
+    @router.post(
+        "/delete-validation-rule",
+        summary="Delete Validation Rule",
+        description="Deletes a specific validation rule for an entity type.",
+    )
+    async def delete_validation_rule_endpoint(request: Request):
+        try:
+            rule_data = await request.json()
+            entity_type_str = rule_data.get("entity_type")
+            validation_function_name = rule_data.get("validation_function")
+            status = rule_data.get("status")
+
+            if not all([entity_type_str, validation_function_name, status]):
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail={"message": "Missing entity_type, validation_function, or status in request."}
+                )
+
+            try:
+                entity_type = EntityType(entity_type_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail={"message": f"Invalid entity type: {entity_type_str}"}
+                )
+
+            entity_config_path = Path(EntityValidationManager._config_directory) / f"{entity_type.value}.json"
+            current_entity_config = {}
+            if entity_config_path.exists():
+                with open(entity_config_path, "r") as f:
+                    try:
+                        current_entity_config = json.load(f)
+                    except json.JSONDecodeError:
+                        L.warning(f"Existing config for {entity_type.value} is invalid JSON. Cannot delete rule.")
+                        raise HTTPException(
+                            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                            detail={"message": f"Configuration file for {entity_type.value} is corrupted."}
+                        )
+
+            if status in current_entity_config and validation_function_name in current_entity_config[status]:
+                current_entity_config[status].remove(validation_function_name)
+                # If the list for a status becomes empty, remove the status key
+                if not current_entity_config[status]:
+                    del current_entity_config[status]
+
+                with open(entity_config_path, "w") as f:
+                    json.dump(current_entity_config, f, indent=4)
+                return JSONResponse(content={"message": f"Validation rule '{validation_function_name}' removed from {entity_type_str} under {status}."})
+            else:
+                return JSONResponse(status_code=HTTPStatus.NOT_FOUND, content={"message": "Validation rule not found."})
+
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": "Invalid JSON format in request body."}
+            )
+        except Exception as e:
+            L.error(f"Failed to delete validation rule: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Internal server error deleting rule"}
+            )
+
+    @router.get(
+        "/get-validation-functions/{entity_type_str}",
+        summary="Get Available Validation Functions",
+        description="Retrieves a list of available validation functions for a given entity type.",
+        response_model=List[str]
+    )
+    def get_available_validation_functions_endpoint(entity_type_str: str):
+        try:
+            entity_type = EntityType(entity_type_str)
+            validation_object = REGISTERED_VALIDATION_OBJECTS.get(entity_type)
+            if not validation_object:
+                raise HTTPException(
+                    status_code=HTTPStatus.NOT_FOUND,
+                    detail={"message": f"No validation object registered for entity type: {entity_type_str}"}
+                )
+
+            available_functions = validation_object.get_available_validations()
+            return available_functions
+        except ValueError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={"message": f"Invalid entity type: {entity_type_str}"}
+            )
+        except Exception as e:
+            L.error(f"Failed to get validation functions for {entity_type_str}: {e}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"message": "Internal server error retrieving validation functions"}
+            )
+
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="electrophysiology recording metrics",
