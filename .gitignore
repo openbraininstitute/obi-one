@@ -9,8 +9,39 @@ arm64/
 .venv/
 
 # data: ephys files and models
-Cellular/emodels/cadpyr_emodel/
+Cellular/analyse_single_cell_sim/*.json
+Cellular/compare_inhibition_types/*.json
+Cellular/count_prox_vs_dist_length/morphologies/
+Cellular/efeature_extraction/current_clamp_ephys_extraction/traces/
 Cellular/efeature_extraction/ephys/
+Cellular/emodels/cadpyr_emodel/
+Cellular/emodels/cadpyr_showcase/hoc/
+Cellular/emodels/cadpyr_showcase/mechanisms/
+Cellular/emodels/cadpyr_showcase/morphology/
+Cellular/emodels/lfpy_simulations/active_emodel_Iclamp/hoc/
+Cellular/emodels/lfpy_simulations/active_emodel_Iclamp/mechanisms/
+Cellular/emodels/lfpy_simulations/active_emodel_Iclamp/morphology/
+Cellular/emodels/lfpy_simulations/active_emodel_synapses/hoc/
+Cellular/emodels/lfpy_simulations/active_emodel_synapses/mechanisms/
+Cellular/emodels/lfpy_simulations/active_emodel_synapses/morphology/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_LFP/hoc/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_LFP/mechanisms/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_LFP/morphology/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_heatmap/hoc/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_heatmap/mechanisms/
+Cellular/emodels/lfpy_simulations/passive_emodel_synapses_heatmap/morphology/
+Cellular/emodels/parameters_plot/emodel_json/
+Cellular/emodels/plot_iv_fi_curve/hoc/
+Cellular/emodels/plot_iv_fi_curve/mechanisms/
+Cellular/emodels/plot_iv_fi_curve/morphology/
+Cellular/emodels/single_cell_currentscape_analysis/*.pdf
+Cellular/emodels/single_cell_currentscape_analysis/hoc/
+Cellular/emodels/single_cell_currentscape_analysis/mechanisms/
+Cellular/emodels/single_cell_currentscape_analysis/morphology/
+Cellular/emodels/single_cell_impedance_analysis/figures/
+Cellular/emodels/single_cell_impedance_analysis/hoc/
+Cellular/emodels/single_cell_impedance_analysis/mechanisms/
+Cellular/emodels/single_cell_impedance_analysis/morphology/
 temp/
 
 **/.ipynb_checkpoints/

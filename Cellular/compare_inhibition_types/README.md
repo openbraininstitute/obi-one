@@ -9,7 +9,7 @@ last modified: 06.2025
 We distinguish proximal vs. distal innervation on a dendrite by the path distance of a synapse to the post-synaptic soma. This uses an arbitray cutoff, such as 100 um. 
 
 In this notebook, we compare the effect of proximal vs. distal inhibition on spike counts of a neuron receiving excitatory inputs. 
-It takes the results of three single neurons synaptome simulatons as inputs:
+It takes the results of three single neurons synaptome simulations as inputs:
 1. One where only the excitatory synaptic inputs of the neuron were activated with various frequencies
 2. One where the excitatory inputs were activated at a given frequency, and concurrently the _proximal_ inhibitory inputs were activated at various frequencies
 3. One as #2 above, but for the _distal_ instead of the proximal inhibitory inputs.
