@@ -68,6 +68,7 @@ __all__ = [
     "MorphologyMetrics",
     "MorphologyMetricsForm",
     "MorphologyMetricsOutput",
+    "MorphologyValidations",
     "MultiBlockEntitySDKTest",
     "MultiBlockEntitySDKTestForm",
     "MultiPulseCurrentClampSomaticStimulus",
@@ -93,7 +94,6 @@ __all__ = [
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
     "ReconstructionMorphologyFromID",
-    "ReconstructionMorphologyValidation",
     "Recording",
     "RecordingReference",
     "RecordingUnion",
@@ -268,8 +268,8 @@ from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusRefe
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
-from obi_one.scientific.validations.reconstruction_morphology_validation import (
-    ReconstructionMorphologyValidation,
+from obi_one.scientific.validations.validation_functions import (
+    MorphologyValidations,
 )
 
 from obi_one.scientific.unions.unions_manipulations import (
