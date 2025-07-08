@@ -131,13 +131,6 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
                     params['add_minis'] = True
                     break
 
-    # Check for spike replay in inputs
-    # if 'inputs' in simulation_config_data:
-    #     for input_def in simulation_config_data['inputs'].values():
-    #         if input_def.get('module') == 'synapse_replay':
-    #             params['add_replay'] = True
-    #             break
-
     # Enable projections by default if synapses are enabled
     params['add_projections'] = params['add_synapses']
 
