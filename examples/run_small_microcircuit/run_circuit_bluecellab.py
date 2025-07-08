@@ -376,6 +376,9 @@ def run_bluecellulab(
                 }
 
             # spikes -----------------------------------------------------------
+            pop = cell_id[0]
+            gid = cell_id[1]
+            results_spikes[pop][gid] = []
             try:
                 cell_obj = sim.cells[cell_id]
                 spikes = cell_obj.get_recorded_spikes(
