@@ -8,14 +8,14 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Optional
 import h5py
 
-from pydantic import Field, PrivateAttr, NonNegativeFloat, PositiveFloat
+from pydantic import Field, PrivateAttr, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONE_Error
-
 
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
@@ -27,6 +27,9 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
         description="The offset of the stimulus relative to each timestamp in milliseconds (ms).", 
         units="ms"
     )
+
+_MAX_POISSON_SPIKE_LIMIT = 5000000
+
 
 class Stimulus(Block, ABC):
 
@@ -73,7 +76,7 @@ class SomaticStimulus(Stimulus, ABC):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
-            OBIONE_Error(
+            raise OBIONE_Error(
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
             )
 
@@ -312,13 +315,13 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         title="Amplitude",
         units="nA",
     )
-    width: PositiveFloat | list[PositiveFloat] = Field(
+    width: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms"
     )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
@@ -357,13 +360,13 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         title="Maximum Amplitude",
         units="nA"
     )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
         default=1.0, 
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
         units="Hz"
     )
-    dt: PositiveFloat | list[PositiveFloat] = Field(
+    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]] = Field(
         default=0.025, 
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
@@ -380,7 +383,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
                 "node_set": self.neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "amp_start": self.peak_amplitude,
+                "amp_start": self.maximum_amplitude,
                 "frequency": self.frequency,
                 "dt": self.dt,
                 "represents_physical_electrode": self._represents_physical_electrode,
@@ -531,10 +534,11 @@ class PoissonSpikeStimulus(SpikeStimulus):
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
-    frequency: PositiveFloat | list[PositiveFloat] = Field(default=1.0, 
-                                           title="Frequency", 
-                                           description="Mean frequency (Hz) of the Poisson input.",
-                                           units="Hz")
+    frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
+        default=1.0, 
+        title="Frequency",
+        description="Mean frequency (Hz) of the Poisson input.",
+        units="Hz")
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
@@ -546,8 +550,14 @@ class PoissonSpikeStimulus(SpikeStimulus):
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
-        gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
+
+        if self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps) > _MAX_POISSON_SPIKE_LIMIT:
+            raise OBIONE_Error(
+                f"Poisson input exceeds maximum allowed nunmber of spikes ({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
+
+        gid_spike_map = {}
         for timestamp_idx, timestamp_t in enumerate(timestamps):
             start_time = timestamp_t + self.timestamp_offset
             end_time = start_time + self.duration

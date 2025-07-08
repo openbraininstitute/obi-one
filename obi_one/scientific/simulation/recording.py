@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
 from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONE_Error
 
 
@@ -16,12 +17,12 @@ class Recording(Block, ABC):
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
 
-    dt: Annotated[
-        PositiveFloat | list[PositiveFloat],
-        Field(default=0.1,
-            title="Timestep",
-            description="Interval between recording time steps in milliseconds (ms).", units="ms"),
-    ]
+    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]] = Field(
+        default=0.1,
+        title="Timestep",
+        description="Interval between recording time steps in milliseconds (ms).",
+        units="ms",
+    )
 
     def config(self, circuit: Circuit, population: str | None=None, end_time: NonNegativeFloat | None = None) -> dict:
         self.check_simulation_init()
