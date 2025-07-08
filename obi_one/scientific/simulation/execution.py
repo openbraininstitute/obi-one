@@ -3,12 +3,50 @@
 This module provides functionality to run simulations using different backends
 (BlueCelluLab, Neurodamus) based on the simulation requirements.
 """
-import argparse
-from collections import defaultdict
-import json
-import logging
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
+import logging
+
+# Create logs directory if it doesn't exist
+log_dir = Path('logs')
+log_dir.mkdir(exist_ok=True)
+
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+log_file = log_dir / f"simulation_{timestamp}.log"
+
+try:
+    from neuron import h
+    h.nrnmpi_init()
+    pc = h.ParallelContext()
+    rank = int(pc.id())
+except Exception:
+    rank = 0  # fallback for non-MPI runs
+
+handlers = [logging.StreamHandler(sys.stdout)]
+if rank == 0:
+    handlers.append(logging.FileHandler(log_file))
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=handlers
+)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+logger.handlers.clear()
+for h in handlers:
+    logger.addHandler(h)
+
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+for h in logger.handlers:
+    h.setFormatter(formatter)
+
+logger.info(f"Logging initialized on rank {rank}. Log file: {log_file if rank==0 else '(stdout only)'}")
+
+
+from collections import defaultdict
+import json
 from typing import Dict, Any, Union
 import numpy as np
 from bluecellulab import CircuitSimulation
@@ -16,31 +54,9 @@ from bluecellulab.reports.manager import ReportManager
 from neuron import h
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
-from datetime import datetime, timezone
 import uuid
-import matplotlib
 # matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
 import matplotlib.pyplot as plt
-
-# Create logs directory if it doesn't exist
-log_dir = Path('logs')
-log_dir.mkdir(exist_ok=True)
-
-# Set up log file with timestamp
-timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-log_file = log_dir / f'simulation_{timestamp}.log'
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(log_file)
-    ]
-)
-logger = logging.getLogger(__name__)
-logger.info(f"Logging to {log_file}")
 
 # ---- merge helpers ---------------------------------------------
 def _merge_dicts(list_of_dicts):
@@ -363,9 +379,9 @@ def run_bluecellulab(
         # Get voltage traces and spikes for each cell on this rank
         results_traces: Dict[str, Any] = {}
         results_spikes: Dict[str, Dict[int, list]] = defaultdict(dict)  # pop → gid → spikes
+
         for cell_id in cell_ids_for_this_rank:
             gid_key = f"{cell_id[0]}_{cell_id[1]}"
-
             # voltage trace ----------------------------------------------------
             voltage = sim.get_voltage_trace(cell_id)
             if voltage is not None:
@@ -376,17 +392,19 @@ def run_bluecellulab(
                 }
 
             # spikes -----------------------------------------------------------
+            pop = cell_id[0]
+            gid = cell_id[1]
+            results_spikes[pop][gid] = []
+
             try:
                 cell_obj = sim.cells[cell_id]
                 spikes = cell_obj.get_recorded_spikes(
                     location=sim.spike_location, threshold=sim.spike_threshold
                 )
                 if spikes is not None and len(spikes):
-                    pop = cell_id[0]
-                    results_spikes[pop][cell_id[1]] = list(spikes)
+                    results_spikes[pop][gid] = list(spikes)
             except Exception:
-                pass  # silently skip cells without spike recordings
-
+                pass  # silently keep empty list if no recording
 
         # Gather all results to rank 0
         logger.info(f"Rank {rank}: Gathering results...")
@@ -402,7 +420,6 @@ def run_bluecellulab(
             # ---- SONATA reports --------------------------------------------
             all_traces = _merge_dicts(gathered_traces)
             all_spikes = _merge_spikes(gathered_spikes)
-
             report_mgr = ReportManager(sim.circuit_access.config, sim.dt)
             report_mgr.write_all(
                 cells_or_traces   = all_traces,
