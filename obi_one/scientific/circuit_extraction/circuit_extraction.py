@@ -54,8 +54,6 @@ import h5py
 import tqdm
 from brainbuilder.utils.sonata import split_population
 
-from .post_process_helpers import preprocess, postprocess
-
 
 class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain
@@ -78,11 +76,6 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             NeuronSet.add_node_set_to_circuit(
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
-
-            # TODO: CHECK IF STILL REQUIRED?
-            # preprocess(sonata_circuit,  # FIXME: Preprocess in-place
-            #            self.initialize.node_delete_prefix,
-            #            self.initialize.edge_delete_prefix)
 
             # Create subcircuit using "brainbuilder"
             print(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
@@ -251,9 +244,6 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 print("Copying mod files")
                 dest_dir = os.path.join(self.coordinate_output_root, mod_folder)
                 shutil.copytree(source_dir, dest_dir)
-
-            # TODO: CHECK IF STILL REQUIRED?
-            # postprocess(new_circuit, biophys_pop_name)
 
             # Run circuit validation
             if self.initialize.run_validation:
