@@ -35,6 +35,8 @@ import tqdm
 from bluepysnap import Circuit
 from morph_tool import convert
 
+import entitysdk.client
+
 
 class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):
     """Creates a circuit with individual morphology files instead of containerized morphologies,
@@ -72,7 +74,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                         return False  # Error
         return True  # All successful
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
             print(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
 
