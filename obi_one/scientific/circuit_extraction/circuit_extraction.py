@@ -28,8 +28,6 @@ class CircuitExtractions(Form):
                                               description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
         create_external: bool | list[bool] = Field(default=True, name="Create external",
                                                    description="whether to create new virtual populations of all the incoming connections")
-        # node_delete_prefix: str | list[str] = ""
-        # edge_delete_prefix: str | list[str] = ""
 
         virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
