@@ -1,7 +1,7 @@
 import abc
 import json
 import os
-from typing import Annotated, Self, Literal, Optional
+from typing import Annotated, Self, Literal, Optional, ClassVar
 
 import bluepysnap as snap
 import numpy as np
@@ -14,11 +14,17 @@ from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
 
+from obi_one.core.exception import OBIONE_Error
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
 _RCA1_CA3_NODE_POP = "CA3_projections"
+
+_ALL_NODE_SET = "All"
+_EXCITATORY_NODE_SET = "Excitatory"
+_INHIBITORY_NODE_SET = "Inhibitory"
+
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
@@ -84,21 +90,18 @@ class AbstractNeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    random_sample: None | int | float | list[None | int | float] = None
-    random_seed: int | list[int] = 0
+    sample_percentage: Annotated[NonNegativeFloat, Field(le=100)] | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)] = Field(
+        default=100.0,
+        title="Sample (Percentage)",
+        description="Percentage of neurons to sample between 0 and 100%",
+        units='%'
+    )
 
-    @model_validator(mode="after")
-    def check_random_sample(self) -> Self:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.random_sample, list):
-            if self.random_sample is not None:
-                if isinstance(self.random_sample, int):
-                    assert self.random_sample >= 0, "Random sample number must not be negative!"
-                elif isinstance(self.random_sample, float):
-                    assert 0.0 <= self.random_sample <= 1.0, (
-                        "Random sample fraction must be between 0.0 and 1.0!"
-                    )
-        return self
+    sample_seed: int | list[int] = Field(
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling."
+    )
 
     @abc.abstractmethod
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -169,13 +172,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.random_sample is not None:
-            rng = np.random.default_rng(self.random_seed)
+        if len(ids) > 0 and self.sample_percentage < 100.0:
+            rng = np.random.default_rng(self.sample_seed)
 
-            if isinstance(self.random_sample, int):
-                num_sample = np.minimum(self.random_sample, len(ids))
-            elif isinstance(self.random_sample, float):
-                num_sample = np.round(self.random_sample * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage/100.0) * len(ids)).astype(int)
 
             ids = ids[
                 rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
@@ -192,7 +192,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.enforce_no_lists()
         population = self._population(population)
         self.check_population(circuit, population)
-        if self.random_sample is None and not force_resolve_ids:
+        if self.sample_percentage is None and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit, population)
         else:
@@ -203,6 +203,10 @@ class AbstractNeuronSet(Block, abc.ABC):
             }
 
         return expression
+    
+    def population_type(self, circuit: Circuit, population: str | None=None):
+        """Returns the population type (i.e. biophysical / virtual)."""
+        return circuit.sonata_circuit.nodes[self._population(population)].type
 
     def to_node_set_file(
         self,
@@ -319,7 +323,58 @@ class PredefinedNeuronSet(NeuronSet):
         return [self.node_set]
 
 
+class AllNeurons(AbstractNeuronSet):
+    """All biophysical neurons."""
+
+    title: ClassVar[str] = "All Neurons"
+    
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _ALL_NODE_SET in circuit.node_sets, (
+            f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_ALL_NODE_SET]
+
+
+class ExcitatoryNeurons(AbstractNeuronSet):
+    """All biophysical excitatory neurons."""
+
+    title: ClassVar[str] = "All Excitatory Neurons"
+
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _EXCITATORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_EXCITATORY_NODE_SET]
+
+
+class InhibitoryNeurons(AbstractNeuronSet):
+    """All inhibitory neurons."""
+
+    title: ClassVar[str] = "All Inhibitory Neurons"
+
+    def check_node_set(self, circuit: Circuit, population: str) -> None:
+        assert _INHIBITORY_NODE_SET in circuit.node_sets, (
+            f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
+        )  # Assumed that all (outer) lists have been resolved
+
+    def _get_expression(self, circuit: Circuit, population):
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_node_set(circuit, population)
+        return [_INHIBITORY_NODE_SET]
+
+
 class nbS1VPMInputs(AbstractNeuronSet):
+    """Virtual neurons projecting from the VPM thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
+
+    title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always VPM.
@@ -330,6 +385,9 @@ class nbS1VPMInputs(AbstractNeuronSet):
     
 
 class nbS1POmInputs(AbstractNeuronSet):
+    """Virtual neurons projecting from the POm thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
+
+    title: ClassVar[str] = "Demo: nbS1 POm Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always POm.
@@ -340,6 +398,9 @@ class nbS1POmInputs(AbstractNeuronSet):
 
 
 class rCA1CA3Inputs(AbstractNeuronSet):
+    """Virtual neurons projecting from the CA3 region to biophysical CA1 neurons in the rCA1 model."""
+
+    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
     
     def _population(self, population: str | None=None):
         # Ignore default node population name. This is always CA3_projections.
@@ -374,6 +435,8 @@ class CombinedNeuronSet(NeuronSet):
 
 class IDNeuronSet(AbstractNeuronSet):
     """Neuron set definition by providing a list of neuron IDs."""
+
+    title: ClassVar[str] = "ID Neuron Set"
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 
@@ -461,6 +524,8 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
@@ -676,6 +741,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
+    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+
     ox: float | list[float] = Field(
         name="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \

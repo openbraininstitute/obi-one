@@ -3,29 +3,29 @@ from obi_one.scientific.simulation.stimulus import (
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
-    NoiseCurrentClampSomaticStimulus,
-    PercentageNoiseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
-    SynchronousSingleSpikeStimulus,
-    PoissonSpikeStimulus
+    PoissonSpikeStimulus,
+    FullySynchronousSpikeStimulus
 )
 
 StimulusUnion = (
-    SynchronousSingleSpikeStimulus
-    | ConstantCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
+    ConstantCurrentClampSomaticStimulus
     | RelativeConstantCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
-    | NoiseCurrentClampSomaticStimulus
-    | PercentageNoiseCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
     | PoissonSpikeStimulus
+    | FullySynchronousSpikeStimulus
 )
 
 from obi_one.core.block_reference import BlockReference
