@@ -851,6 +851,8 @@ class PairMotifNeuronSet(NeuronSet):
                 _val = [_val]
             _check_ops(_op)
             for _o, _v in zip(_op, _val):
+                if _prop in conn_mat_filt.vertex_properties and conn_mat_filt.vertices.dtypes[_prop] == "category":
+                    _v = str(_v)
                 conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(_v)  # Call filter operator
         return conn_mat_filt
 
