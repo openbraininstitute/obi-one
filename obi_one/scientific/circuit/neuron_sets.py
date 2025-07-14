@@ -181,6 +181,9 @@ class AbstractNeuronSet(Block, abc.ABC):
                 rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
             ]
 
+        if len(ids) == 0:
+            L.warning("WARNING: Neuron set empty!")
+        
         return ids
 
     def get_node_set_definition(
