@@ -38,6 +38,7 @@ class Circuit(OBIBaseModel):
         if cmat.is_multigraph:
             cmat = cmat.compress()
             cmat._edges.columns = ["data"]
+            cmat._default_edge = "data"
         return  cmat
 
     @property
