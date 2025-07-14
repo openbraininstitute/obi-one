@@ -974,6 +974,9 @@ class PairMotifNeuronSet(NeuronSet):
                 # Filter pairs
                 pair_tab = pair_tab.loc[pair_sel_ids]
 
+        if pair_tab.shape[0] == 0:
+            L.warning("WARNING: Pair table empty!")
+
         return pair_tab
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
