@@ -934,7 +934,8 @@ class PairMotifNeuronSet(NeuronSet):
     def get_pair_table(self, circuit: Circuit, population: str) -> pandas.DataFrame:
         conn_mat = circuit.connectivity_matrix
         assert np.array_equal(conn_mat.vertices.index, circuit.sonata_circuit.nodes[population].ids()), "ERROR: Neuron ID mismatch in ConnectivityMatrix!"
-        assert np.array_equal(conn_mat.edges.columns, ["data"]), "ERROR: Single edge property 'data' expected (containing the synapse counts)!"
+        assert not conn_mat.is_multigraph, "ERROR: ConnectivityMatrix must not be a multi-graph!"
+        assert np.array_equal(conn_mat.edges.columns, ["data"]), "ERROR: ConnectivityMatrix must contain a single edge property 'data' containing the synapse counts!"
         conn_mat.edges.columns = ["nsyn_ff_"]  # Rename to represent #synapses/connection in feedforward connection
         conn_mat.add_edge_property("iloc_ff_", np.arange(conn_mat.edges.shape[0]))  # Add iloc (position index) based on which to subselect edges later on
 
