@@ -1,5 +1,6 @@
 """Electrophys tool."""
 
+from io import StringIO
 import logging
 import tempfile
 from statistics import mean
@@ -13,8 +14,11 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+
+
 
 POSSIBLE_PROTOCOLS = {
     "idrest": ["idrest"],
@@ -211,6 +215,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     """Compute electrophys features for a given trace."""
     logger = logging.getLogger(__name__)
 
+    log_stream = StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setLevel(logging.WARNING)
+    logging.getLogger("bluepyefe.extract").addHandler(handler)
+
     logger.info(
         "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, stimuli_types=%r",
         trace_id,
@@ -319,6 +328,13 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
             absolute_amplitude=True,
             efel_settings=EFEL_SETTINGS,
         )
+
+        missing_protocols = parse_bpe_logs(log_stream)
+
+        # If all requested protocols are missing from the data
+        if set(stimuli_types).issubset(set(missing_protocols)):
+            raise ProtocolNotFoundError(stimuli_types)
+
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)
         # Format the extracted features into a readable dict for the model
@@ -338,4 +354,27 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
             # Add the stimulus current of the protocol to the output
             output_features[protocol_name]["stimulus_current"] = f"{protocol_def['step']['amp']} nA"
+    logging.getLogger("bluepyefe.extract").removeHandler(handler)
     return ElectrophysiologyMetricsOutput.from_efeatures(output_features)
+
+
+def parse_bpe_logs(log_stream):
+    """
+    Parse the BluePyEfe log stream to extract missing protocols.
+
+    Args:
+        log_stream (StringIO): The BPE log stream containing log messages.
+
+    Returns:
+        missing_protocols (list): Protocols not found in any cell recordings.
+    """
+    log_contents = log_stream.getvalue()
+    missing_protocols = []
+
+    for line in log_contents.splitlines():
+        if "not found in any cell recordings" in line:
+            # Extract protocol name from log line
+            proto = line.split("'")[1]
+            missing_protocols.append(proto)
+
+    return missing_protocols
