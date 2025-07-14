@@ -19,7 +19,7 @@ class Circuit(OBIBaseModel):
 
         if self.matrix_path is not None:
             _cmat = ConnectivityMatrix.from_h5(self.matrix_path)  # Basic check: Try to load the connectivity matrix w/o error
-            np.testing.assert_array_equal(_cmat.vertices["node_ids"], _c.nodes[self._default_population_name(_c)].ids()) # TODO: This assumes the connectivity matrix is the local one, might nee to be extended in the future.
+            np.testing.assert_array_equal(_cmat.vertices["node_ids"], _c.nodes[self._default_population_name(_c)].ids()) # TODO: This assumes the connectivity matrix is the local one, might need to be extended in the future.
 
     def __str__(self):
         return self.name
@@ -31,10 +31,14 @@ class Circuit(OBIBaseModel):
     
     @property
     def connectivity_matrix(self):
-        """Provide access to corresponding ConnectivityMatrix object."""
+        """Provide access to corresponding ConnectivityMatrix object. In case of a multi-graph, returns the compressed version."""
         if self.matrix_path is None:
             raise FileNotFoundError("Connectivity matrix has not been found")
-        return ConnectivityMatrix.from_h5(self.matrix_path)
+        cmat = ConnectivityMatrix.from_h5(self.matrix_path)
+        if cmat.is_multigraph:
+            cmat = cmat.compress()
+            cmat._edges.columns = ["data"]
+        return  cmat
 
     @property
     def node_sets(self):
