@@ -37,8 +37,6 @@ class Circuit(OBIBaseModel):
         cmat = ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:
             cmat = cmat.compress()
-            cmat._edges.columns = ["data"]
-            cmat._default_edge = "data"
         return  cmat
 
     @property
