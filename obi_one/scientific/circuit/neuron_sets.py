@@ -937,11 +937,8 @@ class PairMotifNeuronSet(NeuronSet):
         conn_mat = circuit.connectivity_matrix
         assert not conn_mat.is_multigraph, "ERROR: ConnectivityMatrix must not be a multi-graph!"
 
-        # Rename default column which is expected to represent #synapses/connection in feedforward connection
-        new_name = "nsyn_ff_"
-        new_col_names = [(new_name if _col == conn_mat._default_edge else _col) for _col in conn_mat.edges.columns]
-        conn_mat.edges.columns = new_col_names
-        conn_mat.default(new_name)
+        # Add new columns for feed-forward selection
+        conn_mat.add_edge_property("nsyn_ff_", conn_mat.edges[conn_mat._default_edge])  # Default column expected to represent #synapses/connection
         conn_mat.add_edge_property("iloc_ff_", np.arange(conn_mat.edges.shape[0]))  # Add iloc (position index) based on which to subselect edges later on
 
         # Prepare node set filtering
