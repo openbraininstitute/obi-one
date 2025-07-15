@@ -25,9 +25,9 @@ class CircuitExtractions(Form):
         circuit: Circuit | list[Circuit]
         run_validation: bool = False
         do_virtual: bool | list[bool] = Field(default=True, name="Do virtual",
-                                              description="whether to split out the virtual nodes that target the cells contained in the specified nodeset")
+                                              description="Enable virtual neurons that target the cells contained in the specified neuron set to be split out and kept as virtual neurons together with their connectivity.")
         create_external: bool | list[bool] = Field(default=True, name="Create external",
-                                                   description="whether to create new virtual populations of all the incoming connections")
+                                                   description="Enable external neurons that are outside the specified neuron set but target the cells contained therein to be turned into new virtual neurons together with their connectivity.")
 
         virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
