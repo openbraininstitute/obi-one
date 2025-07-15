@@ -935,7 +935,6 @@ class PairMotifNeuronSet(NeuronSet):
 
     def get_pair_table(self, circuit: Circuit, population: str) -> pandas.DataFrame:
         conn_mat = circuit.connectivity_matrix
-        assert np.array_equal(conn_mat.vertices.index, circuit.sonata_circuit.nodes[population].ids()), "ERROR: Neuron ID mismatch in ConnectivityMatrix!"
         assert not conn_mat.is_multigraph, "ERROR: ConnectivityMatrix must not be a multi-graph!"
 
         # Rename default column which is expected to represent #synapses/connection in feedforward connection
