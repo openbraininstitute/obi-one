@@ -125,6 +125,9 @@ ignore = [
     "DOC501",  # Raised exception missing from docstring
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
+    "FIX002",  # Line contains TODO, consider resolving the issue
+    "TD002",   # Missing author in TODO
+    "TD003",   # Missing issue link for this TODO
 ]
 
 [tool.ruff.lint.isort]
