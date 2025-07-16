@@ -2,17 +2,17 @@ import logging
 import os
 import traceback
 import warnings
-from typing import ClassVar, Optional
-from pydantic import model_validator
-
+from pathlib import Path
+from typing import ClassVar
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-
+from pydantic import model_validator
 
 L = logging.getLogger(__name__)
+
+import entitysdk.client
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -25,12 +25,10 @@ from obi_one.scientific.basic_connectivity_plots.helpers import (
     plot_connection_probability_pathway_stats,
     plot_connection_probability_stats,
     plot_node_stats,
+    plot_node_table,
+    plot_smallMC,
     plot_smallMC_network_stats,
-    plot_smallMC, 
-    plot_node_table
 )
-
-import entitysdk.client
 
 try:
     from connalysis.network.topology import node_degree
@@ -54,12 +52,16 @@ class BasicConnectivityPlots(Form):
         # TODO: implement node population option
         # node_population: None | str | list[None | str] = None
         plot_formats: tuple[str, ...] = ("png", "pdf", "svg")
-        plot_types: tuple[str, ...] = ("nodes", # for any connectivity matrix
-                                       "connectivity_global", "connectivity_pathway", # for medium and large connectomes
-                                       "small_adj_and_stats", "network_in_2D", "property_table", # for small connectomes only
-                                       )
-        rendering_cmap: Optional[str] = None # Color map of the node identities
-        rendering_color_file: Optional[str] = None # Color map file of the nod identities
+        plot_types: tuple[str, ...] = (
+            "nodes",  # for any connectivity matrix
+            "connectivity_global",
+            "connectivity_pathway",  # for medium and large connectomes
+            "small_adj_and_stats",
+            "network_in_2D",
+            "property_table",  # for small connectomes only
+        )
+        rendering_cmap: str | None = None  # Color map of the node identities
+        rendering_color_file: str | None = None  # Color map file of the nod identities
         dpi: int = 300
 
         @model_validator(mode="after")
@@ -67,28 +69,28 @@ class BasicConnectivityPlots(Form):
             if "property_table" in self.plot_types:
                 if self.rendering_cmap == "custom":
                     if not Path(self.rendering_color_file).is_file():
-                        raise ValueError(
-                            "The rendering_color_file is not an existing file.")
-                elif self.rendering_cmap is not None: 
+                        raise ValueError("The rendering_color_file is not an existing file.")
+                elif self.rendering_cmap is not None:
                     cmap = plt.get_cmap(self.rendering_cmap)
                     if not hasattr(cmap, "colors"):
-                        raise ValueError(f"You need to use a discrete color map")
-                else: 
-                    raise ValueError("When plotting `property_table` either a discrete colormap or a color map file must be passed.")
-                
+                        raise ValueError("You need to use a discrete color map")
+                else:
+                    raise ValueError(
+                        "When plotting `property_table` either a discrete colormap or a color map file must be passed."
+                    )
+
             return self
 
     initialize: Initialize
 
 
 class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
-    """
-    Generates and saves basic connectivity plots from a ConnectivityMatrix objects.
+    """Generates and saves basic connectivity plots from a ConnectivityMatrix objects.
 
     Supported plot types:
       - "nodes": Node statistics (e.g., synapse class, layer, mtype).
       - "connectivity_pathway": Connection probabilities per pathway/grouping.  Not useful for small circuits.
-      - "connectivity_global": Global connection probabilities across the network. Not useful for small circuits 
+      - "connectivity_global": Global connection probabilities across the network. Not useful for small circuits
     - "small_adj_and_stats": Adjacency matrix and node statistics for small connectomes only (<= 20 nodes).
     - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
     - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
@@ -96,9 +98,10 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
     Raises:
         Exception: If any error occurs during processing or plotting.
     """
+
     def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
-            full_width = 16 #TODO: Maybe move this outside, but then fontsize would have to be changed accordingly
+            full_width = 16  # TODO: Maybe move this outside, but then fontsize would have to be changed accordingly
             # Set plot format, resolution and plot types
             plot_formats = self.initialize.plot_formats
             plot_types = self.initialize.plot_types
@@ -138,11 +141,12 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             adj_ER = ER_model(adj)
             deg = node_degree(adj, direction=("IN", "OUT"))
             deg_ER = node_degree(adj_ER, direction=("IN", "OUT"))
-            
+
             # Network metrics for large circuits
             # Connection probabilities per pathway
             if "connectivity_pathway" in plot_types:
-                if size[0]<50: L.warning("Your network is likely too small for these plots to be informative.") 
+                if size[0] < 50:
+                    L.warning("Your network is likely too small for these plots to be informative.")
                 conn_probs = {"full": {}, "within": {}}
                 for grouping_prop in ["synapse_class", "layer", "mtype"]:
                     conn_probs["full"][grouping_prop] = connection_probability_pathway(
@@ -163,7 +167,8 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
 
             # Global connection probabilities
             if "connectivity_global" in plot_types:
-                if size[0]<50: L.warning("Your network is likely too small for these plots to be informative.") 
+                if size[0] < 50:
+                    L.warning("Your network is likely too small for these plots to be informative.")
                 # Global connection probabilities
                 global_conn_probs = {"full": None, "within": None}
                 global_conn_probs["full"] = compute_global_connectivity(adj, adj_ER, type="full")
@@ -180,18 +185,21 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                         self.coordinate_output_root, f"network_global_stats.{format}"
                     )
                     fig_network_global.savefig(output_file, dpi=dpi, bbox_inches="tight")
-            
+
             # Network metrics for small circuits
             # Plot the adjacency matrix, Nsyn and degrees
             if "small_adj_and_stats" in plot_types:
-                if size[0]>20: 
-                    L.warning("Your network is too large for these plots.") 
+                if size[0] > 20:
+                    L.warning("Your network is too large for these plots.")
                 else:
-                    fig_adj_and_stats= plot_smallMC_network_stats(conn, full_width,
-                                                                  color_indeg=plt.get_cmap("Set2")(0),
-                                                                  color_outdeg=plt.get_cmap("Set2")(2),
-                                                                  color_strength=plt.get_cmap("Set2")(1),
-                                                                  cmap_adj=plt.get_cmap("viridis"))
+                    fig_adj_and_stats = plot_smallMC_network_stats(
+                        conn,
+                        full_width,
+                        color_indeg=plt.get_cmap("Set2")(0),
+                        color_outdeg=plt.get_cmap("Set2")(2),
+                        color_strength=plt.get_cmap("Set2")(1),
+                        cmap_adj=plt.get_cmap("viridis"),
+                    )
 
                     for format in plot_formats:
                         output_file = os.path.join(
@@ -201,12 +209,12 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
 
             # Plot network in 2D
             if "network_in_2D" in plot_types:
-                if size[0]>20: 
-                    L.warning("Your network is too large for these plots.") 
+                if size[0] > 20:
+                    L.warning("Your network is too large for these plots.")
                 else:
                     cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
-                    fig_network_in_2D= plot_smallMC(conn, cmap, full_width ,textsize=14)
-                    
+                    fig_network_in_2D = plot_smallMC(conn, cmap, full_width, textsize=14)
+
                     for format in plot_formats:
                         output_file = os.path.join(
                             self.coordinate_output_root, f"small_network_in_2D.{format}"
@@ -215,23 +223,23 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
 
             # Plot table of properties
             if "property_table" in plot_types:
-                if size[0]>20: 
-                    L.warning("Your network is too large for this table.") 
+                if size[0] > 20:
+                    L.warning("Your network is too large for this table.")
                 else:
-                    fig_property_table= plot_node_table(conn, figsize=(5,2), 
-                    colors_cmap = self.initialize.rendering_cmap,
-                    colors_file = self.initialize.rendering_color_file,
-                    h_scale = 2.5, 
-                    v_scale = 2.5
+                    fig_property_table = plot_node_table(
+                        conn,
+                        figsize=(5, 2),
+                        colors_cmap=self.initialize.rendering_cmap,
+                        colors_file=self.initialize.rendering_color_file,
+                        h_scale=2.5,
+                        v_scale=2.5,
                     )
-                    
+
                     for format in plot_formats:
                         output_file = os.path.join(
                             self.coordinate_output_root, f"property_table.{format}"
                         )
                         fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
-
-                    
 
             L.info(f"Done with {self.idx}")
 

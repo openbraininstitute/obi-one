@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar
 
 import morphio
 import neurom
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from obi_one.core.validation import SingleValidationOutput, Validation
 

@@ -9,10 +9,10 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
-    AmplitudeInput,
     CALCULATED_FEATURES,
-    ElectrophysiologyMetricsOutput,
     STIMULI_TYPES,
+    AmplitudeInput,
+    ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (

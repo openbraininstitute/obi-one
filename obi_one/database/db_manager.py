@@ -4,6 +4,7 @@ from entitysdk.client import Client
 from entitysdk.common import ProjectContext
 from obi_auth import get_token
 
+
 class FixedTokenManager:
     """A fixed token manager that always returns the same token."""
 
@@ -12,6 +13,7 @@ class FixedTokenManager:
 
     def get_token(self) -> str:
         return self._token
+
 
 class DatabaseManager:
     def __init__(self) -> None:
@@ -25,7 +27,8 @@ class DatabaseManager:
         virtual_lab_id: str,
         project_id: str,
         entity_file_store_root: Path = Path("../../obi-output"),
-        entitycore_api_url: str | None = None, # If None, it will use the default from settings.ENTITYCORE_URL
+        entitycore_api_url: str
+        | None = None,  # If None, it will use the default from settings.ENTITYCORE_URL
     ) -> None:
         """Initialize the database connection and set up the file store path."""
         self.entity_file_store_path = entity_file_store_root / "obi-entity-file-store"

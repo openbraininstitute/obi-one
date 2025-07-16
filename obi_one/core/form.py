@@ -1,14 +1,11 @@
-from typing import ClassVar
+import types
+from typing import ClassVar, get_args, get_origin
+
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
-
-from typing import get_args, get_origin
-
-import types
-
 
 
 class Form(OBIBaseModel, extra="forbid"):
@@ -28,15 +25,13 @@ class Form(OBIBaseModel, extra="forbid"):
     def empty_config(cls):
         # Here you use model_construct or build custom behavior
         return cls.model_construct()
-    
+
     def validated_config(self):
         return self.__class__.model_validate(self.model_dump())
-    
 
     @property
     def block_mapping(self) -> dict:
         """Returns a mapping of block class names to block_dict_name and reference_type."""
-
         if self._block_mapping is None:
             # Get type annotations of the instance's class
             annotations = self.__class__.__annotations__
@@ -53,9 +48,12 @@ class Form(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     reference_type = None
 
-                    if field_info.json_schema_extra and "reference_type" in field_info.json_schema_extra:
+                    if (
+                        field_info.json_schema_extra
+                        and "reference_type" in field_info.json_schema_extra
+                    ):
                         reference_type = field_info.json_schema_extra["reference_type"]
-                    else: 
+                    else:
                         raise ValueError(
                             f"Attribute '{attr_name}' does not have a 'reference_type' in json_schema_extra."
                         )
@@ -75,40 +73,36 @@ class Form(OBIBaseModel, extra="forbid"):
                                 f"Block class {block_class.__name__} already exists in the mapping. \
                                     This suggests that the same block class is used in multiple dictionaries."
                             )
-                        else:
-                            # Initialize a new dictionary for this block class
-                            self._block_mapping[block_class.__name__] = {
-                                "block_dict_name": attr_name,
-                                "reference_type": reference_type,
-                            }
+                        # Initialize a new dictionary for this block class
+                        self._block_mapping[block_class.__name__] = {
+                            "block_dict_name": attr_name,
+                            "reference_type": reference_type,
+                        }
 
         return self._block_mapping
 
-
-
-    
-
     def fill_block_reference_for_block(self, block: Block):
         """Fill the block reference with the actual Block object it references."""
-
         for block_attr_name, block_attr_value in block.__dict__.items():
             # If the Block instance has a `BlockReference` attribute, set it the object it references
             if isinstance(block_attr_value, BlockReference):
                 block_reference = block_attr_value
 
                 if block_reference.block_dict_name != "" and block_reference.block_name != "":
-                    block_reference.block = self.__dict__[block_reference.block_dict_name][block_reference.block_name]
+                    block_reference.block = self.__dict__[block_reference.block_dict_name][
+                        block_reference.block_name
+                    ]
                 elif block_reference.block_dict_name == "" and block_reference.block_name != "":
                     # If the block_dict_name is empty, we assume the block_name is a direct reference to a Block instance
                     if block_reference.block_name == "neuron_set_extra":
                         block_reference.block = self.__dict__[block_reference.block_name]
                 else:
-                    raise ValueError("BlockReference must have a non-empty block_dict_name and block_name.")
-        
+                    raise ValueError(
+                        "BlockReference must have a non-empty block_dict_name and block_name."
+                    )
 
     @model_validator(mode="after")
     def fill_block_references(self):
-
         for attr_name, attr_value in self.__dict__.items():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
@@ -119,13 +113,12 @@ class Form(OBIBaseModel, extra="forbid"):
                 # If so iterate through the dictionary's Block instances
                 for _, block in category_blocks_dict.items():
                     self.fill_block_reference_for_block(block)
-            
+
             elif isinstance(attr_value, Block):
                 block = attr_value
                 self.fill_block_reference_for_block(block)
 
         return self
-
 
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""

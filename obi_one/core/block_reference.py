@@ -1,16 +1,18 @@
-from obi_one.core.block import Block
-from obi_one.core.base import OBIBaseModel
-
-
-from typing import Union, ClassVar, get_args, Any, Literal
-from pydantic import Field
 import abc
+from typing import Any, ClassVar, get_args
+
+from pydantic import Field
+
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.block import Block
+
+
 class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(default="")
     block_name: str = Field()
 
     allowed_block_types: ClassVar[Any] = None
-    
+
     _block: Any = None
 
     @classmethod
@@ -23,9 +25,9 @@ class BlockReference(OBIBaseModel, abc.ABC):
         @staticmethod
         def json_schema_extra(schema: dict, model) -> None:
             # Dynamically get allowed_block_types from subclass
-            allowed_block_types = getattr(model, 'allowed_block_types', [])
-            schema['allowed_block_types'] = [t.__name__ for t in get_args(allowed_block_types)]
-            schema['is_block_reference'] = True
+            allowed_block_types = getattr(model, "allowed_block_types", [])
+            schema["allowed_block_types"] = [t.__name__ for t in get_args(allowed_block_types)]
+            schema["is_block_reference"] = True
 
     @property
     def block(self) -> Block:
@@ -43,4 +45,3 @@ class BlockReference(OBIBaseModel, abc.ABC):
         if not isinstance(value, self.allowed_block_types):
             raise TypeError(f"Value must be of type {self.block_type.__name__}.")
         self._block = value
-

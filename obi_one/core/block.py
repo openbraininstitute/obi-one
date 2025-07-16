@@ -1,10 +1,9 @@
+from typing import ClassVar
+
 from pydantic import PrivateAttr
-from typing import Optional
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
-
-from typing import ClassVar
 
 
 class Block(OBIBaseModel):
@@ -15,20 +14,18 @@ class Block(OBIBaseModel):
     Tuples should be used when list-like parameter is needed.
     """
 
-    title: ClassVar[Optional[str]] = None  # Optional: subclasses can override
+    title: ClassVar[str | None] = None  # Optional: subclasses can override
 
     @classmethod
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
         # Use the subclass-provided title, or fall back to the class name
-        cls.model_config = {
-            "title": cls.title or cls.__name__
-        }
+        cls.model_config = {"title": cls.title or cls.__name__}
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
-    _simulation_level_name: Optional[str] = PrivateAttr(default=None)
+    _simulation_level_name: str | None = PrivateAttr(default=None)
 
     _ref = None
 
@@ -55,10 +52,9 @@ class Block(OBIBaseModel):
         if self._ref is None:
             raise ValueError("Block reference has not been set.")
         return self._ref
-    
+
     def set_ref(self, value):
         self._ref = value
-
 
     def multiple_value_parameters(
         self, category_name: str, block_key: str = ""

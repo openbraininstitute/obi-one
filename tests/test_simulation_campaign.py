@@ -1,4 +1,3 @@
-import obi_one as obi
 
 
 def test_simulation_campaign():

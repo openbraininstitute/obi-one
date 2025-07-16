@@ -1,37 +1,46 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Self, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion, NeuronSetReference
-from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONE_Error
+from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 
 class Recording(Block, ABC):
-
-    neuron_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")]
+    neuron_set: Annotated[
+        NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
+    ]
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
 
-    dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]] = Field(
+    dt: (
+        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
+    ) = Field(
         default=0.1,
         title="Timestep",
         description="Interval between recording time steps in milliseconds (ms).",
         units="ms",
     )
 
-    def config(self, circuit: Circuit, population: str | None=None, end_time: NonNegativeFloat | None = None) -> dict:
+    def config(
+        self,
+        circuit: Circuit,
+        population: str | None = None,
+        end_time: NonNegativeFloat | None = None,
+    ) -> dict:
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
             raise OBIONE_Error(
-                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: \'{self.name}\' should be biophysical!"
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: '{self.name}' should be biophysical!"
             )
-        
+
         if end_time is None:
             raise OBIONE_Error(f"End time must be specified for recording '{self.name}'.")
         self._end_time = end_time
@@ -43,7 +52,7 @@ class Recording(Block, ABC):
                 f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
                 "End time must be later than start time!"
             )
-        
+
         return sonata_config
 
     @abstractmethod
@@ -71,7 +80,7 @@ class SomaVoltageRecording(Recording):
             "end_time": self._end_time,
         }
         return sonata_config
-    
+
 
 class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     """Records the soma voltage of a neuron set over a specified time window."""
@@ -79,10 +88,12 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
     start_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms")
+        NonNegativeFloat | list[NonNegativeFloat],
+        Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms"),
     ]
     end_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms")
+        NonNegativeFloat | list[NonNegativeFloat],
+        Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms"),
     ]
 
     @model_validator(mode="after")
@@ -106,8 +117,7 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         return self
 
     def _generate_config(self) -> dict:
-
         self._start_time = self.start_time
         self._end_time = self.end_time
-        
+
         return super()._generate_config()

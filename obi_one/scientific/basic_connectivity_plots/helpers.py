@@ -8,26 +8,20 @@ import warnings
 
 L = logging.getLogger(__name__)
 
+import matplotlib.patches as mpatches
+
+# Matplotlib imports
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
-
-#Matplotlib imports
-import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from matplotlib.patches import FancyArrow
-from matplotlib.patches import Ellipse
 from matplotlib.gridspec import GridSpec
-import matplotlib.patches as mpatches
-
-
-
-
-
+from matplotlib.patches import Ellipse, FancyArrow
 
 try:
     from connalysis.network.classic import connection_probability_within, density
-    from connalysis.network.topology import rc_submatrix, node_degree
+    from connalysis.network.topology import node_degree, rc_submatrix
 except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
@@ -170,7 +164,7 @@ def make_pie_plot(ax, conn, grouping_prop, cmaps):
     cmap = cmaps[grouping_prop]
     if grouping_prop == "synapse_class":
         # Fix red/blue for EXC/INH, if NA make it gray
-        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0), "NA":"gray"}
+        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0), "NA": "gray"}
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
@@ -203,7 +197,7 @@ def make_pie_plot(ax, conn, grouping_prop, cmaps):
 
 
 def plot_node_stats(conn, cmaps, full_width=17):
-    fig = plt.figure(figsize=(full_width, full_width//3))
+    fig = plt.figure(figsize=(full_width, full_width // 3))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2.75])
 
     ax1 = fig.add_subplot(gs[0, 0])
@@ -286,7 +280,7 @@ def plot_global_connection_probability(ax1, densities):
     ax1.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     ax2.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     # ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
-    #L.info(bars1)
+    # L.info(bars1)
     return ax1, bars1, labels
 
 
@@ -476,22 +470,30 @@ def plot_connection_probability_pathway_stats(full_width, conn_probs, deg, deg_E
     fig.subplots_adjust(wspace=0.3)
     return fig
 
-### Plotting function for small microcircuits 
 
-def plot_smallMC_network_stats(conn, full_width,
-                               color_indeg=plt.get_cmap("Set2")(0),
-                               color_outdeg=plt.get_cmap("Set2")(2),
-                               color_strength=plt.get_cmap("Set2")(1),
-                               cmap_adj=plt.get_cmap("viridis")):
-    
-    fig, axs = plt.subplots(1,3, figsize=(full_width, full_width // 3))#, gridspec_kw={"width_ratios": [1, 2]})
-    adj=conn.matrix
-    adj_plot=adj.toarray().astype(float)
+# Plotting function for small microcircuits
+
+
+def plot_smallMC_network_stats(
+    conn,
+    full_width,
+    color_indeg=plt.get_cmap("Set2")(0),
+    color_outdeg=plt.get_cmap("Set2")(2),
+    color_strength=plt.get_cmap("Set2")(1),
+    cmap_adj=plt.get_cmap("viridis"),
+):
+    fig, axs = plt.subplots(
+        1, 3, figsize=(full_width, full_width // 3)
+    )  # , gridspec_kw={"width_ratios": [1, 2]})
+    adj = conn.matrix
+    adj_plot = adj.toarray().astype(float)
     adj_plot[adj_plot == 0] = np.nan
-    # Connectivity matrix 
+    # Connectivity matrix
     min_val = int(np.nanmin(adj_plot[adj_plot > 0]))
     max_val = int(np.nanmax(adj_plot))
-    plot=axs[0].imshow(adj_plot, cmap=cmap_adj, interpolation='nearest', aspect='auto', vmin=min_val, vmax=max_val)
+    plot = axs[0].imshow(
+        adj_plot, cmap=cmap_adj, interpolation="nearest", aspect="auto", vmin=min_val, vmax=max_val
+    )
     axs[0].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axs[0].yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     axs[0].set_xlabel("Target neuron ID")
@@ -499,15 +501,15 @@ def plot_smallMC_network_stats(conn, full_width,
     axs[0].set_title("Connectivity matrix")
     bbox = axs[0].get_position()
     cbar_height = 0.03  # Height of colorbar axis
-    cbar_pad = 0.125     # Padding below the main axis (fraction of figure height)
+    cbar_pad = 0.125  # Padding below the main axis (fraction of figure height)
     cbar_y = bbox.y0 - cbar_pad - cbar_height
     cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])
-    cbar = plt.colorbar(plot, cax=cax, orientation='horizontal', label="Synapse count")
+    cbar = plt.colorbar(plot, cax=cax, orientation="horizontal", label="Synapse count")
     cbar.ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     # Synapse per connection
     unique_weights, counts = np.unique(adj.toarray(), return_counts=True)
-    mask = (unique_weights != 0)
+    mask = unique_weights != 0
     unique_weights, counts = unique_weights[mask], counts[mask]
     axs[1].bar(unique_weights.astype(int), counts, color=color_strength)
     axs[1].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
@@ -517,17 +519,26 @@ def plot_smallMC_network_stats(conn, full_width,
     axs[1].set_ylabel("Count")
     axs[1].set_title("Connection strength")
 
-    #Plot degrees
-    degree=node_degree(adj, direction=('IN', 'OUT'))
+    # Plot degrees
+    degree = node_degree(adj, direction=("IN", "OUT"))
     bar_width = 0.4
     df = degree["IN"].value_counts().sort_index()
-    axs[2].bar(df.index- bar_width/2 , df, width=bar_width, alpha=1, label="In degree", color=color_indeg)
+    axs[2].bar(
+        df.index - bar_width / 2, df, width=bar_width, alpha=1, label="In degree", color=color_indeg
+    )
     df = degree["OUT"].value_counts().sort_index()
-    axs[2].bar(df.index+ bar_width/2 , df, width=bar_width, alpha=1, label="Out degree", color=color_outdeg)
-    
+    axs[2].bar(
+        df.index + bar_width / 2,
+        df,
+        width=bar_width,
+        alpha=1,
+        label="Out degree",
+        color=color_outdeg,
+    )
+
     axs[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    unique_degrees=np.unique(degree)
-    unique_degrees = unique_degrees[unique_degrees!=0]
+    unique_degrees = np.unique(degree)
+    unique_degrees = unique_degrees[unique_degrees != 0]
     if unique_degrees.size == 1:
         axs[2].set_xticks(unique_degrees)  # Otherwise it gives non-integer x-ticks
 
@@ -538,48 +549,50 @@ def plot_smallMC_network_stats(conn, full_width,
     # Put legend below, otherwise sometimes it's over the bars
     bbox = axs[2].get_position()
     legend_height = 0.03  # Matching more or less the cbar options
-    legend_pad = 0.125     # Matching more or less the cbar options
+    legend_pad = 0.125  # Matching more or less the cbar options
     legend_y = bbox.y0 - cbar_pad - cbar_height
     legend_ax = fig.add_axes([bbox.x0, legend_y, bbox.width, legend_height])
     handles, labels = axs[2].get_legend_handles_labels()
-    legend_ax.legend(handles, labels, loc='center', frameon=False, ncol=2)
-    legend_ax.axis('off')
+    legend_ax.legend(handles, labels, loc="center", frameon=False, ncol=2)
+    legend_ax.axis("off")
 
-    # Make axs[1] square 
+    # Make axs[1] square
     axs[0].set_box_aspect(1)
     axs[1].set_box_aspect(1)
 
-    for ax in axs[1:]: 
+    for ax in axs[1:]:
         ax.spines[["top", "right"]].set_visible(False)
 
     return fig
 
 
-def plot_growing_circles(fig, ax, radii, y1 = 0.5, color="black"): 
+def plot_growing_circles(fig, ax, radii, y1=0.5, color="black"):
     # Get axis aspect ratio to make circles instead of ellipses
     bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
     width, height = bbox.width, bbox.height
-    aspect = width / height    
+    aspect = width / height
 
     # Make even spacing between circles
     total_circle_width = sum([2 * r for r in radii])
     n = len(radii)
     gap = (1 - total_circle_width) / (n + 1)
-    # Compute x positions 
+    # Compute x positions
     x1s = []
     x = gap + radii[0]
     for i in range(n):
         if i > 0:
-            x += radii[i-1] + radii[i] + gap
+            x += radii[i - 1] + radii[i] + gap
         x1s.append(x)
-    
+
     # Plot circles
     for i in range(n):
         radius = radii[i]
         x1 = x1s[i]
         radius_x = radius
         radius_y = radius * aspect
-        ellipse = Ellipse((x1, y1), width=2*radius_x, height=2*radius_y, color=color, zorder=10, clip_on=False)
+        ellipse = Ellipse(
+            (x1, y1), width=2 * radius_x, height=2 * radius_y, color=color, zorder=10, clip_on=False
+        )
         ax.add_patch(ellipse)
 
     ax.set_xlim(0, 1)
@@ -587,6 +600,7 @@ def plot_growing_circles(fig, ax, radii, y1 = 0.5, color="black"):
     ax.set_axis_off()
 
     return ax
+
 
 def plot_growing_arrows(ax, widths, head_widths, y1=0.5, color="black", length=0.2, gap=0.05):
     n = len(widths)
@@ -604,14 +618,17 @@ def plot_growing_arrows(ax, widths, head_widths, y1=0.5, color="black", length=0
     for i in range(n):
         ax.add_patch(
             FancyArrow(
-                x1s[i], y1, length, 0,
-                width=widths[i]/100,
+                x1s[i],
+                y1,
+                length,
+                0,
+                width=widths[i] / 100,
                 head_width=head_widths[i],
-                head_length=length/3,
+                head_length=length / 3,
                 length_includes_head=True,
                 color=color,
                 zorder=10,
-                clip_on=False
+                clip_on=False,
             )
         )
 
@@ -622,7 +639,7 @@ def plot_growing_arrows(ax, widths, head_widths, y1=0.5, color="black", length=0
 
 
 def plot_rc(ax, arrowsize=20, node_size=100):
-    #Create graph 
+    # Create graph
     G = nx.DiGraph()
     G.add_node(0)
     G.add_node(1)
@@ -630,8 +647,9 @@ def plot_rc(ax, arrowsize=20, node_size=100):
     G.add_edge(1, 0)
 
     # Draw the graph with curved edges
-    pos = y=.5; x=0.1
-    pos = {0: (x, y), 1: (x+0.5, y)}
+    pos = y = 0.5
+    x = 0.1
+    pos = {0: (x, y), 1: (x + 0.5, y)}
 
     nx.draw(
         G,
@@ -648,72 +666,100 @@ def plot_rc(ax, arrowsize=20, node_size=100):
     ax.set_box_aspect(1)
     return ax
 
-def plot_small_network(ax, conn, 
-                       node_color=None, edge_color=None, # To choose color of nodes and edges 
-                       # To choose colors of nodes and edges by property, overrides node_color and edge_color
-                       color_nodes_by_prop=False, color_map_nodes=None,color_property_nodes="synapse_class",
-                       color_edges_by_prop=False, color_map_edges=None,color_property_edges="synapse_class",color_edges_by="pre",
-                       edge_weight_scale=3, min_size= 300,  max_size =1500, 
-                       title="Title!", title_fontsize=None,
-                       projection="xy", coord_names=["x", "y"], 
-                       axis_fontsize=None,
-                       ): 
 
-
+def plot_small_network(
+    ax,
+    conn,
+    node_color=None,
+    edge_color=None,  # To choose color of nodes and edges
+    # To choose colors of nodes and edges by property, overrides node_color and edge_color
+    color_nodes_by_prop=False,
+    color_map_nodes=None,
+    color_property_nodes="synapse_class",
+    color_edges_by_prop=False,
+    color_map_edges=None,
+    color_property_edges="synapse_class",
+    color_edges_by="pre",
+    edge_weight_scale=3,
+    min_size=300,
+    max_size=1500,
+    title="Title!",
+    title_fontsize=None,
+    projection="xy",
+    coord_names=["x", "y"],
+    axis_fontsize=None,
+):
     ax.set_title(title)
 
-    G=nx.from_numpy_array(conn.matrix.toarray(), create_using=nx.DiGraph)
+    G = nx.from_numpy_array(conn.matrix.toarray(), create_using=nx.DiGraph)
 
-    ## Choose position of neurons in 2D
-    if projection =="xy":
-        df=conn.vertices[coord_names]
+    # Choose position of neurons in 2D
+    if projection == "xy":
+        df = conn.vertices[coord_names]
         df["xy"] = df[coord_names].values.tolist()
         df = df.drop(columns=coord_names)
-        pos=df.to_dict()['xy']
-    elif projection =="circular": # Nodes in a circle
-        pos = nx.circular_layout(G)               
-    elif projection =="shell":
-        pos = nx.shell_layout(G) # Nodes in concentric circles
-    else: 
-        raise ValueError(f"Projection type: {projection} not implemented. Choose from 'xy', 'circular', or 'shell'.")   
+        pos = df.to_dict()["xy"]
+    elif projection == "circular":  # Nodes in a circle
+        pos = nx.circular_layout(G)
+    elif projection == "shell":
+        pos = nx.shell_layout(G)  # Nodes in concentric circles
+    else:
+        raise ValueError(
+            f"Projection type: {projection} not implemented. Choose from 'xy', 'circular', or 'shell'."
+        )
 
-    ## Make edges proportional to weights
-    weights = [G[u][v]['weight'] for u, v in G.edges()]
-    widths = [w / max(weights) * edge_weight_scale for w in weights] # normalize for plotting
+    # Make edges proportional to weights
+    weights = [G[u][v]["weight"] for u, v in G.edges()]
+    widths = [w / max(weights) * edge_weight_scale for w in weights]  # normalize for plotting
 
-    ## Make nodes proportional to total degree
-    total_degree=node_degree(conn.matrix.astype(bool).astype(int), direction=('IN', 'OUT')).sum(axis=1)
+    # Make nodes proportional to total degree
+    total_degree = node_degree(conn.matrix.astype(bool).astype(int), direction=("IN", "OUT")).sum(
+        axis=1
+    )
     min_deg, max_deg = min(total_degree), max(total_degree)
     if max_deg > min_deg:
-        node_sizes = [min_size + (deg - min_deg) / (max_deg - min_deg) * (max_size - min_size) for deg in total_degree]
+        node_sizes = [
+            min_size + (deg - min_deg) / (max_deg - min_deg) * (max_size - min_size)
+            for deg in total_degree
+        ]
     else:
         node_sizes = [min_size for _ in total_degree]
 
-    ## Color nodes and edges (possibly by property type) 
+    # Color nodes and edges (possibly by property type)
     if color_nodes_by_prop:
-        node_colors = [color_map_nodes.get(key) for key in conn.vertices[color_property_nodes].to_numpy()]
-    else: 
-        node_colors=node_color
+        node_colors = [
+            color_map_nodes.get(key) for key in conn.vertices[color_property_nodes].to_numpy()
+        ]
+    else:
+        node_colors = node_color
     if color_edges_by_prop:
-        defining_colors = [color_map_edges.get(key) for key in conn.vertices[color_property_edges].to_numpy()]
+        defining_colors = [
+            color_map_edges.get(key) for key in conn.vertices[color_property_edges].to_numpy()
+        ]
         if color_edges_by == "pre":
             edge_colors = [defining_colors[u] for u, v in G.edges()]
         elif color_edges_by == "post":
             edge_colors = [defining_colors[v] for u, v in G.edges()]
-        else: 
+        else:
             raise ValueError(f"color_edges_by must be 'pre' or 'post', got {color_edges_by}.")
-    else: 
-        edge_colors=edge_color
+    else:
+        edge_colors = edge_color
 
-    ## Plot network 
-    nx.draw(G, pos, with_labels=True, 
-            node_color=node_colors, edge_color=edge_colors,
-            arrows=True, width=widths, node_size=node_sizes, 
-            ax=ax)
+    # Plot network
+    nx.draw(
+        G,
+        pos,
+        with_labels=True,
+        node_color=node_colors,
+        edge_color=edge_colors,
+        arrows=True,
+        width=widths,
+        node_size=node_sizes,
+        ax=ax,
+    )
 
-
-    if projection=="xy":
-        ## Add small axis to show it's a projection
+    if projection == "xy":
+        # Add small axis to show it's a projection
         bbox = ax.get_position()
 
         # Coordinates for the mini-axis (in axes fraction of full axis)
@@ -721,40 +767,55 @@ def plot_small_network(ax, conn,
         dx, dy = 0.1, 0.1
 
         # X axis
-        ax.annotate('', xy=(x0 + dx, y0), xytext=(x0, y0),
-                    arrowprops=dict(arrowstyle="->", lw=1, color='k'),
-                    xycoords='axes fraction')
-        ax.annotate(coord_names[0], xy=(x0 + dx, y0), xycoords='axes fraction', fontsize=axis_fontsize)
+        ax.annotate(
+            "",
+            xy=(x0 + dx, y0),
+            xytext=(x0, y0),
+            arrowprops=dict(arrowstyle="->", lw=1, color="k"),
+            xycoords="axes fraction",
+        )
+        ax.annotate(
+            coord_names[0], xy=(x0 + dx, y0), xycoords="axes fraction", fontsize=axis_fontsize
+        )
 
         # Y arrow
-        ax.annotate('', xy=(x0, y0 + dy), xytext=(x0, y0),
-                    arrowprops=dict(arrowstyle="->", lw=1, color='black'),
-                    xycoords='axes fraction')
+        ax.annotate(
+            "",
+            xy=(x0, y0 + dy),
+            xytext=(x0, y0),
+            arrowprops=dict(arrowstyle="->", lw=1, color="black"),
+            xycoords="axes fraction",
+        )
 
-        ax.annotate(coord_names[1], xy=(x0, y0 + dy),xycoords='axes fraction', fontsize=axis_fontsize)
+        ax.annotate(
+            coord_names[1], xy=(x0, y0 + dy), xycoords="axes fraction", fontsize=axis_fontsize
+        )
     return ax
 
-def make_MC_fig_template(figsize, 
-                         height_ratios=[1, 2, 1],  # relative row heights
-                         width_ratios=[1, 1, 1], 
-                         hspace_row1 = 0.05,
-                         hspace_row2 = 0.15,
-                         hspace_row3 = 0.02,  # hspaces between columns in each row (fraction)
-                         cartoon_gaps = 0.1,  # gap between cartoons 
-                         ax1_ratio = 0.5  # fraction of row width for ax1 
 
-                         ):
+def make_MC_fig_template(
+    figsize,
+    height_ratios=[1, 2, 1],  # relative row heights
+    width_ratios=[1, 1, 1],
+    hspace_row1=0.05,
+    hspace_row2=0.15,
+    hspace_row3=0.02,  # hspaces between columns in each row (fraction)
+    cartoon_gaps=0.1,  # gap between cartoons
+    ax1_ratio=0.5,  # fraction of row width for ax1
+):
     # Make template for figure of small MC network properties
     fig = plt.figure(figsize=figsize)
 
     # Define grid
-    gs = GridSpec(3, 3,  # rows, columns
+    gs = GridSpec(
+        3,
+        3,  # rows, columns
         height_ratios=height_ratios,  # row heights
-        width_ratios=width_ratios,   # columns, will be used per row
-        figure=fig
-        )
+        width_ratios=width_ratios,  # columns, will be used per row
+        figure=fig,
+    )
 
-    ### First row, connectivity and cartoons
+    # First row, connectivity and cartoons
     row1_bottom = gs[0, 0].get_position(fig).y0
     row1_top = gs[0, 0].get_position(fig).y1
     row1_height = row1_top - row1_bottom
@@ -762,22 +823,25 @@ def make_MC_fig_template(figsize,
     row1_right = gs[0, 2].get_position(fig).x1
     row1_width = row1_right - row1_left
 
-
     # ax1: left part, connectivity values
-    col_width = (row1_width - hspace_row1) * ax1_ratio  
+    col_width = (row1_width - hspace_row1) * ax1_ratio
 
-    ax1 = fig.add_axes([row1_left, row1_bottom, row1_left+col_width, row1_height])
+    ax1 = fig.add_axes([row1_left, row1_bottom, row1_left + col_width, row1_height])
 
     # ax2: right part, cartoons
-    n_right = 3  # number of cartoons 
+    n_right = 3  # number of cartoons
     right_start = row1_left + col_width + hspace_row1
-    col_width = (row1_right-right_start-2*cartoon_gaps)/n_right
+    col_width = (row1_right - right_start - 2 * cartoon_gaps) / n_right
     ax2_1 = fig.add_axes([right_start, row1_bottom, col_width, row1_height])
-    ax2_2 = fig.add_axes([right_start + col_width + cartoon_gaps, row1_bottom, col_width, row1_height])
-    ax2_3 = fig.add_axes([right_start + 2 * (col_width + cartoon_gaps), row1_bottom, col_width, row1_height])
-    ax2= (ax2_1, ax2_2, ax2_3)
+    ax2_2 = fig.add_axes(
+        [right_start + col_width + cartoon_gaps, row1_bottom, col_width, row1_height]
+    )
+    ax2_3 = fig.add_axes(
+        [right_start + 2 * (col_width + cartoon_gaps), row1_bottom, col_width, row1_height]
+    )
+    ax2 = (ax2_1, ax2_2, ax2_3)
 
-    ### Second row
+    # Second row
     row2_bottom = gs[1, 0].get_position(fig).y0
     row2_top = gs[1, 0].get_position(fig).y1
     row2_height = row2_top - row2_bottom
@@ -789,7 +853,7 @@ def make_MC_fig_template(figsize,
     ax3 = fig.add_axes([row2_left, row2_bottom, col2_width, row2_height])
     ax4 = fig.add_axes([row2_left + col2_width + hspace_row2, row2_bottom, col2_width, row2_height])
 
-    ### Third row
+    # Third row
     row3_bottom = gs[2, 0].get_position(fig).y0
     row3_top = gs[2, 0].get_position(fig).y1
     row3_height = row3_top - row3_bottom
@@ -800,129 +864,215 @@ def make_MC_fig_template(figsize,
 
     ax5 = fig.add_axes([row3_left, row3_bottom, col3_width, row3_height])
     ax6 = fig.add_axes([row3_left + col3_width + hspace_row3, row3_bottom, col3_width, row3_height])
-    ax7 = fig.add_axes([row3_left + 2 * (col3_width + hspace_row3), row3_bottom, col3_width/2, row3_height])
-    ax8 = fig.add_axes([row3_left + 2 * (col3_width + hspace_row3)+col3_width/2, row3_bottom, col3_width/2, row3_height])
+    ax7 = fig.add_axes(
+        [row3_left + 2 * (col3_width + hspace_row3), row3_bottom, col3_width / 2, row3_height]
+    )
+    ax8 = fig.add_axes(
+        [
+            row3_left + 2 * (col3_width + hspace_row3) + col3_width / 2,
+            row3_bottom,
+            col3_width / 2,
+            row3_height,
+        ]
+    )
 
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
 
 
-def plot_smallMC(conn, cmap, full_width ,textsize=14):
-    ### Generate template for plot 
-    fig, axs = make_MC_fig_template(figsize=(full_width, full_width),
-                                    height_ratios=[1, 3, 0.3],  # relative row heights
-                                    width_ratios=[1, 1, 1], 
-                                    hspace_row1 = 0.15,
-                                    hspace_row2 = 0.01,
-                                    hspace_row3 = 0.01, # hspaces between columns in each row (fraction)
-                                    cartoon_gaps = 0.01, # gap between cartoons 
-                                    ax1_ratio = 0.3  # fraction of row width for ax1 
-                                    )
+def plot_smallMC(conn, cmap, full_width, textsize=14):
+    # Generate template for plot
+    fig, axs = make_MC_fig_template(
+        figsize=(full_width, full_width),
+        height_ratios=[1, 3, 0.3],  # relative row heights
+        width_ratios=[1, 1, 1],
+        hspace_row1=0.15,
+        hspace_row2=0.01,
+        hspace_row3=0.01,  # hspaces between columns in each row (fraction)
+        cartoon_gaps=0.01,  # gap between cartoons
+        ax1_ratio=0.3,  # fraction of row width for ax1
+    )
 
-    ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8=axs
+    ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8 = axs
 
-    ### Plot connection probability 
-    adj=conn.matrix.astype(bool).astype(int)
-    x_pos=0.05
+    # Plot connection probability
+    adj = conn.matrix.astype(bool).astype(int)
+    x_pos = 0.05
     ax1.text(x_pos, 0.7, f"Connection probability: {density(adj):.2e}", fontsize=textsize)
-    ax1.text(x_pos, 0.3, f"Reciprocal connections (%): {density(rc_submatrix(adj))*100:.1f}%", fontsize=textsize)
+    ax1.text(
+        x_pos,
+        0.3,
+        f"Reciprocal connections (%): {density(rc_submatrix(adj)) * 100:.1f}%",
+        fontsize=textsize,
+    )
     ax1.set_axis_off()
 
-    ### Plot cartoons
+    # Plot cartoons
     plot_rc(ax2[0], arrowsize=20, node_size=100)
     ax2[0].set_title("Reciprocal connection", fontsize=textsize, y=1)
 
-    plot_in_out_deg(ax2[1], direction="in", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6)
+    plot_in_out_deg(
+        ax2[1], direction="in", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6
+    )
     ax2[1].set_title("In-degree", fontsize=textsize, y=1)
 
-    plot_in_out_deg(ax2[2], direction="out", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6)
+    plot_in_out_deg(
+        ax2[2], direction="out", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6
+    )
     ax2[2].set_title("Out-degree", fontsize=textsize, y=1)
 
-    ### Network plots
-    # Color nodes by synapse class 
+    # Network plots
+    # Color nodes by synapse class
     color_map_nodes = {"INH": cmap(0), "EXC": cmap(cmap.N)}
     color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-    color_edges_by_prop=True
-    color_property="synapse_class"
+    color_edges_by_prop = True
+    color_property = "synapse_class"
 
     # Plot x-y projection
-    projection, coord_names, title ="xy", ["x", "y"], "Node positions: in x-y projection"
-    #projection, coord_names, title ="circular", None, "Node positions: circular"
-    ax3 = plot_small_network(ax3, conn, 
-                            color_nodes_by_prop=True, color_map_nodes=color_map_nodes, color_property_nodes=color_property,
-                            color_edges_by_prop=color_edges_by_prop, color_map_edges=color_map_edges, color_property_edges=color_property, color_edges_by="pre",
-                            edge_weight_scale=4, min_size= 300,  max_size =1500, 
-                            projection=projection, coord_names=coord_names, axis_fontsize=textsize,
-                            title=title, title_fontsize=textsize)
+    projection, coord_names, title = "xy", ["x", "y"], "Node positions: in x-y projection"
+    # projection, coord_names, title ="circular", None, "Node positions: circular"
+    ax3 = plot_small_network(
+        ax3,
+        conn,
+        color_nodes_by_prop=True,
+        color_map_nodes=color_map_nodes,
+        color_property_nodes=color_property,
+        color_edges_by_prop=color_edges_by_prop,
+        color_map_edges=color_map_edges,
+        color_property_edges=color_property,
+        color_edges_by="pre",
+        edge_weight_scale=4,
+        min_size=300,
+        max_size=1500,
+        projection=projection,
+        coord_names=coord_names,
+        axis_fontsize=textsize,
+        title=title,
+        title_fontsize=textsize,
+    )
 
-    ### Plot circular projection
-    projection, coord_names, title ="circular", None, "Node positions: circular"
-    ax4 = plot_small_network(ax4, conn, 
-                            color_nodes_by_prop=True, color_map_nodes=color_map_nodes, color_property_nodes=color_property,
-                            color_edges_by_prop=color_edges_by_prop, color_map_edges=color_map_edges, color_property_edges=color_property, color_edges_by="pre",
-                            edge_weight_scale=4, min_size= 300,  max_size =1500, 
-                            projection=projection, coord_names=coord_names, axis_fontsize=textsize,
-                            title=title, title_fontsize=textsize)
+    # Plot circular projection
+    projection, coord_names, title = "circular", None, "Node positions: circular"
+    ax4 = plot_small_network(
+        ax4,
+        conn,
+        color_nodes_by_prop=True,
+        color_map_nodes=color_map_nodes,
+        color_property_nodes=color_property,
+        color_edges_by_prop=color_edges_by_prop,
+        color_map_edges=color_map_edges,
+        color_property_edges=color_property,
+        color_edges_by="pre",
+        edge_weight_scale=4,
+        min_size=300,
+        max_size=1500,
+        projection=projection,
+        coord_names=coord_names,
+        axis_fontsize=textsize,
+        title=title,
+        title_fontsize=textsize,
+    )
 
-    # Node legends 
-    largest_radius=0.1
-    y_nodes=0.75
-    # INH 
-    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)} 
-    plot_growing_circles(fig, ax7, radii = [largest_radius], y1 =y_nodes, color=color_map["EXC"][:-1]) 
-    ax7.text(0.5, 0.1, "Excitatory neuron", va="center", ha="center", fontsize=12, color=color_map["EXC"][:-1])
+    # Node legends
+    largest_radius = 0.1
+    y_nodes = 0.75
+    # INH
+    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+    plot_growing_circles(fig, ax7, radii=[largest_radius], y1=y_nodes, color=color_map["EXC"][:-1])
+    ax7.text(
+        0.5,
+        0.1,
+        "Excitatory neuron",
+        va="center",
+        ha="center",
+        fontsize=12,
+        color=color_map["EXC"][:-1],
+    )
     ax7.set_axis_off()
     # EXC
-    plot_growing_circles(fig, ax8, radii = [largest_radius], y1 =y_nodes, color=color_map["INH"][:-1]) 
-    ax8.text(0.5, 0.1, "Inhibitory neuron", va="center", ha="center", fontsize=12, color=color_map["INH"][:-1])
+    plot_growing_circles(fig, ax8, radii=[largest_radius], y1=y_nodes, color=color_map["INH"][:-1])
+    ax8.text(
+        0.5,
+        0.1,
+        "Inhibitory neuron",
+        va="center",
+        ha="center",
+        fontsize=12,
+        color=color_map["INH"][:-1],
+    )
     ax8.set_axis_off()
     # Node size
-    plot_growing_circles(fig, ax6, radii = [largest_radius/6,largest_radius/3, largest_radius/2], y1 = 0.75) 
-    ax6.text(0.5, 0.1, "Node size represents in+out degree", va="center", ha="center", fontsize=14, color="black")
+    plot_growing_circles(
+        fig, ax6, radii=[largest_radius / 6, largest_radius / 3, largest_radius / 2], y1=0.75
+    )
+    ax6.text(
+        0.5,
+        0.1,
+        "Node size represents in+out degree",
+        va="center",
+        ha="center",
+        fontsize=14,
+        color="black",
+    )
 
-    # Edge width legend 
-    plot_growing_arrows(ax5, widths=np.linspace(1,12,3), head_widths=[0.1, 0.2, 0.3], y1=0.75, color="black", length=0.2, gap=0.05)
-    ax5.text(0.5, 0.1, "Edge thickness represents number of synapses", va="center", ha="center", fontsize=12, color="black")
+    # Edge width legend
+    plot_growing_arrows(
+        ax5,
+        widths=np.linspace(1, 12, 3),
+        head_widths=[0.1, 0.2, 0.3],
+        y1=0.75,
+        color="black",
+        length=0.2,
+        gap=0.05,
+    )
+    ax5.text(
+        0.5,
+        0.1,
+        "Edge thickness represents number of synapses",
+        va="center",
+        ha="center",
+        fontsize=12,
+        color="black",
+    )
     return fig
 
-def plot_node_table(conn, figsize, 
-                    colors_cmap, # name of discrete colormap from matplotlib
-                    colors_file = None, # path to rgba colors file
-                    h_scale = 2.5, 
-                    v_scale = 2.5
-                    ):
-    """
-    Plot a table of node properties with color coding.
-    """
 
+def plot_node_table(
+    conn,
+    figsize,
+    colors_cmap,  # name of discrete colormap from matplotlib
+    colors_file=None,  # path to rgba colors file
+    h_scale=2.5,
+    v_scale=2.5,
+):
+    """Plot a table of node properties with color coding.
+    """
     # Get data frame of properties
     df = conn.vertices[["node_ids", "layer", "mtype"]]
-    df = df.copy().rename(columns={"node_ids":"Neuron ID", "layer": "Layer", "mtype": "M-type"})
+    df = df.copy().rename(columns={"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type"})
     df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 
     # Get colors
-    if colors_cmap != "custom": # From color map
+    if colors_cmap != "custom":  # From color map
         colors = plt.get_cmap(colors_cmap)
         N = conn._shape[0]
         if not (hasattr(colors, "colors") and colors.N >= N):
-            raise ValueError(f"The rendering color map must contain at least as many colors as there are neurons.")
+            raise ValueError(
+                "The rendering color map must contain at least as many colors as there are neurons."
+            )
         colors = [colors(i) for i in range(colors.N)]
-    else:  # Load colors from file 
+    else:  # Load colors from file
         colors_df = pd.read_csv(colors_file, header=None)
         colors = [tuple(row) for row in colors_df.values]
-        if not len(colors) >= len(df): 
-            raise ValueError("The rendering color map must contain at least as many colors as there are neurons.")
+        if not len(colors) >= len(df):
+            raise ValueError(
+                "The rendering color map must contain at least as many colors as there are neurons."
+            )
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.axis('off')
-    ax.set_aspect('equal')  
+    ax.axis("off")
+    ax.set_aspect("equal")
 
-
-    table = ax.table(
-        cellText=df.values,
-        colLabels=df.columns,
-        loc='center',
-        cellLoc='center'
-    )
+    table = ax.table(cellText=df.values, colLabels=df.columns, loc="center", cellLoc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(12)
     table.scale(h_scale, v_scale)
@@ -931,7 +1081,7 @@ def plot_node_table(conn, figsize,
 
     # Add color coding from the rendered image
     for i in range(len(df)):
-        cell = table[i+1, 0]  # +1 for header row
+        cell = table[i + 1, 0]  # +1 for header row
         cell.get_text().set_text("")  # Remove text
         bbox = cell.get_window_extent(fig.canvas.get_renderer())
         inv = ax.transData.inverted()
@@ -941,5 +1091,5 @@ def plot_node_table(conn, figsize,
         radius = (y1 - y0) * 0.35
         circle = mpatches.Circle((xc, yc), radius, color=colors[i], zorder=10, clip_on=False)
         ax.add_patch(circle)
-    
+
     return fig

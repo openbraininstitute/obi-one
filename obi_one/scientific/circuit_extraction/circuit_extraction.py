@@ -1,5 +1,6 @@
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
+import entitysdk.client
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -8,8 +9,6 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
-
-import entitysdk.client
 
 
 class CircuitExtractions(Form):
@@ -20,14 +19,20 @@ class CircuitExtractions(Form):
     description: ClassVar[str] = (
         "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output circuit will contain all morphologies, hoc files, and mod files that are required to simulate the extracted circuit."
     )
-    
+
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
         run_validation: bool = False
-        do_virtual: bool | list[bool] = Field(default=True, name="Do virtual",
-                                              description="Enable virtual neurons that target the cells contained in the specified neuron set to be split out and kept as virtual neurons together with their connectivity.")
-        create_external: bool | list[bool] = Field(default=True, name="Create external",
-                                                   description="Enable external neurons that are outside the specified neuron set but target the cells contained therein to be turned into new virtual neurons together with their connectivity.")
+        do_virtual: bool | list[bool] = Field(
+            default=True,
+            name="Do virtual",
+            description="Enable virtual neurons that target the cells contained in the specified neuron set to be split out and kept as virtual neurons together with their connectivity.",
+        )
+        create_external: bool | list[bool] = Field(
+            default=True,
+            name="Create external",
+            description="Enable external neurons that are outside the specified neuron set but target the cells contained therein to be turned into new virtual neurons together with their connectivity.",
+        )
 
         virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
@@ -83,7 +88,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 sonata_circuit,
                 self.initialize.do_virtual,
                 self.initialize.create_external,
-                self.initialize.virtual_sources_to_ignore
+                self.initialize.virtual_sources_to_ignore,
             )
 
             # Custom edit of the circuit config so that all paths are relative to the new base directory

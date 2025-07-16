@@ -29,13 +29,12 @@ import shutil
 import traceback
 from typing import ClassVar
 
+import entitysdk.client
 import h5py
 import numpy as np
 import tqdm
 from bluepysnap import Circuit
 from morph_tool import convert
-
-import entitysdk.client
 
 
 class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):

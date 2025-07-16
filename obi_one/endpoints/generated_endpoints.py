@@ -1,14 +1,11 @@
 import re
-from typing import Annotated, get_type_hints
 import tempfile
+from typing import Annotated, get_type_hints
 
 import entitysdk.client
 import entitysdk.common
-from entitysdk.exception import EntitySDKError
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
 
-from app.config import settings
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import *

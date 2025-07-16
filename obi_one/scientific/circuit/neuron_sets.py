@@ -1,20 +1,18 @@
 import abc
 import json
+import logging
 import os
-from typing import Annotated, Self, Literal, Optional, ClassVar
+from typing import Annotated, ClassVar, Literal, Self
 
 import bluepysnap as snap
 import numpy as np
 import pandas
-import logging
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, model_validator, field_validator
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.circuit.circuit import Circuit
-
-from obi_one.core.exception import OBIONE_Error
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -90,17 +88,18 @@ class AbstractNeuronSet(Block, abc.ABC):
     in simulation_level_name upon initialization of the SimulationsForm.
     """
 
-    sample_percentage: Annotated[NonNegativeFloat, Field(le=100)] | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)] = Field(
+    sample_percentage: (
+        Annotated[NonNegativeFloat, Field(le=100)]
+        | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
+    ) = Field(
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units='%'
+        units="%",
     )
 
     sample_seed: int | list[int] = Field(
-        default=1,
-        title="Sample Seed",
-        description="Seed for random sampling."
+        default=1, title="Sample Seed", description="Seed for random sampling."
     )
 
     @abc.abstractmethod
@@ -152,12 +151,12 @@ class AbstractNeuronSet(Block, abc.ABC):
 
         with open(output_file, "w") as f:
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
-    
-    def _population(self, population: str | None=None):
+
+    def _population(self, population: str | None = None):
         assert population is not None, "Must specify a node population name!"
         return population
 
-    def _resolve_ids(self, circuit: Circuit, population: str | None=None) -> list[int]:
+    def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
         population = self._population(population)
         c = circuit.sonata_circuit
@@ -166,7 +165,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
 
-    def get_neuron_ids(self, circuit: Circuit, population: str | None=None):
+    def get_neuron_ids(self, circuit: Circuit, population: str | None = None):
         """Returns list of neuron IDs (with subsampling, if specified)."""
         self.enforce_no_lists()
         population = self._population(population)
@@ -175,19 +174,17 @@ class AbstractNeuronSet(Block, abc.ABC):
         if len(ids) > 0 and self.sample_percentage < 100.0:
             rng = np.random.default_rng(self.sample_seed)
 
-            num_sample = np.round((self.sample_percentage/100.0) * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
 
-            ids = ids[
-                rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))
-            ]
+            ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
         if len(ids) == 0:
             L.warning("WARNING: Neuron set empty!")
-        
+
         return ids
 
     def get_node_set_definition(
-        self, circuit: Circuit, population: str | None=None, force_resolve_ids=False
+        self, circuit: Circuit, population: str | None = None, force_resolve_ids=False
     ) -> dict:
         """Returns the SONATA node set definition, optionally forcing to resolve individual \
             IDs.
@@ -206,8 +203,8 @@ class AbstractNeuronSet(Block, abc.ABC):
             }
 
         return expression
-    
-    def population_type(self, circuit: Circuit, population: str | None=None):
+
+    def population_type(self, circuit: Circuit, population: str | None = None):
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
 
@@ -228,7 +225,9 @@ class AbstractNeuronSet(Block, abc.ABC):
         """
         if optional_node_set_name is not None:
             self.set_simulation_level_name(optional_node_set_name)
-        assert self.name is not None, "NeuronSet name must be set through the Simulation or optional_node_set_name parameter!"
+        assert self.name is not None, (
+            "NeuronSet name must be set through the Simulation or optional_node_set_name parameter!"
+        )
 
         if file_name is None:
             # Use circuit's node set file name by default
@@ -287,23 +286,26 @@ class AbstractNeuronSet(Block, abc.ABC):
 
 
 class NeuronSet(AbstractNeuronSet):
-    """
-    Extension of abstract neuron set with the ability to specify the node population upon creation.
+    """Extension of abstract neuron set with the ability to specify the node population upon creation.
     This is optional, all functions requiring a node population can be optionally called with the name of
     a default population to be used in case no name was set upon creation.
     """
+
     node_population: str | list[str] | None = None
 
-    def _population(self, population: str | None=None):
+    def _population(self, population: str | None = None):
         if population is not None and self.node_population is not None:
             if population != self.node_population:
-                L.warning("Node population %s has been set for this block and will be used. Ignoring %s",
-                          self.node_population, population)
+                L.warning(
+                    "Node population %s has been set for this block and will be used. Ignoring %s",
+                    self.node_population,
+                    population,
+                )
         population = self.node_population or population
         if population is None:
             raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
         return population
-    
+
 
 class PredefinedNeuronSet(NeuronSet):
     """Neuron set wrapper of an existing (named) node sets already predefined in the node \
@@ -330,7 +332,7 @@ class AllNeurons(AbstractNeuronSet):
     """All biophysical neurons."""
 
     title: ClassVar[str] = "All Neurons"
-    
+
     def check_node_set(self, circuit: Circuit, population: str) -> None:
         assert _ALL_NODE_SET in circuit.node_sets, (
             f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
@@ -378,24 +380,24 @@ class nbS1VPMInputs(AbstractNeuronSet):
     """Virtual neurons projecting from the VPM thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
 
     title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
-    
-    def _population(self, population: str | None=None):
+
+    def _population(self, population: str | None = None):
         # Ignore default node population name. This is always VPM.
         return _NBS1_VPM_NODE_POP
-    
+
     def _get_expression(self, circuit: Circuit, population):
         return {"population": _NBS1_VPM_NODE_POP}
-    
+
 
 class nbS1POmInputs(AbstractNeuronSet):
     """Virtual neurons projecting from the POm thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
 
     title: ClassVar[str] = "Demo: nbS1 POm Inputs"
-    
-    def _population(self, population: str | None=None):
+
+    def _population(self, population: str | None = None):
         # Ignore default node population name. This is always POm.
         return _NBS1_POM_NODE_POP
-    
+
     def _get_expression(self, circuit: Circuit, population):
         return {"population": _NBS1_POM_NODE_POP}
 
@@ -404,14 +406,14 @@ class rCA1CA3Inputs(AbstractNeuronSet):
     """Virtual neurons projecting from the CA3 region to biophysical CA1 neurons in the rCA1 model."""
 
     title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
-    
-    def _population(self, population: str | None=None):
+
+    def _population(self, population: str | None = None):
         # Ignore default node population name. This is always CA3_projections.
         return _RCA1_CA3_NODE_POP
-    
+
     def _get_expression(self, circuit: Circuit, population):
         return {"population": _RCA1_CA3_NODE_POP}
-    
+
 
 class CombinedNeuronSet(NeuronSet):
     """Neuron set definition based on a combination of existing (named) node sets."""
@@ -471,7 +473,7 @@ class PropertyNeuronSet(NeuronSet):
         | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
     ) = tuple()
 
-    def check_properties(self, circuit: Circuit, population: str | None=None) -> None:
+    def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
         self.property_filter.test_validity(circuit, population)
 
@@ -481,7 +483,7 @@ class PropertyNeuronSet(NeuronSet):
                 f"Node set '{_nset}' not found in circuit '{circuit}'!"
             )
 
-    def _get_resolved_expression(self, circuit: Circuit, population: str | None=None) -> dict:
+    def _get_resolved_expression(self, circuit: Circuit, population: str | None = None) -> dict:
         """A helper function used to make subclasses work."""
         c = circuit.sonata_circuit
         population = self._population(population)
@@ -553,7 +555,7 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         default=("x", "y", "z"),
     )
 
-    def _get_expression(self, circuit: Circuit, population: str | None=None) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str | None = None) -> dict:
         population = self._population(population)
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
@@ -575,10 +577,11 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
         return expression
 
+
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
+    """Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron.
     """
-    Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron.
-    """
+
     central_neuron_id: int | list[int] = Field(
         name="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
@@ -587,19 +590,27 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         name="Dimension",
         description="Dimension of the simplices to be extracted",
     )
-    central_neuron_simplex_position: Literal['source', 'target'] | list[Literal['source', 'target']] = Field('source',
+    central_neuron_simplex_position: (
+        Literal["source", "target"] | list[Literal["source", "target"]]
+    ) = Field(
+        "source",
         name="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
     )
-    subsample: bool | list[bool] = Field(True,
+    subsample: bool | list[bool] = Field(
+        True,
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
-    n_count_max: Optional[int | list[int]] = Field(False,
+    n_count_max: int | list[int] | None = Field(
+        False,
         name="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
-    subsample_method: Literal['node_participation', 'random'] | list[Literal['node_participation', 'random']] = Field('node_participation',
+    subsample_method: (
+        Literal["node_participation", "random"] | list[Literal["node_participation", "random"]]
+    ) = Field(
+        "node_participation",
         name="Method to subsample nodes from the extracted simplices",
         description="""
         **Method to subsample nodes**:
@@ -607,21 +618,27 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         - `node_participation`: selects nodes with highest node participation 
             """,
     )
-    simplex_type: Literal['directed', 'reciprocal', 'undirected'] | list[Literal['directed', 'reciprocal', 'undirected']] = Field('directed',
+    simplex_type: (
+        Literal["directed", "reciprocal", "undirected"]
+        | list[Literal["directed", "reciprocal", "undirected"]]
+    ) = Field(
+        "directed",
         name="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
-    seed: Optional[int | list[int]] = Field(None,
+    seed: int | list[int] | None = Field(
+        None,
         name="seed",
         description="Seed used for random subsampling method",
     )
 
-    @field_validator('dim')
+    @field_validator("dim")
     def dim_check(cls, v):
         if v <= 1:
-            raise ValueError('Simplex dimension must be greater than 1')
+            raise ValueError("Simplex dimension must be greater than 1")
         return v
+
     @model_validator(mode="after")
     def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
@@ -630,8 +647,8 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        try: # Try to import connalysis
-            from obi_one.scientific.circuit.simplex_extractors import (simplex_submat)
+        try:  # Try to import connalysis
+            from obi_one.scientific.circuit.simplex_extractors import simplex_submat
         except ImportError as e:
             print(f"Import failed: {e}. You probably need to install connalysis locally")
 
@@ -641,32 +658,40 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         base_expression = self._get_resolved_expression(circuit, population)
 
         # Restrict connectivity matrix to chosen subpopulation and find index of center
-        conn=circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
+        conn = circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
         index = np.where(conn.vertices["node_ids"] == self.central_neuron_id)[0]
         if len(index) == 0:
-            raise ValueError(f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected")
-        index = index[0]    
-            
-        # Get nodes on simplices index by 0 ... conn._shape[0] 
+            raise ValueError(
+                f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected"
+            )
+        index = index[0]
+
+        # Get nodes on simplices index by 0 ... conn._shape[0]
         out = simplex_submat(
-            conn.matrix, index, self.dim, self.central_neuron_simplex_position,
-            self.subsample, self.n_count_max, self.subsample_method,
-            self.simplex_type, self.seed
+            conn.matrix,
+            index,
+            self.dim,
+            self.central_neuron_simplex_position,
+            self.subsample,
+            self.n_count_max,
+            self.subsample_method,
+            self.simplex_type,
+            self.seed,
         )
         selection = out[0] if self.subsample else out
 
-        # Get node_ids (i.e., get correct index) and build expression dict 
-        selection=conn.vertices["node_ids"].iloc[selection]
-        expression = {"population": population, "node_id": selection.tolist()}        
+        # Get node_ids (i.e., get correct index) and build expression dict
+        selection = conn.vertices["node_ids"].iloc[selection]
+        expression = {"population": population, "node_id": selection.tolist()}
         return expression
-    
+
 
 class SimplexNeuronSet(PropertyNeuronSet):
-    """
-    Get neurons that form simplices of a given dimension with a chosen source or target neuron.
-    If a smaller sample is required, it samples simplices while the number of nodes on them is still 
+    """Get neurons that form simplices of a given dimension with a chosen source or target neuron.
+    If a smaller sample is required, it samples simplices while the number of nodes on them is still
     smaller or equal than a set target size.
     """
+
     central_neuron_id: int | list[int] = Field(
         name="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
@@ -675,33 +700,44 @@ class SimplexNeuronSet(PropertyNeuronSet):
         name="Dimension",
         description="Dimension of the simplices to be extracted",
     )
-    central_neuron_simplex_position: Literal['source', 'target'] | list[Literal['source', 'target']] = Field('source',
+    central_neuron_simplex_position: (
+        Literal["source", "target"] | list[Literal["source", "target"]]
+    ) = Field(
+        "source",
         name="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
     )
-    subsample: bool = Field(False,
+    subsample: bool = Field(
+        False,
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
-    n_count_max: Optional[int | list[int]] = Field(None,
+    n_count_max: int | list[int] | None = Field(
+        None,
         name="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
-    simplex_type: Literal['directed', 'reciprocal', 'undirected'] | list[Literal['directed', 'reciprocal', 'undirected']] = Field('directed',
+    simplex_type: (
+        Literal["directed", "reciprocal", "undirected"]
+        | list[Literal["directed", "reciprocal", "undirected"]]
+    ) = Field(
+        "directed",
         name="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
-    seed: Optional[int | list[int]] = Field(None,
+    seed: int | list[int] | None = Field(
+        None,
         name="seed",
         description="Seed used for random subsampling method",
     )
 
-    @field_validator('dim')
+    @field_validator("dim")
     def dim_check(cls, v):
         if v <= 1:
-            raise ValueError('Simplex dimension must be greater than 1')
+            raise ValueError("Simplex dimension must be greater than 1")
         return v
+
     @model_validator(mode="after")
     def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
@@ -710,8 +746,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        try: # Try to import connalysis
-            from obi_one.scientific.circuit.simplex_extractors import (simplex_submat)
+        try:  # Try to import connalysis
+            from obi_one.scientific.circuit.simplex_extractors import simplex_submat
         except ImportError as e:
             print(f"Import failed: {e}. You probably need to install connalysis locally")
 
@@ -721,26 +757,32 @@ class SimplexNeuronSet(PropertyNeuronSet):
         base_expression = self._get_resolved_expression(circuit, population)
 
         # Restrict connectivity matrix to chosen subpopulation and find index of center
-        conn=circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
+        conn = circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
         index = np.where(conn.vertices["node_ids"] == self.central_neuron_id)[0]
         if len(index) == 0:
-            raise ValueError(f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected")
-        index = index[0]    
-            
-        # Get nodes on simplices index by 0 ... conn._shape[0] 
+            raise ValueError(
+                f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected"
+            )
+        index = index[0]
+
+        # Get nodes on simplices index by 0 ... conn._shape[0]
         out = simplex_submat(
-            conn.matrix, index, self.dim, self.central_neuron_simplex_position,
-            self.subsample, self.n_count_max, 'sample_simplices',
-            self.simplex_type, self.seed
+            conn.matrix,
+            index,
+            self.dim,
+            self.central_neuron_simplex_position,
+            self.subsample,
+            self.n_count_max,
+            "sample_simplices",
+            self.simplex_type,
+            self.seed,
         )
         selection = out[0] if self.subsample else out
 
-        # Get node_ids (i.e., get correct index) and build expression dict 
-        selection=conn.vertices["node_ids"].iloc[selection]
-        expression = {"population": population, "node_id": selection.tolist()}        
+        # Get node_ids (i.e., get correct index) and build expression dict
+        selection = conn.vertices["node_ids"].iloc[selection]
+        expression = {"population": population, "node_id": selection.tolist()}
         return expression
-    
-
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
@@ -770,7 +812,7 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         default=("x", "y", "z"),
     )
 
-    def _get_expression(self, circuit: Circuit, population: str | None=None) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str | None = None) -> dict:
         population = self._population(population)
         self.check_node_sets(circuit, population)
         # Always needs to be resolved
@@ -793,16 +835,36 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
 
 
 class PairMotifNeuronSet(NeuronSet):
-    neuron1_filter: dict | list[dict] = Field(default={}, name="Neuron1 filter", description="Filter for first neuron in a pair")
-    neuron2_filter: dict | list[dict] = Field(default={}, name="Neuron2 filter", description="Filter for second neuron in a pair")
+    neuron1_filter: dict | list[dict] = Field(
+        default={}, name="Neuron1 filter", description="Filter for first neuron in a pair"
+    )
+    neuron2_filter: dict | list[dict] = Field(
+        default={}, name="Neuron2 filter", description="Filter for second neuron in a pair"
+    )
 
-    conn_ff_filter: dict | list[dict] = Field(default={}, name="Feedforward connection filter", description="Filter for feedforward connections from the first to the second neuron in a pair")
-    conn_fb_filter: dict | list[dict] = Field(default={}, name="Feedback connection filter", description="Filter for feedback connections from the second to the first neuron in a pair")
+    conn_ff_filter: dict | list[dict] = Field(
+        default={},
+        name="Feedforward connection filter",
+        description="Filter for feedforward connections from the first to the second neuron in a pair",
+    )
+    conn_fb_filter: dict | list[dict] = Field(
+        default={},
+        name="Feedback connection filter",
+        description="Filter for feedback connections from the second to the first neuron in a pair",
+    )
 
-    pair_selection: dict | list[dict] = Field(default={}, name="Selection of pairs", description="Selection of pairs among all potential pairs")
+    pair_selection: dict | list[dict] = Field(
+        default={},
+        name="Selection of pairs",
+        description="Selection of pairs among all potential pairs",
+    )
 
-    node_set_list_op: Literal["union", "intersect"] = Field(default="union", name="Node set list operation", description="Operation how to combine lists of node sets; can be 'union' or 'intersect'.")
-    
+    node_set_list_op: Literal["union", "intersect"] = Field(
+        default="union",
+        name="Node set list operation",
+        description="Operation how to combine lists of node sets; can be 'union' or 'intersect'.",
+    )
+
     @staticmethod
     def _add_nsynconn_fb(conn_mat_filt, conn_mat):
         """Adds #syn/conn for reciprocal connections (i.e., in feedback direction) even if they are not part of the filtered selection."""
@@ -811,7 +873,7 @@ class PairMotifNeuronSet(NeuronSet):
         etab["nsyn_ff_"] = conn_mat._edges["nsyn_ff_"].values
         etab["iloc_ff_"] = conn_mat._edges["iloc_ff_"].values
         etab.set_index(["row", "col"], inplace=True)
-    
+
         etab_filt = conn_mat_filt._edge_indices.copy()
         etab_filt["nsyn_fb_"] = 0
         etab_filt["iloc_fb_"] = -1
@@ -820,14 +882,14 @@ class PairMotifNeuronSet(NeuronSet):
         rev_idx = etab_filt.index.swaplevel("row", "col").values  # Reverse index
         etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).values
         etab_filt.loc[etab_filt["nsyn_fb_"] < 0, "nsyn_fb_"] = 0
-        
+
         conn_mat_filt.add_edge_property("nsyn_fb_", etab_filt["nsyn_fb_"])
         conn_mat_filt.add_edge_property("iloc_fb_", etab_filt["iloc_fb_"])
 
     @staticmethod
     def _merge_ff_fb(ff_sel, fb_sel):
         sel = {}
-        for _sel, _lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"]):
+        for _sel, _lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
             if _sel is not None:
                 sel = sel | {f"{_k}{_lbl}": _v for _k, _v in _sel.items()}
         return sel
@@ -836,7 +898,10 @@ class PairMotifNeuronSet(NeuronSet):
     def _apply_filter(conn_mat, selection, side=None):
         def _check_ops(ops):
             for _op in ops:
-                assert _op in ["le", "lt", "ge", "gt", "eq", "isin"], f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
+                assert _op in ["le", "lt", "ge", "gt", "eq", "isin"], (
+                    f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
+                )
+
         conn_mat_filt = conn_mat
         for _prop, _val in selection.items():
             _op = "eq"  # Default: Filter by equality (i.e., single value is provided)
@@ -849,16 +914,25 @@ class PairMotifNeuronSet(NeuronSet):
                 _op = [_op]
                 _val = [_val]
             _check_ops(_op)
-            for _o, _v in zip(_op, _val):
-                if _prop in conn_mat_filt.vertex_properties and conn_mat_filt.vertices.dtypes[_prop] == "category":
+            for _o, _v in zip(_op, _val, strict=False):
+                if (
+                    _prop in conn_mat_filt.vertex_properties
+                    and conn_mat_filt.vertices.dtypes[_prop] == "category"
+                ):
                     _v = str(_v)
-                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(_v)  # Call filter operator
+                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(
+                    _v
+                )  # Call filter operator
         return conn_mat_filt
 
     @staticmethod
     def _remove_autapses(conn_mat):
-        sel_idx = (conn_mat._edge_indices["row"] != conn_mat._edge_indices["col"]).reset_index(drop=True)
-        return conn_mat.subedges(conn_mat._edge_indices.reset_index(drop=True)[sel_idx].index.values)
+        sel_idx = (conn_mat._edge_indices["row"] != conn_mat._edge_indices["col"]).reset_index(
+            drop=True
+        )
+        return conn_mat.subedges(
+            conn_mat._edge_indices.reset_index(drop=True)[sel_idx].index.values
+        )
 
     @staticmethod
     def _selected_pair_table(conn_mat_filt):
@@ -870,24 +944,26 @@ class PairMotifNeuronSet(NeuronSet):
         pair_tab["nsyn_all"] = pair_tab["nsyn_ff"] + pair_tab["nsyn_fb"]
         pair_tab["is_rc"] = pair_tab["nsyn_fb"] > 0
         return pair_tab
-    
+
     @staticmethod
     def _select_pairs(conn_mat, nrn1_sel, nrn2_sel, ff_sel, fb_sel):
         """Filter pairs based on neuron and connection properties.
-             Neuron properties: synapse_class, mtype, layer, etc.
-             Connection properties: nsyn (#synapses per connection)
-             Note: ff...feed-forward direction (i.e., from nrn1 to nrn2), fb...feedback direction (i.e., from nrn2 to nrn1)
+        Neuron properties: synapse_class, mtype, layer, etc.
+        Connection properties: nsyn (#synapses per connection)
+        Note: ff...feed-forward direction (i.e., from nrn1 to nrn2), fb...feedback direction (i.e., from nrn2 to nrn1)
         """
         conn_mat_filt = conn_mat
         conn_mat_filt = PairMotifNeuronSet._apply_filter(conn_mat_filt, nrn1_sel, "row")
         conn_mat_filt = PairMotifNeuronSet._apply_filter(conn_mat_filt, nrn2_sel, "col")
         conn_mat_filt = PairMotifNeuronSet._remove_autapses(conn_mat_filt)
         PairMotifNeuronSet._add_nsynconn_fb(conn_mat_filt, conn_mat)
-        conn_mat_filt = PairMotifNeuronSet._apply_filter(conn_mat_filt, PairMotifNeuronSet._merge_ff_fb(ff_sel, fb_sel))
+        conn_mat_filt = PairMotifNeuronSet._apply_filter(
+            conn_mat_filt, PairMotifNeuronSet._merge_ff_fb(ff_sel, fb_sel)
+        )
         pair_tab = PairMotifNeuronSet._selected_pair_table(conn_mat_filt)
-    
+
         # print(f"<select_pairs>: {pair_tab.shape[0]} pairs selected ({np.sum(pair_tab['is_rc'] == True)} reciprocal, {np.sum(pair_tab['is_rc'] == False)} feedforward only)")
-    
+
         return pair_tab
 
     @staticmethod
@@ -900,19 +976,25 @@ class PairMotifNeuronSet(NeuronSet):
             for _nset in node_sets:
                 if node_ids is None:
                     node_ids = nodes.ids(_nset)
+                elif node_set_list_op == "union":
+                    node_ids = np.union1d(node_ids, nodes.ids(_nset))
+                elif node_set_list_op == "intersect":
+                    node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
                 else:
-                    if node_set_list_op == "union":
-                        node_ids = np.union1d(node_ids, nodes.ids(_nset))
-                    elif node_set_list_op == "intersect":
-                        node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
-                    else:
-                        assert False, f"Node set list operation '{node_set_list_op}' unknown!"
+                    assert False, f"Node set list operation '{node_set_list_op}' unknown!"
         return node_ids
 
     @staticmethod
-    def _prepare_node_set_filter(conn_mat, nrn1_sel: dict, nrn2_sel: dict, node_set_list_op: str, circuit: Circuit, population: str):
+    def _prepare_node_set_filter(
+        conn_mat,
+        nrn1_sel: dict,
+        nrn2_sel: dict,
+        node_set_list_op: str,
+        circuit: Circuit,
+        population: str,
+    ):
         """Prepare filtering based on node sets.
-           Note: Modifies the connectivity matrix in-place!
+        Note: Modifies the connectivity matrix in-place!
         """
         nrn1_sel = nrn1_sel.copy()
         nrn2_sel = nrn2_sel.copy()
@@ -921,12 +1003,16 @@ class PairMotifNeuronSet(NeuronSet):
         nset2 = nrn2_sel.pop("node_set", None)
 
         if nset1 is not None:
-            nids1 = PairMotifNeuronSet._get_node_sets_ids(nset1, node_set_list_op, circuit, population)
+            nids1 = PairMotifNeuronSet._get_node_sets_ids(
+                nset1, node_set_list_op, circuit, population
+            )
             conn_mat.add_vertex_property("node_set1", np.isin(conn_mat.vertices["node_ids"], nids1))
             nrn1_sel.update({"node_set1": True})
 
         if nset2 is not None:
-            nids2 = PairMotifNeuronSet._get_node_sets_ids(nset2, node_set_list_op, circuit, population)
+            nids2 = PairMotifNeuronSet._get_node_sets_ids(
+                nset2, node_set_list_op, circuit, population
+            )
             conn_mat.add_vertex_property("node_set2", np.isin(conn_mat.vertices["node_ids"], nids2))
             nrn2_sel.update({"node_set2": True})
 
@@ -937,14 +1023,27 @@ class PairMotifNeuronSet(NeuronSet):
         assert not conn_mat.is_multigraph, "ERROR: ConnectivityMatrix must not be a multi-graph!"
 
         # Add new columns for feed-forward selection
-        conn_mat.add_edge_property("nsyn_ff_", conn_mat.edges[conn_mat._default_edge])  # Default column expected to represent #synapses/connection
-        conn_mat.add_edge_property("iloc_ff_", np.arange(conn_mat.edges.shape[0]))  # Add iloc (position index) based on which to subselect edges later on
+        conn_mat.add_edge_property(
+            "nsyn_ff_", conn_mat.edges[conn_mat._default_edge]
+        )  # Default column expected to represent #synapses/connection
+        conn_mat.add_edge_property(
+            "iloc_ff_", np.arange(conn_mat.edges.shape[0])
+        )  # Add iloc (position index) based on which to subselect edges later on
 
         # Prepare node set filtering
-        nrn1_filter, nrn2_filter = PairMotifNeuronSet._prepare_node_set_filter(conn_mat, self.neuron1_filter, self.neuron2_filter, self.node_set_list_op, circuit, population)
-        
+        nrn1_filter, nrn2_filter = PairMotifNeuronSet._prepare_node_set_filter(
+            conn_mat,
+            self.neuron1_filter,
+            self.neuron2_filter,
+            self.node_set_list_op,
+            circuit,
+            population,
+        )
+
         # Get table with all potential pairs
-        pair_tab = PairMotifNeuronSet._select_pairs(conn_mat, nrn1_filter, nrn2_filter, self.conn_ff_filter, self.conn_fb_filter)
+        pair_tab = PairMotifNeuronSet._select_pairs(
+            conn_mat, nrn1_filter, nrn2_filter, self.conn_ff_filter, self.conn_fb_filter
+        )
 
         # Subsample/select among these pairs
         if len(self.pair_selection) > 0:
@@ -959,20 +1058,21 @@ class PairMotifNeuronSet(NeuronSet):
                     pair_sel_ids = np.array([])
                 elif pair_sel_count >= pair_tab.shape[0]:  # Select all
                     pair_sel_ids = pair_tab.index.to_numpy()
+                elif pair_sel_method == "first":
+                    pair_sel_ids = pair_tab.index.to_numpy()[:pair_sel_count]
+                elif pair_sel_method == "random":
+                    rng = np.random.default_rng(pair_sel_seed)
+                    pair_sel_ids = rng.choice(
+                        pair_tab.index.to_numpy(), pair_sel_count, replace=False
+                    )
+                elif pair_sel_method.startswith("max_"):
+                    _prop = pair_sel_method.split("_", maxsplit=1)[-1]
+                    _val = pair_tab[f"{_prop}"]
+                    _val = _val.iloc[np.argsort(_val)[::-1]]
+                    pair_sel_ids = _val.index.to_numpy()[:pair_sel_count]
                 else:
-                    if pair_sel_method == "first":
-                        pair_sel_ids = pair_tab.index.to_numpy()[:pair_sel_count]
-                    elif pair_sel_method == "random":
-                        rng = np.random.default_rng(pair_sel_seed)
-                        pair_sel_ids = rng.choice(pair_tab.index.to_numpy(), pair_sel_count, replace=False)
-                    elif pair_sel_method.startswith("max_"):
-                        _prop = pair_sel_method.split("_", maxsplit=1)[-1]
-                        _val = pair_tab[f"{_prop}"]
-                        _val = _val.iloc[np.argsort(_val)[::-1]]
-                        pair_sel_ids = _val.index.to_numpy()[:pair_sel_count]
-                    else:
-                        assert False, f"Pair selection method '{pair_sel_method}' unknown!"
-                
+                    assert False, f"Pair selection method '{pair_sel_method}' unknown!"
+
                 # Filter pairs
                 pair_tab = pair_tab.loc[pair_sel_ids]
 
@@ -982,7 +1082,6 @@ class PairMotifNeuronSet(NeuronSet):
         return pair_tab
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-
         # Get table of neuron pairs
         pair_tab = self.get_pair_table(circuit, population)
 

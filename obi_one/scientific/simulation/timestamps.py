@@ -8,7 +8,10 @@ from obi_one.core.block import Block
 
 class Timestamps(Block, ABC):
     start_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(default=0.0, description="Sart time of the timestamps in milliseconds (ms).", units="ms")
+        NonNegativeFloat | list[NonNegativeFloat],
+        Field(
+            default=0.0, description="Sart time of the timestamps in milliseconds (ms).", units="ms"
+        ),
     ]
 
     def timestamps(self):
@@ -35,11 +38,17 @@ class RegularTimestamps(Timestamps):
     title: ClassVar[str] = "Regular Timestamps"
 
     interval: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat], Field(default=10.0, description="Interval between timestamps in milliseconds (ms).", units="ms")
+        NonNegativeFloat | list[NonNegativeFloat],
+        Field(
+            default=10.0,
+            description="Interval between timestamps in milliseconds (ms).",
+            units="ms",
+        ),
     ]
 
     number_of_repetitions: Annotated[
-        NonNegativeInt | list[NonNegativeInt], Field(default=10, description="Number of timestamps to generate.")
+        NonNegativeInt | list[NonNegativeInt],
+        Field(default=10, description="Number of timestamps to generate."),
     ]
 
     def _resolve_timestamps(self) -> list[float]:

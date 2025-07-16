@@ -140,12 +140,10 @@ class ElectrophysiologyMetricsForm(Form):
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
     class Initialize(Block):
-        trace_id: str = Field(
-            description="ID of the trace of interest."
-        )
+        trace_id: str = Field(description="ID of the trace of interest.")
         protocols: STIMULI_TYPES | None = Field(
             default=None,
-            description=f"Type of stimuli requested by the user. Should be one of: '{POSSIBLE_PROTOCOLS_STR}'."
+            description=f"Type of stimuli requested by the user. Should be one of: '{POSSIBLE_PROTOCOLS_STR}'.",
         )
         requested_metrics: CALCULATED_FEATURES | None = Field(
             default=None,
@@ -159,17 +157,17 @@ class ElectrophysiologyMetricsForm(Form):
             "'AP_peak_upstroke', 'AP_peak_downstroke', 'voltage_base',"
             "'voltage_after_stim', 'ohmic_input_resistance_vb_ssse',"
             "'steady_state_voltage_stimend', 'sag_amplitude',"
-            "'decay_time_constant_after_stim', 'depol_block_bool'"
+            "'decay_time_constant_after_stim', 'depol_block_bool'",
         )
         amplitude: AmplitudeInput | None = Field(
             default=None,
             description=(
-            "Amplitude of the protocol (should be specified in nA)."
-            "Can be a range of amplitudes with min and max values"
-            "Can be None (if the user does not specify it)"
-            " and all the amplitudes are going to be taken into account."
-        ),
-    )
+                "Amplitude of the protocol (should be specified in nA)."
+                "Can be a range of amplitudes with min and max values"
+                "Can be None (if the user does not specify it)"
+                " and all the amplitudes are going to be taken into account."
+            ),
+        )
 
     initialize: Initialize
 
@@ -179,7 +177,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
 
     feature_dict: dict[str, dict[str, Any]] = Field(
         description="Mapping of feature name to its metric values. "
-                    "Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
+        "Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
     )
 
     @classmethod
@@ -200,6 +198,7 @@ class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMix
             return ephys_metrics
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+
 
 def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     trace_id: str,
@@ -232,9 +231,9 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
     if (
-        isinstance(amplitude, AmplitudeInput) and
-        amplitude.min_value is not None and
-        amplitude.max_value is not None
+        isinstance(amplitude, AmplitudeInput)
+        and amplitude.min_value is not None
+        and amplitude.max_value is not None
     ):
         # If the user specified amplitude/a range of amplitudes,
         # the target amplitude is centered on the range and the

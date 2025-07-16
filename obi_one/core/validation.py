@@ -26,7 +26,7 @@ class SingleValidationOutput(BaseModel, abc.ABC):
             title="Validation Name",
             description="Name of the validation.",
             examples="Simulatable Neuron Depolarization Block Validation",
-        )
+        ),
     ]
     passed: Annotated[
         bool,
@@ -34,7 +34,7 @@ class SingleValidationOutput(BaseModel, abc.ABC):
             title="Validation Passed",
             description="Indicates whether the validation passed or not.",
             examples=True,
-        )
+        ),
     ]
     validation_details: Annotated[
         str,
@@ -44,8 +44,8 @@ class SingleValidationOutput(BaseModel, abc.ABC):
                 "Details about the validation, including any errors or warnings. "
                 "It will be registgered as an asset on entitycore."
             ),
-            examples="Validation passed: No depolarization block detected.."
-        )
+            examples="Validation passed: No depolarization block detected..",
+        ),
     ] = ""
     assets: Annotated[
         list[str],
@@ -54,6 +54,6 @@ class SingleValidationOutput(BaseModel, abc.ABC):
             description=(
                 "List of paths to the files to be registered as assets of the validation output."
             ),
-            examples=["./MEM__1372346-C060114A5__cADpyr_L5_TPCA/depolarization_block_test.pdf"]
-        )
+            examples=["./MEM__1372346-C060114A5__cADpyr_L5_TPCA/depolarization_block_test.pdf"],
+        ),
     ] = []

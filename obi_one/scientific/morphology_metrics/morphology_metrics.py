@@ -185,10 +185,6 @@ class MorphologyMetricsOutput(BaseModel):
             description="The distribution of strahler branch orders of sections, computed from terminals.",
         ),
     ]
-	
-	
-
-
 
     @classmethod
     def from_morphology(cls, neurom_morphology):
@@ -218,14 +214,13 @@ class MorphologyMetricsOutput(BaseModel):
         )
 
 
-
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
     def run(self, db_client: entitysdk.client.Client = None):
         try:
             print("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                    self.initialize.morphology.neurom_morphology(db_client=db_client)
-                )
+                self.initialize.morphology.neurom_morphology(db_client=db_client)
+            )
             L.info(morphology_metrics)
 
             return morphology_metrics
@@ -235,13 +230,10 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 
 
 def get_morphology_metrics(
-                reconstruction_morphology_id: str, 
-                db_client: entitysdk.client.Client
-            ) -> MorphologyMetricsOutput:
-
+    reconstruction_morphology_id: str, db_client: entitysdk.client.Client
+) -> MorphologyMetricsOutput:
     morphology = db_client.get_entity(
-        entity_id=reconstruction_morphology_id, 
-        entity_type=ReconstructionMorphology
+        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
     )
 
     # Iterate through the assets of the morphology to find the one with content
