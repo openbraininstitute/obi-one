@@ -816,12 +816,11 @@ class PairMotifNeuronSet(NeuronSet):
         etab_filt["nsyn_fb_"] = 0
         etab_filt["iloc_fb_"] = -1
         etab_filt.set_index(["row", "col"], inplace=True)
-    
-        for _idx in etab_filt.index:
-            _ridx = _idx[::-1]  # Reverse index
-            if _ridx in etab.index:
-                etab_filt.loc[_idx, "nsyn_fb_"] = etab.loc[_ridx, "nsyn_ff_"]
-                etab_filt.loc[_idx, "iloc_fb_"] = etab.loc[_ridx, "iloc_ff_"]
+
+        rev_idx = etab_filt.index.swaplevel("row", "col").values  # Reverse index
+        etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).values
+        etab_filt.loc[etab_filt["nsyn_fb_"] < 0, "nsyn_fb_"] = 0
+        
         conn_mat_filt.add_edge_property("nsyn_fb_", etab_filt["nsyn_fb_"])
         conn_mat_filt.add_edge_property("iloc_fb_", etab_filt["iloc_fb_"])
 
