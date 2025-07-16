@@ -1,4 +1,4 @@
-# MICrONS data connectivity analysis 1
+# MICrONS and extracted spines
 Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann

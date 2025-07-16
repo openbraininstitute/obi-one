@@ -1,7 +1,7 @@
 {
-    "name": "MICrONS connectivity and asymmetry",
+    "name": "MICrONS morphology connectivity effect - part 2",
     "authors": ["OBI", "Michael W. Reimann"],
-    "description": "In this notebook we analyze the nonrandom and asymmetrical spatial structure of connectivity in the MICrONS data.",
+    "description": "In this notebook we further explain non-random micro-structure of connectivity. This time with 2d plots.",
     "scale": "circuit",
     "type": "notebook",
     "kernel": "python",
@@ -16,7 +16,6 @@
         }
     ],
     "requirements": [
-        "connectome-analysis>=1.0.2",
         "Connectome-Utilities>=0.4.11",
         "scipy>=1.13.1",
         "jupyter>=1.1.1",

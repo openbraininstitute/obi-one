@@ -1,4 +1,4 @@
-# MICrONS data connectivity analysis 1
+# MICrONS morphology connectivity effect
 Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann
