@@ -12,19 +12,19 @@ class Circuit(OBIBaseModel):
     path: str
     matrix_path: str | None = None
 
-    def __init__(self, name, path, **kwargs):
+    def __init__(self, name, path, **kwargs) -> None:
         super().__init__(name=name, path=path, **kwargs)
-        _c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
+        c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
-            _cmat = ConnectivityMatrix.from_h5(
+            cmat = ConnectivityMatrix.from_h5(
                 self.matrix_path
             )  # Basic check: Try to load the connectivity matrix w/o error
             np.testing.assert_array_equal(
-                _cmat.vertices["node_ids"], _c.nodes[self._default_population_name(_c)].ids()
+                cmat.vertices["node_ids"], c.nodes[self._default_population_name(c)].ids()
             )  # TODO: This assumes the connectivity matrix is the local one, might need to be extended in the future.
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     @property
@@ -36,7 +36,8 @@ class Circuit(OBIBaseModel):
     def connectivity_matrix(self):
         """Provide access to corresponding ConnectivityMatrix object. In case of a multi-graph, returns the compressed version."""
         if self.matrix_path is None:
-            raise FileNotFoundError("Connectivity matrix has not been found")
+            msg = "Connectivity matrix has not been found"
+            raise FileNotFoundError(msg)
         cmat = ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:
             cmat = cmat.compress()
