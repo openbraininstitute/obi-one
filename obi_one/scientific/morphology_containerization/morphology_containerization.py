@@ -38,6 +38,8 @@ import tqdm
 from bluepysnap import Circuit
 from morph_tool import convert
 
+import entitysdk.client
+
 
 class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordinateMixin):
     """Creates a circuit with containerized morphologies instead of individual morphology files,
@@ -54,6 +56,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
     """
 
     CONTAINER_FILENAME: ClassVar[str] = "merged-morphologies.h5"
+    NO_MORPH_NAME: ClassVar[str] = "_NONE"
 
     @staticmethod
     def _filter_ext(file_list, ext):
@@ -67,7 +70,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
-                for nid in nodes.ids()[[0, -1]]:  # First/last node ID
+                node_morphs = nodes.get(properties="morphology")
+                node_ids = node_morphs[node_morphs != MorphologyContainerization.NO_MORPH_NAME].index
+                for nid in node_ids[[0, -1]]:  # First/last node ID (with actual morphology!!)
                     try:
                         morph = nodes.morph.get(
                             nid, transform=True, extension="h5"
@@ -135,7 +140,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             with open(hoc_file, "w") as f:
                 f.write(hoc_new)
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
             print(f"Running morphology containerization for '{self.initialize.circuit_path}'")
 
@@ -164,6 +169,10 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 if nodes.type != "biophysical":
                     continue
                 morph_names = np.unique(nodes.get(properties="morphology"))
+                if self.NO_MORPH_NAME in morph_names:
+                    print(f"WARNING: Biophysical population '{npop}' has neurons without morphologies!")
+                    morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+                    assert len(morph_names) > 0, f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
                 print(
                     f"> {len(morph_names)} unique morphologies in population '{npop}' ({nodes.size})"
                 )
@@ -314,9 +323,12 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
                 # Update hoc files (in place)
                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
-                if hoc_folder not in hoc_folders_updated:
-                    self._update_hoc_files(hoc_folder)
-                    hoc_folders_updated.append(hoc_folder)
+                if not os.path.exists(hoc_folder):
+                    print("WARNING: Biophysical neuron models dir missing!")
+                else:
+                    if hoc_folder not in hoc_folders_updated:
+                        self._update_hoc_files(hoc_folder)
+                        hoc_folders_updated.append(hoc_folder)
 
             # Clean up morphology folders with individual morphologies
             print(f"Cleaning morphology folders: {morph_folders_to_delete}")
