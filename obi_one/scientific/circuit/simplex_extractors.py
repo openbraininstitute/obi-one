@@ -95,9 +95,7 @@ def simplex_submat(
     elif subsample_method == "random":
         selection = subsample_random(v, selection_test, n_count_max, seed)
     elif subsample_method == "node_participation":
-        selection = subsample_by_node_participation(
-            sl, n_count_max, dim, simplex_type=simplex_type
-        )
+        selection = subsample_by_node_participation(sl, n_count_max, dim, simplex_type=simplex_type)
     elif subsample_method == "sample_simplices":
         selection = subsample_simplices(sl, n_count_max, dim)
     return selection, selection_test

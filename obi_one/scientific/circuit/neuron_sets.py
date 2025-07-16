@@ -579,8 +579,7 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
 
 
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
-    """Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron.
-    """
+    """Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron."""
 
     central_neuron_id: int | list[int] = Field(
         name="Central neuron id",

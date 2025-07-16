@@ -1,4 +1,3 @@
-
 import bluepysnap as snap
 import numpy as np
 from conntility import ConnectivityMatrix

@@ -1044,8 +1044,7 @@ def plot_node_table(
     h_scale=2.5,
     v_scale=2.5,
 ):
-    """Plot a table of node properties with color coding.
-    """
+    """Plot a table of node properties with color coding."""
     # Get data frame of properties
     df = conn.vertices[["node_ids", "layer", "mtype"]]
     df = df.copy().rename(columns={"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type"})

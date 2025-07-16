@@ -1,5 +1,3 @@
-
-
 def test_simulation_campaign():
     print("Testing Simulation Campaign... To be filled in later.")
     # circuit_path_prefix = "/Users/james/Documents/obi/additional_data/"
