@@ -251,6 +251,24 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
             logger.warning(
                 f"No stimulus type specified. Using all valid stimuli found in the trace: {stimuli_types}"
             )
+    else:
+        # Validate the user-specified stimuli types against the available ones in the trace metadata
+        valid_stimuli = [s for s in stimuli_types if s in available_stimuli]
+        invalid_stimuli = set(stimuli_types) - set(valid_stimuli)
+
+        if not valid_stimuli:
+            raise ProtocolNotFoundError(
+                f"None of the requested stimulus types {stimuli_types} are present in the trace. "
+                f"Available: {sorted(available_stimuli)}"
+            )
+
+        if invalid_stimuli:
+            logger.warning(
+                f"The following stimulus types are not present in the trace and will be ignored: "
+                f"{sorted(invalid_stimuli)}"
+        )
+
+        stimuli_types = valid_stimuli
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
@@ -352,7 +370,10 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
         # If all requested protocols are missing from the data
         if set(stimuli_types).issubset(set(missing_protocols)):
-            raise ProtocolNotFoundError(stimuli_types)
+            raise ProtocolNotFoundError(
+                f"None of the requested stimulus types {stimuli_types} are present in the trace. "
+                f"Available: {sorted(available_stimuli)}"
+            )
 
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)
