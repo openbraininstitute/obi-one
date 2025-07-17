@@ -27,8 +27,11 @@ class SynapticManipulation(Block, ABC):
 
 
 class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
-    """Applying a scaling factor to the U_SE parameter which determines the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.\
-        This is applied for all synapses between biophysical neurons.
+    """Applying a scaling factor to the U_SE parameter.
+
+    The U_SE parameter determines the effect of achetylcholine (ACh) on synaptic release
+    probability using the Tsodyks-Markram synaptic model. This is applied for all synapses
+    between biophysical neurons.
     """
 
     title: ClassVar[str] = (
@@ -38,7 +41,7 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.7050728631217412,
         title="Scale U_SE (ACh)",
-        description="Scale the U_SE (ACh) parameter of the Tsodyks–Markram synaptic model.",
+        description="Scale the U_SE (ACh) parameter of the Tsodyks-Markram synaptic model.",
     )
 
     def _get_override_name(self) -> str:
@@ -49,8 +52,9 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
 
 
 class SynapticMgManipulation(SynapticManipulation):
-    """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.\
-        This is applied for all synapses between biophysical neurons.
+    """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.
+
+    This is applied for all synapses between biophysical neurons.
     """
 
     title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
