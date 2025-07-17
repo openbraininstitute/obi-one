@@ -36,7 +36,7 @@ class Scan(OBIBaseModel):
     @property
     def output_root_absolute(self) -> Path:
         """Returns the absolute path of the output_root."""
-        print(self.output_root.resolve())
+        L.info(self.output_root.resolve())
         return self.output_root.resolve()
 
     def multiple_value_parameters(self, *, display: bool = False) -> list[MultiValueScanParam]:
@@ -89,7 +89,7 @@ class Scan(OBIBaseModel):
         return self._multiple_value_parameters
 
     @property
-    def multiple_value_parameters_dictionary(self, *, display: bool = False) -> dict:
+    def multiple_value_parameters_dictionary(self) -> dict:
         d = {}
         for multi_value in self.multiple_value_parameters():
             d[multi_value.location_str] = multi_value.values
@@ -172,7 +172,7 @@ class Scan(OBIBaseModel):
         processing_method: str = "",
         data_postprocessing_method: str = "",
         db_client: entitysdk.client.Client = None,
-    ):
+    ) -> entitysdk.models.core.Identifiable:
         """Description."""
         return_dict = {}
 
@@ -330,12 +330,12 @@ class Scan(OBIBaseModel):
             single_coordinate_parameters.display_parameters()
 
     def save(self) -> None:
-        self.form.save(coordinate_instance_entities)
-
         coordinate_instance_entities = []
         for coordinate_instance in self.coordinate_instances():
             coordinate_instance_entity = coordinate_instance.save()
             coordinate_instance_entities.append(coordinate_instance_entity)
+
+        self.form.save(coordinate_instance_entities)
 
 
 class GridScan(Scan):
