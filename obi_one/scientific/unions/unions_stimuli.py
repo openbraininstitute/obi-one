@@ -1,3 +1,6 @@
+from typing import Any, ClassVar
+
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.simulation.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
@@ -27,10 +30,6 @@ StimulusUnion = (
     | PoissonSpikeStimulus
     | FullySynchronousSpikeStimulus
 )
-
-from typing import Any, ClassVar
-
-from obi_one.core.block_reference import BlockReference
 
 
 class StimulusReference(BlockReference):

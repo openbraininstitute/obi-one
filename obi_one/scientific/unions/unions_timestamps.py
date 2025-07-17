@@ -1,10 +1,9 @@
-from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp
-
-TimestampsUnion = SingleTimestamp | RegularTimestamps
-
 from typing import Any, ClassVar
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp
+
+TimestampsUnion = SingleTimestamp | RegularTimestamps
 
 
 class TimestampsReference(BlockReference):

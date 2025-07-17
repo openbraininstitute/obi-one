@@ -1,13 +1,12 @@
+from typing import Any, ClassVar
+
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.simulation.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
 
 RecordingUnion = SomaVoltageRecording | TimeWindowSomaVoltageRecording
-
-from typing import Any, ClassVar
-
-from obi_one.core.block_reference import BlockReference
 
 
 class RecordingReference(BlockReference):

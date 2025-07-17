@@ -1,3 +1,6 @@
+from typing import Any, ClassVar
+
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.circuit.neuron_sets import (
     AllNeurons,
     CombinedNeuronSet,
@@ -38,10 +41,6 @@ SimulationNeuronSetUnion = (
     AllNeurons | ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet | nbS1VPMInputs | nbS1POmInputs
 )
 
-from typing import Any, ClassVar
-
-from obi_one.core.block_reference import BlockReference
-
 
 class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
@@ -49,7 +48,6 @@ class NeuronSetReference(BlockReference):
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
 
 
-# class SimulationNeuronSetReference(BlockReference):
-#     """A reference to a NeuronSet block for simulation."""
-
-#     allowed_block_types: ClassVar[Any] = SimulationNeuronSetUnion
+# TODO: class SimulationNeuronSetReference(BlockReference):
+# TODO:     """A reference to a NeuronSet block for simulation."""
+# TODO:     allowed_block_types: ClassVar[Any] = SimulationNeuronSetUnion
