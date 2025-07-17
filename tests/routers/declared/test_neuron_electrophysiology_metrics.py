@@ -40,7 +40,7 @@ def test_get(client, ephys_json, ephys_nwb, monkeypatch):
     assert features["spike_count"]["num_traces"] == 3
     assert features["time_to_first_spike"]["avg"] == pytest.approx(6.625, abs=1e-4)
 
-    assert entitysdk_client_mock.get_entity.call_count == 1
+    assert entitysdk_client_mock.get_entity.call_count == 2
     assert entitysdk_client_mock.download_content.call_count == 1
 
 
@@ -55,7 +55,7 @@ def test_get_not_found(client, ephys_json, monkeypatch):
     response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 500
     assert "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
-    assert entitysdk_client_mock.get_entity.call_count == 1
+    assert entitysdk_client_mock.get_entity.call_count == 2
     assert entitysdk_client_mock.download_content.call_count == 0
 
 
