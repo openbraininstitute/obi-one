@@ -1,3 +1,4 @@
+import logging
 from typing import ClassVar
 
 from pydantic import Field
@@ -7,6 +8,8 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+
+L = logging.getLogger("obi-one")
 
 
 class SingleBlockGenerateTestForm(Form):
