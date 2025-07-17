@@ -11,6 +11,8 @@ from app.logger import L
 from obi_one import *
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
+from obi_one.scientific.morphology_metrics.morphology_metrics import MorphologyMetricsForm
+from obi_one.scientific.simulation.simulations import SimulationsForm
 
 
 def check_implementations_of_single_coordinate_class(
@@ -69,7 +71,8 @@ def create_endpoint_for_form(
     )
 
     if not isinstance(return_class, str):
-        # return_type = None if return_class is None else dict[str, return_class]
+        # TODO: return_type = None if return_class is None else dict[str, return_class]
+        #       => ERA001 Found commented-out code
 
         # Create endpoint name
         endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
@@ -89,7 +92,8 @@ def create_endpoint_for_form(
                 with tempfile.TemporaryDirectory() as tdir:
                     grid_scan = GridScan(
                         form=form,
-                        # output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
+                        # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
+                        #        / "grid_scan", => ERA001 Found commented-out code
                         output_root=tdir,
                         coordinate_directory_option="ZERO_INDEX",
                     )
