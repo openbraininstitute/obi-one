@@ -258,7 +258,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
         if not valid_stimuli:
             raise ProtocolNotFoundError(
-                f"None of the requested stimulus types {stimuli_types} are present in the trace. "
+                f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
 
@@ -371,7 +371,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         # If all requested protocols are missing from the data
         if set(stimuli_types).issubset(set(missing_protocols)):
             raise ProtocolNotFoundError(
-                f"None of the requested stimulus types {stimuli_types} are present in the trace. "
+                f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
 

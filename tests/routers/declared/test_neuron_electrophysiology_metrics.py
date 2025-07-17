@@ -104,7 +104,7 @@ def test_get_protocol_not_found(client, ephys_json, ephys_nwb, monkeypatch):
     entity_id = uuid.uuid4()
     response = client.get(f"{ROUTE}/{entity_id}?protocols=delta")
     assert response.status_code == 404
-    assert "None of the requested protocols were found in the data" in response.text
+    assert "None of the requested protocols" in response.text
 
 
 def test_parse_bpe_logs_extracts_missing_protocols():
