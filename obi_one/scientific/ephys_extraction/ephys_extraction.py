@@ -228,11 +228,29 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         stimuli_types,
     )
 
-    # Deal with cases where user did not specify stimulus type or/and feature
+    # Get the trace metadata from the entitycore
+    trace_metadata = entity_client.get_entity(
+        entity_id=trace_id, entity_type=ElectricalCellRecording
+    )
+
+    # Get the available stimulus types from the trace metadata
+    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}
+
+    # If the user did not specify any stimulus types, try to use all step-like stimuli present in the trace.
     if not stimuli_types:
-        # Default to all protocol types if not specified
-        logger.warning("No stimulus type specified. Iterating over all STEP_LIKE_STIMULI_TYPES.")
-        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
+
+        stimuli_types = [s for s in available_stimuli if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__]
+
+        if not stimuli_types:
+            logger.warning(
+                "No stimulus type specified, and no valid stimuli found in the trace metadata. "
+                "Falling back to default STEP_LIKE_STIMULI_TYPES."
+            )
+            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
+        else:
+            logger.warning(
+                f"No stimulus type specified. Using all valid stimuli found in the trace: {stimuli_types}"
+            )
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
@@ -320,6 +338,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
                 for stim_type in stimuli_types
             }
         }
+
         # Extract the requested features for the requested protocols
         efeatures, protocol_definitions, _ = extract_efeatures(
             output_directory=temp_dir,
