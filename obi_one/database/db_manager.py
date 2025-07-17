@@ -8,7 +8,8 @@ from obi_auth import get_token
 class FixedTokenManager:
     """A fixed token manager that always returns the same token."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str) -> None:
+        """Initialize the FixedTokenManager."""
         self._token = token
 
     def get_token(self) -> str:
@@ -43,7 +44,9 @@ class DatabaseManager:
         token_manager = FixedTokenManager(self.token)
 
         if entitycore_api_url is None:
-            entitycore_api_url = settings.ENTITYCORE_URL
+            # TODO: entitycore_api_url = settings.ENTITYCORE_URL  => F821 Undefined name `settings`
+            msg = "entitycore_api_url = settings.ENTITYCORE_URL"
+            raise NotImplementedError(msg)
 
         self.client = Client(
             api_url=entitycore_api_url,
