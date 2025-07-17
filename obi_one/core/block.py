@@ -1,10 +1,12 @@
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.block_reference import BlockReference
 from obi_one.core.param import MultiValueScanParam
+
+if TYPE_CHECKING:
+    from obi_one.core.block_reference import BlockReference
 
 
 class Block(OBIBaseModel):
@@ -52,13 +54,13 @@ class Block(OBIBaseModel):
         self._simulation_level_name = value
 
     @property
-    def ref(self) -> BlockReference:
+    def ref(self) -> "BlockReference":
         if self._ref is None:
             msg = "Block reference has not been set."
             raise ValueError(msg)
         return self._ref
 
-    def set_ref(self, value: BlockReference) -> None:
+    def set_ref(self, value: "BlockReference") -> None:
         self._ref = value
 
     def multiple_value_parameters(
