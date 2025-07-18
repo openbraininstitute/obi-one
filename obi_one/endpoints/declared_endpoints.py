@@ -39,7 +39,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 reconstruction_morphology_id=reconstruction_morphology_id,
                 db_client=db_client,
             )
-        except entitysdk.exception.EntitySDKError:
+        except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail={
@@ -48,7 +48,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                         f"Reconstruction morphology {reconstruction_morphology_id} not found."
                     ),
                 },
-            )
+            ) from err
 
         if metrics:
             return metrics
@@ -69,9 +69,9 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def electrophysiologyrecording_metrics_endpoint(
         trace_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-        requested_metrics: CALCULATED_FEATURES | None = Query(default=None),
+        requested_metrics: Annotated[CALCULATED_FEATURES | None, Query()] = None,
         amplitude: AmplitudeInput = Depends(),
-        protocols: STIMULI_TYPES | None = Query(default=None),
+        protocols: Annotated[STIMULI_TYPES | None, Query()] = None,
     ) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
@@ -81,8 +81,11 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 amplitude=amplitude,
                 stimuli_types=protocols,
             )
-            return ephys_metrics
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Internal Server Error: {e}"
+            ) from e
+        else:
+            return ephys_metrics
 
     return router
