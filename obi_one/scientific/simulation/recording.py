@@ -37,20 +37,28 @@ class Recording(Block, ABC):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+            msg = (
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: "
+                f"'{self.name}' should be biophysical!"
+            )
             raise OBIONE_Error(
-                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: '{self.name}' should be biophysical!"
+                msg
             )
 
         if end_time is None:
-            raise OBIONE_Error(f"End time must be specified for recording '{self.name}'.")
+            msg = f"End time must be specified for recording '{self.name}'."
+            raise OBIONE_Error(msg)
         self._end_time = end_time
 
         sonata_config = self._generate_config()
 
         if self._end_time <= self._start_time:
-            raise OBIONE_Error(
+            msg = (
                 f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
                 "End time must be later than start time!"
+            )
+            raise OBIONE_Error(
+                msg
             )
 
         return sonata_config
@@ -100,19 +108,19 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     def check_start_end_time(self) -> Self:
         """Check that end time is later than start time."""
         if self.end_time <= self.start_time:
-            if self.has_name():
-                recording_name = f" '{self.name}'"
-            else:
-                recording_name = ""
+            recording_name = f" '{self.name}'" if self.has_name() else ""
 
             if self.neuron_set.has_block() and self.neuron_set.block.has_name():
                 neuron_set_name = f" '{self.neuron_set.block.name}'"
             else:
                 neuron_set_name = ""
 
-            raise OBIONE_Error(
+            msg = (
                 f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
                 "End time must be later than start time!"
+            )
+            raise OBIONE_Error(
+                msg
             )
         return self
 
