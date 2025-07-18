@@ -1,7 +1,7 @@
 import json
 import logging
-import os
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -40,8 +40,6 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference, Tim
 
 L = logging.getLogger(__name__)
 
-from enum import StrEnum
-
 
 class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
@@ -61,7 +59,7 @@ class SimulationsForm(Form):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     class Config:
-        json_schema_extra = {
+        json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -147,7 +145,12 @@ class SimulationsForm(Form):
         extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
             default=1.1,
             title="Extracellular Calcium Concentration",
-            description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
+            description=(
+                "Extracellular calcium concentration around the synapse in millimoles (mM). "
+                "Increasing this value increases the probability of synaptic vesicle release, "
+                "which in turn increases the level of network activity. In vivo values are "
+                "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
+            ),
             units="mM",
         )
         v_init: list[float] | float = Field(
@@ -214,15 +217,6 @@ class SimulationsForm(Form):
             asset_label="campaign_generation_config",
         )
 
-        # L.info(f"-- Upload campaign_summary")
-        # _ = db_client.upload_file(
-        #     entity_id=self._campaign.id,
-        #     entity_type=entitysdk.models.SimulationCampaign,
-        #     file_path=Path(output_root, "bbp_workflow_campaign_config.json"),
-        #     file_content_type="application/json",
-        #     asset_label='campaign_summary'
-        # )
-
         return self._campaign
 
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
@@ -241,15 +235,16 @@ class SimulationsForm(Form):
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
         reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
 
-        if name in self.__dict__.get(block_dict_name).keys():
-            raise OBIONE_Error(f"Block with name '{name}' already exists in '{block_dict_name}'!")
+        if name in self.__dict__.get(block_dict_name):
+            msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
+            raise OBIONE_Error(msg)
 
         reference_type = globals()[reference_type_name]
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)
         block.set_ref(ref)
         self.__dict__[block_dict_name][name] = block
 
-    def set(self, block: Block, name: str = ""):
+    def set(self, block: Block, name: str = "") -> None:
         """Sets a block in the form."""
         self.__dict__[name] = block
 
@@ -290,22 +285,6 @@ class SimulationsForm(Form):
         for _k, _v in self.synaptic_manipulations.items():
             _v.set_simulation_level_name(_k)
         return self
-
-
-# def _resolve_neuron_set_dictionary(neuron_set, _circuit):
-#         """Resolves a neuron set based on current coordinate circuit's default node population and \
-#             returns its dictionary.
-#         """
-#         nset_def = neuron_set.get_node_set_definition(
-#             _circuit, _circuit.default_population_name
-#         )
-#         # FIXME: Better handling of (default) node population in case there is more than one
-#         # FIXME: Inconsistency possible in case a node set definition would span multiple populations
-#         #        May consider force_resolve_ids=False to enforce resolving into given population
-#         #        (but which won't be a human-readable representation any more)
-#         name = neuron_set.name
-#         dictionary = {name: nset_def}
-#         return name, dictionary
 
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
@@ -366,7 +345,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         # Generate stimulus input configs
         self._sonata_config["inputs"] = {}
-        for stimulus_key, stimulus in self.stimuli.items():
+        for stimulus in self.stimuli.values():
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     _circuit,
@@ -380,7 +359,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
         # Generate recording configs
         self._sonata_config["reports"] = {}
-        for recording_key, recording in self.recordings.items():
+        for recording in self.recordings.values():
             self._sonata_config["reports"].update(
                 recording.config(
                     _circuit, _circuit.default_population_name, self.initialize.simulation_length
@@ -388,43 +367,46 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             )
 
         # Generate list of synaptic manipulation configs (executed in the order in the list)
-        # FIXME: Check and make sure that the order in the self.synaptic_manipulations dict is preserved!
-        manipulation_list = []
-        for manipulation_key, manipulation in self.synaptic_manipulations.items():
-            manipulation_list.append(manipulation.config())
+        # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
+        manipulation_list = [
+            manipulation.config()
+            for manipulation in self.synaptic_manipulations.values()
+        ]
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
 
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
-        # set, even for a PredefinedNeuronSet in which case a new node set will be created which just
-        # references the existing one. This is the most consistent behavior since it will behave
-        # exactly the same no matter if random subsampling is used or not. But this also means that
-        # existing names cannot be used as dict keys.
-        os.makedirs(self.coordinate_output_root, exist_ok=True)
+        # set, even for a PredefinedNeuronSet in which case a new node set will be created
+        # which just references the existing one. This is the most consistent behavior since
+        # it will behave exactly the same no matter if random subsampling is used or not.
+        # But this also means that existing names cannot be used as dict keys.
+        Path(self.coordinate_output_root).mkdir(parents=True, exist_ok=True)
         c = _circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
-            # FIXME: Better handling of (default) node population in case there is more than one
-            # FIXME: Inconsistency possible in case a node set definition would span multiple populations
-            #        May consider force_resolve_ids=False to enforce resolving into given population
-            #        (but which won't be a human-readable representation any more)
-            assert _name == _nset.name, (
-                "Neuron set name mismatch!"
-            )  # This should never happen if properly initialized
+            # TODO: Better handling of (default) node population in case there is more than one
+            # TODO: Inconsistency possible in case a node set definition would span multiple
+            # populations. May consider force_resolve_ids=False to enforce resolving into given
+            # population (but which won't be a human-readable representation any more)
+            if _name != _nset.name:
+                msg = "Neuron set name mismatch!"
+                raise OBIONE_Error(msg)  # This should never happen if properly initialized
 
             if self.initialize.node_set.block.name == _name:
-                assert self._sonata_config.get("node_set") is None, (
-                    "Node set config entry already defined!"
-                )
+                if self._sonata_config.get("node_set") is not None:
+                    msg = "Node set config entry already defined!"
+                    raise OBIONE_Error(msg)
 
                 # Assert that simulation neuron set is biophysical
                 if (
                     _nset.population_type(_circuit, _circuit.default_population_name)
                     != "biophysical"
                 ):
+                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
+                    "is not biophysical!"
                     raise OBIONE_Error(
-                        f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' is not biophysical!"
+                        msg
                     )
 
                 self._sonata_config["node_set"] = _name
@@ -447,8 +429,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
         # Write simulation config file (.json)
-        simulation_config_path = os.path.join(self.coordinate_output_root, self.CONFIG_FILE_NAME)
-        with open(simulation_config_path, "w") as f:
+        simulation_config_path = Path(self.coordinate_output_root) / self.CONFIG_FILE_NAME
+        with simulation_config_path.open("w", encoding="utf-8") as f:
             json.dump(self._sonata_config, f, indent=2)
 
     def save(
@@ -496,9 +478,9 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         )
 
         L.info("-- Upload spike replay files")
-        for input in self._sonata_config["inputs"]:
-            if "spike_file" in list(self._sonata_config["inputs"][input]):
-                spike_file = self._sonata_config["inputs"][input]["spike_file"]
+        for input_ in self._sonata_config["inputs"]:
+            if "spike_file" in list(self._sonata_config["inputs"][input_]):
+                spike_file = self._sonata_config["inputs"][input_]["spike_file"]
                 if spike_file is not None:
                     _ = db_client.upload_file(
                         entity_id=simulation.id,
