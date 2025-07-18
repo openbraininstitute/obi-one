@@ -78,8 +78,12 @@ class SomaticStimulus(Stimulus, ABC):
         self.check_simulation_init()
 
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+            msg = (
+                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: "
+                f"'{self.name}' should be biophysical!"
+            )
             raise OBIONE_Error(
-                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: '{self.name}' should be biophysical!"
+                msg
             )
 
         return self._generate_config()
@@ -159,13 +163,15 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     amplitude_start: float | list[float] = Field(
         default=0.1,
         title="Start Amplitude",
-        description="The amount of current initially injected when the stimulus activates. Given in nanoamps.",
+        description="The amount of current initially injected when the stimulus activates. "
+        "Given in nanoamps.",
         units="nA",
     )
     amplitude_end: float | list[float] = Field(
         default=0.2,
         title="End Amplitude",
-        description="If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
+        description="If given, current is interpolated such that current reaches this value when "
+        "the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
         units="nA",
     )
 
@@ -196,13 +202,15 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
 
     percentage_of_threshold_current_start: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
-        description="The percentage of a cell's threshold current to inject when the stimulus activates.",
+        description="The percentage of a cell's threshold current to inject "
+        "when the stimulus activates.",
         title="Percentage of Threshold Current (Start)",
         units="%",
     )
     percentage_of_threshold_current_end: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        description="If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
+        description="If given, the percentage of a cell's threshold current is interpolated such "
+        "that the percentage reaches this value when the stimulus concludes.",
         title="Percentage of Threshold Current (End)",
         units="%",
     )
@@ -304,7 +312,9 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
-    """A series of current pulses injected at a fixed frequency, with each pulse having a fixed absolute amplitude and temporal width."""
+    """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
+    absolute amplitude and temporal width.
+    """
 
     title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
 
@@ -313,7 +323,8 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
 
     amplitude: float | list[float] = Field(
         default=0.1,
-        description="The amount of current initially injected when each pulse activates. Given in nanoamps (nA).",
+        description="The amount of current initially injected when each pulse activates. "
+        "Given in nanoamps (nA).",
         title="Amplitude",
         units="nA",
     )
@@ -440,7 +451,8 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
-    """A hyperpolarizing current injection which brings a cell to base membrance voltage. \
+    """A hyperpolarizing current injection which brings a cell to base membrance voltage.
+
         The holding current is pre-defined for each cell.
     """
 
@@ -482,21 +494,25 @@ class SpikeStimulus(Stimulus):
         self.check_simulation_init()
 
         if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
-            raise OBIONE_Error(
-                f"Target Neuron Set '{self.targeted_neuron_set.block.name}' for {self.__class__.__name__}: '{self.name}' should be biophysical!"
+            msg = (
+                f"Target Neuron Set '{self.targeted_neuron_set.block.name}' for "
+                f"{self.__class__.__name__}: '{self.name}' should be biophysical!"
             )
+            raise OBIONE_Error(msg)
 
         return self._generate_config()
 
     def _generate_config(self) -> dict:
-        assert self._spike_file is not None
-        assert self._simulation_length is not None, (
-            "Simulation length must be set before generating SONATA config component for SpikeStimulus."
-        )
-        # assert self.source_neuron_set.block.node_population is not None, "Must specify node population name for the neuron set!"
+        if self._spike_file is None:
+            msg = "Spike file must be set before generating SONATA config"
+            raise ValueError(msg)
+        if self._simulation_length is None:
+            msg = "Simulation length must be set before generating SONATA config"
+            " component for SpikeStimulus."
+            raise ValueError(msg)
         sonata_config = {}
         sonata_config[self.name] = {
-            "delay": 0.0,  # If it is present, then the simulation filters out those times that are before the delay
+            "delay": 0.0,  # If present, the simulation filters out those times before the delay
             "duration": self._simulation_length,
             "node_set": self.targeted_neuron_set.block.name,
             "module": self._module,
@@ -509,10 +525,11 @@ class SpikeStimulus(Stimulus):
     def generate_spikes(
         self, circuit, spike_file_path, simulation_length, source_node_population=None
     ):
-        raise NotImplementedError("Subclasses should implement this method.")
+        msg = "Subclasses should implement this method."
+        raise NotImplementedError(msg)
 
     @staticmethod
-    def write_spike_file(gid_spike_map, spike_file, source_node_population):
+    def write_spike_file(gid_spike_map, spike_file, source_node_population) -> None:
         """Writes SONATA output spike trains to file.
 
         Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
@@ -521,9 +538,9 @@ class SpikeStimulus(Stimulus):
         # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
         gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
 
-        out_path = os.path.split(spike_file)[0]
-        if not os.path.exists(out_path):
-            os.makedirs(out_path)
+        out_path = Path(spike_file).parent
+        if not out_path.exists():
+            out_path.mkdir(parents=True)
 
         time_list = []
         gid_list = []
@@ -534,18 +551,19 @@ class SpikeStimulus(Stimulus):
                     gid_list.append(gid)
         spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=["t", "gid"])
         spike_df = spike_df.astype({"t": float, "gid": int})
-        spike_df.sort_values(by=["t", "gid"], inplace=True)  # Sort by time
+        spike_df_sorted = spike_df.sort_values(by=["t", "gid"])  # Sort by time
         with h5py.File(spike_file, "w") as f:
             pop = f.create_group(f"/spikes/{source_node_population}")
-            ts = pop.create_dataset("timestamps", data=spike_df["t"].values, dtype=np.float64)
-            nodes = pop.create_dataset("node_ids", data=spike_df["gid"].values, dtype=np.uint64)
+            ts = pop.create_dataset("timestamps", data=spike_df_sorted["t"].values, dtype=np.float64)
+            pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
             ts.attrs["units"] = "ms"
 
 
 class PoissonSpikeStimulus(SpikeStimulus):
-    """Spike times drawn from a Poisson process with a given frequency \
-        sent from all neurons in the source neuron set to efferently connected \
-            neurons in the target neuron set.
+    """Spike times drawn from a Poisson process with a given frequency.
+
+    Sent from all neurons in the source neuron set to efferently connected
+    neurons in the target neuron set.
     """
 
     title: ClassVar[str] = "Poisson Spikes (Efferent)"
@@ -570,7 +588,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
-        description="Seed for the random number generator to ensure reproducibility of the spike generation.",
+        description="Seed for the random number generator to ensure "
+        "reproducibility of the spike generation.",
     )
 
     def generate_spikes(
@@ -586,17 +605,21 @@ class PoissonSpikeStimulus(SpikeStimulus):
             self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps)
             > _MAX_POISSON_SPIKE_LIMIT
         ):
+            msg = (
+                f"Poisson input exceeds maximum allowed nunmber of spikes "
+                f"({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
             raise OBIONE_Error(
-                f"Poisson input exceeds maximum allowed nunmber of spikes ({_MAX_POISSON_SPIKE_LIMIT})!"
+                msg
             )
 
         gid_spike_map = {}
         for timestamp_idx, timestamp_t in enumerate(timestamps):
             start_time = timestamp_t + self.timestamp_offset
             end_time = start_time + self.duration
-            if timestamp_idx < len(timestamps) - 1:
-                # Check that interval not overlapping with next stimulus onset
-                assert end_time < timestamps[timestamp_idx + 1], "Stimulus time intervals overlap!"
+            if timestamp_idx < len(timestamps) - 1 and not end_time < timestamps[timestamp_idx + 1]:
+                msg = "Stimulus time intervals overlap!"
+                raise ValueError(msg)
             for gid in gids:
                 spikes = []
                 t = start_time
@@ -607,7 +630,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                     if t < end_time:
                         spikes.append(t)
                 if gid in gid_spike_map:
-                    gid_spike_map[gid] = gid_spike_map[gid] + spikes
+                    gid_spike_map[gid] += spikes
                 else:
                     gid_spike_map[gid] = spikes
         self._spike_file = f"{self.name}_spikes.h5"
@@ -617,7 +640,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
 
 class FullySynchronousSpikeStimulus(SpikeStimulus):
-    """Spikes sent at the same time from all neurons in the source neuron set \
+    """Spikes sent at the same time from all neurons in the source neuron set.
+
         to efferently connected neurons in the target neuron set.
     """
 
@@ -634,11 +658,11 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         source_node_population = self.source_neuron_set.block._population(source_node_population)
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
-        for t_idx, start_time in enumerate(timestamps):
+        for start_time in timestamps:
             spike = [start_time + self.timestamp_offset]
             for gid in gids:
                 if gid in gid_spike_map:
-                    gid_spike_map[gid] = gid_spike_map[gid] + spike
+                    gid_spike_map[gid] += spike
                 else:
                     gid_spike_map[gid] = spike
         self._spike_file = f"{self.name}_spikes.h5"
