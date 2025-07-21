@@ -33,7 +33,7 @@ class Stimulus(Block, ABC):
         Field(title="Timestamps", description="Timestamps at which the stimulus is applied."),
     ]
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:
+    def config(self, circuit: Circuit, population: str | None = None) -> dict:  # noqa: ARG002
         self.check_simulation_init()
         return self._generate_config()
 
@@ -128,7 +128,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
         title="Percentage of Threshold Current",
-        description="The percentage of a cell’s threshold current to inject when the stimulus \
+        description="The percentage of a cell's threshold current to inject when the stimulus \
                     activates.",
         units="%",
     )
@@ -190,7 +190,9 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
-    """A current injection which changes linearly as a percentage of each cell's threshold current over time."""
+    """A current injection which changes linearly as a percentage of each cell's threshold current
+    over time.
+    """
 
     title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
 
@@ -269,7 +271,9 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
 
 
 class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
-    """Normally distributed current injection around a mean percentage of each cell's threshold current."""
+    """Normally distributed current injection around a mean percentage of each cell's threshold
+    current.
+    """
 
     title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
 
@@ -520,13 +524,19 @@ class SpikeStimulus(Stimulus):
         return sonata_config
 
     def generate_spikes(
-        self, circuit, spike_file_path, simulation_length, source_node_population=None
-    ):
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
         msg = "Subclasses should implement this method."
         raise NotImplementedError(msg)
 
     @staticmethod
-    def write_spike_file(gid_spike_map, spike_file, source_node_population) -> None:
+    def write_spike_file(
+        gid_spike_map: dict, spike_file: Path, source_node_population: str | None = None
+    ) -> None:
         """Writes SONATA output spike trains to file.
 
         Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
@@ -592,8 +602,12 @@ class PoissonSpikeStimulus(SpikeStimulus):
     )
 
     def generate_spikes(
-        self, circuit, spike_file_path, simulation_length, source_node_population=None
-    ):
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
         self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
@@ -648,8 +662,12 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     _input_type: str = "spikes"
 
     def generate_spikes(
-        self, circuit, spike_file_path, simulation_length, source_node_population=None
-    ):
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
         self._simulation_length = simulation_length
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block._population(source_node_population)
