@@ -36,9 +36,9 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     @model_validator(mode="after")
     def check_filter_dict_values(self) -> Self:
         for key, values in self.filter_dict.items():
-            assert isinstance(values, list) and len(values) >= 1, (
-                f"Filter key '{key}' must have a non-empty list of values."
-            )
+            if not isinstance(values, list) or len(values) == 0:
+                msg = f"Filter key '{key}' must have a non-empty list of values."
+                raise ValueError(msg)
         return self
 
     @property
@@ -63,9 +63,9 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
         # filter_keys = list(self.filter_dict.keys())
 
-        assert all(_prop in circuit_prop_names for _prop in self.filter_keys), (
-            f"Invalid neuron properties! Available properties: {circuit_prop_names}"
-        )
+        if not all(_prop in circuit_prop_names for _prop in self.filter_keys):
+            msg = f"Invalid neuron properties! Available properties: {circuit_prop_names}"
+            raise ValueError(msg)
 
     def __repr__(self) -> str:
         """Return a string representation of the NeuronPropertyFilter object."""
@@ -108,9 +108,9 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     @staticmethod
     def check_population(circuit: Circuit, population: str) -> None:
-        assert population in Circuit.get_node_population_names(circuit.sonata_circuit), (
-            f"Node population '{population}' not found in circuit '{circuit}'!"
-        )
+        if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
+            msg = f"Node population '{population}' not found in circuit '{circuit}'!"
+            raise ValueError(msg)
 
     @staticmethod
     def add_node_set_to_circuit(
@@ -122,7 +122,9 @@ class AbstractNeuronSet(Block, abc.ABC):
         existing_node_sets = sonata_circuit.node_sets.content
         if not overwrite_if_exists:
             for _k in node_set_dict.keys():
-                assert _k not in existing_node_sets, f"Node set '{_k}' already exists!"
+                if _k in existing_node_sets:
+                    msg = f"Node set '{_k}' already exists!"
+                    raise ValueError(msg)
         existing_node_sets.update(node_set_dict)
         sonata_circuit.node_sets = snap.circuit.NodeSets.from_dict(existing_node_sets)
 
@@ -135,25 +137,29 @@ class AbstractNeuronSet(Block, abc.ABC):
             # Use circuit's node set file name by default
             file_name = os.path.split(sonata_circuit.config["node_sets_file"])[1]
         else:
-            assert isinstance(file_name, str) and len(file_name) > 0, (
-                "File name must be a non-empty string! Can be omitted to use default file name."
-            )
+            if not isinstance(file_name, str) or len(file_name) == 0:
+                msg = (
+                    "File name must be a non-empty string! Can be omitted to use default file name."
+                )
+                raise ValueError(msg)
             fname, fext = os.path.splitext(file_name)
-            assert len(fname) > 0 and fext.lower() == ".json", (
-                "File name must be non-empty and of type .json!"
-            )
+            if len(fname) == 0 or fext.lower() != ".json":
+                msg = "File name must be non-empty and of type .json!"
+                raise ValueError(msg)
         output_file = os.path.join(output_path, file_name)
 
         if not overwrite_if_exists:
-            assert not os.path.exists(output_file), (
-                f"Output file '{output_file}' already exists! Delete file or choose to overwrite."
-            )
+            if os.path.exists(output_file):
+                msg = f"Output file '{output_file}' already exists! Delete or choose to overwrite."
+                raise ValueError(msg)
 
         with open(output_file, "w") as f:
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
 
     def _population(self, population: str | None = None):
-        assert population is not None, "Must specify a node population name!"
+        if population is None:
+            msg = "Must specify a node population name!"
+            raise ValueError(msg)
         return population
 
     def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
@@ -225,31 +231,38 @@ class AbstractNeuronSet(Block, abc.ABC):
         """
         if optional_node_set_name is not None:
             self.set_simulation_level_name(optional_node_set_name)
-        assert self.name is not None, (
-            "NeuronSet name must be set through the Simulation or optional_node_set_name parameter!"
-        )
+        if self.name is None:
+            msg = (
+                "NeuronSet name must be set through the Simulation"
+                " or optional_node_set_name parameter!"
+            )
+            raise ValueError(msg)
 
         if file_name is None:
             # Use circuit's node set file name by default
             file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
         else:
-            assert isinstance(file_name, str) and len(file_name) > 0, (
-                "File name must be a non-empty string! Can be omitted to use default file name."
-            )
+            if not isinstance(file_name, str) or len(file_name) == 0:
+                msg = (
+                    "File name must be a non-empty string! Can be omitted to use default file name."
+                )
+                raise ValueError(msg)
             fname, fext = os.path.splitext(file_name)
-            assert len(fname) > 0 and fext.lower() == ".json", (
-                "File name must be non-empty and of type .json!"
-            )
+            if len(fname) == 0 or fext.lower() != ".json":
+                msg = "File name must be non-empty and of type .json!"
+                raise ValueError(msg)
         output_file = os.path.join(output_path, file_name)
 
-        assert not (overwrite_if_exists and append_if_exists), (
-            "Append and overwrite options are mutually exclusive!"
-        )
+        if overwrite_if_exists and append_if_exists:
+            msg = "Append and overwrite options are mutually exclusive!"
+            raise ValueError(msg)
         population = self._population(population)
         expression = self.get_node_set_definition(
             circuit, population, force_resolve_ids=force_resolve_ids
         )
-        assert expression is not None, "Node set already exists in circuit, nothing to be done!"
+        if expression is None:
+            msg = "Node set already exists in circuit, nothing to be done!"
+            raise ValueError(msg)
 
         if not os.path.exists(output_file) or overwrite_if_exists:
             # Create new node sets file, overwrite if existing
@@ -259,22 +272,22 @@ class AbstractNeuronSet(Block, abc.ABC):
             else:
                 # Initialize with circuit object's node sets
                 node_sets = circuit.sonata_circuit.node_sets.content
-                assert self.name not in node_sets, (
-                    f"Node set '{self.name}' already exists in circuit '{circuit}'!"
-                )
+                if self.name in node_sets:
+                    msg = f"Node set '{self.name}' already exists in circuit '{circuit}'!"
+                    raise ValueError(msg)
             node_sets.update({self.name: expression})
 
         elif os.path.exists(output_file) and append_if_exists:
             # Append to existing node sets file
             with open(output_file) as f:
                 node_sets = json.load(f)
-                assert self.name not in node_sets, (
-                    f"Appending not possible, node set '{self.name}' already exists!"
-                )
+                if self.name in node_sets:
+                    msg = f"Appending not possible, node set '{self.name}' already exists!"
+                    raise ValueError(msg)
                 node_sets.update({self.name: expression})
 
         else:  # File existing but no option chosen
-            assert False, (
+            raise ValueError(
                 f"Output file '{output_file}' already exists! Delete file or choose to append \
                     or overwrite."
             )
@@ -303,7 +316,8 @@ class NeuronSet(AbstractNeuronSet):
                 )
         population = self.node_population or population
         if population is None:
-            raise ValueError("Must specify name of a node population to resolve the NeuronSet!")
+            msg = "Must specify name of a node population to resolve the NeuronSet!"
+            raise ValueError(msg)
         return population
 
 
@@ -318,9 +332,9 @@ class PredefinedNeuronSet(NeuronSet):
     )
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
-        assert self.node_set in circuit.node_sets, (
-            f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
-        )  # Assumed that all (outer) lists have been resolved
+        if self.node_set not in circuit.node_sets:
+            msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
+            raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -334,9 +348,9 @@ class AllNeurons(AbstractNeuronSet):
     title: ClassVar[str] = "All Neurons"
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
-        assert _ALL_NODE_SET in circuit.node_sets, (
-            f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
-        )  # Assumed that all (outer) lists have been resolved
+        if _ALL_NODE_SET not in circuit.node_sets:
+            msg = f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
+            raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -350,9 +364,9 @@ class ExcitatoryNeurons(AbstractNeuronSet):
     title: ClassVar[str] = "All Excitatory Neurons"
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
-        assert _EXCITATORY_NODE_SET in circuit.node_sets, (
-            f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
-        )  # Assumed that all (outer) lists have been resolved
+        if _EXCITATORY_NODE_SET not in circuit.node_sets:
+            msg = f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
+            raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -366,9 +380,9 @@ class InhibitoryNeurons(AbstractNeuronSet):
     title: ClassVar[str] = "All Inhibitory Neurons"
 
     def check_node_set(self, circuit: Circuit, population: str) -> None:
-        assert _INHIBITORY_NODE_SET in circuit.node_sets, (
-            f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
-        )  # Assumed that all (outer) lists have been resolved
+        if _INHIBITORY_NODE_SET not in circuit.node_sets:
+            msg = f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
+            raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -427,10 +441,10 @@ class CombinedNeuronSet(NeuronSet):
     )
 
     def check_node_sets(self, circuit: Circuit, population: str) -> None:
-        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
-            assert _nset in circuit.node_sets, (
-                f"Node set '{_nset}' not found in circuit '{circuit}'!"
-            )
+        for _nset in self.node_sets:
+            if _nset not in circuit.node_sets:
+                msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
+                raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str):
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -447,9 +461,9 @@ class IDNeuronSet(AbstractNeuronSet):
 
     def check_neuron_ids(self, circuit: Circuit, population) -> None:
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
-        assert all(_nid in popul_ids for _nid in self.neuron_ids.elements), (
-            f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"
-        )  # Assumed that all (outer) lists have been resolved
+        if not all(_nid in popul_ids for _nid in self.neuron_ids.elements):
+            msg = f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"
+            raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
@@ -478,10 +492,10 @@ class PropertyNeuronSet(NeuronSet):
         self.property_filter.test_validity(circuit, population)
 
     def check_node_sets(self, circuit: Circuit, population: str) -> None:
-        for _nset in self.node_sets:  # Assumed that all (outer) lists have been resolved
-            assert _nset in circuit.node_sets, (
-                f"Node set '{_nset}' not found in circuit '{circuit}'!"
-            )
+        for _nset in self.node_sets:
+            if _nset not in circuit.node_sets:
+                msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
+                raise ValueError(msg)
 
     def _get_resolved_expression(self, circuit: Circuit, population: str | None = None) -> dict:
         """A helper function used to make subclasses work."""
@@ -635,14 +649,16 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     @field_validator("dim")
     def dim_check(cls, v):
         if v <= 1:
-            raise ValueError("Simplex dimension must be greater than 1")
+            msg = "Simplex dimension must be greater than 1"
+            raise ValueError(msg)
         return v
 
     @model_validator(mode="after")
     def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
         if self.subsample and n_count_max is None:
-            raise ValueError("n_count_max must be specified when subsample is True")
+            msg = "n_count_max must be specified when subsample is True"
+            raise ValueError(msg)
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -734,14 +750,16 @@ class SimplexNeuronSet(PropertyNeuronSet):
     @field_validator("dim")
     def dim_check(cls, v):
         if v <= 1:
-            raise ValueError("Simplex dimension must be greater than 1")
+            msg = "Simplex dimension must be greater than 1"
+            raise ValueError(msg)
         return v
 
     @model_validator(mode="after")
     def check_n_count_max(self) -> Self:
         n_count_max = self.n_count_max
         if self.subsample and n_count_max is None:
-            raise ValueError("n_count_max must be specified when subsample is True")
+            msg = "n_count_max must be specified when subsample is True"
+            raise ValueError(msg)
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
@@ -897,29 +915,31 @@ class PairMotifNeuronSet(NeuronSet):
     def _apply_filter(conn_mat, selection, side=None):
         def _check_ops(ops):
             for _op in ops:
-                assert _op in ["le", "lt", "ge", "gt", "eq", "isin"], (
-                    f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
-                )
+                if _op not in ["le", "lt", "ge", "gt", "eq", "isin"]:
+                    msg = (
+                        f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
+                    )
+                    raise ValueError(msg)
 
         conn_mat_filt = conn_mat
-        for _prop, _val in selection.items():
-            _op = "eq"  # Default: Filter by equality (i.e., single value is provided)
-            if isinstance(_val, list):  # List: Select all values from list
-                _op = "isin"
-            elif isinstance(_val, dict):  # Dict: Combinations of operator/value pairs
-                _op = list(_val.keys())
-                _val = list(_val.values())
-            if not isinstance(_op, list):
-                _op = [_op]
-                _val = [_val]
-            _check_ops(_op)
-            for _o, _v in zip(_op, _val, strict=False):
+        for prop, val in selection.items():
+            op = "eq"  # Default: Filter by equality (i.e., single value is provided)
+            if isinstance(val, list):  # List: Select all values from list
+                op = "isin"
+            elif isinstance(val, dict):  # Dict: Combinations of operator/value pairs
+                op = list(val.keys())
+                val = list(val.values())
+            if not isinstance(op, list):
+                op = [op]
+                val = [val]
+            _check_ops(op)
+            for _o, _v in zip(op, val, strict=False):
                 if (
-                    _prop in conn_mat_filt.vertex_properties
-                    and conn_mat_filt.vertices.dtypes[_prop] == "category"
+                    prop in conn_mat_filt.vertex_properties
+                    and conn_mat_filt.vertices.dtypes[prop] == "category"
                 ):
                     _v = str(_v)
-                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(
+                conn_mat_filt = getattr(conn_mat_filt.filter(prop, side), _o)(
                     _v
                 )  # Call filter operator
         return conn_mat_filt
@@ -980,7 +1000,8 @@ class PairMotifNeuronSet(NeuronSet):
                 elif node_set_list_op == "intersect":
                     node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
                 else:
-                    assert False, f"Node set list operation '{node_set_list_op}' unknown!"
+                    msg = f"Node set list operation '{node_set_list_op}' unknown!"
+                    raise ValueError(msg)
         return node_ids
 
     @staticmethod
@@ -991,7 +1012,7 @@ class PairMotifNeuronSet(NeuronSet):
         node_set_list_op: str,
         circuit: Circuit,
         population: str,
-    ):
+    ) -> tuple(dict, dict):
         """Prepare filtering based on node sets.
         Note: Modifies the connectivity matrix in-place!
         """
@@ -1017,9 +1038,45 @@ class PairMotifNeuronSet(NeuronSet):
 
         return nrn1_sel, nrn2_sel
 
+    @staticmethod
+    def _subsample_pairs(
+        pair_tab: pandas.DataFrame, pair_sel_count: int, pair_sel_method: str, pair_sel_seed: int
+    ) -> pandas.DataFrame:
+        if pair_sel_count is None:
+            return pair_tab
+
+        if pair_sel_count < 0:
+            msg = "Pair selection count cannot be negative!"
+            raise ValueError(msg)
+
+        if pair_sel_count == 0:  # Select none
+            pair_sel_ids = np.array([])
+        elif pair_sel_count >= pair_tab.shape[0]:  # Select all
+            pair_sel_ids = pair_tab.index.to_numpy()
+        elif pair_sel_method == "first":
+            pair_sel_ids = pair_tab.index.to_numpy()[:pair_sel_count]
+        elif pair_sel_method == "random":
+            rng = np.random.default_rng(pair_sel_seed)
+            pair_sel_ids = rng.choice(pair_tab.index.to_numpy(), pair_sel_count, replace=False)
+        elif pair_sel_method.startswith("max_"):
+            prop = pair_sel_method.split("_", maxsplit=1)[-1]
+            val = pair_tab[f"{prop}"]
+            val = val.iloc[np.argsort(val)[::-1]]
+            pair_sel_ids = val.index.to_numpy()[:pair_sel_count]
+        else:
+            msg = f"Pair selection method '{pair_sel_method}' unknown!"
+            raise ValueError(msg)
+
+        # Filter pairs
+        pair_tab = pair_tab.loc[pair_sel_ids]
+
+        return pair_tab
+
     def get_pair_table(self, circuit: Circuit, population: str) -> pandas.DataFrame:
         conn_mat = circuit.connectivity_matrix
-        assert not conn_mat.is_multigraph, "ERROR: ConnectivityMatrix must not be a multi-graph!"
+        if conn_mat.is_multigraph:
+            msg = "ERROR: ConnectivityMatrix must not be a multi-graph!"
+            raise ValueError(msg)
 
         # Add new columns for feed-forward selection
         conn_mat.add_edge_property(
@@ -1049,31 +1106,9 @@ class PairMotifNeuronSet(NeuronSet):
             pair_sel_count = self.pair_selection["count"]
             pair_sel_method = self.pair_selection.get("method", "first")
             pair_sel_seed = self.pair_selection.get("seed", 0)
-
-            assert pair_sel_count >= 0, "Pair selection count cannot be negative!"
-
-            if pair_sel_count is not None:
-                if pair_sel_count <= 0:  # Select none
-                    pair_sel_ids = np.array([])
-                elif pair_sel_count >= pair_tab.shape[0]:  # Select all
-                    pair_sel_ids = pair_tab.index.to_numpy()
-                elif pair_sel_method == "first":
-                    pair_sel_ids = pair_tab.index.to_numpy()[:pair_sel_count]
-                elif pair_sel_method == "random":
-                    rng = np.random.default_rng(pair_sel_seed)
-                    pair_sel_ids = rng.choice(
-                        pair_tab.index.to_numpy(), pair_sel_count, replace=False
-                    )
-                elif pair_sel_method.startswith("max_"):
-                    _prop = pair_sel_method.split("_", maxsplit=1)[-1]
-                    _val = pair_tab[f"{_prop}"]
-                    _val = _val.iloc[np.argsort(_val)[::-1]]
-                    pair_sel_ids = _val.index.to_numpy()[:pair_sel_count]
-                else:
-                    assert False, f"Pair selection method '{pair_sel_method}' unknown!"
-
-                # Filter pairs
-                pair_tab = pair_tab.loc[pair_sel_ids]
+            pair_tab = PairMotifNeuronSet._subsample_pairs(
+                pair_tab, pair_sel_count, pair_sel_method, pair_sel_seed
+            )
 
         if pair_tab.shape[0] == 0:
             L.warning("WARNING: Pair table empty!")
