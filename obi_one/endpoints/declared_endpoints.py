@@ -70,7 +70,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         trace_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         requested_metrics: Annotated[CALCULATED_FEATURES | None, Query()] = None,
-        amplitude: AmplitudeInput = Depends(),
+        amplitude: Annotated[AmplitudeInput, Depends()] = None,
         protocols: Annotated[STIMULI_TYPES | None, Query()] = None,
     ) -> ElectrophysiologyMetricsOutput:
         try:
