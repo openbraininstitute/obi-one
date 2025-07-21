@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -10,7 +9,7 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
-from obi_one.core.exception import OBIONE_Error
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
@@ -82,9 +81,7 @@ class SomaticStimulus(Stimulus, ABC):
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: "
                 f"'{self.name}' should be biophysical!"
             )
-            raise OBIONE_Error(
-                msg
-            )
+            raise OBIONEError(msg)
 
         return self._generate_config()
 
@@ -453,7 +450,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
 class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
-        The holding current is pre-defined for each cell.
+    The holding current is pre-defined for each cell.
     """
 
     title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
@@ -498,7 +495,7 @@ class SpikeStimulus(Stimulus):
                 f"Target Neuron Set '{self.targeted_neuron_set.block.name}' for "
                 f"{self.__class__.__name__}: '{self.name}' should be biophysical!"
             )
-            raise OBIONE_Error(msg)
+            raise OBIONEError(msg)
 
         return self._generate_config()
 
@@ -554,7 +551,9 @@ class SpikeStimulus(Stimulus):
         spike_df_sorted = spike_df.sort_values(by=["t", "gid"])  # Sort by time
         with h5py.File(spike_file, "w") as f:
             pop = f.create_group(f"/spikes/{source_node_population}")
-            ts = pop.create_dataset("timestamps", data=spike_df_sorted["t"].values, dtype=np.float64)
+            ts = pop.create_dataset(
+                "timestamps", data=spike_df_sorted["t"].values, dtype=np.float64
+            )
             pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
             ts.attrs["units"] = "ms"
 
@@ -609,9 +608,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 f"Poisson input exceeds maximum allowed nunmber of spikes "
                 f"({_MAX_POISSON_SPIKE_LIMIT})!"
             )
-            raise OBIONE_Error(
-                msg
-            )
+            raise OBIONEError(msg)
 
         gid_spike_map = {}
         for timestamp_idx, timestamp_t in enumerate(timestamps):
@@ -642,7 +639,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
 class FullySynchronousSpikeStimulus(SpikeStimulus):
     """Spikes sent at the same time from all neurons in the source neuron set.
 
-        to efferently connected neurons in the target neuron set.
+    to efferently connected neurons in the target neuron set.
     """
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"

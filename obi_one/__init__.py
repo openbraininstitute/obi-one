@@ -2,7 +2,7 @@ from obi_one.core.activity import Activity
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
-from obi_one.core.exception import OBIONE_Error
+from obi_one.core.exception import OBIONEError
 from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
@@ -78,7 +78,7 @@ __all__ = [
     "NeuronSetUnion",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
-    "OBIONE_Error",
+    "OBIONEError",
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",

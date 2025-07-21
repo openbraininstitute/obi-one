@@ -19,7 +19,7 @@ from obi_one.core.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
-from obi_one.core.exception import OBIONE_Error
+from obi_one.core.exception import OBIONEError
 from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
@@ -237,7 +237,7 @@ class SimulationsForm(Form):
 
         if name in self.__dict__.get(block_dict_name):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
-            raise OBIONE_Error(msg)
+            raise OBIONEError(msg)
 
         reference_type = globals()[reference_type_name]
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)
@@ -369,8 +369,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate list of synaptic manipulation configs (executed in the order in the list)
         # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
         manipulation_list = [
-            manipulation.config()
-            for manipulation in self.synaptic_manipulations.values()
+            manipulation.config() for manipulation in self.synaptic_manipulations.values()
         ]
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
@@ -391,12 +390,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # population (but which won't be a human-readable representation any more)
             if _name != _nset.name:
                 msg = "Neuron set name mismatch!"
-                raise OBIONE_Error(msg)  # This should never happen if properly initialized
+                raise OBIONEError(msg)  # This should never happen if properly initialized
 
             if self.initialize.node_set.block.name == _name:
                 if self._sonata_config.get("node_set") is not None:
                     msg = "Node set config entry already defined!"
-                    raise OBIONE_Error(msg)
+                    raise OBIONEError(msg)
 
                 # Assert that simulation neuron set is biophysical
                 if (
@@ -405,9 +404,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 ):
                     msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
                     "is not biophysical!"
-                    raise OBIONE_Error(
-                        msg
-                    )
+                    raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = _name
 

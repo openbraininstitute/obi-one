@@ -82,9 +82,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 stimuli_types=protocols,
             )
         except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Internal Server Error: {e}"
-            ) from e
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
         else:
             return ephys_metrics
 

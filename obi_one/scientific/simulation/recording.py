@@ -5,7 +5,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
-from obi_one.core.exception import OBIONE_Error
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
@@ -41,13 +41,11 @@ class Recording(Block, ABC):
                 f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: "
                 f"'{self.name}' should be biophysical!"
             )
-            raise OBIONE_Error(
-                msg
-            )
+            raise OBIONEError(msg)
 
         if end_time is None:
             msg = f"End time must be specified for recording '{self.name}'."
-            raise OBIONE_Error(msg)
+            raise OBIONEError(msg)
         self._end_time = end_time
 
         sonata_config = self._generate_config()
@@ -57,9 +55,7 @@ class Recording(Block, ABC):
                 f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
                 "End time must be later than start time!"
             )
-            raise OBIONE_Error(
-                msg
-            )
+            raise OBIONEError(msg)
 
         return sonata_config
 
@@ -119,9 +115,7 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
                 f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
                 "End time must be later than start time!"
             )
-            raise OBIONE_Error(
-                msg
-            )
+            raise OBIONEError(msg)
         return self
 
     def _generate_config(self) -> dict:
