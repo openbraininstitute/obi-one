@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat
@@ -7,8 +7,8 @@ from obi_one.core.block import Block
 
 
 class SynapticManipulation(Block, ABC):
-    @abstractmethod
-    def _get_override_name(self) -> str:
+    @staticmethod
+    def _get_override_name() -> str:
         pass
 
     def config(self) -> dict:
@@ -44,7 +44,8 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
         description="Scale the U_SE (ACh) parameter of the Tsodyks-Markram synaptic model.",
     )
 
-    def _get_override_name(self) -> str:
+    @staticmethod
+    def _get_override_name() -> str:
         return "ach_use"
 
     def _get_synapse_configure(self) -> str:
@@ -66,7 +67,8 @@ class SynapticMgManipulation(SynapticManipulation):
         units="mM",
     )
 
-    def _get_override_name(self) -> str:
+    @staticmethod
+    def _get_override_name() -> str:
         return "Mg"
 
     def _get_synapse_configure(self) -> str:
