@@ -143,7 +143,8 @@ class ElectrophysiologyMetricsForm(Form):
         trace_id: str = Field(description="ID of the trace of interest.")
         protocols: STIMULI_TYPES | None = Field(
             default=None,
-            description=f"Type of stimuli requested by the user. Should be one of: '{POSSIBLE_PROTOCOLS_STR}'.",
+            description=f"Type of stimuli requested by the user. Should be one \
+                of: '{POSSIBLE_PROTOCOLS_STR}'.",
         )
         requested_metrics: CALCULATED_FEATURES | None = Field(
             default=None,
@@ -186,7 +187,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
 
 
 class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMixin):
-    def run(self, db_client: entitysdk.client.Client = None):
+    def run(self, db_client: entitysdk.client.Client = None) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
                 trace_id=self.initialize.trace_id,
@@ -195,9 +196,10 @@ class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMix
                 amplitude=self.initialize.amplitude,
                 stimuli_types=self.initialize.protocols,
             )
-            return ephys_metrics
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+        else:
+            return ephys_metrics
 
 
 def get_electrophysiology_metrics(  # noqa: PLR0914, C901
@@ -211,7 +213,8 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     logger = logging.getLogger(__name__)
 
     logger.info(
-        "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, stimuli_types=%r",
+        "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, \
+            stimuli_types=%r",
         trace_id,
         calculated_feature,
         amplitude,
@@ -222,12 +225,12 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     if not stimuli_types:
         # Default to all protocol types if not specified
         logger.warning("No stimulus type specified. Iterating over all STEP_LIKE_STIMULI_TYPES.")
-        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
+        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
         logger.warning("No feature specified. Defaulting to everything.")
-        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)  # type: ignore
+        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
     if (
@@ -246,10 +249,10 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         )
 
         # If the range is just one number, use 10% of it as tolerance
+        desired_tolerance = amplitude.max_value - desired_amplitude
         if amplitude.min_value == amplitude.max_value:
             desired_tolerance = amplitude.max_value * 0.1
-        else:
-            desired_tolerance = amplitude.max_value - desired_amplitude
+
     else:
         # If the amplitudes are not specified, take an arbitrarily high tolerance
         desired_amplitude = 0
@@ -292,11 +295,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
                 temp_file.flush()
                 break
         else:
-            raise ValueError(
-                f"No asset with content type 'application/nwb' found for trace {trace_id}."
-            )
+            msg = f"No asset with content type 'application/nwb' found for trace {trace_id}."
+            raise ValueError(msg)
 
-        # LNMC traces need to be adjusted by an output voltage of 14mV due to their experimental protocol
+        # LNMC traces need to be adjusted by an output voltage of 14mV due to their experimental
+        # protocol
         files_metadata = {
             "test": {
                 stim_type: [
