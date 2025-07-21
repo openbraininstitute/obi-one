@@ -13,20 +13,37 @@ from obi_one.scientific.simulation.stimulus import (
     FullySynchronousSpikeStimulus
 )
 
-StimulusUnion = (
-    ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-)
+# StimulusUnion = (
+#     ConstantCurrentClampSomaticStimulus
+#     | RelativeConstantCurrentClampSomaticStimulus
+#     | LinearCurrentClampSomaticStimulus
+#     | RelativeLinearCurrentClampSomaticStimulus
+#     | NormallyDistributedCurrentClampSomaticStimulus
+#     | RelativeNormallyDistributedCurrentClampSomaticStimulus
+#     | SinusoidalCurrentClampSomaticStimulus
+#     | SubthresholdCurrentClampSomaticStimulus
+#     | HyperpolarizingCurrentClampSomaticStimulus
+#     | MultiPulseCurrentClampSomaticStimulus
+#     | PoissonSpikeStimulus
+#     | FullySynchronousSpikeStimulus
+# )
+
+from pydantic import Field
+from typing import Union, Annotated
+StimulusUnion = Annotated[Union[(
+    ConstantCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampSomaticStimulus,
+    LinearCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampSomaticStimulus,
+    RelativeLinearCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampSomaticStimulus,
+    PoissonSpikeStimulus,
+    FullySynchronousSpikeStimulus
+)], Field(discriminator='type')]
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any

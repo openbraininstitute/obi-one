@@ -1,0 +1,3163 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "obi-one",
+    "version": "2025.7.5"
+  },
+  "servers": [
+    {
+      "url": "/api/obi-one"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "Root endpoint.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Health endpoint.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Version",
+        "description": "Version endpoint.",
+        "operationId": "version_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Version Version Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/declared/neuron-morphology-metrics/{reconstruction_morphology_id}": {
+      "get": {
+        "tags": [
+          "declared"
+        ],
+        "summary": "Neuron morphology metrics",
+        "description": "This calculates neuron morphology metrics for a given reconstruction                     morphology.",
+        "operationId": "neuron_morphology_metrics_endpoint_declared_neuron_morphology_metrics__reconstruction_morphology_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reconstruction_morphology_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Reconstruction Morphology Id"
+            }
+          },
+          {
+            "name": "virtual-lab-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Virtual Lab Id"
+            }
+          },
+          {
+            "name": "project-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MorphologyMetricsOutput"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/declared/electrophysiologyrecording-metrics/{trace_id}": {
+      "get": {
+        "tags": [
+          "declared"
+        ],
+        "summary": "electrophysiology recording metrics",
+        "description": "This calculates electrophysiology traces metrics for a particular recording",
+        "operationId": "electrophysiologyrecording_metrics_endpoint_declared_electrophysiologyrecording_metrics__trace_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trace Id"
+            }
+          },
+          {
+            "name": "requested_metrics",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "spike_count",
+                      "time_to_first_spike",
+                      "time_to_last_spike",
+                      "inv_time_to_first_spike",
+                      "doublet_ISI",
+                      "inv_first_ISI",
+                      "ISI_log_slope",
+                      "ISI_CV",
+                      "irregularity_index",
+                      "adaptation_index",
+                      "mean_frequency",
+                      "strict_burst_number",
+                      "strict_burst_mean_freq",
+                      "spikes_per_burst",
+                      "AP_height",
+                      "AP_amplitude",
+                      "AP1_amp",
+                      "APlast_amp",
+                      "AP_duration_half_width",
+                      "AHP_depth",
+                      "AHP_time_from_peak",
+                      "AP_peak_upstroke",
+                      "AP_peak_downstroke",
+                      "voltage_base",
+                      "voltage_after_stim",
+                      "ohmic_input_resistance_vb_ssse",
+                      "steady_state_voltage_stimend",
+                      "sag_amplitude",
+                      "decay_time_constant_after_stim",
+                      "depol_block_bool"
+                    ],
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Requested Metrics"
+            }
+          },
+          {
+            "name": "protocols",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "spontaneous",
+                      "idrest",
+                      "idthres",
+                      "apwaveform",
+                      "iv",
+                      "step",
+                      "spontaps",
+                      "firepattern",
+                      "sponnohold30",
+                      "sponhold30",
+                      "starthold",
+                      "startnohold",
+                      "delta",
+                      "sahp",
+                      "idhyperpol",
+                      "irdepol",
+                      "irhyperpol",
+                      "iddepol",
+                      "ramp",
+                      "ap_thresh",
+                      "hyperdepol",
+                      "negcheops",
+                      "poscheops",
+                      "spikerec",
+                      "sinespec"
+                    ],
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Protocols"
+            }
+          },
+          {
+            "name": "min_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Value"
+            }
+          },
+          {
+            "name": "max_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Value"
+            }
+          },
+          {
+            "name": "virtual-lab-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Virtual Lab Id"
+            }
+          },
+          {
+            "name": "project-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectrophysiologyMetricsOutput"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generated/simulations-generate-grid": {
+      "post": {
+        "tags": [
+          "generated"
+        ],
+        "summary": "Simulation Campaign",
+        "description": "SONATA simulation campaign",
+        "operationId": "endpoint_generated_simulations_generate_grid_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "virtual-lab-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Virtual Lab Id"
+            }
+          },
+          {
+            "name": "project-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationsForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "title": "Response Endpoint Generated Simulations Generate Grid Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generated/simulations-generate-grid-save": {
+      "post": {
+        "tags": [
+          "generated"
+        ],
+        "summary": "Simulation Campaign",
+        "description": "SONATA simulation campaign",
+        "operationId": "endpoint_generated_simulations_generate_grid_save_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "virtual-lab-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Virtual Lab Id"
+            }
+          },
+          {
+            "name": "project-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationsForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "title": "Response Endpoint Generated Simulations Generate Grid Save Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generated/morphology-metrics-run-grid": {
+      "post": {
+        "tags": [
+          "generated"
+        ],
+        "summary": "Morphology Metrics",
+        "description": "Calculates morphology metrics for a given morphologies.",
+        "operationId": "endpoint_generated_morphology_metrics_run_grid_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "virtual-lab-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Virtual Lab Id"
+            }
+          },
+          {
+            "name": "project-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MorphologyMetricsForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "title": "Response Endpoint Generated Morphology Metrics Run Grid Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AllNeurons": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "AllNeurons",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "All Neurons",
+        "description": "All biophysical neurons."
+      },
+      "Circuit": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Circuit",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "matrix_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matrix Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "path"
+        ],
+        "title": "Circuit",
+        "description": "Class representing a circuit, i.e., pointing to a SONATA config and possible additional assets."
+      },
+      "CircuitFromID": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "CircuitFromID",
+            "title": "Type"
+          },
+          "id_str": {
+            "type": "string",
+            "title": "Id Str",
+            "description": "ID of the entity in string format."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id_str"
+        ],
+        "title": "CircuitFromID"
+      },
+      "ConstantCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ConstantCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "amplitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Amplitude",
+            "description": "The injected current. Given in nanoamps.",
+            "default": 0.1,
+            "units": "nA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Constant Somatic Current Clamp (Absolute)",
+        "description": "A constant current injection at a fixed absolute amplitude."
+      },
+      "ElectrophysiologyMetricsOutput": {
+        "properties": {
+          "feature_dict": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Feature Dict",
+            "description": "Mapping of feature name to its metric values. Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature_dict"
+        ],
+        "title": "ElectrophysiologyMetricsOutput",
+        "description": "Output schema for electrophysiological metrics extracted using BluePyEfe."
+      },
+      "ExcitatoryNeurons": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ExcitatoryNeurons",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "All Excitatory Neurons",
+        "description": "All biophysical excitatory neurons."
+      },
+      "FullySynchronousSpikeStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FullySynchronousSpikeStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "source_neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set (Source)",
+            "supports_virtual": true
+          },
+          "targeted_neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set (Target)",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "source_neuron_set",
+          "targeted_neuron_set"
+        ],
+        "title": "Fully Synchronous Spikes (Efferent)",
+        "description": "Spikes sent at the same time from all neurons in the source neuron set         to efferently connected neurons in the target neuron set."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HyperpolarizingCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "HyperpolarizingCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Hyperpolarizing Somatic Current Clamp",
+        "description": "A hyperpolarizing current injection which brings a cell to base membrance voltage.         The holding current is pre-defined for each cell.\n    "
+      },
+      "IDNeuronSet": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "IDNeuronSet",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          },
+          "neuron_ids": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NamedTuple"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NamedTuple"
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Neuron Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "neuron_ids"
+        ],
+        "title": "ID Neuron Set",
+        "description": "Neuron set definition by providing a list of neuron IDs."
+      },
+      "Info": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Info",
+            "title": "Type"
+          },
+          "campaign_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Campaign Name",
+            "description": "Name of the simulation campaign."
+          },
+          "campaign_description": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Campaign Description",
+            "description": "Description of the simulation campaign."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "campaign_name",
+          "campaign_description"
+        ],
+        "title": "Info"
+      },
+      "InhibitoryNeurons": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "InhibitoryNeurons",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "All Inhibitory Neurons",
+        "description": "All inhibitory neurons."
+      },
+      "LinearCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LinearCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "amplitude_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Start Amplitude",
+            "description": "The amount of current initially injected when the stimulus activates. Given in nanoamps.",
+            "default": 0.1,
+            "units": "nA"
+          },
+          "amplitude_end": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "End Amplitude",
+            "description": "If given, current is interpolated such that current reaches this value when the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
+            "default": 0.2,
+            "units": "nA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Linear Somatic Current Clamp (Absolute)",
+        "description": "A current injection which changes linearly in absolute ampltude over time."
+      },
+      "MorphologyMetricsForm": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "MorphologyMetricsForm",
+            "title": "Type"
+          },
+          "initialize": {
+            "$ref": "#/components/schemas/obi_one__scientific__morphology_metrics__morphology_metrics__MorphologyMetricsForm__Initialize"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "initialize"
+        ],
+        "title": "MorphologyMetricsForm",
+        "description": ""
+      },
+      "MorphologyMetricsOutput": {
+        "properties": {
+          "aspect_ratio": {
+            "type": "number",
+            "title": "aspect_ratio",
+            "description": "Calculates the min/max ratio of the principal direction extents                 along the plane."
+          },
+          "circularity": {
+            "type": "number",
+            "title": "circularity",
+            "description": "Calculates the circularity of the morphology points along the plane."
+          },
+          "length_fraction_above_soma": {
+            "type": "number",
+            "title": "length_fraction_above_soma",
+            "description": "Returns the length fraction of the segments that have their midpoints                             higher than the soma."
+          },
+          "max_radial_distance": {
+            "type": "number",
+            "title": "max_radial_distance",
+            "description": "The maximum radial distance from the soma in micrometers."
+          },
+          "number_of_neurites": {
+            "type": "integer",
+            "title": "number_of_neurites",
+            "description": "Number of neurites in a morphology."
+          },
+          "soma_radius": {
+            "type": "number",
+            "title": "soma_radius [μm]",
+            "description": "The radius of the soma in micrometers."
+          },
+          "soma_surface_area": {
+            "type": "number",
+            "title": "soma_surface_area [μm^2]",
+            "description": "The surface area of the soma in square micrometers."
+          },
+          "total_length": {
+            "type": "number",
+            "title": "total_length [μm]",
+            "description": "The total length of the morphology neurites in micrometers."
+          },
+          "total_height": {
+            "type": "number",
+            "title": "total_width [μm]",
+            "description": "The total width (X-range) of the morphology in micrometers."
+          },
+          "total_depth": {
+            "type": "number",
+            "title": "total_depth [μm]",
+            "description": "The total depth (Z-range) of the morphology in micrometers."
+          },
+          "total_area": {
+            "type": "number",
+            "title": "total_area [μm^2]",
+            "description": "The total surface area of all sections in square micrometers."
+          },
+          "total_volume": {
+            "type": "number",
+            "title": "total_volume [μm^3]",
+            "description": "The total volume of all sections in cubic micrometers."
+          },
+          "section_lengths": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "section_lengths [μm]",
+            "description": "The distribution of lengths per section in micrometers."
+          },
+          "segment_radii": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "segment_radii [μm]",
+            "description": "The distribution of radii of the morphology in micrometers."
+          },
+          "number_of_sections": {
+            "type": "number",
+            "title": "number_of_sections",
+            "description": "The number of sections in the morphology."
+          },
+          "local_bifurcation_angles": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "local_bifurcation_angles [rad]",
+            "description": "Angles between two sections computed at the bifurcation (local)."
+          },
+          "remote_bifurcation_angles": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "remote_bifurcation_angles [rad]",
+            "description": "Angles between two sections computed at the end of the sections (remote)."
+          },
+          "section_path_distances": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "section_path_distances [μm]",
+            "description": "Path distances from the soma to section endpoints in micrometers."
+          },
+          "section_radial_distances": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "section_radial_distances [μm]",
+            "description": "Radial distance from the soma to section endpoints in micrometers."
+          },
+          "section_branch_orders": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "section_branch_orders",
+            "description": "The distribution of branch orders of sections, computed from soma."
+          },
+          "section_strahler_orders": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "section_strahler_orders",
+            "description": "The distribution of strahler branch orders of sections, computed from terminals."
+          }
+        },
+        "type": "object",
+        "required": [
+          "aspect_ratio",
+          "circularity",
+          "length_fraction_above_soma",
+          "max_radial_distance",
+          "number_of_neurites",
+          "soma_radius",
+          "soma_surface_area",
+          "total_length",
+          "total_height",
+          "total_depth",
+          "total_area",
+          "total_volume",
+          "section_lengths",
+          "segment_radii",
+          "number_of_sections",
+          "local_bifurcation_angles",
+          "remote_bifurcation_angles",
+          "section_path_distances",
+          "section_radial_distances",
+          "section_branch_orders",
+          "section_strahler_orders"
+        ],
+        "title": "MorphologyMetricsOutput"
+      },
+      "MultiPulseCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "MultiPulseCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "amplitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Amplitude",
+            "description": "The amount of current initially injected when each pulse activates. Given in nanoamps (nA).",
+            "default": 0.1,
+            "units": "nA"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.000001
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.000001
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Pulse Width",
+            "description": "The length of time each pulse lasts. Given in milliseconds (ms).",
+            "default": 1,
+            "units": "ms"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.000001
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.000001
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Pulse Frequency",
+            "description": "The frequency of pulse trains. Given in Hertz (Hz).",
+            "default": 1,
+            "units": "Hz"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Multi Pulse Somatic Current Clamp (Absolute)",
+        "description": "A series of current pulses injected at a fixed frequency, with each pulse having a fixed absolute amplitude and temporal width."
+      },
+      "NamedTuple": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "NamedTuple",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "elements": {
+            "items": {
+
+            },
+            "type": "array",
+            "title": "Elements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "elements"
+        ],
+        "title": "NamedTuple",
+        "description": "Helper class to assign a name to a tuple of elements."
+      },
+      "NeuronSetReference": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "NeuronSetReference",
+            "title": "Type"
+          },
+          "block_dict_name": {
+            "type": "string",
+            "title": "Block Dict Name",
+            "default": ""
+          },
+          "block_name": {
+            "type": "string",
+            "title": "Block Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "block_name"
+        ],
+        "title": "NeuronSetReference",
+        "description": "A reference to a NeuronSet block.",
+        "allowed_block_types": [
+          "PredefinedNeuronSet",
+          "CombinedNeuronSet",
+          "IDNeuronSet",
+          "PropertyNeuronSet",
+          "VolumetricCountNeuronSet",
+          "VolumetricRadiusNeuronSet",
+          "SimplexNeuronSet",
+          "SimplexMembershipBasedNeuronSet",
+          "nbS1VPMInputs",
+          "nbS1POmInputs",
+          "rCA1CA3Inputs",
+          "AllNeurons",
+          "ExcitatoryNeurons",
+          "InhibitoryNeurons"
+        ],
+        "is_block_reference": true
+      },
+      "NormallyDistributedCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "NormallyDistributedCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "mean_amplitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Mean Amplitude",
+            "description": "The mean value of current to inject. Given in nanoamps (nA).",
+            "default": 0.01,
+            "units": "nA"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Variance",
+            "description": "The variance around the mean of current to inject using a                     normal distribution.",
+            "default": 0.01,
+            "units": "nA^2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Normally Distributed Somatic Current Clamp (Absolute)",
+        "description": "Normally distributed current injection with a mean absolute amplitude."
+      },
+      "PoissonSpikeStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "PoissonSpikeStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "source_neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set (Source)",
+            "supports_virtual": true
+          },
+          "targeted_neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set (Target)",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1000,
+            "units": "ms"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.000001
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.000001
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Frequency",
+            "description": "Mean frequency (Hz) of the Poisson input.",
+            "default": 1,
+            "units": "Hz"
+          },
+          "random_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Random Seed",
+            "description": "Seed for the random number generator to ensure reproducibility of the spike generation.",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "source_neuron_set",
+          "targeted_neuron_set"
+        ],
+        "title": "Poisson Spikes (Efferent)",
+        "description": "Spike times drawn from a Poisson process with a given frequency         sent from all neurons in the source neuron set to efferently connected             neurons in the target neuron set."
+      },
+      "ReconstructionMorphologyFromID": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ReconstructionMorphologyFromID",
+            "title": "Type"
+          },
+          "id_str": {
+            "type": "string",
+            "title": "Id Str",
+            "description": "ID of the entity in string format."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id_str"
+        ],
+        "title": "ReconstructionMorphologyFromID"
+      },
+      "RegularTimestamps": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "RegularTimestamps",
+            "title": "Type"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Start Time",
+            "description": "Sart time of the timestamps in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Interval",
+            "description": "Interval between timestamps in milliseconds (ms).",
+            "default": 10,
+            "units": "ms"
+          },
+          "number_of_repetitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Number Of Repetitions",
+            "description": "Number of timestamps to generate.",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Regular Timestamps",
+        "description": "A series of timestamps at regular intervals."
+      },
+      "RelativeConstantCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "RelativeConstantCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "percentage_of_threshold_current": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Percentage of Threshold Current",
+            "description": "The percentage of a cell’s threshold current to inject when the stimulus                     activates.",
+            "default": 10,
+            "units": "%"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Constant Somatic Current Clamp (Relative)",
+        "description": "A constant current injection at a percentage of each cell's threshold current."
+      },
+      "RelativeLinearCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "RelativeLinearCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "percentage_of_threshold_current_start": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Percentage of Threshold Current (Start)",
+            "description": "The percentage of a cell's threshold current to inject when the stimulus activates.",
+            "default": 10,
+            "units": "%"
+          },
+          "percentage_of_threshold_current_end": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Percentage of Threshold Current (End)",
+            "description": "If given, the percentage of a cell's threshold current is interpolated such that the percentage reaches this value when the stimulus concludes.",
+            "default": 100,
+            "units": "%"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Linear Somatic Current Clamp (Relative)",
+        "description": "A current injection which changes linearly as a percentage of each cell's threshold current over time."
+      },
+      "RelativeNormallyDistributedCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "RelativeNormallyDistributedCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "mean_percentage_of_threshold_current": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Percentage of Threshold Current (Mean)",
+            "description": "The mean value of current to inject as a percentage of a cell's                     threshold current.",
+            "default": 0.01,
+            "units": "%"
+          },
+          "variance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Variance",
+            "description": "The variance around the mean of current to inject using a                     normal distribution.",
+            "default": 0.01,
+            "units": "nA^2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Normally Distributed Somatic Current Clamp (Relative)",
+        "description": "Normally distributed current injection around a mean percentage of each cell's threshold current."
+      },
+      "ScaleAcetylcholineUSESynapticManipulation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ScaleAcetylcholineUSESynapticManipulation",
+            "title": "Type"
+          },
+          "use_scaling": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Scale U_SE (ACh)",
+            "description": "Scale the U_SE (ACh) parameter of the Tsodyks–Markram synaptic model.",
+            "default": 0.705072863121741
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Demo: Scale U_SE to Modulate Acetylcholine Effect on Synaptic Release Probability",
+        "description": "Applying a scaling factor to the U_SE parameter which determines the effect of achetylcholine (ACh) on synaptic release probability using the Tsodyks–Markram synaptic model.        This is applied for all synapses between biophysical neurons."
+      },
+      "SimulationsForm": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SimulationsForm",
+            "title": "Type"
+          },
+          "timestamps": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SingleTimestamp"
+                },
+                {
+                  "$ref": "#/components/schemas/RegularTimestamps"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Timestamps",
+            "description": "Timestamps for the simulation.",
+            "group": "Setup",
+            "group_order": 0,
+            "reference_type": "TimestampsReference",
+            "singular_name": "Timestamps"
+          },
+          "stimuli": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ConstantCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/RelativeConstantCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/LinearCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/RelativeLinearCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/NormallyDistributedCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/RelativeNormallyDistributedCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/SinusoidalCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/SubthresholdCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/HyperpolarizingCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/MultiPulseCurrentClampSomaticStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/PoissonSpikeStimulus"
+                },
+                {
+                  "$ref": "#/components/schemas/FullySynchronousSpikeStimulus"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Stimuli",
+            "description": "Stimuli for the simulation.",
+            "group": "Stimuli & Recordings",
+            "group_order": 0,
+            "reference_type": "StimulusReference",
+            "singular_name": "Stimulus"
+          },
+          "recordings": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SomaVoltageRecording"
+                },
+                {
+                  "$ref": "#/components/schemas/TimeWindowSomaVoltageRecording"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Recordings",
+            "description": "Recordings for the simulation.",
+            "group": "Stimuli & Recordings",
+            "group_order": 1,
+            "reference_type": "RecordingReference",
+            "singular_name": "Recording"
+          },
+          "neuron_sets": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AllNeurons"
+                },
+                {
+                  "$ref": "#/components/schemas/ExcitatoryNeurons"
+                },
+                {
+                  "$ref": "#/components/schemas/InhibitoryNeurons"
+                },
+                {
+                  "$ref": "#/components/schemas/IDNeuronSet"
+                },
+                {
+                  "$ref": "#/components/schemas/nbS1VPMInputs"
+                },
+                {
+                  "$ref": "#/components/schemas/nbS1POmInputs"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Neuron Sets",
+            "description": "Neuron sets for the simulation.",
+            "group": "Circuit Components",
+            "group_order": 0,
+            "reference_type": "NeuronSetReference",
+            "singular_name": "Neuron Set"
+          },
+          "synaptic_manipulations": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SynapticMgManipulation"
+                },
+                {
+                  "$ref": "#/components/schemas/ScaleAcetylcholineUSESynapticManipulation"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Synaptic Manipulations",
+            "description": "Synaptic manipulations for the simulation.",
+            "group": "Circuit Components",
+            "group_order": 1,
+            "reference_type": "SynapticManipulationsReference",
+            "singular_name": "Synaptic Manipulation"
+          },
+          "initialize": {
+            "$ref": "#/components/schemas/obi_one__scientific__simulation__simulations__SimulationsForm__Initialize",
+            "title": "Initialization",
+            "description": "Parameters for initializing the simulation.",
+            "group": "Setup",
+            "group_order": 1
+          },
+          "info": {
+            "$ref": "#/components/schemas/Info",
+            "description": "Information about the simulation campaign.",
+            "group": "Setup",
+            "group_order": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "initialize",
+          "info"
+        ],
+        "title": "SimulationsForm",
+        "description": "Simulations Form.",
+        "block_block_group_order": [
+          "Setup",
+          "Stimuli & Recordings",
+          "Circuit Components",
+          "Events",
+          "Circuit Manipulations"
+        ]
+      },
+      "SingleTimestamp": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SingleTimestamp",
+            "title": "Type"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Start Time",
+            "description": "Sart time of the timestamps in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Single Timestamp",
+        "description": "A single timestamp at a specified time."
+      },
+      "SinusoidalCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SinusoidalCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "maximum_amplitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Maximum Amplitude",
+            "description": "The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
+            "default": 0.1,
+            "units": "nA"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.000001
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.000001
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Frequency",
+            "description": "The frequency of the waveform. Given in Hertz (Hz).",
+            "default": 1,
+            "units": "Hz"
+          },
+          "dt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.025
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.025
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Timestep",
+            "description": "Timestep of generated signal in milliseconds (ms).",
+            "default": 0.025,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Sinusoidal Somatic Current Clamp (Absolute)",
+        "description": "A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."
+      },
+      "SomaVoltageRecording": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SomaVoltageRecording",
+            "title": "Type"
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to record from."
+          },
+          "dt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.025
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.025
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Timestep",
+            "description": "Interval between recording time steps in milliseconds (ms).",
+            "default": 0.1,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "neuron_set"
+        ],
+        "title": "Soma Voltage Recording (Full Experiment)",
+        "description": "Records the soma voltage of a neuron set for the full length of the experiment."
+      },
+      "SubthresholdCurrentClampSomaticStimulus": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SubthresholdCurrentClampSomaticStimulus",
+            "title": "Type"
+          },
+          "timestamps": {
+            "$ref": "#/components/schemas/TimestampsReference",
+            "title": "Timestamps",
+            "description": "Timestamps at which the stimulus is applied."
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to which the stimulus is applied.",
+            "supports_virtual": false
+          },
+          "timestamp_offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp Offset",
+            "description": "The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Duration",
+            "description": "Time duration in milliseconds for how long input is activated.",
+            "default": 1,
+            "units": "ms"
+          },
+          "percentage_below_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Percentage Below Threshold",
+            "description": "A percentage adjusted from 100 of a cell's threshold current.                         E.g. 20 will apply 80\\% of the threshold current. Using a negative                             value will give more than 100. E.g. -20 will inject 120\\% of the                                 threshold current.",
+            "default": 0.1,
+            "units": "%"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "timestamps",
+          "neuron_set"
+        ],
+        "title": "Subthreshold Somatic Current Clamp (Relative)",
+        "description": "A subthreshold current injection at a percentage below each cell's threshold current."
+      },
+      "SynapticMgManipulation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SynapticMgManipulation",
+            "title": "Type"
+          },
+          "magnesium_value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Extracellular Magnesium Concentration",
+            "description": "Extracellular calcium concentration in millimoles (mM).",
+            "default": 2.4,
+            "units": "mM"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Demo: Synaptic Mg2+ Concentration Manipulation",
+        "description": "Manipulate the extracellular synaptic magnesium (Mg2+) concentration.        This is applied for all synapses between biophysical neurons."
+      },
+      "TimeWindowSomaVoltageRecording": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "TimeWindowSomaVoltageRecording",
+            "title": "Type"
+          },
+          "neuron_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to record from."
+          },
+          "dt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.025
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0.025
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Timestep",
+            "description": "Interval between recording time steps in milliseconds (ms).",
+            "default": 0.1,
+            "units": "ms"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Start Time",
+            "description": "Recording start time in milliseconds (ms).",
+            "default": 0,
+            "units": "ms"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              }
+            ],
+            "title": "End Time",
+            "description": "Recording end time in milliseconds (ms).",
+            "default": 100,
+            "units": "ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "neuron_set"
+        ],
+        "title": "Soma Voltage Recording (Time Window)",
+        "description": "Records the soma voltage of a neuron set over a specified time window."
+      },
+      "TimestampsReference": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "TimestampsReference",
+            "title": "Type"
+          },
+          "block_dict_name": {
+            "type": "string",
+            "title": "Block Dict Name",
+            "default": ""
+          },
+          "block_name": {
+            "type": "string",
+            "title": "Block Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "block_name"
+        ],
+        "title": "TimestampsReference",
+        "description": "A reference to a NeuronSet block.",
+        "allowed_block_types": [
+          "SingleTimestamp",
+          "RegularTimestamps"
+        ],
+        "is_block_reference": true
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "nbS1POmInputs": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "nbS1POmInputs",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Demo: nbS1 POm Inputs",
+        "description": "Virtual neurons projecting from the POm thalamic nucleus to biophysical cortical neurons in the nbS1 model."
+      },
+      "nbS1VPMInputs": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "nbS1VPMInputs",
+            "title": "Type"
+          },
+          "sample_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 100,
+                  "minimum": 0
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Sample (Percentage)",
+            "description": "Percentage of neurons to sample between 0 and 100%",
+            "default": 100,
+            "units": "%"
+          },
+          "sample_seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Sample Seed",
+            "description": "Seed for random sampling.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Demo: nbS1 VPM Inputs",
+        "description": "Virtual neurons projecting from the VPM thalamic nucleus to biophysical cortical neurons in the nbS1 model."
+      },
+      "obi_one__scientific__morphology_metrics__morphology_metrics__MorphologyMetricsForm__Initialize": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "MorphologyMetricsForm.Initialize",
+            "title": "Type"
+          },
+          "morphology": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReconstructionMorphologyFromID"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ReconstructionMorphologyFromID"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Morphology",
+            "description": "3. Morphology description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "morphology"
+        ],
+        "title": "Initialize"
+      },
+      "obi_one__scientific__simulation__simulations__SimulationsForm__Initialize": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "SimulationsForm.Initialize",
+            "title": "Type"
+          },
+          "circuit": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Circuit"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/Circuit"
+              },
+              {
+                "$ref": "#/components/schemas/CircuitFromID"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CircuitFromID"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Circuit"
+          },
+          "node_set": {
+            "$ref": "#/components/schemas/NeuronSetReference",
+            "title": "Neuron Set",
+            "description": "Neuron set to simulate."
+          },
+          "simulation_length": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 5000,
+                "minimum": 1
+              },
+              {
+                "items": {
+                  "type": "number",
+                  "maximum": 5000,
+                  "minimum": 1
+                },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Duration",
+            "description": "Simulation length in milliseconds (ms).",
+            "default": 1000,
+            "units": "ms"
+          },
+          "extracellular_calcium_concentration": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "type": "array"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ],
+            "title": "Extracellular Calcium Concentration",
+            "description": "Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
+            "default": 1.1,
+            "units": "mM"
+          },
+          "v_init": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Initial Voltage",
+            "description": "Initial membrane potential in millivolts (mV).",
+            "default": -80,
+            "units": "mV"
+          },
+          "random_seed": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Random Seed",
+            "description": "Random seed for the simulation.",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "circuit",
+          "node_set"
+        ],
+        "title": "Initialize"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

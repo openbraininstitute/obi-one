@@ -15,31 +15,72 @@ from obi_one.scientific.circuit.neuron_sets import (
     InhibitoryNeurons,
 )
 
-NeuronSetUnion = (
-    PredefinedNeuronSet
-    | CombinedNeuronSet
-    | IDNeuronSet
-    | PropertyNeuronSet
-    | VolumetricCountNeuronSet
-    | VolumetricRadiusNeuronSet
-    | SimplexNeuronSet
-    | SimplexMembershipBasedNeuronSet
-    | nbS1VPMInputs
-    | nbS1POmInputs
-    | rCA1CA3Inputs
-    | AllNeurons
-    | ExcitatoryNeurons
-    | InhibitoryNeurons
-)
+# NeuronSetUnion = (
+#     PredefinedNeuronSet
+#     | CombinedNeuronSet
+#     | IDNeuronSet
+#     | PropertyNeuronSet
+#     | VolumetricCountNeuronSet
+#     | VolumetricRadiusNeuronSet
+#     | SimplexNeuronSet
+#     | SimplexMembershipBasedNeuronSet
+#     | nbS1VPMInputs
+#     | nbS1POmInputs
+#     | rCA1CA3Inputs
+#     | AllNeurons
+#     | ExcitatoryNeurons
+#     | InhibitoryNeurons
+# )
 
-SimulationNeuronSetUnion = (
-    AllNeurons
-    | ExcitatoryNeurons
-    | InhibitoryNeurons
-    | IDNeuronSet
-    | nbS1VPMInputs
-    | nbS1POmInputs
-)
+from pydantic import Field
+from typing import Union, Annotated
+NeuronSetUnion = Annotated[Union[(
+    CombinedNeuronSet,
+    IDNeuronSet,
+    PredefinedNeuronSet,
+    PropertyNeuronSet,
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
+    nbS1VPMInputs,
+    nbS1POmInputs,
+    rCA1CA3Inputs,
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
+)], Field(discriminator='type')]
+
+# SimulationNeuronSetUnion = (
+#     AllNeurons
+#     | ExcitatoryNeurons
+#     | InhibitoryNeurons
+#     | IDNeuronSet
+#     | nbS1VPMInputs
+#     | nbS1POmInputs
+# )
+
+from pydantic import Field
+from typing import Union, Annotated
+SimulationNeuronSetUnion = Annotated[Union[(
+    (
+    CombinedNeuronSet,
+    IDNeuronSet,
+    PredefinedNeuronSet,
+    PropertyNeuronSet,
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
+    SimplexNeuronSet,
+    SimplexMembershipBasedNeuronSet,
+    nbS1VPMInputs,
+    nbS1POmInputs,
+    rCA1CA3Inputs,
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
+))], Field(discriminator='type')]
+
+
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any

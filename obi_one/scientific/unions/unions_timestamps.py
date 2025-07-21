@@ -3,10 +3,17 @@ from obi_one.scientific.simulation.timestamps import (
     RegularTimestamps
 )
 
-TimestampsUnion = (
-    SingleTimestamp
-    | RegularTimestamps
-)
+# TimestampsUnion = (
+#     SingleTimestamp
+#     | RegularTimestamps
+# )
+
+from pydantic import Field
+from typing import Union, Annotated
+TimestampsUnion = Annotated[Union[(
+    SingleTimestamp,
+    RegularTimestamps
+)], Field(discriminator='type')]
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any

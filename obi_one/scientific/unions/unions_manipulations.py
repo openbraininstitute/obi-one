@@ -3,10 +3,18 @@ from obi_one.scientific.simulation.manipulations import (
     ScaleAcetylcholineUSESynapticManipulation
 )
 
-SynapticManipulationsUnion = (
-    SynapticMgManipulation
-    | ScaleAcetylcholineUSESynapticManipulation
-)
+# SynapticManipulationsUnion = (
+#     SynapticMgManipulation
+#     | ScaleAcetylcholineUSESynapticManipulation
+# )
+
+from pydantic import Field
+from typing import Union, Annotated
+SynapticManipulationsUnion = Annotated[Union[(
+    SynapticMgManipulation, 
+    ScaleAcetylcholineUSESynapticManipulation
+)], Field(discriminator='type')]
+
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any
