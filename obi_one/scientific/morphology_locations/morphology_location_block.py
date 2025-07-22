@@ -2,11 +2,14 @@ import abc
 from typing import Self
 
 import morphio
+import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 
 from .specified_morphology_locations import _CEN_IDX, generate_neurite_locations_on
+
+__MIN_PD_SD = 0.1
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -27,11 +30,11 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     @abc.abstractmethod
-    def _make_points(self, morphology: morphio.Morphology):
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         """Returns a generated list of points for the morphology."""
 
     @abc.abstractmethod
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         """Do specific checks on the validity of parameters."""
 
     @model_validator(mode="after")
@@ -40,7 +43,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
-    def points_on(self, morphology: morphio.Morphology):
+    def points_on(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         self.enforce_no_lists()
         return self._make_points(morphology)
 
@@ -48,7 +51,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 class RandomMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations without constraint."""
 
-    def _make_points(self, morphology: morphio.Morphology):
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -62,10 +65,12 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.number_of_locations, list):
-            assert self.number_of_locations > 0, "Number of locations must be at least one!"
+        if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+            if self.number_of_locations <= 0:
+                msg = f"Number of locations: {self.number_of_locations} <= 0"
+                raise ValueError(msg)
 
 
 class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
@@ -78,7 +83,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
             generate",
     )
 
-    def _make_points(self, morphology: morphio.Morphology):
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -92,10 +97,12 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_groups, list):
-            assert self.n_groups > 0, "Number of groups must be at least one!"
+        if not isinstance(self.n_groups, list):  # noqa: SIM102
+            if self.n_groups <= 0:
+                msg = f"Number of groups: {self.n_groups} <= 0"
+                raise ValueError(msg)
 
 
 class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
@@ -112,7 +119,7 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
             > 1.0",
     )
 
-    def _make_points(self, morphology: morphio.Morphology):
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=self.number_of_locations,
@@ -126,15 +133,17 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):
-            assert self.path_dist_mean >= 0.0, "Path distance mean must be non-negative!"
+        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+            if self.path_dist_mean < 0:
+                msg = f"Path distance mean: {self.path_dist_mean} < 0"
+                raise ValueError(msg)
 
-        if not isinstance(self.path_dist_tolerance, list):
-            assert self.path_dist_tolerance >= 1.0, (
-                "For numerical reasons, path distance tolerance must be at least 1.0!"
-            )
+        if not isinstance(self.path_dist_tolerance, list):  # noqa: SIM102
+            if self.path_dist_tolerance < 1.0:
+                msg = f"Path dist tolerance: {self.path_dist_tolerance} < 1.0 (numerical stability)"
+                raise ValueError(msg)
 
 
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
@@ -149,8 +158,8 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             cluster",
     )
 
-    def _make_points(self, morphology: morphio.Morphology):
-        # FIXME: This rounds down. Could make missing points
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
@@ -166,14 +175,17 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
         if not isinstance(self.n_clusters, list):
-            assert self.n_clusters >= 1, "Number of clusters must be at least one!"
-            if not isinstance(self.number_of_locations, list):
-                assert self.number_of_locations >= self.n_clusters, (
-                    "Cannot make more clusters than locations!"
-                )
+            if self.n_clusters < 1:
+                msg = f"Number of clusters {self.n_clusters} < 1"
+                raise ValueError(msg)
+            if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+                if self.number_of_locations < self.n_clusters:
+                    msg = f"Number of locations: {self.number_of_locations} \
+                        < number of clusters: {self.n_clusters}"
+                    raise ValueError(msg)
 
 
 class ClusteredGroupedMorphologyLocations(
@@ -181,8 +193,8 @@ class ClusteredGroupedMorphologyLocations(
 ):
     """Clustered random locations, grouped in to conceptual groups."""
 
-    def _make_points(self, morphology: morphio.Morphology):
-        # FIXME: This rounds down. Could make missing points
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
@@ -198,7 +210,7 @@ class ClusteredGroupedMorphologyLocations(
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         super(ClusteredMorphologyLocations, self)._check_parameter_values()
         super(RandomGroupedMorphologyLocations, self)._check_parameter_values()
 
@@ -224,8 +236,8 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         description="Number of conceptual groups per location cluster to generate",
     )
 
-    def _make_points(self, morphology: morphio.Morphology):
-        # FIXME: This rounds down. Could make missing points
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)
         locs = generate_neurite_locations_on(
@@ -241,18 +253,22 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         )
         return locs
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         super()._check_parameter_values()
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):
-            assert self.path_dist_mean >= 0.0, "Path distance mean must be non-negative!"
+        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+            if self.path_dist_mean < 0:
+                msg = f"Path distance mean: {self.path_dist_mean} < 0"
+                raise ValueError(msg)
 
-        if not isinstance(self.path_dist_sd, list):
-            assert self.path_dist_sd >= 0.1, (
-                "For numerical reasons, path distance standard deviation must be at least 0.1!"
-            )
+        if not isinstance(self.path_dist_sd, list):  # noqa: SIM102
+            if self.path_dist_sd < __MIN_PD_SD:
+                msg = (
+                    f"Path distance std: {self.path_dist_sd} < {__MIN_PD_SD} (numerical stability)"
+                )
+                raise ValueError(msg)
 
-        if not isinstance(self.n_groups_per_cluster, list):
-            assert self.n_groups_per_cluster >= 1, (
-                "Number of groups per cluster must be at least 1!"
-            )
+        if not isinstance(self.n_groups_per_cluster, list):  # noqa: SIM102
+            if self.n_groups_per_cluster < 1:
+                msg = f"Number of groups per cluster: {self.n_groups_per_cluster} < 1"
+                raise ValueError(msg)
