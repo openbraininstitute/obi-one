@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Literal, Self
 import bluepysnap as snap
 import numpy as np
 import pandas
+from conntility import ConnectivityMatrix
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, model_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -913,17 +914,18 @@ class PairMotifNeuronSet(NeuronSet):
 
     @staticmethod
     def _apply_filter(conn_mat, selection, side=None):
-        def _check_ops(ops):
+        def _check_ops(ops: list) -> None:
             for _op in ops:
-                if _op not in ["le", "lt", "ge", "gt", "eq", "isin"]:
+                if _op not in {"le", "lt", "ge", "gt", "eq", "isin"}:
                     msg = (
                         f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
                     )
                     raise ValueError(msg)
 
         conn_mat_filt = conn_mat
-        for prop, val in selection.items():
+        for _prop, _val in selection.items():
             op = "eq"  # Default: Filter by equality (i.e., single value is provided)
+            val = _val
             if isinstance(val, list):  # List: Select all values from list
                 op = "isin"
             elif isinstance(val, dict):  # Dict: Combinations of operator/value pairs
@@ -935,17 +937,19 @@ class PairMotifNeuronSet(NeuronSet):
             _check_ops(op)
             for _o, _v in zip(op, val, strict=False):
                 if (
-                    prop in conn_mat_filt.vertex_properties
-                    and conn_mat_filt.vertices.dtypes[prop] == "category"
+                    _prop in conn_mat_filt.vertex_properties
+                    and conn_mat_filt.vertices.dtypes[_prop] == "category"
                 ):
-                    _v = str(_v)
-                conn_mat_filt = getattr(conn_mat_filt.filter(prop, side), _o)(
-                    _v
+                    v = str(_v)
+                else:
+                    v = _v
+                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(
+                    v
                 )  # Call filter operator
         return conn_mat_filt
 
     @staticmethod
-    def _remove_autapses(conn_mat):
+    def _remove_autapses(conn_mat: ConnectivityMatrix) -> ConnectivityMatrix:
         sel_idx = (conn_mat._edge_indices["row"] != conn_mat._edge_indices["col"]).reset_index(
             drop=True
         )
@@ -954,22 +958,26 @@ class PairMotifNeuronSet(NeuronSet):
         )
 
     @staticmethod
-    def _selected_pair_table(conn_mat_filt):
+    def _selected_pair_table(conn_mat_filt: ConnectivityMatrix) -> pandas.DataFrame:
         pair_tab = conn_mat_filt._edge_indices.copy()
-        pair_tab.reset_index(drop=True, inplace=True)
+        pair_tab = pair_tab.reset_index(drop=True)
         pair_tab.columns = ["nrn1", "nrn2"]
-        pair_tab["nsyn_ff"] = conn_mat_filt.edges["nsyn_ff_"].values
-        pair_tab["nsyn_fb"] = conn_mat_filt.edges["nsyn_fb_"].values
+        pair_tab["nsyn_ff"] = conn_mat_filt.edges["nsyn_ff_"].to_numpy()
+        pair_tab["nsyn_fb"] = conn_mat_filt.edges["nsyn_fb_"].to_numpy()
         pair_tab["nsyn_all"] = pair_tab["nsyn_ff"] + pair_tab["nsyn_fb"]
         pair_tab["is_rc"] = pair_tab["nsyn_fb"] > 0
         return pair_tab
 
     @staticmethod
-    def _select_pairs(conn_mat, nrn1_sel, nrn2_sel, ff_sel, fb_sel):
+    def _select_pairs(
+        conn_mat: ConnectivityMatrix, nrn1_sel: dict, nrn2_sel: dict, ff_sel: dict, fb_sel: dict
+    ) -> pandas.DataFrame:
         """Filter pairs based on neuron and connection properties.
+
         Neuron properties: synapse_class, mtype, layer, etc.
         Connection properties: nsyn (#synapses per connection)
-        Note: ff...feed-forward direction (i.e., from nrn1 to nrn2), fb...feedback direction (i.e., from nrn2 to nrn1)
+        Note: ff...feed-forward direction (i.e., from nrn1 to nrn2)
+              fb...feedback direction (i.e., from nrn2 to nrn1)
         """
         conn_mat_filt = conn_mat
         conn_mat_filt = PairMotifNeuronSet._apply_filter(conn_mat_filt, nrn1_sel, "row")
@@ -981,12 +989,12 @@ class PairMotifNeuronSet(NeuronSet):
         )
         pair_tab = PairMotifNeuronSet._selected_pair_table(conn_mat_filt)
 
-        # print(f"<select_pairs>: {pair_tab.shape[0]} pairs selected ({np.sum(pair_tab['is_rc'] == True)} reciprocal, {np.sum(pair_tab['is_rc'] == False)} feedforward only)")
-
         return pair_tab
 
     @staticmethod
-    def _get_node_sets_ids(node_sets, node_set_list_op: str, circuit: Circuit, population: str):
+    def _get_node_sets_ids(
+        node_sets: dict, node_set_list_op: str, circuit: Circuit, population: str
+    ) -> np.ndarray:
         nodes = circuit.sonata_circuit.nodes[population]
         if isinstance(node_sets, str):
             node_ids = nodes.ids(node_sets)
@@ -1006,13 +1014,13 @@ class PairMotifNeuronSet(NeuronSet):
 
     @staticmethod
     def _prepare_node_set_filter(
-        conn_mat,
+        conn_mat: ConnectivityMatrix,
         nrn1_sel: dict,
         nrn2_sel: dict,
         node_set_list_op: str,
         circuit: Circuit,
         population: str,
-    ) -> tuple(dict, dict):
+    ) -> tuple[dict, dict]:
         """Prepare filtering based on node sets.
         Note: Modifies the connectivity matrix in-place!
         """
