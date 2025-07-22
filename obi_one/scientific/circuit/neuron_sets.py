@@ -168,6 +168,9 @@ class AbstractNeuronSet(Block, abc.ABC):
         with Path(output_file).open("w", encoding="utf-8") as f:
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
 
+    def get_population(self, population: str | None = None) -> str:
+        return self._population(population)
+
     def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
         if population is None:
             msg = "Must specify a node population name!"
