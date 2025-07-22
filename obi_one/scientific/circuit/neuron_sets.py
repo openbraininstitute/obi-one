@@ -2,11 +2,13 @@ import abc
 import json
 import logging
 import os
+import sys
 from typing import Annotated, ClassVar, Literal, Self
 
 import bluepysnap as snap
 import numpy as np
 import pandas
+import typing_extensions
 from conntility import ConnectivityMatrix
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, model_validator
 
@@ -23,6 +25,11 @@ _RCA1_CA3_NODE_POP = "CA3_projections"
 _ALL_NODE_SET = "All"
 _EXCITATORY_NODE_SET = "Excitatory"
 _INHIBITORY_NODE_SET = "Inhibitory"
+
+try:  # Try to import connalysis
+    from obi_one.scientific.circuit.simplex_extractors import simplex_submat
+except ImportError:
+    pass  # Just ignore here, since only required by certain functions
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
@@ -369,7 +376,8 @@ class ExcitatoryNeurons(AbstractNeuronSet):
             msg = f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population):
+    @typing_extensions.override
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_EXCITATORY_NODE_SET]
@@ -385,48 +393,67 @@ class InhibitoryNeurons(AbstractNeuronSet):
             msg = f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population):
+    @typing_extensions.override
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_INHIBITORY_NODE_SET]
 
 
-class nbS1VPMInputs(AbstractNeuronSet):
-    """Virtual neurons projecting from the VPM thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
+class nbS1VPMInputs(AbstractNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from the VPM thalamic nucleus.
+
+    Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
+    cortical neurons in the nbS1 model.
+    """
 
     title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
 
-    def _population(self, population: str | None = None):
+    @typing_extensions.override
+    def _population(self, _population: str | None = None) -> str:
         # Ignore default node population name. This is always VPM.
         return _NBS1_VPM_NODE_POP
 
-    def _get_expression(self, circuit: Circuit, population):
+    @typing_extensions.override
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
         return {"population": _NBS1_VPM_NODE_POP}
 
 
-class nbS1POmInputs(AbstractNeuronSet):
-    """Virtual neurons projecting from the POm thalamic nucleus to biophysical cortical neurons in the nbS1 model."""
+class nbS1POmInputs(AbstractNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from the POm thalamic nucleus.
+
+    Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
+    cortical neurons in the nbS1 model.
+    """
 
     title: ClassVar[str] = "Demo: nbS1 POm Inputs"
 
-    def _population(self, population: str | None = None):
+    @typing_extensions.override
+    def _population(self, _population: str | None = None):
         # Ignore default node population name. This is always POm.
         return _NBS1_POM_NODE_POP
 
-    def _get_expression(self, circuit: Circuit, population):
+    @typing_extensions.override
+    def _get_expression(self, _circuit: Circuit, _population: str):
         return {"population": _NBS1_POM_NODE_POP}
 
 
-class rCA1CA3Inputs(AbstractNeuronSet):
-    """Virtual neurons projecting from the CA3 region to biophysical CA1 neurons in the rCA1 model."""
+class rCA1CA3Inputs(AbstractNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from CA3 to CA1.
+
+    Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons
+    in the rCA1 model.
+    """
 
     title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
 
-    def _population(self, population: str | None = None):
+    @typing_extensions.override
+    def _population(self, _population: str | None = None) -> str:
         # Ignore default node population name. This is always CA3_projections.
         return _RCA1_CA3_NODE_POP
 
-    def _get_expression(self, circuit: Circuit, population):
+    @typing_extensions.override
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
         return {"population": _RCA1_CA3_NODE_POP}
 
 
@@ -441,13 +468,13 @@ class CombinedNeuronSet(NeuronSet):
         ]
     )
 
-    def check_node_sets(self, circuit: Circuit, population: str) -> None:
+    def check_node_sets(self, circuit: Circuit, _population: str) -> None:
         for _nset in self.node_sets:
             if _nset not in circuit.node_sets:
                 msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
                 raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str):
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_sets(circuit, population)
         return list(self.node_sets)
@@ -460,13 +487,13 @@ class IDNeuronSet(AbstractNeuronSet):
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
 
-    def check_neuron_ids(self, circuit: Circuit, population) -> None:
+    def check_neuron_ids(self, circuit: Circuit, population: str) -> None:
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
         if not all(_nid in popul_ids for _nid in self.neuron_ids.elements):
             msg = f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
         population = self._population(population)
         self.check_neuron_ids(circuit, population)
@@ -486,13 +513,13 @@ class PropertyNeuronSet(NeuronSet):
     node_sets: (
         tuple[Annotated[str, Field(min_length=1)], ...]
         | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
-    ) = tuple()
+    ) = ()
 
     def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
         self.property_filter.test_validity(circuit, population)
 
-    def check_node_sets(self, circuit: Circuit, population: str) -> None:
+    def check_node_sets(self, circuit: Circuit, _population: str) -> None:
         for _nset in self.node_sets:
             if _nset not in circuit.node_sets:
                 msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
@@ -506,7 +533,7 @@ class PropertyNeuronSet(NeuronSet):
         df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
         df = self.property_filter.filter(df)
 
-        node_ids = df["node_ids"].values
+        node_ids = df["node_ids"].to_numpy()
 
         if len(self.node_sets) > 0:
             node_ids_nset = np.array([]).astype(int)
@@ -517,25 +544,23 @@ class PropertyNeuronSet(NeuronSet):
         expression = {"population": population, "node_id": node_ids.tolist()}
         return expression
 
-    def _get_expression(self, circuit: Circuit, population) -> dict:
+    def _get_expression(self, circuit: Circuit, population: str) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
         population = self._population(population)
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
 
-        def __resolve_sngl(prop_vals):
+        def __resolve_sngl(prop_vals: list) -> list:
             if len(prop_vals) == 1:
                 return prop_vals[0]
             return list(prop_vals)
 
         if len(self.node_sets) == 0:
             # Symbolic expression can be preserved
-            expression = dict(
-                [
-                    (property_key, __resolve_sngl(property_value))
-                    for property_key, property_value in self.property_filter.filter_dict.items()
-                ]
-            )
+            expression = {
+                property_key: __resolve_sngl(property_value)
+                for property_key, property_value in self.property_filter.filter_dict.items()
+            }
         else:
             # Individual IDs need to be resolved
             return self._get_resolved_expression(circuit, population)
@@ -544,7 +569,7 @@ class PropertyNeuronSet(NeuronSet):
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Volumetric neuron set selection based on a given neuron count."""
 
     ox: float | list[float] = Field(
         name="Offset: x",
@@ -585,8 +610,8 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
         o_df = pandas.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
         tgt_center = df[cols_xyz].mean() + o_df
 
-        D = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
-        idxx = np.argsort(D)[: self.n]
+        d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
+        idxx = np.argsort(d)[: self.n]
         df = df.iloc[idxx]
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
@@ -594,7 +619,10 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
 
 
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
-    """Sample neurons from the set of neurons that form simplices of a given dimension with a chosen source or target 'central' neuron."""
+    """Sample neurons from the set of neurons that form simplices.
+
+    Simplices of a given dimension with a chosen source or target 'central' neuron can be specified.
+    """
 
     central_neuron_id: int | list[int] = Field(
         name="Central neuron id",
@@ -609,15 +637,16 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     ) = Field(
         "source",
         name="Central neuron simplex position",
-        description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
+        description="Position of the central neuron/node in the simplex, it can be either"
+        " 'source' or 'target'",
     )
     subsample: bool | list[bool] = Field(
-        True,
+        default=True,
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
     n_count_max: int | list[int] | None = Field(
-        False,
+        default=False,
         name="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
@@ -629,7 +658,7 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         description="""
         **Method to subsample nodes**:
         - `random`: randomly selects nodes from all nodes in the simplices
-        - `node_participation`: selects nodes with highest node participation 
+        - `node_participation`: selects nodes with highest node participation
             """,
     )
     simplex_type: (
@@ -648,7 +677,8 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     )
 
     @field_validator("dim")
-    def dim_check(cls, v):
+    @staticmethod
+    def dim_check(v: int) -> int:
         if v <= 1:
             msg = "Simplex dimension must be greater than 1"
             raise ValueError(msg)
@@ -663,10 +693,12 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        try:  # Try to import connalysis
-            from obi_one.scientific.circuit.simplex_extractors import simplex_submat
-        except ImportError as e:
-            print(f"Import failed: {e}. You probably need to install connalysis locally")
+        if "simplex_submat" not in sys.modules:
+            msg = (
+                "Import of 'simplex_submat' failed. You probably need to install connalysis"
+                " locally."
+            )
+            raise ValueError(msg)
 
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
@@ -677,9 +709,10 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         conn = circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
         index = np.where(conn.vertices["node_ids"] == self.central_neuron_id)[0]
         if len(index) == 0:
-            raise ValueError(
+            msg = (
                 f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected"
             )
+            raise ValueError(msg)
         index = index[0]
 
         # Get nodes on simplices index by 0 ... conn._shape[0]
@@ -721,10 +754,11 @@ class SimplexNeuronSet(PropertyNeuronSet):
     ) = Field(
         "source",
         name="Central neuron simplex position",
-        description="Position of the central neuron/node in the simplex, it can be either 'source' or 'target'",
+        description="Position of the central neuron/node in the simplex, it can be either"
+        " 'source' or 'target'",
     )
     subsample: bool = Field(
-        False,
+        default=False,
         name="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
@@ -749,7 +783,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
     )
 
     @field_validator("dim")
-    def dim_check(cls, v):
+    @staticmethod
+    def dim_check(v: int) -> int:
         if v <= 1:
             msg = "Simplex dimension must be greater than 1"
             raise ValueError(msg)
@@ -764,10 +799,12 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        try:  # Try to import connalysis
-            from obi_one.scientific.circuit.simplex_extractors import simplex_submat
-        except ImportError as e:
-            print(f"Import failed: {e}. You probably need to install connalysis locally")
+        if "simplex_submat" not in sys.modules:
+            msg = (
+                "Import of 'simplex_submat' failed. You probably need to install connalysis"
+                " locally."
+            )
+            raise ValueError(msg)
 
         self.check_properties(circuit, population)
         self.check_node_sets(circuit, population)
@@ -778,9 +815,10 @@ class SimplexNeuronSet(PropertyNeuronSet):
         conn = circuit.connectivity_matrix.subpopulation(base_expression["node_id"])
         index = np.where(conn.vertices["node_ids"] == self.central_neuron_id)[0]
         if len(index) == 0:
-            raise ValueError(
+            msg = (
                 f"The neuron of index {self.central_neuron_id} is not in the subpopulation selected"
             )
+            raise ValueError(msg)
         index = index[0]
 
         # Get nodes on simplices index by 0 ... conn._shape[0]
@@ -804,7 +842,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
 
 
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
-    """Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."""
+    """Volumetric neuron set selection based on a radius."""
 
     ox: float | list[float] = Field(
         name="Offset: x",
@@ -844,8 +882,8 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         o_df = pandas.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
         tgt_center = df[cols_xyz].mean() + o_df
 
-        D = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
-        idxx = np.nonzero(self.radius > D)[0]
+        d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
+        idxx = np.nonzero(self.radius > d)[0]
         df = df.iloc[idxx]
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
@@ -853,6 +891,8 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
 
 
 class PairMotifNeuronSet(NeuronSet):
+    """Neuron set selection based on pair motifs of neurons."""
+
     neuron1_filter: dict | list[dict] = Field(
         default={}, name="Neuron1 filter", description="Filter for first neuron in a pair"
     )
@@ -863,7 +903,8 @@ class PairMotifNeuronSet(NeuronSet):
     conn_ff_filter: dict | list[dict] = Field(
         default={},
         name="Feedforward connection filter",
-        description="Filter for feedforward connections from the first to the second neuron in a pair",
+        description="Filter for feedforward connections from the first to the second neuron"
+        " in a pair",
     )
     conn_fb_filter: dict | list[dict] = Field(
         default={},
@@ -884,36 +925,41 @@ class PairMotifNeuronSet(NeuronSet):
     )
 
     @staticmethod
-    def _add_nsynconn_fb(conn_mat_filt, conn_mat):
-        """Adds #syn/conn for reciprocal connections (i.e., in feedback direction) even if they are not part of the filtered selection."""
+    def _add_nsynconn_fb(conn_mat_filt: ConnectivityMatrix, conn_mat: ConnectivityMatrix) -> None:
+        """Adds #syn/conn for reciprocal connections (i.e., in feedback direction) in-place.
+
+        Note: Will be added even if they are not part of the filtered selection.
+        """
         etab = conn_mat._edge_indices.copy()
-        etab.reset_index(drop=True, inplace=True)
-        etab["nsyn_ff_"] = conn_mat._edges["nsyn_ff_"].values
-        etab["iloc_ff_"] = conn_mat._edges["iloc_ff_"].values
-        etab.set_index(["row", "col"], inplace=True)
+        etab = etab.reset_index(drop=True)
+        etab["nsyn_ff_"] = conn_mat._edges["nsyn_ff_"].to_numpy()
+        etab["iloc_ff_"] = conn_mat._edges["iloc_ff_"].to_numpy()
+        etab = etab.set_index(["row", "col"])
 
         etab_filt = conn_mat_filt._edge_indices.copy()
         etab_filt["nsyn_fb_"] = 0
         etab_filt["iloc_fb_"] = -1
-        etab_filt.set_index(["row", "col"], inplace=True)
+        etab_filt = etab_filt.set_index(["row", "col"])
 
-        rev_idx = etab_filt.index.swaplevel("row", "col").values  # Reverse index
-        etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).values
+        rev_idx = etab_filt.index.swaplevel("row", "col").to_numpy()  # Reverse index
+        etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).to_numpy()
         etab_filt.loc[etab_filt["nsyn_fb_"] < 0, "nsyn_fb_"] = 0
 
         conn_mat_filt.add_edge_property("nsyn_fb_", etab_filt["nsyn_fb_"])
         conn_mat_filt.add_edge_property("iloc_fb_", etab_filt["iloc_fb_"])
 
     @staticmethod
-    def _merge_ff_fb(ff_sel, fb_sel):
+    def _merge_ff_fb(ff_sel: dict, fb_sel: dict) -> dict:
         sel = {}
         for _sel, _lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
             if _sel is not None:
-                sel = sel | {f"{_k}{_lbl}": _v for _k, _v in _sel.items()}
+                sel |= {f"{_k}{_lbl}": _v for _k, _v in _sel.items()}
         return sel
 
     @staticmethod
-    def _apply_filter(conn_mat, selection, side=None):
+    def _apply_filter(
+        conn_mat: ConnectivityMatrix, selection: dict, side: str | None = None
+    ) -> ConnectivityMatrix:
         def _check_ops(ops: list) -> None:
             for _op in ops:
                 if _op not in {"le", "lt", "ge", "gt", "eq", "isin"}:
