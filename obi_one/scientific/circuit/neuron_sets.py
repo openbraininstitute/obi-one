@@ -1,13 +1,15 @@
 import abc
+import contextlib
 import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 import bluepysnap as snap
 import numpy as np
-import pandas
+import pandas as pd
 import typing_extensions
 from conntility import ConnectivityMatrix
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, model_validator
@@ -26,10 +28,10 @@ _ALL_NODE_SET = "All"
 _EXCITATORY_NODE_SET = "Excitatory"
 _INHIBITORY_NODE_SET = "Inhibitory"
 
-try:  # Try to import connalysis
+_MAX_PERCENT = 100.0
+
+with contextlib.suppress(ImportError):  # Try to import connalysis
     from obi_one.scientific.circuit.simplex_extractors import simplex_submat
-except ImportError:
-    pass  # Just ignore here, since only required by certain functions
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
@@ -57,19 +59,18 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     def filter_values(self) -> list[list]:
         return list(self.filter_dict.values())
 
-    def filter(self, df_in, reindex=True) -> pandas.DataFrame:
+    def filter(self, df_in: pd.DataFrame, *, reindex: bool = True) -> pd.DataFrame:
         ret = df_in
-        for filter_key, filter_value in self.filter_dict.items():
-            filter_value = [str(_entry) for _entry in filter_value]
+        for filter_key, _filter_value in self.filter_dict.items():
+            filter_value = [str(_entry) for _entry in _filter_value]
             vld = ret[filter_key].astype(str).isin(filter_value)
             ret = ret.loc[vld]
             if reindex:
                 ret = ret.reset_index(drop=True)
         return ret
 
-    def test_validity(self, circuit, node_population: str) -> None:
+    def test_validity(self, circuit: Circuit, node_population: str) -> None:
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
-        # filter_keys = list(self.filter_dict.keys())
 
         if not all(_prop in circuit_prop_names for _prop in self.filter_keys):
             msg = f"Invalid neuron properties! Available properties: {circuit_prop_names}"
@@ -122,14 +123,14 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     @staticmethod
     def add_node_set_to_circuit(
-        sonata_circuit: snap.Circuit, node_set_dict, overwrite_if_exists=False
+        sonata_circuit: snap.Circuit, node_set_dict: dict, *, overwrite_if_exists: bool = False
     ) -> None:
         """Adds the node set definition to a SONATA circuit object to make it accessible \
             (in-place).
         """
         existing_node_sets = sonata_circuit.node_sets.content
         if not overwrite_if_exists:
-            for _k in node_set_dict.keys():
+            for _k in node_set_dict:
                 if _k in existing_node_sets:
                     msg = f"Node set '{_k}' already exists!"
                     raise ValueError(msg)
@@ -138,7 +139,11 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     @staticmethod
     def write_circuit_node_set_file(
-        sonata_circuit: snap.Circuit, output_path, file_name=None, overwrite_if_exists=False
+        sonata_circuit: snap.Circuit,
+        output_path: str,
+        file_name: str | None = None,
+        *,
+        overwrite_if_exists: bool = False,
     ) -> None:
         """Writes a new node set file of a given SONATA circuit object."""
         if file_name is None:
@@ -150,21 +155,20 @@ class AbstractNeuronSet(Block, abc.ABC):
                     "File name must be a non-empty string! Can be omitted to use default file name."
                 )
                 raise ValueError(msg)
-            fname, fext = os.path.splitext(file_name)
-            if len(fname) == 0 or fext.lower() != ".json":
+            path = Path(file_name)
+            if len(path.stem) == 0 or path.suffix.lower() != ".json":
                 msg = "File name must be non-empty and of type .json!"
                 raise ValueError(msg)
-        output_file = os.path.join(output_path, file_name)
+        output_file = Path(output_path) / file_name
 
-        if not overwrite_if_exists:
-            if os.path.exists(output_file):
-                msg = f"Output file '{output_file}' already exists! Delete or choose to overwrite."
-                raise ValueError(msg)
+        if not overwrite_if_exists and Path(output_file).exists():
+            msg = f"Output file '{output_file}' already exists! Delete or choose to overwrite."
+            raise ValueError(msg)
 
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w", encoding="utf-8") as f:
             json.dump(sonata_circuit.node_sets.content, f, indent=2)
 
-    def _population(self, population: str | None = None):
+    def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
         if population is None:
             msg = "Must specify a node population name!"
             raise ValueError(msg)
@@ -179,13 +183,13 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.add_node_set_to_circuit(c, {name: expression})
         return c.nodes[population].ids(name)
 
-    def get_neuron_ids(self, circuit: Circuit, population: str | None = None):
+    def get_neuron_ids(self, circuit: Circuit, population: str | None = None) -> np.ndarray:
         """Returns list of neuron IDs (with subsampling, if specified)."""
         self.enforce_no_lists()
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.sample_percentage < 100.0:
+        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
             rng = np.random.default_rng(self.sample_seed)
 
             num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
@@ -198,7 +202,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         return ids
 
     def get_node_set_definition(
-        self, circuit: Circuit, population: str | None = None, force_resolve_ids=False
+        self, circuit: Circuit, population: str | None = None, *, force_resolve_ids: bool = False
     ) -> dict:
         """Returns the SONATA node set definition, optionally forcing to resolve individual \
             IDs.
@@ -218,22 +222,41 @@ class AbstractNeuronSet(Block, abc.ABC):
 
         return expression
 
-    def population_type(self, circuit: Circuit, population: str | None = None):
+    def population_type(self, circuit: Circuit, population: str | None = None) -> str:
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
+
+    @staticmethod
+    def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:
+        if file_name is None:
+            # Use circuit's node set file name by default
+            file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
+        else:
+            if not isinstance(file_name, str) or len(file_name) == 0:
+                msg = (
+                    "File name must be a non-empty string! Can be omitted to use default file name."
+                )
+                raise ValueError(msg)
+            path = Path(file_name)
+            if len(path.stem) == 0 or path.suffix.lower() != ".json":
+                msg = "File name must be non-empty and of type .json!"
+                raise ValueError(msg)
+        output_file = Path(output_path) / file_name
+        return output_file
 
     def to_node_set_file(
         self,
         circuit: Circuit,
-        population,
-        output_path,
-        file_name=None,
-        overwrite_if_exists=False,
-        append_if_exists=False,
-        force_resolve_ids=False,
-        init_empty=False,
-        optional_node_set_name=None,
-    ):
+        population: str,
+        output_path: str,
+        file_name: str | None = None,
+        *,
+        overwrite_if_exists: bool = False,
+        append_if_exists: bool = False,
+        force_resolve_ids: bool = False,
+        init_empty: bool = False,
+        optional_node_set_name: str | None = None,
+    ) -> str:
         """Resolves the node set for a given circuit/population and writes it to a .json node \
             set file.
         """
@@ -246,20 +269,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             )
             raise ValueError(msg)
 
-        if file_name is None:
-            # Use circuit's node set file name by default
-            file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
-        else:
-            if not isinstance(file_name, str) or len(file_name) == 0:
-                msg = (
-                    "File name must be a non-empty string! Can be omitted to use default file name."
-                )
-                raise ValueError(msg)
-            fname, fext = os.path.splitext(file_name)
-            if len(fname) == 0 or fext.lower() != ".json":
-                msg = "File name must be non-empty and of type .json!"
-                raise ValueError(msg)
-        output_file = os.path.join(output_path, file_name)
+        output_file = AbstractNeuronSet._get_output_file(circuit, file_name, output_path)
 
         if overwrite_if_exists and append_if_exists:
             msg = "Append and overwrite options are mutually exclusive!"
@@ -272,7 +282,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             msg = "Node set already exists in circuit, nothing to be done!"
             raise ValueError(msg)
 
-        if not os.path.exists(output_file) or overwrite_if_exists:
+        if not Path.exists(output_file) or overwrite_if_exists:
             # Create new node sets file, overwrite if existing
             if init_empty:
                 # Initialize empty
@@ -285,9 +295,9 @@ class AbstractNeuronSet(Block, abc.ABC):
                     raise ValueError(msg)
             node_sets.update({self.name: expression})
 
-        elif os.path.exists(output_file) and append_if_exists:
+        elif Path.exists(output_file) and append_if_exists:
             # Append to existing node sets file
-            with open(output_file) as f:
+            with Path(output_file).open("r", encoding="utf-8") as f:
                 node_sets = json.load(f)
                 if self.name in node_sets:
                     msg = f"Appending not possible, node set '{self.name}' already exists!"
@@ -295,33 +305,38 @@ class AbstractNeuronSet(Block, abc.ABC):
                 node_sets.update({self.name: expression})
 
         else:  # File existing but no option chosen
-            raise ValueError(
-                f"Output file '{output_file}' already exists! Delete file or choose to append \
-                    or overwrite."
+            msg = (
+                f"Output file '{output_file}' already exists! Delete file or choose to append or"
+                " overwrite."
             )
+            raise ValueError(msg)
 
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w", encoding="utf-8") as f:
             json.dump(node_sets, f, indent=2)
 
         return output_file
 
 
 class NeuronSet(AbstractNeuronSet):
-    """Extension of abstract neuron set with the ability to specify the node population upon creation.
-    This is optional, all functions requiring a node population can be optionally called with the name of
-    a default population to be used in case no name was set upon creation.
+    """Extension of abstract neuron set which allows to specify the node population upon creation.
+
+    This is optional, all functions requiring a node population can be optionally called with the
+    name of a default population to be used in case no name was set upon creation.
     """
 
     node_population: str | list[str] | None = None
 
-    def _population(self, population: str | None = None):
-        if population is not None and self.node_population is not None:
-            if population != self.node_population:
-                L.warning(
-                    "Node population %s has been set for this block and will be used. Ignoring %s",
-                    self.node_population,
-                    population,
-                )
+    def _population(self, population: str | None = None) -> str:
+        if (
+            population is not None
+            and self.node_population is not None
+            and population != self.node_population
+        ):
+            L.warning(
+                "Node population %s has been set for this block and will be used. Ignoring %s",
+                self.node_population,
+                population,
+            )
         population = self.node_population or population
         if population is None:
             msg = "Must specify name of a node population to resolve the NeuronSet!"
@@ -339,12 +354,12 @@ class PredefinedNeuronSet(NeuronSet):
         | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
     )
 
-    def check_node_set(self, circuit: Circuit, population: str) -> None:
+    def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
             msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population):
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [self.node_set]
@@ -355,12 +370,13 @@ class AllNeurons(AbstractNeuronSet):
 
     title: ClassVar[str] = "All Neurons"
 
-    def check_node_set(self, circuit: Circuit, population: str) -> None:
+    @staticmethod
+    def check_node_set(circuit: Circuit, _population: str) -> None:
         if _ALL_NODE_SET not in circuit.node_sets:
             msg = f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population):
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_ALL_NODE_SET]
@@ -371,12 +387,12 @@ class ExcitatoryNeurons(AbstractNeuronSet):
 
     title: ClassVar[str] = "All Excitatory Neurons"
 
-    def check_node_set(self, circuit: Circuit, population: str) -> None:
+    @staticmethod
+    def check_node_set(circuit: Circuit, _population: str) -> None:
         if _EXCITATORY_NODE_SET not in circuit.node_sets:
             msg = f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    @typing_extensions.override
     def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
@@ -388,12 +404,12 @@ class InhibitoryNeurons(AbstractNeuronSet):
 
     title: ClassVar[str] = "All Inhibitory Neurons"
 
-    def check_node_set(self, circuit: Circuit, population: str) -> None:
+    @staticmethod
+    def check_node_set(circuit: Circuit, _population: str) -> None:
         if _INHIBITORY_NODE_SET not in circuit.node_sets:
             msg = f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    @typing_extensions.override
     def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
@@ -429,12 +445,12 @@ class nbS1POmInputs(AbstractNeuronSet):  # noqa: N801
     title: ClassVar[str] = "Demo: nbS1 POm Inputs"
 
     @typing_extensions.override
-    def _population(self, _population: str | None = None):
+    def _population(self, _population: str | None = None) -> str:
         # Ignore default node population name. This is always POm.
         return _NBS1_POM_NODE_POP
 
     @typing_extensions.override
-    def _get_expression(self, _circuit: Circuit, _population: str):
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
         return {"population": _NBS1_POM_NODE_POP}
 
 
@@ -607,7 +623,7 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
             base_expression["node_id"], properties=cols_xyz
         )
         df = df.reset_index(drop=False)
-        o_df = pandas.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
+        o_df = pd.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
         tgt_center = df[cols_xyz].mean() + o_df
 
         d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
@@ -879,7 +895,7 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
             base_expression["node_id"], properties=cols_xyz
         )
         df = df.reset_index(drop=False)
-        o_df = pandas.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
+        o_df = pd.Series({cols_xyz[0]: self.ox, cols_xyz[1]: self.oy, cols_xyz[2]: self.oz})
         tgt_center = df[cols_xyz].mean() + o_df
 
         d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
@@ -1004,7 +1020,7 @@ class PairMotifNeuronSet(NeuronSet):
         )
 
     @staticmethod
-    def _selected_pair_table(conn_mat_filt: ConnectivityMatrix) -> pandas.DataFrame:
+    def _selected_pair_table(conn_mat_filt: ConnectivityMatrix) -> pd.DataFrame:
         pair_tab = conn_mat_filt._edge_indices.copy()
         pair_tab = pair_tab.reset_index(drop=True)
         pair_tab.columns = ["nrn1", "nrn2"]
@@ -1017,7 +1033,7 @@ class PairMotifNeuronSet(NeuronSet):
     @staticmethod
     def _select_pairs(
         conn_mat: ConnectivityMatrix, nrn1_sel: dict, nrn2_sel: dict, ff_sel: dict, fb_sel: dict
-    ) -> pandas.DataFrame:
+    ) -> pd.DataFrame:
         """Filter pairs based on neuron and connection properties.
 
         Neuron properties: synapse_class, mtype, layer, etc.
@@ -1094,8 +1110,8 @@ class PairMotifNeuronSet(NeuronSet):
 
     @staticmethod
     def _subsample_pairs(
-        pair_tab: pandas.DataFrame, pair_sel_count: int, pair_sel_method: str, pair_sel_seed: int
-    ) -> pandas.DataFrame:
+        pair_tab: pd.DataFrame, pair_sel_count: int, pair_sel_method: str, pair_sel_seed: int
+    ) -> pd.DataFrame:
         if pair_sel_count is None:
             return pair_tab
 
@@ -1126,7 +1142,7 @@ class PairMotifNeuronSet(NeuronSet):
 
         return pair_tab
 
-    def get_pair_table(self, circuit: Circuit, population: str) -> pandas.DataFrame:
+    def get_pair_table(self, circuit: Circuit, population: str) -> pd.DataFrame:
         conn_mat = circuit.connectivity_matrix
         if conn_mat.is_multigraph:
             msg = "ERROR: ConnectivityMatrix must not be a multi-graph!"
