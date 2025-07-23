@@ -156,7 +156,7 @@ def apply_filters(
 def relevant_path_distances(
     PD: MorphologyPathDistanceCalculator,  # noqa: N803
     syns: pandas.DataFrame,
-) -> tuple[numpy.array, numpy.array]:
+) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Calculates and return path distances to the soma and all pairwise path distances for
     dendritic locations in a dataframe.
 
@@ -209,7 +209,7 @@ def select_randomly(
 
 def select_minmax_distance(
     syns: pandas.DataFrame,
-    soma_pds: numpy.array,
+    soma_pds: numpy.ndarray,
     soma_pd_min: float,
     soma_pd_max: float,
     n: int | None = None,
@@ -239,7 +239,7 @@ def select_minmax_distance(
 
 def select_closest_to_path_distance(
     syns: pandas.DataFrame,
-    soma_pds: numpy.array,
+    soma_pds: numpy.ndarray,
     target_soma_pd: float,
     n: int,
     *,
@@ -267,13 +267,13 @@ def select_closest_to_path_distance(
 
 
 def _pd_gaussian_selector(
-    soma_pds: numpy.array,
+    soma_pds: numpy.ndarray,
     soma_pd_mean: float,
     soma_pd_sd: float,
     n: int,
     *,
     raise_insufficient: bool = False,
-) -> numpy.array:
+) -> numpy.ndarray:
     """From a list of soma path distances, select some of them randomly with probabilities
     that depend on values of a path distance-dependent Gaussian.
     Returns the indices of elements that are picked from the list of path distances.
@@ -299,7 +299,7 @@ def _pd_gaussian_selector(
 
 def select_by_path_distance(
     syns: pandas.DataFrame,
-    soma_pds: numpy.array,
+    soma_pds: numpy.ndarray,
     soma_pd_mean: float,
     soma_pd_sd: float,
     n: int | None = None,
@@ -340,8 +340,8 @@ def select_by_path_distance(
 
 def select_clusters_by_max_distance(
     syns: pandas.DataFrame,
-    soma_pds: numpy.array,
-    pw_pds: numpy.array,
+    soma_pds: numpy.ndarray,
+    pw_pds: numpy.ndarray,
     n_clusters: int,
     cluster_max_distance: float,
     soma_pd_mean: float | None = None,
@@ -396,8 +396,8 @@ def select_clusters_by_max_distance(
 
 def select_clusters_by_count(
     syns: pandas.DataFrame,
-    soma_pds: numpy.array,
-    pw_pds: numpy.array,
+    soma_pds: numpy.ndarray,
+    pw_pds: numpy.ndarray,
     n_clusters: int,
     n_per_cluster: int,
     soma_pd_mean: float | None = None,
@@ -454,8 +454,8 @@ def select_clusters_by_count(
 
 
 def merge_multiple_syns_per_connection(
-    syns: pandas.DataFrame, soma_pds: numpy.array, pw_pds: numpy.array
-) -> tuple[pandas.DataFrame, numpy.array, numpy.array]:
+    syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+) -> tuple[pandas.DataFrame, numpy.ndarray, numpy.ndarray]:
     syns = syns.reset_index(drop=True)
     grp_ = (
         syns.reset_index(drop=False)
