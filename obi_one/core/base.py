@@ -44,24 +44,19 @@ class OBIBaseModel(BaseModel):
         """Return a string representation of the OBIBaseModel object."""
         return self.__repr__()
 
-
     @model_validator(mode="wrap")
     @classmethod
-    def retrieve_type_on_deserialization(cls, 
-                                        value: Any, 
-                                        handler: ValidatorFunctionWrapHandler
-                ) -> "OBIBaseModel":
-
+    def retrieve_type_on_deserialization(
+        cls, value: Any, handler: ValidatorFunctionWrapHandler
+    ) -> "OBIBaseModel":
         if isinstance(value, dict):
-
             # `sub_cls(**modified_value)` will trigger a recursion, and thus we need to
             # remove `type` from the dictionary before passing it to the subclass constructor
-            
+
             modified_value = value.copy()
             sub_cls_name = modified_value.pop("type", None)
-            
-            if sub_cls_name is not None:
 
+            if sub_cls_name is not None:
                 sub_cls = get_subclass_recursive(
                     cls=OBIBaseModel,
                     name=sub_cls_name,  # , allow_same_class=True

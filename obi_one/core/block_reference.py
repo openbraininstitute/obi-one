@@ -1,37 +1,40 @@
-from obi_one.core.block import Block
-from obi_one.core.base import OBIBaseModel
-
-
-from typing import Union, ClassVar, get_args, Any, Literal
-from pydantic import Field
 import abc
+from typing import Any, ClassVar, get_args
+
+from pydantic import Field
+
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.block import Block
+
+
 class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(default="")
     block_name: str = Field()
 
     allowed_block_types: ClassVar[Any] = None
-    
+
     _block: Any = None
 
     @classmethod
-    def allowed_block_type_names(cls, allowed_block_types):
+    def allowed_block_type_names(cls, allowed_block_types: Any) -> list:
         if allowed_block_types is None:
             return []
         return [t.__name__ for t in get_args(allowed_block_types)]
 
     class Config:
         @staticmethod
-        def json_schema_extra(schema: dict, model) -> None:
+        def json_schema_extra(schema: dict, model: "BlockReference") -> None:
             # Dynamically get allowed_block_types from subclass
-            allowed_block_types = getattr(model, 'allowed_block_types', [])
-            schema['allowed_block_types'] = [t.__name__ for t in get_args(allowed_block_types)]
-            schema['is_block_reference'] = True
+            allowed_block_types = getattr(model, "allowed_block_types", [])
+            schema["allowed_block_types"] = [t.__name__ for t in get_args(allowed_block_types)]
+            schema["is_block_reference"] = True
 
     @property
     def block(self) -> Block:
         """Returns the block associated with this reference."""
         if self._block is None:
-            raise ValueError("Block has not been set.")
+            msg = "Block has not been set."
+            raise ValueError(msg)
         return self._block
 
     def has_block(self) -> bool:
@@ -41,6 +44,6 @@ class BlockReference(OBIBaseModel, abc.ABC):
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
         if not isinstance(value, self.allowed_block_types):
-            raise TypeError(f"Value must be of type {self.block_type.__name__}.")
+            msg = f"Value must be of type {self.block_type.__name__}."
+            raise TypeError(msg)
         self._block = value
-

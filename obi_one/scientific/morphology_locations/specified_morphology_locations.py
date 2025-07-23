@@ -2,8 +2,10 @@ import warnings
 
 import morphio
 import numpy as np
+import pandas  # noqa: ICN001
 import pandas as pd
 from scipy import stats
+from scipy.stats._distn_infrastructure import rv_frozen
 
 try:
     from conntility.subcellular import MorphologyPathDistanceCalculator
@@ -29,9 +31,9 @@ def path_distance_all_segments_from(
     path_distance_calculator: MorphologyPathDistanceCalculator,
     normalized_seg_loc: float = 0.5,
     lst_sec_types: list | None = None,
-):
+) -> pandas.DataFrame:
     """Path distances from reference locations to all segments of a morphology.
-    
+
     Calculates path distances from reference locations on a morphology to all segments of the
     same morphology.
 
@@ -80,12 +82,14 @@ def path_distance_all_segments_from(
     )
 
 
-def select_segments_as_cluster_centers(n_pick, locs, distr, lst_sec_types: list = None):
+def select_segments_as_cluster_centers(
+    n_pick: int, locs: pandas.DataFrame, distr: rv_frozen, lst_sec_types: list | None = None
+) -> pandas.DataFrame:
     p = distr.pdf(locs[_SOM_PAD])
     if lst_sec_types is not None:
-        p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)
+        p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # noqa: PLR6104
 
-    selected_ids = np.random.choice(locs.index, n_pick, p=p / p.sum())
+    selected_ids = np.random.choice(locs.index, n_pick, p=p / p.sum())  # noqa: NPY002
     return locs.iloc[selected_ids]
 
 
@@ -112,7 +116,7 @@ def find_normalized_interval_below_zero(a: float, b: float) -> tuple[float, floa
 
 def min_max_offset_in_segment(row: pd.Series, max_distance: float) -> pd.Series:
     """Determines offsets from segment starting point closer than max_distance. \
-    
+
     Determines which offsets from the starting point of a segment are closer in path distance \
         than a specified maximum value.
 
@@ -123,15 +127,17 @@ def min_max_offset_in_segment(row: pd.Series, max_distance: float) -> pd.Series:
     """
     a = row[_SOM_PAD + "_start"] - max_distance
     b = row[_SOM_PAD + "_end"] - max_distance
-    l = row[_SEG_LEN]
+    seg_len = row[_SEG_LEN]
     min_norm_path_distances, max_norm_path_distances = find_normalized_interval_below_zero(a, b)
 
-    return pd.Series({_SEG_MIN: min_norm_path_distances * l, _SEG_MAX: max_norm_path_distances * l})
+    return pd.Series(
+        {_SEG_MIN: min_norm_path_distances * seg_len, _SEG_MAX: max_norm_path_distances * seg_len}
+    )
 
 
 def min_max_offset_for_center_segment(row: pd.Series, max_distance: float) -> pd.Series:
     """Determines offsets from segment starting point closer than max_distance. \
-    
+
     Determines which offsets from the starting point of a segment are closer in path distance \
         than a specified maximum value. Specialized version to be used for the segment that \
         contains the point that path distances are relative to.
@@ -143,20 +149,20 @@ def min_max_offset_for_center_segment(row: pd.Series, max_distance: float) -> pd
     """
     a = row[_SOM_PAD + "_start"] - max_distance
     b = row[_SOM_PAD + "_end"] - max_distance
-    l = row[_SEG_LEN]
+    seg_len = row[_SEG_LEN]
     c = -max_distance
     min_norm_path_distances, _ = find_normalized_interval_below_zero(a, c)
     _, max_norm_path_distances = find_normalized_interval_below_zero(c, b)
 
     return pd.Series(
         {
-            _SEG_MIN: 0.5 * min_norm_path_distances * l,
-            _SEG_MAX: (0.5 + 0.5 * max_norm_path_distances) * l,
+            _SEG_MIN: 0.5 * min_norm_path_distances * seg_len,
+            _SEG_MAX: (0.5 + 0.5 * max_norm_path_distances) * seg_len,
         }
     )
 
 
-def candidate_segments_all_morphology(locs) -> pd.DataFrame:
+def candidate_segments_all_morphology(locs: pandas.DataFrame) -> pd.DataFrame:
     """Creates a dataframe matching the format of 'candidate_segments_for_center' (*).
 
     * But where all parts of the morphology are admitted as candidates. \
@@ -238,17 +244,17 @@ def select_places_from_candidate_list(
     def randomly_pick_with_p(dataframe_in: pd.DataFrame) -> pd.DataFrame:
         dataframe_in = dataframe_in.droplevel(0)
         selected = dataframe_in.loc[
-            np.random.choice(dataframe_in.index, n, p=dataframe_in["p"] / dataframe_in["p"].sum())
+            np.random.choice(dataframe_in.index, n, p=dataframe_in["p"] / dataframe_in["p"].sum())  # noqa: NPY002
         ]
-        selected = selected[_SEG_MIN] + np.random.rand(n) * (
+        selected = selected[_SEG_MIN] + np.random.rand(n) * (  # noqa: NPY002
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
         output = locs.loc[selected.index].sort_index().drop(columns=[_SEG_OFF])
-        output[_SEG_OFF] = selected.values
+        output[_SEG_OFF] = selected.to_numpy()
         return output
 
-    p = cands.diff(axis=1).values[:, 1]
+    p = cands.diff(axis=1).to_numpy()[:, 1]
     p[np.isnan(p)] = 0
     cands["p"] = p
 
@@ -269,7 +275,7 @@ def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
 
         n_per_center (int): Numner of unique identifiers per center.
     """
-    rnd = np.random.randint(0, n_per_center, len(dataframe))
+    rnd = np.random.randint(0, n_per_center, len(dataframe))  # noqa: NPY002
     dataframe[_PRE_IDX] = dataframe[_CEN_IDX] * n_per_center + rnd
 
 
@@ -367,7 +373,7 @@ def generate_neurite_locations_on(
         seed (optional): Random seed. For reproducability.
     """
     if seed is not None:
-        np.random.seed(seed)
+        np.random.seed(seed)  # noqa: NPY002
 
     path_distance_calculator = MorphologyPathDistanceCalculator(m)
 

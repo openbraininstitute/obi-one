@@ -16,8 +16,10 @@ class Activity(BaseModel, abc.ABC):
 
     def run(self) -> None:
         """Validate the provided data against the validation rules."""
-        raise NotImplementedError("Subclasses must implement this method.")
+        msg = "Subclasses must implement this method."
+        raise NotImplementedError(msg)
 
     def save(self) -> None:
         """Make a call to entitysdk to save the result of the validation."""
-        raise NotImplementedError("Subclasses must implement this method.")
+        msg = "Subclasses must implement this method."
+        raise NotImplementedError(msg)

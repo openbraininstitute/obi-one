@@ -1,7 +1,9 @@
 import abc
 from typing import Self
 
-import numpy
+import bluepysnap as snap
+import numpy  # noqa: ICN001
+import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
@@ -27,12 +29,12 @@ class AfferentSynapsesBlock(Block, abc.ABC):
     random_seed: int | list[int] = Field(
         default=0, name="Random seed", description="Seed for the random selection of synapses"
     )
-    section_types: None | tuple[int, ...] | list[tuple[int, ...]] = Field(
+    section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
         default=None,
         name="Section types",
         description="Valid types of sections for synapses. 2: axon, 3: basal, 4: apical",
     )
-    pre_synapse_class: None | str | list[str] = Field(
+    pre_synapse_class: str | list[str] | None = Field(
         default=None,
         name="Synapse class",
         description="Valid synapse classes. EXC: excitatory synapses; INH: inhibitory synapses",
@@ -42,7 +44,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         name="Consider nan to pass",
         description="If False, synapses with no 'synapse_class' pass, else not.",
     )
-    pre_node_populations: None | tuple[str, ...] | list[tuple[str, ...]] = Field(
+    pre_node_populations: tuple[str, ...] | list[tuple[str, ...]] | None = Field(
         default=None,
         name="Presynaptic populations",
         description="Names of presynaptic node populations to allow",
@@ -58,7 +60,9 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         """,
     )
 
-    def gather_synapse_info(self, circ, node_population, node_id):
+    def gather_synapse_info(
+        self, circ: snap.Circuit, node_population: str, node_id: int
+    ) -> tuple[pandas.DataFrame, numpy.ndarray, numpy.ndarray]:
         prop_filters = {}
         node_props = []
         if self.pre_synapse_class is not None:
@@ -69,7 +73,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         if self.section_types is not None:
             prop_filters["afferent_section_type"] = list(self.section_types)
 
-        morph, PD = morphology_and_pathdistance_calculator(circ, node_population, node_id)
+        morph, PD = morphology_and_pathdistance_calculator(circ, node_population, node_id)  # noqa: N806
         syns = all_syns_on(circ, node_population, node_id, node_props)
         add_section_types(syns, morph)
         drop_nan = not self.consider_nan_pass
@@ -80,11 +84,11 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         return syns, soma_pds, pw_pds
 
     @abc.abstractmethod
-    def _select_syns(self, *args):
+    def _select_syns(self, *args) -> pandas.DataFrame:
         """Returns a generated list of points for the morphology."""
 
     @abc.abstractmethod
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         """Do specific checks on the validity of parameters."""
 
     @model_validator(mode="after")
@@ -93,9 +97,11 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
-    def synapses_on(self, circ, node_population, node_id):
+    def synapses_on(
+        self, circ: snap.Circuit, node_population: str, node_id: int
+    ) -> pandas.DataFrame:
         self.enforce_no_lists()
-        numpy.random.seed(self.random_seed)
+        numpy.random.seed(self.random_seed)  # noqa: NPY002
         args = self.gather_synapse_info(circ, node_population, node_id)
         return self._select_syns(*args)
 
@@ -111,12 +117,14 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
         description="Number of synapses to pick",
     )
 
-    def _select_syns(self, syns, *args):
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002
         return select_randomly(syns, n=self.n, raise_insufficient=False)
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.n, list):
-            assert self.n > 0, "Number of synapses must be at least one!"
+            if self.n <= 0:
+                msg = f"Number of synapses {self.n} <= 0"
+                raise ValueError(msg)
 
 
 class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
@@ -130,13 +138,14 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
         description="Fracton of synapses to pick",
     )
 
-    def _select_syns(self, syns, *args):
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002
         return select_randomly(syns, p=self.p, raise_insufficient=False)
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.p, list):
-            assert self.p > 0, "Fraction of synapses must be > 0!"
-            assert self.p <= 1.0, "Number of synapses must be <= 1.0!"
+            if (self.p <= 0) or (self.p > 1.0):
+                msg = f"p: {self.p} should be > 0 and <= 1"
+                raise ValueError(msg)
 
 
 class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
@@ -155,7 +164,12 @@ class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         description="Maximm path distance in um to the soma for synapses",
     )
 
-    def _select_syns(self, syns, soma_pds, *args):
+    def _select_syns(
+        self,
+        syns: pandas.DataFrame,
+        soma_pds: numpy.ndarray,
+        *args,  # noqa: ARG002
+    ) -> pandas.DataFrame:
         return select_minmax_distance(
             syns,
             soma_pds,
@@ -182,7 +196,12 @@ class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynaps
         description="Maximm path distance in um to the soma for synapses",
     )
 
-    def _select_syns(self, syns, soma_pds, *args):
+    def _select_syns(
+        self,
+        syns: pandas.DataFrame,
+        soma_pds: numpy.ndarray,
+        *args,  # noqa: ARG002
+    ) -> pandas.DataFrame:
         return select_minmax_distance(
             syns,
             soma_pds,
@@ -208,11 +227,18 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.soma_pd_sd, list):
-            assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
+            if self.soma_pd_sd <= 0:
+                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, *args):
+    def _select_syns(
+        self,
+        syns: pandas.DataFrame,
+        soma_pds: numpy.ndarray,
+        *args,  # noqa: ARG002
+    ) -> pandas.DataFrame:
         return select_by_path_distance(
             syns,
             soma_pds,
@@ -238,11 +264,18 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.soma_pd_sd, list):
-            assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
+            if self.soma_pd_sd <= 0:
+                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, *args):
+    def _select_syns(
+        self,
+        syns: pandas.DataFrame,
+        soma_pds: numpy.ndarray,
+        *args,  # noqa: ARG002
+    ) -> pandas.DataFrame:
         return select_by_path_distance(
             syns,
             soma_pds,
@@ -264,16 +297,23 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     )
     cluster_max_distance: float | list[float] = Field(
         name="Maximum distance of synapses from cluster center",
-        description="Synapses within a cluster will be closer than this value from the cluster center (in um)",
+        description="Synapses within a cluster will be closer than this value\
+            from the cluster center (in um)",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.n_clusters, list):
-            assert self.n_clusters > 0, "Must generate at least one cluster!"
+            if self.n_clusters <= 0:
+                msg = f"Number of clusters: {self.n_clusters} should be > 0!"
+                raise ValueError(msg)
         if not isinstance(self.cluster_max_distance, list):
-            assert self.cluster_max_distance >= 0, "Cluster distance must be >= 0"
+            if self.cluster_max_distance < 0:
+                msg = f"Cluster distance: {self.cluster_max_distance} should be >= 0!"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, pw_pds):
+    def _select_syns(
+        self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+    ) -> pandas.DataFrame:
         return select_clusters_by_max_distance(
             syns,
             soma_pds,
@@ -296,16 +336,23 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     )
     n_per_cluster: int | list[int] = Field(
         name="Number of synapses per cluster",
-        description="This number of synapses per cluster will be selected by proximity to a center synapse.",
+        description="This number of synapses per cluster will be selected\
+            by proximity to a center synapse.",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.n_clusters, list):
-            assert self.n_clusters > 0, "Must generate at least one cluster!"
+            if self.n_clusters <= 0:
+                msg = f"Number of clusters: {self.n_clusters} should be > 0!"
+                raise ValueError(msg)
         if not isinstance(self.n_per_cluster, list):
-            assert self.n_per_cluster > 0, "Must select at least one synapse per cluster!"
+            if self.n_per_cluster <= 0:
+                msg = f"Number of synapses per cluster: {self.n_per_cluster} should be > 0!"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, pw_pds):
+    def _select_syns(
+        self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+    ) -> pandas.DataFrame:
         return select_clusters_by_count(
             syns,
             soma_pds,
@@ -334,11 +381,15 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.soma_pd_sd, list):
-            assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
+            if self.soma_pd_sd <= 0:
+                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, pw_pds):
+    def _select_syns(
+        self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+    ) -> pandas.DataFrame:
         return select_clusters_by_max_distance(
             syns,
             soma_pds,
@@ -369,11 +420,15 @@ class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
-    def _check_parameter_values(self):
+    def _check_parameter_values(self) -> None:
         if not isinstance(self.soma_pd_sd, list):
-            assert self.soma_pd_sd > 0, "SD of Gaussian must be > 0!"
+            if self.soma_pd_sd <= 0:
+                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
+                raise ValueError(msg)
 
-    def _select_syns(self, syns, soma_pds, pw_pds):
+    def _select_syns(
+        self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+    ) -> pandas.DataFrame:
         return select_clusters_by_count(
             syns,
             soma_pds,

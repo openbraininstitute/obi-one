@@ -1,19 +1,18 @@
 import abc
+from enum import Enum
 from typing import ClassVar
 
+import entitysdk
 from entitysdk.models.entity import Entity
 from pydantic import Field, PrivateAttr
 
-import entitysdk
-
-from obi_one.database.db_manager import db
 from obi_one.core.base import OBIBaseModel
 
 
-from enum import Enum
 class LoadAssetMethod(Enum):
     MEMORY = "memory"
     FILE = "file"
+
 
 class EntityFromID(OBIBaseModel, abc.ABC):
     entitysdk_class: ClassVar[type[Entity]] = None
@@ -22,9 +21,7 @@ class EntityFromID(OBIBaseModel, abc.ABC):
 
     @classmethod
     def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
-        return db_client.get_entity(
-            entity_id=entity_id, entity_type=cls.entitysdk_class
-        )
+        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)
 
     @classmethod
     def find(cls, db_client: entitysdk.client.Client, limit: int = 10, **kwargs) -> list[Entity]:

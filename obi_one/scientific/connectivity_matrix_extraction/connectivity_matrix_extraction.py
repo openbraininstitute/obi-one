@@ -1,9 +1,9 @@
-import entitysdk.client
 import logging
 import os
 import warnings
 from typing import ClassVar
 
+import entitysdk.client
 from bluepysnap import Circuit
 
 L = logging.getLogger(__name__)

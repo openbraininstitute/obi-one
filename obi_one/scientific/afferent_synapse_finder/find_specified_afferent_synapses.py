@@ -1,9 +1,10 @@
-import os
 import warnings
+from pathlib import Path
 
+import bluepysnap as snap
 import morphio
-import numpy
-import pandas
+import numpy  # noqa: ICN001
+import pandas  # noqa: ICN001
 from scipy import stats
 
 try:
@@ -12,7 +13,9 @@ except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 
-def morphology_and_pathdistance_calculator(circ, node_population, node_id):
+def morphology_and_pathdistance_calculator(
+    circ: snap.Circuit, node_population: str, node_id: int
+) -> tuple[morphio.Morphology, MorphologyPathDistanceCalculator]:
     """Loads for a specified neuron its morphology and creates a path-distance calculator object.
 
     Args:
@@ -24,15 +27,18 @@ def morphology_and_pathdistance_calculator(circ, node_population, node_id):
     morph_name = node.morph.get_name(node_id)
     try:
         morph = morphio.Morphology(
-            os.path.join(node.config["alternate_morphologies"]["h5v1"], morph_name) + ".h5"
+            Path(node.config["alternate_morphologies"]["h5v1"]) / (morph_name + ".h5")
         )
-    except:
-        raise RuntimeError(f"Error loading hdf5 morphology for {node_population} - {node_id}")
-    PD = MorphologyPathDistanceCalculator(morph)
+    except Exception as err:
+        msg = f"Error loading hdf5 morphology for {node_population} - {node_id}"
+        raise RuntimeError(msg) from err
+    PD = MorphologyPathDistanceCalculator(morph)  # noqa: N806
     return morph, PD
 
 
-def all_syns_on(circ, node_population, node_id, node_props):
+def all_syns_on(
+    circ: snap.Circuit, node_population: str, node_id: int, node_props: list[str]
+) -> pandas.DataFrame:
     """Load for a specified neuron relevant properties of all its afferent synapses across
     edge populations.
 
@@ -56,7 +62,7 @@ def all_syns_on(circ, node_population, node_id, node_props):
         "@source_node",
         "@target_node",
     ]
-    reserved_props = syn_props + ["source_population", "edge_population", "edge_id"]
+    reserved_props = syn_props + ["source_population", "edge_population", "edge_id"]  # noqa: RUF005
     int_props = [
         "afferent_section_id",
         "afferent_segment_id",
@@ -64,22 +70,21 @@ def all_syns_on(circ, node_population, node_id, node_props):
         "@target_node",
         "edge_id",
     ]
-    _node_props = [_prop for _prop in node_props if _prop not in reserved_props]
+    node_props_ = [_prop for _prop in node_props if _prop not in reserved_props]
 
     for edge_name in node.target_in_edges():
         edge = circ.edges[edge_name]
         if not numpy.all([_x in edge.property_names for _x in syn_props]):
-            print("Skipping!")
             continue
         new_syns = edge.afferent_edges(node_id, properties=syn_props)
         if len(new_syns) == 0:
             continue
         syns.append(new_syns)
         pre_node = circ.nodes[edge.source.name]
-        __node_props = [_x for _x in _node_props if _x in pre_node.property_names]
-        loaded_node_props = pre_node.get(syns[-1]["@source_node"], properties=__node_props)
+        node_props__ = [_x for _x in node_props_ if _x in pre_node.property_names]
+        loaded_node_props = pre_node.get(syns[-1]["@source_node"], properties=node_props__)
         loaded_node_props = loaded_node_props.reindex(
-            columns=_node_props, index=syns[-1]["@source_node"].values
+            columns=node_props_, index=syns[-1]["@source_node"].values
         )
         pre_node_props.append(loaded_node_props)
         syn_edge_names.append(edge_name)
@@ -109,7 +114,7 @@ def all_syns_on(circ, node_population, node_id, node_props):
 
 
 # Section types are also in the synapse table, but I do not trust its presence in all circuits
-def add_section_types(syns, morph):
+def add_section_types(syns: pandas.DataFrame, morph: morphio.Morphology) -> None:
     """Load the section types of synaptic locations on a morphology.
 
     Args:
@@ -121,7 +126,9 @@ def add_section_types(syns, morph):
     syns["afferent_section_type"] = sec_types[syns["afferent_section_id"]]
 
 
-def apply_filters(syns, filter_dict, drop_nan=True):
+def apply_filters(
+    syns: pandas.DataFrame, filter_dict: dict, *, drop_nan: bool = True
+) -> pandas.DataFrame:
     """Filters a dataframe of synaptic locations according to specified property values.
 
     Args:
@@ -136,20 +143,20 @@ def apply_filters(syns, filter_dict, drop_nan=True):
         filter_dict are ignored.
     """
     for k, v in filter_dict.items():
-        assert k in syns.columns, (
-            f"No property {k} could be loaded"
-        )  # This cannot happen! We check for it earlier.
-        if isinstance(v, list):
-            v = syns[k].isin(v)
-        else:
-            v = syns[k] == v
+        if k not in syns.columns:
+            msg = f"No property {k} could be loaded"
+            raise ValueError(msg)  # This cannot happen! We check for it earlier.
+        v_ = syns[k].isin(v) if isinstance(v, list) else syns[k] == v
         if not drop_nan:
-            v = v | syns[k].isna()
-        syns = syns.loc[v]
+            v_ = v_ | syns[k].isna()  # noqa: PLR6104
+        syns = syns.loc[v_]
     return syns
 
 
-def relevant_path_distances(PD, syns):
+def relevant_path_distances(
+    PD: MorphologyPathDistanceCalculator,  # noqa: N803
+    syns: pandas.DataFrame,
+) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Calculates and return path distances to the soma and all pairwise path distances for
     dendritic locations in a dataframe.
 
@@ -167,7 +174,13 @@ def relevant_path_distances(PD, syns):
     return soma_pds, pw_pds
 
 
-def select_randomly(syns, n=None, p=None, raise_insufficient=False):
+def select_randomly(
+    syns: pandas.DataFrame,
+    n: int | None = None,
+    p: float | None = None,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select some of them randomly.
 
     Args:
@@ -179,22 +192,31 @@ def select_randomly(syns, n=None, p=None, raise_insufficient=False):
       raise_insufficient (bool, default=False): If set to True, then if n > len(syns) an
         exception is raised.
     """
-    assert p is not None or n is not None, "Must specify number or fraction of synapses!"
     if n is not None:
-        if n > len(syns):
-            if raise_insufficient:
-                raise RuntimeError(f"Fewer than the requested count of {n} found!")
-        return syns.iloc[numpy.random.choice(len(syns), numpy.minimum(n, len(syns)), replace=False)]
+        if raise_insufficient and (n > len(syns)):
+            msg = f"Fewer than the requested count of {n} found!"
+            raise RuntimeError(msg)
+        return syns.iloc[numpy.random.choice(len(syns), numpy.minimum(n, len(syns)), replace=False)]  # noqa: NPY002
     if p is not None:
         if p < 0.0 or p > 1.0:
-            raise ValueError("p must be between 0 and 1!")
-        picked = numpy.random.rand(len(syns)) < p
+            msg = f"p: {p}, but must be between 0 and 1!"
+            raise ValueError(msg)
+        picked = numpy.random.rand(len(syns)) < p  # noqa: NPY002
         return syns.loc[picked]
+    msg = "Must specify number or fraction of synapses!"
+    raise ValueError(msg)
 
 
 def select_minmax_distance(
-    syns, soma_pds, soma_pd_min, soma_pd_max, n=None, p=None, raise_insufficient=False
-):
+    syns: pandas.DataFrame,
+    soma_pds: numpy.ndarray,
+    soma_pd_min: float,
+    soma_pd_max: float,
+    n: int | None = None,
+    p: float | None = None,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select some of them randomly.
     But only select locations that are between a specified minimum and maximum path distance
     to the soma.
@@ -215,7 +237,14 @@ def select_minmax_distance(
     return select_randomly(syns.loc[valid], n=n, p=p, raise_insufficient=raise_insufficient)
 
 
-def select_closest_to_path_distance(syns, soma_pds, target_soma_pd, n, raise_insufficient=False):
+def select_closest_to_path_distance(
+    syns: pandas.DataFrame,
+    soma_pds: numpy.ndarray,
+    target_soma_pd: float,
+    n: int,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select the ones that are closest
     to a specified path distance from the soma.
 
@@ -230,14 +259,21 @@ def select_closest_to_path_distance(syns, soma_pds, target_soma_pd, n, raise_ins
       raise_insufficient (bool, default=False): If set to True, then if n is larger than
        len(syns) an exception is raised.
     """
-    if n > len(syns):
-        if raise_insufficient:
-            raise RuntimeError(f"Fewer than the requested count of {n} found!")
+    if raise_insufficient and (n > len(syns)):
+        msg = f"Fewer than the requested count of {n} found!"
+        raise RuntimeError(msg)
     srt_idx = numpy.argsort(numpy.abs(soma_pds - target_soma_pd))
     return syns.iloc[srt_idx[:n]]
 
 
-def _pd_gaussian_selector(soma_pds, soma_pd_mean, soma_pd_sd, n, raise_insufficient=False):
+def _pd_gaussian_selector(
+    soma_pds: numpy.ndarray,
+    soma_pd_mean: float,
+    soma_pd_sd: float,
+    n: int,
+    *,
+    raise_insufficient: bool = False,
+) -> numpy.ndarray:
     """From a list of soma path distances, select some of them randomly with probabilities
     that depend on values of a path distance-dependent Gaussian.
     Returns the indices of elements that are picked from the list of path distances.
@@ -251,18 +287,26 @@ def _pd_gaussian_selector(soma_pds, soma_pd_mean, soma_pd_sd, n, raise_insuffici
         exception is raised.
     """
     if (n > len(soma_pds)) and raise_insufficient:
-        raise RuntimeError(f"Fewer than the requested count of {n} found!")
+        msg = f"Fewer than the requested count of {n} found!"
+        raise RuntimeError(msg)
 
     distr = stats.norm(soma_pd_mean, soma_pd_sd).pdf(soma_pds)
-    sel_idx = numpy.random.choice(
+    sel_idx = numpy.random.choice(  # noqa: NPY002
         range(len(soma_pds)), numpy.minimum(n, len(soma_pds)), p=distr / distr.sum()
     )
     return sel_idx
 
 
 def select_by_path_distance(
-    syns, soma_pds, soma_pd_mean, soma_pd_sd, n=None, p=None, raise_insufficient=False
-):
+    syns: pandas.DataFrame,
+    soma_pds: numpy.ndarray,
+    soma_pd_mean: float,
+    soma_pd_sd: float,
+    n: int | None = None,
+    p: float | None = None,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select some of them randomly.
     The relative probabilities that each synapse is picked are defined by a parameterized
     Gaussian that depends on the path distances to the soma of the synapses.
@@ -279,11 +323,14 @@ def select_by_path_distance(
       raise_insufficient (bool, default=False): If set to True, then if n > len(syns) an
         exception is raised.
     """
-    assert p is not None or n is not None, "Must specify number or fraction of synapses!"
     if p is not None:
         if p < 0.0 or p > 1.0:
-            raise ValueError("p must be between 0 and 1!")
+            msg = f"p: {p}, but must be between 0 and 1!"
+            raise ValueError(msg)
         n = stats.binom(len(syns), p).rvs()
+    elif n is None:
+        msg = "Must specify number or fraction of synapses!"
+        raise ValueError(msg)
     return syns.iloc[
         _pd_gaussian_selector(
             soma_pds, soma_pd_mean, soma_pd_sd, n, raise_insufficient=raise_insufficient
@@ -292,15 +339,16 @@ def select_by_path_distance(
 
 
 def select_clusters_by_max_distance(
-    syns,
-    soma_pds,
-    pw_pds,
-    n_clusters,
-    cluster_max_distance,
-    soma_pd_mean=None,
-    soma_pd_sd=None,
-    raise_insufficient=False,
-):
+    syns: pandas.DataFrame,
+    soma_pds: numpy.ndarray,
+    pw_pds: numpy.ndarray,
+    n_clusters: int,
+    cluster_max_distance: float,
+    soma_pd_mean: float | None = None,
+    soma_pd_sd: float | None = None,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select some of them randomly.
     The selected synapses will be clustered in the sense that their pairwise path distances
     are below a given value.
@@ -324,18 +372,17 @@ def select_clusters_by_max_distance(
     """
     syns_out = []
     for _ in range(n_clusters):
-        if len(syns) == 0:
+        if raise_insufficient and (len(syns) == 0):
             if raise_insufficient:
-                raise RuntimeError(
-                    f"Fewer than the requested count of {n_clusters} clusters possible!"
-                )
+                msg = f"Fewer than the requested count of {n_clusters} clusters possible!"
+                raise RuntimeError(msg)
             break
         if soma_pd_mean is not None and soma_pd_sd is not None:
             ctr = _pd_gaussian_selector(
                 soma_pds, soma_pd_mean, soma_pd_sd, 1, raise_insufficient=True
             )[0]
         else:
-            ctr = numpy.random.choice(len(syns))
+            ctr = numpy.random.choice(len(syns))  # noqa: NPY002
         clstr_ids = pw_pds[ctr] < cluster_max_distance
         syns_out.append(syns.loc[clstr_ids])
         syns = syns.loc[~clstr_ids]
@@ -348,15 +395,16 @@ def select_clusters_by_max_distance(
 
 
 def select_clusters_by_count(
-    syns,
-    soma_pds,
-    pw_pds,
-    n_clusters,
-    n_per_cluster,
-    soma_pd_mean=None,
-    soma_pd_sd=None,
-    raise_insufficient=False,
-):
+    syns: pandas.DataFrame,
+    soma_pds: numpy.ndarray,
+    pw_pds: numpy.ndarray,
+    n_clusters: int,
+    n_per_cluster: int,
+    soma_pd_mean: float | None = None,
+    soma_pd_sd: float | None = None,
+    *,
+    raise_insufficient: bool = False,
+) -> pandas.DataFrame:
     """From a set of synapse locations, given in a DataFrame, select some of them randomly.
     The selected synapses will be clustered in the sense that synapses are selected
     together with all their nearest neighbors in terms of path distance.
@@ -384,16 +432,15 @@ def select_clusters_by_count(
     for _ in range(n_clusters):
         if len(syns) < n_per_cluster:
             if raise_insufficient:
-                raise RuntimeError(
-                    f"Fewer than the requested count of {n_clusters} clusters possible!"
-                )
+                msg = f"Fewer than the requested count of {n_clusters} clusters possible!"
+                raise RuntimeError(msg)
             break
         if soma_pd_mean is not None and soma_pd_sd is not None:
             ctr = _pd_gaussian_selector(
                 soma_pds, soma_pd_mean, soma_pd_sd, 1, raise_insufficient=True
             )[0]
         else:
-            ctr = numpy.random.choice(len(syns))
+            ctr = numpy.random.choice(len(syns))  # noqa: NPY002
         clstr_ids = numpy.argsort(pw_pds[ctr])[:n_per_cluster]
         other_ids = numpy.setdiff1d(range(len(syns)), clstr_ids)
         syns_out.append(syns.iloc[clstr_ids])
@@ -406,17 +453,19 @@ def select_clusters_by_count(
     ).reset_index(0)
 
 
-def merge_multiple_syns_per_connection(syns, soma_pds, pw_pds):
+def merge_multiple_syns_per_connection(
+    syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
+) -> tuple[pandas.DataFrame, numpy.ndarray, numpy.ndarray]:
     syns = syns.reset_index(drop=True)
-    _grp = (
+    grp_ = (
         syns.reset_index(drop=False)
         .groupby(["source_population", "@source_node"])["index"]
         .apply(list)
     )
-    mn_soma_pd = _grp.apply(lambda _x: soma_pds[_x].mean())
-    mn_pw_pds = _grp.apply(lambda _x: _grp.apply(lambda _y: pw_pds[numpy.ix_(_x, _y)].mean()))
+    mn_soma_pd = grp_.apply(lambda _x: soma_pds[_x].mean())
+    mn_pw_pds = grp_.apply(lambda _x: grp_.apply(lambda _y: pw_pds[numpy.ix_(_x, _y)].mean()))
 
     syns_out = mn_soma_pd.index.to_frame().reset_index(drop=True)
-    mn_soma_pd = mn_soma_pd.values
-    mn_pw_pds = mn_pw_pds.values
+    mn_soma_pd = mn_soma_pd.to_numpy()
+    mn_pw_pds = mn_pw_pds.to_numpy()
     return syns_out, mn_soma_pd, mn_pw_pds
