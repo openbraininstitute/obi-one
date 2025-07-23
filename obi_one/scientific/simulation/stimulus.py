@@ -15,7 +15,7 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
-# But for now this keeps it below the other Block references in the GUI
+# But for now this keeps it below the other Block references in get_populationthe GUI
 # Eventually we can make the GUI always show the Block references at the top
 _TIMESTAMPS_OFFSET_FIELD = Field(
     default=0.0,
@@ -611,7 +611,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-        source_node_population = self.source_neuron_set.block._population(source_node_population)
+        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
         timestamps = self.timestamps.block.timestamps()
 
         if (
@@ -670,7 +670,7 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     ) -> None:
         self._simulation_length = simulation_length
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-        source_node_population = self.source_neuron_set.block._population(source_node_population)
+        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
         gid_spike_map = {}
         timestamps = self.timestamps.block.timestamps()
         for start_time in timestamps:
