@@ -319,6 +319,38 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     _sonata_config: dict = PrivateAttr(default={})
 
+    def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
+        self._sonata_config["inputs"] = {}
+        for stimulus in self.stimuli.values():
+            if hasattr(stimulus, "generate_spikes"):
+                stimulus.generate_spikes(
+                    circuit,
+                    self.coordinate_output_root,
+                    self.initialize.simulation_length,
+                    source_node_population=circuit.default_population_name,
+                )
+            self._sonata_config["inputs"].update(
+                stimulus.config(circuit, circuit.default_population_name)
+            )
+
+    def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
+        self._sonata_config["reports"] = {}
+        for recording in self.recordings.values():
+            self._sonata_config["reports"].update(
+                recording.config(
+                    circuit, circuit.default_population_name, self.initialize.simulation_length
+                )
+            )
+
+    def _add_sonata_simulation_config_manipulations(self) -> None:
+        # Generate list of synaptic manipulation configs (executed in the order in the list)
+        # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
+        manipulation_list = [
+            manipulation.config() for manipulation in self.synaptic_manipulations.values()
+        ]
+        if len(manipulation_list) > 0:
+            self._sonata_config["connection_overrides"] = manipulation_list
+
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
@@ -354,36 +386,14 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
         }
 
-        # Generate stimulus input configs
-        self._sonata_config["inputs"] = {}
-        for stimulus in self.stimuli.values():
-            if hasattr(stimulus, "generate_spikes"):
-                stimulus.generate_spikes(
-                    circuit,
-                    self.coordinate_output_root,
-                    self.initialize.simulation_length,
-                    source_node_population=circuit.default_population_name,
-                )
-            self._sonata_config["inputs"].update(
-                stimulus.config(circuit, circuit.default_population_name)
-            )
+        # Add stimulus inputs to sonata simulation config
+        self._add_sonata_simulation_config_inputs(circuit)
 
-        # Generate recording configs
-        self._sonata_config["reports"] = {}
-        for recording in self.recordings.values():
-            self._sonata_config["reports"].update(
-                recording.config(
-                    circuit, circuit.default_population_name, self.initialize.simulation_length
-                )
-            )
+        # Add recordings to sonata simulation config
+        self._add_sonata_simulation_config_reports()
 
-        # Generate list of synaptic manipulation configs (executed in the order in the list)
-        # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
-        manipulation_list = [
-            manipulation.config() for manipulation in self.synaptic_manipulations.values()
-        ]
-        if len(manipulation_list) > 0:
-            self._sonata_config["connection_overrides"] = manipulation_list
+        # Add synaptic manipulations to sonata simulation config
+        self._add_sonata_simulation_config_manipulations()
 
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
