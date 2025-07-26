@@ -1,0 +1,2050 @@
+obi_one/scientific/morphology_containerization/morphology_containerization.py:58:9: ANN205 Missing return type annotation for staticmethod `_filter_ext`
+   |
+57 |     @staticmethod
+58 |     def _filter_ext(file_list, ext):
+   |         ^^^^^^^^^^^ ANN205
+59 |         """Filter file list based on file extension."""
+60 |         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
+   |
+   = help: Add return type annotation
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:58:21: ANN001 Missing type annotation for function argument `file_list`
+   |
+57 |     @staticmethod
+58 |     def _filter_ext(file_list, ext):
+   |                     ^^^^^^^^^ ANN001
+59 |         """Filter file list based on file extension."""
+60 |         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:58:32: ANN001 Missing type annotation for function argument `ext`
+   |
+57 |     @staticmethod
+58 |     def _filter_ext(file_list, ext):
+   |                                ^^^ ANN001
+59 |         """Filter file list based on file extension."""
+60 |         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:60:38: PTH122 `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+   |
+58 |     def _filter_ext(file_list, ext):
+59 |         """Filter file list based on file extension."""
+60 |         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
+   |                                      ^^^^^^^^^^^^^^^^ PTH122
+61 |
+62 |     @staticmethod
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:63:9: ANN205 Missing return type annotation for staticmethod `_check_morphologies`
+   |
+62 |     @staticmethod
+63 |     def _check_morphologies(circuit_config):
+   |         ^^^^^^^^^^^^^^^^^^^ ANN205
+64 |         """Check modified circuit by loading some .h5 morphologies from each node population."""
+65 |         c = Circuit(circuit_config)
+   |
+   = help: Add return type annotation: `bool`
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:63:29: ANN001 Missing type annotation for function argument `circuit_config`
+   |
+62 |     @staticmethod
+63 |     def _check_morphologies(circuit_config):
+   |                             ^^^^^^^^^^^^^^ ANN001
+64 |         """Check modified circuit by loading some .h5 morphologies from each node population."""
+65 |         c = Circuit(circuit_config)
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:75:25: F841 Local variable `morph` is assigned to but never used
+   |
+73 |                 for nid in node_ids[[0, -1]]:  # First/last node ID (with actual morphology!!)
+74 |                     try:
+75 |                         morph = nodes.morph.get(
+   |                         ^^^^^ F841
+76 |                             nid, transform=True, extension="h5"
+77 |                         )  # Will throw an error if not accessible
+   |
+   = help: Remove assignment to unused variable `morph`
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:78:21: E722 Do not use bare `except`
+   |
+76 |                             nid, transform=True, extension="h5"
+77 |                         )  # Will throw an error if not accessible
+78 |                     except:
+   |                     ^^^^^^ E722
+79 |                         return False  # Error
+80 |         return True  # All successful
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:83:9: ANN205 Missing return type annotation for staticmethod `_find_hoc_proc`
+   |
+82 |     @staticmethod
+83 |     def _find_hoc_proc(proc_name, hoc_code):
+   |         ^^^^^^^^^^^^^^ ANN205
+84 |         """Find a procedure with a given name in hoc code."""
+85 |         start_idx = hoc_code.find(f"proc {proc_name}")
+   |
+   = help: Add return type annotation
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:83:24: ANN001 Missing type annotation for function argument `proc_name`
+   |
+82 |     @staticmethod
+83 |     def _find_hoc_proc(proc_name, hoc_code):
+   |                        ^^^^^^^^^ ANN001
+84 |         """Find a procedure with a given name in hoc code."""
+85 |         start_idx = hoc_code.find(f"proc {proc_name}")
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:83:35: ANN001 Missing type annotation for function argument `hoc_code`
+   |
+82 |     @staticmethod
+83 |     def _find_hoc_proc(proc_name, hoc_code):
+   |                                   ^^^^^^^^ ANN001
+84 |         """Find a procedure with a given name in hoc code."""
+85 |         start_idx = hoc_code.find(f"proc {proc_name}")
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:86:9: S101 Use of `assert` detected
+   |
+84 |         """Find a procedure with a given name in hoc code."""
+85 |         start_idx = hoc_code.find(f"proc {proc_name}")
+86 |         assert start_idx >= 0, f"ERROR: '{proc_name}' not found!"
+   |         ^^^^^^ S101
+87 |         counter = 0
+88 |         has_first = False
+   |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:101:9: ANN205 Missing return type annotation for staticmethod `_find_hoc_header`
+    |
+100 |     @staticmethod
+101 |     def _find_hoc_header(hoc_code):
+    |         ^^^^^^^^^^^^^^^^ ANN205
+102 |         """Find the header section in hoc code."""
+103 |         start_idx = hoc_code.find("/*")  # First occurrence
+    |
+    = help: Add return type annotation
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:101:26: ANN001 Missing type annotation for function argument `hoc_code`
+    |
+100 |     @staticmethod
+101 |     def _find_hoc_header(hoc_code):
+    |                          ^^^^^^^^ ANN001
+102 |         """Find the header section in hoc code."""
+103 |         start_idx = hoc_code.find("/*")  # First occurrence
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:104:9: S101 Use of `assert` detected
+    |
+102 |         """Find the header section in hoc code."""
+103 |         start_idx = hoc_code.find("/*")  # First occurrence
+104 |         assert start_idx == 0, "ERROR: Header not found!"
+    |         ^^^^^^ S101
+105 |         end_idx = hoc_code.find("*/")  # First occurrence
+106 |         assert end_idx > 0, "ERROR: Header not found!"
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:106:9: S101 Use of `assert` detected
+    |
+104 |         assert start_idx == 0, "ERROR: Header not found!"
+105 |         end_idx = hoc_code.find("*/")  # First occurrence
+106 |         assert end_idx > 0, "ERROR: Header not found!"
+    |         ^^^^^^ S101
+107 |         return start_idx, end_idx, hoc_code[start_idx : end_idx + 2]
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:109:9: ANN202 Missing return type annotation for private function `_update_hoc_files`
+    |
+107 |         return start_idx, end_idx, hoc_code[start_idx : end_idx + 2]
+108 |
+109 |     def _update_hoc_files(self, hoc_folder):
+    |         ^^^^^^^^^^^^^^^^^ ANN202
+110 |         """Update hoc files in a folder from code of an old to code from a new template."""
+111 |         # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
+    |
+    = help: Add return type annotation: `None`
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:109:33: ANN001 Missing type annotation for function argument `hoc_folder`
+    |
+107 |         return start_idx, end_idx, hoc_code[start_idx : end_idx + 2]
+108 |
+109 |     def _update_hoc_files(self, hoc_folder):
+    |                                 ^^^^^^^^^^ ANN001
+110 |         """Update hoc files in a folder from code of an old to code from a new template."""
+111 |         # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:113:14: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+111 |         # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
+112 |         # Extract code to be replaced from hoc templates
+113 |         with open(self.initialize.hoc_template_old) as f:
+    |              ^^^^ PLW1514
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:113:14: PTH123 `open()` should be replaced by `Path.open()`
+    |
+111 |         # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
+112 |         # Extract code to be replaced from hoc templates
+113 |         with open(self.initialize.hoc_template_old) as f:
+    |              ^^^^ PTH123
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:113:14: FURB101 `open` and `read` should be replaced by `Path(self.initialize.hoc_template_old).read_text()`
+    |
+111 |         # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
+112 |         # Extract code to be replaced from hoc templates
+113 |         with open(self.initialize.hoc_template_old) as f:
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FURB101
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:115:14: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+113 |         with open(self.initialize.hoc_template_old) as f:
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |              ^^^^ PLW1514
+116 |             tmpl_new = f.read()
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:115:14: PTH123 `open()` should be replaced by `Path.open()`
+    |
+113 |         with open(self.initialize.hoc_template_old) as f:
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |              ^^^^ PTH123
+116 |             tmpl_new = f.read()
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:115:14: FURB101 `open` and `read` should be replaced by `Path(self.initialize.hoc_template_new).read_text()`
+    |
+113 |         with open(self.initialize.hoc_template_old) as f:
+114 |             tmpl_old = f.read()
+115 |         with open(self.initialize.hoc_template_new) as f:
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FURB101
+116 |             tmpl_new = f.read()
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:123:32: PTH208 Use `pathlib.Path.iterdir()` instead.
+    |
+122 |         # Replace code in hoc files
+123 |         for _file in tqdm.tqdm(os.listdir(hoc_folder), desc="Updating .hoc files"):
+    |                                ^^^^^^^^^^ PTH208
+124 |             if os.path.splitext(_file)[1].lower() != ".hoc":
+125 |                 continue
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:124:16: PTH122 `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+    |
+122 |         # Replace code in hoc files
+123 |         for _file in tqdm.tqdm(os.listdir(hoc_folder), desc="Updating .hoc files"):
+124 |             if os.path.splitext(_file)[1].lower() != ".hoc":
+    |                ^^^^^^^^^^^^^^^^ PTH122
+125 |                 continue
+126 |             hoc_file = os.path.join(hoc_folder, _file)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:126:24: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+124 |             if os.path.splitext(_file)[1].lower() != ".hoc":
+125 |                 continue
+126 |             hoc_file = os.path.join(hoc_folder, _file)
+    |                        ^^^^^^^^^^^^ PTH118
+127 |             with open(hoc_file) as f:
+128 |                 hoc = f.read()
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:127:18: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+125 |                 continue
+126 |             hoc_file = os.path.join(hoc_folder, _file)
+127 |             with open(hoc_file) as f:
+    |                  ^^^^ PLW1514
+128 |                 hoc = f.read()
+129 |             assert hoc.find(hoc_code_old) >= 0, "ERROR: Old HOC code to replace not found!"
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:127:18: PTH123 `open()` should be replaced by `Path.open()`
+    |
+125 |                 continue
+126 |             hoc_file = os.path.join(hoc_folder, _file)
+127 |             with open(hoc_file) as f:
+    |                  ^^^^ PTH123
+128 |                 hoc = f.read()
+129 |             assert hoc.find(hoc_code_old) >= 0, "ERROR: Old HOC code to replace not found!"
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:127:18: FURB101 `open` and `read` should be replaced by `Path(hoc_file).read_text()`
+    |
+125 |                 continue
+126 |             hoc_file = os.path.join(hoc_folder, _file)
+127 |             with open(hoc_file) as f:
+    |                  ^^^^^^^^^^^^^^^^^^^ FURB101
+128 |                 hoc = f.read()
+129 |             assert hoc.find(hoc_code_old) >= 0, "ERROR: Old HOC code to replace not found!"
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:129:13: S101 Use of `assert` detected
+    |
+127 |             with open(hoc_file) as f:
+128 |                 hoc = f.read()
+129 |             assert hoc.find(hoc_code_old) >= 0, "ERROR: Old HOC code to replace not found!"
+    |             ^^^^^^ S101
+130 |             hoc_new = hoc.replace(hoc_code_old, hoc_code_new)
+131 |             _, _, header = self._find_hoc_header(hoc)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:137:70: DTZ005 `datetime.datetime.now()` called without a `tz` argument
+    |
+135 |                 f"Updated '{proc_name}' based on \
+136 |                     '{os.path.split(self.initialize.hoc_template_new)[1]}' \
+137 |                         by {module_name}({version(module_name)}) at {datetime.datetime.now()}\n*/",
+    |                                                                      ^^^^^^^^^^^^^^^^^^^^^^^ DTZ005
+138 |             )
+139 |             hoc_new = hoc_new.replace(header, header_new)
+    |
+    = help: Pass a `datetime.timezone` object to the `tz` parameter
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:140:18: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+138 |             )
+139 |             hoc_new = hoc_new.replace(header, header_new)
+140 |             with open(hoc_file, "w") as f:
+    |                  ^^^^ PLW1514
+141 |                 f.write(hoc_new)
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:140:18: PTH123 `open()` should be replaced by `Path.open()`
+    |
+138 |             )
+139 |             hoc_new = hoc_new.replace(header, header_new)
+140 |             with open(hoc_file, "w") as f:
+    |                  ^^^^ PTH123
+141 |                 f.write(hoc_new)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:140:18: FURB103 `open` and `write` should be replaced by `Path(hoc_file).write_text(hoc_new)`
+    |
+138 |             )
+139 |             hoc_new = hoc_new.replace(header, header_new)
+140 |             with open(hoc_file, "w") as f:
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ FURB103
+141 |                 f.write(hoc_new)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:143:9: C901 `run` is too complex (34 > 10)
+    |
+141 |                 f.write(hoc_new)
+142 |
+143 |     def run(self, db_client: entitysdk.client.Client = None) -> None:
+    |         ^^^ C901
+144 |         try:
+145 |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:143:9: PLR0912 Too many branches (35 > 12)
+    |
+141 |                 f.write(hoc_new)
+142 |
+143 |     def run(self, db_client: entitysdk.client.Client = None) -> None:
+    |         ^^^ PLR0912
+144 |         try:
+145 |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:143:9: PLR0915 Too many statements (114 > 50)
+    |
+141 |                 f.write(hoc_new)
+142 |
+143 |     def run(self, db_client: entitysdk.client.Client = None) -> None:
+    |         ^^^ PLR0915
+144 |         try:
+145 |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:143:9: PLR0914 Too many local variables (26/15)
+    |
+141 |                 f.write(hoc_new)
+142 |
+143 |     def run(self, db_client: entitysdk.client.Client = None) -> None:
+    |         ^^^ PLR0914
+144 |         try:
+145 |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:143:19: ARG002 Unused method argument: `db_client`
+    |
+141 |                 f.write(hoc_new)
+142 |
+143 |     def run(self, db_client: entitysdk.client.Client = None) -> None:
+    |                   ^^^^^^^^^ ARG002
+144 |         try:
+145 |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (6 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (7 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (6 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (6 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (7 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:144:9: PLR1702 Too many nested blocks (7 > 5)
+    |
+143 |       def run(self, db_client: entitysdk.client.Client = None) -> None:
+144 | /         try:
+145 | |             L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+146 | |
+147 | |             # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
+148 | |             logging.getLogger("morph_tool").setLevel(logging.WARNING)
+149 | |
+150 | |             # Copy contents of original circuit folder to output_root
+151 | |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 | |             output_path = self.coordinate_output_root
+153 | |             circuit_config = os.path.join(output_path, input_config)
+154 | |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 | |             L.info("Copying circuit to output folder...")
+156 | |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+157 | |             L.info("...DONE")
+158 | |
+159 | |             # Load circuit at new location
+160 | |             c = Circuit(circuit_config)
+161 | |             node_populations = c.nodes.population_names
+162 | |
+163 | |             # Iterate over node populations to find all morphologies, convert them if needed,
+164 | |             # and merge them into a .h5 container
+165 | |
+166 | |             # Keep track of updated folders (in case of different ones for different populations)
+167 | |             hoc_folders_updated = []
+168 | |
+169 | |             # Keep track of morphology folders (to be deleted afterwards)
+170 | |             morph_folders_to_delete = []
+171 | |
+172 | |             # Keep track wheter the circuit config has a global component entry for morphologies
+173 | |             global_morph_entry = None
+174 | |
+175 | |             for npop in node_populations:
+176 | |                 nodes = c.nodes[npop]
+177 | |                 if nodes.type != "biophysical":
+178 | |                     continue
+179 | |                 morph_names = np.unique(nodes.get(properties="morphology"))
+180 | |                 if self.NO_MORPH_NAME in morph_names:
+181 | |                     L.info(
+182 | |                         f"WARNING: Biophysical population '{npop}' has neurons without \
+183 | |                             morphologies!"
+184 | |                     )
+185 | |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 | |                     assert len(morph_names) > 0, (
+187 | |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 | |                     )
+189 | |                 L.info(
+190 | |                     f"> {len(morph_names)} unique morphologies in population '{npop}' \
+191 | |                         ({nodes.size})"
+192 | |                 )
+193 | |
+194 | |                 # Check morphology folders
+195 | |                 morph_folders = {}
+196 | |                 for _morph_ext in ["h5", "asc", "swc"]:
+197 | |                     try:
+198 | |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 | |                         assert os.path.exists(morph_folder), (
+200 | |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 | |                         )
+202 | |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+203 | |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 | |                         )
+205 | |                         if morph_folder not in morph_folders_to_delete:
+206 | |                             morph_folders_to_delete.append(morph_folder)
+207 | |                     except:
+208 | |                         morph_folder = None
+209 | |                     morph_folders[_morph_ext] = morph_folder
+210 | |
+211 | |                 # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
+212 | |                 h5_folder = morph_folders["h5"]
+213 | |                 if h5_folder is None:
+214 | |                     for _morph_ext in ["asc", "swc"]:
+215 | |                         inp_folder = morph_folders[_morph_ext]
+216 | |                         if inp_folder is not None:
+217 | |                             break
+218 | |                     assert inp_folder is not None, (
+219 | |                         "ERROR: No morphologies found to convert to \
+220 | |                         .h5!"
+221 | |                     )
+222 | |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 | |                     os.makedirs(h5_folder, exist_ok=True)
+224 | |
+225 | |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 | |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 | |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 | |                         if not os.path.exists(dest_file):
+229 | |                             convert(src_file, dest_file)
+230 | |
+231 | |                 # Merge into .h5 container
+232 | |                 if h5_folder not in morph_folders_to_delete:
+233 | |                     morph_folders_to_delete.append(h5_folder)
+234 | |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+235 | |                 with h5py.File(h5_container, "a") as f_container:
+236 | |                     skip_counter = 0
+237 | |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 | |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+239 | |                             if _m in f_container:
+240 | |                                 skip_counter += 1
+241 | |                             else:
+242 | |                                 f_h5.copy(f_h5, f_container, name=_m)
+243 | |                 L.info(
+244 | |                     f"Merged {len(morph_names) - skip_counter} morphologies into container \
+245 | |                         ({skip_counter} already existed)"
+246 | |                 )
+247 | |
+248 | |                 # Update the circuit config so that it points to the .h5 container file,
+249 | |                 # keeping the original global/local config file structure as similar as it was
+250 | |                 # before (but removing all other references to the original morphology folders)
+251 | |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+252 | |                 # Save original config file
+253 | |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 | |
+255 | |                 with open(circuit_config) as f:
+256 | |                     cfg_dict = json.load(f)
+257 | |
+258 | |                 if (
+259 | |                     global_morph_entry is None
+260 | |                 ):  # Check if there is a global entry for morphologies (initially not set)
+261 | |                     global_morph_entry = False
+262 | |                     if "components" in cfg_dict:
+263 | |                         if (
+264 | |                             "morphologies_dir" in cfg_dict["components"]
+265 | |                             and len(cfg_dict["components"]["morphologies_dir"]) > 0
+266 | |                         ):
+267 | |                             base_path = os.path.split(cfg_dict["components"]["morphologies_dir"])[0]
+268 | |                             cfg_dict["components"]["morphologies_dir"] = ""  # Remove .swc path
+269 | |                             global_morph_entry = True
+270 | |                         if "alternate_morphologies" in cfg_dict["components"]:
+271 | |                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+283 | |                                     base_path = os.path.split(
+284 | |                                         cfg_dict["components"]["alternate_morphologies"][
+285 | |                                             "neurolucida-asc"
+286 | |                                         ]
+287 | |                                     )[0]
+288 | |                                     cfg_dict["components"]["alternate_morphologies"][
+289 | |                                         "neurolucida-asc"
+290 | |                                     ] = ""  # Remove .asc path
+291 | |                                     global_morph_entry = True
+292 | |                             if (
+293 | |                                 "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+294 | |                                 and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
+295 | |                                 > 0
+296 | |                             ):
+297 | |                                 base_path = os.path.split(
+298 | |                                     cfg_dict["components"]["alternate_morphologies"]["h5v1"]
+299 | |                                 )[0]
+300 | |                                 cfg_dict["components"]["alternate_morphologies"]["h5v1"] = (
+301 | |                                     ""  # Remove .h5 path
+302 | |                                 )
+303 | |                                 global_morph_entry = True
+304 | |                         if global_morph_entry:
+305 | |                             # Set .h5 container path globally
+306 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+307 | |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+308 | |
+309 | |                 if not global_morph_entry:  # Set individually per population
+310 | |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 | |                         if nodes.name in _ndict["populations"]:
+312 | |                             _pop = _ndict["populations"][nodes.name]
+313 | |                             base_path = None
+314 | |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+315 | |                                 base_path = os.path.split(_pop["morphologies_dir"])[0]
+316 | |                                 _pop["morphologies_dir"] = ""  # Remove .swc path
+317 | |                             if "alternate_morphologies" in _pop:
+318 | |                                 if "neurolucida-asc" in _pop["alternate_morphologies"]:
+319 | |                                     base_path = os.path.split(
+320 | |                                         _pop["alternate_morphologies"]["neurolucida-asc"]
+321 | |                                     )[0]
+322 | |                                     _pop["alternate_morphologies"]["neurolucida-asc"] = (
+323 | |                                         ""  # Remove .asc path
+324 | |                                     )
+325 | |                                 if "h5v1" in _pop["alternate_morphologies"]:
+326 | |                                     base_path = os.path.split(
+327 | |                                         _pop["alternate_morphologies"]["h5v1"]
+328 | |                                     )[0]
+329 | |                                     _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | |                             assert base_path is not None, (
+331 | |                                 f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | |                             )
+333 | |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+334 | |                             _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | |                             break
+336 | |                 else:
+337 | |                     pass  # Skip, should be already set
+338 | |
+339 | |                 with open(circuit_config, "w") as f:
+340 | |                     json.dump(cfg_dict, f, indent=2)
+341 | |
+342 | |                 # Update hoc files (in place)
+343 | |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 | |                 if not os.path.exists(hoc_folder):
+345 | |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 | |                 elif hoc_folder not in hoc_folders_updated:
+347 | |                     self._update_hoc_files(hoc_folder)
+348 | |                     hoc_folders_updated.append(hoc_folder)
+349 | |
+350 | |             # Clean up morphology folders with individual morphologies
+351 | |             L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
+352 | |             for _folder in morph_folders_to_delete:
+353 | |                 shutil.rmtree(_folder)
+354 | |
+355 | |             # Reload and check morphologies in modified circuit
+356 | |             assert self._check_morphologies(circuit_config), (
+357 | |                 "ERROR: Morphology check not successful!"
+358 | |             )
+359 | |             L.info("Morphology containerization DONE")
+360 | |
+361 | |         except Exception as e:
+362 | |             traceback.L.info_exception(e)
+    | |_________________________________________^ PLR1702
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:153:30: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+151 |             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+152 |             output_path = self.coordinate_output_root
+153 |             circuit_config = os.path.join(output_path, input_config)
+    |                              ^^^^^^^^^^^^ PTH118
+154 |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+155 |             L.info("Copying circuit to output folder...")
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:154:13: S101 Use of `assert` detected
+    |
+152 |             output_path = self.coordinate_output_root
+153 |             circuit_config = os.path.join(output_path, input_config)
+154 |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+    |             ^^^^^^ S101
+155 |             L.info("Copying circuit to output folder...")
+156 |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:154:24: PTH110 `os.path.exists()` should be replaced by `Path.exists()`
+    |
+152 |             output_path = self.coordinate_output_root
+153 |             circuit_config = os.path.join(output_path, input_config)
+154 |             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+    |                        ^^^^^^^^^^^^^^ PTH110
+155 |             L.info("Copying circuit to output folder...")
+156 |             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:186:21: S101 Use of `assert` detected
+    |
+184 |                     )
+185 |                     morph_names = morph_names[morph_names != self.NO_MORPH_NAME]
+186 |                     assert len(morph_names) > 0, (
+    |                     ^^^^^^ S101
+187 |                         f"ERROR: Biophysical population '{npop}' does not have any morphologies!"
+188 |                     )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:199:25: S101 Use of `assert` detected
+    |
+197 |                     try:
+198 |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 |                         assert os.path.exists(morph_folder), (
+    |                         ^^^^^^ S101
+200 |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 |                         )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:199:32: PTH110 `os.path.exists()` should be replaced by `Path.exists()`
+    |
+197 |                     try:
+198 |                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+199 |                         assert os.path.exists(morph_folder), (
+    |                                ^^^^^^^^^^^^^^ PTH110
+200 |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 |                         )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:202:25: S101 Use of `assert` detected
+    |
+200 |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 |                         )
+202 |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+    |                         ^^^^^^ S101
+203 |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 |                         )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:202:53: PTH208 Use `pathlib.Path.iterdir()` instead.
+    |
+200 |                             f"ERROR: {_morph_ext} morphology folder does not exist!"
+201 |                         )
+202 |                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
+    |                                                     ^^^^^^^^^^ PTH208
+203 |                             f"ERROR: {_morph_ext} morphology folder does not contain morphologies!"
+204 |                         )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:207:21: E722 Do not use bare `except`
+    |
+205 |                         if morph_folder not in morph_folders_to_delete:
+206 |                             morph_folders_to_delete.append(morph_folder)
+207 |                     except:
+    |                     ^^^^^^ E722
+208 |                         morph_folder = None
+209 |                     morph_folders[_morph_ext] = morph_folder
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:218:21: S101 Use of `assert` detected
+    |
+216 |                         if inp_folder is not None:
+217 |                             break
+218 |                     assert inp_folder is not None, (
+    |                     ^^^^^^ S101
+219 |                         "ERROR: No morphologies found to convert to \
+220 |                         .h5!"
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:222:33: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+220 |                         .h5!"
+221 |                     )
+222 |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+    |                                 ^^^^^^^^^^^^ PTH118
+223 |                     os.makedirs(h5_folder, exist_ok=True)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:223:21: PTH103 `os.makedirs()` should be replaced by `Path.mkdir(parents=True)`
+    |
+221 |                     )
+222 |                     h5_folder = os.path.join(os.path.split(inp_folder)[0], "_h5_morphologies_tmp_")
+223 |                     os.makedirs(h5_folder, exist_ok=True)
+    |                     ^^^^^^^^^^^ PTH103
+224 |
+225 |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:226:36: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+225 |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+    |                                    ^^^^^^^^^^^^ PTH118
+227 |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 |                         if not os.path.exists(dest_file):
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:227:37: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+225 |                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+226 |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+    |                                     ^^^^^^^^^^^^ PTH118
+228 |                         if not os.path.exists(dest_file):
+229 |                             convert(src_file, dest_file)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:228:32: PTH110 `os.path.exists()` should be replaced by `Path.exists()`
+    |
+226 |                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
+227 |                         dest_file = os.path.join(h5_folder, _m + ".h5")
+228 |                         if not os.path.exists(dest_file):
+    |                                ^^^^^^^^^^^^^^ PTH110
+229 |                             convert(src_file, dest_file)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:234:32: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+232 |                 if h5_folder not in morph_folders_to_delete:
+233 |                     morph_folders_to_delete.append(h5_folder)
+234 |                 h5_container = os.path.join(os.path.split(h5_folder)[0], self.CONTAINER_FILENAME)
+    |                                ^^^^^^^^^^^^ PTH118
+235 |                 with h5py.File(h5_container, "a") as f_container:
+236 |                     skip_counter = 0
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:238:40: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+236 |                     skip_counter = 0
+237 |                     for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+238 |                         with h5py.File(os.path.join(h5_folder, _m + ".h5")) as f_h5:
+    |                                        ^^^^^^^^^^^^ PTH118
+239 |                             if _m in f_container:
+240 |                                 skip_counter += 1
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:251:31: PTH122 `os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`
+    |
+249 |                 # keeping the original global/local config file structure as similar as it was
+250 |                 # before (but removing all other references to the original morphology folders)
+251 |                 cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+    |                               ^^^^^^^^^^^^^^^^ PTH122
+252 |                 # Save original config file
+253 |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:255:22: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+253 |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 |
+255 |                 with open(circuit_config) as f:
+    |                      ^^^^ PLW1514
+256 |                     cfg_dict = json.load(f)
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:255:22: PTH123 `open()` should be replaced by `Path.open()`
+    |
+253 |                 # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+254 |
+255 |                 with open(circuit_config) as f:
+    |                      ^^^^ PTH123
+256 |                     cfg_dict = json.load(f)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:271:29: SIM102 Use a single `if` statement instead of nested `if` statements
+    |
+269 |                               global_morph_entry = True
+270 |                           if "alternate_morphologies" in cfg_dict["components"]:
+271 | /                             if (
+272 | |                                 "neurolucida-asc"
+273 | |                                 in cfg_dict["components"]["alternate_morphologies"]
+274 | |                             ):
+275 | |                                 if (
+276 | |                                     len(
+277 | |                                         cfg_dict["components"]["alternate_morphologies"][
+278 | |                                             "neurolucida-asc"
+279 | |                                         ]
+280 | |                                     )
+281 | |                                     > 0
+282 | |                                 ):
+    | |__________________________________^ SIM102
+283 |                                       base_path = os.path.split(
+284 |                                           cfg_dict["components"]["alternate_morphologies"][
+    |
+    = help: Combine `if` statements using `and`
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:306:39: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+304 |                         if global_morph_entry:
+305 |                             # Set .h5 container path globally
+306 |                             h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+    |                                       ^^^^^^^^^^^^ PTH118
+307 |                             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:312:29: RUF052 Local dummy variable `_pop` is accessed
+    |
+310 |                     for _ndict in cfg_dict["networks"]["nodes"]:
+311 |                         if nodes.name in _ndict["populations"]:
+312 |                             _pop = _ndict["populations"][nodes.name]
+    |                             ^^^^ RUF052
+313 |                             base_path = None
+314 |                             if "morphologies_dir" in _pop and len(_pop["morphologies_dir"]) > 0:
+    |
+    = help: Remove leading underscores
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:330:29: S101 Use of `assert` detected
+    |
+328 | …                             )[0]
+329 | …                             _pop["alternate_morphologies"]["h5v1"] = ""  # Remove .h5 path
+330 | …                     assert base_path is not None, (
+    |                       ^^^^^^ S101
+331 | …                         f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | …                     )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:333:39: PTH118 `os.path.join()` should be replaced by `Path` with `/` operator
+    |
+331 | …                         f"ERROR: Morphology path for population '{nodes.name}' unknown!"
+332 | …                     )
+333 | …                     h5_file = os.path.join(base_path, self.CONTAINER_FILENAME)
+    |                                 ^^^^^^^^^^^^ PTH118
+334 | …                     _pop["alternate_morphologies"] = {"h5v1": h5_file}
+335 | …                     break
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:339:22: PLW1514 `open` in text mode without explicit `encoding` argument
+    |
+337 |                     pass  # Skip, should be already set
+338 |
+339 |                 with open(circuit_config, "w") as f:
+    |                      ^^^^ PLW1514
+340 |                     json.dump(cfg_dict, f, indent=2)
+    |
+    = help: Add explicit `encoding` argument
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:339:22: PTH123 `open()` should be replaced by `Path.open()`
+    |
+337 |                     pass  # Skip, should be already set
+338 |
+339 |                 with open(circuit_config, "w") as f:
+    |                      ^^^^ PTH123
+340 |                     json.dump(cfg_dict, f, indent=2)
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:344:24: PTH110 `os.path.exists()` should be replaced by `Path.exists()`
+    |
+342 |                 # Update hoc files (in place)
+343 |                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
+344 |                 if not os.path.exists(hoc_folder):
+    |                        ^^^^^^^^^^^^^^ PTH110
+345 |                     L.info("WARNING: Biophysical neuron models dir missing!")
+346 |                 elif hoc_folder not in hoc_folders_updated:
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:356:13: S101 Use of `assert` detected
+    |
+355 |             # Reload and check morphologies in modified circuit
+356 |             assert self._check_morphologies(circuit_config), (
+    |             ^^^^^^ S101
+357 |                 "ERROR: Morphology check not successful!"
+358 |             )
+    |
+
+obi_one/scientific/morphology_containerization/morphology_containerization.py:361:16: BLE001 Do not catch blind exception: `Exception`
+    |
+359 |             L.info("Morphology containerization DONE")
+360 |
+361 |         except Exception as e:
+    |                ^^^^^^^^^ BLE001
+362 |             traceback.L.info_exception(e)
+    |
+
+Found 76 errors.
+No fixes available (11 hidden fixes can be enabled with the `--unsafe-fixes` option).
