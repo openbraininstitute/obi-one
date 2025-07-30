@@ -5,6 +5,8 @@ from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+L = logging.getLogger(__name__)
+
 
 class MorphologyDecontainerizationsForm(Form):
     """ """
@@ -60,10 +62,10 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 all_nids = nodes.ids()
                 if len(all_nids) < 20:
                     nid_list = all_nids  # Check all node IDs
-                    print(f"Checking all morphologies in population '{npop}'")
+                    L.info(f"Checking all morphologies in population '{npop}'")
                 else:
                     nid_list = all_nids[[0, -1]]  # Check first/last node ID only
-                    print(f"Checking first/last morphologies in population '{npop}'")
+                    L.info(f"Checking first/last morphologies in population '{npop}'")
                 for nid in nid_list:
                     try:
                         morph = nodes.morph.get(
@@ -75,9 +77,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
-            print(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
+            L.info(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
 
-            # Set logging level to WARNING to prevent a lot of debug output from morph_tool.convert()
+            # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
             logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
             # Copy contents of original circuit folder to output_root
@@ -85,15 +87,16 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             output_path = self.coordinate_output_root
             circuit_config = os.path.join(output_path, input_config)
             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
-            print("Copying circuit to output folder...")
+            L.info("Copying circuit to output folder...")
             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
-            print("...DONE")
+            L.info("...DONE")
 
             # Load circuit at new location
             c = Circuit(circuit_config)
             node_populations = c.nodes.population_names
 
-            # Iterate over node populations, find all morphologies and extract them from the .h5 container
+            # Iterate over node populations to find all morphologies
+            # and extract them from the .h5 container
             morph_folders_to_delete = []
             morph_containers_to_delete = []
             global_morph_entry = None
@@ -102,8 +105,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 if nodes.type != "biophysical":
                     continue
                 morph_names = np.unique(nodes.get(properties="morphology"))
-                print(
-                    f"> {len(morph_names)} unique morphologies in population '{npop}' ({nodes.size})"
+                L.info(
+                    f"> {len(morph_names)} unique morphologies in population '{npop}' \
+                        ({nodes.size})"
                 )
 
                 h5_container = nodes.morph._get_morphology_base(
@@ -142,8 +146,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                                 )
                                 if not os.path.exists(dest_file):
                                     convert(src_file, dest_file)
-                print(
-                    f"Extracted/converted {len(morph_names) - skip_counter} morphologies from .h5 container ({skip_counter} already existed)"
+                L.info(
+                    f"Extracted/converted {len(morph_names) - skip_counter} morphologies \
+                        from .h5 container ({skip_counter} already existed)"
                 )
                 if h5_container not in morph_containers_to_delete:
                     morph_containers_to_delete.append(h5_container)
@@ -152,8 +157,8 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                         morph_folders_to_delete.append(h5_folder)
 
                 # Update the circuit config so that it points to the individual morphology folder,
-                # keeping the original global/local config file structure as similar as it was before
-                # (but removing all other references to the original morphology folders)
+                # keeping the original global/local config file structure as similar as it was
+                # before (but removing all other references to the original morphology folders)
                 cname, cext = os.path.splitext(circuit_config)
                 # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # Save original config file
 
@@ -228,10 +233,10 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                     json.dump(cfg_dict, f, indent=2)
 
             # Clean up morphology folders with individual morphologies
-            print(f"Cleaning morphology container(s): {morph_containers_to_delete}")
+            L.info(f"Cleaning morphology container(s): {morph_containers_to_delete}")
             for _file in morph_containers_to_delete:
                 os.remove(_file)
-            print(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
+            L.info(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
             for _folder in morph_folders_to_delete:
                 shutil.rmtree(_folder)
 
@@ -239,7 +244,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             assert self._check_morphologies(circuit_config, self.initialize.output_format), (
                 "ERROR: Morphology check not successful!"
             )
-            print("Morphology decontainerization DONE")
+            L.info("Morphology decontainerization DONE")
 
         except Exception as e:
             traceback.print_exception(e)
