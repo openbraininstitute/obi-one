@@ -1,6 +1,6 @@
 """Helper function to extract nodes in simplices in a matrix
 Author: Daniela Egas Santander
-Last updated: 06.2024
+Last updated: 06.2024.
 """
 
 import numpy as np
@@ -19,18 +19,20 @@ def simplex_submat(
     simplex_type="directed",
     seed=None,
 ):
-    """Extracts the indices of nodes in the adjacency matrix that participate in simplices of dimension dim with v as a source or target
+    """Extracts the indices of nodes in the adjacency matrix that participate in simplices of
+    dimension dim with v as a source or target.
 
     Parameters
     ----------
     adj : scipy sparse matrix
-        Adjacency matrix of the network (square, will be converted to binary if not already binary).
+        Adjacency matrix of the network (square, is converted to binary if not already binary).
     v : int
         Index of the node of interest (source or target).
     dim : int
         Dimension of the simplex to extract.
     v_position : {'source', 'target'}, optional
-        Whether the node `v` is considered as a source or target in the simplices (default: 'source').
+        Whether the node `v` is considered as a source or target in the
+        simplices (default: 'source').
     subsample : bool, optional
         Whether to subsample the nodes if there are too many (default: False).
     n_count_max : int, optional
@@ -45,18 +47,23 @@ def simplex_submat(
     Returns:
     -------
     np.ndarray or tuple of np.ndarrays
-        If `nodes` is False, returns the nodes in simplices of dimension `dim` with `v` as source or target
-        If `subsample` is True, returns a tuple (`selection`, `nodes`), where `nodes` is as above and
-        `selection` is the subsampled set.
+        If `nodes` is False, returns the nodes in simplices of dimension `dim` with `v` as source
+        or target
+        If `subsample` is True, returns a tuple (`selection`, `nodes`), where `nodes` is as above
+        and`selection` is the subsampled set.
 
     Notes:
     -----
     - Subsampling methods:
         - 'random': randomly selects nodes from all nodes.
-        - 'node_participation': selects nodes with highest node participation in dimension dim in the submatrix on the nodes in `nodes`.
-        - 'sample_simplices': samples simplices while the number of nodes on them is still smaller or equal than the required size.
-    - If the number of candidate nodes is less than or equal to `n_count_max`, no subsampling is performed.
-    - If the number of sampled nodes is smaller than the nodes in a simplex of dimension `dim` there is no possible solution.
+        - 'node_participation': selects nodes with highest node participation in dimension dim in
+            the submatrix on the nodes in `nodes`.
+        - 'sample_simplices': samples simplices while the number of nodes on them is still smaller
+            or equal than the required size.
+    - If the number of candidate nodes is less than or equal to `n_count_max`,
+        no subsampling is performed.
+    - If the number of sampled nodes is smaller than the nodes in a simplex of dimension `dim`
+        there is no possible solution.
 
     """
     # Basic checks
@@ -81,7 +88,8 @@ def simplex_submat(
     if subsample and (n_count_max < dim + 1):
         n_count_max = dim + 1
         print(
-            f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = {n_count_max} neurons instead."
+            f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = \
+                {n_count_max} neurons instead."
         )
 
     # Get nodes
