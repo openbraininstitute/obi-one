@@ -1,16 +1,28 @@
+import json
+import logging
+import os
+import shutil
+import traceback
 from typing import ClassVar, Literal
+
+import entitysdk.client
+import h5py
+import numpy as np
+import tqdm
+from bluepysnap import Circuit
+from morph_tool import convert
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+N_NEURONS_FOR_CHECK = 20
+
 L = logging.getLogger(__name__)
 
 
 class MorphologyDecontainerizationsForm(Form):
-    """ """
-
     single_coord_class_name: ClassVar[str] = "MorphologyDecontainerization"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
@@ -22,21 +34,6 @@ class MorphologyDecontainerizationsForm(Form):
         output_format: Literal["h5", "asc", "swc"] | list[Literal["h5", "asc", "swc"]] = "h5"
 
     initialize: Initialize
-
-
-import json
-import logging
-import os
-import shutil
-import traceback
-from typing import ClassVar
-
-import entitysdk.client
-import h5py
-import numpy as np
-import tqdm
-from bluepysnap import Circuit
-from morph_tool import convert
 
 
 class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):
@@ -60,7 +57,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
                 all_nids = nodes.ids()
-                if len(all_nids) < 20:
+                if len(all_nids) < N_NEURONS_FOR_CHECK:
                     nid_list = all_nids  # Check all node IDs
                     L.info(f"Checking all morphologies in population '{npop}'")
                 else:
@@ -152,15 +149,18 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 )
                 if h5_container not in morph_containers_to_delete:
                     morph_containers_to_delete.append(h5_container)
-                if self.initialize.output_format != "h5":
-                    if h5_folder not in morph_folders_to_delete:
-                        morph_folders_to_delete.append(h5_folder)
+                if (
+                    self.initialize.output_format != "h5"
+                    and h5_folder not in morph_folders_to_delete
+                ):
+                    morph_folders_to_delete.append(h5_folder)
 
                 # Update the circuit config so that it points to the individual morphology folder,
                 # keeping the original global/local config file structure as similar as it was
                 # before (but removing all other references to the original morphology folders)
-                cname, cext = os.path.splitext(circuit_config)
-                # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # Save original config file
+                cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+                # Save original config file
+                # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
 
                 with open(circuit_config) as f:
                     cfg_dict = json.load(f)
@@ -180,14 +180,14 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 # Check if there is a global entry for morphologies (initially not set)
                 if global_morph_entry is None:
                     global_morph_entry = False
-                    if "components" in cfg_dict:
-                        if "alternate_morphologies" in cfg_dict["components"]:
-                            if "h5v1" in cfg_dict["components"]["alternate_morphologies"]:
-                                if (
-                                    len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
-                                    > 0
-                                ):
-                                    global_morph_entry = True
+
+                    if (
+                        "components" in cfg_dict
+                        and "alternate_morphologies" in cfg_dict["components"]
+                        and "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+                        and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"]) > 0
+                    ):
+                        global_morph_entry = True
 
                     if global_morph_entry:  # Set morphology path globally
                         if self.initialize.output_format == "h5":
@@ -209,22 +209,22 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 if not global_morph_entry:  # Set individually per population
                     for _ndict in cfg_dict["networks"]["nodes"]:
                         if nodes.name in _ndict["populations"]:
-                            _pop = _ndict["populations"][nodes.name]
+                            pop = _ndict["populations"][nodes.name]
                             base_path = None
                             if self.initialize.output_format == "h5":
-                                _pop["alternate_morphologies"] = {"h5v1": h5_folder}
-                                if "morphologies_dir" in _pop:
-                                    _pop["morphologies_dir"] = ""
+                                pop["alternate_morphologies"] = {"h5v1": h5_folder}
+                                if "morphologies_dir" in pop:
+                                    pop["morphologies_dir"] = ""
                             elif self.initialize.output_format == "asc":
-                                _pop["alternate_morphologies"] = {
+                                pop["alternate_morphologies"] = {
                                     "neurolucida-asc": rel_target_folder
                                 }
-                                if "morphologies_dir" in _pop:
-                                    _pop["morphologies_dir"] = ""
+                                if "morphologies_dir" in pop:
+                                    pop["morphologies_dir"] = ""
                             else:
-                                _pop["morphologies_dir"] = rel_target_folder
-                                if "alternate_morphologies" in _pop:
-                                    _pop["alternate_morphologies"] = {}
+                                pop["morphologies_dir"] = rel_target_folder
+                                if "alternate_morphologies" in pop:
+                                    pop["alternate_morphologies"] = {}
                             break
                 else:
                     pass  # Skip, should be already set
