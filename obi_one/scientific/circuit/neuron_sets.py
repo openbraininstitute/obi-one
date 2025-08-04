@@ -735,7 +735,7 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         index = index[0]
 
         # Get nodes on simplices index by 0 ... conn._shape[0]
-        out = simplex_submat(
+        selection = simplex_submat(
             conn.matrix,
             index,
             self.dim,
@@ -746,7 +746,6 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
             simplex_type=self.simplex_type,
             seed=self.seed,
         )
-        selection = out[0] if self.subsample else out
 
         # Get node_ids (i.e., get correct index) and build expression dict
         selection = conn.vertices["node_ids"].iloc[selection]
@@ -841,7 +840,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
         index = index[0]
 
         # Get nodes on simplices index by 0 ... conn._shape[0]
-        out = simplex_submat(
+        selection = simplex_submat(
             conn.matrix,
             index,
             self.dim,
@@ -852,7 +851,6 @@ class SimplexNeuronSet(PropertyNeuronSet):
             simplex_type=self.simplex_type,
             seed=self.seed,
         )
-        selection = out[0] if self.subsample else out
 
         # Get node_ids (i.e., get correct index) and build expression dict
         selection = conn.vertices["node_ids"].iloc[selection]

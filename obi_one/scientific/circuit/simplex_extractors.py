@@ -13,6 +13,33 @@ from scipy import sparse
 L = logging.getLogger(__name__)
 
 
+def determine_selection(
+    sl: pd.Series,
+    v: int,
+    dim: int,
+    *,
+    subsample: bool,
+    n_count_max: int,
+    subsample_method: str,
+    seed: int,
+) -> np.ndarray:
+    # Get nodes
+    selection_test = np.unique(sl.loc[dim])
+    if not subsample:
+        return selection_test
+    if selection_test.shape[0] <= n_count_max:
+        L.info("No subselection required")
+        selection = selection_test
+    # Sub-sampling if there are too many neurons
+    elif subsample_method == "random":
+        selection = subsample_random(v, selection_test, n_count_max, seed)
+    elif subsample_method == "node_participation":
+        selection = subsample_by_node_participation(sl, n_count_max, dim)
+    elif subsample_method == "sample_simplices":
+        selection = subsample_simplices(sl, n_count_max, dim)
+    return selection
+
+
 def simplex_submat(
     adj: sparse.coo_matrix,
     v: int,
@@ -24,7 +51,7 @@ def simplex_submat(
     subsample_method: str = "node_participation",
     simplex_type: str = "directed",
     seed: int | None = None,
-):
+) -> np.ndarray:
     """Extracts the indices of nodes in the adjacency matrix that participate in simplices of
     dimension dim with v as a source or target.
 
@@ -101,21 +128,15 @@ def simplex_submat(
                 {n_count_max} neurons instead."
         )
 
-    # Get nodes
-    selection_test = np.unique(sl.loc[dim])
-    if not subsample:
-        return selection_test
-    if selection_test.shape[0] <= n_count_max:
-        L.info("No subselection required")
-        selection = selection_test
-    # Sub-sampling if there are too many neurons
-    elif subsample_method == "random":
-        selection = subsample_random(v, selection_test, n_count_max, seed)
-    elif subsample_method == "node_participation":
-        selection = subsample_by_node_participation(sl, n_count_max, dim)
-    elif subsample_method == "sample_simplices":
-        selection = subsample_simplices(sl, n_count_max, dim)
-    return selection, selection_test
+    return determine_selection(
+        sl,
+        v,
+        dim,
+        subsample=subsample,
+        n_count_max=n_count_max,
+        subsample_method=subsample_method,
+        seed=seed,
+    )
 
 
 def subsample_random(v: int, selection_test: np.ndarray, n_count_max: int, seed: int) -> np.ndarray:
@@ -131,7 +152,7 @@ def subsample_by_node_participation(sl: pd.Series, n_count_max: int, dim: int) -
     return selection
 
 
-def subsample_simplices(sl: pd.Series, n_count_max: int, dim: int):
+def subsample_simplices(sl: pd.Series, n_count_max: int, dim: int) -> np.ndarray:
     n_simplices = len(sl.loc[dim])
     selection = np.unique(sl.loc[dim][n_simplices - 1 :])
     i = 2
