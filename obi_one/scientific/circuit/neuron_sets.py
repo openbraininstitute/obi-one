@@ -739,12 +739,12 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
             conn.matrix,
             index,
             self.dim,
-            self.central_neuron_simplex_position,
-            self.subsample,
-            self.n_count_max,
-            self.subsample_method,
-            self.simplex_type,
-            self.seed,
+            v_position=self.central_neuron_simplex_position,
+            subsample=self.subsample,
+            n_count_max=self.n_count_max,
+            subsample_method=self.subsample_method,
+            simplex_type=self.simplex_type,
+            seed=self.seed,
         )
         selection = out[0] if self.subsample else out
 
@@ -845,12 +845,12 @@ class SimplexNeuronSet(PropertyNeuronSet):
             conn.matrix,
             index,
             self.dim,
-            self.central_neuron_simplex_position,
-            self.subsample,
-            self.n_count_max,
-            "sample_simplices",
-            self.simplex_type,
-            self.seed,
+            v_position=self.central_neuron_simplex_position,
+            subsample=self.subsample,
+            n_count_max=self.n_count_max,
+            subsample_method="sample_simplices",
+            simplex_type=self.simplex_type,
+            seed=self.seed,
         )
         selection = out[0] if self.subsample else out
 

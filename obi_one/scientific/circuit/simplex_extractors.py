@@ -3,21 +3,27 @@ Author: Daniela Egas Santander
 Last updated: 06.2024.
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
 from connalysis.network.topology import list_simplices_by_dimension
+from scipy import sparse
+
+L = logging.getLogger(__name__)
 
 
 def simplex_submat(
-    adj,
-    v,
-    dim,
-    v_position="source",
-    subsample=False,
-    n_count_max=None,
-    subsample_method="node_participation",
-    simplex_type="directed",
-    seed=None,
+    adj: sparse.coo_matrix,
+    v: int,
+    dim: int,
+    *,
+    v_position: str = "source",
+    subsample: bool = False,
+    n_count_max: int | None = None,
+    subsample_method: str = "node_participation",
+    simplex_type: str = "directed",
+    seed: int | None = None,
 ):
     """Extracts the indices of nodes in the adjacency matrix that participate in simplices of
     dimension dim with v as a source or target.
@@ -67,12 +73,15 @@ def simplex_submat(
 
     """
     # Basic checks
-    assert adj.shape[0] == adj.shape[1], "Adjacency matrix must be square"
-    assert 0 <= v < adj.shape[0], (
-        f"v must be between 0 and {adj.shape[0] - 1} since its a node in adj"
-    )
-    if subsample:
-        assert isinstance(n_count_max, int), "n_count_max must be an integer when subsampling"
+    if adj.shape[0] != adj.shape[1]:
+        msg = "Adjacency matrix must be square"
+        raise ValueError(msg)
+    if v < 0 or v >= adj.shape[0]:
+        msg = f"v must be between 0 and {adj.shape[0] - 1} since its a node in adj"
+        raise ValueError(msg)
+    if subsample and not isinstance(n_count_max, int):
+        msg = "n_count_max must be an integer when subsampling"
+        raise ValueError(msg)
     if v_position == "target":
         adj = adj.transpose()
     adj = adj.astype(bool).astype(int).tocsr()
@@ -84,10 +93,10 @@ def simplex_submat(
     # Check if dimension and n_count_max are valid
     if dim > sl.index.max():
         dim = sl.index.max()
-        print(f"> Dimension not attained using dimension {dim} instead.")
+        L.info(f"> Dimension not attained using dimension {dim} instead.")
     if subsample and (n_count_max < dim + 1):
         n_count_max = dim + 1
-        print(
+        L.info(
             f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = \
                 {n_count_max} neurons instead."
         )
@@ -97,37 +106,37 @@ def simplex_submat(
     if not subsample:
         return selection_test
     if selection_test.shape[0] <= n_count_max:
-        print("No subselection required")
+        L.info("No subselection required")
         selection = selection_test
     # Sub-sampling if there are too many neurons
     elif subsample_method == "random":
         selection = subsample_random(v, selection_test, n_count_max, seed)
     elif subsample_method == "node_participation":
-        selection = subsample_by_node_participation(sl, n_count_max, dim, simplex_type=simplex_type)
+        selection = subsample_by_node_participation(sl, n_count_max, dim)
     elif subsample_method == "sample_simplices":
         selection = subsample_simplices(sl, n_count_max, dim)
     return selection, selection_test
 
 
-def subsample_random(v, selection_test, n_count_max, seed):
+def subsample_random(v: int, selection_test: np.ndarray, n_count_max: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     subsample = rng.choice(selection_test[selection_test != v], size=n_count_max - 1, replace=False)
     return np.append(v, subsample)
 
 
-def subsample_by_node_participation(sl, n_count_max, dim, simplex_type="directed"):
+def subsample_by_node_participation(sl: pd.Series, n_count_max: int, dim: int) -> pd.Series:
     node, par = np.unique(sl.loc[dim], return_counts=True)
     node_par = pd.Series(par, index=node, name=dim).sort_values(ascending=False)
     selection = node_par.index[:n_count_max]
     return selection
 
 
-def subsample_simplices(sl, n_count_max, dim):
-    l = len(sl.loc[dim])
-    selection = np.unique(sl.loc[dim][l - 1 :])
+def subsample_simplices(sl: pd.Series, n_count_max: int, dim: int):
+    n_simplices = len(sl.loc[dim])
+    selection = np.unique(sl.loc[dim][n_simplices - 1 :])
     i = 2
     while i < sl.loc[dim].shape[0]:
-        temp = np.unique(sl.loc[dim][l - i :])
+        temp = np.unique(sl.loc[dim][n_simplices - i :])
         if temp.shape[0] <= n_count_max:
             i += 1
             selection = temp
