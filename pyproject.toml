@@ -101,6 +101,7 @@ brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" 
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
+exclude = ["obi_one/scientific/basic_connectivity_plots/helpers.py"]
 
 [tool.ruff.lint]
 preview = true
