@@ -8,13 +8,15 @@ from pathlib import Path
 from datetime import datetime, timezone
 import logging
 
-# Create logs directory if it doesn't exist
-log_dir = Path('logs')
-log_dir.mkdir(exist_ok=True)
+# Basic console logging configuration at module level
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
-timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-log_file = log_dir / f"simulation_{timestamp}.log"
-
+# Initialize MPI rank
 try:
     from neuron import h
     h.nrnmpi_init()
@@ -23,26 +25,26 @@ try:
 except Exception:
     rank = 0  # fallback for non-MPI runs
 
-handlers = [logging.StreamHandler(sys.stdout)]
-if rank == 0:
-    handlers.append(logging.FileHandler(log_file))
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=handlers
-)
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-logger.handlers.clear()
-for h in handlers:
-    logger.addHandler(h)
-
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-for h in logger.handlers:
-    h.setFormatter(formatter)
-
-logger.info(f"Logging initialized on rank {rank}. Log file: {log_file if rank==0 else '(stdout only)'}")
+def _setup_file_logging():
+    """Set up file logging for simulation functions."""
+    # Create logs directory if it doesn't exist
+    log_dir = Path('logs')
+    log_dir.mkdir(exist_ok=True)
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = log_dir / f"simulation_{timestamp}.log"
+    
+    # Add file handler only if we're on rank 0
+    if rank == 0:
+        file_handler = logging.FileHandler(log_file)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        logger.info(f"File logging initialized. Log file: {log_file}")
+    else:
+        logger.info("File logging only on rank 0")
+    
+    return logger
 
 
 from collections import defaultdict
@@ -267,10 +269,10 @@ def run_bluecellulab(
         simulation_config: Path to the simulation configuration file
         save_nwb: Whether to save results in NWB format.
     """
-    logger = logging.getLogger(__name__)
+    # Set up file logging for this simulation run
+    logger = _setup_file_logging()
 
     # Get MPI info using NEURON's ParallelContext
-    h.nrnmpi_init()
     pc = h.ParallelContext()
     rank = int(pc.id())
     size = int(pc.nhost())
@@ -484,7 +486,19 @@ def run_neurodamus(
     simulation_config: Union[str, Path],
     save_nwb: bool = False,
 ) -> Dict[str, Any]:
-    """Run simulation using Neurodamus backend"""
+    """Run simulation using Neurodamus backend
+    
+    Args:
+        simulation_config: Path to the simulation configuration file
+        save_nwb: Whether to save results in NWB format.
+        
+    Returns:
+        Dictionary containing simulation results
+    """
+    # Set up file logging for this simulation run
+    logger = _setup_file_logging()
+    logger.warning("Neurodamus backend is not yet implemented. "
+                 "Please use BlueCelluLab backend for now.")
     raise NotImplementedError(
         "Neurodamus backend is not yet implemented. "
         "Please use BlueCelluLab backend for now."
