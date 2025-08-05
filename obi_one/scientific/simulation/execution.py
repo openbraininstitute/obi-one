@@ -30,10 +30,10 @@ def _setup_file_logging():
     # Create logs directory if it doesn't exist
     log_dir = Path('logs')
     log_dir.mkdir(exist_ok=True)
-    
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = log_dir / f"simulation_{timestamp}.log"
-    
+
     # Add file handler only if we're on rank 0
     if rank == 0:
         file_handler = logging.FileHandler(log_file)
@@ -43,13 +43,13 @@ def _setup_file_logging():
         logger.info(f"File logging initialized. Log file: {log_file}")
     else:
         logger.info("File logging only on rank 0")
-    
+
     return logger
 
 
 from collections import defaultdict
 import json
-from typing import Dict, Any, Union
+from typing import Dict, Any, Literal, Union
 import numpy as np
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
@@ -59,6 +59,9 @@ from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
 import uuid
 # matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
 import matplotlib.pyplot as plt
+
+# Type alias for simulator backends
+SimulatorBackend = Literal["bluecellulab", "neurodamus"]
 
 # ---- merge helpers ---------------------------------------------
 def _merge_dicts(list_of_dicts):
@@ -135,6 +138,40 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
     params['add_projections'] = params['add_synapses']
 
     return params
+
+def run(simulation_config: Union[str, Path],
+        simulator: SimulatorBackend = "bluecellulab",
+        save_nwb: bool = False
+    ) -> None:
+        """Run the simulation with the specified backend.
+
+        The simulation results are saved to the specified results directory.
+
+        Args:
+            simulation_config: Path to the simulation configuration file
+            simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
+                      Note: Currently, only 'bluecellulab' is implemented.
+            save_nwb: Whether to save results in NWB format.
+        Raises:
+            ValueError: If the requested backend is not implemented.
+        """
+
+        logger.info(f"Starting simulation with {simulator} backend")
+        # Convert to lowercase for case-insensitive comparison
+        simulator = simulator.lower()
+
+        if simulator == "bluecellulab":
+            run_bluecellulab(
+                simulation_config=simulation_config,
+                save_nwb=save_nwb
+            )
+        elif simulator == "neurodamus":
+            run_neurodamus(
+                simulation_config=simulation_config,
+                save_nwb=save_nwb,
+            )
+        else:
+            raise ValueError(f"Unsupported backend: {simulator}")
 
 def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
     """Plot voltage traces for all cells in a grid of subplots and save to file.
@@ -480,11 +517,11 @@ def run_neurodamus(
     save_nwb: bool = False,
 ) -> Dict[str, Any]:
     """Run simulation using Neurodamus backend
-    
+
     Args:
         simulation_config: Path to the simulation configuration file
         save_nwb: Whether to save results in NWB format.
-        
+
     Returns:
         Dictionary containing simulation results
     """
