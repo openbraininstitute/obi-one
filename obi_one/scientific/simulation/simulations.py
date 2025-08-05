@@ -35,8 +35,6 @@ from obi_one.database.circuit_from_id import CircuitFromID
 import entitysdk
 from collections import OrderedDict
 
-# Type alias for simulator backends
-SimulatorBackend = Literal["bluecellulab", "neurodamus"]
 from datetime import UTC, datetime
 
 from pathlib import Path
@@ -414,39 +412,3 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     )
 
         return simulation
-
-    def run(
-        self,
-        simulation_config: Union[str, Path],
-        simulator: SimulatorBackend = "bluecellulab",
-        save_nwb: bool = False
-    ) -> None:
-        """Run the simulation with the specified backend.
-
-        The simulation results are saved to the specified results directory.
-
-        Args:
-            simulation_config: Path to the simulation configuration file
-            simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
-                      Note: Currently, only 'bluecellulab' is implemented.
-            save_nwb: Whether to save results in NWB format.
-        Raises:
-            ValueError: If the requested backend is not implemented.
-        """
-
-        self._logger.info(f"Starting simulation with {simulator} backend")
-        # Convert to lowercase for case-insensitive comparison
-        simulator = simulator.lower()
-
-        if simulator == "bluecellulab":
-            run_bluecellulab(
-                simulation_config=simulation_config,
-                save_nwb=save_nwb
-            )
-        elif simulator == "neurodamus":
-            run_neurodamus(
-                simulation_config=simulation_config,
-                save_nwb=save_nwb,
-            )
-        else:
-            raise ValueError(f"Unsupported backend: {simulator}")
