@@ -3,7 +3,7 @@ OBI Platform Analysis Notebooks
 
 ## Notebook Folder Structure
 
-The folder has been divided into 3 main subfolders, each corresponding to the level of analysis: 
+The folder has been divided into 3 main subfolders, each corresponding to the level of analysis:
 
 - **Cellular**
   - **analyse_single_cell_sim**: Notebooks to analyse single cell simulations
@@ -16,7 +16,7 @@ The folder has been divided into 3 main subfolders, each corresponding to the le
   - **emodels**: Notebooks on E-models. See this [README](Cellular/emodels/README.md) for more details
       - [**parameter_plots**](Cellular/emodels/parameters_plot/analysis_notebook.ipynb): Compare parameters of an e-model across sections on Open Brain Institute Platform (OBP)
       - [**cadpyr_showcase**](Cellular/emodels/cadpyr_showcase/analysis_notebook.ipynb): Demonstrates various properties of the OBP canonical cADPyr (continuos firing and adapting type pyramidal neuron) e-model
-      - [**plot_iv_fi_curve**](Cellular/emodels/plot_iv_fi_curve/analysis_notebook.ipynb): Computes and visualize IV and FI curves for a single-cell model using BlueCelluLab.
+      - [**iv_fi_curve**](Cellular/emodels/iv_fi_curve/analysis_notebook.ipynb): Computes and visualize IV and FI curves for a single-cell model using BlueCelluLab.
       - [**single_cell_currentscape_analysis**](Cellular/emodels/single_cell_currentscape_analysis/analysis_notebook.ipynb): Currentscape analysis of single cells
       - [**single_cell_impedance_analysis**](Cellular/emodels/single_cell_impedance_analysis/analysis_notebook.ipynb): Impedance analysis of single cells
       - **lfpy_simulations**
@@ -28,7 +28,7 @@ The folder has been divided into 3 main subfolders, each corresponding to the le
   - **morphologies**: Notebooks on morphologies
     - [**display_morphology_population_features**](Cellular/morphologies/display_morphology_population_features/analysis_notebook.ipynb): Plot morphological features for a population of morphologies
     - [**morphology_quality_check**](Cellular/morphologies/morphology_quality_check/analysis_notebook.ipynb): To test a list of morphologies against some common issues that may cause issues with tools and analyses using the morphologies.
-      
+
 - **Circuit**
   - [**adjacency_matrix**](Circuit/adjacency_matrix/analysis_notebook.ipynb): extracts and visualize the connectivity between all pairs of pre- and post-synaptic neurons
   - [**circuit_composition**](Circuit/circuit_composition/analysis_notebook.ipynb): displays the composition of a circuit model with respect to user-selected neuron properties, such as morphological types, electrical types, etc.
