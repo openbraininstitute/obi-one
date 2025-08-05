@@ -11,7 +11,7 @@ import types
 
 
 
-class Form(OBIBaseModel):
+class Form(OBIBaseModel, extra="forbid"):
     """A Form is a configuration for single or multi-dimensional parameter scans.
 
     A Form is composed of Blocks, which either appear at the root level

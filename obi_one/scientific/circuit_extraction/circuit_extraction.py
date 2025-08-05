@@ -1,4 +1,6 @@
-from typing import ClassVar
+from typing import Annotated, ClassVar
+
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
@@ -6,6 +8,8 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+
+import entitysdk.client
 
 
 class CircuitExtractions(Form):
@@ -20,6 +24,12 @@ class CircuitExtractions(Form):
     class Initialize(Block):
         circuit: Circuit | list[Circuit]
         run_validation: bool = False
+        do_virtual: bool | list[bool] = Field(default=True, name="Do virtual",
+                                              description="Enable virtual neurons that target the cells contained in the specified neuron set to be split out and kept as virtual neurons together with their connectivity.")
+        create_external: bool | list[bool] = Field(default=True, name="Create external",
+                                                   description="Enable external neurons that are outside the specified neuron set but target the cells contained therein to be turned into new virtual neurons together with their connectivity.")
+
+        virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
     initialize: Initialize
     neuron_set: NeuronSetUnion
@@ -52,7 +62,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     def _filter_ext(file_list, ext):
         return list(filter(lambda f: os.path.splitext(f)[1].lower() == f".{ext}", file_list))
 
-    def run(self) -> str:
+    def run(self, db_client: entitysdk.client.Client = None) -> str:
         try:
             # Add neuron set to SONATA circuit object
             # (will raise an error in case already existing)
@@ -71,8 +81,9 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 self.coordinate_output_root,
                 nset_name,
                 sonata_circuit,
-                True,
-                False,
+                self.initialize.do_virtual,
+                self.initialize.create_external,
+                self.initialize.virtual_sources_to_ignore
             )
 
             # Custom edit of the circuit config so that all paths are relative to the new base directory
@@ -241,13 +252,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             print("Extraction DONE")
 
         except Exception as e:
-            if str(e) == "Unable to synchronously create group (name already exists)":
-                print(
-                    "Error:",
-                    f"Subcircuit {self.neuron_set} already exists. Subcircuit must be deleted before running the extraction.",
-                )
-            else:
-                traceback.print_exception(e)
+            traceback.print_exception(e)
             return
 
     def save(self):
