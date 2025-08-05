@@ -22,9 +22,9 @@ from obi_one.core.exception import OBIONE_Error
 # But for now this keeps it below the other Block references in the GUI
 # Eventually we can make the GUI always show the Block references at the top
 _TIMESTAMPS_OFFSET_FIELD = Field(
-        default=0.0, 
-        title="Timestamp Offset", 
-        description="The offset of the stimulus relative to each timestamp in milliseconds (ms).", 
+        default=0.0,
+        title="Timestamp Offset",
+        description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
         units="ms"
     )
 
@@ -33,8 +33,8 @@ _MAX_POISSON_SPIKE_LIMIT = 5000000
 
 class Stimulus(Block, ABC):
 
-    timestamps: Annotated[TimestampsReference, Field(title="Timestamps", 
-                                                     description="Timestamps at which the stimulus is applied.")]    
+    timestamps: Annotated[TimestampsReference, Field(title="Timestamps",
+                                                     description="Timestamps at which the stimulus is applied.")]
 
     def config(self, circuit: Circuit, population: str | None=None) -> dict:
         self.check_simulation_init()
@@ -58,9 +58,9 @@ class SomaticStimulus(Stimulus, ABC):
         description="Time duration in milliseconds for how long input is activated.",
         units="ms",
     )
-    
 
-    _represents_physical_electrode: bool = PrivateAttr(default=False) 
+
+    _represents_physical_electrode: bool = PrivateAttr(default=False)
     """Default is False. If True, the signal will be implemented \
     using a NEURON IClamp mechanism. The IClamp produce an \
     electrode current which is not included in the calculation of \
@@ -87,12 +87,12 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
     title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
-    
+
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
     amplitude: float | list[float] = Field(
-        default=0.1, 
+        default=0.1,
         description="The injected current. Given in nanoamps.",
         title="Amplitude",
         units="nA"
@@ -114,7 +114,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
-    
+
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
@@ -221,7 +221,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
-    
+
 class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
@@ -231,7 +231,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     _input_type: str = "current_clamp"
 
     mean_amplitude: float | list[float] = Field(
-        default=0.01, 
+        default=0.01,
         description="The mean value of current to inject. Given in nanoamps (nA).",
         title="Mean Amplitude",
         units="nA"
@@ -316,13 +316,13 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         units="nA",
     )
     width: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
-        default=1.0, 
+        default=1.0,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms"
     )
     frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
-        default=1.0, 
+        default=1.0,
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
         units="Hz"
@@ -355,19 +355,19 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     _input_type: str = "current_clamp"
 
     maximum_amplitude: float | list[float] = Field(
-        default=0.1, 
+        default=0.1,
         description="The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
         title="Maximum Amplitude",
         units="nA"
     )
     frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
-        default=1.0, 
+        default=1.0,
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
         units="Hz"
     )
     dt: Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]] = Field(
-        default=0.025, 
+        default=0.025,
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
         units="ms"
@@ -481,9 +481,9 @@ class SpikeStimulus(Stimulus):
                 "node_set": self.targeted_neuron_set.block.name,
                 "module": self._module,
                 "input_type": self._input_type,
-                "spike_file": str(self._spike_file) # os.path.relpath # 
+                "spike_file": str(self._spike_file) # os.path.relpath #
             }
-        
+
         return sonata_config
 
     def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
@@ -493,16 +493,16 @@ class SpikeStimulus(Stimulus):
     def write_spike_file(gid_spike_map, spike_file, source_node_population):
         """
         Writes SONATA output spike trains to file.
-        
+
         Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
         """
         # IMPORTANT: Convert SONATA node IDs (0-based) to NEURON cell IDs (1-based)!!
         # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
         gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
-    
-        out_path = os.path.split(spike_file)[0]
-        if not os.path.exists(out_path):
-            os.makedirs(out_path)
+
+        out_path = os.path.dirname(spike_file)
+        if out_path:  # Only create if non-empty
+            os.makedirs(out_path, exist_ok=True)
 
         time_list = []
         gid_list = []
@@ -529,13 +529,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(default=1000.0, 
-                            title="Duration", 
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(default=1000.0,
+                            title="Duration",
                             description="Time duration in milliseconds for how long input is activated.",
                             units="ms"
                         )
     frequency: Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
-        default=1.0, 
+        default=1.0,
         title="Frequency",
         description="Mean frequency (Hz) of the Poisson input.",
         units="Hz")
@@ -544,7 +544,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         title="Random Seed",
         description="Seed for the random number generator to ensure reproducibility of the spike generation.",
     )
-    
+
     def generate_spikes(self, circuit, spike_file_path, simulation_length, source_node_population=None):
         self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
