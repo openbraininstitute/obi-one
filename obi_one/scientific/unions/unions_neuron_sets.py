@@ -15,24 +15,7 @@ from obi_one.scientific.circuit.neuron_sets import (
     InhibitoryNeurons,
 )
 
-# NeuronSetUnion = (
-#     PredefinedNeuronSet
-#     | CombinedNeuronSet
-#     | IDNeuronSet
-#     | PropertyNeuronSet
-#     | VolumetricCountNeuronSet
-#     | VolumetricRadiusNeuronSet
-#     | SimplexNeuronSet
-#     | SimplexMembershipBasedNeuronSet
-#     | nbS1VPMInputs
-#     | nbS1POmInputs
-#     | rCA1CA3Inputs
-#     | AllNeurons
-#     | ExcitatoryNeurons
-#     | InhibitoryNeurons
-# )
-
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 NeuronSetUnion = Annotated[Union[(
     CombinedNeuronSet,
@@ -49,18 +32,9 @@ NeuronSetUnion = Annotated[Union[(
     AllNeurons,
     ExcitatoryNeurons,
     InhibitoryNeurons,
-)], Field(discriminator='type')]
+)], Discriminator('type')]
 
-# SimulationNeuronSetUnion = (
-#     AllNeurons
-#     | ExcitatoryNeurons
-#     | InhibitoryNeurons
-#     | IDNeuronSet
-#     | nbS1VPMInputs
-#     | nbS1POmInputs
-# )
-
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 SimulationNeuronSetUnion = Annotated[Union[(
     (
@@ -78,7 +52,7 @@ SimulationNeuronSetUnion = Annotated[Union[(
     AllNeurons,
     ExcitatoryNeurons,
     InhibitoryNeurons,
-))], Field(discriminator='type')]
+))], Discriminator('type')]
 
 
 

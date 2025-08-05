@@ -8,17 +8,7 @@ from obi_one.scientific.morphology_locations import (
     RandomMorphologyLocations,
 )
 
-# MorphologyLocationUnion = (
-#     MorphologyLocationsBlock
-#     | RandomGroupedMorphologyLocations
-#     | RandomMorphologyLocations
-#     | ClusteredGroupedMorphologyLocations
-#     | ClusteredMorphologyLocations
-#     | ClusteredPathDistanceMorphologyLocations
-#     | PathDistanceMorphologyLocations
-# )
-
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 MorphologyLocationUnion = Annotated[Union[(
     ClusteredGroupedMorphologyLocations,
@@ -28,4 +18,4 @@ MorphologyLocationUnion = Annotated[Union[(
     PathDistanceMorphologyLocations,
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
-)], Field(discriminator='type')]
+)], Discriminator('type')]

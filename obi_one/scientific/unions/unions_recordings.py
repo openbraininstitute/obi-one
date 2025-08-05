@@ -3,11 +3,11 @@ from obi_one.scientific.simulation.recording import SomaVoltageRecording, TimeWi
 # RecordingUnion = (SomaVoltageRecording |
 #                   TimeWindowSomaVoltageRecording)
 
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 RecordingUnion = Annotated[Union[(SomaVoltageRecording,
                   TimeWindowSomaVoltageRecording)], 
-                  Field(discriminator='type')]
+                  Discriminator('type')]
 
 from obi_one.core.block_reference import BlockReference
 from typing import ClassVar, Any

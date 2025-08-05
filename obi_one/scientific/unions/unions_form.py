@@ -27,22 +27,7 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTestForm,
 )
 
-# FormUnion = (
-#     BasicConnectivityPlots
-#     | CircuitExtractions
-#     | ConnectivityMatrixExtractions
-#     | FolderCompressions
-#     | MorphologyContainerizationsForm
-#     | MorphologyDecontainerizationsForm
-#     | MorphologyMetricsForm
-#     | SimulationsForm
-#     | SingleBlockGenerateTestForm
-#     | SingleBlockEntityTestForm
-#     | MultiBlockEntitySDKTestForm
-#     | MorphologyLocationsForm
-# )
-
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 FormUnion = Annotated[Union[(
     BasicConnectivityPlots,
@@ -57,4 +42,4 @@ FormUnion = Annotated[Union[(
     SingleBlockEntityTestForm,
     MultiBlockEntitySDKTestForm,
     MorphologyLocationsForm,
-)], Field(discriminator='type')]
+)], Discriminator('type')]

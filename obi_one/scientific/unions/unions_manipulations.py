@@ -8,12 +8,12 @@ from obi_one.scientific.simulation.manipulations import (
 #     | ScaleAcetylcholineUSESynapticManipulation
 # )
 
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 SynapticManipulationsUnion = Annotated[Union[(
     SynapticMgManipulation, 
     ScaleAcetylcholineUSESynapticManipulation
-)], Field(discriminator='type')]
+)], Discriminator('type')]
 
 
 from obi_one.core.block_reference import BlockReference

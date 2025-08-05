@@ -30,6 +30,10 @@ from collections import OrderedDict
 
 from datetime import UTC, datetime
 
+from typing import Annotated, Union
+
+from pydantic import Discriminator
+
 from pathlib import Path
 
 import logging
@@ -69,7 +73,7 @@ class SimulationsForm(Form):
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(default_factory=dict, reference_type=SynapticManipulationsReference.__name__, description="Synaptic manipulations for the simulation.", singular_name="Synaptic Manipulation", group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP, group_order=1)
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
+        circuit: CircuitFromID | list[CircuitFromID]
         node_set: Annotated[NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")]
         simulation_length: Annotated[NonNegativeFloat, Field(ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS)] | Annotated[list[Annotated[NonNegativeFloat, Field(ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]], Field(min_length=1)] = Field(default=1000.0, title="Duration", description="Simulation length in milliseconds (ms).", units="ms")
         extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.", units="mM")

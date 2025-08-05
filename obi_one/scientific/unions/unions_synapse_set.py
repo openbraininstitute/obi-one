@@ -12,21 +12,7 @@ from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_bloc
     RandomlySelectedNumberOfSynapses,
 )
 
-# SynapseSetUnion = (
-#     AfferentSynapsesBlock
-#     | RandomlySelectedFractionOfSynapses
-#     | RandomlySelectedNumberOfSynapses
-#     | PathDistanceConstrainedFractionOfSynapses
-#     | PathDistanceConstrainedNumberOfSynapses
-#     | PathDistanceWeightedFractionOfSynapses
-#     | PathDistanceWeightedNumberOfSynapses
-#     | ClusteredPDSynapsesByCount
-#     | ClusteredPDSynapsesByMaxDistance
-#     | ClusteredSynapsesByCount
-#     | ClusteredSynapsesByMaxDistance
-# )
-
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
 SynapseSetUnion = Annotated[Union[(
     AfferentSynapsesBlock,
@@ -40,4 +26,4 @@ SynapseSetUnion = Annotated[Union[(
     PathDistanceWeightedNumberOfSynapses,
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
-)], Field(discriminator='type')]
+)], Discriminator('type')]

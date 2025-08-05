@@ -2,6 +2,6 @@ from obi_one.scientific.circuit.intracellular_location_sets import SectionIntrac
 
 # IntracellularLocationSetUnion = SectionIntracellularLocationSet
 
-from pydantic import Field
+from pydantic import Field, Discriminator
 from typing import Union, Annotated
-IntracellularLocationSetUnion = Annotated[Union[SectionIntracellularLocationSet], Field(discriminator='type')]
+IntracellularLocationSetUnion = Annotated[Union[SectionIntracellularLocationSet], Discriminator('type')]

@@ -2,7 +2,7 @@ from obi_one.core.block import Block
 from obi_one.core.base import OBIBaseModel
 
 
-from typing import Union, ClassVar, get_args, Any, Literal
+from typing import Union, ClassVar, get_args, Any, Literal, get_origin, Annotated
 from pydantic import Field
 import abc
 class BlockReference(OBIBaseModel, abc.ABC):
@@ -40,7 +40,14 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-        if not isinstance(value, self.allowed_block_types):
+
+        if get_origin(self.allowed_block_types) is Annotated:
+            args = get_args(self.allowed_block_types)
+            union = args[0]  # This is Union[int, str]
+        else:
+            union = self.allowed_block_types
+
+        if not isinstance(value, union):
             raise TypeError(f"Value must be of type {self.block_type.__name__}.")
         self._block = value
 
