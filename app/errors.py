@@ -57,3 +57,4 @@ class ApiError(Exception):
             f"http_status_code={self.http_status_code} "
             f"details={self.details!r}"
         )
+        

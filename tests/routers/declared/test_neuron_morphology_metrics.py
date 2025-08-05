@@ -71,3 +71,4 @@ def test_get_not_found(client, morphology_json, monkeypatch):
     }
     assert entitysdk_client_mock.get_entity.call_count == 1
     assert entitysdk_client_mock.download_content.call_count == 0
+    
