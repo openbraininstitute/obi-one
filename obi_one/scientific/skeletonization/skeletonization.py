@@ -2,25 +2,30 @@ import json
 import os
 from typing import ClassVar, Literal, Self, Annotated
 
-from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
+from pydantic import Field, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.info import Info
-from obi_one.core.exception import OBIONE_Error
-
-from obi_one.database.circuit_from_id import CircuitFromID
 
 import entitysdk
 from collections import OrderedDict
-
-from datetime import UTC, datetime
 
 from pathlib import Path
 
 import logging
 L = logging.getLogger(__name__)
+
+from enum import StrEnum
+class BlockGroup(StrEnum):
+    """Authentication and authorization errors."""
+
+    SETUP_BLOCK_GROUP = "Setup"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    EVENTS_GROUP = "Events"
+    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
 class SkelotonizationForm(Form):
@@ -92,10 +97,52 @@ class SkelotonizationForm(Form):
             description="Use the spine meshes and their branches to reconstruct high quality spine morphologies to be used for the analysis.."
         )]
 
+    class AdvancedOptions(Block):
+        reconstruction_axis: Annotated[Literal["X", "Y", "Z", "XYZ_AND", "XYZ_OR"], Field(
+            default="X",
+            title="Reconstruction Axis",
+            description="Axis along which the skelotonization will be reconstructed."
+        )]
 
+        project_reconstructions: Annotated[bool, Field(
+            default=False,
+            title="Project Reconstructions",
+            description="For validation. Creates an image."
+        )]
+
+    class OutputOptions(Block):
+        export_segmented_soma_mesh: Annotated[bool, Field(
+            default=False,
+            title="Export Segmented Soma Mesh",
+            description="Export the segmented soma mesh."
+        )]
+
+        export_segmented_spines: Annotated[bool, Field(
+            default=False,
+            title="Export Segmented Spine Meshes",
+            description="Export the segmented spine meshes."
+        )]
+
+        export_spine_morphologies: Annotated[bool, Field(
+            default=False,
+            title="Export Spine Morphologies",
+            description="Export the reconstructed spine morphologies."
+        )]
+
+        export_improved_neuron_meshes_with_spines: Annotated[bool, Field(
+            default=False,
+            title="Export Improved Neuron Meshes (including spines)",
+            description="Export a high quality reconstructed mesh from the input mesh (including the spines)."
+        )]
+
+        export_improved_neuron_mesh_without_spines: Annotated[bool, Field(
+            default=False,
+            title="Export Improved Neuron Mesh (excluding spines)",
+            description="Export a high quality reconstructed mesh from the input mesh (excluding the spines)."
+        )]
 
     initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
-    info: Info = Field(title="Info", description="Information about the simulation campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    info: Info = Field(title="Info", description="Information about the campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
 
    
 class Skelotonization(SkelotonizationForm, SingleCoordinateMixin):
