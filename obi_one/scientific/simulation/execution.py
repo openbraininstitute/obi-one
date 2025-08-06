@@ -3,35 +3,38 @@
 This module provides functionality to run simulations using different backends
 (BlueCelluLab, Neurodamus) based on the simulation requirements.
 """
-import sys
-from pathlib import Path
-from datetime import datetime, timezone
+
 import logging
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 # Basic console logging configuration at module level
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
 # Initialize MPI rank
 try:
     from neuron import h
+
     h.nrnmpi_init()
     pc = h.ParallelContext()
     rank = int(pc.id())
 except Exception:
     rank = 0  # fallback for non-MPI runs
 
+
 def _setup_file_logging():
     """Set up file logging for simulation functions."""
     # Create logs directory if it doesn't exist
-    log_dir = Path('logs')
+    log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
 
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = log_dir / f"simulation_{timestamp}.log"
 
     # Add file handler only if we're on rank 0
@@ -47,37 +50,41 @@ def _setup_file_logging():
     return logger
 
 
-from collections import defaultdict
 import json
-from typing import Dict, Any, Literal, Union
+import uuid
+from collections import defaultdict
+from typing import Any, Literal
+
+# matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
+import matplotlib.pyplot as plt
 import numpy as np
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
 from neuron import h
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
-import uuid
-# matplotlib.use('Agg') # non-interactive backend for matplotlib to avoid display issues
-import matplotlib.pyplot as plt
 
 # Type alias for simulator backends
 SimulatorBackend = Literal["bluecellulab", "neurodamus"]
 
+
 # ---- merge helpers ---------------------------------------------
 def _merge_dicts(list_of_dicts):
-    merged: Dict[Any, Any] = {}
+    merged: dict[Any, Any] = {}
     for d in list_of_dicts:
         merged.update(d)
     return merged
 
+
 def _merge_spikes(list_of_pop_dicts):
-    out: Dict[str, Dict[int, list]] = defaultdict(dict)
+    out: dict[str, dict[int, list]] = defaultdict(dict)
     for pop_dict in list_of_pop_dicts:
         for pop, gid_map in pop_dict.items():
             out[pop].update(gid_map)
     return out
 
-def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def get_instantiate_gids_params(simulation_config_data: dict[str, Any]) -> dict[str, Any]:
     """Determine instantiate_gids parameters from simulation config.
 
     This function gives parameters for sim.instantiate_gids() based on the
@@ -91,89 +98,97 @@ def get_instantiate_gids_params(simulation_config_data: Dict[str, Any]) -> Dict[
     """
     params = {
         # Core parameters - these are the main ones we need to set
-        'add_stimuli': False,
-        'add_synapses': False,
-        'add_minis': False,
-        'add_replay': False,
-        'add_projections': False,
-        'interconnect_cells': True,
+        "add_stimuli": False,
+        "add_synapses": False,
+        "add_minis": False,
+        "add_replay": False,
+        "add_projections": False,
+        "interconnect_cells": True,
         # These will be handled automatically by add_stimuli=True
-        'add_noise_stimuli': False,
-        'add_hyperpolarizing_stimuli': False,
-        'add_relativelinear_stimuli': False,
-        'add_pulse_stimuli': False,
-        'add_shotnoise_stimuli': False,
-        'add_ornstein_uhlenbeck_stimuli': False,
-        'add_sinusoidal_stimuli': False,
-        'add_linear_stimuli': False,
+        "add_noise_stimuli": False,
+        "add_hyperpolarizing_stimuli": False,
+        "add_relativelinear_stimuli": False,
+        "add_pulse_stimuli": False,
+        "add_shotnoise_stimuli": False,
+        "add_ornstein_uhlenbeck_stimuli": False,
+        "add_sinusoidal_stimuli": False,
+        "add_linear_stimuli": False,
     }
 
     # Check for any inputs in the config
-    if 'inputs' in simulation_config_data and simulation_config_data['inputs']:
-        params['add_stimuli'] = True
+    if simulation_config_data.get("inputs"):
+        params["add_stimuli"] = True
 
         # Log any unsupported input types
         supported_types = {
-            'noise', 'hyperpolarizing', 'relativelinear', 'pulse',
-            'sinusoidal', 'linear', 'shotnoise', 'ornstein_uhlenbeck'
+            "noise",
+            "hyperpolarizing",
+            "relativelinear",
+            "pulse",
+            "sinusoidal",
+            "linear",
+            "shotnoise",
+            "ornstein_uhlenbeck",
         }
 
-        for input_def in simulation_config_data['inputs'].values():
-            module = input_def.get('module', '').lower()
+        for input_def in simulation_config_data["inputs"].values():
+            module = input_def.get("module", "").lower()
             if module not in supported_types:
-                logger.warning(f"Input type '{module}' may not be fully supported by instantiate_gids")
+                logger.warning(
+                    f"Input type '{module}' may not be fully supported by instantiate_gids"
+                )
 
     # Check for synapses and minis in conditions
-    if 'conditions' in simulation_config_data:
-        conditions = simulation_config_data['conditions']
-        if 'mechanisms' in conditions and conditions['mechanisms']:
-            params['add_synapses'] = True
+    if "conditions" in simulation_config_data:
+        conditions = simulation_config_data["conditions"]
+        if conditions.get("mechanisms"):
+            params["add_synapses"] = True
             # Check if any mechanism has minis enabled
-            for mech in conditions['mechanisms'].values():
-                if mech.get('minis_single_vesicle', False):
-                    params['add_minis'] = True
+            for mech in conditions["mechanisms"].values():
+                if mech.get("minis_single_vesicle", False):
+                    params["add_minis"] = True
                     break
 
     # Enable projections by default if synapses are enabled
-    params['add_projections'] = params['add_synapses']
+    params["add_projections"] = params["add_synapses"]
 
     return params
 
-def run(simulation_config: Union[str, Path],
-        simulator: SimulatorBackend = "bluecellulab",
-        save_nwb: bool = False
-    ) -> None:
-        """Run the simulation with the specified backend.
 
-        The simulation results are saved to the specified results directory.
+def run(
+    simulation_config: str | Path,
+    simulator: SimulatorBackend = "bluecellulab",
+    save_nwb: bool = False,
+) -> None:
+    """Run the simulation with the specified backend.
 
-        Args:
-            simulation_config: Path to the simulation configuration file
-            simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
-                      Note: Currently, only 'bluecellulab' is implemented.
-            save_nwb: Whether to save results in NWB format.
-        Raises:
-            ValueError: If the requested backend is not implemented.
-        """
+    The simulation results are saved to the specified results directory.
 
-        logger.info(f"Starting simulation with {simulator} backend")
-        # Convert to lowercase for case-insensitive comparison
-        simulator = simulator.lower()
+    Args:
+        simulation_config: Path to the simulation configuration file
+        simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
+                  Note: Currently, only 'bluecellulab' is implemented.
+        save_nwb: Whether to save results in NWB format.
 
-        if simulator == "bluecellulab":
-            run_bluecellulab(
-                simulation_config=simulation_config,
-                save_nwb=save_nwb
-            )
-        elif simulator == "neurodamus":
-            run_neurodamus(
-                simulation_config=simulation_config,
-                save_nwb=save_nwb,
-            )
-        else:
-            raise ValueError(f"Unsupported backend: {simulator}")
+    Raises:
+        ValueError: If the requested backend is not implemented.
+    """
+    logger.info(f"Starting simulation with {simulator} backend")
+    # Convert to lowercase for case-insensitive comparison
+    simulator = simulator.lower()
 
-def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
+    if simulator == "bluecellulab":
+        run_bluecellulab(simulation_config=simulation_config, save_nwb=save_nwb)
+    elif simulator == "neurodamus":
+        run_neurodamus(
+            simulation_config=simulation_config,
+            save_nwb=save_nwb,
+        )
+    else:
+        raise ValueError(f"Unsupported backend: {simulator}")
+
+
+def plot_voltage_traces(results: dict[str, Any], output_path: str | Path, max_cols: int = 3):
     """Plot voltage traces for all cells in a grid of subplots and save to file.
 
     Args:
@@ -191,8 +206,9 @@ def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], 
     n_rows = (n_cells + n_cols - 1) // n_cols
 
     # Create figure with subplots
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 3 * n_rows),
-                            squeeze=False, constrained_layout=True)
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(15, 3 * n_rows), squeeze=False, constrained_layout=True
+    )
 
     # Flatten axes for easier iteration
     axes = axes.ravel()
@@ -217,45 +233,45 @@ def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], 
 
     # Turn off unused subplots
     for idx in range(n_cells, len(axes)):
-        axes[idx].axis('off')
+        axes[idx].axis("off")
 
     # Add a main title
     fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
 
     # Save the figure
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     logger.info(f"Saved voltage traces plot to {output_path}")
 
-def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
+
+def save_results_to_nwb(results: dict[str, Any], output_path: str | Path):
     """Save simulation results to NWB format"""
     try:
         nwbfile = NWBFile(
-            session_description=f'Small Microcircuit Simulation results',
+            session_description="Small Microcircuit Simulation results",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now(timezone.utc),
-            experimenter='OBI User',
-            lab='Virtual Lab',
-            institution='OBI',
-            experiment_description='Simulation results',
-            session_id=f"small_microcircuit_simulation"
+            session_start_time=datetime.now(UTC),
+            experimenter="OBI User",
+            lab="Virtual Lab",
+            institution="OBI",
+            experiment_description="Simulation results",
+            session_id="small_microcircuit_simulation",
         )
 
         # Add device and electrode
         device = nwbfile.create_device(
-            name='SimulatedElectrode',
-            description='Virtual electrode for simulation recording'
+            name="SimulatedElectrode", description="Virtual electrode for simulation recording"
         )
 
         # Add voltage traces
         for cell_id, trace in results.items():
             # Create electrode for this cell
             electrode = IntracellularElectrode(
-                name=f'electrode_{cell_id}',
-                description=f'Simulated electrode for {cell_id}',
+                name=f"electrode_{cell_id}",
+                description=f"Simulated electrode for {cell_id}",
                 device=device,
-                location='soma',
-                filtering='none'
+                location="soma",
+                filtering="none",
             )
             nwbfile.add_icephys_electrode(electrode)
 
@@ -265,13 +281,13 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
 
             # Create current clamp series with timestamps
             ics = CurrentClampSeries(
-                name=f'voltage_{cell_id}',
+                name=f"voltage_{cell_id}",
                 data=voltage_data,
                 electrode=electrode,
                 timestamps=time_data,
                 gain=1.0,
-                unit='volts',
-                description=f'Voltage trace for {cell_id}'
+                unit="volts",
+                description=f"Voltage trace for {cell_id}",
             )
             nwbfile.add_acquisition(ics)
 
@@ -280,17 +296,18 @@ def save_results_to_nwb(results: Dict[str, Any], output_path: Union[str, Path]):
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Save to file
-        with NWBHDF5IO(str(output_path), 'w') as io:
+        with NWBHDF5IO(str(output_path), "w") as io:
             io.write(nwbfile)
 
         logger.info(f"Successfully saved results to {output_path}")
 
     except Exception as e:
-        logger.error(f"Error saving results to NWB: {str(e)}")
+        logger.error(f"Error saving results to NWB: {e!s}")
         raise
 
+
 def run_bluecellulab(
-    simulation_config: Union[str, Path],
+    simulation_config: str | Path,
     save_nwb: bool = False,
 ) -> None:
     """Run a simulation using BlueCelluLab backend.
@@ -349,7 +366,9 @@ def run_bluecellulab(
         num_nodes = len(all_node_ids)
         nodes_per_rank = num_nodes // size
         remainder = num_nodes % size
-        logger.info(f"Total nodes: {num_nodes}, Nodes per rank: {nodes_per_rank}, Remainder: {remainder}")
+        logger.info(
+            f"Total nodes: {num_nodes}, Nodes per rank: {nodes_per_rank}, Remainder: {remainder}"
+        )
 
         # Calculate start and end indices for this rank
         start_idx = rank * nodes_per_rank + min(rank, remainder)
@@ -370,10 +389,12 @@ def run_bluecellulab(
 
         if rank == 0:
             logger.info(f"Running BlueCelluLab simulation with {size} MPI processes")
-            logger.info(f"Total cells: {num_nodes}, Cells per rank: ~{num_nodes//size}")
+            logger.info(f"Total cells: {num_nodes}, Cells per rank: ~{num_nodes // size}")
             logger.info(f"Starting simulation: t_stop={t_stop}ms, dt={dt}ms")
 
-        logger.info(f"Rank {rank}: Processing {len(rank_node_ids)} cells (IDs: {rank_node_ids[0]}...{rank_node_ids[-1] if rank_node_ids else 'None'})")
+        logger.info(
+            f"Rank {rank}: Processing {len(rank_node_ids)} cells (IDs: {rank_node_ids[0]}...{rank_node_ids[-1] if rank_node_ids else 'None'})"
+        )
 
         # Create simulation
         sim = CircuitSimulation(simulation_config)
@@ -388,7 +409,7 @@ def run_bluecellulab(
                     logger.info(f"  {param}: {value}")
 
     except Exception as e:
-        logger.error(f"Error during initialization: {str(e)}")
+        logger.error(f"Error during initialization: {e!s}")
         raise
 
     try:
@@ -409,8 +430,8 @@ def run_bluecellulab(
         time_s = time_ms / 1000.0  # Convert ms to seconds
 
         # Get voltage traces and spikes for each cell on this rank
-        results_traces: Dict[str, Any] = {}
-        results_spikes: Dict[str, Dict[int, list]] = defaultdict(dict)  # pop → gid → spikes
+        results_traces: dict[str, Any] = {}
+        results_spikes: dict[str, dict[int, list]] = defaultdict(dict)  # pop → gid → spikes
 
         for cell_id in cell_ids_for_this_rank:
             gid_key = f"{cell_id[0]}_{cell_id[1]}"
@@ -445,18 +466,14 @@ def run_bluecellulab(
             gathered_traces = pc.py_gather(results_traces, 0)
             gathered_spikes = pc.py_gather(results_spikes, 0)
         except Exception as e:
-            logger.error(f"Rank {rank}: Error gathering results: {str(e)}")
+            logger.error(f"Rank {rank}: Error gathering results: {e!s}")
 
         if rank == 0:
-
             # ---- SONATA reports --------------------------------------------
             all_traces = _merge_dicts(gathered_traces)
             all_spikes = _merge_spikes(gathered_spikes)
             report_mgr = ReportManager(sim.circuit_access.config, sim.dt)
-            report_mgr.write_all(
-                cells_or_traces   = all_traces,
-                spikes_by_pop     = all_spikes
-            )
+            report_mgr.write_all(cells_or_traces=all_traces, spikes_by_pop=all_spikes)
             # ----------------------------------------------------------------
 
             if save_nwb:
@@ -472,9 +489,13 @@ def run_bluecellulab(
                     if output_dir_str:
                         # Handle $OUTPUT_DIR variable if present
                         if output_dir_str.startswith("$OUTPUT_DIR"):
-                            manifest_base = simulation_config_data.get("manifest", {}).get("$OUTPUT_DIR")
+                            manifest_base = simulation_config_data.get("manifest", {}).get(
+                                "$OUTPUT_DIR"
+                            )
                             if manifest_base:
-                                output_dir = Path(manifest_base) / output_dir_str.replace("$OUTPUT_DIR/", "")
+                                output_dir = Path(manifest_base) / output_dir_str.replace(
+                                    "$OUTPUT_DIR/", ""
+                                )
                         else:
                             output_dir = Path(output_dir_str)
 
@@ -500,7 +521,7 @@ def run_bluecellulab(
                 logger.info(f"Successfully saved voltage traces plot to {plot_path}")
 
     except Exception as e:
-        logger.error(f"Rank {rank} failed: {str(e)}", exc_info=True)
+        logger.error(f"Rank {rank} failed: {e!s}", exc_info=True)
         raise
     finally:
         try:
@@ -510,12 +531,13 @@ def run_bluecellulab(
             if rank == 0:
                 logger.info("All ranks completed. Simulation finished.")
         except Exception as e:
-            logger.error(f"Error during cleanup in rank {rank}: {str(e)}")
+            logger.error(f"Error during cleanup in rank {rank}: {e!s}")
+
 
 def run_neurodamus(
-    simulation_config: Union[str, Path],
+    simulation_config: str | Path,
     save_nwb: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run simulation using Neurodamus backend
 
     Args:
@@ -527,9 +549,9 @@ def run_neurodamus(
     """
     # Set up file logging for this simulation run
     logger = _setup_file_logging()
-    logger.warning("Neurodamus backend is not yet implemented. "
-                 "Please use BlueCelluLab backend for now.")
+    logger.warning(
+        "Neurodamus backend is not yet implemented. Please use BlueCelluLab backend for now."
+    )
     raise NotImplementedError(
-        "Neurodamus backend is not yet implemented. "
-        "Please use BlueCelluLab backend for now."
+        "Neurodamus backend is not yet implemented. Please use BlueCelluLab backend for now."
     )

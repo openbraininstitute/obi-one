@@ -318,11 +318,6 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
 
     _sonata_config: dict = PrivateAttr(default={})
-    _logger: logging.Logger = PrivateAttr()
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
