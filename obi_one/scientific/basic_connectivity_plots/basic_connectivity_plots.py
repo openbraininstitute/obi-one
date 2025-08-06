@@ -6,6 +6,7 @@ from typing import ClassVar, Self
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+from conntility import ConnectivityMatrix
 from pydantic import model_validator
 
 from obi_one.core.block import Block
@@ -27,7 +28,6 @@ from obi_one.scientific.basic_connectivity_plots.helpers import (
 try:
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
-    from conntility import ConnectivityMatrix
 except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
