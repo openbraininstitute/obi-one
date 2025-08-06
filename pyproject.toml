@@ -105,7 +105,8 @@ include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
 exclude = [
     "obi_one/scientific/basic_connectivity_plots/helpers.py",
     "obi_one/scientific/morphology_containerization/morphology_containerization.py",
-    "obi_one/scientific/morphology_containerization/morphology_decontainerization.py"
+    "obi_one/scientific/morphology_containerization/morphology_decontainerization.py",
+    "obi_one/scientific/simulation/execution.py"
 ]
 
 [tool.ruff.lint]
