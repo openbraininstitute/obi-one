@@ -174,6 +174,26 @@ class SimulationsForm(Form):
             default=0.025
         )  # Simulation time step in ms
 
+        def initial_sonata_simulation_config(self) -> dict:
+            """Returns the default SONATA conditions dictionary."""
+            sonata_config = {}
+            sonata_config["version"] = self._sonata_version
+            sonata_config["target_simulator"] = self._target_simulator
+
+            sonata_config["run"] = {}
+            sonata_config["run"]["dt"] = self._timestep
+            sonata_config["run"]["random_seed"] = self.random_seed
+            sonata_config["run"]["tstop"] = self.simulation_length
+
+            sonata_config["conditions"] = {}
+            sonata_config["conditions"]["extracellular_calcium"] = (
+                self.extracellular_calcium_concentration
+            )
+            sonata_config["conditions"]["v_init"] = self.v_init
+            sonata_config["conditions"]["spike_location"] = self._spike_location
+
+            return sonata_config
+
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
@@ -186,26 +206,6 @@ class SimulationsForm(Form):
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=0,
     )
-
-    def initial_sonata_simulation_config(self) -> dict:
-        """Returns the default SONATA conditions dictionary."""
-        sonata_config = {}
-        sonata_config["version"] = self._sonata_version
-        sonata_config["target_simulator"] = self._target_simulator
-
-        sonata_config["run"] = {}
-        sonata_config["run"]["dt"] = self._timestep
-        sonata_config["run"]["random_seed"] = self.random_seed
-        sonata_config["run"]["tstop"] = self.simulation_length
-
-        sonata_config["conditions"] = {}
-        sonata_config["conditions"]["extracellular_calcium"] = (
-            self.extracellular_calcium_concentration
-        )
-        sonata_config["conditions"]["v_init"] = self.v_init
-        sonata_config["conditions"]["spike_location"] = self._spike_location
-
-        return sonata_config
 
     def initialize_db_campaign(
         self,
@@ -390,7 +390,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         self._add_sonata_simulation_config_inputs(circuit)
 
         # Add recordings to sonata simulation config
-        self._add_sonata_simulation_config_reports()
+        self._add_sonata_simulation_config_reports(circuit)
 
         # Add synaptic manipulations to sonata simulation config
         self._add_sonata_simulation_config_manipulations()
