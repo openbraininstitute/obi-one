@@ -1,5 +1,5 @@
 import abc
-from typing import Any, ClassVar, get_args
+from typing import Annotated, Any, ClassVar, get_args, get_origin
 
 from pydantic import Field
 
@@ -43,7 +43,16 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-        if not isinstance(value, self.allowed_block_types):
+
+        # check if union is annotated
+        if get_origin(self.allowed_block_types) is Annotated:
+            args = get_args(self.allowed_block_types)
+            union = args[0]
+        else:
+            union = self.allowed_block_types
+
+        if not isinstance(value, union):
             msg = f"Value must be of type {self.block_type.__name__}."
             raise TypeError(msg)
+
         self._block = value
