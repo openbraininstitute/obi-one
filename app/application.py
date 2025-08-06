@@ -15,11 +15,11 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.dependencies.auth import user_verified
+from app.endpoints.declared_endpoints import activate_declared_endpoints
+from app.endpoints.generated_endpoints import activate_generated_endpoints
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
-from app.endpoints.declared_endpoints import activate_declared_endpoints
-from app.endpoints.generated_endpoints import activate_generated_endpoints
 
 
 @asynccontextmanager
