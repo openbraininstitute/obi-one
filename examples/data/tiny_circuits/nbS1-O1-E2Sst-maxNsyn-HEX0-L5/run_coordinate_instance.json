@@ -1,0 +1,34 @@
+{
+    "obi_one_version": "2025.6.1",
+    "type": "MorphologyDecontainerization",
+    "idx": 7,
+    "coordinate_output_root": "../../../obi-output/decontainerized_small_microcircuits_motif/nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+    "scan_output_root": "../../../obi-output/decontainerized_small_microcircuits_motif",
+    "single_coordinate_scan_params": {
+        "type": "SingleCoordinateScanParams",
+        "scan_params": [
+            {
+                "type": "SingleValueScanParam",
+                "location_list": [
+                    "initialize",
+                    "circuit_path"
+                ],
+                "value": {
+                    "type": "NamedPath",
+                    "name": "nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+                    "path": "../../../obi-output/extracted_small_microcircuits_motif/E2I/7/circuit_config.json"
+                }
+            }
+        ],
+        "nested_coordinate_subpath_str": "nbS1-O1-E2Sst-maxNsyn-HEX0-L5/"
+    },
+    "initialize": {
+        "type": "MorphologyDecontainerizationsForm.Initialize",
+        "circuit_path": {
+            "type": "NamedPath",
+            "name": "nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+            "path": "../../../obi-output/extracted_small_microcircuits_motif/E2I/7/circuit_config.json"
+        },
+        "output_format": "swc"
+    }
+}

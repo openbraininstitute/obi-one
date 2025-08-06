@@ -1,15 +1,14 @@
-from obi_one.scientific.simulation.manipulations import (
-    SynapticMgManipulation, 
-    ScaleAcetylcholineUSESynapticManipulation
-)
-
-SynapticManipulationsUnion = (
-    SynapticMgManipulation
-    | ScaleAcetylcholineUSESynapticManipulation
-)
+from typing import Any, ClassVar
 
 from obi_one.core.block_reference import BlockReference
-from typing import ClassVar, Any
+from obi_one.scientific.simulation.manipulations import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+
+SynapticManipulationsUnion = SynapticMgManipulation | ScaleAcetylcholineUSESynapticManipulation
+
+
 class SynapticManipulationsReference(BlockReference):
     """A reference to a SynapticManipulations block."""
 

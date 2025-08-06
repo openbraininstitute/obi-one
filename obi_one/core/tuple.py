@@ -1,3 +1,5 @@
+from pydantic import NonNegativeInt
+
 from obi_one.core.base import OBIBaseModel
 
 from pydantic import Field, NonNegativeInt

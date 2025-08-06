@@ -42,9 +42,9 @@ format:  ## Run formatters
 	uv run -m ruff check --fix $(FILE)
 
 lint:  ## Run linters
-	#uv run -m ruff format --check
-	#uv run -m ruff check
-	#uv run -m pyright obi
+	uv run -m ruff format --check
+	uv run -m ruff check
+	#uv run -m pyright obi_one
 
 format_count: ## Count the number of errors by file
 	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c

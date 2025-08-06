@@ -22,6 +22,7 @@ def morphology_json():
 def morphology_asc():
     return (DATA_DIR / "reconstruction_morphology.asc").read_bytes()
 
+
 @pytest.fixture
 def morphology_swc():
     return (DATA_DIR / "reconstruction_morphology.swc").read_bytes()

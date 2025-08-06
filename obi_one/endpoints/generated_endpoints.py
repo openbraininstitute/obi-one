@@ -1,23 +1,24 @@
 import re
-from typing import Annotated, get_type_hints
 import tempfile
+from typing import Annotated, get_type_hints
 
 import entitysdk.client
 import entitysdk.common
-from entitysdk.exception import EntitySDKError
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
 
-from app.config import settings
 from app.dependencies.entitysdk import get_client
 from app.logger import L
-from obi_one import *
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
+from obi_one.scientific.morphology_metrics.morphology_metrics import (
+    MorphologyMetrics,
+    MorphologyMetricsForm,
+)
+from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 
 
 def check_implementations_of_single_coordinate_class(
-    model: type[Form], processing_method: str, data_postprocessing_method: str
+    single_coordinate_cls: type[Form], processing_method: str, data_postprocessing_method: str
 ) -> str | type | None:
     """Return the class of the return type of a processing_method of the single coordinate class.
 
@@ -26,13 +27,6 @@ def check_implementations_of_single_coordinate_class(
     or data_postprocessing_method not implemented.
     """
     return_class = None
-
-    # Check that the single_coord_class_name is set
-    if not model.single_coord_class_name:
-        return f"single_coord_class_name is not set in the form: {model.__name__}"
-    single_coordinate_cls = globals().get(model.single_coord_class_name)
-    if single_coordinate_cls is None:
-        return f"Class {model.single_coord_class_name} not found in globals"
 
     # Check that the method is a method of the single coordinate class
     if not (
@@ -57,7 +51,11 @@ def check_implementations_of_single_coordinate_class(
 
 
 def create_endpoint_for_form(
-    model: type[Form], router: APIRouter, processing_method: str, data_postprocessing_method: str
+    model: type[Form],
+    single_coordinate_cls: type[Form],
+    router: APIRouter,
+    processing_method: str,
+    data_postprocessing_method: str,
 ) -> None:
     """Create a FastAPI endpoint for generating grid scans based on an OBI Form model."""
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
@@ -68,11 +66,12 @@ def create_endpoint_for_form(
     # Check which of single coordinate class, method, data_handling_method and return type
     # are implemented
     return_class = check_implementations_of_single_coordinate_class(
-        model, processing_method, data_postprocessing_method
+        single_coordinate_cls, processing_method, data_postprocessing_method
     )
 
     if not isinstance(return_class, str):
-        # return_type = None if return_class is None else dict[str, return_class]
+        # TODO: return_type = None if return_class is None else dict[str, return_class]
+        #       => ERA001 Found commented-out code
 
         # Create endpoint name
         endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
@@ -92,7 +91,8 @@ def create_endpoint_for_form(
                 with tempfile.TemporaryDirectory() as tdir:
                     grid_scan = GridScan(
                         form=form,
-                        # output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name / "grid_scan",
+                        # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
+                        #        / "grid_scan", => ERA001 Found commented-out code
                         output_root=tdir,
                         coordinate_directory_option="ZERO_INDEX",
                     )
@@ -125,14 +125,15 @@ def create_endpoint_for_form(
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI Form subclass.
-    for form, processing_method, data_postprocessing_method in [
-        (SimulationsForm, "generate", ""),
-        (SimulationsForm, "generate", "save"),
-        (MorphologyMetricsForm, "run", ""),
+    for form, processing_method, data_postprocessing_method, single_coordinate_cls in [
+        (SimulationsForm, "generate", "", Simulation),
+        (SimulationsForm, "generate", "save", Simulation),
+        (MorphologyMetricsForm, "run", "", MorphologyMetrics),
     ]:
         # Create endpoint
         create_endpoint_for_form(
             form,
+            single_coordinate_cls,
             router,
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,

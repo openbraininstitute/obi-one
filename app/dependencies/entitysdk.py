@@ -9,7 +9,8 @@ from app.dependencies.auth import UserContextDep
 class FixedTokenManager:
     """A fixed token manager that always returns the same token."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str) -> None:
+        """Initialize."""
         self._token = token
 
     def get_token(self) -> str:

@@ -2,9 +2,7 @@ import logging
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-import morphio
-import neurom
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from obi_one.core.validation import SingleValidationOutput, Validation
 
@@ -50,10 +48,13 @@ class ReconstructionMorphologyValidation(Validation):
         L.info("Running Reconstruction Morphology Validation")
 
         if not self.morphology_file_path:
-            raise ValueError("File path must be provided for validation.")
+            msg = "File path must be provided for validation."
+            raise ValueError(msg)
 
-        neurom_morphology = neurom.load_morphology(self.morphology_file_path)
-        morphio_morphology = morphio.Morphology(self.morphology_file_path)
+        # TODO: neurom_morphology = neurom.load_morphology(self.morphology_file_path)
+        #       => F841 Local variable `neurom_morphology` is assigned to but never used
+        # TODO: morphio_morphology = morphio.Morphology(self.morphology_file_path)
+        #       => F841 Local variable `morphio_morphology` is assigned to but never used
 
         self._validation_output = ReconstructionMorphologyValidationOutput(
             validation_a=SingleReconstructionMorphologyValidationOutput(
@@ -75,6 +76,7 @@ class ReconstructionMorphologyValidation(Validation):
         L.info("Saving Reconstruction Morphology Validation Output")
 
         if self._validation_output is None:
-            raise ValueError("Validation output must be set before saving.")
+            msg = "Validation output must be set before saving."
+            raise ValueError(msg)
 
         # Example: Save the validation output to a database or file

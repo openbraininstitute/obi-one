@@ -2,7 +2,7 @@ from obi_one.core.block import Block
 
 
 class ExtracellularLocationSet(Block):
-    """ """
+    """Base class of extracellular locations."""
 
 
 class XYZExtracellularLocationSet(ExtracellularLocationSet):

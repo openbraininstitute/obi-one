@@ -1,10 +1,12 @@
+from typing import TYPE_CHECKING, ClassVar
+
 from pydantic import PrivateAttr
-from typing import Optional
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
 
-from typing import ClassVar
+if TYPE_CHECKING:
+    from obi_one.core.block_reference import BlockReference
 
 
 class Block(OBIBaseModel):
@@ -15,50 +17,51 @@ class Block(OBIBaseModel):
     Tuples should be used when list-like parameter is needed.
     """
 
-    title: ClassVar[Optional[str]] = None  # Optional: subclasses can override
+    title: ClassVar[str | None] = None  # Optional: subclasses can override
 
     @classmethod
     def __init_subclass__(cls, **kwargs) -> None:
+        """Initialize subclass."""
         super().__init_subclass__(**kwargs)
 
         # Use the subclass-provided title, or fall back to the class name
-        cls.model_config = {
-            "title": cls.title or cls.__name__
-        }
+        cls.model_config = {"title": cls.title or cls.__name__}
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
-    _simulation_level_name: Optional[str] = PrivateAttr(default=None)
+    _simulation_level_name: str | None = PrivateAttr(default=None)
 
     _ref = None
 
-    def check_simulation_init(self):
-        assert self._simulation_level_name is not None, (
-            f"'{self.__class__.__name__}' initialization within a simulation required!"
-        )
+    def check_simulation_init(self) -> None:
+        if self._simulation_level_name is None:
+            msg = f"'{self.__class__.__name__}' initialization within a simulation required!"
+            raise ValueError(msg)
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Returns name."""
         self.check_simulation_init()
         return self._simulation_level_name
 
     def has_name(self) -> bool:
         return self._simulation_level_name is not None
 
-    def set_simulation_level_name(self, value: str):
+    def set_simulation_level_name(self, value: str) -> None:
         if not isinstance(value, str) or not value:
-            raise ValueError("Simulation level name must be a non-empty string.")
+            msg = "Simulation level name must be a non-empty string."
+            raise ValueError(msg)
         self._simulation_level_name = value
 
     @property
-    def ref(self):
+    def ref(self) -> "BlockReference":
         if self._ref is None:
-            raise ValueError("Block reference has not been set.")
+            msg = "Block reference has not been set."
+            raise ValueError(msg)
         return self._ref
-    
-    def set_ref(self, value):
-        self._ref = value
 
+    def set_ref(self, value: "BlockReference") -> None:
+        self._ref = value
 
     def multiple_value_parameters(
         self, category_name: str, block_key: str = ""

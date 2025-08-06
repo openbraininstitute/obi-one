@@ -2,6 +2,7 @@
 
 import logging
 import tempfile
+from io import StringIO
 from statistics import mean
 from typing import Any, ClassVar, Literal
 
@@ -13,6 +14,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 
@@ -140,12 +142,11 @@ class ElectrophysiologyMetricsForm(Form):
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
     class Initialize(Block):
-        trace_id: str = Field(
-            description="ID of the trace of interest."
-        )
+        trace_id: str = Field(description="ID of the trace of interest.")
         protocols: STIMULI_TYPES | None = Field(
             default=None,
-            description=f"Type of stimuli requested by the user. Should be one of: '{POSSIBLE_PROTOCOLS_STR}'."
+            description=f"Type of stimuli requested by the user. Should be one \
+                of: '{POSSIBLE_PROTOCOLS_STR}'.",
         )
         requested_metrics: CALCULATED_FEATURES | None = Field(
             default=None,
@@ -159,17 +160,17 @@ class ElectrophysiologyMetricsForm(Form):
             "'AP_peak_upstroke', 'AP_peak_downstroke', 'voltage_base',"
             "'voltage_after_stim', 'ohmic_input_resistance_vb_ssse',"
             "'steady_state_voltage_stimend', 'sag_amplitude',"
-            "'decay_time_constant_after_stim', 'depol_block_bool'"
+            "'decay_time_constant_after_stim', 'depol_block_bool'",
         )
         amplitude: AmplitudeInput | None = Field(
             default=None,
             description=(
-            "Amplitude of the protocol (should be specified in nA)."
-            "Can be a range of amplitudes with min and max values"
-            "Can be None (if the user does not specify it)"
-            " and all the amplitudes are going to be taken into account."
-        ),
-    )
+                "Amplitude of the protocol (should be specified in nA)."
+                "Can be a range of amplitudes with min and max values"
+                "Can be None (if the user does not specify it)"
+                " and all the amplitudes are going to be taken into account."
+            ),
+        )
 
     initialize: Initialize
 
@@ -179,7 +180,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
 
     feature_dict: dict[str, dict[str, Any]] = Field(
         description="Mapping of feature name to its metric values. "
-                    "Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
+        "Each entry contains at least an 'avg', and optionally 'unit', 'num_traces', etc."
     )
 
     @classmethod
@@ -188,7 +189,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
 
 
 class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMixin):
-    def run(self, db_client: entitysdk.client.Client = None):
+    def run(self, db_client: entitysdk.client.Client = None) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
                 trace_id=self.initialize.trace_id,
@@ -197,11 +198,13 @@ class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMix
                 amplitude=self.initialize.amplitude,
                 stimuli_types=self.initialize.protocols,
             )
-            return ephys_metrics
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+        else:
+            return ephys_metrics
 
-def get_electrophysiology_metrics(  # noqa: PLR0914, C901
+
+def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
     trace_id: str,
     entity_client: entitysdk.client.Client,
     calculated_feature: CALCULATED_FEATURES | None = None,
@@ -211,30 +214,76 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     """Compute electrophys features for a given trace."""
     logger = logging.getLogger(__name__)
 
+    log_stream = StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setLevel(logging.WARNING)
+    logging.getLogger("bluepyefe.extract").addHandler(handler)
+
     logger.info(
-        "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, stimuli_types=%r",
+        "Entering electrophys tool. Inputs: trace_id=%r, calculated_feature=%r, amplitude=%r, \
+            stimuli_types=%r",
         trace_id,
         calculated_feature,
         amplitude,
         stimuli_types,
     )
 
-    # Deal with cases where user did not specify stimulus type or/and feature
+    # Get the trace metadata from the entitycore
+    trace_metadata = entity_client.get_entity(
+        entity_id=trace_id, entity_type=ElectricalCellRecording
+    )
+
+    # Get the available stimulus types from the trace metadata
+    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}
+
+    # If the user did not specify any stimulus types, try to use all step-like stimuli present in
+    # the trace.
     if not stimuli_types:
-        # Default to all protocol types if not specified
-        logger.warning("No stimulus type specified. Iterating over all STEP_LIKE_STIMULI_TYPES.")
-        stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
+        stimuli_types = [
+            s for s in available_stimuli if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__
+        ]
+
+        if not stimuli_types:
+            logger.warning(
+                "No stimulus type specified, and no valid stimuli found in the trace metadata. "
+                "Falling back to default STEP_LIKE_STIMULI_TYPES."
+            )
+            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)
+        else:
+            msg = f"No stimulus type specified. Using all valid stimuli found in the trace: \
+                    {stimuli_types}"
+            logger.warning(msg)
+    else:
+        # Validate the user-specified stimuli types against the available ones in the trace metadata
+        valid_stimuli = [s for s in stimuli_types if s in available_stimuli]
+        invalid_stimuli = set(stimuli_types) - set(valid_stimuli)
+
+        if not valid_stimuli:
+            msg = (
+                f"None of the requested protocols {stimuli_types} are present in the trace. "
+                f"Available: {sorted(available_stimuli)}"
+            )
+            raise ProtocolNotFoundError(msg)
+
+        if invalid_stimuli:
+            msg = (
+                f"The following stimulus types are not present in the trace and will be ignored: "
+                f"{sorted(invalid_stimuli)}"
+            )
+            logger.warning(msg)
+
+        stimuli_types = valid_stimuli
 
     if not calculated_feature:
         # Compute ALL of the available features if not specified
         logger.warning("No feature specified. Defaulting to everything.")
-        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)  # type: ignore
+        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
     if (
-        isinstance(amplitude, AmplitudeInput) and
-        amplitude.min_value is not None and
-        amplitude.max_value is not None
+        isinstance(amplitude, AmplitudeInput)
+        and amplitude.min_value is not None
+        and amplitude.max_value is not None
     ):
         # If the user specified amplitude/a range of amplitudes,
         # the target amplitude is centered on the range and the
@@ -247,10 +296,10 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
         )
 
         # If the range is just one number, use 10% of it as tolerance
+        desired_tolerance = amplitude.max_value - desired_amplitude
         if amplitude.min_value == amplitude.max_value:
             desired_tolerance = amplitude.max_value * 0.1
-        else:
-            desired_tolerance = amplitude.max_value - desired_amplitude
+
     else:
         # If the amplitudes are not specified, take an arbitrarily high tolerance
         desired_amplitude = 0
@@ -293,11 +342,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
                 temp_file.flush()
                 break
         else:
-            raise ValueError(
-                f"No asset with content type 'application/nwb' found for trace {trace_id}."
-            )
+            msg = f"No asset with content type 'application/nwb' found for trace {trace_id}."
+            raise ValueError(msg)
 
-        # LNMC traces need to be adjusted by an output voltage of 14mV due to their experimental protocol
+        # LNMC traces need to be adjusted by an output voltage of 14mV due to their experimental
+        # protocol
         files_metadata = {
             "test": {
                 stim_type: [
@@ -311,6 +360,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
                 for stim_type in stimuli_types
             }
         }
+
         # Extract the requested features for the requested protocols
         efeatures, protocol_definitions, _ = extract_efeatures(
             output_directory=temp_dir,
@@ -319,6 +369,17 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
             absolute_amplitude=True,
             efel_settings=EFEL_SETTINGS,
         )
+
+        missing_protocols = parse_bpe_logs(log_stream)
+
+        # If all requested protocols are missing from the data
+        if set(stimuli_types).issubset(set(missing_protocols)):
+            msg = (
+                f"None of the requested protocols {stimuli_types} are present in the trace. "
+                f"Available: {sorted(available_stimuli)}"
+            )
+            raise ProtocolNotFoundError(msg)
+
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)
         # Format the extracted features into a readable dict for the model
@@ -338,4 +399,26 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
             # Add the stimulus current of the protocol to the output
             output_features[protocol_name]["stimulus_current"] = f"{protocol_def['step']['amp']} nA"
+    logging.getLogger("bluepyefe.extract").removeHandler(handler)
     return ElectrophysiologyMetricsOutput.from_efeatures(output_features)
+
+
+def parse_bpe_logs(log_stream: StringIO) -> list[str]:
+    """Parse the BluePyEfe log stream to extract missing protocols.
+
+    Args:
+        log_stream (StringIO): The BPE log stream containing log messages.
+
+    Returns:
+        missing_protocols (list): Protocols not found in any cell recordings.
+    """
+    log_contents = log_stream.getvalue()
+    missing_protocols = []
+
+    for line in log_contents.splitlines():
+        if "not found in any cell recordings" in line:
+            # Extract protocol name from log line
+            proto = line.split("'")[1]
+            missing_protocols.append(proto)
+
+    return missing_protocols
