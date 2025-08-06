@@ -1,8 +1,6 @@
 import io
 import logging
-from typing import Annotated, ClassVar
-
-L = logging.getLogger(__name__)
+from typing import Annotated, ClassVar, Self
 
 import entitysdk
 import neurom
@@ -16,10 +14,10 @@ from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
+L = logging.getLogger(__name__)
+
 
 class MorphologyMetricsForm(Form):
-    """ """
-
     single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
@@ -30,9 +28,6 @@ class MorphologyMetricsForm(Form):
         )
 
     initialize: Initialize
-
-    def save(self, circuit_entities):
-        """Add entitysdk calls to save the collection."""
 
 
 class MorphologyMetricsOutput(BaseModel):
@@ -182,16 +177,13 @@ class MorphologyMetricsOutput(BaseModel):
         list[float],
         Field(
             title="section_strahler_orders",
-            description="The distribution of strahler branch orders of sections, computed from terminals.",
+            description="The distribution of strahler branch orders of sections, computed from \
+                terminals.",
         ),
     ]
-	
-	
-
-
 
     @classmethod
-    def from_morphology(cls, neurom_morphology):
+    def from_morphology(cls, neurom_morphology: neurom.core.Morphology) -> Self:
         return cls(
             aspect_ratio=neurom.get("aspect_ratio", neurom_morphology),
             circularity=neurom.get("circularity", neurom_morphology),
@@ -218,30 +210,26 @@ class MorphologyMetricsOutput(BaseModel):
         )
 
 
-
 class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self, db_client: entitysdk.client.Client = None):
+    def run(self, db_client: entitysdk.client.Client = None) -> MorphologyMetricsOutput:
         try:
-            print("Running Morphology Metrics...")
+            L.info("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                    self.initialize.morphology.neurom_morphology(db_client=db_client)
-                )
+                self.initialize.morphology.neurom_morphology(db_client=db_client)
+            )
             L.info(morphology_metrics)
 
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+        else:
             return morphology_metrics
-
-        except Exception as e:  # noqa: BLE001
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 
 def get_morphology_metrics(
-                reconstruction_morphology_id: str, 
-                db_client: entitysdk.client.Client
-            ) -> MorphologyMetricsOutput:
-
+    reconstruction_morphology_id: str, db_client: entitysdk.client.Client
+) -> MorphologyMetricsOutput:
     morphology = db_client.get_entity(
-        entity_id=reconstruction_morphology_id, 
-        entity_type=ReconstructionMorphology
+        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
     )
 
     # Iterate through the assets of the morphology to find the one with content

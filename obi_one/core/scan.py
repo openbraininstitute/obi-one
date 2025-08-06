@@ -5,8 +5,8 @@ from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
 from pathlib import Path
-import entitysdk
 
+import entitysdk
 from pydantic import PrivateAttr, ValidationError
 
 from obi_one.core.base import OBIBaseModel
@@ -36,7 +36,7 @@ class Scan(OBIBaseModel):
     @property
     def output_root_absolute(self) -> Path:
         """Returns the absolute path of the output_root."""
-        print(self.output_root.resolve())
+        L.info(self.output_root.resolve())
         return self.output_root.resolve()
 
     def multiple_value_parameters(self, *, display: bool = False) -> list[MultiValueScanParam]:
@@ -87,9 +87,9 @@ class Scan(OBIBaseModel):
 
         # Return the multiple_value_parameters
         return self._multiple_value_parameters
-    
+
     @property
-    def multiple_value_parameters_dictionary(self, *, display: bool = False) -> dict:
+    def multiple_value_parameters_dictionary(self) -> dict:
         d = {}
         for multi_value in self.multiple_value_parameters():
             d[multi_value.location_str] = multi_value.values
@@ -167,7 +167,12 @@ class Scan(OBIBaseModel):
         # Return self._coordinate_instances
         return self._coordinate_instances
 
-    def execute(self, processing_method: str = "", data_postprocessing_method: str = "", db_client: entitysdk.client.Client = None):
+    def execute(
+        self,
+        processing_method: str = "",
+        data_postprocessing_method: str = "",
+        db_client: entitysdk.client.Client = None,
+    ) -> entitysdk.models.core.Identifiable:
         """Description."""
         return_dict = {}
 
@@ -176,7 +181,7 @@ class Scan(OBIBaseModel):
         if not processing_method:
             msg = "Processing method must be specified."
             raise ValueError(msg)
-        
+
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
@@ -188,12 +193,14 @@ class Scan(OBIBaseModel):
         )
 
         campaign = None
-        if data_postprocessing_method == 'save':
+        if data_postprocessing_method == "save":
             # Initialize the campaign in the database
-            campaign = self.form.initialize_db_campaign(self.output_root, self.multiple_value_parameters_dictionary, db_client)
-        
+            campaign = self.form.initialize_db_campaign(
+                self.output_root, self.multiple_value_parameters_dictionary, db_client
+            )
+
         single_entities = []
-        
+
         # Iterate through self.coordinate_instances()
         for coordinate_instance in self.coordinate_instances():
             # Check if coordinate instance has function "run"
@@ -220,8 +227,6 @@ class Scan(OBIBaseModel):
                     )(campaign, db_client)
                     single_entities.append(single_entity)
 
-                
-
             else:
                 # Raise an error if run() not implemented for the coordinate instance
                 msg = (
@@ -231,12 +236,9 @@ class Scan(OBIBaseModel):
                 raise NotImplementedError(msg)
 
         if data_postprocessing_method:
-            getattr(
-                self.form, data_postprocessing_method
-            )(single_entities, db_client)
+            getattr(self.form, data_postprocessing_method)(single_entities, db_client)
 
         return campaign
-        
 
     def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
@@ -328,14 +330,12 @@ class Scan(OBIBaseModel):
             single_coordinate_parameters.display_parameters()
 
     def save(self) -> None:
-        self.form.save(coordinate_instance_entities)
-
         coordinate_instance_entities = []
         for coordinate_instance in self.coordinate_instances():
             coordinate_instance_entity = coordinate_instance.save()
             coordinate_instance_entities.append(coordinate_instance_entity)
 
-        
+        self.form.save(coordinate_instance_entities)
 
 
 class GridScan(Scan):

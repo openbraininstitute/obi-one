@@ -1,14 +1,28 @@
+import json
+import logging
+import os
+import shutil
+import traceback
 from typing import ClassVar, Literal
+
+import entitysdk.client
+import h5py
+import numpy as np
+import tqdm
+from bluepysnap import Circuit
+from morph_tool import convert
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 
+N_NEURONS_FOR_CHECK = 20
+
+L = logging.getLogger(__name__)
+
 
 class MorphologyDecontainerizationsForm(Form):
-    """ """
-
     single_coord_class_name: ClassVar[str] = "MorphologyDecontainerization"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
@@ -20,22 +34,6 @@ class MorphologyDecontainerizationsForm(Form):
         output_format: Literal["h5", "asc", "swc"] | list[Literal["h5", "asc", "swc"]] = "h5"
 
     initialize: Initialize
-
-
-import json
-import logging
-import os
-import shutil
-import traceback
-from typing import ClassVar
-
-import h5py
-import numpy as np
-import tqdm
-from bluepysnap import Circuit
-from morph_tool import convert
-
-import entitysdk.client
 
 
 class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):
@@ -59,12 +57,12 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
                 all_nids = nodes.ids()
-                if len(all_nids) < 20:
+                if len(all_nids) < N_NEURONS_FOR_CHECK:
                     nid_list = all_nids  # Check all node IDs
-                    print(f"Checking all morphologies in population '{npop}'")
+                    L.info(f"Checking all morphologies in population '{npop}'")
                 else:
                     nid_list = all_nids[[0, -1]]  # Check first/last node ID only
-                    print(f"Checking first/last morphologies in population '{npop}'")
+                    L.info(f"Checking first/last morphologies in population '{npop}'")
                 for nid in nid_list:
                     try:
                         morph = nodes.morph.get(
@@ -76,9 +74,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:
         try:
-            print(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
+            L.info(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
 
-            # Set logging level to WARNING to prevent a lot of debug output from morph_tool.convert()
+            # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
             logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
             # Copy contents of original circuit folder to output_root
@@ -86,15 +84,16 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             output_path = self.coordinate_output_root
             circuit_config = os.path.join(output_path, input_config)
             assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
-            print("Copying circuit to output folder...")
+            L.info("Copying circuit to output folder...")
             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
-            print("...DONE")
+            L.info("...DONE")
 
             # Load circuit at new location
             c = Circuit(circuit_config)
             node_populations = c.nodes.population_names
 
-            # Iterate over node populations, find all morphologies and extract them from the .h5 container
+            # Iterate over node populations to find all morphologies
+            # and extract them from the .h5 container
             morph_folders_to_delete = []
             morph_containers_to_delete = []
             global_morph_entry = None
@@ -103,8 +102,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 if nodes.type != "biophysical":
                     continue
                 morph_names = np.unique(nodes.get(properties="morphology"))
-                print(
-                    f"> {len(morph_names)} unique morphologies in population '{npop}' ({nodes.size})"
+                L.info(
+                    f"> {len(morph_names)} unique morphologies in population '{npop}' \
+                        ({nodes.size})"
                 )
 
                 h5_container = nodes.morph._get_morphology_base(
@@ -143,20 +143,24 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                                 )
                                 if not os.path.exists(dest_file):
                                     convert(src_file, dest_file)
-                print(
-                    f"Extracted/converted {len(morph_names) - skip_counter} morphologies from .h5 container ({skip_counter} already existed)"
+                L.info(
+                    f"Extracted/converted {len(morph_names) - skip_counter} morphologies \
+                        from .h5 container ({skip_counter} already existed)"
                 )
                 if h5_container not in morph_containers_to_delete:
                     morph_containers_to_delete.append(h5_container)
-                if self.initialize.output_format != "h5":
-                    if h5_folder not in morph_folders_to_delete:
-                        morph_folders_to_delete.append(h5_folder)
+                if (
+                    self.initialize.output_format != "h5"
+                    and h5_folder not in morph_folders_to_delete
+                ):
+                    morph_folders_to_delete.append(h5_folder)
 
                 # Update the circuit config so that it points to the individual morphology folder,
-                # keeping the original global/local config file structure as similar as it was before
-                # (but removing all other references to the original morphology folders)
-                cname, cext = os.path.splitext(circuit_config)
-                # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # Save original config file
+                # keeping the original global/local config file structure as similar as it was
+                # before (but removing all other references to the original morphology folders)
+                cname, cext = os.path.splitext(circuit_config)  # noqa: RUF059
+                # Save original config file
+                # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
 
                 with open(circuit_config) as f:
                     cfg_dict = json.load(f)
@@ -176,14 +180,14 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 # Check if there is a global entry for morphologies (initially not set)
                 if global_morph_entry is None:
                     global_morph_entry = False
-                    if "components" in cfg_dict:
-                        if "alternate_morphologies" in cfg_dict["components"]:
-                            if "h5v1" in cfg_dict["components"]["alternate_morphologies"]:
-                                if (
-                                    len(cfg_dict["components"]["alternate_morphologies"]["h5v1"])
-                                    > 0
-                                ):
-                                    global_morph_entry = True
+
+                    if (
+                        "components" in cfg_dict
+                        and "alternate_morphologies" in cfg_dict["components"]
+                        and "h5v1" in cfg_dict["components"]["alternate_morphologies"]
+                        and len(cfg_dict["components"]["alternate_morphologies"]["h5v1"]) > 0
+                    ):
+                        global_morph_entry = True
 
                     if global_morph_entry:  # Set morphology path globally
                         if self.initialize.output_format == "h5":
@@ -205,22 +209,22 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 if not global_morph_entry:  # Set individually per population
                     for _ndict in cfg_dict["networks"]["nodes"]:
                         if nodes.name in _ndict["populations"]:
-                            _pop = _ndict["populations"][nodes.name]
+                            pop = _ndict["populations"][nodes.name]
                             base_path = None
                             if self.initialize.output_format == "h5":
-                                _pop["alternate_morphologies"] = {"h5v1": h5_folder}
-                                if "morphologies_dir" in _pop:
-                                    _pop["morphologies_dir"] = ""
+                                pop["alternate_morphologies"] = {"h5v1": h5_folder}
+                                if "morphologies_dir" in pop:
+                                    pop["morphologies_dir"] = ""
                             elif self.initialize.output_format == "asc":
-                                _pop["alternate_morphologies"] = {
+                                pop["alternate_morphologies"] = {
                                     "neurolucida-asc": rel_target_folder
                                 }
-                                if "morphologies_dir" in _pop:
-                                    _pop["morphologies_dir"] = ""
+                                if "morphologies_dir" in pop:
+                                    pop["morphologies_dir"] = ""
                             else:
-                                _pop["morphologies_dir"] = rel_target_folder
-                                if "alternate_morphologies" in _pop:
-                                    _pop["alternate_morphologies"] = {}
+                                pop["morphologies_dir"] = rel_target_folder
+                                if "alternate_morphologies" in pop:
+                                    pop["alternate_morphologies"] = {}
                             break
                 else:
                     pass  # Skip, should be already set
@@ -229,10 +233,10 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                     json.dump(cfg_dict, f, indent=2)
 
             # Clean up morphology folders with individual morphologies
-            print(f"Cleaning morphology container(s): {morph_containers_to_delete}")
+            L.info(f"Cleaning morphology container(s): {morph_containers_to_delete}")
             for _file in morph_containers_to_delete:
                 os.remove(_file)
-            print(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
+            L.info(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
             for _folder in morph_folders_to_delete:
                 shutil.rmtree(_folder)
 
@@ -240,7 +244,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             assert self._check_morphologies(circuit_config, self.initialize.output_format), (
                 "ERROR: Morphology check not successful!"
             )
-            print("Morphology decontainerization DONE")
+            L.info("Morphology decontainerization DONE")
 
         except Exception as e:
             traceback.print_exception(e)

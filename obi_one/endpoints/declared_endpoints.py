@@ -10,10 +10,10 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
-    AmplitudeInput,
     CALCULATED_FEATURES,
-    ElectrophysiologyMetricsOutput,
     STIMULI_TYPES,
+    AmplitudeInput,
+    ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
@@ -40,7 +40,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 reconstruction_morphology_id=reconstruction_morphology_id,
                 db_client=db_client,
             )
-        except entitysdk.exception.EntitySDKError:
+        except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail={
@@ -49,7 +49,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                         f"Reconstruction morphology {reconstruction_morphology_id} not found."
                     ),
                 },
-            )
+            ) from err
 
         if metrics:
             return metrics
@@ -70,9 +70,9 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def electrophysiologyrecording_metrics_endpoint(
         trace_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-        requested_metrics: CALCULATED_FEATURES | None = Query(default=None),
-        amplitude: AmplitudeInput = Depends(),
-        protocols: STIMULI_TYPES | None = Query(default=None),
+        requested_metrics: Annotated[CALCULATED_FEATURES | None, Query()] = None,
+        amplitude: Annotated[AmplitudeInput, Depends()] = None,
+        protocols: Annotated[STIMULI_TYPES | None, Query()] = None,
     ) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
@@ -82,10 +82,11 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 amplitude=amplitude,
                 stimuli_types=protocols,
             )
-            return ephys_metrics
         except ProtocolNotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=404, detail=str(e)) from e
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+        else:
+            return ephys_metrics
 
     return router

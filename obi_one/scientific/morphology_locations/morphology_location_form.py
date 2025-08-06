@@ -59,7 +59,7 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
             o = row[_SEG_OFF]
             seg = m.sections[secid - 1].points[segid : (segid + 2)]
             dseg = np.diff(seg, axis=0)[0]
-            dseg = dseg / np.linalg.norm(dseg)
+            dseg /= np.linalg.norm(dseg)
             return pd.Series(seg[0] + o * dseg, index=["x", "y", "z"])
 
         fig = plt.figure(figsize=(3, 6))
