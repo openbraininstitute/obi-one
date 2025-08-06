@@ -1,8 +1,8 @@
 """Electrophys tool."""
 
-from io import StringIO
 import logging
 import tempfile
+from io import StringIO
 from statistics import mean
 from typing import Any, ClassVar, Literal
 
@@ -17,8 +17,6 @@ from obi_one.core.block import Block
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-
-
 
 POSSIBLE_PROTOCOLS = {
     "idrest": ["idrest"],
@@ -206,7 +204,7 @@ class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMix
             return ephys_metrics
 
 
-def get_electrophysiology_metrics(  # noqa: PLR0914, C901
+def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
     trace_id: str,
     entity_client: entitysdk.client.Client,
     calculated_feature: CALCULATED_FEATURES | None = None,
@@ -238,37 +236,41 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     # Get the available stimulus types from the trace metadata
     available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}
 
-    # If the user did not specify any stimulus types, try to use all step-like stimuli present in the trace.
+    # If the user did not specify any stimulus types, try to use all step-like stimuli present in
+    # the trace.
     if not stimuli_types:
-
-        stimuli_types = [s for s in available_stimuli if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__]
+        stimuli_types = [
+            s for s in available_stimuli if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__
+        ]
 
         if not stimuli_types:
             logger.warning(
                 "No stimulus type specified, and no valid stimuli found in the trace metadata. "
                 "Falling back to default STEP_LIKE_STIMULI_TYPES."
             )
-            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # type: ignore
+            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)
         else:
-            logger.warning(
-                f"No stimulus type specified. Using all valid stimuli found in the trace: {stimuli_types}"
-            )
+            msg = f"No stimulus type specified. Using all valid stimuli found in the trace: \
+                    {stimuli_types}"
+            logger.warning(msg)
     else:
         # Validate the user-specified stimuli types against the available ones in the trace metadata
         valid_stimuli = [s for s in stimuli_types if s in available_stimuli]
         invalid_stimuli = set(stimuli_types) - set(valid_stimuli)
 
         if not valid_stimuli:
-            raise ProtocolNotFoundError(
+            msg = (
                 f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
+            raise ProtocolNotFoundError(msg)
 
         if invalid_stimuli:
-            logger.warning(
+            msg = (
                 f"The following stimulus types are not present in the trace and will be ignored: "
                 f"{sorted(invalid_stimuli)}"
-        )
+            )
+            logger.warning(msg)
 
         stimuli_types = valid_stimuli
 
@@ -372,10 +374,11 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
 
         # If all requested protocols are missing from the data
         if set(stimuli_types).issubset(set(missing_protocols)):
-            raise ProtocolNotFoundError(
+            msg = (
                 f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
+            raise ProtocolNotFoundError(msg)
 
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)
@@ -400,9 +403,8 @@ def get_electrophysiology_metrics(  # noqa: PLR0914, C901
     return ElectrophysiologyMetricsOutput.from_efeatures(output_features)
 
 
-def parse_bpe_logs(log_stream):
-    """
-    Parse the BluePyEfe log stream to extract missing protocols.
+def parse_bpe_logs(log_stream: StringIO) -> list[str]:
+    """Parse the BluePyEfe log stream to extract missing protocols.
 
     Args:
         log_stream (StringIO): The BPE log stream containing log messages.

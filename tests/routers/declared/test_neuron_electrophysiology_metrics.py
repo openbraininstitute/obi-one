@@ -1,5 +1,6 @@
 import json
 import uuid
+from io import StringIO
 from unittest.mock import MagicMock
 
 import entitysdk.client
@@ -7,6 +8,7 @@ import pytest
 from entitysdk.models import ElectricalCellRecording
 
 from app.dependencies.entitysdk import get_client
+from obi_one.scientific.ephys_extraction.ephys_extraction import parse_bpe_logs
 
 from tests.utils import DATA_DIR
 
@@ -54,7 +56,9 @@ def test_get_not_found(client, ephys_json, monkeypatch):
     entity_id = uuid.uuid4()
     response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 500
-    assert "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
+    assert (
+        "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
+    )
     assert entitysdk_client_mock.get_entity.call_count == 2
     assert entitysdk_client_mock.download_content.call_count == 0
 
@@ -71,7 +75,7 @@ def test_get_defaults_step_like_and_all_features(client, ephys_json, ephys_nwb, 
     # No protocols or requested_metrics provided
     response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 200
-    assert any('step' in k for k in response.json()["feature_dict"])
+    assert any("step" in k for k in response.json()["feature_dict"])
 
 
 def test_amplitude_filtering(client, ephys_json, ephys_nwb, monkeypatch):
@@ -90,7 +94,7 @@ def test_amplitude_filtering(client, ephys_json, ephys_nwb, monkeypatch):
 
     response = client.get(f"{ROUTE}/{entity_id}?min_value=0.0&max_value=0.0")
     assert response.status_code == 200
-    assert response.json() == {'feature_dict': {}}
+    assert response.json() == {"feature_dict": {}}
 
 
 def test_get_protocol_not_found(client, ephys_json, ephys_nwb, monkeypatch):
@@ -108,8 +112,6 @@ def test_get_protocol_not_found(client, ephys_json, ephys_nwb, monkeypatch):
 
 
 def test_parse_bpe_logs_extracts_missing_protocols():
-    from io import StringIO
-    from obi_one.scientific.ephys_extraction.ephys_extraction import parse_bpe_logs
     log = StringIO("Protocol 'delta' not found in any cell recordings.\n")
     missing = parse_bpe_logs(log)
     assert missing == ["delta"]
