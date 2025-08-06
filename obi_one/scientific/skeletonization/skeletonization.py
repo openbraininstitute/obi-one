@@ -38,7 +38,7 @@ class SkelotonizationForm(Form):
     class Initialize(Block):
         mesh_path: Annotated[Path, Field(description="Path to the mesh file to be used for skelotonization.")]
 
-        resolution: Annotated[NonNegativeFloat, Field(
+        resolution: Annotated[PositiveFloat, Field(
             default=0.01,
             title="Resolution",
             description="Resolution of the skelotonization in micrometers (um).",
@@ -50,14 +50,31 @@ class SkelotonizationForm(Form):
         fix_soma_slicing_artifacts: Annotated[bool, Field(
             default=False,
             title="Fix Soma Slicing Artifacts",
-            description="Whether to fix artifacts caused by soma slicing during skelotonization."
+            description="Due to some reconstruction artifacts, so slices can be missing and this impacts mainly the soma. If you enable this option, we fix any slicing artifacts encountered and reconstruct a fixed soma."
         )]
 
+        segment_soma: Annotated[bool, Field(
+            default=False,
+            title="Segment Soma",
+            description="If this flag is set, the soma will be segmented and a high quality mesh object will be created."
+        )]
 
+        soma_segmentation_radius_threshold: Annotated[PositiveFloat, Field(
+            default=1.75,
+            title="Soma Segmentation Radius Threshold",
+            description="This value is used to accurately segment the soma, by default 2.0 for human neurons, and 1.75 for mouse neurons.",
+            ge=1.5,
+            le=2.5,
+            units="um"
+        )]
+
+        detach_spikes_from_skeleton: Annotated[bool, Field(
+            default=False,
+            title="Detach Spikes from Skeleton",
+            description="Remove the spine branches from the neuronal morphology skeleton, with which the final morphology of the neuron will reflect only the neuronal branches (axons, basal and apical dendrites)."
+        )]
 
         
-        
-
 
     initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
     info: Info = Field(title="Info", description="Information about the simulation campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
