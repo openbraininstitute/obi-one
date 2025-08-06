@@ -22,18 +22,14 @@ class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
     SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
-    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
-    EVENTS_GROUP = "Events"
-    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-
+    ADVANCED_BLOCK_GROUP = "Advanced"
 
 class SkelotonizationForm(Form):
     """Skelotonization Form."""
 
     single_coord_class_name: ClassVar[str] = "Skelotonization"
     name: ClassVar[str] = "Skelotonization Campaign"
-    description: ClassVar[str] = "Marwan's awesome skelotonization campaign."
+    description: ClassVar[str] = "Skeletonization Campaign Form"
 
     class Config:
         json_schema_extra = {
@@ -94,7 +90,7 @@ class SkelotonizationForm(Form):
         reconstruct_spike_morphologies: Annotated[bool, Field(
             default=False,
             title="Reconstruct Spike Morphologies",
-            description="Use the spine meshes and their branches to reconstruct high quality spine morphologies to be used for the analysis.."
+            description="Use the spine meshes and their branches to reconstruct high quality spine morphologies to be used for the analysis."
         )]
 
     class AdvancedOptions(Block):
@@ -141,8 +137,15 @@ class SkelotonizationForm(Form):
             description="Export a high quality reconstructed mesh from the input mesh (excluding the spines)."
         )]
 
-    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
     info: Info = Field(title="Info", description="Information about the campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
+    initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
+    output_options: OutputOptions = Field(title="Output Options", description="Parameters for the output of the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=2)
+
+    advanced_options: Initialize = Field(title="Advanced Options", description="Advanced parameters", group=BlockGroup.ADVANCED_BLOCK_GROUP, group_order=0)
+    
+
+
+    
 
    
 class Skelotonization(SkelotonizationForm, SingleCoordinateMixin):
