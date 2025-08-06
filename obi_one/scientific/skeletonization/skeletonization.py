@@ -74,7 +74,25 @@ class SkelotonizationForm(Form):
             description="Remove the spine branches from the neuronal morphology skeleton, with which the final morphology of the neuron will reflect only the neuronal branches (axons, basal and apical dendrites)."
         )]
 
-        
+        segment_spines: Annotated[bool, Field(
+            default=False,
+            title="Segment Spines",
+            description="Segment the spine geometries from the input mesh."
+        )]
+
+        reconstruct_spike_meshes: Annotated[bool, Field(
+            default=False,
+            title="Reconstruct Spike Meshes",
+            description="Reconstruct high quality spine geometries based on the segmented spine geometries."
+        )]
+
+        reconstruct_spike_morphologies: Annotated[bool, Field(
+            default=False,
+            title="Reconstruct Spike Morphologies",
+            description="Use the spine meshes and their branches to reconstruct high quality spine morphologies to be used for the analysis.."
+        )]
+
+
 
     initialize: Initialize = Field(title="Initialization", description="Parameters for initializing the skelotonization.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=1)
     info: Info = Field(title="Info", description="Information about the simulation campaign.", group=BlockGroup.SETUP_BLOCK_GROUP, group_order=0)
