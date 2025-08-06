@@ -10,9 +10,7 @@ class OBIBaseModel(BaseModel):
     Sets encoder for EntitySDK Entities
     """
 
-    model_config = ConfigDict(json_encoders={Path: str},
-                              discriminator='type',
-                              extra='forbid')
+    model_config = ConfigDict(json_encoders={Path: str}, discriminator="type", extra="forbid")
 
     @model_validator(mode="before")
     @classmethod

@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 import entitysdk
 from pydantic import (
+    Discriminator,
     Field,
     NonNegativeFloat,
     PositiveFloat,
@@ -113,7 +114,9 @@ class SimulationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
+        circuit: Annotated[
+            list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID], Discriminator("type")
+        ]
         node_set: Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
         ]
