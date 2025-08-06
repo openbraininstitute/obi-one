@@ -43,7 +43,6 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-
         # check if union is annotated
         if get_origin(self.allowed_block_types) is Annotated:
             args = get_args(self.allowed_block_types)
