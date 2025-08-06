@@ -1,6 +1,6 @@
 import json
 import os
-from typing import ClassVar, Literal, Self, Annotated
+from typing import ClassVar, Literal, Self, Annotated, Union
 
 from pydantic import Field, PrivateAttr, model_validator, NonNegativeInt, NonNegativeFloat, PositiveInt, PositiveFloat
 
@@ -23,6 +23,13 @@ from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusRefe
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
 
+from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.scientific.simulation.execution import (
+    run_bluecellulab,
+    run_neurodamus,
+)
+import logging
+from pathlib import Path
 from obi_one.database.circuit_from_id import CircuitFromID
 
 import entitysdk
@@ -75,9 +82,9 @@ class SimulationsForm(Form):
         extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(default=1.1, title="Extracellular Calcium Concentration", description="Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.", units="mM")
         v_init: list[float] | float = Field(default=-80.0, title="Initial Voltage", description="Initial membrane potential in millivolts (mV).", units="mV")
         random_seed: list[int] | int = Field(default=1, description="Random seed for the simulation.")
-        
+
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(default="soma")
-        _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4) 
+        _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4)
         _target_simulator: Literal["NEURON", "CORENEURON"] | list[Literal["NEURON", "CORENEURON"]] = PrivateAttr(default="NEURON") # Target simulator for the simulation
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(default=0.025) # Simulation time step in ms
 
@@ -119,7 +126,7 @@ class SimulationsForm(Form):
         # )
 
         return self._campaign
-    
+
     def save(self, simulations, db_client: entitysdk.client.Client) -> None:
 
         L.info("3. Saving completed simulation campaign generation")
@@ -135,7 +142,7 @@ class SimulationsForm(Form):
 
         return None
 
-    
+
     def add(self, block: Block, name:str='') -> None:
 
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
@@ -143,8 +150,8 @@ class SimulationsForm(Form):
 
         if name in self.__dict__.get(block_dict_name).keys():
             raise OBIONE_Error(f"Block with name '{name}' already exists in '{block_dict_name}'!")
-        
-        else: 
+
+        else:
             reference_type = globals()[reference_type_name]
             ref = reference_type(block_dict_name=block_dict_name, block_name=name)
             block.set_ref(ref)
@@ -156,7 +163,7 @@ class SimulationsForm(Form):
         self.__dict__[name] = block
 
 
-    
+
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
@@ -219,6 +226,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
 
     _sonata_config: dict = PrivateAttr(default={})
+    _logger: logging.Logger = PrivateAttr()
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def generate(self, db_client: entitysdk.client.Client = None):
         """Generates SONATA simulation config .json file."""
@@ -274,7 +286,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             if hasattr (stimulus, "generate_spikes"):
                 stimulus.generate_spikes(_circuit, self.coordinate_output_root, self.initialize.simulation_length, source_node_population=_circuit.default_population_name)
             self._sonata_config["inputs"].update(stimulus.config(_circuit, _circuit.default_population_name))
-            # 
+            #
 
         # Generate recording configs
         self._sonata_config["reports"] = {}
@@ -342,12 +354,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         with open(simulation_config_path, "w") as f:
             json.dump(self._sonata_config, f, indent=2)
 
-
     def save(self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client) -> None:
         """Saves the simulation to the database."""
-        
+
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
-        
+
         L.info(f"-- Register Simulation Entity")
         simulation = db_client.register_entity(
             entitysdk.models.Simulation(
@@ -356,7 +367,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,
-                
+
             )
         )
 
@@ -377,7 +388,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             file_content_type="application/json",
             asset_label='sonata_simulation_config'
         )
-        
+
         L.info(f"-- Upload custom_node_sets")
         _ = db_client.upload_file(
             entity_id=simulation.id,
