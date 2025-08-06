@@ -116,7 +116,6 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
             }
         return sonata_config
 
-
 class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
@@ -229,7 +228,6 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
-
 
 class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""

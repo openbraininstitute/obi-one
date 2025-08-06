@@ -59,6 +59,7 @@ dependencies = [
     "bluepyefe>=2.3.48",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
+    "bluecellulab>=2.6.62"
 ]
 
 [project.optional-dependencies]
