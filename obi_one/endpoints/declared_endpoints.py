@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -81,6 +82,8 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 amplitude=amplitude,
                 stimuli_types=protocols,
             )
+        except ProtocolNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
         else:
