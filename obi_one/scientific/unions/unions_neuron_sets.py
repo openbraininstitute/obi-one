@@ -1,4 +1,6 @@
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
+
+from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.circuit.neuron_sets import (
@@ -7,7 +9,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
-    PairMotifNeuronSet,
     PredefinedNeuronSet,
     PropertyNeuronSet,
     SimplexMembershipBasedNeuronSet,
@@ -19,11 +20,10 @@ from obi_one.scientific.circuit.neuron_sets import (
     rCA1CA3Inputs,
 )
 
-NeuronSetUnion = (
-    PredefinedNeuronSet
-    | CombinedNeuronSet
+NeuronSetUnion = Annotated[
+    CombinedNeuronSet
     | IDNeuronSet
-    | PairMotifNeuronSet
+    | PredefinedNeuronSet
     | PropertyNeuronSet
     | VolumetricCountNeuronSet
     | VolumetricRadiusNeuronSet
@@ -34,12 +34,28 @@ NeuronSetUnion = (
     | rCA1CA3Inputs
     | AllNeurons
     | ExcitatoryNeurons
-    | InhibitoryNeurons
-)
+    | InhibitoryNeurons,
+    Discriminator("type"),
+]
 
-SimulationNeuronSetUnion = (
-    AllNeurons | ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet | nbS1VPMInputs | nbS1POmInputs
-)
+
+SimulationNeuronSetUnion = Annotated[
+    CombinedNeuronSet
+    | IDNeuronSet
+    | PredefinedNeuronSet
+    | PropertyNeuronSet
+    | VolumetricCountNeuronSet
+    | VolumetricRadiusNeuronSet
+    | SimplexNeuronSet
+    | SimplexMembershipBasedNeuronSet
+    | nbS1VPMInputs
+    | nbS1POmInputs
+    | rCA1CA3Inputs
+    | AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons,
+    Discriminator("type"),
+]
 
 
 class NeuronSetReference(BlockReference):
