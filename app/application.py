@@ -18,8 +18,8 @@ from app.dependencies.auth import user_verified
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
-from obi_one.endpoints.declared_endpoints import activate_declared_endpoints
-from obi_one.endpoints.generated_endpoints import activate_generated_endpoints
+from app.endpoints.declared_endpoints import activate_declared_endpoints
+from app.endpoints.generated_endpoints import activate_generated_endpoints
 
 
 @asynccontextmanager
