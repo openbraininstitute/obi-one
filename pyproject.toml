@@ -31,7 +31,7 @@ dependencies = [
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
     # CIRCUIT EXTRACTION
-    "brainbuilder",
+    "brainbuilder>=0.20.2",
     # MORPHOLOGY CONTAINERIZATION
     "bluepysnap>=3.0.2",
     # FAST API SERVICE
