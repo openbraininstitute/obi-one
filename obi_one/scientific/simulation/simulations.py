@@ -12,6 +12,7 @@ from pydantic import (
     NonNegativeFloat,
     PositiveFloat,
     PrivateAttr,
+    Union,
     model_validator,
 )
 
@@ -115,7 +116,8 @@ class SimulationsForm(Form):
 
     class Initialize(Block):
         circuit: Annotated[
-            list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID], Discriminator("type")
+            Union[list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]],
+            Discriminator("type"),
         ]
         node_set: Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
