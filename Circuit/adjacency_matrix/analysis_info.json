@@ -22,6 +22,8 @@
         "jupyter>=1.1.1",
         "matplotlib>=3.10.0",
         "numpy>=2.2.1",
-        "obi_auth>=0.3.0"
+        "obi_auth>=0.3.0",
+        "obi_notebook>=0.1.dev10",
+        "entitysdk>=0.7.4"
     ]
 }
