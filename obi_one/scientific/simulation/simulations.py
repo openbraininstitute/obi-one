@@ -12,7 +12,6 @@ from pydantic import (
     NonNegativeFloat,
     PositiveFloat,
     PrivateAttr,
-    Union,
     model_validator,
 )
 
@@ -116,7 +115,7 @@ class SimulationsForm(Form):
 
     class Initialize(Block):
         circuit: Annotated[
-            Union[list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]],
+            list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID],
             Discriminator("type"),
         ]
         node_set: Annotated[
