@@ -253,7 +253,7 @@ wheels = [
 [[package]]
 name = "bluepysnap"
 version = "3.0.2"
-source = { git = "https://github.com/openbraininstitute/snap.git#bab122a35fb5fd34cde36152ea3bab43a5243f62" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "brain-indexer" },
     { name = "cached-property" },
@@ -268,6 +268,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/34/82/394f79ff7da5c77793348edc87d39e4a6267d98688b6d8076c1d9ac3b9bd/bluepysnap-3.0.2.tar.gz", hash = "sha256:4a04fe8fa2fe421f17cdc3f5a5e342b6d2d84102b19d41b1ecb4ebae9941ae70", size = 1051738 }
 
 [[package]]
 name = "brain-indexer"
@@ -289,7 +290,7 @@ wheels = [
 [[package]]
 name = "brainbuilder"
 version = "0.20.2"
-source = { git = "https://github.com/openbraininstitute/brainbuilder.git#c618114df9c99ba4be9ef65f20179c5f722e87f8" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "click" },
@@ -306,6 +307,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/ee/a0/2dcbafbb24bfe26223f066efb527c79581e64718c478a6a82f5ee28a3d26/brainbuilder-0.20.2.tar.gz", hash = "sha256:577f2e773b3ccbc44ba2802802802bdafc3a2b10d90865c1c462f759b105d8f0", size = 217938 }
 
 [[package]]
 name = "cached-property"
@@ -1724,8 +1726,8 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.62" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.48" },
-    { name = "bluepysnap", git = "https://github.com/openbraininstitute/snap.git" },
-    { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder.git" },
+    { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "brainbuilder" },
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },

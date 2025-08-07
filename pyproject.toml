@@ -33,7 +33,7 @@ dependencies = [
     # CIRCUIT EXTRACTION
     "brainbuilder",
     # MORPHOLOGY CONTAINERIZATION
-    "bluepysnap",
+    "bluepysnap>=3.0.2",
     # JUPYTER
     "jupyter",
     "notebook",
@@ -89,10 +89,6 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["obi_one*"]
-
-[tool.uv.sources]
-bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
-brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
 
 [tool.ruff]
 line-length = 100
