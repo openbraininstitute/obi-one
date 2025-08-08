@@ -1,44 +1,40 @@
 import abc
-from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
+from typing import Annotated, Any, ClassVar, get_args
 
-from pydantic import Field
+from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-
-
-def get_union(param: Any) -> Union:
-    if get_origin(param) is Annotated:
-        args = get_args(param)
-        union = args[0]
-    else:
-        union = param
-
-    return union
 
 
 class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(default="")
     block_name: str = Field()
 
-    allowed_block_types: ClassVar[Any] = None
+    allowed_block_types: ClassVar[
+        Annotated[type[OBIBaseModel] | tuple[type[OBIBaseModel], ...], Discriminator("type")]
+    ] = None
 
     _block: Any = None
+
+    @classmethod
+    def allowed_block_types_union(
+        cls,
+    ) -> type[OBIBaseModel] | tuple[type[OBIBaseModel], ...]:
+        """Returns the union type of allowed block types."""
+        return get_args(cls.allowed_block_types)[0]
 
     @classmethod
     def allowed_block_type_names(cls, allowed_block_types: Any) -> list:
         if allowed_block_types is None:
             return []
-        return [t.__name__ for t in get_args(get_union(allowed_block_types))]
+        return [t.__name__ for t in cls.allowed_block_types_union()]
 
     class Config:
         @staticmethod
         def json_schema_extra(schema: dict, model: "BlockReference") -> None:
             # Dynamically get allowed_block_types from subclass
-            allowed_block_types = getattr(model, "allowed_block_types", [])
-            schema["allowed_block_types"] = [
-                t.__name__ for t in get_args(get_union(allowed_block_types))
-            ]
+            schema["allowed_block_types"] = [t.__name__ for t in model.allowed_block_types_union()]
             schema["is_block_reference"] = True
 
     @property
@@ -55,7 +51,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-        if not isinstance(value, get_union(self.allowed_block_types)):
+        if not isinstance(value, self.allowed_block_types_union()):
             msg = f"Value must be of type {self.block_type.__name__}."
             raise TypeError(msg)
 

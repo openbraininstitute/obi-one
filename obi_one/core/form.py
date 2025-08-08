@@ -62,8 +62,8 @@ class Form(OBIBaseModel, extra="forbid"):
 
                     if annotated_type and get_origin(annotated_type) is dict:
                         value_type = get_args(annotated_type)[1]  # dict[key_type, value_type]
-
-                        if hasattr(types, "UnionType") and isinstance(value_type, types.UnionType):
+                        value_type = get_args(value_type)[0]
+                        if isinstance(value_type, types.UnionType):
                             classes = list(get_args(value_type))
                         else:
                             classes = [value_type]
