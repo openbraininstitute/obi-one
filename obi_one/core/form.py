@@ -32,22 +32,32 @@ class Form(OBIBaseModel, extra="forbid"):
     @property
     def block_mapping(self) -> dict:
         """Returns a mapping of block class names to block_dict_name and reference_type."""
+
         if self._block_mapping is None:
+            
             # Get type annotations of the instance's class
             annotations = self.__class__.__annotations__
 
+            # Initialize an empty mapping
             self._block_mapping = {}
+
+            # Iterate through the Form's attributes
             for attr_name, attr_value in self.__dict__.items():
+
+                # Get the annotated type of this attribute 
+                # i.e. dict[str, typing.Annotated[SingleTimestamp | ...)
+                annotated_type = annotations.get(attr_name)
+                
                 # Check if it's a dictionary of Block instances
-                if isinstance(attr_value, dict) and all(
-                    isinstance(v, Block) for v in attr_value.values()
-                ):
-                    # Get the annotated type of this attribute (e.g., dict[str, TimestampsUnion])
-                    annotated_type = annotations.get(attr_name)
-
+                if (
+                    isinstance(attr_value, dict) 
+                    and all(isinstance(v, Block) for v in attr_value.values())
+                    and annotated_type is not None
+                    and get_origin(annotated_type) is dict
+                ):    
+                    
+                    # Check that the attribute has a variable: reference_type
                     field_info = self.__pydantic_fields__[attr_name]
-                    reference_type = None
-
                     if (
                         field_info.json_schema_extra
                         and "reference_type" in field_info.json_schema_extra
@@ -60,24 +70,34 @@ class Form(OBIBaseModel, extra="forbid"):
                         )
                         raise ValueError(msg)
 
-                    if annotated_type and get_origin(annotated_type) is dict:
-                        value_type = get_args(annotated_type)[1]  # dict[key_type, value_type]
-                        value_type = get_args(value_type)[0]
-                        if isinstance(value_type, types.UnionType):
-                            classes = list(get_args(value_type))
-                        else:
-                            classes = [value_type]
+                    # Get the type of the dictionary's values
+                    # i.e. typing.Annotated[SingleTimestamp | ...
+                    dictionary_value_type = get_args(annotated_type)[1]
 
+                    # Get the value inside the annotation
+                    # i.e. SingleTimestamp | ... OR SingleTimestamp
+                    inside_annotation_type = get_args(dictionary_value_type)[0]
+
+                    # Create a list of classes inside the annotation
+                    # If it's a Union, get all classes inside it
+                    # Otherwise, just use the single class
+                    if isinstance(inside_annotation_type, types.UnionType):
+                        classes = list(get_args(inside_annotation_type))
+                    else:
+                        classes = [inside_annotation_type]
+
+                    # Iterate through the classes and add them to the mapping
                     for block_class in classes:
+                        # If the block class is already in the mapping, raise an error
                         if block_class.__name__ in self._block_mapping:
-                            # If the block class is already in the mapping, append the new block
                             msg = (
                                 f"Block class {block_class.__name__} already exists in the mapping."
                                 " This suggests that the same block class is used in multiple"
                                 " dictionaries."
                             )
                             raise ValueError(msg)
-                        # Initialize a new dictionary for this block class
+
+                        # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
                             "reference_type": reference_type,
