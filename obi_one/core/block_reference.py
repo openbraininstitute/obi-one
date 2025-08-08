@@ -24,12 +24,6 @@ class BlockReference(OBIBaseModel, abc.ABC):
         """Returns the union type of allowed block types."""
         return get_args(cls.allowed_block_types)[0]
 
-    @classmethod
-    def allowed_block_type_names(cls, allowed_block_types: Any) -> list:
-        if allowed_block_types is None:
-            return []
-        return [t.__name__ for t in cls.allowed_block_types_union()]
-
     class Config:
         @staticmethod
         def json_schema_extra(schema: dict, model: "BlockReference") -> None:
