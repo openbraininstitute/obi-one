@@ -40,17 +40,9 @@ NeuronSetUnion = Annotated[
 
 
 SimulationNeuronSetUnion = Annotated[
-    CombinedNeuronSet
-    | IDNeuronSet
-    | PredefinedNeuronSet
-    | PropertyNeuronSet
-    | VolumetricCountNeuronSet
-    | VolumetricRadiusNeuronSet
-    | SimplexNeuronSet
-    | SimplexMembershipBasedNeuronSet
+    IDNeuronSet
     | nbS1VPMInputs
     | nbS1POmInputs
-    | rCA1CA3Inputs
     | AllNeurons
     | ExcitatoryNeurons
     | InhibitoryNeurons,
@@ -62,8 +54,3 @@ class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
-
-
-# TODO: class SimulationNeuronSetReference(BlockReference):
-# TODO:     """A reference to a NeuronSet block for simulation."""
-# TODO:     allowed_block_types: ClassVar[Any] = SimulationNeuronSetUnion
