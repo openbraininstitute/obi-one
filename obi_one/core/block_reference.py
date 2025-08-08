@@ -1,10 +1,20 @@
 import abc
-from typing import Annotated, Any, ClassVar, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
 
 from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+
+
+def get_union(param: Any) -> Union:
+    if get_origin(param) is Annotated:
+        args = get_args(param)
+        union = args[0]
+    else:
+        union = param
+
+    return union
 
 
 class BlockReference(OBIBaseModel, abc.ABC):
@@ -19,14 +29,16 @@ class BlockReference(OBIBaseModel, abc.ABC):
     def allowed_block_type_names(cls, allowed_block_types: Any) -> list:
         if allowed_block_types is None:
             return []
-        return [t.__name__ for t in get_args(allowed_block_types)]
+        return [t.__name__ for t in get_args(get_union(allowed_block_types))]
 
     class Config:
         @staticmethod
         def json_schema_extra(schema: dict, model: "BlockReference") -> None:
             # Dynamically get allowed_block_types from subclass
             allowed_block_types = getattr(model, "allowed_block_types", [])
-            schema["allowed_block_types"] = [t.__name__ for t in get_args(allowed_block_types)]
+            schema["allowed_block_types"] = [
+                t.__name__ for t in get_args(get_union(allowed_block_types))
+            ]
             schema["is_block_reference"] = True
 
     @property
@@ -43,14 +55,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-        # check if union is annotated
-        if get_origin(self.allowed_block_types) is Annotated:
-            args = get_args(self.allowed_block_types)
-            union = args[0]
-        else:
-            union = self.allowed_block_types
-
-        if not isinstance(value, union):
+        if not isinstance(value, get_union(self.allowed_block_types)):
             msg = f"Value must be of type {self.block_type.__name__}."
             raise TypeError(msg)
 
