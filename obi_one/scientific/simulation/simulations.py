@@ -51,6 +51,9 @@ class BlockGroup(StrEnum):
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
+CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
+
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -113,7 +116,7 @@ class SimulationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator]
         node_set: Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
         ]
