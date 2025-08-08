@@ -32,9 +32,7 @@ class Form(OBIBaseModel, extra="forbid"):
     @property
     def block_mapping(self) -> dict:
         """Returns a mapping of block class names to block_dict_name and reference_type."""
-
         if self._block_mapping is None:
-            
             # Get type annotations of the instance's class
             annotations = self.__class__.__annotations__
 
@@ -43,19 +41,17 @@ class Form(OBIBaseModel, extra="forbid"):
 
             # Iterate through the Form's attributes
             for attr_name, attr_value in self.__dict__.items():
-
-                # Get the annotated type of this attribute 
+                # Get the annotated type of this attribute
                 # i.e. dict[str, typing.Annotated[SingleTimestamp | ...)
                 annotated_type = annotations.get(attr_name)
-                
+
                 # Check if it's a dictionary of Block instances
                 if (
-                    isinstance(attr_value, dict) 
+                    isinstance(attr_value, dict)
                     and all(isinstance(v, Block) for v in attr_value.values())
                     and annotated_type is not None
                     and get_origin(annotated_type) is dict
-                ):    
-                    
+                ):
                     # Check that the attribute has a variable: reference_type
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
