@@ -3,7 +3,7 @@ Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann
 
-last modified: 06.2025
+last modified: 08.2025
 
 ## Summary
 Plots: (1) Recorded voltage traces from the output of single cell simulations. (2) Spike counts detected in the output of single cell simulations. To be used as a starting point for more complex analyses.

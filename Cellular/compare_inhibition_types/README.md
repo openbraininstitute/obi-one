@@ -3,7 +3,7 @@ Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann
 
-last modified: 06.2025
+last modified: 08.2025
 
 ## Summary
 We distinguish proximal vs. distal innervation on a dendrite by the path distance of a synapse to the post-synaptic soma. This uses an arbitray cutoff, such as 100 um. 
