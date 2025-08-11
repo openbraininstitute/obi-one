@@ -6,6 +6,8 @@ from pydantic import model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.exception import OBIONEError
+from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 
 
 class Form(OBIBaseModel, extra="forbid"):
@@ -152,3 +154,28 @@ class Form(OBIBaseModel, extra="forbid"):
     @property
     def single_coord_scan_default_subpath(self) -> str:
         return self.single_coord_class_name + "/"
+
+    def add(self, block: Block, name: str = "") -> None:
+        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
+        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
+
+        if name in self.__dict__.get(block_dict_name):
+            msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
+            raise OBIONEError(msg)
+
+        # Find the class in AllReferenceTypes whose name matches reference_type_name
+        reference_type = next(
+            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
+            None,
+        )
+        if reference_type is None:
+            msg = f"Reference type '{reference_type_name}' not found in AllReferenceTypes."
+            raise OBIONEError(msg)
+
+        ref = reference_type(block_dict_name=block_dict_name, block_name=name)
+        block.set_ref(ref)
+        self.__dict__[block_dict_name][name] = block
+
+    def set(self, block: Block, name: str = "") -> None:
+        """Sets a block in the form."""
+        self.__dict__[name] = block

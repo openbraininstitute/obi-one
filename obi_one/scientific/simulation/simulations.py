@@ -258,23 +258,6 @@ class SimulationsForm(Form):
             )
         )
 
-    def add(self, block: Block, name: str = "") -> None:
-        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
-
-        if name in self.__dict__.get(block_dict_name):
-            msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
-            raise OBIONEError(msg)
-
-        reference_type = globals()[reference_type_name]
-        ref = reference_type(block_dict_name=block_dict_name, block_name=name)
-        block.set_ref(ref)
-        self.__dict__[block_dict_name][name] = block
-
-    def set(self, block: Block, name: str = "") -> None:
-        """Sets a block in the form."""
-        self.__dict__[name] = block
-
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
