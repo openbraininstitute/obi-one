@@ -18,7 +18,7 @@ from obi_one.scientific.unions.unions_form import FormUnion
 L = logging.getLogger(__name__)
 
 
-class MultiplyConfigs(OBIBaseModel):
+class Scan(OBIBaseModel):
     """Takes a Form & output_root as input.
 
     - Creates multi-dimensional parameter scans through calls to generate and run
@@ -212,7 +212,7 @@ class MultiplyConfigs(OBIBaseModel):
         # return campaign
     
 
-class GridMultiplyConfigs(MultiplyConfigs):
+class GridScan(Scan):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
@@ -249,7 +249,7 @@ class GridMultiplyConfigs(MultiplyConfigs):
             return self._coordinate_parameters
 
 
-class CoupledMultiplyConfigs(MultiplyConfigs):
+class CoupledScan(Scan):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list:
