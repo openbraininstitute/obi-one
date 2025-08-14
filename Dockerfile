@@ -18,7 +18,7 @@ apt-get install -qyy \
     build-essential \
     ca-certificates \
     cmake \
-    libboost1.81-all-dev \
+    libboost-all-dev \
     libhdf5-dev \
     libopenmpi-dev \
     zlib1g-dev \
@@ -63,7 +63,7 @@ apt-get update -qy
 apt-get install -qyy \
     -o APT::Install-Recommends=false \
     -o APT::Install-Suggests=false \
-    libhdf5-103-1
+    libhdf5-310
 EOT
 
 RUN <<EOT
