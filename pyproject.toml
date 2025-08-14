@@ -31,9 +31,9 @@ dependencies = [
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
     # CIRCUIT EXTRACTION
-    "brainbuilder",
+    "brainbuilder>=0.20.2",
     # MORPHOLOGY CONTAINERIZATION
-    "bluepysnap",
+    "bluepysnap>=3.0.2",
     # FAST API SERVICE
     "fastapi",
     "uvicorn",
@@ -93,10 +93,6 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["obi_one*"]
-
-[tool.uv.sources]
-bluepysnap = { git = "https://github.com/openbraininstitute/snap.git" }
-brainbuilder = { git = "https://github.com/openbraininstitute/brainbuilder.git" }
 
 [tool.ruff]
 line-length = 100

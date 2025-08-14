@@ -268,7 +268,7 @@ class Scan(OBIBaseModel):
 
         # Create the directory and write dict to json file
         if output_path:
-            with output_path.open("w") as json_file:
+            with output_path.open("w", encoding="utf-8") as json_file:
                 json.dump(model_dump, json_file, indent=4)
 
         return model_dump

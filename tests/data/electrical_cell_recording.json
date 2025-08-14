@@ -60,7 +60,7 @@
       "content_type": "application/nwb",
       "size": 1657656,
       "sha256_digest": "696ffb1e4eb24839c53407d1d5beee030316ef61648bea5a6e15eae6486fd813",
-      "label": "electrical_cell_recording",
+      "label": "nwb",
       "meta": {
         "legacy": {
           "name": "S1FL_L5_DBC_cIR_4.nwb",
