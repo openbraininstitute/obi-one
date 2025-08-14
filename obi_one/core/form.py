@@ -6,6 +6,8 @@ from pydantic import model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.exception import OBIONEError
+from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 
 
 class Form(OBIBaseModel, extra="forbid"):
@@ -36,18 +38,24 @@ class Form(OBIBaseModel, extra="forbid"):
             # Get type annotations of the instance's class
             annotations = self.__class__.__annotations__
 
+            # Initialize an empty mapping
             self._block_mapping = {}
+
+            # Iterate through the Form's attributes
             for attr_name, attr_value in self.__dict__.items():
+                # Get the annotated type of this attribute
+                # i.e. dict[str, typing.Annotated[SingleTimestamp | ...)
+                annotated_type = annotations.get(attr_name)
+
                 # Check if it's a dictionary of Block instances
-                if isinstance(attr_value, dict) and all(
-                    isinstance(v, Block) for v in attr_value.values()
+                if (
+                    isinstance(attr_value, dict)
+                    and all(isinstance(v, Block) for v in attr_value.values())
+                    and annotated_type is not None
+                    and get_origin(annotated_type) is dict
                 ):
-                    # Get the annotated type of this attribute (e.g., dict[str, TimestampsUnion])
-                    annotated_type = annotations.get(attr_name)
-
+                    # Check that the attribute has a variable: reference_type
                     field_info = self.__pydantic_fields__[attr_name]
-                    reference_type = None
-
                     if (
                         field_info.json_schema_extra
                         and "reference_type" in field_info.json_schema_extra
@@ -60,24 +68,34 @@ class Form(OBIBaseModel, extra="forbid"):
                         )
                         raise ValueError(msg)
 
-                    if annotated_type and get_origin(annotated_type) is dict:
-                        value_type = get_args(annotated_type)[1]  # dict[key_type, value_type]
+                    # Get the type of the dictionary's values
+                    # i.e. typing.Annotated[SingleTimestamp | ...
+                    dictionary_value_type = get_args(annotated_type)[1]
 
-                        if hasattr(types, "UnionType") and isinstance(value_type, types.UnionType):
-                            classes = list(get_args(value_type))
-                        else:
-                            classes = [value_type]
+                    # Get the value inside the annotation
+                    # i.e. SingleTimestamp | ... OR SingleTimestamp
+                    inside_annotation_type = get_args(dictionary_value_type)[0]
 
+                    # Create a list of classes inside the annotation
+                    # If it's a Union, get all classes inside it
+                    # Otherwise, just use the single class
+                    if isinstance(inside_annotation_type, types.UnionType):
+                        classes = list(get_args(inside_annotation_type))
+                    else:
+                        classes = [inside_annotation_type]
+
+                    # Iterate through the classes and add them to the mapping
                     for block_class in classes:
+                        # If the block class is already in the mapping, raise an error
                         if block_class.__name__ in self._block_mapping:
-                            # If the block class is already in the mapping, append the new block
                             msg = (
                                 f"Block class {block_class.__name__} already exists in the mapping."
                                 " This suggests that the same block class is used in multiple"
                                 " dictionaries."
                             )
                             raise ValueError(msg)
-                        # Initialize a new dictionary for this block class
+
+                        # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
                             "reference_type": reference_type,
@@ -136,3 +154,28 @@ class Form(OBIBaseModel, extra="forbid"):
     @property
     def single_coord_scan_default_subpath(self) -> str:
         return self.single_coord_class_name + "/"
+
+    def add(self, block: Block, name: str = "") -> None:
+        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
+        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
+
+        if name in self.__dict__.get(block_dict_name):
+            msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
+            raise OBIONEError(msg)
+
+        # Find the class in AllReferenceTypes whose name matches reference_type_name
+        reference_type = next(
+            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
+            None,
+        )
+        if reference_type is None:
+            msg = f"Reference type '{reference_type_name}' not found in AllReferenceTypes."
+            raise OBIONEError(msg)
+
+        ref = reference_type(block_dict_name=block_dict_name, block_name=name)
+        block.set_ref(ref)
+        self.__dict__[block_dict_name][name] = block
+
+    def set(self, block: Block, name: str = "") -> None:
+        """Sets a block in the form."""
+        self.__dict__[name] = block
