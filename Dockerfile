@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.9
 ARG UV_VERSION=0.6
 ARG PYTHON_VERSION=3.12
-ARG PYTHON_BASE=${PYTHON_VERSION}-slim
+ARG PYTHON_BASE=${PYTHON_VERSION}-slim-trixie
 
 # uv stage
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
