@@ -1,0 +1,20 @@
+{
+    "obi_one_version": "2025.7.6",
+    "type": "ExampleSingleConfig",
+    "idx": 0,
+    "coordinate_output_root": "output/ExampleSingleConfig",
+    "scan_output_root": "output",
+    "single_coordinate_scan_params": {
+        "type": "SingleCoordinateScanParams",
+        "scan_params": [],
+        "nested_coordinate_subpath_str": "ExampleSingleConfig"
+    },
+    "initialize": {
+        "type": "ExampleMultiConfig.Initialize",
+        "morphology_path": {
+            "type": "NamedPath",
+            "name": "test",
+            "path": "test"
+        }
+    }
+}
