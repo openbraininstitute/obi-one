@@ -89,4 +89,12 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         else:
             return ephys_metrics
 
+    @router.get(
+        "/circuit-metrics/{circuit_id}",
+        summary="circuit metrics",
+        description="This calculates circuit metrics",
+    )
+    def circuit_metrics_endpoint(circuit_id: str) -> dict[str, str]:
+        return {"circuit_id": circuit_id}
+
     return router
