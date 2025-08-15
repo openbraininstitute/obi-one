@@ -39,6 +39,8 @@ __all__ = [
     "ConnectivityMatrixExtraction",
     "ConnectivityMatrixExtractions",
     "ConstantCurrentClampSomaticStimulus",
+    "ContributeMorphology",
+    "ContributeMorphologyForm",
     "CoupledScan",
     "EntityFromID",
     "ExcitatoryNeurons",
@@ -194,6 +196,7 @@ from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extra
     ConnectivityMatrixExtraction,
     ConnectivityMatrixExtractions,
 )
+from obi_one.scientific.contribute.contribute import ContributeMorphology,ContributeMorphologyForm
 from obi_one.scientific.folder_compression.folder_compression import (
     FolderCompression,
     FolderCompressions,
