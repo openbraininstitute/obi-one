@@ -79,10 +79,12 @@ class MTypeClassification(Block):
         default=None, description="UUID for MType classification"
     )
 
+
 class Assets(Block):
     swc_file: str | None = Field(default=None, description="SWC file for the morphology.")
     asc_file: str | None = Field(default=None, description="ASC file for the morphology.")
     h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
+
 
 class ReconstructionMorphology(Block):
     name: str = Field(description="Name of the morphology")  # Add default
@@ -91,6 +93,7 @@ class ReconstructionMorphology(Block):
     strain_id: uuid.UUID | None = Field(default=None)
     brain_region_id: uuid.UUID | None = Field(default=None)  # Make nullable
     legacy_id: list[str] | None = Field(default=None)
+
 
 class Subject(Block):
     name: str = Field(default="", description="Subject name")
@@ -126,13 +129,16 @@ class Subject(Block):
 
     model_config: ClassVar[dict[str, str]] = {"extra": "forbid"}
 
+
 class License(Block):
     license_id: uuid.UUID | None = Field(default=None)
+
 
 class ScientificArtifact(Block):
     experiment_date: datetime | None = Field(default=None)
     contact_email: str | None = Field(default=None)
     atlas_id: uuid.UUID | None = Field(default=None)
+
 
 class ContributeMorphologyForm(Form):
     """Contribute Morphology Form."""
