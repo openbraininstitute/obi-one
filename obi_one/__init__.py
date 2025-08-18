@@ -39,8 +39,6 @@ __all__ = [
     "ConnectivityMatrixExtraction",
     "ConnectivityMatrixExtractions",
     "ConstantCurrentClampSomaticStimulus",
-    "ContributeDensity",
-    "ContributeDensityForm",
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
