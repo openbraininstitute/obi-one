@@ -26,7 +26,7 @@ router = APIRouter(
 
 
 @router.get("/subject_data", response_model=List[Spec])
-async def get_subject_data()-> List[Spec]:
+async def get_subject_data() -> List[Spec]:
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
     token = get_token(environment="staging")
     client = Client(api_url=entitycore_api_url, token_manager=token)

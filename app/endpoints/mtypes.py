@@ -23,6 +23,7 @@ router = APIRouter(
     tags=["mtypes"],
 )
 
+
 @router.get("/mtypes", response_model=List[Mty])
 async def get_mtype_data() -> List[Mty]:
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
