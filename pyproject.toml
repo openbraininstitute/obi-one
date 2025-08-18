@@ -59,6 +59,7 @@ dependencies = [
     "bluepyefe>=2.3.45",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
+    "pip-audit>=2.9.0",
 ]
 
 [project.optional-dependencies]

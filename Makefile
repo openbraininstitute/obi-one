@@ -67,6 +67,9 @@ test-local:  ## Run tests locally
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test
 
+pip-audit:
+  uv run  pip-audit --progress-spinner off -f json -o pip-audit-output.json || true
+
 run-local: ## Run the application locally
 	@$(call load_env,run-local)
 	uv run -m app run --host $(UVICORN_HOST) --port $(UVICORN_PORT) --reload
