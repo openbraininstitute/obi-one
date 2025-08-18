@@ -1,6 +1,7 @@
-from fastapi import APIRouter
-from typing import List
 import logging
+from typing import List
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from entitysdk.client import Client
@@ -22,9 +23,8 @@ router = APIRouter(
     tags=["mtypes"],
 )
 
-
 @router.get("/mtypes", response_model=List[Mty])
-async def get_mtype_data():
+async def get_mtype_data() -> List[Mty]:
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
 
     token = get_token(environment="staging")
