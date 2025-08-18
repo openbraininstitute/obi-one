@@ -5,10 +5,11 @@ from enum import StrEnum, auto
 from typing import Annotated, ClassVar
 
 import entitysdk
+from pydantic import BaseModel, Field, PrivateAttr
+
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from pydantic import BaseModel, Field, PrivateAttr
 
 L = logging.getLogger(__name__)
 
