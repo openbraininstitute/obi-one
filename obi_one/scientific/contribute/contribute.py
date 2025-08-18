@@ -118,27 +118,27 @@ class ContributeMorphologyForm(Form):
         name: str = Field(default="", description="Subject name")
         description: str = Field(default="", description="Subject description")
         sex: Annotated[Sex, Field(title="Sex", description="Sex of the subject")] = Sex.unknown
-        
-        weight: float | None = Field(            
+
+        weight: float | None = Field(
             default=None,
             title="Weight",
             description="Weight in grams",
             gt=0.0,
             json_schema_extra={"default": None},  # Ensure default appears in schema
         )
-        age_value: timedelta | None = Field(  
+        age_value: timedelta | None = Field(
             default=None,
             title="Age value",
             description="Age value interval.",
             gt=timedelta(0),
         )
-        age_min: timedelta | None = Field(  
+        age_min: timedelta | None = Field(
             default=None,
             title="Minimum age range",
             description="Minimum age range",
             gt=timedelta(0),
         )
-        age_max: timedelta | None = Field(  
+        age_max: timedelta | None = Field(
             default=None,
             title="Maximum age range",
             description="Maximum age range",
