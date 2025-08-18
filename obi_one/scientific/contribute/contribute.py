@@ -22,8 +22,8 @@ class BlockGroup(StrEnum):
     CONTRIBUTOR_BLOCK_GROUP = "Experimenter"
     STRAIN_BLOCK_GROUP = "Animal strain"
     LOCATION_GROUP = "Location"
-    PROTOCOL_GROUP = "Protocol"
     LICENSE_GROUP = "License"
+    PROTOCOL_GROUP = "Protocol"
 
 
 class Sex(StrEnum):
