@@ -1,8 +1,8 @@
 import logging
 import uuid
 from datetime import datetime, timedelta
-from enum import Enum, StrEnum, auto
-from typing import Annotated, ClassVar, Optional
+from enum import StrEnum, auto
+from typing import Annotated, ClassVar
 
 import entitysdk
 from obi_one.core.block import Block
@@ -37,7 +37,7 @@ class AgePeriod(StrEnum):
     unknown = auto()
 
 
-class StatusEnum(str, Enum):
+class StatusEnum(StrEnum):
     active = "active"
     inactive = "inactive"
     pending = "pending"
@@ -49,8 +49,8 @@ class Contribution(BaseModel):
 
 
 class Author(BaseModel):
-    given_name: Optional[str] = None
-    family_name: Optional[str] = None
+    given_name: str | None = None
+    family_name: str | None = None
 
 
 class Reference(BaseModel):
@@ -58,21 +58,20 @@ class Reference(BaseModel):
     identifier: str = Field(..., description="Unique reference identifier")
 
     class Config:
-        json_schema_extra = {"title": "Reference"}
+        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Reference"}
 
 
 class Publication(Block):
     name: str = Field(default="", description="Publication name")
     description: str = Field(default="", description="Publication description")
-    DOI: Optional[str] = Field(default="")
-    publication_title: Optional[str] = Field(default="")
-    authors: Optional[Author] = Field(default=None)
-    publication_year: Optional[int] = Field(default=None)
-    abstract: Optional[str] = Field(default="")
-    #  reference: Optional[Reference] = Field(default=None)
+    DOI: str | None = Field(default="")
+    publication_title: str | None = Field(default="")
+    authors: Author | None = Field(default=None)
+    publication_year: int | None = Field(default=None)
+    abstract: str | None = Field(default="")
 
     class Config:
-        json_schema_extra = {"title": "Publication"}
+        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Publication"}
 
 
 class MTypeClassification(Block):
@@ -80,6 +79,60 @@ class MTypeClassification(Block):
         default=None, description="UUID for MType classification"
     )
 
+class Assets(Block):
+    swc_file: str | None = Field(default=None, description="SWC file for the morphology.")
+    asc_file: str | None = Field(default=None, description="ASC file for the morphology.")
+    h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
+
+class ReconstructionMorphology(Block):
+    name: str = Field(description="Name of the morphology")  # Add default
+    description: str = Field(description="Description")  # Add default
+    species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
+    strain_id: uuid.UUID | None = Field(default=None)
+    brain_region_id: uuid.UUID | None = Field(default=None)  # Make nullable
+    legacy_id: list[str] | None = Field(default=None)
+
+class Subject(Block):
+    name: str = Field(default="", description="Subject name")
+    description: str = Field(default="", description="Subject description")
+    sex: Annotated[Sex, Field(title="Sex", description="Sex of the subject")] = Sex.unknown
+
+    weight: float | None = Field(
+        default=None,
+        title="Weight",
+        description="Weight in grams",
+        gt=0.0,
+        json_schema_extra={"default": None},
+    )
+    age_value: timedelta | None = Field(
+        default=None,
+        title="Age value",
+        description="Age value interval.",
+        gt=timedelta(0),
+    )
+    age_min: timedelta | None = Field(
+        default=None,
+        title="Minimum age range",
+        description="Minimum age range",
+        gt=timedelta(0),
+    )
+    age_max: timedelta | None = Field(
+        default=None,
+        title="Maximum age range",
+        description="Maximum age range",
+        gt=timedelta(0),
+    )
+    age_period: AgePeriod | None = AgePeriod.unknown
+
+    model_config: ClassVar[dict[str, str]] = {"extra": "forbid"}
+
+class License(Block):
+    license_id: uuid.UUID | None = Field(default=None)
+
+class ScientificArtifact(Block):
+    experiment_date: datetime | None = Field(default=None)
+    contact_email: str | None = Field(default=None)
+    atlas_id: uuid.UUID | None = Field(default=None)
 
 class ContributeMorphologyForm(Form):
     """Contribute Morphology Form."""
@@ -89,7 +142,7 @@ class ContributeMorphologyForm(Form):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     class Config:
-        json_schema_extra = {
+        json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
             "block_block_group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.ASSET_BLOCK_GROUP,
@@ -100,61 +153,6 @@ class ContributeMorphologyForm(Form):
                 BlockGroup.LICENSE_GROUP,
             ]
         }
-
-    class Assets(Block):
-        swc_file: str | None = Field(default=None, description="SWC file for the morphology.")
-        asc_file: str | None = Field(default=None, description="ASC file for the morphology.")
-        h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
-
-    class ReconstructionMorphology(Block):
-        name: str = Field(description="Name of the morphology")  # Add default
-        description: str = Field(description="Description")  # Add default
-        species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
-        strain_id: uuid.UUID | None = Field(default=None)
-        brain_region_id: uuid.UUID | None = Field(default=None)  # Make nullable
-        legacy_id: list[str] | None = Field(default=None)
-
-    class Subject(Block):
-        name: str = Field(default="", description="Subject name")
-        description: str = Field(default="", description="Subject description")
-        sex: Annotated[Sex, Field(title="Sex", description="Sex of the subject")] = Sex.unknown
-
-        weight: float | None = Field(
-            default=None,
-            title="Weight",
-            description="Weight in grams",
-            gt=0.0,
-            json_schema_extra={"default": None},  # Ensure default appears in schema
-        )
-        age_value: timedelta | None = Field(
-            default=None,
-            title="Age value",
-            description="Age value interval.",
-            gt=timedelta(0),
-        )
-        age_min: timedelta | None = Field(
-            default=None,
-            title="Minimum age range",
-            description="Minimum age range",
-            gt=timedelta(0),
-        )
-        age_max: timedelta | None = Field(
-            default=None,
-            title="Maximum age range",
-            description="Maximum age range",
-            gt=timedelta(0),
-        )
-        age_period: AgePeriod | None = AgePeriod.unknown
-
-        model_config = {"extra": "forbid"}
-
-    class License(Block):
-        license_id: uuid.UUID | None = Field(default=None)
-
-    class ScientificArtifact(Block):
-        experiment_date: datetime | None = Field(default=None)
-        contact_email: str | None = Field(default=None)
-        atlas_id: uuid.UUID | None = Field(default=None)
 
     assets: Assets = Field(
         default_factory=Assets,
@@ -229,7 +227,7 @@ class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
 
     _sonata_config: dict = PrivateAttr(default={})
 
-    def generate(self, db_client: entitysdk.client.Client = None):
+    def generate(self, db_client: entitysdk.client.Client = None) -> None:
         pass
 
     def save(
