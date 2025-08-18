@@ -199,7 +199,7 @@ from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extra
     ConnectivityMatrixExtractions,
 )
 from obi_one.scientific.contribute.contribute import ContributeMorphology, ContributeMorphologyForm
-from obi_one.scientific.contribute.neuron_density import ContributeDensity, ContributeDensityForm
+
 from obi_one.scientific.folder_compression.folder_compression import (
     FolderCompression,
     FolderCompressions,
