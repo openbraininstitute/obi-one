@@ -9,6 +9,10 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
+from obi_one.scientific.circuit_metrics.circuit_metrics import (
+    CircuitMetricsOutput,
+    get_circuit_metrics,
+)
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -94,7 +98,23 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         summary="circuit metrics",
         description="This calculates circuit metrics",
     )
-    def circuit_metrics_endpoint(circuit_id: str) -> dict[str, str]:
-        return {"circuit_id": circuit_id}
+    def circuit_metrics_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> CircuitMetricsOutput:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+        return circuit_metrics
 
     return router
