@@ -74,8 +74,7 @@ __all__ = [
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
-    "Neur
-System: onPropertyFilter",
+    "NeuronPropertyFilter",
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
