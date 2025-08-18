@@ -2,9 +2,9 @@ import re
 import tempfile
 from typing import Annotated, get_type_hints
 
+from fastapi import APIRouter, Depends, HTTPException
 import entitysdk.client
 import entitysdk.common
-from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
@@ -22,7 +22,10 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
 )
-from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
+from obi_one.scientific.simulation.simulations import (
+    Simulation,
+    SimulationsForm,
+)
 
 
 def check_implementations_of_single_coordinate_class(

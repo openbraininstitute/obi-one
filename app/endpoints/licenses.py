@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from entitysdk.client import Client
 from entitysdk.models.morphology import License
-
 from obi_auth import get_token
 
 logging.basicConfig(level=logging.DEBUG)
