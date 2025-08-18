@@ -2,9 +2,13 @@ import re
 import tempfile
 from typing import Annotated, get_type_hints
 
-from fastapi import APIRouter, Depends, HTTPException
 import entitysdk.client
 import entitysdk.common
+from fastapi import APIRouter, Depends, HTTPException
+from obi_one.scientific.contribute.neuron_density import (
+    ContributeDensity,
+    ContributeDensityForm,
+)
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
@@ -13,10 +17,6 @@ from obi_one.core.scan import GridScan
 from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
-)
-from obi_one.scientific.contribute.neuron_density import (
-    ContributeDensity,
-    ContributeDensityForm,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,

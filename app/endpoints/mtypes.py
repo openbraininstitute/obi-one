@@ -1,12 +1,10 @@
 import logging
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-
 from entitysdk.client import Client
 from entitysdk.models.morphology import MTypeClass
+from fastapi import APIRouter
 from obi_auth import get_token
-
+from pydantic import BaseModel
 
 logging.basicConfig(level=logging.DEBUG)
 
