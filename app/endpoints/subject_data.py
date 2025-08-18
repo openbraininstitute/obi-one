@@ -9,11 +9,13 @@ from obi_auth import get_token
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 # Define a Pydantic model for the response data
 class Spec(BaseModel):
     species_name: str
     species_id: str
     strains: Dict[str, str]
+
 
 # Create a router for your endpoints
 router = APIRouter(
@@ -21,15 +23,14 @@ router = APIRouter(
     tags=["subject_data"],
 )
 
+
 @router.get("/subject_data", response_model=List[Spec])
 async def get_subject_data():
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
     token = get_token(environment="staging")
     client = Client(api_url=entitycore_api_url, token_manager=token)
 
-    species = client.search_entity(
-        entity_type=Species, query={},  limit=10
-    )
+    species = client.search_entity(entity_type=Species, query={}, limit=10)
     strains = client.search_entity(entity_type=Strain, query={})
 
     spec_list = []
@@ -42,5 +43,5 @@ async def get_subject_data():
         for spec in spec_list:
             if str(strain.species_id) == spec.species_id:
                 spec.strains[strain.name] = str(strain.id)
-    
+
     return spec_list

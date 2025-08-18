@@ -25,6 +25,7 @@ from app.endpoints.subject_data import router as subject_data_router
 from app.endpoints.licenses import router as licenses_router
 from app.endpoints.mtypes import router as mtypes_router
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
     """Execute actions on server startup and shutdown."""

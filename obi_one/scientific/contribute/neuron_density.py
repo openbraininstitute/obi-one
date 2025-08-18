@@ -1,12 +1,57 @@
-import logging
-import uuid
-from typing import Annotated, ClassVar
+import json
+import os
+from typing import ClassVar, Literal, Self, Annotated
 
-import entitysdk
+from pydantic import (
+    Field,
+    PrivateAttr,
+    model_validator,
+    NonNegativeInt,
+    NonNegativeFloat,
+    PositiveInt,
+    PositiveFloat,
+)
+
 from obi_one.core.block import Block
+from obi_one.core.constants import (
+    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+)
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from pydantic import Field, PrivateAttr
+from obi_one.core.info import Info
+
+# from obi_one.core.exception import OBIONE_Error
+from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.unions.unions_extracellular_location_sets import (
+    ExtracellularLocationSetUnion,
+)
+from obi_one.scientific.unions.unions_manipulations import (
+    SynapticManipulationsUnion,
+    SynapticManipulationsReference,
+)
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_neuron_sets import (
+    SimulationNeuronSetUnion,
+    NeuronSetReference,
+)
+from obi_one.scientific.unions.unions_recordings import RecordingUnion, RecordingReference
+from obi_one.scientific.unions.unions_stimuli import StimulusUnion, StimulusReference
+from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsUnion, TimestampsReference
+
+from obi_one.database.circuit_from_id import CircuitFromID
+
+import entitysdk
+from collections import OrderedDict
+
+from datetime import UTC, datetime
+
+from pathlib import Path
+
+import logging
+import uuid
 
 L = logging.getLogger(__name__)
 
@@ -17,7 +62,7 @@ class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
     SETUP_BLOCK_GROUP = "Setup"
-    ASSET_BLOCK_GROUP = "Morphology files"
+    DENSITY_BLOCK_GROUP = "Morphology files"
     CONTRIBUTOR_BLOCK_GROUP = "Experimenter"
     STRAIN_BLOCK_GROUP = "Animal strain"
     LOCATION_GROUP = "Location"
@@ -25,11 +70,10 @@ class BlockGroup(StrEnum):
     LICENSE_GROUP = "License"
 
 
-from datetime import datetime, timedelta
-from enum import Enum, StrEnum, auto
-from typing import Optional
-
 from pydantic import BaseModel
+from enum import Enum, StrEnum, auto
+from datetime import timedelta
+from typing import TypedDict, Optional
 
 
 class Sex(StrEnum):
@@ -88,18 +132,23 @@ class MTypeClassification(Block):
     )
 
 
-class ContributeMorphologyForm(Form):
-    """Contribute Morphology Form."""
+class ETypeClassification(Block):
+    etype_class_id: uuid.UUID | None = Field(
+        default=None, description="UUID for EType classification"
+    )
 
-    single_coord_class_name: ClassVar[str] = "ContributeMorphology"
-    name: ClassVar[str] = "Simulation Campaign"
-    description: ClassVar[str] = "SONATA simulation campaign"
+
+class ContributeDensityForm(Form):
+    """Contribute Density Form."""
+
+    single_coord_class_name: ClassVar[str] = "ContributeDensity"
+    name: ClassVar[str] = "Density Contribution"
+    description: ClassVar[str] = "Allows the user to contribute a neuron density."
 
     class Config:
         json_schema_extra = {
             "block_block_group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.ASSET_BLOCK_GROUP,
                 BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
                 BlockGroup.STRAIN_BLOCK_GROUP,
                 BlockGroup.LOCATION_GROUP,
@@ -108,19 +157,12 @@ class ContributeMorphologyForm(Form):
             ]
         }
 
-    class Assets(Block):
-        swc_file: str | None = Field(default=None, description="SWC file for the morphology.")
-        asc_file: str | None = Field(default=None, description="ASC file for the morphology.")
-        h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
+    class Measurements(Block):
+        name: str = Field(description="Name of the measurement")  # Add default
+        unit: str = Field(description="units", default="1/mm3")
+        value: float = Field(description="value of the density")
 
-    #    class MTypeClassification:
-    #        mtype_class_id: uuid.UUID | None = Field(default=None)
-
-    class ReconstructionMorphology(Block):
-        #       model_config = ConfigDict(from_attributes=True)
-        #       location: PointLocationBase | None
-        #    mtypes: uuid.UUID#MTypeClassification | None
-
+    class NeuronDensity(Block):
         name: str = Field(description="Name of the morphology")  # Add default
         description: str = Field(description="Description")  # Add default
         species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
@@ -140,10 +182,7 @@ class ContributeMorphologyForm(Form):
             json_schema_extra={"default": None},  # Ensure default appears in schema
         )
         age_value: Optional[timedelta] = Field(
-            default=None,
-            title="Age value",
-            description="Age value interval.",
-            gt=timedelta(0),
+            default=None, title="Age value", description="Age value interval.", gt=timedelta(0)
         )
         age_min: Optional[timedelta] = Field(
             default=None,
@@ -169,61 +208,44 @@ class ContributeMorphologyForm(Form):
         # published_in: str | None = None
         experiment_date: datetime | None = Field(default=None)
         contact_email: str | None = Field(default=None)
-        atlas_id: uuid.UUID | None = Field(default=None)
-
-    assets: Assets = Field(
-        default_factory=Assets,
-        title="Assets",
-        description="Morphology files.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
-    )
 
     contribution: Contribution = Field(
-        default_factory=Contribution,
+        default_factory=Contribution,  # ✅ Add this
         title="Contribution",
         description="Contributor.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
     )
 
-    morphology: ReconstructionMorphology = Field(
-        default_factory=ReconstructionMorphology,
-        title="Morphology",
-        description="Information about contributors.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+    neurondensity: NeuronDensity = Field(
+        default_factory=NeuronDensity,  # ✅ Add this
+        title="Neuron density",
+        description="Information about neuron density.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=0,
     )
 
+    measurements: Measurements = Field(
+        default_factory=Measurements,  # ✅ Add this
+        title="Measurements",
+        description="The measurement value.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
     subject: Subject = Field(
-        default_factory=Subject,
+        default_factory=Subject,  # ✅ Add this
         title="Subject",
         description="Information about the subject.",
         group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
         group_order=0,
     )
 
-    publication: Publication = Field(
-        default_factory=Publication,
-        title="Publication Details",
-        description="Publication details.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
-    )
-
     license: License = Field(
-        default_factory=License,
+        default_factory=License,  # ✅ Add this
         title="License",
         description="The license used.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
-    )
-
-    scientificartifact: ScientificArtifact = Field(
-        default_factory=ScientificArtifact,
-        title="Scientific Artifact",
-        description="Information about the artifact.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+        group=BlockGroup.LICENSE_GROUP,
         group_order=0,
     )
 
@@ -235,8 +257,16 @@ class ContributeMorphologyForm(Form):
         group_order=0,
     )
 
+    etype: ETypeClassification = Field(
+        default_factory=ETypeClassification,
+        title="Etype Classification",
+        description="The etype.",
+        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+        group_order=0,
+    )
 
-class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
+
+class ContributeDensity(ContributeDensityForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
     CONFIG_FILE_NAME: ClassVar[str] = ""
@@ -248,8 +278,6 @@ class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
         pass
 
     def save(
-        self,
-        campaign: entitysdk.models.SimulationCampaign,
-        db_client: entitysdk.client.Client,
+        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
     ) -> None:
         pass
