@@ -1,11 +1,9 @@
 from fastapi import APIRouter
-from typing import List, Dict
+from typing import List
 import logging
 from pydantic import BaseModel
-import jsonpickle
 
 from entitysdk.client import Client
-from entitysdk.common import ProjectContext
 from entitysdk.models.morphology import License
 from obi_auth import get_token
 

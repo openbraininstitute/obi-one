@@ -2,10 +2,8 @@ from fastapi import APIRouter
 from typing import List, Dict
 import logging
 from pydantic import BaseModel
-import jsonpickle
 
 from entitysdk.client import Client
-from entitysdk.common import ProjectContext
 from entitysdk.models.morphology import Species, Strain
 from obi_auth import get_token
 
@@ -26,12 +24,8 @@ router = APIRouter(
 @router.get("/subject_data", response_model=List[Spec])
 async def get_subject_data():
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
-    project_context = ProjectContext(
-        virtual_lab_id="bf7d398c-b812-408a-a2ee-098f633f7798",
-        project_id="efb206e6-ba4e-4f2f-88f0-3ff5d9e98921",
-    )
     token = get_token(environment="staging")
-    client = Client(api_url=entitycore_api_url, project_context=project_context,token_manager=token)
+    client = Client(api_url=entitycore_api_url, token_manager=token)
 
     species = client.search_entity(
         entity_type=Species, query={},  limit=10
