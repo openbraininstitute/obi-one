@@ -24,6 +24,7 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
     """Execute actions on server startup and shutdown."""

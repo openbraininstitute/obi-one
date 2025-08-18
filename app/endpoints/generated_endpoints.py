@@ -24,6 +24,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
 
+
 def check_implementations_of_single_coordinate_class(
     single_coordinate_cls: type[Form], processing_method: str, data_postprocessing_method: str
 ) -> str | type | None:
