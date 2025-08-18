@@ -5,10 +5,6 @@ from typing import Annotated, get_type_hints
 import entitysdk.client
 import entitysdk.common
 from fastapi import APIRouter, Depends, HTTPException
-from obi_one.scientific.contribute.neuron_density import (
-    ContributeDensity,
-    ContributeDensityForm,
-)
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
@@ -141,7 +137,6 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (SimulationsForm, "generate", "save", Simulation),
         (MorphologyMetricsForm, "run", "", MorphologyMetrics),
         (ContributeMorphologyForm, "generate", "", ContributeMorphology),
-        (ContributeDensityForm, "generate", "", ContributeDensity),
     ]:
         # Create endpoint
         create_endpoint_for_form(
