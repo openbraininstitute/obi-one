@@ -1,16 +1,16 @@
 import logging
 import uuid
-from typing import Annotated, ClassVar
+from datetime import datetime, timedelta
+from enum import Enum, StrEnum, auto
+from typing import Annotated, ClassVar, Optional
 
 import entitysdk
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from pydantic import Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr
 
 L = logging.getLogger(__name__)
-
-from enum import StrEnum
 
 
 class BlockGroup(StrEnum):
@@ -23,13 +23,6 @@ class BlockGroup(StrEnum):
     LOCATION_GROUP = "Location"
     PROTOCOL_GROUP = "Protocol"
     LICENSE_GROUP = "License"
-
-
-from datetime import datetime, timedelta
-from enum import Enum, StrEnum, auto
-from typing import Optional
-
-from pydantic import BaseModel
 
 
 class Sex(StrEnum):
@@ -113,14 +106,7 @@ class ContributeMorphologyForm(Form):
         asc_file: str | None = Field(default=None, description="ASC file for the morphology.")
         h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
 
-    #    class MTypeClassification:
-    #        mtype_class_id: uuid.UUID | None = Field(default=None)
-
     class ReconstructionMorphology(Block):
-        #       model_config = ConfigDict(from_attributes=True)
-        #       location: PointLocationBase | None
-        #    mtypes: uuid.UUID#MTypeClassification | None
-
         name: str = Field(description="Name of the morphology")  # Add default
         description: str = Field(description="Description")  # Add default
         species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
@@ -132,26 +118,27 @@ class ContributeMorphologyForm(Form):
         name: str = Field(default="", description="Subject name")
         description: str = Field(default="", description="Subject description")
         sex: Annotated[Sex, Field(title="Sex", description="Sex of the subject")] = Sex.unknown
-        weight: Optional[float] = Field(
+        
+        weight: float | None = Field(            
             default=None,
             title="Weight",
             description="Weight in grams",
             gt=0.0,
             json_schema_extra={"default": None},  # Ensure default appears in schema
         )
-        age_value: Optional[timedelta] = Field(
+        age_value: timedelta | None = Field(  
             default=None,
             title="Age value",
             description="Age value interval.",
             gt=timedelta(0),
         )
-        age_min: Optional[timedelta] = Field(
+        age_min: timedelta | None = Field(  
             default=None,
             title="Minimum age range",
             description="Minimum age range",
             gt=timedelta(0),
         )
-        age_max: Optional[timedelta] = Field(
+        age_max: timedelta | None = Field(  
             default=None,
             title="Maximum age range",
             description="Maximum age range",
@@ -165,8 +152,6 @@ class ContributeMorphologyForm(Form):
         license_id: uuid.UUID | None = Field(default=None)
 
     class ScientificArtifact(Block):
-        # model_config = ConfigDict(from_attributes=True)
-        # published_in: str | None = None
         experiment_date: datetime | None = Field(default=None)
         contact_email: str | None = Field(default=None)
         atlas_id: uuid.UUID | None = Field(default=None)
