@@ -10,14 +10,19 @@ from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one.core.form import Form
 from obi_one.core.scan import GridScan
+from obi_one.scientific.contribute.contribute import (
+    ContributeMorphology,
+    ContributeMorphologyForm,
+)
+from obi_one.scientific.contribute.neuron_density import (
+    ContributeDensity,
+    ContributeDensityForm,
+)
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
 )
 from obi_one.scientific.simulation.simulations import Simulation, SimulationsForm
-from obi_one.scientific.contribute.contribute import ContributeMorphology, ContributeMorphologyForm
-from obi_one.scientific.contribute.neuron_density import ContributeDensity, ContributeDensityForm
-
 
 def check_implementations_of_single_coordinate_class(
     single_coordinate_cls: type[Form], processing_method: str, data_postprocessing_method: str

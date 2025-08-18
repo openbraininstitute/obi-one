@@ -1,11 +1,11 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from entitysdk.client import Client
 from entitysdk.models.morphology import License
+
 from obi_auth import get_token
 
 logging.basicConfig(level=logging.DEBUG)
@@ -24,8 +24,8 @@ router = APIRouter(
 )
 
 
-@router.get("/licenses", response_model=List[Lic])
-async def get_license_data() -> List[Lic]:
+@router.get("/licenses")
+async def get_license_data() -> list[Lic]:
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
 
     token = get_token(environment="staging")

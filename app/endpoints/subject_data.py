@@ -1,5 +1,4 @@
 import logging
-from typing import Dict, List
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -15,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 class Spec(BaseModel):
     species_name: str
     species_id: str
-    strains: Dict[str, str]
+    strains: dict[str, str]
 
 
 # Create a router for your endpoints
@@ -25,8 +24,8 @@ router = APIRouter(
 )
 
 
-@router.get("/subject_data", response_model=List[Spec])
-async def get_subject_data() -> List[Spec]:
+@router.get("/subject_data")
+async def get_subject_data() -> list[Spec]:
     entitycore_api_url = "https://staging.openbraininstitute.org/api/entitycore"
     token = get_token(environment="staging")
     client = Client(api_url=entitycore_api_url, token_manager=token)
