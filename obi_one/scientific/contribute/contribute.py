@@ -153,16 +153,10 @@ class ContributeMorphologyForm(Form):
             ]
         }
 
-    assets: Assets = Field(
-        default_factory=Assets,
-        title="Assets",
-        description="Morphology files."
-    )
+    assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 
     contribution: Contribution = Field(
-        default_factory=Contribution,
-        title="Contribution",
-        description="Contributor."
+        default_factory=Contribution, title="Contribution", description="Contributor."
     )
 
     morphology: ReconstructionMorphology = Field(
