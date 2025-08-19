@@ -262,9 +262,13 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTest,
     SingleBlockGenerateTestForm,
 )
-from obi_one.scientific.unions.unions_extracellular_location_sets import ExtracellularLocationSetUnion
+from obi_one.scientific.unions.unions_extracellular_location_sets import (
+    ExtracellularLocationSetUnion,
+)
 from obi_one.scientific.unions.unions_form import FormUnion
-from obi_one.scientific.unions.unions_intracellular_location_sets import IntracellularLocationSetUnion
+from obi_one.scientific.unions.unions_intracellular_location_sets import (
+    IntracellularLocationSetUnion,
+)
 from obi_one.scientific.unions.unions_manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
@@ -287,6 +291,8 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
-from obi_one.scientific.validations.reconstruction_morphology_validation import ReconstructionMorphologyValidation
+from obi_one.scientific.validations.reconstruction_morphology_validation import (
+    ReconstructionMorphologyValidation,
+)
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
