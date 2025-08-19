@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Define a Pydantic model for the response data
 class Mty(BaseModel):
-    mtype_pref_label: str
+    mtype_alt_label: str
     mtype_id: str
 
 
@@ -35,8 +35,8 @@ async def get_mtype_data() -> list[Mty]:
     )
 
     mty_list = []
-    mtype_map = {str(s.id): s.pref_label for s in mtypes}
-    for mtype_id, mtype_pref_label in mtype_map.items():
-        mty_list.append(Mty(mtype_pref_label=mtype_pref_label, mtype_id=mtype_id))
+    mtype_map = {str(s.id): s.alt_label for s in mtypes}
+    for mtype_id, mtype_alt_label in mtype_map.items():
+        mty_list.append(Mty(mtype_alt_label=mtype_alt_label, mtype_id=mtype_id))
 
     return mty_list

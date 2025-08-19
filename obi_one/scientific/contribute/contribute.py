@@ -38,15 +38,8 @@ class AgePeriod(StrEnum):
     unknown = auto()
 
 
-class StatusEnum(StrEnum):
-    active = "active"
-    inactive = "inactive"
-    pending = "pending"
-
-
 class Contribution(BaseModel):
     name: str = Field(default="", description="Contribution name")
-    status: StatusEnum = Field(default=StatusEnum.pending, description="Status")
 
 
 class Author(BaseModel):
@@ -93,7 +86,6 @@ class ReconstructionMorphology(Block):
     species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
     strain_id: uuid.UUID | None = Field(default=None)
     brain_region_id: uuid.UUID | None = Field(default=None)  # Make nullable
-    legacy_id: list[str] | None = Field(default=None)
 
 
 class Subject(Block):
@@ -164,65 +156,49 @@ class ContributeMorphologyForm(Form):
     assets: Assets = Field(
         default_factory=Assets,
         title="Assets",
-        description="Morphology files.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
+        description="Morphology files."
     )
 
     contribution: Contribution = Field(
         default_factory=Contribution,
         title="Contribution",
-        description="Contributor.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
+        description="Contributor."
     )
 
     morphology: ReconstructionMorphology = Field(
         default_factory=ReconstructionMorphology,
         title="Morphology",
         description="Information about contributors.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
     subject: Subject = Field(
         default_factory=Subject,
         title="Subject",
         description="Information about the subject.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
     publication: Publication = Field(
         default_factory=Publication,
         title="Publication Details",
         description="Publication details.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
     license: License = Field(
         default_factory=License,
         title="License",
         description="The license used.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
     scientificartifact: ScientificArtifact = Field(
         default_factory=ScientificArtifact,
         title="Scientific Artifact",
         description="Information about the artifact.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
     mtype: MTypeClassification = Field(
         default_factory=MTypeClassification,
         title="Mtype Classification",
         description="The mtype.",
-        group=BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-        group_order=0,
     )
 
 
