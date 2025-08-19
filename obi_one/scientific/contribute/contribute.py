@@ -21,8 +21,8 @@ class BlockGroup(StrEnum):
     ASSET_BLOCK_GROUP = "Morphology files"
     CONTRIBUTOR_BLOCK_GROUP = "Experimenter"
     STRAIN_BLOCK_GROUP = "Animal strain"
-    LOCATION_GROUP = "Location"
     LICENSE_GROUP = "License"
+    LOCATION_GROUP = "Location"
     PROTOCOL_GROUP = "Protocol"
 
 
