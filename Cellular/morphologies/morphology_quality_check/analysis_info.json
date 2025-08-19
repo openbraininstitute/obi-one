@@ -21,7 +21,7 @@
         "ipywidgets>=8.1.0",
         "matplotlib>=3.7.1",
         "obi_auth>=0.3.0",
-        "obi_notebook>=0.1.dev10",
+        "obi_notebook>=0.2.dev0",
         "entitysdk>=0.7.4"
     ]
 }

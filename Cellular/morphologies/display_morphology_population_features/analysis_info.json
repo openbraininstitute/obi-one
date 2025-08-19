@@ -20,6 +20,7 @@
         "numpy>=1.24.3",
         "requests>=2.31.0",
         "ipywidgets>=8.1.0",
+        "obi_notebook>=0.2.dev0",
         "matplotlib>=3.7.1"
     ]
 }

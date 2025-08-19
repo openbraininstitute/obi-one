@@ -24,7 +24,7 @@
         "numpy>=2.2.1",
         "pandas>=2.2.3",
         "obi_auth>=0.3.0",
-        "obi_notebook>=0.1.dev10",
+        "obi_notebook>=0.2.dev0",
         "entitysdk>=0.7.4"
     ]
 }
