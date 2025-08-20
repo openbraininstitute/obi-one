@@ -3,7 +3,7 @@ Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann
 
-last modified: 01.2025
+last modified: 08.2025
 
 ## Summary
 This analysis tests a list of morphologies against some common issues that may cause issues with tools and analyses using the morphologies.
