@@ -117,9 +117,12 @@ class SimulationsForm(Form):
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator]
-        node_set: Annotated[
-            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        ] | None = None
+        node_set: (
+            Annotated[
+                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+            ]
+            | None
+        ) = None
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -340,12 +343,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
 
-    def _make_default_neuron_set_ref(self, circuit: Circuit) -> NeuronSetReference:
+    @staticmethod
+    def _make_default_neuron_set_ref(circuit: Circuit) -> NeuronSetReference:
         """Constructs a NeuronSetReference with a default PredefinedNeuronSet block."""
         default_node_set = circuit.default_population_name
         predefined_set = PredefinedNeuronSet(
-            node_set=default_node_set,
-            node_population=default_node_set
+            node_set=default_node_set, node_population=default_node_set
         )
         predefined_set.set_simulation_level_name(default_node_set)
         ref = NeuronSetReference(block_name=default_node_set)
@@ -370,7 +373,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             default_set.set_ref(self.initialize.node_set)
             self.neuron_sets[name] = default_set
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:
+    def generate(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
         self._sonata_config = self.initialize.initial_sonata_simulation_config()
@@ -431,7 +434,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
             # TODO: Inconsistency possible in case a node set definition would span multiple
-            # populations. Currently assumes single population via `circuit.default_population_name`.
+            # populations. Currently assumes single population via
+            # `circuit.default_population_name`.
             # Skips addition if node set already exists in circuit and matches definition.
             # Raises error if a node set with the same name exists but with a different definition.
             # May consider force_resolve_ids=False to enforce resolving into given population
@@ -459,11 +463,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     circuit, circuit.default_population_name, force_resolve_ids=True
                 )
                 if existing_def != new_def:
-                    raise OBIONEError(
+                    msg = (
                         f"Conflict: Node set '{_name}' already exists in circuit "
                         "but with different definition."
                     )
-                L.info(f"Node set '{_name}' already exists in circuit — definitions match, skipping add.")
+                    raise OBIONEError(msg)
+                L.info(f"Node set '{_name}' already exists in circuit, skipping add.")
             else:
                 nset_def = _nset.get_node_set_definition(
                     circuit, circuit.default_population_name, force_resolve_ids=True

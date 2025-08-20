@@ -9,10 +9,14 @@ from obi_one.core.exception import OBIONEError
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
+
 class Recording(Block, ABC):
-    neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
-    ] | None = None
+    neuron_set: (
+        Annotated[
+            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
+        ]
+        | None
+    ) = None
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
