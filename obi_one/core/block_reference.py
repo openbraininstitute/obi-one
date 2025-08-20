@@ -1,7 +1,7 @@
 import abc
-from typing import Any, ClassVar, get_args
+from typing import Annotated, Any, ClassVar, get_args
 
-from pydantic import Field
+from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
@@ -11,22 +11,24 @@ class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(default="")
     block_name: str = Field()
 
-    allowed_block_types: ClassVar[Any] = None
+    allowed_block_types: ClassVar[
+        Annotated[type[OBIBaseModel] | tuple[type[OBIBaseModel], ...], Discriminator("type")]
+    ] = None
 
     _block: Any = None
 
     @classmethod
-    def allowed_block_type_names(cls, allowed_block_types: Any) -> list:
-        if allowed_block_types is None:
-            return []
-        return [t.__name__ for t in get_args(allowed_block_types)]
+    def allowed_block_types_union(
+        cls,
+    ) -> type[OBIBaseModel] | tuple[type[OBIBaseModel], ...]:
+        """Returns the union type of allowed block types."""
+        return get_args(cls.allowed_block_types)[0]
 
     class Config:
         @staticmethod
         def json_schema_extra(schema: dict, model: "BlockReference") -> None:
             # Dynamically get allowed_block_types from subclass
-            allowed_block_types = getattr(model, "allowed_block_types", [])
-            schema["allowed_block_types"] = [t.__name__ for t in get_args(allowed_block_types)]
+            schema["allowed_block_types"] = [t.__name__ for t in model.allowed_block_types_union()]
             schema["is_block_reference"] = True
 
     @property
@@ -43,7 +45,8 @@ class BlockReference(OBIBaseModel, abc.ABC):
     @block.setter
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
-        if not isinstance(value, self.allowed_block_types):
+        if not isinstance(value, self.allowed_block_types_union()):
             msg = f"Value must be of type {self.block_type.__name__}."
             raise TypeError(msg)
+
         self._block = value

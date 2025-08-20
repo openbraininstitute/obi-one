@@ -1,4 +1,6 @@
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
+
+from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.simulation.manipulations import (
@@ -6,7 +8,10 @@ from obi_one.scientific.simulation.manipulations import (
     SynapticMgManipulation,
 )
 
-SynapticManipulationsUnion = SynapticMgManipulation | ScaleAcetylcholineUSESynapticManipulation
+SynapticManipulationsUnion = Annotated[
+    SynapticMgManipulation | ScaleAcetylcholineUSESynapticManipulation,
+    Discriminator("type"),
+]
 
 
 class SynapticManipulationsReference(BlockReference):

@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import Any
 
 from entitysdk.models.entity import Entity
+from pydantic import TypeAdapter
 
 import obi_one as obi
+from obi_one.core.form import Form
 
 
 def entity_encoder(obj: Any) -> dict[str, str]:
@@ -27,3 +29,8 @@ def deserialize_obi_object_from_json_file(json_path: Path) -> obi.OBIBaseModel:
     with Path.open(json_path) as file:
         json_dict = json.load(file)
     return deserialize_obi_object_from_json_data(json_dict)
+
+
+def deserialize_json_dict_to_form(json_dict: dict) -> obi.OBIBaseModel:
+    adapter = TypeAdapter(Form)
+    return adapter.validate_python(json_dict)
