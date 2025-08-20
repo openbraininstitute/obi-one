@@ -25,7 +25,7 @@ from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -116,7 +116,7 @@ class SimulationsForm(Form):
         circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
         node_set: Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        ]
+        ] | None = None
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -322,6 +322,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.stimuli.values():
+            self._ensure_block_neuron_set(stimulus, circuit)
+
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     circuit,
@@ -336,6 +338,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.recordings.values():
+            self._ensure_block_neuron_set(recording, circuit)
             self._sonata_config["reports"].update(
                 recording.config(
                     circuit, circuit.default_population_name, self.initialize.simulation_length
@@ -350,6 +353,36 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         ]
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
+
+    def _make_default_neuron_set_ref(self, circuit: Circuit) -> NeuronSetReference:
+        """Constructs a NeuronSetReference with a default PredefinedNeuronSet block."""
+        default_node_set = circuit.default_population_name
+        predefined_set = PredefinedNeuronSet(
+            node_set=default_node_set,
+            node_population=default_node_set
+        )
+        predefined_set.set_simulation_level_name(default_node_set)
+        ref = NeuronSetReference(block_name=default_node_set)
+        ref.block = predefined_set
+        return ref
+
+    def _ensure_block_neuron_set(self, block: Block, circuit: Circuit) -> None:
+        """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
+        if getattr(block, "neuron_set", None) is None:
+            block.neuron_set = self._make_default_neuron_set_ref(circuit)
+
+    def _ensure_neuron_set(self, circuit: Circuit) -> None:
+        """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
+        if self.initialize.node_set is None:
+            L.info("initialize.node_set is None — setting default node set.")
+            self.initialize.node_set = self._make_default_neuron_set_ref(circuit)
+
+        name = self.initialize.node_set.block_name
+        if name not in self.neuron_sets:
+            L.info(f"Adding default neuron set '{name}' to neuron_sets.")
+            default_set = self.initialize.node_set.block
+            default_set.set_ref(self.initialize.node_set)
+            self.neuron_sets[name] = default_set
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
@@ -386,6 +419,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
         }
 
+        self._ensure_neuron_set(circuit)
         # Add stimulus inputs to sonata simulation config
         self._add_sonata_simulation_config_inputs(circuit)
 
@@ -400,14 +434,22 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # set, even for a PredefinedNeuronSet in which case a new node set will be created
         # which just references the existing one. This is the most consistent behavior since
         # it will behave exactly the same no matter if random subsampling is used or not.
-        # But this also means that existing names cannot be used as dict keys.
+        # However, node sets are now only added if they don't already exist in the SONATA
+        # circuit, or if their definitions differ. If the name exists but the definition differs,
+        # an error is raised to prevent silent inconsistencies.
+        # This means that existing names can be reused safely, as long as their definitions match.
         Path(self.coordinate_output_root).mkdir(parents=True, exist_ok=True)
+
+        sonata_circuit = circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
             # TODO: Inconsistency possible in case a node set definition would span multiple
-            # populations. May consider force_resolve_ids=False to enforce resolving into given
-            # population (but which won't be a human-readable representation any more)
+            # populations. Currently assumes single population via `circuit.default_population_name`.
+            # Skips addition if node set already exists in circuit and matches definition.
+            # Raises error if a node set with the same name exists but with a different definition.
+            # May consider force_resolve_ids=False to enforce resolving into given population
+            # (but which won't be a human-readable representation any more)
             if _name != _nset.name:
                 msg = "Neuron set name mismatch!"
                 raise OBIONEError(msg)  # This should never happen if properly initialized
@@ -425,19 +467,29 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
                 self._sonata_config["node_set"] = _name
 
-            # Add node set to SONATA circuit object
-            # (will raise an error in case already existing)
-            nset_def = _nset.get_node_set_definition(
-                circuit, circuit.default_population_name, force_resolve_ids=True
-            )
-            NeuronSet.add_node_set_to_circuit(
-                circuit.sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
-            )
+            if _name in circuit.node_sets:
+                existing_def = sonata_circuit.node_sets.content[_name]
+                new_def = _nset.get_node_set_definition(
+                    circuit, circuit.default_population_name, force_resolve_ids=True
+                )
+                if existing_def != new_def:
+                    raise OBIONEError(
+                        f"Conflict: Node set '{_name}' already exists in circuit "
+                        "but with different definition."
+                    )
+                L.info(f"Node set '{_name}' already exists in circuit — definitions match, skipping add.")
+            else:
+                nset_def = _nset.get_node_set_definition(
+                    circuit, circuit.default_population_name, force_resolve_ids=True
+                )
+                NeuronSet.add_node_set_to_circuit(
+                    sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
+                )
 
         # Write node sets from SONATA circuit object to .json file
         # (will raise an error if file already exists)
         NeuronSet.write_circuit_node_set_file(
-            circuit.sonata_circuit,
+            sonata_circuit,
             self.coordinate_output_root,
             file_name=self.NODE_SETS_FILE_NAME,
             overwrite_if_exists=False,

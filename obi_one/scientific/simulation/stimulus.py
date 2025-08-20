@@ -50,7 +50,7 @@ class SomaticStimulus(Stimulus, ABC):
             description="Neuron set to which the stimulus is applied.",
             supports_virtual=False,
         ),
-    ]
+    ] | None = None
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
