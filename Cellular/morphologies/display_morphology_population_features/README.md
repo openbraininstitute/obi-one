@@ -3,7 +3,7 @@ Copyright (c) 2025 Open Brain Institute
 
 Authors: Michael W. Reimann
 
-last modified: 01.2025
+last modified: 08.2025
 
 ## Summary
 This analysis extracts morphology features from a list of morphologies and displays the distribution of their values as a histogram.

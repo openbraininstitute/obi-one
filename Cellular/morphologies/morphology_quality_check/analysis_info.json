@@ -19,6 +19,9 @@
         "neurom>=3.2.2",
         "requests>=2.31.0",
         "ipywidgets>=8.1.0",
-        "matplotlib>=3.7.1"
+        "matplotlib>=3.7.1",
+        "obi_auth>=0.3.0",
+        "obi_notebook>=0.2.dev0",
+        "entitysdk>=0.7.4"
     ]
 }
