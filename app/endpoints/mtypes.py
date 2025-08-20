@@ -36,7 +36,9 @@ async def get_mtype_data() -> list[Mty]:
 
     mty_list = []
     mtype_map = {
-        str(s.id): (s.pref_label + " [" + s.alt_label + "]").replace(" []", "") for s in mtypes
+        str(s.id): s.pref_label
+        + (" [" + s.alt_label + "]" if s.alt_label and s.alt_label != s.pref_label else "")
+        for s in mtypes
     }
     for mtype_id, mtype_label in mtype_map.items():
         mty_list.append(Mty(mtype_label=mtype_label, mtype_id=mtype_id))
