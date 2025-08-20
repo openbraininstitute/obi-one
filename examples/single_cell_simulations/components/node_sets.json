@@ -1,5 +1,8 @@
 {
     "Node0": {
-      "population": "Node0" 
+      "population": "Node0",
+      "node_id": [
+        0
+      ]
     }
   }
