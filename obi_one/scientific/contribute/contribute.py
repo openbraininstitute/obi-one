@@ -137,8 +137,8 @@ class ContributeMorphologyForm(Form):
     """Contribute Morphology Form."""
 
     single_coord_class_name: ClassVar[str] = "ContributeMorphology"
-    name: ClassVar[str] = "Simulation Campaign"
-    description: ClassVar[str] = "SONATA simulation campaign"
+    name: ClassVar[str] = "Contribute a Morphology"
+    description: ClassVar[str] = "forms to contribute a morphology to the OBI."
 
     class Config:
         json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
@@ -198,11 +198,6 @@ class ContributeMorphologyForm(Form):
 
 class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
-
-    CONFIG_FILE_NAME: ClassVar[str] = ""
-    NODE_SETS_FILE_NAME: ClassVar[str] = ""
-
-    _sonata_config: dict = PrivateAttr(default={})
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
         pass
