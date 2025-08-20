@@ -5,7 +5,7 @@ from enum import StrEnum, auto
 from typing import Annotated, ClassVar
 
 import entitysdk
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
