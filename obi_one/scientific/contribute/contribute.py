@@ -138,7 +138,7 @@ class ContributeMorphologyForm(Form):
 
     single_coord_class_name: ClassVar[str] = "ContributeMorphology"
     name: ClassVar[str] = "Contribute a Morphology"
-    description: ClassVar[str] = "forms to contribute a morphology to the OBI."
+    description: ClassVar[str] = "Form to contribute a morphology to the OBI."
 
     class Config:
         json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
