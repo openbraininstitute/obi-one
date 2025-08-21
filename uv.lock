@@ -1680,7 +1680,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/cc/13/a92988c6609c1aa52
 
 [[package]]
 name = "obi-one"
-version = "2025.7.6"
 source = { editable = "." }
 dependencies = [
     { name = "bluecellulab" },

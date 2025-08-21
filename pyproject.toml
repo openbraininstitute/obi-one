@@ -1,6 +1,5 @@
 [project]
 name = "obi-one"
-version = "2025.7.6"
 authors = [
   { name="James Isbister", email="james.isbister@openbraininstitute.org" },
   { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
@@ -25,6 +24,7 @@ classifiers = [
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+dynamic = ["version"]
 
 dependencies = [
     # PYDANTIC
@@ -82,6 +82,7 @@ dev = [
 [build-system]
 requires = [
     "setuptools>=42",
+    "setuptools-scm[toml]>=6.2",
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
@@ -93,6 +94,9 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["obi_one*"]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
 
 [tool.uv]
 required-version = ">=0.8.0"
