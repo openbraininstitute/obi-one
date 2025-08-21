@@ -261,7 +261,7 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 def get_morphology_metrics(
     reconstruction_morphology_id: str,
     db_client: entitysdk.client.Client,
-    requested_metrics: list[str] | None = None
+    requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
     morphology = db_client.get_entity(
         entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
@@ -279,8 +279,7 @@ def get_morphology_metrics(
 
             if requested_metrics:
                 values = {
-                    metric: neurom.get(metric, neurom_morphology)
-                    for metric in requested_metrics
+                    metric: neurom.get(metric, neurom_morphology) for metric in requested_metrics
                 }
                 return MorphologyMetricsOutput(**values)
             return MorphologyMetricsOutput.from_morphology(neurom_morphology)

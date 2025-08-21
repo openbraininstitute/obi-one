@@ -34,7 +34,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
         reconstruction_morphology_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         requested_metrics: Annotated[
-            list[Literal[*MORPHOLOGY_METRICS]] | None, # type: ignore[misc]  # noqa: E261
+            list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]  # noqa: E261
             Query(
                 description="List of requested metrics",
             ),

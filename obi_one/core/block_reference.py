@@ -36,7 +36,8 @@ class BlockReference(OBIBaseModel, abc.ABC):
             else:
                 # Handle UnionType or other types without __name__
                 schema["allowed_block_types"] = [
-                    t.__name__ for t in get_args(model.allowed_block_types)
+                    t.__name__
+                    for t in get_args(model.allowed_block_types)
                     if hasattr(t, "__name__")
                 ]
             schema["is_block_reference"] = True
