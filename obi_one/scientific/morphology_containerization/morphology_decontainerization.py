@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pathlib
 import shutil
 import traceback
 from typing import ClassVar, Literal
@@ -83,7 +84,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
             output_path = self.coordinate_output_root
             circuit_config = os.path.join(output_path, input_config)
-            assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+            assert not pathlib.Path(circuit_config).exists(), "ERROR: Output circuit already exists!"
             L.info("Copying circuit to output folder...")
             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
             L.info("...DONE")
@@ -127,7 +128,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                         morph_names, desc="Extracting/converting from .h5 container"
                     ):
                         _h5_file = os.path.join(h5_folder, _m + ".h5")
-                        if os.path.exists(_h5_file):
+                        if pathlib.Path(_h5_file).exists():
                             skip_counter += 1
                         else:
                             # Create individual .h5 morphology file
@@ -141,7 +142,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                                 dest_file = os.path.join(
                                     target_folder, _m + f".{self.initialize.output_format}"
                                 )
-                                if not os.path.exists(dest_file):
+                                if not pathlib.Path(dest_file).exists():
                                     convert(src_file, dest_file)
                 L.info(
                     f"Extracted/converted {len(morph_names) - skip_counter} morphologies \
@@ -235,7 +236,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             # Clean up morphology folders with individual morphologies
             L.info(f"Cleaning morphology container(s): {morph_containers_to_delete}")
             for _file in morph_containers_to_delete:
-                os.remove(_file)
+                pathlib.Path(_file).unlink()
             L.info(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
             for _folder in morph_folders_to_delete:
                 shutil.rmtree(_folder)

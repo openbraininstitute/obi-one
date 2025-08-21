@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 import os
+import pathlib
 import shutil
 import traceback
 from importlib.metadata import version
@@ -151,7 +152,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             input_path, input_config = os.path.split(self.initialize.circuit_path.path)
             output_path = self.coordinate_output_root
             circuit_config = os.path.join(output_path, input_config)
-            assert not os.path.exists(circuit_config), "ERROR: Output circuit already exists!"
+            assert not pathlib.Path(circuit_config).exists(), "ERROR: Output circuit already exists!"
             L.info("Copying circuit to output folder...")
             shutil.copytree(input_path, output_path, dirs_exist_ok=True)
             L.info("...DONE")
@@ -196,7 +197,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 for _morph_ext in ["h5", "asc", "swc"]:
                     try:
                         morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
-                        assert os.path.exists(morph_folder), (
+                        assert pathlib.Path(morph_folder).exists(), (
                             f"ERROR: {_morph_ext} morphology folder does not exist!"
                         )
                         assert len(self._filter_ext(os.listdir(morph_folder), _morph_ext)) > 0, (
@@ -225,7 +226,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                     for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
                         src_file = os.path.join(inp_folder, _m + f".{_morph_ext}")
                         dest_file = os.path.join(h5_folder, _m + ".h5")
-                        if not os.path.exists(dest_file):
+                        if not pathlib.Path(dest_file).exists():
                             convert(src_file, dest_file)
 
                 # Merge into .h5 container
@@ -341,7 +342,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
                 # Update hoc files (in place)
                 hoc_folder = nodes.config["biophysical_neuron_models_dir"]
-                if not os.path.exists(hoc_folder):
+                if not pathlib.Path(hoc_folder).exists():
                     L.info("WARNING: Biophysical neuron models dir missing!")
                 elif hoc_folder not in hoc_folders_updated:
                     self._update_hoc_files(hoc_folder)
