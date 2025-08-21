@@ -52,6 +52,7 @@ RUN \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi_one,target=obi_one \
+    --mount=type=bind,source=.git,target=.git \
     uv sync --locked --no-editable --no-cache
 
 # run stage
