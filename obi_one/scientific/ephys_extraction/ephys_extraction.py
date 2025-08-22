@@ -18,7 +18,6 @@ from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 
-
 EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
 
 STIMULI_TYPES = list[
