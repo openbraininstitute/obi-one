@@ -18,34 +18,6 @@ from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 
-POSSIBLE_PROTOCOLS = {
-    "idrest": ["idrest"],
-    "idthresh": ["idthres", "idthresh"],
-    "iv": ["iv"],
-    "apwaveform": ["apwaveform"],
-    "spontaneous": ["spontaneous"],
-    "step": ["step"],
-    "spontaps": ["spontaps"],
-    "firepattern": ["firepattern"],
-    "sponnohold30": ["sponnohold30", "spontnohold30"],
-    "sponthold30": ["sponhold30", "sponthold30"],
-    "starthold": ["starthold"],
-    "startnohold": ["startnohold"],
-    "delta": ["delta"],
-    "sahp": ["sahp"],
-    "idhyperpol": ["idhyeperpol"],
-    "irdepol": ["irdepol"],
-    "irhyperpol": ["irhyperpol"],
-    "iddepol": ["iddepol"],
-    "ramp": ["ramp"],
-    "apthresh": ["apthresh", "ap_thresh"],
-    "hyperdepol": ["hyperdepol"],
-    "negcheops": ["negcheops"],
-    "poscheops": ["poscheops"],
-    "spikerec": ["spikerec"],
-    "sinespec": ["sinespec"],
-}
-POSSIBLE_PROTOCOLS_STR = "', '".join(POSSIBLE_PROTOCOLS.keys())
 
 EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
 
@@ -53,14 +25,13 @@ STIMULI_TYPES = list[
     Literal[
         "spontaneous",
         "idrest",
-        "idthres",
+        "idthreshold",
         "apwaveform",
         "iv",
         "step",
-        "spontaps",
+        "sponaps",
         "firepattern",
-        "sponnohold30",
-        "sponhold30",
+        "spontaneousnohold",
         "starthold",
         "startnohold",
         "delta",
@@ -69,15 +40,16 @@ STIMULI_TYPES = list[
         "irdepol",
         "irhyperpol",
         "iddepol",
-        "ramp",
-        "ap_thresh",
+        "apthreshold",
         "hyperdepol",
         "negcheops",
         "poscheops",
         "spikerec",
         "sinespec",
+        "genericstep",
     ]
 ]
+POSSIBLE_STIMULI_STR = "', '".join(STIMULI_TYPES.__args__[0].__args__)
 
 STEP_LIKE_STIMULI_TYPES = list[
     Literal[
@@ -88,6 +60,7 @@ STEP_LIKE_STIMULI_TYPES = list[
         "step",
         "firepattern",
         "delta",
+        "genericstep",
     ]
 ]
 
@@ -146,7 +119,7 @@ class ElectrophysiologyMetricsForm(Form):
         protocols: STIMULI_TYPES | None = Field(
             default=None,
             description=f"Type of stimuli requested by the user. Should be one \
-                of: '{POSSIBLE_PROTOCOLS_STR}'.",
+                of: '{POSSIBLE_STIMULI_STR}'.",
         )
         requested_metrics: CALCULATED_FEATURES | None = Field(
             default=None,
@@ -314,14 +287,13 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
 
     for stim_type in stimuli_types:
         for efeature in calculated_feature:
-            for protocol in POSSIBLE_PROTOCOLS[stim_type]:
-                target = {
-                    "efeature": efeature,
-                    "protocol": protocol,
-                    "amplitude": desired_amplitude,
-                    "tolerance": desired_tolerance,
-                }
-                targets.append(target)
+            target = {
+                "efeature": efeature,
+                "protocol": stim_type,
+                "amplitude": desired_amplitude,
+                "tolerance": desired_tolerance,
+            }
+            targets.append(target)
     logger.info("Generated %d targets.", len(targets))
     logger.info("Trace ID: %s", trace_id)
     trace_metadata = entity_client.get_entity(
@@ -352,10 +324,9 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
                 stim_type: [
                     {
                         "filepath": temp_file.name,
-                        "protocol": protocol,
+                        "protocol": stim_type,
                         "ljp": trace_metadata.ljp,
                     }
-                    for protocol in POSSIBLE_PROTOCOLS[stim_type]
                 ]
                 for stim_type in stimuli_types
             }
