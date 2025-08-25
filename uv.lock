@@ -234,7 +234,7 @@ wheels = [
 
 [[package]]
 name = "bluepyefe"
-version = "2.3.48"
+version = "2.3.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "efel" },
@@ -245,9 +245,9 @@ dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/c6/525a55299dcf52a0c187244a4081834dc7ab5d69e9fb15f214958204b2c9/bluepyefe-2.3.48.tar.gz", hash = "sha256:a9c0c770d10604c390c0aff1aa2ddd66b2a063c2b2b4d3552161fc0cb011a1ed", size = 1028891, upload-time = "2025-07-30T08:46:21.245Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/a7/74861a818c10a7543a34cbc39ad9609e8b0e3ef6414fde1a3ed3f9352ffa/bluepyefe-2.3.50.tar.gz", hash = "sha256:ec9c7c9ab176ff9bba1f6781ef589a829e7e4eb5e4b6a956d743b97611f6f750", size = 1028938, upload-time = "2025-08-22T11:58:23.906Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/df/ea7aa80dafe32c75d51331e6616e70759b0c2daefa8ee9c2197c9355ffe0/bluepyefe-2.3.48-py3-none-any.whl", hash = "sha256:43ead738cdd9dc7fba9b6c8f3773921ce130956cbc6f8cb39f8621196522bec8", size = 67056, upload-time = "2025-07-30T08:46:19.459Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/fa/155381fbeb82d4c4081b0acfbf56bfdf049f205f323dc3a7e5c55a7044b5/bluepyefe-2.3.50-py3-none-any.whl", hash = "sha256:00b0f460613fc4088e53abdadad6f145d50a1349ee3903d07d6f64a68ab33839", size = 67106, upload-time = "2025-08-22T11:58:22.345Z" },
 ]
 
 [[package]]
@@ -1814,7 +1814,7 @@ dev = [
 requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.62" },
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.48" },
+    { name = "bluepyefe", specifier = ">=2.3.50" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", specifier = ">=5.5.2" },
