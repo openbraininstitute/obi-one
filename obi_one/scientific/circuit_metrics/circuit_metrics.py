@@ -1,6 +1,7 @@
 import json
 import h5py
 import tempfile
+import pandas
 import os.path
 from pathlib import Path
 from typing import Any
@@ -90,6 +91,17 @@ def unique_node_property_values_from_h5(h5, population_name):
         vals_dict[k] = grp["@library"][k][:]
     return vals_dict
 
+def number_of_nodes_per_unique_value_from_h5(h5, population_name):
+    vals_dict = {}
+    grp = h5["nodes"][population_name]["0"]
+    for k in grp.get("@library", {}).keys():
+        prop_vals = grp["@library"][k][:]
+        prop_idx_counts = pandas.Series(grp[k][:]).value_counts()
+        prop_idx_counts = prop_idx_counts.reindex(range(len(prop_vals)), fill_value=0)
+        prop_idx_counts.index = pandas.Index(prop_vals)
+        vals_dict[k] = prop_idx_counts.to_dict()
+    return vals_dict
+
 def properties_from_nodes_files(config_dict, manifest, temp_dir,
                                 db_client, circuit_id, asset_id):
     properties_dict = {}
@@ -110,6 +122,8 @@ def properties_from_nodes_files(config_dict, manifest, temp_dir,
                 list_of_node_properties_from_h5(h5, nodepop)
                 properties_dict.setdefault("biophysical_property_unique_values", {})[nodepop] =\
                 unique_node_property_values_from_h5(h5, nodepop)
+                properties_dict.setdefault("biophysical_property_value_counts", {})[nodepop] =\
+                number_of_nodes_per_unique_value_from_h5(h5, nodepop)
     return properties_dict
 
 
@@ -121,6 +135,7 @@ class CircuitMetricsOutput(BaseModel):
     biophysical_population_lengths: dict[str, int]
     biophysical_property_lists: dict[str, list[str]]
     biophysical_property_unique_values: dict[str, dict[str, list[str]]]
+    biophysical_property_value_counts: dict[str, dict[str, dict[str, int]]]
 
 
 
