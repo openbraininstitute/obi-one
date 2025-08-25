@@ -34,7 +34,7 @@ def test_get(client, ephys_json, ephys_nwb, monkeypatch):
 
     entity_id = uuid.uuid4()
     response = client.get(f"{ROUTE}/{entity_id}")
-    print([route.path for route in client.app.routes])
+
     assert response.status_code == 200
 
     features = response.json()["feature_dict"]["step_0"]
