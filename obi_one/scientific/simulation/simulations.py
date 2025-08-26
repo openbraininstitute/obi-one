@@ -388,6 +388,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
         Path(self.coordinate_output_root).mkdir(parents=True, exist_ok=True)
+
+        sonata_circuit = circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
@@ -417,13 +419,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 circuit, circuit.default_population_name, force_resolve_ids=True
             )
             NeuronSet.add_node_set_to_circuit(
-                circuit.sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
+                sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
             )
 
         # Write node sets from SONATA circuit object to .json file
         # (will raise an error if file already exists)
         NeuronSet.write_circuit_node_set_file(
-            circuit.sonata_circuit,
+            sonata_circuit,
             self.coordinate_output_root,
             file_name=self.NODE_SETS_FILE_NAME,
             overwrite_if_exists=False,
