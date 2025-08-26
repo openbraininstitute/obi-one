@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, Literal
 
 import entitysdk.client
 import entitysdk.exception
@@ -17,6 +17,7 @@ from obi_one.scientific.ephys_extraction.ephys_extraction import (
     get_electrophysiology_metrics,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
+    MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
@@ -30,15 +31,27 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                     morphology.",
     )
     def neuron_morphology_metrics_endpoint(
-        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         reconstruction_morphology_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        requested_metrics: Annotated[
+            list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]
+            Query(
+                description="List of requested metrics",
+            ),
+        ] = None,
     ) -> MorphologyMetricsOutput:
+        """Calculates neuron morphology metrics for a given reconstruction morphology.
+
+        - **reconstruction_morphology_id**: ID of the reconstruction morphology.
+        - **requested_metrics**: List of requested metrics (optional).
+        """
         L.info("get_morphology_metrics")
 
         try:
             metrics = get_morphology_metrics(
                 reconstruction_morphology_id=reconstruction_morphology_id,
                 db_client=db_client,
+                requested_metrics=requested_metrics,
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(

@@ -15,3 +15,5 @@ examples/node_sets.json
 dist/*
 .pypirc
 .obi-output
+pip-audit-output.json
+*~
