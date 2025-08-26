@@ -1,5 +1,6 @@
 import json
 import h5py
+import numpy
 import tempfile
 import pandas
 import os.path
@@ -50,18 +51,31 @@ class TemporaryAsset(object):
         self.temp_dir.__exit__(*args)
 
 
-def get_names_of_typed_node_populations(
+def get_names_of_typed_populations(
         config_dict: dict,
-        type_str: str
-) -> int:
+        type_str: str,
+        population_type: str
+) -> list[str]:
     names = []
-    lst_nodes = config_dict.get("networks", {}).get("nodes", [])
+    lst_nodes = config_dict.get("networks", {}).get(population_type, [])
     for nodefile in lst_nodes:
         for population_name, population in nodefile["populations"].items():
             if population["type"] == type_str:
-                names.append((nodefile["nodes_file"],
+                names.append((nodefile[f"{population_type}_file"],
                               population_name))
     return names
+
+def get_names_of_typed_node_populations(
+        config_dict: dict,
+        type_str: str
+) -> list[str]:
+    return get_names_of_typed_populations(config_dict, type_str, "nodes")
+
+def get_names_of_typed_edge_populations(
+        config_dict: dict,
+        type_str: str
+) -> list[str]:
+    return get_names_of_typed_populations(config_dict, type_str, "edges")
 
 def get_number_of_typed_node_populations(
         config_dict: dict,
@@ -69,15 +83,26 @@ def get_number_of_typed_node_populations(
 ) -> int:
     return len(get_names_of_typed_node_populations(config_dict, type_str))
 
+def get_number_of_typed_edge_populations(
+        config_dict: dict,
+        type_str: str
+) -> int:
+    return len(get_names_of_typed_edge_populations(config_dict, type_str))
+
 
 def properties_from_config(config_dict):
     return {
         "number_of_biophys_node_populations": get_number_of_typed_node_populations(config_dict, "biophysical"),
-        "number_of_virtual_node_populations": get_number_of_typed_node_populations(config_dict, "virtual")
+        "number_of_virtual_node_populations": get_number_of_typed_node_populations(config_dict, "virtual"),
+        "number_of_chemical_edge_populations": get_number_of_typed_edge_populations(config_dict, "chemical"),
+        "number_of_electrical_edge_populations": get_number_of_typed_edge_populations(config_dict, "electrical")
     }
 
 def number_of_nodes_from_h5(h5, population_name):
     return len(h5["nodes"][population_name]["node_type_id"])
+
+def number_of_edges_from_h5(h5, population_name):
+    return len(h5["edges"][population_name]["source_node_id"])
 
 def list_of_node_properties_from_h5(h5, population_name):
     return [_k for _k in
@@ -102,15 +127,46 @@ def number_of_nodes_per_unique_value_from_h5(h5, population_name):
         vals_dict[k] = prop_idx_counts.to_dict()
     return vals_dict
 
+def node_location_properties_from_h5(h5, population_name):
+    vals_dict = {}
+    grp = h5["nodes"][population_name]["0"]
+    coord_names = [_coord for _coord in ["x", "y", "z"] if
+                   _coord in grp.keys()]
+    for _coord in coord_names:
+        coord_v = grp[_coord][:]
+        vals_dict.setdefault("bounding_box", {})[_coord] = {
+            "min": numpy.min(coord_v), "max": numpy.max(coord_v)
+        }
+        vals_dict.setdefault("center", {})[_coord] = {
+            "mean": numpy.mean(coord_v),
+            "median": numpy.median(coord_v),
+            "middle": 0.5 * numpy.min(coord_v) + 0.5 * numpy.max(coord_v)
+        }
+        vals_dict.setdefault("width", {})[_coord] = {
+            "std": numpy.std(coord_v),
+            "spread": numpy.max(coord_v) - numpy.min(coord_v)
+        }
+    return vals_dict
+
 def properties_from_nodes_files(config_dict, manifest, temp_dir,
                                 db_client, circuit_id, asset_id):
-    properties_dict = {}
+    lst_req_props = ["virtual_population_lengths", "virtual_property_lists",
+                     "virtual_property_unique_values", "virtual_property_value_counts",
+                     "biophysical_population_lengths", "biophysical_property_lists",
+                     "biophysical_property_unique_values", "biophysical_property_value_counts"]
+    properties_dict = dict([(_k, {}) for _k in lst_req_props])
     for nodefile, nodepop in get_names_of_typed_node_populations(config_dict, "virtual"):
         remote_path = _get_asset_path(nodefile, manifest, temp_dir)
         with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn:
             with h5py.File(fn, "r") as h5:
                 properties_dict.setdefault("virtual_population_lengths", {})[nodepop] =\
                 number_of_nodes_from_h5(h5, nodepop)
+                properties_dict.setdefault("virtual_property_lists", {})[nodepop] =\
+                list_of_node_properties_from_h5(h5, nodepop)
+                properties_dict.setdefault("virtual_property_unique_values", {})[nodepop] =\
+                unique_node_property_values_from_h5(h5, nodepop)
+                properties_dict.setdefault("virtual_property_value_counts", {})[nodepop] =\
+                number_of_nodes_per_unique_value_from_h5(h5, nodepop)
     
     for nodefile, nodepop in get_names_of_typed_node_populations(config_dict, "biophysical"):
         remote_path = _get_asset_path(nodefile, manifest, temp_dir)
@@ -124,18 +180,43 @@ def properties_from_nodes_files(config_dict, manifest, temp_dir,
                 unique_node_property_values_from_h5(h5, nodepop)
                 properties_dict.setdefault("biophysical_property_value_counts", {})[nodepop] =\
                 number_of_nodes_per_unique_value_from_h5(h5, nodepop)
+                properties_dict.setdefault("biophysical_node_locations", {})[nodepop] =\
+                node_location_properties_from_h5(h5, nodepop)
     return properties_dict
 
+def properties_from_edges_files(config_dict, manifest, temp_dir,
+                                db_client, circuit_id, asset_id):
+    properties_dict = {"chemical_population_lengths": {},
+                       "electrical_population_lengths": {}}
+    for edgefile, edgepop in get_names_of_typed_edge_populations(config_dict, "chemical"):
+        remote_path = _get_asset_path(edgefile, manifest, temp_dir)
+        with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn:
+            with h5py.File(fn, "r") as h5:
+                properties_dict["chemical_population_lengths"][edgepop] =\
+                number_of_edges_from_h5(h5, edgepop)
+    for edgefile, edgepop in get_names_of_typed_edge_populations(config_dict, "electrical"):
+        remote_path = _get_asset_path(edgefile, manifest, temp_dir)
+        with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn:
+            with h5py.File(fn, "r") as h5:
+                properties_dict["electrical_population_lengths"][edgepop] =\
+                number_of_edges_from_h5(h5, edgepop)
+    return properties_dict
 
 class CircuitMetricsOutput(BaseModel):
     config: dict[str, Any]
     number_of_biophys_node_populations: int
     number_of_virtual_node_populations: int
     virtual_population_lengths: dict[str, int]
+    virtual_property_lists: dict[str, list[str]]
+    virtual_property_unique_values: dict[str, dict[str, list[str]]]
+    virtual_property_value_counts: dict[str, dict[str, dict[str, int]]]
     biophysical_population_lengths: dict[str, int]
     biophysical_property_lists: dict[str, list[str]]
     biophysical_property_unique_values: dict[str, dict[str, list[str]]]
     biophysical_property_value_counts: dict[str, dict[str, dict[str, int]]]
+    biophysical_node_locations: dict[str, dict[str, dict[str, dict[str, float]]]]
+    chemical_population_lengths: dict[str, int]
+    electrical_population_lengths: dict[str, int]
 
 
 
@@ -180,6 +261,10 @@ def get_circuit_metrics(
     dict_props = properties_from_config(config_dict)
     dict_props.update(
         properties_from_nodes_files(config_dict, manifest, temp_dir,
+                                    db_client, circuit_id, asset_id)
+    )
+    dict_props.update(
+        properties_from_edges_files(config_dict, manifest, temp_dir,
                                     db_client, circuit_id, asset_id)
     )
 
