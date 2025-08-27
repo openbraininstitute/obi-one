@@ -53,7 +53,7 @@ POSSIBLE_STIMULI_STR = "', '".join(STIMULI_TYPES.__args__[0].__args__)
 STEP_LIKE_STIMULI_TYPES = list[
     Literal[
         "idrest",
-        "idthresh",
+        "idthreshold",
         "apwaveform",
         "iv",
         "step",
