@@ -1,4 +1,6 @@
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
+
+from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.simulation.stimulus import (
@@ -16,20 +18,21 @@ from obi_one.scientific.simulation.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-StimulusUnion = (
+StimulusUnion = Annotated[
     ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
     | NormallyDistributedCurrentClampSomaticStimulus
     | RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
     | PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-)
+    | FullySynchronousSpikeStimulus,
+    Discriminator("type"),
+]
 
 
 class StimulusReference(BlockReference):

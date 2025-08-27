@@ -29,6 +29,13 @@ jobs:
         run: make lint
       - name: Run tests
         run: make test-docker
+      - name: Run pip-audit
+        run: make pip-audit
+      - name: Upload pip-audit output
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-output.json
+          path: pip-audit-output.json
       - name: Cleanup
         if: ${{ always() }}
         run: |
