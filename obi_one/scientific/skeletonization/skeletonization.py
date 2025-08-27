@@ -142,7 +142,7 @@ class Skelotonization(SkelotonizationForm, SingleCoordinateMixin):
         print(self.initialize.mesh_path)
         print(self.initialize.resolution)
 
-        print(self.spine_extraction.processing_pipeline)
+        print(self.spine_extraction.spine_extraction_type)
 
         print(self.advanced_options.reconstruction_axis)
         print(self.advanced_options.project_reconstructions)
