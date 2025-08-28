@@ -5,6 +5,7 @@ Author: Daniela Egas Santander.
 
 import logging
 import warnings
+from operator import itemgetter
 
 import matplotlib.patches as mpatches
 
@@ -36,10 +37,10 @@ def connection_probability_pathway(
 ) -> pd.DataFrame:  # TODO: Add directly to connalysis?
     """Compute the connection probability of the matrix for a given grouping of the nodes."""
 
-    def count_connections(mat: np.ndarray) -> int:
+    def count_connections(mat: np.ndarray, *args) -> int:  # noqa: ARG001
         return mat.nnz
 
-    def count_nodes(mat: np.ndarray) -> tuple[int, ...]:
+    def count_nodes(mat: np.ndarray, *args) -> tuple[int, ...]:  # noqa: ARG001
         return mat.shape
 
     # Setup analysis config per pathway
@@ -70,11 +71,11 @@ def connection_probability_pathway(
     out = conn.analyze(analysis_specs)
 
     # Compute connection probability
-    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")
-    diag = np.zeros(df.shape)
-    np.fill_diagonal(diag, np.diag(df.map(lambda x: x[0]).to_numpy()))
+    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
+    diag_values = np.diag(df.map(itemgetter(0)).to_numpy())
+    diag = np.diag(diag_values)
     possible_connections = (df.map(lambda x: x[0] * x[1]) - diag).astype(int)
-    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")
+    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
     connection_prob = connections / possible_connections
     return connection_prob
 
@@ -106,7 +107,7 @@ def connection_probability_within_pathway(
         }
     }
     out = conn.analyze(analysis_specs)
-    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")
+    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
 
 
 def compute_global_connectivity(
@@ -160,7 +161,7 @@ def compute_global_connectivity(
 
 
 # Nodes
-def make_pie_plot(
+def make_pie_plot(  # noqa: PLR0914
     ax: plt.Axes, conn: ConnectivityMatrix, grouping_prop: str, cmaps: dict[str, plt.Colormap]
 ) -> plt.Axes:
     category_counts = conn.vertices[grouping_prop].value_counts()
@@ -515,7 +516,7 @@ def plot_connection_probability_pathway_stats(
 # Plotting function for small microcircuits
 
 
-def plot_smallMC_network_stats(
+def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     conn: ConnectivityMatrix,
     full_width: int,
     color_indeg: tuple | None = None,
@@ -725,7 +726,7 @@ def plot_rc(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes
     return ax
 
 
-def plot_small_network(
+def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     ax: plt.Axes,
     conn: ConnectivityMatrix,
     node_color: str | list | None = None,
@@ -855,7 +856,7 @@ def plot_small_network(
     return ax
 
 
-def make_MC_fig_template(
+def make_MC_fig_template(  # noqa: PLR0914
     figsize: tuple[float, float],
     height_ratios: list[float] | None = None,
     width_ratios: list[float] | None = None,
@@ -946,7 +947,7 @@ def make_MC_fig_template(
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
 
 
-def plot_smallMC(
+def plot_smallMC(  # noqa: PLR0914
     conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
 ) -> plt.Figure:
     # Generate template for plot
@@ -1104,7 +1105,7 @@ def plot_smallMC(
     return fig
 
 
-def plot_node_table(
+def plot_node_table(  # noqa: PLR0914
     conn: ConnectivityMatrix,
     figsize: tuple[float, float],
     colors_cmap: str,  # name of discrete colormap from matplotlib
