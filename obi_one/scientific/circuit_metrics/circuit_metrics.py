@@ -122,6 +122,14 @@ def properties_from_config(config_dict):
         "names_of_electrical_edge_populations": get_names_of_typed_edge_populations(config_dict, "electrical")
     }
 
+def names_from_nodes_sets_file(config_dict, manifest, temp_dir,
+                                    db_client, circuit_id, asset_id):
+    remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
+    with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn:
+        with open(fn, "r") as fid:
+           contents = json.load(fid)
+    return list(contents.keys())
+
 def number_of_nodes_from_h5(h5, population_name):
     return len(h5["nodes"][population_name]["node_type_id"])
 
@@ -326,6 +334,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     number_of_virtual_node_populations: int
     names_of_biophys_node_populations: list[str]
     names_of_virtual_node_populations: list[str]
+    names_of_node_populations: list[str]
     biophysical_node_populations: list[CircuitMetricsNodePopulation | None]
     virtual_node_populations: list[CircuitMetricsNodePopulation | None]
     number_of_chemical_edge_populations: int
@@ -398,6 +407,8 @@ def get_circuit_metrics(
         }
     
     dict_props = properties_from_config(config_dict)
+    nodepops = names_from_nodes_sets_file(config_dict, manifest, temp_dir,
+                                          db_client, circuit_id, asset_id)
     
     node_props = properties_from_nodes_files(config_dict, manifest, temp_dir,
                                              db_client, circuit_id, asset_id,
@@ -470,6 +481,7 @@ def get_circuit_metrics(
         names_of_virtual_node_populations=[_x[1] for _x in dict_props["names_of_virtual_node_populations"]],
         names_of_chemical_edge_populations=[_x[1] for _x in dict_props["names_of_chemical_edge_populations"]],
         names_of_electrical_edge_populations=[_x[1] for _x in dict_props["names_of_electrical_edge_populations"]],
+        names_of_node_populations=nodepops,
         biophysical_node_populations = biophys_pops,
         virtual_node_populations = virtual_pops,
         chemical_edge_populations=chemical_pops,
