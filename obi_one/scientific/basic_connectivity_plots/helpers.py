@@ -1,12 +1,11 @@
 """Basic functions to compute network stats and for plotting
-Last modified 03.2025
-Author: Daniela Egas Santander
+Last modified 08.2025
+Author: Daniela Egas Santander.
 """
 
 import logging
 import warnings
-
-L = logging.getLogger(__name__)
+from operator import itemgetter
 
 import matplotlib.patches as mpatches
 
@@ -15,9 +14,12 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
+from conntility import ConnectivityMatrix
 from matplotlib import gridspec
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Ellipse, FancyArrow
+from matplotlib.ticker import FuncFormatter
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 try:
     from connalysis.network.classic import connection_probability_within, density
@@ -25,17 +27,20 @@ try:
 except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
+L = logging.getLogger(__name__)
 
 # Stats functions
 
 
-def connection_probability_pathway(conn, grouping_prop):  # TODO: Add directly to connalysis?
-    """Compute the connection probability of the matrix for a given grouping of the nodes"""
+def connection_probability_pathway(
+    conn: ConnectivityMatrix, grouping_prop: str
+) -> pd.DataFrame:  # TODO: Add directly to connalysis?
+    """Compute the connection probability of the matrix for a given grouping of the nodes."""
 
-    def count_connections(mat, nrn):
+    def count_connections(mat: np.ndarray, *args) -> int:  # noqa: ARG001
         return mat.nnz
 
-    def count_nodes(mat, nrn):
+    def count_nodes(mat: np.ndarray, *args) -> tuple[int, ...]:  # noqa: ARG001
         return mat.shape
 
     # Setup analysis config per pathway
@@ -66,17 +71,21 @@ def connection_probability_pathway(conn, grouping_prop):  # TODO: Add directly t
     out = conn.analyze(analysis_specs)
 
     # Compute connection probability
-    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")
-    diag = np.zeros(df.shape)
-    np.fill_diagonal(diag, np.diag(df.map(lambda x: x[0]).to_numpy()))
+    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
+    diag_values = np.diag(df.map(itemgetter(0)).to_numpy())
+    diag = np.diag(diag_values)
     possible_connections = (df.map(lambda x: x[0] * x[1]) - diag).astype(int)
-    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")
+    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
     connection_prob = connections / possible_connections
     return connection_prob
 
 
-def connection_probability_within_pathway(conn, grouping_prop, max_dist=100):
-    """Compute the connection probability within `max_dist` and for a given grouping of the nodes"""
+def connection_probability_within_pathway(
+    conn: ConnectivityMatrix, grouping_prop: str, max_dist: int = 100
+) -> pd.DataFrame:
+    """Compute the connection probability within `max_dist`
+    and for a given grouping of the nodes.
+    """
     # Setup analysis config per pathway
     analysis_specs = {
         "analyses": {
@@ -98,30 +107,33 @@ def connection_probability_within_pathway(conn, grouping_prop, max_dist=100):
         }
     }
     out = conn.analyze(analysis_specs)
-    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")
+    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
 
 
 def compute_global_connectivity(
-    m,
-    m_ER,
-    v=None,
-    type="full",
-    max_dist=100,
-    cols=["x", "y"],
-):
-    """Compute connection probabilities for the full network of with max_dist and similarly for the control"""
-    if type == "full":  # Compute on the entire network
+    m: np.ndarray,
+    m_er: np.ndarray,
+    v: pd.DataFrame | None = None,
+    connection_type: str = "full",
+    max_dist: int = 100,
+    cols: list[str] | None = None,
+) -> np.ndarray:
+    if cols is None:
+        cols = ["x", "y"]
+    """Compute connection probabilities for the full network of with max_dist,
+    and similarly for the control."""
+    if connection_type == "full":  # Compute on the entire network
         return np.array(
-            [density(m), density(m_ER), density(rc_submatrix(m)), density(rc_submatrix(m_ER))]
+            [density(m), density(m_er), density(rc_submatrix(m)), density(rc_submatrix(m_er))]
         )
-    if type == "within":
+    if connection_type == "within":
         return np.array(
             [
                 connection_probability_within(
                     m, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
                 ),
                 connection_probability_within(
-                    m_ER, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
+                    m_er, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
                 ),
                 connection_probability_within(
                     rc_submatrix(m),
@@ -132,7 +144,7 @@ def compute_global_connectivity(
                     skip_symmetry_check=True,
                 ),
                 connection_probability_within(
-                    rc_submatrix(m_ER),
+                    rc_submatrix(m_er),
                     v,
                     max_dist=max_dist,
                     cols=cols,
@@ -141,20 +153,25 @@ def compute_global_connectivity(
                 ),
             ]
         )
+    msg = "Connection type not supported"
+    raise ValueError(msg)
 
 
 # Plotting functions
 
 
 # Nodes
-def make_pie_plot(ax, conn, grouping_prop, cmaps):
+def make_pie_plot(  # noqa: PLR0914
+    ax: plt.Axes, conn: ConnectivityMatrix, grouping_prop: str, cmaps: dict[str, plt.Colormap]
+) -> plt.Axes:
     category_counts = conn.vertices[grouping_prop].value_counts()
     category_counts = category_counts[category_counts > 0]
 
     # Group categories with percentages ≤ 2% into "Other"
     total = category_counts.sum()
     percentages = (category_counts / total) * 100
-    small_categories = percentages[percentages <= 2].index
+    small_categories_threshold = 2
+    small_categories = percentages[percentages <= small_categories_threshold].index
     if len(small_categories) > 1:
         other_count = category_counts[small_categories].sum()
         category_counts = category_counts.drop(small_categories)
@@ -196,7 +213,9 @@ def make_pie_plot(ax, conn, grouping_prop, cmaps):
     return ax
 
 
-def plot_node_stats(conn, cmaps, full_width=17):
+def plot_node_stats(
+    conn: ConnectivityMatrix, cmaps: dict[str, plt.Colormap], full_width: int = 17
+) -> plt.Figure:
     fig = plt.figure(figsize=(full_width, full_width // 3))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2.75])
 
@@ -204,7 +223,7 @@ def plot_node_stats(conn, cmaps, full_width=17):
     ax2 = fig.add_subplot(gs[1, 0])
     ax3 = fig.add_subplot(gs[:, 1])
 
-    """Make plot of synapse class and mtype counts"""
+    """Make plot of synapse class and mtype counts."""
 
     ax1.set_title("EI cell distribution")
     make_pie_plot(ax1, conn, "synapse_class", cmaps)
@@ -230,21 +249,22 @@ def plot_node_stats(conn, cmaps, full_width=17):
 # Networks
 
 
-def plot_degree(ax, deg, deg_ER, direction, type="full"):
+def plot_degree(
+    ax: plt.Axes, deg: pd.DataFrame, deg_er: pd.DataFrame, direction: str, hist_type: str = "full"
+) -> plt.Axes:
     colors = ["teal", "lightgray"]
-    for df, label, color in zip([deg, deg_ER], ["Connectome", "ER control"], colors, strict=False):
-        df = df["IN"] + df["OUT"] if direction == "TOTAL" else df[direction]
-        if type == "full":
-            ax.plot(df.value_counts().sort_index(), label=label, color=color)
-        elif type == "hist":
-            ax.hist(df, alpha=0.5, label=label, color=color)
+    for df, label, color in zip([deg, deg_er], ["Connectome", "ER control"], colors, strict=False):
+        df_plot = df["IN"] + df["OUT"] if direction == "TOTAL" else df[direction]
+        if hist_type == "full":
+            ax.plot(df_plot.value_counts().sort_index(), label=label, color=color)
+        elif hist_type == "hist":
+            ax.hist(df_plot, alpha=0.5, label=label, color=color)
     return ax
 
 
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
-
-def plot_global_connection_probability(ax1, densities):
+def plot_global_connection_probability(
+    ax1: plt.Axes, densities: np.ndarray
+) -> tuple[plt.Axes, list[plt.Artist], list[str]]:
     # Connection probabilities
     colors = ["teal", "lightgrey", "teal", "lightgrey"]
     labels = ["Connectome", "ER control"]
@@ -253,7 +273,6 @@ def plot_global_connection_probability(ax1, densities):
 
     # Plot full connectivity the primary y-axis
     bars1 = ax1.bar([0, 1], densities[:2], width=0.4, color=colors[:2])
-    # ax1.legend(bars1, labels, frameon=False)
 
     # Create a secondary y-axis
     ax2 = ax1.twinx()
@@ -268,34 +287,31 @@ def plot_global_connection_probability(ax1, densities):
     ax1.set_frame_on(False)
     ax2.set_frame_on(False)
     for bar, label in zip(bars1 + bars2, labels, strict=False):
-        # height = bar.get_height()
-        # ax = ax1 if bar in bars1 else ax2
-        # ax.text(bar.get_x() + bar.get_width() / 2, height, label, ha='center', va='bottom')
-        pass
+        height = bar.get_height()
+        ax = ax1 if bar in bars1 else ax2
+        ax.text(bar.get_x() + bar.get_width() / 2, height, label, ha="center", va="bottom")
 
     # Set labels and title
-    # ax1.set_xlabel('Categories')
     ax1.set_ylabel("Connection probability")
     ax2.set_ylabel("Reciprocal connection probability", rotation=270, labelpad=20)
     ax1.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     ax2.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
-    # ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1e}'))
-    # L.info(bars1)
+    ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.1e}"))
     return ax1, bars1, labels
 
 
-def plot_rc_connetion(ax, arrowsize=20, node_size=100):
+def plot_rc_connection(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes:
     # Create a directed graph
-    G = nx.DiGraph()
-    G.add_node(1)
-    G.add_node(2)
-    G.add_edge(1, 2)
-    G.add_edge(2, 1)
+    g = nx.Digraph()
+    g.add_node(1)
+    g.add_node(2)
+    g.add_edge(1, 2)
+    g.add_edge(2, 1)
 
     # Draw the graph with curved edges
-    pos = nx.circular_layout(G)
+    pos = nx.circular_layout(g)
     nx.draw(
-        G,
+        g,
         pos,
         with_labels=False,
         node_color="black",
@@ -309,7 +325,14 @@ def plot_rc_connetion(ax, arrowsize=20, node_size=100):
     return ax
 
 
-def plot_in_out_deg(ax, direction, node_size=10, head_width=0.1, head_length=0.1, buffer=0.85):
+def plot_in_out_deg(
+    ax: plt.Axes,
+    direction: str,
+    node_size: int = 10,
+    head_width: float = 0.1,
+    head_length: float = 0.1,
+    buffer: float = 0.85,
+) -> plt.Axes:
     # Plot the central node
     ax.plot(0, 0, "ko", markersize=node_size)
 
@@ -349,25 +372,39 @@ def plot_in_out_deg(ax, direction, node_size=10, head_width=0.1, head_length=0.1
     return ax
 
 
-def imshow_wrapper(ax, img, cutoff=15 * 15, perc=97.5, **kwargs):
+def imshow_wrapper(
+    ax: plt.Axes, img: np.ndarray, cutoff: int = 225, perc: float = 97.5, **kwargs
+) -> tuple[plt.Axes, plt.Axes]:
     if np.prod(img.shape) > cutoff:
         kwargs.update(
-            {"clim": [0.0, np.percentile(img.values.ravel()[~np.isnan(img.values.ravel())], perc)]}
+            {
+                "clim": [
+                    0.0,
+                    np.percentile(img.to_numpy().ravel()[~np.isnan(img.to_numpy().ravel())], perc),
+                ]
+            }
         )
     plot = ax.imshow(img, **kwargs)
     return ax, plot
 
 
 def plot_connection_probability_pathway(
-    ax, connection_prob, cmap, cutoff=15 * 15, perc=97.5, **kwargs
-):
+    ax: plt.Axes,
+    connection_prob: pd.DataFrame,
+    cmap: str,
+    cutoff: int = 15 * 15,
+    perc: float = 97.5,
+    **kwargs,
+) -> tuple[plt.Axes, plt.Axes]:
     ax, plot = imshow_wrapper(ax, connection_prob, cutoff=cutoff, perc=perc, cmap=cmap, **kwargs)
     ax.set_yticks(range(len(connection_prob)), labels=connection_prob.index)
     ax.set_xticks(range(len(connection_prob)), labels=connection_prob.index)
     return ax, plot
 
 
-def plot_connection_probability_stats(full_width, global_conn_probs):
+def plot_connection_probability_stats(
+    full_width: int, global_conn_probs: dict[str, np.ndarray]
+) -> plt.Figure:
     fig, axs = plt.subplots(
         1,
         5,
@@ -402,7 +439,7 @@ def plot_connection_probability_stats(full_width, global_conn_probs):
     )  # , bbox_to_anchor=(0.25,1))
     inset_ax1.set_axis_off()  # Axis created just for white space
 
-    plot_rc_connetion(inset_ax2, arrowsize=20, node_size=60)
+    plot_rc_connection(inset_ax2, arrowsize=20, node_size=60)
     inset_ax2.set_title("Reciprocal \nconnection", fontsize=10, y=0.7)
 
     plot_in_out_deg(
@@ -421,7 +458,12 @@ def plot_connection_probability_stats(full_width, global_conn_probs):
     return fig
 
 
-def plot_connection_probability_pathway_stats(full_width, conn_probs, deg, deg_ER):
+def plot_connection_probability_pathway_stats(
+    full_width: int,
+    conn_probs: dict[str, dict[str, pd.DataFrame]],
+    deg: pd.DataFrame,
+    deg_er: pd.DataFrame,
+) -> plt.Figure:
     fig, axs = plt.subplots(3, 3, figsize=(full_width, full_width))
 
     for j, connection_type in enumerate(["full", "within"]):
@@ -460,7 +502,7 @@ def plot_connection_probability_pathway_stats(full_width, conn_probs, deg, deg_E
         transform=axs[0, 2].transAxes,
     )
     for i, direction in enumerate(["IN", "OUT", "TOTAL"], start=0):
-        axs[i, 2] = plot_degree(axs[i, 2], deg, deg_ER, direction, type="full")
+        axs[i, 2] = plot_degree(axs[i, 2], deg, deg_er, direction, type="full")
         axs[i, 2].set_xlabel(f"{direction.capitalize()}-degree")
         axs[i, 2].spines[["top", "right"]].set_visible(False)
         axs[i, 2].set_frame_on(False)
@@ -474,14 +516,22 @@ def plot_connection_probability_pathway_stats(full_width, conn_probs, deg, deg_E
 # Plotting function for small microcircuits
 
 
-def plot_smallMC_network_stats(
-    conn,
-    full_width,
-    color_indeg=plt.get_cmap("Set2")(0),
-    color_outdeg=plt.get_cmap("Set2")(2),
-    color_strength=plt.get_cmap("Set2")(1),
-    cmap_adj=plt.get_cmap("viridis"),
-):
+def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
+    conn: ConnectivityMatrix,
+    full_width: int,
+    color_indeg: tuple | None = None,
+    color_outdeg: tuple | None = None,
+    color_strength: tuple | None = None,
+    cmap_adj: plt.Colormap | None = None,
+) -> plt.Figure:
+    if color_indeg is None:
+        color_indeg = plt.get_cmap("Set2")(0)
+    if color_outdeg is None:
+        color_outdeg = plt.get_cmap("Set2")(2)
+    if color_strength is None:
+        color_strength = plt.get_cmap("Set2")(1)
+    if cmap_adj is None:
+        cmap_adj = plt.get_cmap("viridis")
     fig, axs = plt.subplots(
         1, 3, figsize=(full_width, full_width // 3)
     )  # , gridspec_kw={"width_ratios": [1, 2]})
@@ -549,7 +599,6 @@ def plot_smallMC_network_stats(
     # Put legend below, otherwise sometimes it's over the bars
     bbox = axs[2].get_position()
     legend_height = 0.03  # Matching more or less the cbar options
-    legend_pad = 0.125  # Matching more or less the cbar options
     legend_y = bbox.y0 - cbar_pad - cbar_height
     legend_ax = fig.add_axes([bbox.x0, legend_y, bbox.width, legend_height])
     handles, labels = axs[2].get_legend_handles_labels()
@@ -566,14 +615,16 @@ def plot_smallMC_network_stats(
     return fig
 
 
-def plot_growing_circles(fig, ax, radii, y1=0.5, color="black"):
+def plot_growing_circles(
+    fig: plt.Figure, ax: plt.Axes, radii: list[float], y1: float = 0.5, color: str = "black"
+) -> plt.Axes:
     # Get axis aspect ratio to make circles instead of ellipses
     bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
     width, height = bbox.width, bbox.height
     aspect = width / height
 
     # Make even spacing between circles
-    total_circle_width = sum([2 * r for r in radii])
+    total_circle_width = sum(2 * r for r in radii)
     n = len(radii)
     gap = (1 - total_circle_width) / (n + 1)
     # Compute x positions
@@ -602,16 +653,24 @@ def plot_growing_circles(fig, ax, radii, y1=0.5, color="black"):
     return ax
 
 
-def plot_growing_arrows(ax, widths, head_widths, y1=0.5, color="black", length=0.2, gap=0.05):
+def plot_growing_arrows(
+    ax: plt.Axes,
+    widths: list[float],
+    head_widths: list[float],
+    y1: float = 0.5,
+    color: str = "black",
+    length: float = 0.2,
+    gap: float = 0.05,
+) -> plt.Axes:
     n = len(widths)
-    total_arrow_width = sum([length for _ in widths])
+    total_arrow_width = sum(length for _ in widths)
     total_gap = gap * (n + 1)
     total_width = total_arrow_width + total_gap
     start_x = (1 - total_width) / 2 + gap
 
     x1s = []
     x = start_x
-    for i in range(n):
+    for _ in range(n):
         x1s.append(x)
         x += length + gap
 
@@ -638,13 +697,13 @@ def plot_growing_arrows(ax, widths, head_widths, y1=0.5, color="black", length=0
     return ax
 
 
-def plot_rc(ax, arrowsize=20, node_size=100):
+def plot_rc(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes:
     # Create graph
-    G = nx.DiGraph()
-    G.add_node(0)
-    G.add_node(1)
-    G.add_edge(0, 1)
-    G.add_edge(1, 0)
+    g = nx.Digraph()
+    g.add_node(0)
+    g.add_node(1)
+    g.add_edge(0, 1)
+    g.add_edge(1, 0)
 
     # Draw the graph with curved edges
     pos = y = 0.5
@@ -652,7 +711,7 @@ def plot_rc(ax, arrowsize=20, node_size=100):
     pos = {0: (x, y), 1: (x + 0.5, y)}
 
     nx.draw(
-        G,
+        g,
         pos,
         with_labels=False,
         node_color="black",
@@ -667,49 +726,54 @@ def plot_rc(ax, arrowsize=20, node_size=100):
     return ax
 
 
-def plot_small_network(
-    ax,
-    conn,
-    node_color=None,
-    edge_color=None,  # To choose color of nodes and edges
+def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
+    ax: plt.Axes,
+    conn: ConnectivityMatrix,
+    node_color: str | list | None = None,
+    edge_color: str | list | None = None,  # To choose color of nodes and edges
     # To choose colors of nodes and edges by property, overrides node_color and edge_color
-    color_nodes_by_prop=False,
-    color_map_nodes=None,
-    color_property_nodes="synapse_class",
-    color_edges_by_prop=False,
-    color_map_edges=None,
-    color_property_edges="synapse_class",
-    color_edges_by="pre",
-    edge_weight_scale=3,
-    min_size=300,
-    max_size=1500,
-    title="Title!",
-    title_fontsize=None,
-    projection="xy",
-    coord_names=["x", "y"],
-    axis_fontsize=None,
-):
-    ax.set_title(title)
+    *,
+    color_nodes_by_prop: bool = False,
+    color_map_nodes: dict | None = None,
+    color_property_nodes: str = "synapse_class",
+    color_edges_by_prop: bool = False,
+    color_map_edges: dict | None = None,
+    color_property_edges: str = "synapse_class",
+    color_edges_by: str = "pre",
+    edge_weight_scale: int = 3,
+    min_size: int = 300,
+    max_size: int = 1500,
+    title: str = "Title!",
+    title_fontsize: int | None = None,
+    projection: str = "xy",
+    coord_names: list[str] | None = None,
+    axis_fontsize: int | None = None,
+) -> plt.Axes:
+    if coord_names is None:
+        coord_names = ["x", "y"]
+    ax.set_title(title, fontsize=title_fontsize)
 
-    G = nx.from_numpy_array(conn.matrix.toarray(), create_using=nx.DiGraph)
+    g = nx.from_numpy_array(conn.matrix.toarray(), create_using=nx.DiGraph)
 
     # Choose position of neurons in 2D
     if projection == "xy":
         df = conn.vertices[coord_names]
-        df["xy"] = df[coord_names].values.tolist()
+        df["xy"] = df[coord_names].to_numpy().tolist()
         df = df.drop(columns=coord_names)
         pos = df.to_dict()["xy"]
     elif projection == "circular":  # Nodes in a circle
-        pos = nx.circular_layout(G)
+        pos = nx.circular_layout(g)
     elif projection == "shell":
-        pos = nx.shell_layout(G)  # Nodes in concentric circles
+        pos = nx.shell_layout(g)  # Nodes in concentric circles
     else:
-        raise ValueError(
-            f"Projection type: {projection} not implemented. Choose from 'xy', 'circular', or 'shell'."
+        msg = (
+            f"Projection type: {projection} not implemented. "
+            "Choose from 'xy', 'circular', or 'shell'."
         )
+        raise ValueError(msg)
 
     # Make edges proportional to weights
-    weights = [G[u][v]["weight"] for u, v in G.edges()]
+    weights = [g[u][v]["weight"] for u, v in g.edges()]
     widths = [w / max(weights) * edge_weight_scale for w in weights]  # normalize for plotting
 
     # Make nodes proportional to total degree
@@ -737,17 +801,18 @@ def plot_small_network(
             color_map_edges.get(key) for key in conn.vertices[color_property_edges].to_numpy()
         ]
         if color_edges_by == "pre":
-            edge_colors = [defining_colors[u] for u, v in G.edges()]
+            edge_colors = [defining_colors[u] for u, v in g.edges()]
         elif color_edges_by == "post":
-            edge_colors = [defining_colors[v] for u, v in G.edges()]
+            edge_colors = [defining_colors[v] for u, v in g.edges()]
         else:
-            raise ValueError(f"color_edges_by must be 'pre' or 'post', got {color_edges_by}.")
+            msg = f"color_edges_by must be 'pre' or 'post', got {color_edges_by}."
+            raise ValueError(msg)
     else:
         edge_colors = edge_color
 
     # Plot network
     nx.draw(
-        G,
+        g,
         pos,
         with_labels=True,
         node_color=node_colors,
@@ -760,8 +825,6 @@ def plot_small_network(
 
     if projection == "xy":
         # Add small axis to show it's a projection
-        bbox = ax.get_position()
-
         # Coordinates for the mini-axis (in axes fraction of full axis)
         x0, y0 = 0.0, 0.0
         dx, dy = 0.1, 0.1
@@ -771,7 +834,7 @@ def plot_small_network(
             "",
             xy=(x0 + dx, y0),
             xytext=(x0, y0),
-            arrowprops=dict(arrowstyle="->", lw=1, color="k"),
+            arrowprops={"arrowstyle": "->", "lw": 1, "color": "k"},
             xycoords="axes fraction",
         )
         ax.annotate(
@@ -783,7 +846,7 @@ def plot_small_network(
             "",
             xy=(x0, y0 + dy),
             xytext=(x0, y0),
-            arrowprops=dict(arrowstyle="->", lw=1, color="black"),
+            arrowprops={"arrowstyle": "->", "lw": 1, "color": "black"},
             xycoords="axes fraction",
         )
 
@@ -793,16 +856,21 @@ def plot_small_network(
     return ax
 
 
-def make_MC_fig_template(
-    figsize,
-    height_ratios=[1, 2, 1],  # relative row heights
-    width_ratios=[1, 1, 1],
-    hspace_row1=0.05,
-    hspace_row2=0.15,
-    hspace_row3=0.02,  # hspaces between columns in each row (fraction)
-    cartoon_gaps=0.1,  # gap between cartoons
-    ax1_ratio=0.5,  # fraction of row width for ax1
-):
+def make_MC_fig_template(  # noqa: PLR0914
+    figsize: tuple[float, float],
+    height_ratios: list[float] | None = None,
+    width_ratios: list[float] | None = None,
+    hspace_row1: float = 0.05,
+    hspace_row2: float = 0.15,
+    hspace_row3: float = 0.02,
+    cartoon_gaps: float = 0.1,
+    ax1_ratio: float = 0.5,
+) -> tuple[plt.Figure, tuple[plt.Axes, ...]]:
+    if height_ratios is None:
+        height_ratios: list[float] = [1, 2, 1]
+    if width_ratios is None:
+        width_ratios: list[float] = [1, 1, 1]
+
     # Make template for figure of small MC network properties
     fig = plt.figure(figsize=figsize)
 
@@ -879,7 +947,9 @@ def make_MC_fig_template(
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
 
 
-def plot_smallMC(conn, cmap, full_width, textsize=14):
+def plot_smallMC(  # noqa: PLR0914
+    conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
+) -> plt.Figure:
     # Generate template for plot
     fig, axs = make_MC_fig_template(
         figsize=(full_width, full_width),
@@ -929,7 +999,6 @@ def plot_smallMC(conn, cmap, full_width, textsize=14):
 
     # Plot x-y projection
     projection, coord_names, title = "xy", ["x", "y"], "Node positions: in x-y projection"
-    # projection, coord_names, title ="circular", None, "Node positions: circular"
     ax3 = plot_small_network(
         ax3,
         conn,
@@ -1036,14 +1105,14 @@ def plot_smallMC(conn, cmap, full_width, textsize=14):
     return fig
 
 
-def plot_node_table(
-    conn,
-    figsize,
-    colors_cmap,  # name of discrete colormap from matplotlib
-    colors_file=None,  # path to rgba colors file
-    h_scale=2.5,
-    v_scale=2.5,
-):
+def plot_node_table(  # noqa: PLR0914
+    conn: ConnectivityMatrix,
+    figsize: tuple[float, float],
+    colors_cmap: str,  # name of discrete colormap from matplotlib
+    colors_file: str | None = None,  # path to rgba colors file
+    h_scale: float = 2.5,
+    v_scale: float = 2.5,
+) -> plt.Figure:
     """Plot a table of node properties with color coding."""
     # Get data frame of properties
     df = conn.vertices[["node_ids", "layer", "mtype"]]
@@ -1053,26 +1122,28 @@ def plot_node_table(
     # Get colors
     if colors_cmap != "custom":  # From color map
         colors = plt.get_cmap(colors_cmap)
-        N = conn._shape[0]
-        if not (hasattr(colors, "colors") and colors.N >= N):
-            raise ValueError(
+        n = conn.matrix.shape[0]
+        if not (hasattr(colors, "colors") and n <= colors.N):
+            msg = (
                 "The rendering color map must contain at least as many colors as there are neurons."
             )
+            raise ValueError(msg)
         colors = [colors(i) for i in range(colors.N)]
     else:  # Load colors from file
         colors_df = pd.read_csv(colors_file, header=None)
-        colors = [tuple(row) for row in colors_df.values]
+        colors = [tuple(row) for row in colors_df.to_numpy()]
         if not len(colors) >= len(df):
-            raise ValueError(
+            msg = (
                 "The rendering color map must contain at least as many colors as there are neurons."
             )
+            raise ValueError(msg)
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.axis("off")
     ax.set_aspect("equal")
 
-    table = ax.table(cellText=df.values, colLabels=df.columns, loc="center", cellLoc="center")
-    table.auto_set_font_size(False)
+    table = ax.table(cellText=df.to_numpy(), colLabels=df.columns, loc="center", cellLoc="center")
+    table.auto_set_font_size(value=False)
     table.set_fontsize(12)
     table.scale(h_scale, v_scale)
 

@@ -14,3 +14,5 @@ examples/new_node_sets.json
 examples/node_sets.json
 dist/*
 .pypirc
+pip-audit-output.json
+*~

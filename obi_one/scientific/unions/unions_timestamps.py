@@ -1,9 +1,11 @@
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
+
+from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp
 
-TimestampsUnion = SingleTimestamp | RegularTimestamps
+TimestampsUnion = Annotated[SingleTimestamp | RegularTimestamps, Discriminator("type")]
 
 
 class TimestampsReference(BlockReference):

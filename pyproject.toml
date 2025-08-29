@@ -1,6 +1,5 @@
 [project]
 name = "obi-one"
-version = "2025.7.6"
 authors = [
   { name="James Isbister", email="james.isbister@openbraininstitute.org" },
   { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
@@ -25,6 +24,7 @@ classifiers = [
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+dynamic = ["version"]
 
 dependencies = [
     # PYDANTIC
@@ -56,10 +56,10 @@ dependencies = [
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-    "bluepyefe>=2.3.48",
+    "bluepyefe>=2.3.50",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
-    "bluecellulab>=2.6.62"
+    "bluecellulab>=2.6.62",
 ]
 
 [project.optional-dependencies]
@@ -69,6 +69,9 @@ connectivity = [
 
 
 [dependency-groups]
+audit = [
+    "pip-audit>=2.9.0",
+]
 dev = [
     "coverage[toml]",
     "pyright",
@@ -82,6 +85,7 @@ dev = [
 [build-system]
 requires = [
     "setuptools>=42",
+    "setuptools-scm[toml]>=6.2",
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
@@ -94,12 +98,17 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 where = ["."]
 include = ["obi_one*"]
 
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+
+[tool.uv]
+required-version = ">=0.8.0"
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
 exclude = [
-    "obi_one/scientific/basic_connectivity_plots/helpers.py",
     "obi_one/scientific/morphology_containerization/morphology_containerization.py",
     "obi_one/scientific/morphology_containerization/morphology_decontainerization.py",
     "obi_one/scientific/simulation/execution.py"

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.9
-ARG UV_VERSION=0.6
+ARG UV_VERSION=latest
 ARG PYTHON_VERSION=3.12
-ARG PYTHON_BASE=${PYTHON_VERSION}-slim
+ARG PYTHON_BASE=${PYTHON_VERSION}-slim-trixie
 
 # uv stage
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
@@ -18,7 +18,7 @@ apt-get install -qyy \
     build-essential \
     ca-certificates \
     cmake \
-    libboost1.81-all-dev \
+    libboost-all-dev \
     libhdf5-dev \
     libopenmpi-dev \
     zlib1g-dev \
@@ -52,6 +52,7 @@ RUN \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi_one,target=obi_one \
+    --mount=type=bind,source=.git,target=.git \
     uv sync --locked --no-editable --no-cache
 
 # run stage
@@ -63,7 +64,7 @@ apt-get update -qy
 apt-get install -qyy \
     -o APT::Install-Recommends=false \
     -o APT::Install-Suggests=false \
-    libhdf5-103-1
+    libhdf5-310
 EOT
 
 RUN <<EOT
