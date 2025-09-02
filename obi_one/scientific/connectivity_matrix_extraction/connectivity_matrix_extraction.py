@@ -61,7 +61,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
         L.info(f"Info: Running idx {self.idx}")
 
         output_file = Path(self.coordinate_output_root) / "connectivity_matrix.h5"
-        if not Path(output_file).exists():
+        if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"
             raise ValueError(msg)
 

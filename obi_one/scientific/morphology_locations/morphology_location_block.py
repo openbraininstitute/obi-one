@@ -9,7 +9,7 @@ from obi_one.core.block import Block
 
 from .specified_morphology_locations import _CEN_IDX, generate_neurite_locations_on
 
-__MIN_PD_SD = 0.1
+_MIN_PD_SD = 0.1
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -262,9 +262,9 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
                 raise ValueError(msg)
 
         if not isinstance(self.path_dist_sd, list):  # noqa: SIM102
-            if self.path_dist_sd < __MIN_PD_SD:
+            if self.path_dist_sd < _MIN_PD_SD:
                 msg = (
-                    f"Path distance std: {self.path_dist_sd} < {__MIN_PD_SD} (numerical stability)"
+                    f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
                 )
                 raise ValueError(msg)
 
