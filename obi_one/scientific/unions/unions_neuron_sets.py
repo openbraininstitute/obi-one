@@ -40,12 +40,13 @@ NeuronSetUnion = Annotated[
 
 
 SimulationNeuronSetUnion = Annotated[
-    IDNeuronSet
-    | nbS1VPMInputs
-    | nbS1POmInputs
-    | AllNeurons
+    AllNeurons
     | ExcitatoryNeurons
-    | InhibitoryNeurons,
+    | InhibitoryNeurons
+    | IDNeuronSet
+    | PredefinedNeuronSet
+    | nbS1VPMInputs
+    | nbS1POmInputs,
     Discriminator("type"),
 ]
 
