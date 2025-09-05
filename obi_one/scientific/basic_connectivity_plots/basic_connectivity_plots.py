@@ -1,5 +1,5 @@
+import contextlib
 import logging
-import warnings
 from pathlib import Path
 from typing import ClassVar, Self
 
@@ -25,11 +25,9 @@ from obi_one.scientific.basic_connectivity_plots.helpers import (
     plot_smallMC_network_stats,
 )
 
-try:
+with contextlib.suppress(ImportError):  # Try to import connalysis
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 L = logging.getLogger(__name__)
 
@@ -248,6 +246,13 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
     def run(self) -> None:
+        if "node_degree" not in globals() or "ER_model" not in globals():
+            msg = (
+                "Import of 'node_degree' or 'ER_model' failed. You probably need to install"
+                " connalysis locally."
+            )
+            raise ValueError(msg)
+
         # TODO: Maybe move width outside, but then fontsize would have to be changed accordingly
         full_width = 16
         # Set plot format, resolution and plot types
