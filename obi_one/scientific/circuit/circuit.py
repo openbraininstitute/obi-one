@@ -78,13 +78,24 @@ class Circuit(OBIBaseModel):
         """Returns the default node population name."""
         return self._default_population_name(self.sonata_circuit)
 
-    def get_edge_population_names(self, *, incl_virtual: bool = True) -> list:
+    @staticmethod
+    def get_edge_population_names(c: snap.Circuit, *, incl_virtual: bool = True) -> list:
         """Returns edge population names."""
-        popul_names = self.sonata_circuit.edges.population_names
+        popul_names = c.edges.population_names
         if not incl_virtual:
-            popul_names = [
-                _pop
-                for _pop in popul_names
-                if self.sonata_circuit.edges[_pop].source.type != "virtual"
-            ]
+            popul_names = [_pop for _pop in popul_names if c.edges[_pop].source.type != "virtual"]
         return popul_names
+
+    @staticmethod
+    def _default_edge_population_name(c: snap.Circuit) -> str:
+        """Returns the default edge population name of a SONATA circuit c."""
+        popul_names = Circuit.get_edge_population_names(c, incl_virtual=False)
+        if len(popul_names) != 1:
+            msg = "Default edge population unknown!"
+            raise ValueError(msg)
+        return popul_names[0]
+
+    @property
+    def default_edge_population_name(self) -> str:
+        """Returns the default edge population name."""
+        return self._default_edge_population_name(self.sonata_circuit)
