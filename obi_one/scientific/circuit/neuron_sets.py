@@ -3,7 +3,6 @@ import contextlib
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
@@ -213,7 +212,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         self.enforce_no_lists()
         population = self._population(population)
         self.check_population(circuit, population)
-        if self.sample_percentage is None and not force_resolve_ids:
+        if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit, population)
         else:
@@ -712,7 +711,7 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in sys.modules:
+        if "simplex_submat" not in globals():
             msg = (
                 "Import of 'simplex_submat' failed. You probably need to install connalysis"
                 " locally."
@@ -817,7 +816,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in sys.modules:
+        if "simplex_submat" not in globals():
             msg = (
                 "Import of 'simplex_submat' failed. You probably need to install connalysis"
                 " locally."
