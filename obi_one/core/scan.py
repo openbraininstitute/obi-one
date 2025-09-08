@@ -14,6 +14,7 @@ from obi_one.core.block import Block
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateMixin, SingleCoordinateScanParams
 from obi_one.scientific.unions.unions_form import FormUnion
+from typing import Optional
 
 L = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class Scan(OBIBaseModel):
     form: FormUnion
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
+    obi_one_version: Optional[str] = None
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
