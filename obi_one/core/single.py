@@ -64,6 +64,7 @@ class SingleCoordinateMixin:
     idx: int = -1
     scan_output_root: Path = Path()
     coordinate_output_root: Path = Path()
+    obi_one_version: str | None = None
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
