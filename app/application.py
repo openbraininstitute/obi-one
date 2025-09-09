@@ -135,6 +135,3 @@ generated_router = APIRouter(
     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
 )
 app.include_router(activate_generated_endpoints(generated_router))
-app.include_router(subject_data_router)
-app.include_router(licenses_router)
-app.include_router(mtypes_router)
