@@ -16,3 +16,4 @@ dist/*
 .pypirc
 pip-audit-output.json
 *~
+examples/data/blueetl_data/output/
