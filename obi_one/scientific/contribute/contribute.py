@@ -42,6 +42,7 @@ class Contribution(BaseModel):
     agent_id: uuid.UUID | None = Field(default=None)
     role_id: uuid.UUID | None = Field(default=None)
 
+
 class Author(BaseModel):
     given_name: str | None = None
     family_name: str | None = None
@@ -126,8 +127,10 @@ class Subject(Block):
 class License(Block):
     license_id: uuid.UUID | None = Field(default=None)
 
-class Subject_ID(Block):
+
+class SubjectID(Block):
     subject_id: uuid.UUID | None = Field(default=None)
+
 
 class ScientificArtifact(Block):
     experiment_date: datetime | None = Field(default=None)
@@ -173,7 +176,7 @@ class ContributeMorphologyForm(Form):
         description="Publication details.",
     )
 
-    subject: Subject_ID = Field(
+    subject: SubjectID = Field(
         default_factory=License,
         title="Subject",
         description="The subject from which the morphology was derived.",
