@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk.client
-from bluepysnap import Circuit
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.scientific.circuit.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class ConnectivityMatrixExtractions(Form):
     )
 
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
+        circuit: Circuit | list[Circuit]
         edge_population: str | list[str | None] | None = None
         node_attributes: tuple[str, ...] | list[tuple[str, ...] | None] | None = None
 
@@ -66,8 +66,8 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
             raise ValueError(msg)
 
         # Load circuit
-        L.info(f"Info: Loading circuit '{self.initialize.circuit_path}'")
-        c = Circuit(self.initialize.circuit_path.path)
+        L.info(f"Info: Loading circuit '{self.initialize.circuit}'")
+        c = self.initialize.circuit.sonata_circuit
         popul_names = c.edges.population_names
         if len(popul_names) == 0:
             msg = "Circuit does not have any edge populations!"
