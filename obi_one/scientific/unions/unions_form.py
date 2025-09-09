@@ -1,3 +1,7 @@
+from typing import Annotated
+
+from pydantic import Discriminator
+
 from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
     BasicConnectivityPlots,
 )
@@ -27,7 +31,7 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTestForm,
 )
 
-FormUnion = (
+FormUnion = Annotated[
     BasicConnectivityPlots
     | CircuitExtractions
     | ConnectivityMatrixExtractions
@@ -39,5 +43,6 @@ FormUnion = (
     | SingleBlockGenerateTestForm
     | SingleBlockEntityTestForm
     | MultiBlockEntitySDKTestForm
-    | MorphologyLocationsForm
-)
+    | MorphologyLocationsForm,
+    Discriminator("type"),
+]

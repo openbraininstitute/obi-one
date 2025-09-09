@@ -51,6 +51,9 @@ class BlockGroup(StrEnum):
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
+CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
+
+
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -113,7 +116,7 @@ class SimulationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit: list[Circuit] | Circuit | CircuitFromID | list[CircuitFromID]
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator]
         node_set: Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
         ]
@@ -255,23 +258,6 @@ class SimulationsForm(Form):
             )
         )
 
-    def add(self, block: Block, name: str = "") -> None:
-        block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
-
-        if name in self.__dict__.get(block_dict_name):
-            msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
-            raise OBIONEError(msg)
-
-        reference_type = globals()[reference_type_name]
-        ref = reference_type(block_dict_name=block_dict_name, block_name=name)
-        block.set_ref(ref)
-        self.__dict__[block_dict_name][name] = block
-
-    def set(self, block: Block, name: str = "") -> None:
-        """Sets a block in the form."""
-        self.__dict__[name] = block
-
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
@@ -402,6 +388,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
         Path(self.coordinate_output_root).mkdir(parents=True, exist_ok=True)
+
+        sonata_circuit = circuit.sonata_circuit
         for _name, _nset in self.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
@@ -431,13 +419,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 circuit, circuit.default_population_name, force_resolve_ids=True
             )
             NeuronSet.add_node_set_to_circuit(
-                circuit.sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
+                sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
             )
 
         # Write node sets from SONATA circuit object to .json file
         # (will raise an error if file already exists)
         NeuronSet.write_circuit_node_set_file(
-            circuit.sonata_circuit,
+            sonata_circuit,
             self.coordinate_output_root,
             file_name=self.NODE_SETS_FILE_NAME,
             overwrite_if_exists=False,
