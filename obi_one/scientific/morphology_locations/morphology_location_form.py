@@ -72,7 +72,7 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
         plt.axis("equal")
         return fig
 
-    def run(self, db_client: entitysdk.client.Client) -> None:
+    def run(self, db_client: entitysdk.client.Client) -> None:  # NOQA: ARG002
         try:
             if isinstance(self.initialize.morphology, Path):
                 m = morphio.Morphology(self.initialize.morphology)
