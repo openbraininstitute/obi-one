@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import ClassVar, Self
 
+import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -160,9 +161,9 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             L.warning("Your network is likely too small for these plots to be informative.")
         # Global connection probabilities
         global_conn_probs = {"full": None, "within": None}
-        global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, type="full")
+        global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, connection_type="full")
         global_conn_probs["widthin"] = compute_global_connectivity(
-            adj, adj_er, v=conn.vertices, type="within", max_dist=100, cols=["x", "y"]
+            adj, adj_er, v=conn.vertices, connection_type="within", max_dist=100, cols=["x", "y"]
         )
 
         # Plot network metrics
@@ -245,7 +246,7 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                 output_file = Path(dir_path) / f"property_table.{fmt}"
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (
                 "Import of 'node_degree' or 'ER_model' failed. You probably need to install"

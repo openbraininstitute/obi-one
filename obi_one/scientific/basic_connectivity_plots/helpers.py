@@ -313,7 +313,7 @@ def plot_global_connection_probability(
 
 def plot_rc_connection(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes:
     # Create a directed graph
-    g = nx.Digraph()
+    g = nx.DiGraph()
     g.add_node(1)
     g.add_node(2)
     g.add_edge(1, 2)
@@ -513,7 +513,7 @@ def plot_connection_probability_pathway_stats(
         transform=axs[0, 2].transAxes,
     )
     for i, direction in enumerate(["IN", "OUT", "TOTAL"], start=0):
-        axs[i, 2] = plot_degree(axs[i, 2], deg, deg_er, direction, type="full")
+        axs[i, 2] = plot_degree(axs[i, 2], deg, deg_er, direction, hist_type="full")
         axs[i, 2].set_xlabel(f"{direction.capitalize()}-degree")
         axs[i, 2].spines[["top", "right"]].set_visible(False)
         axs[i, 2].set_frame_on(False)
@@ -714,7 +714,7 @@ def plot_growing_arrows(
 
 def plot_rc(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes:
     # Create graph
-    g = nx.Digraph()
+    g = nx.DiGraph()
     g.add_node(0)
     g.add_node(1)
     g.add_edge(0, 1)
