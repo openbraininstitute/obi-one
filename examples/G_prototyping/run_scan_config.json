@@ -1,0 +1,18 @@
+{
+    "obi_one_version": "2025.9.1.dev7",
+    "type": "GridScanGeneration",
+    "output_root": ".",
+    "scan_config": {
+        "type": "ExampleScanConfig",
+        "initialize": {
+            "type": "ExampleScanConfig.Initialize",
+            "morphology_path": {
+                "name": "test",
+                "path": "test",
+                "type": "NamedPath"
+            },
+            "param_a": 1
+        }
+    },
+    "coordinate_directory_option": "NAME_EQUALS_VALUE"
+}
