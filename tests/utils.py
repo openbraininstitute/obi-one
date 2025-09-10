@@ -5,6 +5,8 @@ from httpx import Headers
 from starlette.testclient import TestClient
 
 DATA_DIR = Path(__file__).parent / "data"
+CIRCUIT_DIR = Path(__file__).parents[1] / "examples" / "data" / "tiny_circuits"
+MATRIX_DIR = Path(__file__).parents[1] / "examples" / "data" / "connectivity_matrices"
 
 VIRTUAL_LAB_ID = "9c6fba01-2c6f-4eac-893f-f0dc665605c5"
 PROJECT_ID = "ee86d4a0-eaca-48ca-9788-ddc450250b15"
