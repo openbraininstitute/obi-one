@@ -17,7 +17,7 @@ L = logging.getLogger(__name__)
 class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
-    SETUP_BLOCK_GROUP = "Setup"
+    SETUP_BLOCK_GROUP = "Basic information"
     ASSET_BLOCK_GROUP = "Morphology files"
     CONTRIBUTOR_BLOCK_GROUP = "Experimenter"
     STRAIN_BLOCK_GROUP = "Animal strain"
@@ -39,7 +39,8 @@ class AgePeriod(StrEnum):
 
 
 class Contribution(BaseModel):
-    name: str = Field(default="", description="Contribution name")
+    agent_id: uuid.UUID | None = Field(default=None)
+    role_id: uuid.UUID | None = Field(default=None)
 
 
 class Author(BaseModel):
@@ -127,6 +128,10 @@ class License(Block):
     license_id: uuid.UUID | None = Field(default=None)
 
 
+class SubjectID(Block):
+    subject_id: uuid.UUID | None = Field(default=None)
+
+
 class ScientificArtifact(Block):
     experiment_date: datetime | None = Field(default=None)
     contact_email: str | None = Field(default=None)
@@ -165,16 +170,16 @@ class ContributeMorphologyForm(Form):
         description="Information about contributors.",
     )
 
-    subject: Subject = Field(
-        default_factory=Subject,
-        title="Subject",
-        description="Information about the subject.",
-    )
-
     publication: Publication = Field(
         default_factory=Publication,
         title="Publication Details",
         description="Publication details.",
+    )
+
+    subject: SubjectID = Field(
+        default_factory=License,
+        title="Subject",
+        description="The subject from which the morphology was derived.",
     )
 
     license: License = Field(
@@ -197,6 +202,34 @@ class ContributeMorphologyForm(Form):
 
 
 class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
+    """Placeholder here to maintain compatibility."""
+
+    def generate(self, db_client: entitysdk.client.Client = None) -> None:
+        pass
+
+    def save(
+        self,
+        campaign: entitysdk.models.SimulationCampaign,
+        db_client: entitysdk.client.Client,
+    ) -> None:
+        pass
+
+
+class ContributeSubjectForm(Form):
+    """Contribute Morphology Form."""
+
+    single_coord_class_name: ClassVar[str] = "ContributeSubject"
+    name: ClassVar[str] = "Contribute a Subject"
+    description: ClassVar[str] = "Form to contribute a subject to the OBI."
+
+    subject: Subject = Field(
+        default_factory=Subject,
+        title="Subject",
+        description="Information about the subject.",
+    )
+
+
+class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
