@@ -1,5 +1,5 @@
 {
-    "name": "IV/FI Curve Analysis",
+    "name": "Plot IV/FI Curve",
     "authors": ["OBI", "Ilkan Kiliç", "Darshan Mandge", "Aurélien Jaquier"],
     "description": "This notebook demonstrates how to compute and visualize IV and FI curves for a single-cell model using BlueCelluLab. It explores key neuronal properties like input resistance and firing threshold while showing how different injection and recording locations affect excitability and signal propagation.",
     "scale": "cellular",

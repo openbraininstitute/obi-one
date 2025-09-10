@@ -16,7 +16,7 @@ The folder has been divided into 3 main subfolders, each corresponding to the le
   - **emodels**: Notebooks on E-models. See this [README](Cellular/emodels/README.md) for more details
       - [**parameter_plots**](Cellular/emodels/parameters_plot/analysis_notebook.ipynb): Compare parameters of an e-model across sections on Open Brain Institute Platform (OBP)
       - [**cadpyr_showcase**](Cellular/emodels/cadpyr_showcase/analysis_notebook.ipynb): Demonstrates various properties of the OBP canonical cADPyr (continuos firing and adapting type pyramidal neuron) e-model
-      - [**iv_fi_curve**](Cellular/emodels/iv_fi_curve/analysis_notebook.ipynb): Computes and visualize IV and FI curves for a single-cell model using BlueCelluLab.
+      - [**plot_iv_fi_curve**](Cellular/emodels/plot_iv_fi_curve/analysis_notebook.ipynb): Computes and visualize IV and FI curves for a single-cell model using BlueCelluLab.
       - [**single_cell_currentscape_analysis**](Cellular/emodels/single_cell_currentscape_analysis/analysis_notebook.ipynb): Currentscape analysis of single cells
       - [**single_cell_impedance_analysis**](Cellular/emodels/single_cell_impedance_analysis/analysis_notebook.ipynb): Impedance analysis of single cells
       - **lfpy_simulations**

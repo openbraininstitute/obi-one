@@ -1,4 +1,4 @@
-# IV/FI Curve Analysis
+# Plot IV/FI Curve
 Copyright (c) 2025 Open Brain Institute
 
 Authors: Ilkan Kilic and Darshan Mandge
