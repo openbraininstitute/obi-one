@@ -28,7 +28,6 @@ __all__ = [
     "CircuitExtraction",
     "CircuitExtractions",
     "CircuitFromID",
-    "MEModelFromID",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -61,6 +60,7 @@ __all__ = [
     "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelFromID",
     "MorphologyContainerization",
     "MorphologyContainerizationsForm",
     "MorphologyDecontainerization",
@@ -140,8 +140,8 @@ __all__ = [
 ]
 
 from obi_one.database.circuit_from_id import CircuitFromID
-from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
