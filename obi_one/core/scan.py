@@ -29,6 +29,7 @@ class Scan(OBIBaseModel):
     form: FormUnion
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
+    obi_one_version: str | None = None
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _coordinate_instances: list = PrivateAttr(default=[])
