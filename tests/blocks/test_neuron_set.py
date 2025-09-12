@@ -220,34 +220,42 @@ def test_property_neuron_set():
         path=str(CIRCUIT_DIR / circuit_name / "circuit_config.json"),
         matrix_path=str(MATRIX_DIR / circuit_name / "connectivity_matrix.h5"),
     )
-    
+
     # (a) Invalid neuron property --> Error
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"INVALID": ["x"], "layer": ["5", "6"], "synapse_class": ["EXC"]}),
+        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+            filter_dict={"INVALID": ["x"], "layer": ["5", "6"], "synapse_class": ["EXC"]}
+        ),
     )
     with pytest.raises(ValueError, match="Invalid neuron properties!"):
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
-    
+
     # (b) Invalid property value --> Empty neuron set
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"layer": ["5", "6"], "synapse_class": ["INVALID"]}),
+        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+            filter_dict={"layer": ["5", "6"], "synapse_class": ["INVALID"]}
+        ),
     )
     neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
     assert len(neuron_set_ids) == 0
-    
+
     # (c) Valid property neuron set
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}),
+        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+            filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
+        ),
     )
     neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, range(1, 10))
     assert neuron_set_def == {"layer": ["3", "6"], "synapse_class": "EXC"}
-    
-    # (d) Valid property neuron set combined with existing node sets --> Will enforce resolving node IDs
+
+    # (d) Valid property neuron set combined with existing node sets --> Enforces resolving node IDs
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
-        node_sets=("Layer3", "Layer6")
+        property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+            filter_dict={"synapse_class": ["EXC"]}
+        ),
+        node_sets=("Layer3", "Layer6"),
     )
     neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
@@ -258,15 +266,21 @@ def test_property_neuron_set():
 
 def _get_distance(circuit, neuron_set, neuron_ids):
     """Get neuron distance relative to the centroid of (filtered) neuron population."""
-    base_neuron_ids = obi.PropertyNeuronSet(property_filter=neuron_set.property_filter).get_neuron_ids(circuit, circuit.default_population_name)
-    all_pos = circuit.sonata_circuit.nodes[circuit.default_population_name].positions(base_neuron_ids)
-    center_pos = all_pos.mean() + [neuron_set.ox, neuron_set.oy, neuron_set.oz]
-    sel_pos = circuit.sonata_circuit.nodes[circuit.default_population_name].get(neuron_ids, properties=["x", "y", "z"])
-    sel_dist = np.sqrt(np.sum((sel_pos - center_pos)**2, 1))
+    base_neuron_ids = obi.PropertyNeuronSet(
+        property_filter=neuron_set.property_filter
+    ).get_neuron_ids(circuit, circuit.default_population_name)
+    all_pos = circuit.sonata_circuit.nodes[circuit.default_population_name].positions(
+        base_neuron_ids
+    )
+    center_pos = all_pos.mean() + np.array([neuron_set.ox, neuron_set.oy, neuron_set.oz])
+    sel_pos = circuit.sonata_circuit.nodes[circuit.default_population_name].get(
+        neuron_ids, properties=["x", "y", "z"]
+    )
+    sel_dist = np.sqrt(np.sum((sel_pos - center_pos) ** 2, 1))
     return sel_dist.to_numpy()
 
 
-def test_volumetric_neuron_sets():    
+def test_volumetric_neuron_sets():
     # Load circuit
     circuit_name = "N_10__top_nodes_dim6"
     circuit = obi.Circuit(
@@ -274,39 +288,61 @@ def test_volumetric_neuron_sets():
         path=str(CIRCUIT_DIR / circuit_name / "circuit_config.json"),
         matrix_path=str(MATRIX_DIR / circuit_name / "connectivity_matrix.h5"),
     )
-    
+
     # (a) Volumetric count neuron set with different numbers
-    N = [0, 3, 5, 7, 100]
+    counts = [0, 3, 5, 7, 100]
     expected = [[], [6, 7, 9], [3, 5, 6, 7, 9], [1, 3, 4, 5, 6, 7, 9], range(1, 10)]
-    for n, exp in zip(N, expected):
-        neuron_set = obi.VolumetricCountNeuronSet(ox=10.0, oy=25.0, oz=100.0, n=n,
-            property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
+    for n, exp in zip(counts, expected, strict=False):
+        neuron_set = obi.VolumetricCountNeuronSet(
+            ox=10.0,
+            oy=25.0,
+            oz=100.0,
+            n=n,
+            property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+                filter_dict={"synapse_class": ["EXC"]}
+            ),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
-        neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
+        neuron_set_def = neuron_set.get_node_set_definition(
+            circuit, circuit.default_population_name
+        )
         np.testing.assert_array_equal(sorted(neuron_set_ids), exp)
         assert neuron_set_def["population"] == circuit.default_population_name
         np.testing.assert_array_equal(sorted(neuron_set_def["node_id"]), exp)
-    
+
         # Check distances (no other neurons must be closer)
-        cutoff_dist = 0.0 if len(neuron_set_ids) == 0 else np.max(_get_distance(circuit, neuron_set, neuron_set_ids))
-        diff_ids = np.setdiff1d(circuit.sonata_circuit.nodes[circuit.default_population_name].ids(), neuron_set_ids)
+        cutoff_dist = (
+            0.0
+            if len(neuron_set_ids) == 0
+            else np.max(_get_distance(circuit, neuron_set, neuron_set_ids))
+        )
+        diff_ids = np.setdiff1d(
+            circuit.sonata_circuit.nodes[circuit.default_population_name].ids(), neuron_set_ids
+        )
         other_dist = _get_distance(circuit, neuron_set, diff_ids)
         assert np.all(other_dist >= cutoff_dist)
-    
+
     # (b) Volumetric radius neuron set with different radii
-    R = [0, 50.0, 100.0, 150.0, 200.0, 1000.0]
+    radii = [0, 50.0, 100.0, 150.0, 200.0, 1000.0]
     expected = [[], [9], [6, 9], [1, 3, 4, 5, 6, 7, 9], range(1, 10), range(1, 10)]
-    for r, exp in zip(R, expected):
-        neuron_set = obi.VolumetricRadiusNeuronSet(ox=10.0, oy=25.0, oz=100.0, radius=r,
-            property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(filter_dict={"layer": ["5", "6"], "synapse_class": ["EXC"]})
+    for r, exp in zip(radii, expected, strict=False):
+        neuron_set = obi.VolumetricRadiusNeuronSet(
+            ox=10.0,
+            oy=25.0,
+            oz=100.0,
+            radius=r,
+            property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(
+                filter_dict={"layer": ["5", "6"], "synapse_class": ["EXC"]}
+            ),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
-        neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
+        neuron_set_def = neuron_set.get_node_set_definition(
+            circuit, circuit.default_population_name
+        )
         np.testing.assert_array_equal(sorted(neuron_set_ids), exp)
         assert neuron_set_def["population"] == circuit.default_population_name
         np.testing.assert_array_equal(sorted(neuron_set_def["node_id"]), exp)
-    
+
         # Check distances (all neurons must be within radius)
         dist = _get_distance(circuit, neuron_set, neuron_set_ids)
         assert np.all(dist < r)
@@ -322,28 +358,54 @@ def test_simplex_neuron_sets():
     )
 
     # Simplex membership based neuron set
-    dim_pos = [(2, "source"), (2, "target"), (3, "source"), (3, "target"), (4, "source"), (4, "target")]
+    dim_pos = [
+        (2, "source"),
+        (2, "target"),
+        (3, "source"),
+        (3, "target"),
+        (4, "source"),
+        (4, "target"),
+    ]
     expected = [[4, 6, 7, 8, 9], [4, 9], [4, 7, 8, 9], [4, 9], [4, 7, 8, 9], [4, 9]]
-    for (dim, pos), exp in zip(dim_pos, expected):
-        neuron_set = obi.SimplexMembershipBasedNeuronSet(central_neuron_id=9, dim=dim, central_neuron_simplex_position=pos, subsample=False,
+    for (dim, pos), exp in zip(dim_pos, expected, strict=False):
+        neuron_set = obi.SimplexMembershipBasedNeuronSet(
+            central_neuron_id=9,
+            dim=dim,
+            central_neuron_simplex_position=pos,
+            subsample=False,
             property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
-        neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
+        neuron_set_def = neuron_set.get_node_set_definition(
+            circuit, circuit.default_population_name
+        )
         assert neuron_set.central_neuron_id in neuron_set_ids
         np.testing.assert_array_equal(sorted(neuron_set_ids), exp)
         assert neuron_set_def["population"] == circuit.default_population_name
         np.testing.assert_array_equal(sorted(neuron_set_def["node_id"]), exp)
 
     # Simplex neuron set
-    dim_pos = [(2, "source"), (2, "target"), (3, "source"), (3, "target"), (4, "source"), (4, "target")]
+    dim_pos = [
+        (2, "source"),
+        (2, "target"),
+        (3, "source"),
+        (3, "target"),
+        (4, "source"),
+        (4, "target"),
+    ]
     expected = [[4, 6, 7, 8, 9], [4, 9], [4, 7, 8, 9], [4, 9], [4, 7, 8, 9], [4, 9]]
-    for (dim, pos), exp in zip(dim_pos, expected):
-        neuron_set = obi.SimplexNeuronSet(central_neuron_id=9, dim=dim, central_neuron_simplex_position=pos, subsample=False,
+    for (dim, pos), exp in zip(dim_pos, expected, strict=False):
+        neuron_set = obi.SimplexNeuronSet(
+            central_neuron_id=9,
+            dim=dim,
+            central_neuron_simplex_position=pos,
+            subsample=False,
             property_filter=obi.scientific.circuit.neuron_sets.NeuronPropertyFilter(),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
-        neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
+        neuron_set_def = neuron_set.get_node_set_definition(
+            circuit, circuit.default_population_name
+        )
         assert neuron_set.central_neuron_id in neuron_set_ids
         np.testing.assert_array_equal(sorted(neuron_set_ids), exp)
         assert neuron_set_def["population"] == circuit.default_population_name
@@ -356,46 +418,81 @@ def test_write_to_node_set_file(tmp_path):
     circuit = obi.Circuit(
         name=circuit_name, path=str(CIRCUIT_DIR / circuit_name / "circuit_config.json")
     )
-    c = circuit.sonata_circuit
-    
+
     # Write new file
     neuron_set = obi.CombinedNeuronSet(node_sets=("Layer1", "Layer2", "Layer3"))
-    nset_file = neuron_set.to_node_set_file(circuit, circuit.default_population_name, output_path=tmp_path, overwrite_if_exists=False, optional_node_set_name="L123")
+    nset_file = neuron_set.to_node_set_file(
+        circuit,
+        circuit.default_population_name,
+        output_path=tmp_path,
+        overwrite_if_exists=False,
+        optional_node_set_name="L123",
+    )
     assert Path(nset_file).exists()
-    
+
     # Write again w/o overwriting --> Must raise an error
-    with pytest.raises(ValueError, match=f"Output file '{tmp_path / 'node_sets.json'}' already exists! Delete file or choose to append or overwrite."):
-        nset_file = neuron_set.to_node_set_file(circuit, circuit.default_population_name, output_path=tmp_path, overwrite_if_exists=False, optional_node_set_name="L123")
-    
+    with pytest.raises(
+        ValueError,
+        match=(
+            f"Output file '{tmp_path / 'node_sets.json'}' already exists!"
+            " Delete file or choose to append or overwrite."
+        ),
+    ):
+        nset_file = neuron_set.to_node_set_file(
+            circuit,
+            circuit.default_population_name,
+            output_path=tmp_path,
+            overwrite_if_exists=False,
+            optional_node_set_name="L123",
+        )
+
     # Write again with overwriting --> No error
-    nset_file = neuron_set.to_node_set_file(circuit, circuit.default_population_name, output_path=tmp_path, overwrite_if_exists=True, optional_node_set_name="L123")
+    nset_file = neuron_set.to_node_set_file(
+        circuit,
+        circuit.default_population_name,
+        output_path=tmp_path,
+        overwrite_if_exists=True,
+        optional_node_set_name="L123",
+    )
     assert Path(nset_file).exists()
-    
+
     # Append to existing file, but name already exists --> Must raise an error
     with pytest.raises(ValueError, match="Appending not possible, node set 'L123' already exists!"):
-        nset_file = neuron_set.to_node_set_file(circuit, circuit.default_population_name, output_path=tmp_path, append_if_exists=True, optional_node_set_name="L123")
-    
+        nset_file = neuron_set.to_node_set_file(
+            circuit,
+            circuit.default_population_name,
+            output_path=tmp_path,
+            append_if_exists=True,
+            optional_node_set_name="L123",
+        )
+
     # Append to existing file
     neuron_set = obi.CombinedNeuronSet(node_sets=("Layer4", "Layer5", "Layer6"))
-    nset_file = neuron_set.to_node_set_file(circuit, circuit.default_population_name, output_path=tmp_path, append_if_exists=True, optional_node_set_name="L456")
+    nset_file = neuron_set.to_node_set_file(
+        circuit,
+        circuit.default_population_name,
+        output_path=tmp_path,
+        append_if_exists=True,
+        optional_node_set_name="L456",
+    )
     assert Path(nset_file).exists()
-    
+
     # Check if new node sets exist in the .json file
     with Path(nset_file).open(encoding="utf-8") as f:
         node_sets = json.load(f)
-    
+
     assert "L123" in node_sets
     assert "L456" in node_sets
-    
+
     assert node_sets["L123"] == ["Layer1", "Layer2", "Layer3"]
     assert node_sets["L456"] == ["Layer4", "Layer5", "Layer6"]
-    
+
     # Check that original node sets are preserved in new node sets file
     orig_node_sets = circuit.sonata_circuit.node_sets.content
     for k, v in orig_node_sets.items():
         assert k in node_sets
         assert node_sets[k] == v
-    
+
     # Check that original node sets are unchanged
     assert "L123" not in orig_node_sets
     assert "L456" not in orig_node_sets
