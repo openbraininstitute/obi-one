@@ -4,7 +4,6 @@ This module provides functionality to run simulations using different backends
 (BlueCelluLab, Neurodamus) based on the simulation requirements.
 """
 
-# Standard library imports
 import json
 import logging
 import sys
@@ -14,7 +13,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-# Third-party imports
 import matplotlib.pyplot as plt
 import numpy as np
 from bluecellulab import CircuitSimulation
@@ -23,7 +21,6 @@ from neuron import h
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
 
-# Basic console logging configuration at module level
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
