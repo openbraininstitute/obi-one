@@ -167,7 +167,7 @@ class ContributeMorphologyForm(Form):
     morphology: ReconstructionMorphology = Field(
         default_factory=ReconstructionMorphology,
         title="Morphology",
-        description="Information about contributors.",
+        description="Information about the morphology.",
     )
 
     publication: Publication = Field(
