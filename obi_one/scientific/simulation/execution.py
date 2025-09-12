@@ -272,31 +272,25 @@ def run_bluecellulab(
 
     try:
         config_data, t_stop, dt = _load_simulation_config(simulation_config)
-        cell_ids_for_this_rank = _distribute_cells(
-            config_data, simulation_config, rank, size, logger
-        )
-        sim, instantiate_params = _initialize_simulation(
-            config_data, simulation_config, rank, logger
-        )
+        cell_ids_for_this_rank = _distribute_cells(config_data, simulation_config, rank, size)
+        sim, instantiate_params = _initialize_simulation(config_data, simulation_config, rank)
     except Exception:
         logger.exception("Error during initialization")
         raise
 
     try:
-        _instantiate_and_run(
-            sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank, logger
-        )
-        all_traces, all_spikes = _gather_results(sim, cell_ids_for_this_rank, rank, pc, logger)
+        _instantiate_and_run(sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank)
+        all_traces, all_spikes = _gather_results(sim, cell_ids_for_this_rank, rank, pc)
 
         if rank == 0:
             _save_reports_and_outputs(
-                sim, simulation_config, config_data, all_traces, all_spikes, save_nwb, logger
+                sim, simulation_config, config_data, all_traces, all_spikes, save_nwb=save_nwb
             )
     except Exception:
         logger.exception("Rank %d failed", rank)
         raise
     finally:
-        _finalize(rank, pc, logger)
+        _finalize(rank, pc)
 
 
 def _load_simulation_config(simulation_config: str | Path) -> tuple[dict[str, Any], float, float]:
@@ -306,11 +300,7 @@ def _load_simulation_config(simulation_config: str | Path) -> tuple[dict[str, An
 
 
 def _distribute_cells(
-    config_data: dict[str, Any],
-    simulation_config: str | Path,
-    rank: int,
-    size: int,
-    logger: logging.Logger,
+    config_data: dict[str, Any], simulation_config: str | Path, rank: int, size: int
 ) -> list[tuple[str, int]]:
     base_dir = Path(simulation_config).parent
     node_sets_file = base_dir / config_data["node_sets_file"]
@@ -339,10 +329,7 @@ def _distribute_cells(
 
 
 def _initialize_simulation(
-    config_data: dict[str, Any],
-    simulation_config: str | Path,
-    rank: int,
-    logger: logging.Logger,
+    config_data: dict[str, Any], simulation_config: str | Path, rank: int
 ) -> tuple[Any, dict[str, Any]]:
     sim = CircuitSimulation(simulation_config)  # type: ignore[name-defined]
     instantiate_params: dict[str, Any] = get_instantiate_gids_params(config_data)  # type: ignore[name-defined]
@@ -358,7 +345,6 @@ def _instantiate_and_run(
     t_stop: float,
     dt: float,
     rank: int,
-    logger: logging.Logger,
 ) -> None:
     logger.info("Rank %d: Instantiating %d cells", rank, len(cell_ids))
     sim.instantiate_gids(cell_ids, **params)
@@ -367,11 +353,7 @@ def _instantiate_and_run(
 
 
 def _gather_results(
-    sim: Any,
-    cell_ids: list[tuple[str, int]],
-    rank: int,
-    pc: Any,
-    logger: logging.Logger,
+    sim: Any, cell_ids: list[tuple[str, int]], rank: int, pc: Any
 ) -> tuple[dict[str, Any], dict[str, dict[int, list[float]]]]:
     time_ms: Any = sim.get_time_trace()
     if time_ms is None:
@@ -387,7 +369,7 @@ def _gather_results(
         voltage = sim.get_voltage_trace((pop, gid))
         if voltage is not None:
             traces[key] = {"time": time_s.tolist(), "voltage": voltage.tolist(), "unit": "mV"}
-        spikes[pop][gid] = _get_spikes(sim, (pop, gid), logger)
+        spikes[pop][gid] = _get_spikes(sim, (pop, gid))
 
     gathered_traces = pc.py_gather(traces, 0)
     gathered_spikes = pc.py_gather(spikes, 0)
@@ -397,7 +379,7 @@ def _gather_results(
     return {}, {}
 
 
-def _get_spikes(sim: Any, cell_id: tuple[str, int], logger: logging.Logger) -> list[float]:
+def _get_spikes(sim: Any, cell_id: tuple[str, int]) -> list[float]:
     try:
         cell_obj = sim.cells[cell_id]
         spikes: Any = cell_obj.get_recorded_spikes(
@@ -416,8 +398,7 @@ def _save_reports_and_outputs(
     traces: dict[str, Any],
     spikes: dict[str, dict[int, list[float]]],
     *,
-    save_nwb: bool = False,  # keyword-only → no FBT001
-    logger: logging.Logger,
+    save_nwb: bool = False,
 ) -> None:
     report_mgr = ReportManager(sim.circuit_access.config, sim.dt)  # type: ignore[name-defined]
     report_mgr.write_all(cells_or_traces=traces, spikes_by_pop=spikes)
@@ -448,7 +429,7 @@ def _resolve_output_dir(simulation_config: str | Path, config_data: dict[str, An
     return base_dir / "output"
 
 
-def _finalize(rank: int, pc: Any, logger: logging.Logger) -> None:
+def _finalize(rank: int, pc: Any) -> None:
     try:
         logger.info("Rank %d: Cleaning up...", rank)
         pc.barrier()
