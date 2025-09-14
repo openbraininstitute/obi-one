@@ -50,13 +50,13 @@ def _assert_level_of_detail_specs(
     level_of_detail_nodes: dict, level_of_detail_edges: dict
 ) -> tuple:
     if level_of_detail_nodes is None:
-        level_of_detail_nodes = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.full}
+        level_of_detail_nodes = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.none}
     if level_of_detail_edges is None:
-        level_of_detail_edges = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.full}
+        level_of_detail_edges = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.none}
     if ALL_POPULATIONS not in level_of_detail_nodes:
-        level_of_detail_nodes[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.full
+        level_of_detail_nodes[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.none
     if ALL_POPULATIONS not in level_of_detail_edges:
-        level_of_detail_edges[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.full
+        level_of_detail_edges[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.none
     return level_of_detail_nodes, level_of_detail_edges
 
 
@@ -405,7 +405,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     number_of_virtual_node_populations: int
     names_of_biophys_node_populations: list[str]
     names_of_virtual_node_populations: list[str]
-    names_of_node_populations: list[str]
+    names_of_nodesets: list[str]
     biophysical_node_populations: list[CircuitMetricsNodePopulation | None]
     virtual_node_populations: list[CircuitMetricsNodePopulation | None]
     number_of_chemical_edge_populations: int
@@ -484,7 +484,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         manifest = {k: str(Path(temp_dir) / Path(v)) for k, v in config_dict["manifest"].items()}
 
     dict_props = properties_from_config(config_dict)
-    nodepops = names_from_node_sets_file(
+    nodesets = names_from_node_sets_file(
         config_dict, manifest, temp_dir, db_client, circuit_id, asset_id
     )
 
@@ -567,7 +567,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         names_of_electrical_edge_populations=[
             _x[1] for _x in dict_props["names_of_electrical_edge_populations"]
         ],
-        names_of_node_populations=nodepops,
+        names_of_nodesets=nodesets,
         biophysical_node_populations=biophys_pops,
         virtual_node_populations=virtual_pops,
         chemical_edge_populations=chemical_pops,

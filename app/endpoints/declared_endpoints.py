@@ -120,6 +120,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 circuit_id=circuit_id,
                 db_client=db_client,
             )
+
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
