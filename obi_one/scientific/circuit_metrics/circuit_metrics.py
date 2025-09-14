@@ -400,6 +400,14 @@ class CircuitMetricsEdgePopulation(BaseModel):
     degree_stats: dict[DegreeTypes, dict[str, float]] | None
 
 
+class CircuitPopulationsResponse(BaseModel):
+    populations: list[str]
+
+
+class CircuitNodesetsResponse(BaseModel):
+    nodesets: list[str]
+
+
 class CircuitMetricsOutput(BaseModel, Mapping):
     number_of_biophys_node_populations: int
     number_of_virtual_node_populations: int

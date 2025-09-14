@@ -11,6 +11,8 @@ from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.circuit_metrics.circuit_metrics import (
     CircuitMetricsOutput,
+    CircuitNodesetsResponse,
+    CircuitPopulationsResponse,
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
@@ -28,7 +30,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 )
 
 
-def activate_declared_endpoints(router: APIRouter) -> APIRouter:
+def activate_declared_endpoints(router: APIRouter) -> APIRouter:  # noqa: C901
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
@@ -149,5 +151,69 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
                 },
             ) from err
         return circuit_metrics
+
+    @router.get(
+        "/circuit/{circuit_id}/populations",
+        summary="Circuit populations",
+        description="This returns the list of biophysical node populations for a given circuit.",
+    )
+    def circuit_populations_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> CircuitPopulationsResponse:
+        """Returns the list of biophysical node populations for a given circuit.
+
+        - **circuit_id**: ID of the circuit.
+        """
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+
+        return CircuitPopulationsResponse(
+            populations=circuit_metrics.names_of_biophys_node_populations
+        )
+
+    @router.get(
+        "/circuit/{circuit_id}/nodesets",
+        summary="Circuit nodesets",
+        description="This returns the list of nodesets for a given circuit.",
+    )
+    def circuit_nodesets_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> CircuitNodesetsResponse:
+        """Returns the list of nodesets for a given circuit.
+
+        - **circuit_id**: ID of the circuit.
+        """
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+
+        return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
 
     return router
