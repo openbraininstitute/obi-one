@@ -11,6 +11,7 @@ from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.circuit_metrics.circuit_metrics import (
     CircuitMetricsOutput,
+    CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
@@ -114,11 +115,29 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     def circuit_metrics_endpoint(
         circuit_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        level_of_detail_nodes: Annotated[
+            CircuitStatsLevelOfDetail,
+            Query(
+                description="Level of detail for node populations analysis",
+            ),
+        ] = CircuitStatsLevelOfDetail.none,
+        level_of_detail_edges: Annotated[
+            CircuitStatsLevelOfDetail,
+            Query(
+                description="Level of detail for edge populations analysis",
+            ),
+        ] = CircuitStatsLevelOfDetail.none,
     ) -> CircuitMetricsOutput:
         try:
+            # Convert single enum values to dictionaries for ALL_POPULATIONS
+            level_of_detail_nodes_dict = {"_ALL_": level_of_detail_nodes}
+            level_of_detail_edges_dict = {"_ALL_": level_of_detail_edges}
+
             circuit_metrics = get_circuit_metrics(
                 circuit_id=circuit_id,
                 db_client=db_client,
+                level_of_detail_nodes=level_of_detail_nodes_dict,
+                level_of_detail_edges=level_of_detail_edges_dict,
             )
 
         except entitysdk.exception.EntitySDKError as err:

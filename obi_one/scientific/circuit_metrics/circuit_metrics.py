@@ -506,7 +506,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
-                node_location_info=node_props[nodepop]["node_location_info"],
+                # Use .get() because node_location_info is only added when level_of_detail > basic
+                node_location_info=node_props[nodepop].get("node_location_info"),
             )
         biophys_pops.append(pop)
     virtual_pops = []
@@ -520,7 +521,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
-                node_location_info=node_props[nodepop]["node_location_info"],
+                # Use .get() because node_location_info is only added when level_of_detail > basic
+                node_location_info=node_props[nodepop].get("node_location_info"),
             )
         virtual_pops.append(pop)
     chemical_pops = []
