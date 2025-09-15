@@ -353,8 +353,8 @@ class PredefinedNeuronSet(NeuronSet):
     """
 
     node_set: (
-        Annotated[str, Field(min_length=1)]
-        | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
+        Annotated[str, Field(min_length=1, circuit_property_type="CircuitNodeSet")]
+        | Annotated[list[Annotated[str, Field(min_length=1, circuit_property_type="CircuitNodeSet")]], Field(min_length=1)]
     )
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:

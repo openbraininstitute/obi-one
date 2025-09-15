@@ -45,7 +45,8 @@ SimulationNeuronSetUnion = Annotated[
     | nbS1POmInputs
     | AllNeurons
     | ExcitatoryNeurons
-    | InhibitoryNeurons,
+    | InhibitoryNeurons
+    | PredefinedNeuronSet,
     Discriminator("type"),
 ]
 
