@@ -153,7 +153,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:  # noqa: C901
         return circuit_metrics
 
     @router.get(
-        "/circuit/{circuit_id}/populations",
+        "/circuit/{circuit_id}/biophysical_populations",
         summary="Circuit populations",
         description="This returns the list of biophysical node populations for a given circuit.",
     )
