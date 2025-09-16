@@ -24,6 +24,7 @@ from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.circuit_from_id import CircuitFromID
+from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import AllNeurons, NeuronSet, PredefinedNeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
@@ -51,7 +52,7 @@ class BlockGroup(StrEnum):
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
+CircuitDiscriminator = Annotated[Circuit | CircuitFromID | MEModelFromID, Field(discriminator="type")]
 
 ALL_NEURON_SET_NAME = "All Neurons"
 ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
