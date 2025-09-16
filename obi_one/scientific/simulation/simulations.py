@@ -25,7 +25,7 @@ from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet
+from obi_one.scientific.circuit.neuron_sets import AllNeurons, NeuronSet, PredefinedNeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -53,6 +53,10 @@ class BlockGroup(StrEnum):
 
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
+ALL_NEURON_SET_NAME = "All Neurons"
+ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
+    block_dict_name="neuron_sets", block_name=ALL_NEURON_SET_NAME
+)
 
 class SimulationsForm(Form):
     """Simulations Form."""
@@ -99,7 +103,7 @@ class SimulationsForm(Form):
         group_order=1,
     )
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
+        default_factory=lambda: ALL_NEURON_SET_BLOCK_REFERENCE,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
@@ -344,34 +348,31 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self._sonata_config["connection_overrides"] = manipulation_list
 
     @staticmethod
-    def _make_default_neuron_set_ref(circuit: Circuit) -> NeuronSetReference:
-        """Constructs a NeuronSetReference with a default PredefinedNeuronSet block."""
-        default_node_set = circuit.default_population_name
-        predefined_set = PredefinedNeuronSet(
-            node_set=default_node_set, node_population=default_node_set
-        )
-        predefined_set.set_simulation_level_name(default_node_set)
-        ref = NeuronSetReference(block_name=default_node_set)
-        ref.block = predefined_set
-        return ref
+    def _default_neuron_set_ref(circuit: Circuit) -> NeuronSetReference:
+        """Returns the reference for the default neuron set."""
+        return ALL_NEURON_SET_BLOCK_REFERENCE
 
     def _ensure_block_neuron_set(self, block: Block, circuit: Circuit) -> None:
         """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
         if getattr(block, "neuron_set", None) is None:
-            block.neuron_set = self._make_default_neuron_set_ref(circuit)
+            block.neuron_set = self._default_neuron_set_ref(circuit)
 
     def _ensure_neuron_set(self, circuit: Circuit) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
         if self.initialize.node_set is None:
             L.info("initialize.node_set is None — setting default node set.")
-            self.initialize.node_set = self._make_default_neuron_set_ref(circuit)
+            self.initialize.node_set = self._default_neuron_set_ref(circuit)
 
-        name = self.initialize.node_set.block_name
-        if name not in self.neuron_sets:
-            L.info(f"Adding default neuron set '{name}' to neuron_sets.")
-            default_set = self.initialize.node_set.block
-            default_set.set_ref(self.initialize.node_set)
-            self.neuron_sets[name] = default_set
+        """JI: I think the below should not be needed if people use the interface properly 
+        (i.e. always use "sim_conf.add(sim_neuron_set, name='L1Stim') and then reference it 
+        when creating the initialize block.)
+        """
+        # block_name = self.initialize.node_set.block_name
+        # if block_name not in self.neuron_sets:
+        #     L.info(f"Adding default neuron set '{bloblock_nameck_name}' to neuron_sets.")
+        #     default_set = self.initialize.node_set.block
+        #     default_set.set_ref(self.initialize.node_set)
+        #     self.neuron_sets[block_name] = default_set
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
         """Generates SONATA simulation config .json file."""
