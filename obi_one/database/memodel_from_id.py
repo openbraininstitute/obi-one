@@ -15,7 +15,7 @@ class MEModelFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = MEModel
     _entity: MEModel | None = PrivateAttr(default=None)
 
-    def stage_as_form_circuit(
+    def stage_memodel_as_circuit(
         self, db_client: Client = None, dest_dir: Path | None = None
     ) -> Circuit:
         memodel = super().entity(db_client)

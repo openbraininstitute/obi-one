@@ -404,6 +404,16 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name
                     break
 
+        if isinstance(self.initialize.circuit, MEModelFromID):
+            L.info("initialize.circuit is a MEModelFromID instance.")
+            self._circuit_id = self.initialize.circuit.id_str
+
+            circuit = self.initialize.circuit.stage_memodel_as_circuit(db_client=db_client, dest_dir=self.coordinate_output_root)
+            self._sonata_config["network"] = Path(circuit.path).name # Correct?
+
+
+
+
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
