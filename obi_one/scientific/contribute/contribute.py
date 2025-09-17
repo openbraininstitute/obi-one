@@ -216,7 +216,7 @@ class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
 
 
 class ContributeSubjectForm(Form):
-    """Contribute Morphology Form."""
+    """Contribute Subject Form."""
 
     single_coord_class_name: ClassVar[str] = "ContributeSubject"
     name: ClassVar[str] = "Contribute a Subject"
@@ -229,7 +229,7 @@ class ContributeSubjectForm(Form):
     )
 
 
-class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
+class ContributeSubject(ContributeSubjectForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
