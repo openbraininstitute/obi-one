@@ -42,7 +42,7 @@ __all__ = [
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "ContributeSubject",
-    "ContributeSubjectForm",    
+    "ContributeSubjectForm",
     "CoupledScan",
     "EntityFromID",
     "ExcitatoryNeurons",
