@@ -49,7 +49,9 @@ dependencies = [
     # BLUEETL
     "blueetl",
     # NEUROM
+    "aiofiles",
     "neurom",
+    "morph-tool",
     # ENTITYSDK
     "entitysdk>=0.7.2",
     "obi-auth>=0.3.0",

@@ -4,13 +4,13 @@ import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
 
+import aiofiles
 import entitysdk.client
 import entitysdk.exception
 import morphio
-from morph_tool import convert
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from morph_tool import convert
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -52,6 +52,7 @@ def _handle_empty_file(file: UploadFile) -> None:
 def activate_morphology_endpoint(router: APIRouter) -> None:
     """Define neuron morphology metrics endpoint."""
 
+    # ... (unchanged, same as in the original file)
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
@@ -102,6 +103,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
 def activate_ephys_endpoint(router: APIRouter) -> None:
     """Define electrophysiology recording metrics endpoint."""
 
+    # ... (unchanged, same as in the original file)
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="Electrophysiology recording metrics",
@@ -191,10 +193,10 @@ def activate_test_endpoint(router: APIRouter) -> None:
                     "detail": f"NeuroM failure: {e!s}",
                 },
             ) from e
+
         try:
             zip_filename = "morph_archive.zip"
-            zip_path = pathlib.Path(zip_filename)
-            async with zip_path.open("wb") as f:
+            async with aiofiles.open(zip_filename, "wb") as f:
                 with zipfile.ZipFile(f, "w") as my_zip:
                     my_zip.write(outputfile1, arcname=f"{pathlib.Path(outputfile1).stem}.h5")
                     my_zip.write(outputfile2, arcname=f"{pathlib.Path(outputfile2).stem}.asc")
@@ -225,6 +227,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
 
+    # ... (unchanged, same as in the original file)
     @router.get(
         "/circuit-metrics/{circuit_id}",
         summary="Circuit metrics",
