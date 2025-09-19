@@ -6,8 +6,12 @@ from typing import Annotated, Literal
 import entitysdk.client
 import entitysdk.exception
 import neurom as nm
+import morphio
+from morph_tool import convert
+import zipfile
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -31,6 +35,19 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
+)
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from http import HTTPStatus
+app = FastAPI()
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allow your frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers (e.g., Authorization)
 )
 
 
@@ -126,17 +143,17 @@ def activate_ephys_endpoint(router: APIRouter) -> None:
         return ephys_metrics
 
 
-def activate_upload_endpoint(router: APIRouter) -> None:
-    """Define neuron file upload endpoint."""
+def activate_test_endpoint(router: APIRouter) -> None:
+    """Define neuron file test endpoint."""
 
     @router.post(
-        "/upload-neuron-file",
+        "/test-neuron-file",
         summary="Upload and validate neuron file",
-        description="Uploads a neuron file (.swc, .h5, or .asc) and performs basic validation.",
+        description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
     )
-    async def upload_neuron_file(
+    async def test_neuron_file(
         file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    ) -> JSONResponse:
+    ) -> FileResponse:
         L.info(f"Received file upload: {file.filename}")
         allowed_extensions = {".swc", ".h5", ".asc"}
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
@@ -170,9 +187,17 @@ def activate_upload_endpoint(router: APIRouter) -> None:
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
-            m = nm.load_morphology(temp_file_path)
-        except nm.exceptions.NeuroMError as e:
-            L.error(f"NeuroM error loading file {file.filename}: {e!s}")
+            morphio.set_raise_warnings(False)
+            m = morphio.Morphology(temp_file_path)
+                    #now convert the morphology
+            outputfile1 = temp_file_path.replace(".swc", "_converted.h5")
+            outputfile2 = temp_file_path.replace(".swc", "_converted.asc")
+
+            convert(temp_file_path, outputfile1)
+            convert(temp_file_path, outputfile2)
+ 
+        except Exception as e:
+            L.error(f"Morphio error loading file {file.filename}: {e!s}")
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
@@ -180,22 +205,36 @@ def activate_upload_endpoint(router: APIRouter) -> None:
                     "detail": f"NeuroM failure: {e!s}",
                 },
             ) from e
+        try:
+            with open("morph_archive.zip'", "a") as f:
+                f.write("Now the file has more content!")
+            zip_filename = 'morph_archive.zip'
+            with zipfile.ZipFile(zip_filename, 'w') as my_zip:
+                my_zip.write(outputfile1, arcname=f"{pathlib.Path(outputfile1).stem}.h5")
+                my_zip.write(outputfile2, arcname=f"{pathlib.Path(outputfile2).stem}.asc")
+        except Exception as e:
+            L.error(f"Error creating zip file: {e!s}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_SERVER_ERROR,
+                    "detail": f"Error creating zip file: {e!s}",
+                },
+            ) from e
         finally:
             if "temp_file_path" in locals():
                 try:
                     pathlib.Path(temp_file_path).unlink()
+                    pathlib.Path(outputfile1).unlink()
+                    pathlib.Path(outputfile2).unlink()
                 except OSError as e:
-                    L.error(f"Error deleting temporary file {temp_file_path}: {e!s}")
+                    L.error(f"Error deleting temporary files: {e!s}")
 
         L.info(f"File {file.filename} passed basic validation")
-        return JSONResponse(
-            status_code=HTTPStatus.OK,
-            content={
-                "status": "pass",
-                "message": f"File {file.filename} successfully uploaded and validated",
-            },
-        )
-
+        
+        # Return the zip file as a FileResponse
+        return FileResponse(path=zip_filename, filename=zip_filename, media_type="application/zip")
+    
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
@@ -295,6 +334,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_morphology_endpoint(router)
     activate_ephys_endpoint(router)
-    activate_upload_endpoint(router)
+    activate_test_endpoint(router)
     activate_circuit_endpoints(router)
     return router
