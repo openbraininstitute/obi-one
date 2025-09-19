@@ -37,19 +37,6 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     get_morphology_metrics,
 )
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from http import HTTPStatus
-app = FastAPI()
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Allow your frontend origin
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers (e.g., Authorization)
-)
-
 
 def _handle_empty_file(file: UploadFile) -> None:
     """Handle empty file upload by raising an appropriate HTTPException."""
