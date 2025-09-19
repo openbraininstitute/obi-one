@@ -51,6 +51,7 @@ def _handle_empty_file(file: UploadFile) -> None:
 
 def activate_morphology_endpoint(router: APIRouter) -> None:
     """Define neuron morphology metrics endpoint."""
+
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
@@ -100,6 +101,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
 
 def activate_ephys_endpoint(router: APIRouter) -> None:
     """Define electrophysiology recording metrics endpoint."""
+
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="Electrophysiology recording metrics",
@@ -129,6 +131,7 @@ def activate_ephys_endpoint(router: APIRouter) -> None:
 
 def activate_test_endpoint(router: APIRouter) -> None:
     """Define neuron file test endpoint."""
+
     @router.post(
         "/test-neuron-file",
         summary="Upload and validate neuron file",
@@ -233,6 +236,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
+
     @router.get(
         "/circuit-metrics/{circuit_id}",
         summary="Circuit metrics",
