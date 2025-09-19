@@ -1,10 +1,10 @@
+import asyncio
 import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
 
-import aiofiles
 import entitysdk.client
 import entitysdk.exception
 import morphio
@@ -51,8 +51,6 @@ def _handle_empty_file(file: UploadFile) -> None:
 
 def activate_morphology_endpoint(router: APIRouter) -> None:
     """Define neuron morphology metrics endpoint."""
-
-    # ... (unchanged, same as in the original file)
     @router.get(
         "/neuron-morphology-metrics/{reconstruction_morphology_id}",
         summary="Neuron morphology metrics",
@@ -102,8 +100,6 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
 
 def activate_ephys_endpoint(router: APIRouter) -> None:
     """Define electrophysiology recording metrics endpoint."""
-
-    # ... (unchanged, same as in the original file)
     @router.get(
         "/electrophysiologyrecording-metrics/{trace_id}",
         summary="Electrophysiology recording metrics",
@@ -133,7 +129,6 @@ def activate_ephys_endpoint(router: APIRouter) -> None:
 
 def activate_test_endpoint(router: APIRouter) -> None:
     """Define neuron file test endpoint."""
-
     @router.post(
         "/test-neuron-file",
         summary="Upload and validate neuron file",
@@ -196,10 +191,22 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
         try:
             zip_filename = "morph_archive.zip"
-            async with aiofiles.open(zip_filename, "wb") as f:
-                with zipfile.ZipFile(f, "w") as my_zip:
-                    my_zip.write(outputfile1, arcname=f"{pathlib.Path(outputfile1).stem}.h5")
-                    my_zip.write(outputfile2, arcname=f"{pathlib.Path(outputfile2).stem}.asc")
+            # Define a synchronous function for zip creation
+
+            def create_zip_file(zip_path: str, file1: str, file2: str) -> None:
+                with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as my_zip:
+                    my_zip.write(file1, arcname=f"{pathlib.Path(file1).stem}.h5")
+                    my_zip.write(file2, arcname=f"{pathlib.Path(file2).stem}.asc")
+
+            # Run the synchronous zip creation in a thread pool
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None,
+                create_zip_file,
+                zip_filename,
+                outputfile1,
+                outputfile2,
+            )
         except Exception as e:
             L.error(f"Error creating zip file: {e!s}")
             raise HTTPException(
@@ -226,8 +233,6 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
-
-    # ... (unchanged, same as in the original file)
     @router.get(
         "/circuit-metrics/{circuit_id}",
         summary="Circuit metrics",
