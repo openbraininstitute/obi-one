@@ -1,17 +1,16 @@
 import pathlib
 import tempfile
+import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
 
 import entitysdk.client
 import entitysdk.exception
-import neurom as nm
 import morphio
 from morph_tool import convert
-import zipfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -176,13 +175,13 @@ def activate_test_endpoint(router: APIRouter) -> None:
                 temp_file_path = temp_file.name
             morphio.set_raise_warnings(False)
             m = morphio.Morphology(temp_file_path)
-                    #now convert the morphology
+            # now convert the morphology
             outputfile1 = temp_file_path.replace(".swc", "_converted.h5")
             outputfile2 = temp_file_path.replace(".swc", "_converted.asc")
 
             convert(temp_file_path, outputfile1)
             convert(temp_file_path, outputfile2)
- 
+
         except Exception as e:
             L.error(f"Morphio error loading file {file.filename}: {e!s}")
             raise HTTPException(
@@ -193,12 +192,12 @@ def activate_test_endpoint(router: APIRouter) -> None:
                 },
             ) from e
         try:
-            with open("morph_archive.zip'", "a") as f:
-                f.write("Now the file has more content!")
-            zip_filename = 'morph_archive.zip'
-            with zipfile.ZipFile(zip_filename, 'w') as my_zip:
-                my_zip.write(outputfile1, arcname=f"{pathlib.Path(outputfile1).stem}.h5")
-                my_zip.write(outputfile2, arcname=f"{pathlib.Path(outputfile2).stem}.asc")
+            zip_filename = "morph_archive.zip"
+            zip_path = pathlib.Path(zip_filename)
+            async with zip_path.open("wb") as f:
+                with zipfile.ZipFile(f, "w") as my_zip:
+                    my_zip.write(outputfile1, arcname=f"{pathlib.Path(outputfile1).stem}.h5")
+                    my_zip.write(outputfile2, arcname=f"{pathlib.Path(outputfile2).stem}.asc")
         except Exception as e:
             L.error(f"Error creating zip file: {e!s}")
             raise HTTPException(
@@ -218,10 +217,10 @@ def activate_test_endpoint(router: APIRouter) -> None:
                     L.error(f"Error deleting temporary files: {e!s}")
 
         L.info(f"File {file.filename} passed basic validation")
-        
+
         # Return the zip file as a FileResponse
         return FileResponse(path=zip_filename, filename=zip_filename, media_type="application/zip")
-    
+
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
