@@ -20,6 +20,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.scientific.circuit.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class MorphologyContainerizationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
+        circuit: Circuit | list[Circuit]
         hoc_template_old: str
         hoc_template_new: str
 
@@ -63,7 +64,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
     @classmethod
     def _load_node_population(
-        cls, c: Circuit, npop: str
+        cls, c: snap.Circuit, npop: str
     ) -> (snap.nodes.NodePopulation, np.ndarray):
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
@@ -242,7 +243,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
     @staticmethod
     def _check_morphologies(circuit_config: Path) -> bool:
         """Check modified circuit by loading some .h5 morphologies from each node population."""
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
@@ -337,13 +338,13 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         return hoc_folder
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+        L.info(f"Running morphology containerization for '{self.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
         # Copy contents of original circuit folder to output_root
-        input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+        input_path, input_config = os.path.split(self.initialize.circuit.path)
         output_path = self.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -354,7 +355,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         L.info("...DONE")
 
         # Load circuit at new location
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         node_populations = c.nodes.population_names
 
         # Iterate over node populations to find all morphologies, convert them if needed,
