@@ -35,7 +35,9 @@ def test_basic_connectivity_plots(tmp_path):
     grid_scan.execute(processing_method="run")
 
     # Check that expected files have been created
-    for instance in grid_scan.coordinate_instances():
+    instances = grid_scan.coordinate_instances()
+    assert len(instances) == 2
+    for instance in instances:
         out_path = tmp_path / grid_scan.output_root / instance.initialize.matrix_path.name
         assert (out_path / "size.npy").exists()
         for fmt in instance.initialize.plot_formats:
