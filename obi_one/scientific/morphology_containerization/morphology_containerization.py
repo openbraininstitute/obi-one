@@ -201,7 +201,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             if global_morph_entry:
                 # Set .h5 container path globally
                 h5_file = Path(base_path) / cls.CONTAINER_FILENAME
-                cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+                cfg_dict["components"]["alternate_morphologies"] = {"h5v1": str(h5_file)}
         return global_morph_entry
 
     @classmethod
@@ -237,7 +237,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                     msg = f"ERROR: Morphology path for population '{nodes.name}' unknown!"
                     raise ValueError(msg)
                 h5_file = Path(base_path) / cls.CONTAINER_FILENAME
-                pop["alternate_morphologies"] = {"h5v1": h5_file}
+                pop["alternate_morphologies"] = {"h5v1": str(h5_file)}
                 break
 
     @staticmethod
