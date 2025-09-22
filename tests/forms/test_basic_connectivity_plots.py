@@ -1,6 +1,6 @@
 import obi_one as obi
 
-from tests.utils import EXAMPLES_DIR, MATRIX_DIR
+from tests.utils import DATA_DIR, MATRIX_DIR
 
 
 def test_basic_connectivity_plots(tmp_path):
@@ -20,9 +20,7 @@ def test_basic_connectivity_plots(tmp_path):
         matrix_path=matrix_list,
         plot_formats=("png", "pdf", "svg"),
         rendering_cmap="custom",
-        rendering_color_file=str(
-            EXAMPLES_DIR / "C_forms" / "basic_connectivity_plots" / "colors_tab10.csv"
-        ),
+        rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
     )
     basic_connectivity_plots_form = obi.BasicConnectivityPlots(initialize=plot_init)
 

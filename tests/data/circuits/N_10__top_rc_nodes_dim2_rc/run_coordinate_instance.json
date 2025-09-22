@@ -1,0 +1,68 @@
+{
+    "obi_one_version": "2025.5.2",
+    "type": "CircuitExtraction",
+    "idx": 0,
+    "coordinate_output_root": "../../../obi-output/circuit_extraction/grid_scan/neuron_set.neuron_ids=N_10__top_rc_nodes_dim2_rc",
+    "scan_output_root": "../../../obi-output/circuit_extraction/grid_scan",
+    "coordinate_directory_option": "NAME_EQUALS_VALUE",
+    "single_coordinate_scan_params": {
+        "type": "SingleCoordinateScanParams",
+        "scan_params": [
+            {
+                "type": "SingleValueScanParam",
+                "location_list": [
+                    "neuron_set",
+                    "neuron_ids"
+                ],
+                "value": {
+                    "type": "NamedTuple",
+                    "name": "N_10__top_rc_nodes_dim2_rc",
+                    "elements": [
+                        13124,
+                        2190,
+                        5835,
+                        5880,
+                        6527,
+                        10445,
+                        13489,
+                        13578,
+                        618,
+                        2338
+                    ]
+                }
+            }
+        ],
+        "nested_coordinate_subpath_str": "neuron_set.neuron_ids=N_10__top_rc_nodes_dim2_rc/"
+    },
+    "neuron_set": {
+        "type": "IDNeuronSet",
+        "simulation_level_name": null,
+        "sample_percentage": null,
+        "sample_seed": 0,
+        "neuron_ids": {
+            "type": "NamedTuple",
+            "name": "N_10__top_rc_nodes_dim2_rc",
+            "elements": [
+                13124,
+                2190,
+                5835,
+                5880,
+                6527,
+                10445,
+                13489,
+                13578,
+                618,
+                2338
+            ]
+        }
+    },
+    "initialize": {
+        "type": "CircuitExtractions.Initialize",
+        "circuit": {
+            "type": "Circuit",
+            "name": "nbS1-HEX0",
+            "path": "/Users/pokorny/Data/Circuits/nbS1-HEX0/circuit_config.json"
+        },
+        "run_validation": false
+    }
+}
