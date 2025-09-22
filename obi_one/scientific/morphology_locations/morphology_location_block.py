@@ -263,9 +263,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
 
         if not isinstance(self.path_dist_sd, list):  # noqa: SIM102
             if self.path_dist_sd < _MIN_PD_SD:
-                msg = (
-                    f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
-                )
+                msg = f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
                 raise ValueError(msg)
 
         if not isinstance(self.n_groups_per_cluster, list):  # noqa: SIM102
