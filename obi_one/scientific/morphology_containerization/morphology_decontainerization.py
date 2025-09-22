@@ -15,7 +15,6 @@ from morphio import MorphioError
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
 
@@ -157,7 +156,6 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             msg = "ERROR: $BASE_DIR not defined!"
             raise ValueError(msg)
         if cfg_dict["manifest"]["$BASE_DIR"] != "." and cfg_dict["manifest"]["$BASE_DIR"] != "./":
-            print(cfg_dict["manifest"]["$BASE_DIR"])
             msg = "ERROR: $BASE_DIR is not circuit root directory!"
             raise ValueError(msg)
 
@@ -296,7 +294,6 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 h5_folder=h5_folder,
             )
 
-            print(cfg_dict)
             with Path(circuit_config).open("w", encoding="utf-8") as f:
                 json.dump(cfg_dict, f, indent=2)
 

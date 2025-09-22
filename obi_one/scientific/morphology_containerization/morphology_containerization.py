@@ -12,13 +12,12 @@ import entitysdk.client
 import h5py
 import numpy as np
 import tqdm
-from bluepysnap import BluepySnapError, Circuit
+from bluepysnap import BluepySnapError
 from morph_tool import convert
 from morphio import MorphioError
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.scientific.circuit.circuit import Circuit
 
@@ -295,7 +294,6 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
     def _update_hoc_files(self, hoc_folder: str) -> None:
         """Update hoc files in a folder from code of an old to code from a new template."""
-        # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
         # Extract code to be replaced from hoc templates
         tmpl_old = Path(self.initialize.hoc_template_old).read_text(encoding="utf-8")
         tmpl_new = Path(self.initialize.hoc_template_new).read_text(encoding="utf-8")
@@ -310,6 +308,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 continue
             hoc_file = Path(hoc_folder) / _file
             hoc = Path(hoc_file).read_text(encoding="utf-8")
+            if hoc.find(hoc_code_new) > 0:
+                L.info(f"New code version already found - Skipping update of '{_file}'!")
+                continue  # Already new code version
             if hoc.find(hoc_code_old) < 0:
                 msg = "ERROR: Old HOC code to replace not found!"
                 raise ValueError(msg)
