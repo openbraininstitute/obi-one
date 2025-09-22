@@ -10,5 +10,4 @@ services:
       python -m pytest
     volumes:
     - ./tests:/code/tests
-    - ./examples:/code/examples
     env_file: .env.test-docker
