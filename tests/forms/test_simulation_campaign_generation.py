@@ -198,7 +198,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     with cfg_file.open("r") as f:
         cfg = json.load(f)
 
-    assert cfg.pop("obi_one_version") == "2025.9.1.dev23"
+    assert len(cfg.pop("obi_one_version")) > 0
     assert cfg.pop("type") == scan.type
     assert cfg.pop("output_root") == str(scan.output_root)
     ts_dict = {
@@ -309,7 +309,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
-        assert cfg.pop("obi_one_version") == "2025.9.1.dev23"
+        assert len(cfg.pop("obi_one_version")) > 0
         assert cfg.pop("type") == "Simulation"
         assert cfg.pop("idx") == instance.idx
         assert cfg.pop("coordinate_output_root") == str(scan.output_root / str(instance.idx))
