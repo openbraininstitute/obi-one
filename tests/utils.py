@@ -5,7 +5,6 @@ from httpx import Headers
 from starlette.testclient import TestClient
 
 DATA_DIR = Path(__file__).parent / "data"
-ROOT_DIR = Path(__file__).parents[1]
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 CIRCUIT_DIR = EXAMPLES_DIR / "data" / "tiny_circuits"
 MATRIX_DIR = EXAMPLES_DIR / "data" / "connectivity_matrices"

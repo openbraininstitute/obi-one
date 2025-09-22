@@ -8,11 +8,10 @@ from pydantic import ValidationError
 
 import obi_one as obi
 
-from tests.utils import CIRCUIT_DIR, MATRIX_DIR, ROOT_DIR
+from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
 
 def test_add_and_write_node_sets(tmp_path):
-    assert CIRCUIT_DIR.exists(), f"{list(ROOT_DIR.iterdir())}"
     # Load circuit
     circuit_name = "N_10__top_nodes_dim6"
     circuit = obi.Circuit(
