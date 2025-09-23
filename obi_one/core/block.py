@@ -41,10 +41,6 @@ class Block(OBIBaseModel):
         return self._block_name
 
     def set_block_name(self, name: str) -> None:
-        # TODO: Could add a check that name is a valid identifier
-        # > if not name.isidentifier():
-        # >     msg = "Block name is not a valid identifier."
-        # >     raise ValueError(msg)
         self._block_name = name
 
     def has_block_name(self) -> bool:
