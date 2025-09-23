@@ -15,7 +15,7 @@ class Timestamps(Block, ABC):
     ]
 
     def timestamps(self) -> list:
-        self.check_simulation_init()
+        ### self.check_simulation_init()
         return self._resolve_timestamps()
 
     @abstractmethod

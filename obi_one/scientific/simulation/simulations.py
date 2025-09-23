@@ -261,40 +261,40 @@ class SimulationsForm(Form):
     # Below are initializations of the individual components as part of a simulation
     # by setting their simulation_level_name as the one used in the simulation form/GUI
     # TODO: Ensure in GUI that these names don't have spaces or special characters
-    @model_validator(mode="after")
-    def initialize_timestamps(self) -> Self:
-        """Initializes timestamps within simulation campaign."""
-        for _k, _v in self.timestamps.items():
-            _v.set_simulation_level_name(_k)
-        return self
+    # @model_validator(mode="after")
+    # def initialize_timestamps(self) -> Self:
+    #     """Initializes timestamps within simulation campaign."""
+    #     for _k, _v in self.timestamps.items():
+    #         _v.set_simulation_level_name(_k)
+    #     return self
 
-    @model_validator(mode="after")
-    def initialize_stimuli(self) -> Self:
-        """Initializes stimuli within simulation campaign."""
-        for _k, _v in self.stimuli.items():
-            _v.set_simulation_level_name(_k)
-        return self
+    # @model_validator(mode="after")
+    # def initialize_stimuli(self) -> Self:
+    #     """Initializes stimuli within simulation campaign."""
+    #     for _k, _v in self.stimuli.items():
+    #         _v.set_simulation_level_name(_k)
+    #     return self
 
-    @model_validator(mode="after")
-    def initialize_recordings(self) -> Self:
-        """Initializes recordings within simulation campaign."""
-        for _k, _v in self.recordings.items():
-            _v.set_simulation_level_name(_k)
-        return self
+    # @model_validator(mode="after")
+    # def initialize_recordings(self) -> Self:
+    #     """Initializes recordings within simulation campaign."""
+    #     for _k, _v in self.recordings.items():
+    #         _v.set_simulation_level_name(_k)
+    #     return self
 
-    @model_validator(mode="after")
-    def initialize_neuron_sets(self) -> Self:
-        """Initializes neuron sets within simulation campaign."""
-        for _k, _v in self.neuron_sets.items():
-            _v.set_simulation_level_name(_k)
-        return self
+    # @model_validator(mode="after")
+    # def initialize_neuron_sets(self) -> Self:
+    #     """Initializes neuron sets within simulation campaign."""
+    #     for _k, _v in self.neuron_sets.items():
+    #         _v.set_simulation_level_name(_k)
+    #     return self
 
-    @model_validator(mode="after")
-    def initialize_synaptic_manipulations(self) -> Self:
-        """Initializes manipulationms within simulation campaign."""
-        for _k, _v in self.synaptic_manipulations.items():
-            _v.set_simulation_level_name(_k)
-        return self
+    # @model_validator(mode="after")
+    # def initialize_synaptic_manipulations(self) -> Self:
+    #     """Initializes manipulationms within simulation campaign."""
+    #     for _k, _v in self.synaptic_manipulations.items():
+    #         _v.set_simulation_level_name(_k)
+    #     return self
 
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
@@ -396,11 +396,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # TODO: Inconsistency possible in case a node set definition would span multiple
             # populations. May consider force_resolve_ids=False to enforce resolving into given
             # population (but which won't be a human-readable representation any more)
-            if _name != _nset.name:
+            if _name != _nset.block_name:
                 msg = "Neuron set name mismatch!"
                 raise OBIONEError(msg)  # This should never happen if properly initialized
 
-            if self.initialize.node_set.block.name == _name:
+            if self.initialize.node_set.block.block_name == _name:
                 if self._sonata_config.get("node_set") is not None:
                     msg = "Node set config entry already defined!"
                     raise OBIONEError(msg)
