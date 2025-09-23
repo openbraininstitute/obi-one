@@ -1,4 +1,4 @@
-from typing import Annotated, get_args, get_origin
+from typing import Annotated, get_args
 
 from pydantic import Discriminator
 

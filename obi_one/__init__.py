@@ -46,6 +46,7 @@ __all__ = [
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
+    "CoupledScanGeneration",
     "EntityFromID",
     "ExampleScanConfig",
     "ExampleScanConfig2",
@@ -277,7 +278,11 @@ from obi_one.scientific.tasks.example_task_2 import (
     ExampleSingleConfig2,
     ExampleTask2,
 )
-from obi_one.scientific.tasks.scan_generation import GridScanGeneration, ScanGeneration
+from obi_one.scientific.tasks.scan_generation import (
+    CoupledScanGeneration,
+    GridScanGeneration,
+    ScanGeneration,
+)
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTest,
@@ -287,7 +292,6 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTest,
     SingleBlockGenerateTestForm,
 )
-from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
@@ -307,6 +311,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import (
