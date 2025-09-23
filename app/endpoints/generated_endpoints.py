@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one.core.form import Form
-from obi_one.core.scan import GridScan
 from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
@@ -18,6 +17,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
 )
+from obi_one.scientific.tasks.scan_generation import GridScan
 from obi_one.scientific.tasks.simulations import (
     Simulation,
     SimulationsForm,
