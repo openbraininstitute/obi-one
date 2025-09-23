@@ -287,7 +287,7 @@ from obi_one.scientific.test_forms.test_form_single_block import (
     SingleBlockGenerateTest,
     SingleBlockGenerateTestForm,
 )
-from obi_one.scientific.unions.union_scan_configs import ScanConfigsUnion
+from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
 )
