@@ -1,9 +1,11 @@
-import pytest
 import json
+
+import pytest
+
+import obi_one as obi
 
 from tests.utils import DATA_DIR
 
-import obi_one as obi
 
 @pytest.fixture
 def simulation_json():
@@ -11,7 +13,6 @@ def simulation_json():
 
 
 def test_deserialization(tmp_path):
-
     simulation_json_path = DATA_DIR / "simulation_serialization.json"
 
     data = json.loads(simulation_json_path.read_bytes())
@@ -24,9 +25,3 @@ def test_deserialization(tmp_path):
     assert isinstance(simulation, obi.Simulation)
     simulation.coordinate_output_root = tmp_path / "simulation_output_2"
     simulation.generate()
-
-    
-
-
-
-    
