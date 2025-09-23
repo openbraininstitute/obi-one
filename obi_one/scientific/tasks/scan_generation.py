@@ -19,10 +19,11 @@ from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
 
+
 class ScanGeneration(Task, abc.ABC):
     """Task for creating multiple SingleConfigs where lists with multiple parameters are found."""
 
-    form: ScanConfigsUnion # REFACTORING NOTE: Should be renmaed to scan_config
+    form: ScanConfigsUnion  # REFACTORING NOTE: Should be renmaed to scan_config
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
@@ -225,6 +226,7 @@ class ScanGeneration(Task, abc.ABC):
 
         return single_configs, None
 
+
 # REFACTORING NOTE: Should be renmaed to GridScanGeneration
 class GridScan(ScanGeneration):
     """Description."""
@@ -261,6 +263,7 @@ class GridScan(ScanGeneration):
 
         # Return the coordinate parameters
         return self._coordinate_parameters
+
 
 # REFACTORING NOTE: Should be renmaed to CoupledScanGeneration
 class CoupledScan(ScanGeneration):
