@@ -24,7 +24,7 @@ from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
 )
-from obi_one.scientific.simulation.tasks_and_configs.simulations import SimulationsForm
+from obi_one.scientific.tasks_and_configs.simulations import SimulationsForm
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTestForm,
     SingleBlockEntityTestForm,
