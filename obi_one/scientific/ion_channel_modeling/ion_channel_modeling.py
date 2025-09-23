@@ -16,12 +16,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.entity_from_id import IonChannelRecordingFromID
-from obi_one.scientific.ion_channel_modeling.equations import (
-    HInfUnion,
-    HTauUnion,
-    MInfUnion,
-    MTauUnion,
-)
+from obi_one.scientific.ion_channel_modeling.equations import equations as equations_module
 
 
 class IonChannelFittingForm(Form):
@@ -59,10 +54,10 @@ class IonChannelFittingForm(Form):
 
     class Equations(Block):
         # equations
-        minf_eq: ClassVar[Any] = MInfUnion
-        mtau_eq: ClassVar[Any] = MTauUnion
-        hinf_eq: ClassVar[Any] = HInfUnion
-        htau_eq: ClassVar[Any] = HTauUnion
+        minf_eq: ClassVar[Any] = equations_module.MInfUnion
+        mtau_eq: ClassVar[Any] = equations_module.MTauUnion
+        hinf_eq: ClassVar[Any] = equations_module.HInfUnion
+        htau_eq: ClassVar[Any] = equations_module.HTauUnion
 
         # mod file creation
         m_power: int = Field(
@@ -256,6 +251,26 @@ class IonChannelFittingForm(Form):
     equations: Equations
     expert: Expert
 
+    def as_dict(self) -> dict:
+        """Return the form as a dict."""
+        return {
+            "initialize": {
+                "recordings": [id_ for id_ in self.initialize.recordings.id_str],
+                "suffix": self.initialize.suffix,
+                "ion": self.initialize.ion,
+                "temperature": self.initialize.temperature,
+            },
+            "equations": {
+                "minf_eq": self.equations.minf_eq.__class__.__name__,
+                "mtau_eq": self.equations.mtau_eq.__class__.__name__,
+                "hinf_eq": self.equations.hinf_eq.__class__.__name__,
+                "htau_eq": self.equations.htau_eq.__class__.__name__,
+                "m_power": self.equations.m_power,
+                "h_power": self.equations.h_power,
+            },
+            "expert": vars(self.expert),
+        }
+
 
 class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
     def generate(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
@@ -440,3 +455,26 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
         else:
             return model_id
+
+
+def ion_channel_fitting_from_dict(icf_dict):
+    """Create IonChannelFitting instance from a dict."""
+    return IonChannelFitting(
+        initialize=IonChannelFittingForm.Initialize(
+            recordings=icf_dict["initialize"]["recordings"],
+            suffix=icf_dict["initialize"]["suffix"],
+            ion=icf_dict["initialize"]["ion"],
+            temperature=icf_dict["initialize"]["temperature"],
+        ),
+        equations=IonChannelFittingForm.Equations(
+            minf_eq=getattr(equations_module, icf_dict["equations"]["minf_eq"])(),
+            mtau_eq=getattr(equations_module, icf_dict["equations"]["mtau_eq"])(),
+            hinf_eq=getattr(equations_module, icf_dict["equations"]["hinf_eq"])(),
+            htau_eq=getattr(equations_module, icf_dict["equations"]["htau_eq"])(),
+            m_power=icf_dict["equations"]["m_power"],
+            h_power=icf_dict["equations"]["h_power"],
+        ),
+        expert=IonChannelFittingForm.Expert(
+            *icf_dict["expert"]
+        )
+    )
