@@ -195,6 +195,7 @@ addopts = [
 # asyncio_mode = "auto"
 testpaths = [
     "tests",
+    "examples",
 ]
 
 [tool.coverage.run]
