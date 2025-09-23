@@ -40,9 +40,7 @@ class IonChannelFittingForm(Form):
         # mod file creation
         suffix: str = Field(
             title="Ion channel SUFFIX (ion channel name to use in the mod file)",
-            description=(
-                "SUFFIX to use in the mod file. Will also be used for the mod file name."
-            ),
+            description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
         )
         ion: str = Field(
             # we will only have potassium recordings first,
@@ -191,15 +189,13 @@ class IonChannelFittingForm(Form):
             ),
             default=0,
             description=(
-                "Correction to add to the timing taken from nwb file "
-                "for activation stimulus start."
+                "Correction to add to the timing taken from nwb file for activation stimulus start."
             ),
             units="ms",
         )
         act_stim_end_correction: int = Field(
             title=(
-                "Correction to apply to activation stimulus end time taken from source file, "
-                "in ms."
+                "Correction to apply to activation stimulus end time taken from source file, in ms."
             ),
             default=-1,
             description=(
@@ -413,7 +409,7 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             )
 
             # compile output mod file
-            subprocess.run(   # noqa: S603
+            subprocess.run(  # noqa: S603
                 [  # noqa: S607
                     "nrnivmodl",
                     "-incflags",
