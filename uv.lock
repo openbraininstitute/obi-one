@@ -280,6 +280,22 @@ wheels = [
 ]
 
 [[package]]
+name = "bqplot"
+version = "0.12.45"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ipywidgets" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "traitlets" },
+    { name = "traittypes" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/e0/727335c5ff8cee68d21a8c79f5b8406011639a76ecd7a6462a60aa8b0608/bqplot-0.12.45.tar.gz", hash = "sha256:ede00e9fdf7d92e43cc2d1b9691c7da176b6216fdd187c8e92f19d7beaca5e2a", size = 1205882, upload-time = "2025-05-21T17:32:29.143Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/03/6b5370fc626e6f480c4a0b4cb25b3459d390745010618b21b4b573423a53/bqplot-0.12.45-py2.py3-none-any.whl", hash = "sha256:cf2e046adb401670902ab53a18d9f63540091279bc45c4ef281bfdadf6e7e92c", size = 1237450, upload-time = "2025-05-21T17:32:27.617Z" },
+]
+
+[[package]]
 name = "brain-indexer"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -780,6 +796,15 @@ wheels = [
 ]
 
 [[package]]
+name = "gast"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/4a/07c7e59cef23fb147454663c3271c21da68ba2ab141427c20548ae5a8a4d/gast-0.4.0.tar.gz", hash = "sha256:40feb7b8b8434785585ab224d1568b857edb18297e5a3047f1ba012bc83b42c1", size = 13804, upload-time = "2020-08-07T21:45:23.526Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b6/48/583c032b79ae5b3daa02225a675aeb673e58d2cb698e78510feceb11958c/gast-0.4.0-py3-none-any.whl", hash = "sha256:b7adcdd5adbebf1adf17378da5ba3f543684dbec47b1cda1f3997e573cd542c4", size = 9824, upload-time = "2020-08-07T21:45:21.32Z" },
+]
+
+[[package]]
 name = "greenlet"
 version = "3.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -902,6 +927,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793, upload-time = "2025-03-19T20:09:59.721Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
+]
+
+[[package]]
+name = "ipydatagrid"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bqplot" },
+    { name = "ipywidgets" },
+    { name = "pandas" },
+    { name = "py2vega" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/38/9e8e4dafba7d3f63c2fbee2d0d661420d354ce5962ebbcfd02e54f987ee6/ipydatagrid-1.4.0.tar.gz", hash = "sha256:210fc57e595a618d76c0cb28d34b1ef9716e10c64c9c5955e07e6d10aaaa12ee", size = 7110381, upload-time = "2024-12-17T07:41:07.369Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/21/8b81f5368120ff44b11dcdf2517fc0c2cbefda61893c4f9049c2ee838c98/ipydatagrid-1.4.0-py3-none-any.whl", hash = "sha256:1d1d1804df8ca6f07dea8e8f5e0fd9f0010af1d91f1705778f19f4d94c110fcf", size = 1938788, upload-time = "2024-12-17T07:41:04.827Z" },
 ]
 
 [[package]]
@@ -1763,6 +1803,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cc/13/a92988c6609c1aa52594eb07a22b9f9c407b3362a6e2494fd7a39db5ffed/obi_auth-0.3.0.tar.gz", hash = "sha256:ffd1a40a4d587e60095cd412f4cb1db24d637b9a0af82d177492285f6f5ccceb", size = 19709, upload-time = "2025-06-05T08:00:58.72Z" }
 
 [[package]]
+name = "obi-notebook"
+version = "0.2.dev0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "entitysdk" },
+    { name = "ipydatagrid" },
+    { name = "pandas" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/12/c77889dc30af7080409aadea8c19f484667fdc99958423ec4ee64c6c84da/obi_notebook-0.2.dev0.tar.gz", hash = "sha256:fee2f1e8c72e32900eecc664e6e00bcf8397b202e435cb5da8eea4ddbd83ab4a", size = 3874554, upload-time = "2025-08-19T13:36:29.168Z" }
+
+[[package]]
 name = "obi-one"
 source = { editable = "." }
 dependencies = [
@@ -1783,6 +1835,7 @@ dependencies = [
     { name = "neurom" },
     { name = "notebook" },
     { name = "obi-auth" },
+    { name = "obi-notebook" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
@@ -1830,6 +1883,7 @@ requires-dist = [
     { name = "neurom" },
     { name = "notebook" },
     { name = "obi-auth", specifier = ">=0.3.0" },
+    { name = "obi-notebook" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
@@ -2099,6 +2153,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/73/21/d250cfca8ff30c2e5a7447bc13861541126ce9bd4426cd5d0c9f08b5547d/py_serializable-2.1.0.tar.gz", hash = "sha256:9d5db56154a867a9b897c0163b33a793c804c80cee984116d02d49e4578fc103", size = 52368, upload-time = "2025-07-21T09:56:48.07Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/bf/7595e817906a29453ba4d99394e781b6fabe55d21f3c15d240f85dd06bb1/py_serializable-2.1.0-py3-none-any.whl", hash = "sha256:b56d5d686b5a03ba4f4db5e769dc32336e142fc3bd4d68a8c25579ebb0a67304", size = 23045, upload-time = "2025-07-21T09:56:46.848Z" },
+]
+
+[[package]]
+name = "py2vega"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "gast" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/34/e7038c0b93bc12fbb73b05104b583828ad53d243955d6647aa52e292482d/py2vega-0.6.1.tar.gz", hash = "sha256:ef45cdef92797550267607d26b3a39ee259d752bdc97627cf1feaefb4a20c8b6", size = 14694, upload-time = "2021-03-03T09:48:49.64Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/9e/bb60e40f1414884cf0408c975f75cf81935c00f52f0156e039ccd4b69ee3/py2vega-0.6.1-py3-none-any.whl", hash = "sha256:40438c8bf880fa107be9699759859eb79e2b3fdbf0b79423125783c02cff0827", size = 16316, upload-time = "2021-03-03T09:48:48.222Z" },
 ]
 
 [[package]]
@@ -2873,6 +2939,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/eb/79/72064e6a701c2183016abbbfedaba506d81e30e232a68c9f0d6f6fcd1574/traitlets-5.14.3.tar.gz", hash = "sha256:9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7", size = 161621, upload-time = "2024-04-19T11:11:49.746Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl", hash = "sha256:b74e89e397b1ed28cc831db7aea759ba6640cb3de13090ca145426688ff1ac4f", size = 85359, upload-time = "2024-04-19T11:11:46.763Z" },
+]
+
+[[package]]
+name = "traittypes"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "traitlets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/71/0578e44d2110f93c2136eb705f5b11e706e1e8ea3acaaaeac043bd40d8fd/traittypes-0.2.1.tar.gz", hash = "sha256:be6fa26294733e7489822ded4ae25da5b4824a8a7a0e0c2dccfde596e3489bd6", size = 13544, upload-time = "2018-06-16T07:34:00.929Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/d1/8d5bd662703cc1764d986f6908a608777305946fa634d34c470cd4a1e729/traittypes-0.2.1-py2.py3-none-any.whl", hash = "sha256:1340af133810b6eee1a2eb2e988f862b0d12b6c2d16f282aaf3207b782134c2e", size = 8550, upload-time = "2018-06-16T07:33:59.594Z" },
 ]
 
 [[package]]

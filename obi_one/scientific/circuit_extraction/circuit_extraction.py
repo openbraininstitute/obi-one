@@ -10,6 +10,7 @@ import bluepysnap.circuit_validation
 import entitysdk.client
 import h5py
 import tqdm
+from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from pydantic import Field
 
@@ -71,6 +72,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
 
     @classmethod
     def _rebase_config(cls, config_dict: dict, old_base: str, new_base: str) -> None:
+        old_base = str(Path(old_base).resolve())
         for key, value in config_dict.items():
             if isinstance(value, str):
                 if value == old_base:
@@ -107,11 +109,15 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
         src_morph_dirs = {}
         dest_morph_dirs = {}
         for _morph_ext in ["swc", "asc", "h5"]:
-            morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
-                _morph_ext
-            )
-            # TODO: Should not use private function!! But required to get path
-            #       even if h5 container.
+            try:
+                morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
+                    _morph_ext
+                )
+                # TODO: Should not use private function!! But required to get path
+                #       even if h5 container.
+            except BluepySnapError:
+                # Morphology folder for given extension not defined in config
+                continue
 
             if not Path(morph_folder).exists():
                 # Morphology folder/container does not exist

@@ -60,6 +60,8 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "bluecellulab>=2.6.62",
+    # OBI NOTEBOOK
+    "obi_notebook",
 ]
 
 [project.optional-dependencies]
