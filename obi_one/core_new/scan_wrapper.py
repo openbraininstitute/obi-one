@@ -14,7 +14,7 @@ class ScanWrapper(OBIBaseModel):
 
     def generate_scan(self) -> None:
         scan_generation = self.scan_generation_type(
-            scan_config=self.scan_config,
+            form=self.scan_config,
             output_root=self.output_root,
             coordinate_directory_option=self.coordinate_directory_option,
         )

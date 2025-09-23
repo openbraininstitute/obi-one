@@ -19,11 +19,10 @@ from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
 
-
 class ScanGeneration(Task, abc.ABC):
     """Task for creating multiple SingleConfigs where lists with multiple parameters are found."""
 
-    scan_config: ScanConfigsUnion
+    form: ScanConfigsUnion # REFACTORING NOTE: Should be renmaed to scan_config
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     _multiple_value_parameters: list = None
@@ -44,7 +43,7 @@ class ScanGeneration(Task, abc.ABC):
         self._multiple_value_parameters = []
 
         # Iterate through all attributes of the Form
-        for attr_name, attr_value in self.scan_config.__dict__.items():
+        for attr_name, attr_value in self.form.__dict__.items():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
                 isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
@@ -118,7 +117,7 @@ class ScanGeneration(Task, abc.ABC):
         # Iterate through coordinate_parameters
         for idx, single_coordinate_scan_params in enumerate(self.coordinate_parameters()):
             # Make a deep copy of self.form
-            single_coord_config = copy.deepcopy(self.scan_config)
+            single_coord_config = copy.deepcopy(self.form)
 
             # Iterate through parameters in the single_coordinate_parameters tuple
             # Change the value of the multi parameter from a list to the single value of the
@@ -180,8 +179,8 @@ class ScanGeneration(Task, abc.ABC):
         model_dump.move_to_end("obi_one_version", last=False)
 
         # Order the keys in subdict "form"
-        model_dump["scan_config"] = OrderedDict(model_dump["scan_config"])
-        model_dump["scan_config"].move_to_end("type", last=False)
+        model_dump["form"] = OrderedDict(model_dump["form"])
+        model_dump["form"].move_to_end("type", last=False)
 
         # Create the directory and write dict to json file
         if output_path:
@@ -226,8 +225,8 @@ class ScanGeneration(Task, abc.ABC):
 
         return single_configs, None
 
-
-class GridScanGeneration(ScanGeneration):
+# REFACTORING NOTE: Should be renmaed to GridScanGeneration
+class GridScan(ScanGeneration):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
@@ -252,7 +251,7 @@ class GridScanGeneration(ScanGeneration):
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.scan_config.single_coord_scan_default_subpath
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
                 )
             ]
 
@@ -263,8 +262,8 @@ class GridScanGeneration(ScanGeneration):
         # Return the coordinate parameters
         return self._coordinate_parameters
 
-
-class CoupledScanGeneration(ScanGeneration):
+# REFACTORING NOTE: Should be renmaed to CoupledScanGeneration
+class CoupledScan(ScanGeneration):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list:

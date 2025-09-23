@@ -44,7 +44,7 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
-    "CoupledScanGeneration",
+    "CoupledScan",
     "EntityFromID",
     "ExampleScanConfig",
     "ExampleScanConfig2",
@@ -60,7 +60,7 @@ __all__ = [
     "Form",
     "FormUnion",
     "FullySynchronousSpikeStimulus",
-    "GridScanGeneration",
+    "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
@@ -276,8 +276,8 @@ from obi_one.scientific.tasks.example_task_2 import (
     ExampleTask2,
 )
 from obi_one.scientific.tasks.scan_generation import (
-    CoupledScanGeneration,
-    GridScanGeneration,
+    CoupledScan,
+    GridScan,
     ScanGeneration,
 )
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
