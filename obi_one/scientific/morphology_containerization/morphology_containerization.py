@@ -12,14 +12,14 @@ import entitysdk.client
 import h5py
 import numpy as np
 import tqdm
-from bluepysnap import BluepySnapError, Circuit
+from bluepysnap import BluepySnapError
 from morph_tool import convert
 from morphio import MorphioError
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.scientific.circuit.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class MorphologyContainerizationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
+        circuit: Circuit | list[Circuit]
         hoc_template_old: str
         hoc_template_new: str
 
@@ -63,7 +63,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
     @classmethod
     def _load_node_population(
-        cls, c: Circuit, npop: str
+        cls, c: snap.Circuit, npop: str
     ) -> (snap.nodes.NodePopulation, np.ndarray):
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
@@ -200,7 +200,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             if global_morph_entry:
                 # Set .h5 container path globally
                 h5_file = Path(base_path) / cls.CONTAINER_FILENAME
-                cfg_dict["components"]["alternate_morphologies"] = {"h5v1": h5_file}
+                cfg_dict["components"]["alternate_morphologies"] = {"h5v1": str(h5_file)}
         return global_morph_entry
 
     @classmethod
@@ -236,13 +236,13 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                     msg = f"ERROR: Morphology path for population '{nodes.name}' unknown!"
                     raise ValueError(msg)
                 h5_file = Path(base_path) / cls.CONTAINER_FILENAME
-                pop["alternate_morphologies"] = {"h5v1": h5_file}
+                pop["alternate_morphologies"] = {"h5v1": str(h5_file)}
                 break
 
     @staticmethod
     def _check_morphologies(circuit_config: Path) -> bool:
         """Check modified circuit by loading some .h5 morphologies from each node population."""
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
@@ -294,7 +294,6 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
 
     def _update_hoc_files(self, hoc_folder: str) -> None:
         """Update hoc files in a folder from code of an old to code from a new template."""
-        # TODO: CHECK IF .HOC FILE IS ALREADY NEW VERSION??
         # Extract code to be replaced from hoc templates
         tmpl_old = Path(self.initialize.hoc_template_old).read_text(encoding="utf-8")
         tmpl_new = Path(self.initialize.hoc_template_new).read_text(encoding="utf-8")
@@ -309,6 +308,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
                 continue
             hoc_file = Path(hoc_folder) / _file
             hoc = Path(hoc_file).read_text(encoding="utf-8")
+            if hoc.find(hoc_code_new) > 0:
+                L.info(f"New code version already found - Skipping update of '{_file}'!")
+                continue  # Already new code version
             if hoc.find(hoc_code_old) < 0:
                 msg = "ERROR: Old HOC code to replace not found!"
                 raise ValueError(msg)
@@ -337,13 +339,13 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         return hoc_folder
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Running morphology containerization for '{self.initialize.circuit_path}'")
+        L.info(f"Running morphology containerization for '{self.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
         # Copy contents of original circuit folder to output_root
-        input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+        input_path, input_config = os.path.split(self.initialize.circuit.path)
         output_path = self.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -354,7 +356,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
         L.info("...DONE")
 
         # Load circuit at new location
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         node_populations = c.nodes.population_names
 
         # Iterate over node populations to find all morphologies, convert them if needed,
