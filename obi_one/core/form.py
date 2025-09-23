@@ -141,7 +141,6 @@ class Form(OBIBaseModel, extra="forbid"):
             elif isinstance(attr_value, Block):
                 block = attr_value
                 self.fill_block_reference_for_block(block)
-                print(block)
 
         return self
 
