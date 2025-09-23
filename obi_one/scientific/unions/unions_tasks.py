@@ -1,17 +1,20 @@
-from typing import Annotated, get_args
+from typing import Annotated, get_args, get_origin
 
 from pydantic import Discriminator
 
-from obi_one.scientific.tasks.example_task_1 import ExampleScanConfig
-from obi_one.scientific.tasks.example_task_2 import ExampleScanConfig2
-from obi_one.scientific.tasks.simulations import SimulationsForm
+from obi_one.scientific.tasks.example_task_1 import ExampleTask
+from obi_one.scientific.tasks.example_task_2 import ExampleTask2
+from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 
 TasksUnion = Annotated[
-    ExampleScanConfig | ExampleScanConfig2 | SimulationsForm,
+    ExampleTask | ExampleTask2 | GenerateSimulationTask,
     Discriminator("type"),
 ]
 
-_task_configs_map = {task.__name__: type(task.config) for task in get_args(TasksUnion)}
+inner, *_ = get_args(TasksUnion)
+task_types = get_args(inner)
+
+_task_configs_map = {task.__name__: task.model_fields["config"].annotation for task in task_types}
 
 
 def get_task_config_type(task: TasksUnion) -> type:

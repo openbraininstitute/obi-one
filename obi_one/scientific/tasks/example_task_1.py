@@ -28,12 +28,12 @@ class ExampleSingleConfig(ExampleScanConfig, SingleConfigMixin):
 
 
 class ExampleTask(Task):
-    single_config: ExampleSingleConfig
+    config: ExampleSingleConfig
 
     def execute(self, db_client: entitysdk.client.Client = None) -> tuple[str, None]:
         # Arbitrary operation
-        x = str(self.single_config.initialize.morphology_path) + str(
-            self.single_config.initialize.param_a
+        x = str(self.config.initialize.morphology_path) + str(
+            self.config.initialize.param_a
         )
 
         if db_client:
