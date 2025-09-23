@@ -12,7 +12,6 @@ class SynapticManipulation(Block, ABC):
         pass
 
     def config(self) -> dict:
-        ### self.check_simulation_init()
         return self._generate_config()
 
     def _generate_config(self) -> dict:

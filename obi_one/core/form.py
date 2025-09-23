@@ -134,7 +134,6 @@ class Form(OBIBaseModel, extra="forbid"):
                 category_blocks_dict = attr_value
 
                 # If so iterate through the dictionary's Block instances
-                ### for block in category_blocks_dict.values():
                 for key, block in category_blocks_dict.items():
                     self.fill_block_reference_for_block(block)
                     block.set_block_name(key)
@@ -142,6 +141,7 @@ class Form(OBIBaseModel, extra="forbid"):
             elif isinstance(attr_value, Block):
                 block = attr_value
                 self.fill_block_reference_for_block(block)
+                print(block)
 
         return self
 

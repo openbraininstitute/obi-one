@@ -258,44 +258,6 @@ class SimulationsForm(Form):
             )
         )
 
-    # Below are initializations of the individual components as part of a simulation
-    # by setting their simulation_level_name as the one used in the simulation form/GUI
-    # TODO: Ensure in GUI that these names don't have spaces or special characters
-    # @model_validator(mode="after")
-    # def initialize_timestamps(self) -> Self:
-    #     """Initializes timestamps within simulation campaign."""
-    #     for _k, _v in self.timestamps.items():
-    #         _v.set_simulation_level_name(_k)
-    #     return self
-
-    # @model_validator(mode="after")
-    # def initialize_stimuli(self) -> Self:
-    #     """Initializes stimuli within simulation campaign."""
-    #     for _k, _v in self.stimuli.items():
-    #         _v.set_simulation_level_name(_k)
-    #     return self
-
-    # @model_validator(mode="after")
-    # def initialize_recordings(self) -> Self:
-    #     """Initializes recordings within simulation campaign."""
-    #     for _k, _v in self.recordings.items():
-    #         _v.set_simulation_level_name(_k)
-    #     return self
-
-    # @model_validator(mode="after")
-    # def initialize_neuron_sets(self) -> Self:
-    #     """Initializes neuron sets within simulation campaign."""
-    #     for _k, _v in self.neuron_sets.items():
-    #         _v.set_simulation_level_name(_k)
-    #     return self
-
-    # @model_validator(mode="after")
-    # def initialize_synaptic_manipulations(self) -> Self:
-    #     """Initializes manipulationms within simulation campaign."""
-    #     for _k, _v in self.synaptic_manipulations.items():
-    #         _v.set_simulation_level_name(_k)
-    #     return self
-
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""

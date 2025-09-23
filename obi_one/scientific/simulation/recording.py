@@ -34,7 +34,6 @@ class Recording(Block, ABC):
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
     ) -> dict:
-        ### self.check_simulation_init()
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "

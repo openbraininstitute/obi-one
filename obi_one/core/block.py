@@ -29,30 +29,8 @@ class Block(OBIBaseModel):
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
-    # _simulation_level_name: str | None = PrivateAttr(default=None)
-
     _ref = None
     _block_name = None
-
-    # def check_simulation_init(self) -> None:
-    #     if self._simulation_level_name is None:
-    #         msg = f"'{self.__class__.__name__}' initialization within a simulation required!"
-    #         raise ValueError(msg)
-
-    # @property
-    # def name(self) -> str:
-    #     """Returns name."""
-    #     self.check_simulation_init()
-    #     return self._simulation_level_name
-
-    # def has_name(self) -> bool:
-    #     return self._simulation_level_name is not None
-
-    # def set_simulation_level_name(self, value: str) -> None:
-    #     if not isinstance(value, str) or not value:
-    #         msg = "Simulation level name must be a non-empty string."
-    #         raise ValueError(msg)
-    #     self._simulation_level_name = value
 
     @property
     def block_name(self) -> str:

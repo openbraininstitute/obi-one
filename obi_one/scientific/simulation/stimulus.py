@@ -34,7 +34,6 @@ class Stimulus(Block, ABC):
     ]
 
     def config(self, circuit: Circuit, population: str | None = None) -> dict:  # noqa: ARG002
-        ### self.check_simulation_init()
         return self._generate_config()
 
     @abstractmethod
@@ -74,7 +73,6 @@ class SomaticStimulus(Stimulus, ABC):
     calculation of the extracellular signal."""
 
     def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        ### self.check_simulation_init()
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
@@ -491,7 +489,6 @@ class SpikeStimulus(Stimulus):
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
     def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        ### self.check_simulation_init()
         if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
             msg = (
                 f"Target Neuron Set '{self.targeted_neuron_set.block.block_name}' for "
