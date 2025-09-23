@@ -46,6 +46,12 @@ __all__ = [
     "ContributeMorphologyForm",
     "CoupledScan",
     "EntityFromID",
+    "ExampleScanConfig",
+    "ExampleScanConfig2",
+    "ExampleSingleConfig",
+    "ExampleSingleConfig2",
+    "ExampleTask",
+    "ExampleTask2",
     "ExcitatoryNeurons",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
@@ -55,6 +61,7 @@ __all__ = [
     "FormUnion",
     "FullySynchronousSpikeStimulus",
     "GridScan",
+    "GridScanGeneration",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
@@ -107,6 +114,8 @@ __all__ = [
     "RelativeNormallyDistributedCurrentClampSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
     "ScanConfig",
+    "ScanConfigsUnion",
+    "ScanGeneration",
     "SectionIntracellularLocationSet",
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
@@ -255,6 +264,17 @@ from obi_one.scientific.simulation.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.tasks_and_configs.example_task_1 import (
+    ExampleScanConfig,
+    ExampleSingleConfig,
+    ExampleTask,
+)
+from obi_one.scientific.tasks_and_configs.example_task_2 import (
+    ExampleScanConfig2,
+    ExampleSingleConfig2,
+    ExampleTask2,
+)
+from obi_one.scientific.tasks_and_configs.scan_generation import GridScanGeneration, ScanGeneration
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTest,
     MultiBlockEntitySDKTestForm,
@@ -281,6 +301,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetUnion,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.union_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
