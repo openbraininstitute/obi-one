@@ -50,7 +50,8 @@ class Recording(Block, ABC):
 
         if self._end_time <= self._start_time:
             msg = (
-                f"Recording '{self.block_name}' for Neuron Set '{self.neuron_set.block.block_name}': "
+                f"Recording '{self.block_name}' for Neuron Set "
+                "'{self.neuron_set.block.block_name}': "
                 "End time must be later than start time!"
             )
             raise OBIONEError(msg)

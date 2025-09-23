@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal
 
 import entitysdk
 from pydantic import (
@@ -11,7 +11,6 @@ from pydantic import (
     NonNegativeFloat,
     PositiveFloat,
     PrivateAttr,
-    model_validator,
 )
 
 from obi_one.core.block import Block
