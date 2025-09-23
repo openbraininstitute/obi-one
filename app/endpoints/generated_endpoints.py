@@ -18,7 +18,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
 )
-from obi_one.scientific.simulation.simulations import (
+from obi_one.scientific.tasks_and_configs.simulations import (
     Simulation,
     SimulationsForm,
 )
