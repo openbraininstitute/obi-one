@@ -328,13 +328,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             L.info("initialize.node_set is None — setting default node set.")
             self.initialize.node_set = self._default_neuron_set_ref()
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
-        """Generates SONATA simulation config .json file."""
-        # Initialize the SONATA simulation config
-        self._sonata_config = self.initialize.initial_sonata_simulation_config()
-
-        # Set circuit variable based on the type of initialize.circuit
-        # circuit is used through-out generate rather than self.initialize.circuit
+    def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
         if isinstance(self.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -365,6 +359,15 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 db_client=db_client, dest_dir=self.coordinate_output_root
             )
             self._sonata_config["network"] = Path(circuit.path).name  # Correct?
+
+        return circuit
+
+    def generate(self, db_client: entitysdk.client.Client = None) -> None:
+        """Generates SONATA simulation config .json file."""
+        # Initialize the SONATA simulation config
+        self._sonata_config = self.initialize.initial_sonata_simulation_config()
+
+        circuit = self._resolve_circuit(db_client)
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         self._sonata_config["conditions"]["mechanisms"] = {
