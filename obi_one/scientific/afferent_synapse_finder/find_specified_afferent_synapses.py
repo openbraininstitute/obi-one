@@ -1,5 +1,4 @@
 import warnings
-from pathlib import Path
 
 import bluepysnap as snap
 import morphio
@@ -24,11 +23,8 @@ def morphology_and_pathdistance_calculator(
       node_id (int): Neuron node id.
     """
     node = circ.nodes[node_population]
-    morph_name = node.morph.get_name(node_id)
     try:
-        morph = morphio.Morphology(
-            Path(node.config["alternate_morphologies"]["h5v1"]) / (morph_name + ".h5")
-        )
+        morph = node.morph.get(node_id, extension="h5")
     except Exception as err:
         msg = f"Error loading hdf5 morphology for {node_population} - {node_id}"
         raise RuntimeError(msg) from err

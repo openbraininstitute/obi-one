@@ -60,6 +60,8 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "bluecellulab>=2.6.62",
+    # OBI NOTEBOOK
+    "obi_notebook",
 ]
 
 [project.optional-dependencies]
@@ -108,9 +110,6 @@ required-version = ">=0.8.0"
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
-exclude = [
-    "obi_one/scientific/simulation/execution.py"
-]
 
 [tool.ruff.lint]
 preview = true
@@ -196,6 +195,7 @@ addopts = [
 # asyncio_mode = "auto"
 testpaths = [
     "tests",
+    "examples",
 ]
 
 [tool.coverage.run]
