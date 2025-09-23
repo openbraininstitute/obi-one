@@ -22,6 +22,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
@@ -53,6 +54,7 @@ class BlockGroup(StrEnum):
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
+# REFACTOR: SHOULD BE RENAMED GenerateSimulationMultiConfig
 class SimulationsForm(Form):
     """Simulations Form."""
 
@@ -258,8 +260,13 @@ class SimulationsForm(Form):
         )
 
 
+# REFACTOR: SHOULD BE RENAMED GenerateSimulationSingleConfig
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
+
+
+class GenerateSimulationTask(Task):
+    config: Simulation
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -268,12 +275,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
-        for stimulus in self.stimuli.values():
+        for stimulus in self.config.stimuli.values():
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     circuit,
-                    self.coordinate_output_root,
-                    self.initialize.simulation_length,
+                    self.config.coordinate_output_root,
+                    self.config.initialize.simulation_length,
                     source_node_population=circuit.default_population_name,
                 )
             self._sonata_config["inputs"].update(
@@ -282,10 +289,12 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
 
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
-        for recording in self.recordings.values():
+        for recording in self.config.recordings.values():
             self._sonata_config["reports"].update(
                 recording.config(
-                    circuit, circuit.default_population_name, self.initialize.simulation_length
+                    circuit,
+                    circuit.default_population_name,
+                    self.config.initialize.simulation_length,
                 )
             )
 
@@ -293,7 +302,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # Generate list of synaptic manipulation configs (executed in the order in the list)
         # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
         manipulation_list = [
-            manipulation.config() for manipulation in self.synaptic_manipulations.values()
+            manipulation.config() for manipulation in self.config.synaptic_manipulations.values()
         ]
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
@@ -301,28 +310,30 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
-        self._sonata_config = self.initialize.initial_sonata_simulation_config()
+        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
 
         # Set circuit variable based on the type of initialize.circuit
         # circuit is used through-out generate rather than self.initialize.circuit
         circuit = None
-        if isinstance(self.initialize.circuit, Circuit):
+        if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
-            circuit = self.initialize.circuit
-            self._sonata_config["network"] = self.initialize.circuit.path
+            circuit = self.config.initialize.circuit
+            self._sonata_config["network"] = self.config.initialize.circuit.path
 
-        if isinstance(self.initialize.circuit, CircuitFromID):
+        if isinstance(self.config.initialize.circuit, CircuitFromID):
             L.info("initialize.circuit is a CircuitFromID instance.")
-            self._circuit_id = self.initialize.circuit.id_str
+            self._circuit_id = self.config.initialize.circuit.id_str
 
-            for asset in self.initialize.circuit.entity(db_client=db_client).assets:
+            for asset in self.config.initialize.circuit.entity(db_client=db_client).assets:
                 if asset.label == "sonata_circuit":
-                    self.initialize.circuit.download_circuit_directory(
-                        dest_dir=self.coordinate_output_root, db_client=db_client
+                    self.config.initialize.circuit.download_circuit_directory(
+                        dest_dir=self.config.coordinate_output_root, db_client=db_client
                     )
                     circuit = Circuit(
-                        name=self.initialize.circuit.entity(db_client=db_client).name,
-                        path=str(self.coordinate_output_root / asset.path / "circuit_config.json"),
+                        name=self.config.initialize.circuit.entity(db_client=db_client).name,
+                        path=str(
+                            self.config.coordinate_output_root / asset.path / "circuit_config.json"
+                        ),
                     )
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name
                     break
@@ -348,10 +359,10 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # which just references the existing one. This is the most consistent behavior since
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
-        Path(self.coordinate_output_root).mkdir(parents=True, exist_ok=True)
+        Path(self.config.coordinate_output_root).mkdir(parents=True, exist_ok=True)
 
         sonata_circuit = circuit.sonata_circuit
-        for _name, _nset in self.neuron_sets.items():
+        for _name, _nset in self.config.neuron_sets.items():
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
             # TODO: Inconsistency possible in case a node set definition would span multiple
@@ -361,7 +372,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                 msg = "Neuron set name mismatch!"
                 raise OBIONEError(msg)  # This should never happen if properly initialized
 
-            if self.initialize.node_set.block.block_name == _name:
+            if self.config.initialize.node_set.block.block_name == _name:
                 if self._sonata_config.get("node_set") is not None:
                     msg = "Node set config entry already defined!"
                     raise OBIONEError(msg)
@@ -387,14 +398,14 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         # (will raise an error if file already exists)
         NeuronSet.write_circuit_node_set_file(
             sonata_circuit,
-            self.coordinate_output_root,
+            self.config.coordinate_output_root,
             file_name=self.NODE_SETS_FILE_NAME,
             overwrite_if_exists=False,
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
         # Write simulation config file (.json)
-        simulation_config_path = Path(self.coordinate_output_root) / self.CONFIG_FILE_NAME
+        simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
         with simulation_config_path.open("w", encoding="utf-8") as f:
             json.dump(self._sonata_config, f, indent=2)
 
@@ -409,7 +420,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             entitysdk.models.Simulation(
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                scan_parameters=self.config.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self._circuit_id,
                 simulation_campaign_id=campaign.id,
             )
@@ -419,7 +430,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         _ = db_client.upload_file(
             entity_id=simulation.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_path=Path(self.config.coordinate_output_root, "run_coordinate_instance.json"),
             file_content_type="application/json",
             asset_label="simulation_generation_config",
         )
@@ -428,7 +439,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         _ = db_client.upload_file(
             entity_id=simulation.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "simulation_config.json"),
+            file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
             file_content_type="application/json",
             asset_label="sonata_simulation_config",
         )
@@ -437,7 +448,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         _ = db_client.upload_file(
             entity_id=simulation.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "node_sets.json"),
+            file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
             file_content_type="application/json",
             asset_label="custom_node_sets",
         )
@@ -450,7 +461,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     _ = db_client.upload_file(
                         entity_id=simulation.id,
                         entity_type=entitysdk.models.Simulation,
-                        file_path=Path(self.coordinate_output_root, spike_file),
+                        file_path=Path(self.config.coordinate_output_root, spike_file),
                         file_content_type="application/x-hdf5",
                         asset_label="replay_spikes",
                     )
