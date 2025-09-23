@@ -162,9 +162,9 @@ def activate_test_endpoint(router: APIRouter) -> None:
         except ValueError as e:
             L.error(f"Error reading file {file.filename}: {e!s}")
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST
+                status_code=HTTPStatus.BAD_REQUEST,
                 detail={
-                    "code": ApiErrorCode.BAD_REQUEST
+                    "code": ApiErrorCode.BAD_REQUEST,
                     "detail": f"Error reading file: {e!s}",
                 },
             ) from e
@@ -185,9 +185,9 @@ def activate_test_endpoint(router: APIRouter) -> None:
         except Exception as e:
             L.error(f"Morphio error loading file {file.filename}: {e!s}")
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST
+                status_code=HTTPStatus.BAD_REQUEST,
                 detail={
-                    "code": ApiErrorCode.BAD_REQUEST
+                    "code": ApiErrorCode.BAD_REQUEST,
                     "detail": f"NeuroM failure: {e!s}",
                 },
             ) from e
@@ -213,9 +213,9 @@ def activate_test_endpoint(router: APIRouter) -> None:
         except Exception as e:
             L.error(f"Error creating zip file: {e!s}")
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST
+                status_code=HTTPStatus.BAD_REQUEST,
                 detail={
-                    "code": ApiErrorCode.BAD_REQUEST
+                    "code": ApiErrorCode.BAD_REQUEST,
                     "detail": f"Error creating zip file: {e!s}",
                 },
             ) from e
