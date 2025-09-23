@@ -2,7 +2,7 @@ from pathlib import Path
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core_new.task import Task
-from obi_one.scientific.tasks_and_configs.scan_generation import ScanGeneration
+from obi_one.scientific.tasks.scan_generation import ScanGeneration
 from obi_one.scientific.unions.union_scan_configs import ScanConfigsUnion
 
 

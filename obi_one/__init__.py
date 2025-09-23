@@ -265,18 +265,18 @@ from obi_one.scientific.simulation.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
-from obi_one.scientific.tasks_and_configs.example_task_1 import (
+from obi_one.scientific.tasks.example_task_1 import (
     ExampleScanConfig,
     ExampleSingleConfig,
     ExampleTask,
 )
-from obi_one.scientific.tasks_and_configs.example_task_2 import (
+from obi_one.scientific.tasks.example_task_2 import (
     ExampleScanConfig2,
     ExampleSingleConfig2,
     ExampleTask2,
 )
-from obi_one.scientific.tasks_and_configs.scan_generation import GridScanGeneration, ScanGeneration
-from obi_one.scientific.tasks_and_configs.simulations import Simulation, SimulationsForm
+from obi_one.scientific.tasks.scan_generation import GridScanGeneration, ScanGeneration
+from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTest,
     MultiBlockEntitySDKTestForm,
