@@ -91,9 +91,6 @@ class AbstractNeuronSet(Block, abc.ABC):
     """Base class representing a neuron set which can be turned into a SONATA node set by either
     adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
     SONATA node set .json file (write_circuit_node_set_file).
-    Whenever such a neuron set is used in a SimulationsForm, it must be added to its neuron_sets
-    dictionary with the key being the name of the SONATA node set which will internally be set
-    in simulation_level_name upon initialization of the SimulationsForm.
     """
 
     sample_percentage: (
@@ -263,8 +260,10 @@ class AbstractNeuronSet(Block, abc.ABC):
             set file.
         """
         if optional_node_set_name is not None:
-            self.set_simulation_level_name(optional_node_set_name)
-        if self.name is None:
+            node_set_name = optional_node_set_name
+        elif self.has_block_name():
+            node_set_name = self.block_name
+        else:
             msg = (
                 "NeuronSet name must be set through the Simulation"
                 " or optional_node_set_name parameter!"
@@ -292,19 +291,19 @@ class AbstractNeuronSet(Block, abc.ABC):
             else:
                 # Initialize with circuit object's node sets
                 node_sets = circuit.sonata_circuit.node_sets.content
-                if self.name in node_sets:
-                    msg = f"Node set '{self.name}' already exists in circuit '{circuit}'!"
+                if node_set_name in node_sets:
+                    msg = f"Node set '{node_set_name}' already exists in circuit '{circuit}'!"
                     raise ValueError(msg)
-            node_sets.update({self.name: expression})
+            node_sets.update({node_set_name: expression})
 
         elif Path.exists(output_file) and append_if_exists:
             # Append to existing node sets file
             with Path(output_file).open("r", encoding="utf-8") as f:
                 node_sets = json.load(f)
-                if self.name in node_sets:
-                    msg = f"Appending not possible, node set '{self.name}' already exists!"
+                if node_set_name in node_sets:
+                    msg = f"Appending not possible, node set '{node_set_name}' already exists!"
                     raise ValueError(msg)
-                node_sets.update({self.name: expression})
+                node_sets.update({node_set_name: expression})
 
         else:  # File existing but no option chosen
             msg = (
