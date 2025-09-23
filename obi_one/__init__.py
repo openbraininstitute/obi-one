@@ -314,8 +314,8 @@ from obi_one.scientific.unions.unions_stimuli import StimulusReference, Stimulus
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import (
     TasksUnion,
+    get_configs_task_type,
     get_tasks_config_type,
-    get_configs_task_type
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 from obi_one.scientific.validations.reconstruction_morphology_validation import (

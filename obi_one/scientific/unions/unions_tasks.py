@@ -21,5 +21,6 @@ _config_tasks_map = {task.model_fields["config"].annotation: task.__name__ for t
 def get_tasks_config_type(task: TasksUnion) -> type:
     return _task_configs_map[task.__name__]
 
+
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[config.__class__]
