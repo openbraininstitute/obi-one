@@ -1,8 +1,9 @@
+import contextlib
 import logging
-import warnings
 from pathlib import Path
 from typing import ClassVar, Self
 
+import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,11 +26,9 @@ from obi_one.scientific.basic_connectivity_plots.helpers import (
     plot_smallMC_network_stats,
 )
 
-try:
+with contextlib.suppress(ImportError):  # Try to import connalysis
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 L = logging.getLogger(__name__)
 
@@ -162,9 +161,9 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
             L.warning("Your network is likely too small for these plots to be informative.")
         # Global connection probabilities
         global_conn_probs = {"full": None, "within": None}
-        global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, type="full")
+        global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, connection_type="full")
         global_conn_probs["widthin"] = compute_global_connectivity(
-            adj, adj_er, v=conn.vertices, type="within", max_dist=100, cols=["x", "y"]
+            adj, adj_er, v=conn.vertices, connection_type="within", max_dist=100, cols=["x", "y"]
         )
 
         # Plot network metrics
@@ -247,7 +246,14 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                 output_file = Path(dir_path) / f"property_table.{fmt}"
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
-    def run(self) -> None:
+    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+        if "node_degree" not in globals() or "ER_model" not in globals():
+            msg = (
+                "Import of 'node_degree' or 'ER_model' failed. You probably need to install"
+                " connalysis locally."
+            )
+            raise ValueError(msg)
+
         # TODO: Maybe move width outside, but then fontsize would have to be changed accordingly
         full_width = 16
         # Set plot format, resolution and plot types

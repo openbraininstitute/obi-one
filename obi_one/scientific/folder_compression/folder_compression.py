@@ -42,7 +42,7 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         # Initial checks
-        if not Path(self.initialize.folder_path.path).isdir():
+        if not Path(self.initialize.folder_path.path).is_dir():
             msg = f"Folder path '{self.initialize.folder_path}' is not a valid directory!"
             raise ValueError(msg)
         if self.initialize.folder_path.path[-1] == os.path.sep:

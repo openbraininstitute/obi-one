@@ -125,7 +125,7 @@ class Form(OBIBaseModel, extra="forbid"):
                     raise ValueError(msg)
 
     @model_validator(mode="after")
-    def fill_block_references(self) -> "Form":
+    def fill_block_references_and_names(self) -> "Form":
         for attr_value in self.__dict__.values():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
@@ -134,8 +134,9 @@ class Form(OBIBaseModel, extra="forbid"):
                 category_blocks_dict = attr_value
 
                 # If so iterate through the dictionary's Block instances
-                for block in category_blocks_dict.values():
+                for key, block in category_blocks_dict.items():
                     self.fill_block_reference_for_block(block)
+                    block.set_block_name(key)
 
             elif isinstance(attr_value, Block):
                 block = attr_value
@@ -174,6 +175,7 @@ class Form(OBIBaseModel, extra="forbid"):
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)
         block.set_ref(ref)
+        block.set_block_name(name)
         self.__dict__[block_dict_name][name] = block
 
     def set(self, block: Block, name: str = "") -> None:
