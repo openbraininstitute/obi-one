@@ -307,7 +307,7 @@ class GenerateSimulationTask(Task):
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
         self._sonata_config = self.config.initialize.initial_sonata_simulation_config()

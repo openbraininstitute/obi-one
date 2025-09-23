@@ -15,6 +15,7 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.validation import Validation
 from obi_one.core_new.scan_config import ScanConfig
+from obi_one.core_new.scan_wrapper import ScanWrapper
 from obi_one.core_new.single_config_mixin import SingleConfigMixin
 from obi_one.core_new.task import Task
 from obi_one.database.db_manager import db
@@ -116,6 +117,7 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGeneration",
+    "ScanWrapper",
     "SectionIntracellularLocationSet",
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
