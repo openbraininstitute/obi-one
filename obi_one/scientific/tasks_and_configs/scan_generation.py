@@ -1,3 +1,4 @@
+import abc
 import copy
 import json
 import logging
@@ -12,12 +13,15 @@ from pydantic import PrivateAttr, ValidationError
 from obi_one.core.block import Block
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleCoordinateScanParams
+from obi_one.core_new.single_config_mixin import SingleConfigMixin
+from obi_one.core_new.task import Task
+from obi_one.scientific.unions.union_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
 
 
 class ScanGeneration(Task, abc.ABC):
-    """Task for creating multiple SingleConfigs where lists with multiple parameters are found"""
+    """Task for creating multiple SingleConfigs where lists with multiple parameters are found."""
 
     scan_config: ScanConfigsUnion
     output_root: Path = Path()
@@ -88,12 +92,12 @@ class ScanGeneration(Task, abc.ABC):
 
         return d
 
-    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
+    def coordinate_parameters(self) -> list[SingleCoordinateScanParams]:
         """Must be implemented by a subclass of Scan."""
         msg = "coordinate_parameters() must be implemented by a subclass of Scan."
         raise NotImplementedError(msg)
 
-    def create_single_configs(self, *, display: bool = False) -> list[SingleConfigMixin]:
+    def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
 
         - Returns a list of "coordinate instances" by:
@@ -195,16 +199,9 @@ class ScanGeneration(Task, abc.ABC):
         # Serialize the scan
         self.serialize(self.output_root / "run_scan_config.json")
 
-        # # Create a bbp_workflow_campaign_config
-        # self.create_bbp_workflow_campaign_config(
-        #     self.output_root / "bbp_workflow_campaign_config.json"
-        # )
-
         if db_client:
             pass
             # Do an entitycore operation
-
-        single_entities = []
 
         single_configs = self.create_single_configs()
 

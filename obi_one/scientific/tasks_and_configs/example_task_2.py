@@ -9,7 +9,7 @@ from obi_one.core_new.single_config_mixin import SingleConfigMixin
 from obi_one.core_new.task import Task
 
 
-class ExampleScanConfig(ScanConfig):
+class ExampleScanConfig2(ScanConfig):
     single_coord_class_name: ClassVar[str] = (
         "ExampleSingleConfig"  # Change to single_config_class_name
     )
@@ -23,12 +23,12 @@ class ExampleScanConfig(ScanConfig):
     initialize: Initialize
 
 
-class ExampleSingleConfig(ExampleScanConfig, SingleConfigMixin):
+class ExampleSingleConfig2(ExampleScanConfig2, SingleConfigMixin):
     pass
 
 
-class ExampleTask(Task):
-    single_config: ExampleSingleConfig
+class ExampleTask2(Task):
+    single_config: ExampleSingleConfig2
 
     def execute(self, db_client: entitysdk.client.Client = None) -> tuple[str, None]:
         # Arbitrary operation
