@@ -6,7 +6,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
-from obi_one.core.scan import CoupledScan, GridScan
 from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
@@ -45,7 +44,6 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
-    "CoupledScan",
     "CoupledScanGeneration",
     "EntityFromID",
     "ExampleScanConfig",
@@ -62,7 +60,6 @@ __all__ = [
     "Form",
     "FormUnion",
     "FullySynchronousSpikeStimulus",
-    "GridScan",
     "GridScanGeneration",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
