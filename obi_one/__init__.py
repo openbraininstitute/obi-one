@@ -149,7 +149,8 @@ __all__ = [
     "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
-    "get_task_config_type",
+    "get_configs_task_type",
+    "get_tasks_config_type",
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
@@ -313,7 +314,8 @@ from obi_one.scientific.unions.unions_stimuli import StimulusReference, Stimulus
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import (
     TasksUnion,
-    get_task_config_type,
+    get_tasks_config_type,
+    get_configs_task_type
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 from obi_one.scientific.validations.reconstruction_morphology_validation import (
