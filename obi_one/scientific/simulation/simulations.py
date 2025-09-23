@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal
 
 import entitysdk
 from pydantic import (
@@ -11,7 +11,6 @@ from pydantic import (
     NonNegativeFloat,
     PositiveFloat,
     PrivateAttr,
-    model_validator,
 )
 
 from obi_one.core.block import Block
@@ -24,8 +23,9 @@ from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.circuit_from_id import CircuitFromID
+from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet, PredefinedNeuronSet
+from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -51,7 +51,14 @@ class BlockGroup(StrEnum):
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
+CircuitDiscriminator = Annotated[
+    Circuit | CircuitFromID | MEModelFromID, Field(discriminator="type")
+]
+
+ALL_NEURON_SET_NAME = "All Neurons"
+ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
+    block_dict_name="neuron_sets", block_name=ALL_NEURON_SET_NAME
+)
 
 
 class SimulationsForm(Form):
@@ -99,7 +106,7 @@ class SimulationsForm(Form):
         group_order=1,
     )
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
+        default_factory=lambda: ALL_NEURON_SET_BLOCK_REFERENCE,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
@@ -261,44 +268,6 @@ class SimulationsForm(Form):
             )
         )
 
-    # Below are initializations of the individual components as part of a simulation
-    # by setting their simulation_level_name as the one used in the simulation form/GUI
-    # TODO: Ensure in GUI that these names don't have spaces or special characters
-    @model_validator(mode="after")
-    def initialize_timestamps(self) -> Self:
-        """Initializes timestamps within simulation campaign."""
-        for _k, _v in self.timestamps.items():
-            _v.set_simulation_level_name(_k)
-        return self
-
-    @model_validator(mode="after")
-    def initialize_stimuli(self) -> Self:
-        """Initializes stimuli within simulation campaign."""
-        for _k, _v in self.stimuli.items():
-            _v.set_simulation_level_name(_k)
-        return self
-
-    @model_validator(mode="after")
-    def initialize_recordings(self) -> Self:
-        """Initializes recordings within simulation campaign."""
-        for _k, _v in self.recordings.items():
-            _v.set_simulation_level_name(_k)
-        return self
-
-    @model_validator(mode="after")
-    def initialize_neuron_sets(self) -> Self:
-        """Initializes neuron sets within simulation campaign."""
-        for _k, _v in self.neuron_sets.items():
-            _v.set_simulation_level_name(_k)
-        return self
-
-    @model_validator(mode="after")
-    def initialize_synaptic_manipulations(self) -> Self:
-        """Initializes manipulationms within simulation campaign."""
-        for _k, _v in self.synaptic_manipulations.items():
-            _v.set_simulation_level_name(_k)
-        return self
-
 
 class Simulation(SimulationsForm, SingleCoordinateMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
@@ -344,42 +313,22 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             self._sonata_config["connection_overrides"] = manipulation_list
 
     @staticmethod
-    def _make_default_neuron_set_ref(circuit: Circuit) -> NeuronSetReference:
-        """Constructs a NeuronSetReference with a default PredefinedNeuronSet block."""
-        default_node_set = circuit.default_population_name
-        predefined_set = PredefinedNeuronSet(
-            node_set=default_node_set, node_population=default_node_set
-        )
-        predefined_set.set_simulation_level_name(default_node_set)
-        ref = NeuronSetReference(block_name=default_node_set)
-        ref.block = predefined_set
-        return ref
+    def _default_neuron_set_ref() -> NeuronSetReference:
+        """Returns the reference for the default neuron set."""
+        return ALL_NEURON_SET_BLOCK_REFERENCE
 
-    def _ensure_block_neuron_set(self, block: Block, circuit: Circuit) -> None:
+    def _ensure_block_neuron_set(self, block: Block) -> None:
         """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
         if getattr(block, "neuron_set", None) is None:
-            block.neuron_set = self._make_default_neuron_set_ref(circuit)
+            block.neuron_set = self._default_neuron_set_ref()
 
-    def _ensure_neuron_set(self, circuit: Circuit) -> None:
+    def _ensure_neuron_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
         if self.initialize.node_set is None:
             L.info("initialize.node_set is None — setting default node set.")
-            self.initialize.node_set = self._make_default_neuron_set_ref(circuit)
+            self.initialize.node_set = self._default_neuron_set_ref()
 
-        name = self.initialize.node_set.block_name
-        if name not in self.neuron_sets:
-            L.info(f"Adding default neuron set '{name}' to neuron_sets.")
-            default_set = self.initialize.node_set.block
-            default_set.set_ref(self.initialize.node_set)
-            self.neuron_sets[name] = default_set
-
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
-        """Generates SONATA simulation config .json file."""
-        # Initialize the SONATA simulation config
-        self._sonata_config = self.initialize.initial_sonata_simulation_config()
-
-        # Set circuit variable based on the type of initialize.circuit
-        # circuit is used through-out generate rather than self.initialize.circuit
+    def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
         if isinstance(self.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -402,13 +351,31 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name
                     break
 
+        if isinstance(self.initialize.circuit, MEModelFromID):
+            L.info("initialize.circuit is a MEModelFromID instance.")
+            self._circuit_id = self.initialize.circuit.id_str
+
+            circuit = self.initialize.circuit.stage_memodel_as_circuit(
+                db_client=db_client, dest_dir=self.coordinate_output_root
+            )
+            self._sonata_config["network"] = Path(circuit.path).name  # Correct?
+
+        return circuit
+
+    def generate(self, db_client: entitysdk.client.Client = None) -> None:
+        """Generates SONATA simulation config .json file."""
+        # Initialize the SONATA simulation config
+        self._sonata_config = self.initialize.initial_sonata_simulation_config()
+
+        circuit = self._resolve_circuit(db_client)
+
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         self._sonata_config["conditions"]["mechanisms"] = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
             "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
         }
 
-        self._ensure_neuron_set(circuit)
+        self._ensure_neuron_set()
         # Add stimulus inputs to sonata simulation config
         self._add_sonata_simulation_config_inputs(circuit)
 
@@ -434,17 +401,13 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             # Resolve node set based on current coordinate circuit's default node population
             # TODO: Better handling of (default) node population in case there is more than one
             # TODO: Inconsistency possible in case a node set definition would span multiple
-            # populations. Currently assumes single population via
-            # `circuit.default_population_name`.
-            # Skips addition if node set already exists in circuit and matches definition.
-            # Raises error if a node set with the same name exists but with a different definition.
-            # May consider force_resolve_ids=False to enforce resolving into given population
-            # (but which won't be a human-readable representation any more)
-            if _name != _nset.name:
+            # populations. May consider force_resolve_ids=False to enforce resolving into given
+            # population (but which won't be a human-readable representation any more)
+            if _name != _nset.block_name:
                 msg = "Neuron set name mismatch!"
                 raise OBIONEError(msg)  # This should never happen if properly initialized
 
-            if self.initialize.node_set.block.name == _name:
+            if self.initialize.node_set.block.block_name == _name:
                 if self._sonata_config.get("node_set") is not None:
                     msg = "Node set config entry already defined!"
                     raise OBIONEError(msg)

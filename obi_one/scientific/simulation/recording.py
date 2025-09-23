@@ -37,17 +37,15 @@ class Recording(Block, ABC):
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
     ) -> dict:
-        self.check_simulation_init()
-
         if self.neuron_set.block.population_type(circuit, population) != "biophysical":
             msg = (
-                f"Neuron Set '{self.neuron_set.block.name}' for {self.__class__.__name__}: "
-                f"'{self.name}' should be biophysical!"
+                f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
+                f"'{self.block_name}' should be biophysical!"
             )
             raise OBIONEError(msg)
 
         if end_time is None:
-            msg = f"End time must be specified for recording '{self.name}'."
+            msg = f"End time must be specified for recording '{self.block_name}'."
             raise OBIONEError(msg)
         self._end_time = end_time
 
@@ -55,7 +53,8 @@ class Recording(Block, ABC):
 
         if self._end_time <= self._start_time:
             msg = (
-                f"Recording '{self.name}' for Neuron Set '{self.neuron_set.block.name}': "
+                f"Recording '{self.block_name}' for Neuron Set "
+                "'{self.neuron_set.block.block_name}': "
                 "End time must be later than start time!"
             )
             raise OBIONEError(msg)
@@ -75,8 +74,8 @@ class SomaVoltageRecording(Recording):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        sonata_config[self.name] = {
-            "cells": self.neuron_set.block.name,
+        sonata_config[self.block_name] = {
+            "cells": self.neuron_set.block.block_name,
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
@@ -107,10 +106,10 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     def check_start_end_time(self) -> Self:
         """Check that end time is later than start time."""
         if self.end_time <= self.start_time:
-            recording_name = f" '{self.name}'" if self.has_name() else ""
+            recording_name = f" '{self.block_name}'" if self.has_name() else ""
 
             if self.neuron_set.has_block() and self.neuron_set.block.has_name():
-                neuron_set_name = f" '{self.neuron_set.block.name}'"
+                neuron_set_name = f" '{self.neuron_set.block.block_name}'"
             else:
                 neuron_set_name = ""
 

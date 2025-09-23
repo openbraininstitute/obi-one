@@ -30,7 +30,7 @@
             "sigma": 0.1542,
             "mean": 0.199,
             "node_set": "Node0",
-            "sample_seed": 42
+            "random_seed": 42
         }
     },
     "reports": {
