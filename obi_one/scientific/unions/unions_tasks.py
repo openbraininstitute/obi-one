@@ -2,18 +2,20 @@ from typing import Annotated, get_args
 
 from pydantic import Discriminator
 
-from obi_one.scientific.tasks.circuit_extraction import (
-    CircuitExtractionTask,
-)
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotTask,
 )
-from obi_one.scientific.tasks.example_task_1 import ExampleTask
-from obi_one.scientific.tasks.example_task_2 import ExampleTask2
+from obi_one.scientific.tasks.circuit_extraction import (
+    CircuitExtractionTask,
+)
+from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 
 TasksUnion = Annotated[
-    ExampleTask | ExampleTask2 | GenerateSimulationTask | CircuitExtractionTask | BasicConnectivityPlotTask,
+    GenerateSimulationTask
+    | CircuitExtractionTask
+    | BasicConnectivityPlotTask
+    | ConnectivityMatrixExtractionTask,
     Discriminator("type"),
 ]
 

@@ -96,7 +96,8 @@ def test_connectivity_matrix_extraction(tmp_path):
         output_root=tmp_path / "grid_scan_c",
         coordinate_directory_option="VALUE",
     )
-    grid_scan.execute(processing_method="run")
+    grid_scan.execute()
+    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Rerun --> Error since output file already exists
     with pytest.raises(
@@ -107,7 +108,7 @@ def test_connectivity_matrix_extraction(tmp_path):
             }' already exists!"
         ),
     ):
-        grid_scan.execute(processing_method="run")
+        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Check extracted matrices
     for circuit in circuit_list:

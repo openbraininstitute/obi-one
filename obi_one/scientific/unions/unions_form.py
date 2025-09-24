@@ -2,10 +2,7 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlots,
-)
-from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (
+from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractions,
 )
 from obi_one.scientific.folder_compression.folder_compression import (
@@ -20,6 +17,9 @@ from obi_one.scientific.morphology_containerization.morphology_decontainerizatio
 from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
+)
+from obi_one.scientific.tasks.basic_connectivity_plots import (
+    BasicConnectivityPlots,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractions,

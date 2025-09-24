@@ -47,18 +47,13 @@ __all__ = [
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
     "ConnectivityMatrixExtraction",
+    "ConnectivityMatrixExtractionTask",
     "ConnectivityMatrixExtractions",
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
     "EntityFromID",
-    "ExampleScanConfig",
-    "ExampleScanConfig2",
-    "ExampleSingleConfig",
-    "ExampleSingleConfig2",
-    "ExampleTask",
-    "ExampleTask2",
     "ExcitatoryNeurons",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
@@ -184,11 +179,6 @@ from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_bloc
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
-from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlot,
-    BasicConnectivityPlots,
-    BasicConnectivityPlotTask,
-)
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.extracellular_location_sets import (
     ExtracellularLocationSet,
@@ -216,10 +206,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
-)
-from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (
-    ConnectivityMatrixExtraction,
-    ConnectivityMatrixExtractions,
 )
 from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
@@ -273,20 +259,20 @@ from obi_one.scientific.simulation.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.tasks.basic_connectivity_plots import (
+    BasicConnectivityPlot,
+    BasicConnectivityPlots,
+    BasicConnectivityPlotTask,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtraction,
     CircuitExtractions,
     CircuitExtractionTask,
 )
-from obi_one.scientific.tasks.example_task_1 import (
-    ExampleScanConfig,
-    ExampleSingleConfig,
-    ExampleTask,
-)
-from obi_one.scientific.tasks.example_task_2 import (
-    ExampleScanConfig2,
-    ExampleSingleConfig2,
-    ExampleTask2,
+from obi_one.scientific.tasks.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtraction,
+    ConnectivityMatrixExtractions,
+    ConnectivityMatrixExtractionTask,
 )
 from obi_one.scientific.tasks.scan_generation import (
     CoupledScan,

@@ -19,7 +19,12 @@ except ImportError:
 
 
 class ConnectivityMatrixExtractions(Form):
-    """Form for extracting connectivity matrices in ConnectomeUtilities format."""
+    """Form for extracting connectivity matrices in ConnectomeUtilities format.
+
+    The connectivity matrix is extracted in ConnectomeUtilities format, consisting of a sparse
+    connectivity matrix with the number of synapses for each connection, together with a
+    table (dataframe) of selected node attributes.
+    """
 
     single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtraction"
     name: ClassVar[str] = "Connectivity Matrix Extraction"
@@ -39,12 +44,11 @@ class ConnectivityMatrixExtractions(Form):
 
 
 class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordinateMixin):
-    """Extracts a connectivity matrix of a given edge population of a SONATA circuit.
+    """Extracts a connectivity matrix of a given edge population of a SONATA circuit."""
 
-    The connectivity matrix is extracted in ConnectomeUtilities format, consisting of a sparse
-    connectivity matrix with the number of synapses for each connection, together with a
-    table (dataframe) of selected node attributes.
-    """
+
+class ConnectivityMatrixExtractionTask(ConnectivityMatrixExtraction):
+    config: ConnectivityMatrixExtraction
 
     DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = (
         "x",
@@ -56,7 +60,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
         "synapse_class",
     )
 
-    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         L.info(f"Info: Running idx {self.idx}")
 
         output_file = Path(self.coordinate_output_root) / "connectivity_matrix.h5"
