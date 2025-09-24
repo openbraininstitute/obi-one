@@ -1,8 +1,8 @@
 import json
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import logging
 import numpy as np
 import pytest
 
@@ -53,7 +53,7 @@ def test_run_bluecellulab_integration(tmp_sim_config: Path) -> None:
         patch.object(execution, "ReportManager") as report_mgr_cls,
         patch.object(execution, "save_results_to_nwb") as save_nwb_mock,
         patch.object(execution, "plot_voltage_traces") as plot_mock,
-        patch.object(execution, "_setup_file_logging", return_value=logging)
+        patch.object(execution, "_setup_file_logging", return_value=logging),
     ):
         h_mock.ParallelContext.return_value = pc_mock
         report_mgr = MagicMock()
@@ -91,7 +91,7 @@ def test_run_bluecellulab_passes_correct_data(tmp_sim_config: Path) -> None:
         patch.object(execution, "h") as h_mock,
         patch.object(execution, "CircuitSimulation", return_value=sim_mock),
         patch.object(execution, "ReportManager") as report_mgr_cls,
-        patch.object(execution, "_setup_file_logging", return_value=logging)
+        patch.object(execution, "_setup_file_logging", return_value=logging),
     ):
         h_mock.ParallelContext.return_value = pc_mock
         report_mgr = MagicMock()

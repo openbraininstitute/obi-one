@@ -26,10 +26,11 @@ def test_folder_compression(tmp_path):
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
-    grid_scan.execute(processing_method="run")
+    grid_scan.execute()
+    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Check that expected files have been created
-    instances = grid_scan.coordinate_instances()
+    instances = grid_scan.single_configs
     assert len(instances) == 6
     for instance in instances:
         fmt = instance.initialize.file_format

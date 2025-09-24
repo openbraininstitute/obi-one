@@ -58,6 +58,7 @@ __all__ = [
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
     "FolderCompression",
+    "FolderCompressionTask",
     "FolderCompressions",
     "Form",
     "FormUnion",
@@ -211,18 +212,6 @@ from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
 )
-from obi_one.scientific.folder_compression.folder_compression import (
-    FolderCompression,
-    FolderCompressions,
-)
-from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerization,
-    MorphologyContainerizationsForm,
-)
-from obi_one.scientific.tasks.morphology_decontainerization import (
-    MorphologyDecontainerization,
-    MorphologyDecontainerizationsForm,
-)
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
@@ -273,6 +262,19 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtraction,
     ConnectivityMatrixExtractions,
     ConnectivityMatrixExtractionTask,
+)
+from obi_one.scientific.tasks.folder_compression import (
+    FolderCompression,
+    FolderCompressions,
+    FolderCompressionTask,
+)
+from obi_one.scientific.tasks.morphology_containerization import (
+    MorphologyContainerization,
+    MorphologyContainerizationsForm,
+)
+from obi_one.scientific.tasks.morphology_decontainerization import (
+    MorphologyDecontainerization,
+    MorphologyDecontainerizationsForm,
 )
 from obi_one.scientific.tasks.scan_generation import (
     CoupledScan,

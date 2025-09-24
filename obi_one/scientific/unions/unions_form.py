@@ -2,9 +2,6 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.folder_compression.folder_compression import (
-    FolderCompressions,
-)
 from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
@@ -17,6 +14,9 @@ from obi_one.scientific.tasks.circuit_extraction import (
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractions,
+)
+from obi_one.scientific.tasks.folder_compression import (
+    FolderCompressions,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationsForm,

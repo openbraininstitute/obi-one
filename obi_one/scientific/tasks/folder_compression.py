@@ -11,6 +11,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 
 L = logging.getLogger(__name__)
 
@@ -18,7 +19,10 @@ _KIB_FACTOR = 1024
 
 
 class FolderCompressions(Form):
-    """Folder compression form."""
+    """Compression of an entire folder (e.g., circuit) using the given compression file format.
+
+    The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
+    """
 
     single_coord_class_name: ClassVar[str] = "FolderCompression"
     name: ClassVar[str] = "Folder Compression"
@@ -33,31 +37,32 @@ class FolderCompressions(Form):
 
 
 class FolderCompression(FolderCompressions, SingleCoordinateMixin):
-    """Compression of an entire folder (e.g., circuit) using the given compression file format.
+    pass
 
-    The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
-    """
+
+class FolderCompressionTask(Task):
+    config: FolderCompression
 
     FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 
-    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         # Initial checks
-        if not Path(self.initialize.folder_path.path).is_dir():
-            msg = f"Folder path '{self.initialize.folder_path}' is not a valid directory!"
+        if not Path(self.config.initialize.folder_path.path).is_dir():
+            msg = f"Folder path '{self.config.initialize.folder_path}' is not a valid directory!"
             raise ValueError(msg)
-        if self.initialize.folder_path.path[-1] == os.path.sep:
+        if self.config.initialize.folder_path.path[-1] == os.path.sep:
             msg = f"Please remove trailing separator '{os.path.sep}' from path!"
             raise ValueError(msg)
-        if self.initialize.file_format not in self.FILE_FORMATS:
+        if self.config.initialize.file_format not in self.FILE_FORMATS:
             msg = (
-                f"File format '{self.initialize.file_format}' not supported! Supported"
+                f"File format '{self.config.initialize.file_format}' not supported! Supported"
                 f" formats: {self.FILE_FORMATS}"
             )
             raise ValueError(msg)
 
         output_file = (
-            Path(self.coordinate_output_root)
-            / f"{self.initialize.file_name}.{self.initialize.file_format}"
+            Path(self.config.coordinate_output_root)
+            / f"{self.config.initialize.file_name}.{self.config.initialize.file_format}"
         )
         if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"
@@ -65,14 +70,14 @@ class FolderCompression(FolderCompressions, SingleCoordinateMixin):
 
         # Compress using specified file format
         L.info(
-            f"Info: Running {self.initialize.file_format} compression on"
-            f" '{self.initialize.folder_path}'...",
+            f"Info: Running {self.config.initialize.file_format} compression on"
+            f" '{self.config.initialize.folder_path}'...",
         )
         t0 = time.time()
-        with tarfile.open(output_file, f"w:{self.initialize.file_format}") as tar:
+        with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:
             tar.add(
-                self.initialize.folder_path.path,
-                arcname=Path(self.initialize.folder_path.path).name,
+                self.config.initialize.folder_path.path,
+                arcname=Path(self.config.initialize.folder_path.path).name,
             )
 
         # Once done, check elapsed time and resulting file size for reporting
