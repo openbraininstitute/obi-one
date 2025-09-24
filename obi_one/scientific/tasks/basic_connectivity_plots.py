@@ -261,28 +261,28 @@ class BasicConnectivityPlotTask(Task):
         # TODO: Maybe move width outside, but then fontsize would have to be changed accordingly
         full_width = 16
         # Set plot format, resolution and plot types
-        plot_formats = self.initialize.plot_formats
-        plot_types = self.initialize.plot_types
-        dpi = self.initialize.dpi
+        plot_formats = self.config.initialize.plot_formats
+        plot_types = self.config.initialize.plot_types
+        dpi = self.config.initialize.dpi
         L.info(f"Plot Formats: {plot_formats}")
         L.info(f"Plot Types: {plot_types}")
 
-        L.info(f"Info: Running idx {self.idx}, plots for {plot_types}")
+        L.info(f"Info: Running idx {self.config.idx}, plots for {plot_types}")
 
         # Load matrix
-        L.info(f"Info: Loading matrix '{self.initialize.matrix_path}'")
-        conn = ConnectivityMatrix.from_h5(self.initialize.matrix_path.path)
+        L.info(f"Info: Loading matrix '{self.config.initialize.matrix_path}'")
+        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)
 
         # Size metrics
         size = np.array([len(conn.vertices), conn.matrix.nnz, conn.matrix.sum()])
         L.info("Neuron, connection and synapse counts")
         L.info(size)
-        output_file = Path(self.coordinate_output_root) / "size.npy"
+        output_file = Path(self.config.coordinate_output_root) / "size.npy"
         np.save(output_file, size)
 
         # Node metrics
         if "nodes" in plot_types:
-            self.nodes_plot(conn, full_width, plot_formats, dpi, self.coordinate_output_root)
+            self.nodes_plot(conn, full_width, plot_formats, dpi, self.config.coordinate_output_root)
 
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
@@ -305,7 +305,7 @@ class BasicConnectivityPlotTask(Task):
                 conn,
                 deg,
                 deg_er,
-                self.coordinate_output_root,
+                self.config.coordinate_output_root,
             )
 
         # Global connection probabilities
@@ -319,7 +319,7 @@ class BasicConnectivityPlotTask(Task):
                 adj,
                 adj_er,
                 conn,
-                self.coordinate_output_root,
+                self.config.coordinate_output_root,
             )
 
         # Network metrics for small circuits
@@ -332,7 +332,7 @@ class BasicConnectivityPlotTask(Task):
                 size,
                 n_max_2d_plot,
                 conn,
-                self.coordinate_output_root,
+                self.config.coordinate_output_root,
             )
 
         # Plot network in 2D
@@ -344,7 +344,7 @@ class BasicConnectivityPlotTask(Task):
                 size,
                 n_max_2d_plot,
                 conn,
-                self.coordinate_output_root,
+                self.config.coordinate_output_root,
             )
 
         # Plot table of properties
@@ -355,10 +355,10 @@ class BasicConnectivityPlotTask(Task):
                 size,
                 n_max_2d_plot,
                 conn,
-                self.coordinate_output_root,
-                colors_cmap=self.initialize.rendering_cmap,
-                colors_file=self.initialize.rendering_color_file,
+                self.config.coordinate_output_root,
+                colors_cmap=self.config.initialize.rendering_cmap,
+                colors_file=self.config.initialize.rendering_color_file,
                 figsize=(5, 2),
             )
 
-        L.info(f"Done with {self.idx}")
+        L.info(f"Done with {self.config.idx}")
