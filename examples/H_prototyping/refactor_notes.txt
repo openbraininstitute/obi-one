@@ -2,7 +2,9 @@ Ideal renaming which would require migration:
 - GridScan -> GridScanGeneration
 - CoupledScan -> CoupledScanGeneration
 - GridScan.form -> single_config
+- Names of specific Forms
 
+Get rid of Form references as much as possible (use renamed)
 
 
 

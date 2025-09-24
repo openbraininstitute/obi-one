@@ -2,12 +2,15 @@ from typing import Annotated, get_args
 
 from pydantic import Discriminator
 
+from obi_one.scientific.tasks.circuit_extraction import (
+    CircuitExtractionTask,
+)
 from obi_one.scientific.tasks.example_task_1 import ExampleTask
 from obi_one.scientific.tasks.example_task_2 import ExampleTask2
 from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 
 TasksUnion = Annotated[
-    ExampleTask | ExampleTask2 | GenerateSimulationTask,
+    ExampleTask | ExampleTask2 | GenerateSimulationTask | CircuitExtractionTask,
     Discriminator("type"),
 ]
 

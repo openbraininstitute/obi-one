@@ -17,6 +17,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
@@ -65,6 +66,10 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
     The output circuit will contain all morphologies, hoc files, and mod files
     that are required to simulate the extracted circuit.
     """
+
+
+class CircuitExtractionTask(Task):
+    config: CircuitExtraction
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -223,33 +228,33 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
-    def run(self, db_client: entitysdk.client.Client = None) -> str:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None) -> str:  # noqa: ARG002
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
-        nset_name = self.neuron_set.__class__.__name__
-        nset_def = self.neuron_set.get_node_set_definition(
-            self.initialize.circuit, self.initialize.circuit.default_population_name
+        nset_name = self.config.neuron_set.__class__.__name__
+        nset_def = self.config.neuron_set.get_node_set_definition(
+            self.config.initialize.circuit, self.config.initialize.circuit.default_population_name
         )
-        sonata_circuit = self.initialize.circuit.sonata_circuit
+        sonata_circuit = self.config.initialize.circuit.sonata_circuit
         NeuronSet.add_node_set_to_circuit(
             sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
         )
 
         # Create subcircuit using "brainbuilder"
-        L.info(f"Extracting subcircuit from '{self.initialize.circuit.name}'")
+        L.info(f"Extracting subcircuit from '{self.config.initialize.circuit.name}'")
         split_population.split_subcircuit(
-            self.coordinate_output_root,
+            self.config.coordinate_output_root,
             nset_name,
             sonata_circuit,
-            self.initialize.do_virtual,
-            self.initialize.create_external,
-            self.initialize.virtual_sources_to_ignore,
+            self.config.initialize.do_virtual,
+            self.config.initialize.create_external,
+            self.config.initialize.virtual_sources_to_ignore,
         )
 
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
-        old_base = os.path.split(self.initialize.circuit.path)[0]
+        old_base = os.path.split(self.config.initialize.circuit.path)[0]
 
         # Quick fix to deal with symbolic links in base circuit (not usually required)
         # > alt_base = old_base  # Alternative old base
@@ -257,7 +262,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
         # >     alt_base = alt_base.removesuffix(_sfix)
 
         new_base = "$BASE_DIR"
-        new_circuit_path = Path(self.coordinate_output_root) / "circuit_config.json"
+        new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
 
         # Create backup before modifying
         # > shutil.copyfile(new_circuit_path, os.path.splitext(new_circuit_path)[0] + ".BAK")
@@ -274,7 +279,7 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
             json.dump(config_dict, config_file, indent=4)
 
         # Copy subcircuit morphologies and e-models (separately per node population)
-        original_circuit = self.initialize.circuit.sonata_circuit
+        original_circuit = self.config.initialize.circuit.sonata_circuit
         new_circuit = snap.Circuit(new_circuit_path)
         for pop_name, pop in new_circuit.nodes.items():
             if pop.config["type"] == "biophysical":
@@ -287,10 +292,12 @@ class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
                     self._copy_hoc_files(pop_name, pop, original_circuit)
 
         # Copy .mod files, if any
-        self._copy_mod_files(self.initialize.circuit.path, self.coordinate_output_root, "mod")
+        self._copy_mod_files(
+            self.config.initialize.circuit.path, self.config.coordinate_output_root, "mod"
+        )
 
         # Run circuit validation
-        if self.initialize.run_validation:
+        if self.config.initialize.run_validation:
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")

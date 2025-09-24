@@ -34,6 +34,7 @@ __all__ = [
     "BlockReference",
     "Circuit",
     "CircuitExtraction",
+    "CircuitExtractionTask",
     "CircuitExtractions",
     "CircuitFromID",
     "ClusteredGroupedMorphologyLocations",
@@ -214,10 +215,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.circuit_extraction.circuit_extraction import (
-    CircuitExtraction,
-    CircuitExtractions,
-)
 from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (
     ConnectivityMatrixExtraction,
     ConnectivityMatrixExtractions,
@@ -274,6 +271,11 @@ from obi_one.scientific.simulation.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.tasks.circuit_extraction import (
+    CircuitExtraction,
+    CircuitExtractions,
+    CircuitExtractionTask,
+)
 from obi_one.scientific.tasks.example_task_1 import (
     ExampleScanConfig,
     ExampleSingleConfig,
