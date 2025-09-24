@@ -178,7 +178,7 @@ def test_circuit_extraction(tmp_path):
         obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Check extracted circuits
-    for instance in grid_scan.coordinate_instances():
+    for instance in grid_scan.single_configs:
         c_orig = instance.initialize.circuit.sonata_circuit
         c_res = Circuit(tmp_path / "grid_scan" / str(instance.idx) / "circuit_config.json")
         with (tmp_path / "grid_scan" / str(instance.idx) / "id_mapping.json").open(

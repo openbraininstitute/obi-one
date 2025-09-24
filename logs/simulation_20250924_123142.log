@@ -1,0 +1,31 @@
+2025-09-24 14:31:42,828 - obi_one.scientific.simulation.execution - INFO - File logging initialized. Log file: logs/simulation_20250924_123142.log
+2025-09-24 14:31:42,829 - obi_one.scientific.simulation.execution - INFO - Initializing BlueCelluLab simulation
+2025-09-24 14:31:42,829 - obi_one.scientific.simulation.execution - INFO - Rank 0 node IDs: [0]
+2025-09-24 14:31:42,829 - obi_one.scientific.simulation.execution - INFO - Instantiate params: {'add_stimuli': False, 'add_synapses': False, 'add_minis': False, 'add_replay': False, 'add_projections': False, 'interconnect_cells': True, 'add_noise_stimuli': False, 'add_hyperpolarizing_stimuli': False, 'add_relativelinear_stimuli': False, 'add_pulse_stimuli': False, 'add_shotnoise_stimuli': False, 'add_ornstein_uhlenbeck_stimuli': False, 'add_sinusoidal_stimuli': False, 'add_linear_stimuli': False}
+2025-09-24 14:31:42,829 - obi_one.scientific.simulation.execution - INFO - Rank 0: Instantiating 1 cells
+2025-09-24 14:31:42,829 - obi_one.scientific.simulation.execution - INFO - Rank 0: Running simulation...
+2025-09-24 14:31:42,830 - obi_one.scientific.simulation.execution - INFO - Saving results to /private/var/folders/pp/r2gyck8j4n9dfb_x9vjslq740000gn/T/pytest-of-james/pytest-18/test_run_bluecellulab_integrat0/output/results.nwb
+2025-09-24 14:31:42,830 - obi_one.scientific.simulation.execution - INFO - Rank 0: Cleaning up...
+2025-09-24 14:31:42,830 - obi_one.scientific.simulation.execution - INFO - All ranks completed. Simulation finished.
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - File logging initialized. Log file: logs/simulation_20250924_123142.log
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - File logging initialized. Log file: logs/simulation_20250924_123142.log
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Initializing BlueCelluLab simulation
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Initializing BlueCelluLab simulation
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0 node IDs: [0]
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0 node IDs: [0]
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Instantiate params: {'add_stimuli': False, 'add_synapses': False, 'add_minis': False, 'add_replay': False, 'add_projections': False, 'interconnect_cells': True, 'add_noise_stimuli': False, 'add_hyperpolarizing_stimuli': False, 'add_relativelinear_stimuli': False, 'add_pulse_stimuli': False, 'add_shotnoise_stimuli': False, 'add_ornstein_uhlenbeck_stimuli': False, 'add_sinusoidal_stimuli': False, 'add_linear_stimuli': False}
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Instantiate params: {'add_stimuli': False, 'add_synapses': False, 'add_minis': False, 'add_replay': False, 'add_projections': False, 'interconnect_cells': True, 'add_noise_stimuli': False, 'add_hyperpolarizing_stimuli': False, 'add_relativelinear_stimuli': False, 'add_pulse_stimuli': False, 'add_shotnoise_stimuli': False, 'add_ornstein_uhlenbeck_stimuli': False, 'add_sinusoidal_stimuli': False, 'add_linear_stimuli': False}
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0: Instantiating 1 cells
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0: Instantiating 1 cells
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0: Running simulation...
+2025-09-24 14:31:42,832 - obi_one.scientific.simulation.execution - INFO - Rank 0: Running simulation...
+2025-09-24 14:31:42,833 - obi_one.scientific.simulation.execution - INFO - Rank 0: Cleaning up...
+2025-09-24 14:31:42,833 - obi_one.scientific.simulation.execution - INFO - Rank 0: Cleaning up...
+2025-09-24 14:31:42,833 - obi_one.scientific.simulation.execution - INFO - All ranks completed. Simulation finished.
+2025-09-24 14:31:42,833 - obi_one.scientific.simulation.execution - INFO - All ranks completed. Simulation finished.
+2025-09-24 14:31:42,834 - obi_one.scientific.simulation.execution - INFO - Rank 0 node IDs: [0]
+2025-09-24 14:31:42,834 - obi_one.scientific.simulation.execution - INFO - Rank 0 node IDs: [0]
+2025-09-24 14:31:42,834 - obi_one.scientific.simulation.execution - INFO - Rank 1 node IDs: [1]
+2025-09-24 14:31:42,834 - obi_one.scientific.simulation.execution - INFO - Rank 1 node IDs: [1]
+2025-09-24 14:31:42,835 - obi_one.scientific.simulation.execution - ERROR - Rank 0: Time trace is None
+2025-09-24 14:31:42,835 - obi_one.scientific.simulation.execution - ERROR - Rank 0: Time trace is None
