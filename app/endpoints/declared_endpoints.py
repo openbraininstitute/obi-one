@@ -225,7 +225,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
     @router.post(
         "/test-neuron-file",
-        summary="Upload and validate format of a neuron file",
+        summary="Validate the format of a neuron morphology file and returns the conversion to other formats.",
         description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
     )
     async def test_neuron_file(
