@@ -30,6 +30,9 @@ _INHIBITORY_NODE_SET = "Inhibitory"
 
 _MAX_PERCENT = 100.0
 
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
+
 with contextlib.suppress(ImportError):  # Try to import connalysis
     from obi_one.scientific.circuit.simplex_extractors import simplex_submat
 
@@ -352,10 +355,7 @@ class PredefinedNeuronSet(NeuronSet):
         sets file.
     """
 
-    node_set: (
-        Annotated[str, Field(min_length=1, circuit_property_type="CircuitNodeSet")]
-        | Annotated[list[Annotated[str, Field(min_length=1, circuit_property_type="CircuitNodeSet")]], Field(min_length=1)]
-    )
+    node_set: Annotated[NodeSetType, Field(min_length=1, circuit_property_type="CircuitNodeSet")]
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
