@@ -8,6 +8,7 @@ import entitysdk.client
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 
 L = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordina
     """Extracts a connectivity matrix of a given edge population of a SONATA circuit."""
 
 
-class ConnectivityMatrixExtractionTask(ConnectivityMatrixExtraction):
+class ConnectivityMatrixExtractionTask(Task):
     config: ConnectivityMatrixExtraction
 
     DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = (
@@ -61,21 +62,21 @@ class ConnectivityMatrixExtractionTask(ConnectivityMatrixExtraction):
     )
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Info: Running idx {self.idx}")
+        L.info(f"Info: Running idx {self.config.idx}")
 
-        output_file = Path(self.coordinate_output_root) / "connectivity_matrix.h5"
+        output_file = Path(self.config.coordinate_output_root) / "connectivity_matrix.h5"
         if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"
             raise ValueError(msg)
 
         # Load circuit
-        L.info(f"Info: Loading circuit '{self.initialize.circuit}'")
-        c = self.initialize.circuit.sonata_circuit
+        L.info(f"Info: Loading circuit '{self.config.initialize.circuit}'")
+        c = self.config.initialize.circuit.sonata_circuit
         popul_names = c.edges.population_names
         if len(popul_names) == 0:
             msg = "Circuit does not have any edge populations!"
             raise ValueError(msg)
-        edge_popul = self.initialize.edge_population
+        edge_popul = self.config.initialize.edge_population
         if edge_popul is None:
             if len(popul_names) != 1:
                 msg = (
@@ -89,10 +90,10 @@ class ConnectivityMatrixExtractionTask(ConnectivityMatrixExtraction):
             raise ValueError(msg)
 
         # Extract connectivity matrix
-        if self.initialize.node_attributes is None:
+        if self.config.initialize.node_attributes is None:
             node_props = self.DEFAULT_ATTRIBUTES
         else:
-            node_props = self.initialize.node_attributes
+            node_props = self.config.initialize.node_attributes
         load_cfg = {
             "loading": {
                 "properties": node_props,

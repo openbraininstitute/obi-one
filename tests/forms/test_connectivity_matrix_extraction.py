@@ -34,12 +34,13 @@ def test_connectivity_matrix_extraction(tmp_path):
         output_root=tmp_path / "grid_scan_a",
         coordinate_directory_option="VALUE",
     )
+    grid_scan.execute()
 
     with pytest.raises(
         ValueError,
         match=f"Edge population '{extraction_init.edge_population}' not found in circuit!",
     ):
-        grid_scan.execute(processing_method="run")
+        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # (b) Matrix extraction with invalid node attribute --> Error
     circuit_list = [
@@ -65,9 +66,10 @@ def test_connectivity_matrix_extraction(tmp_path):
         output_root=tmp_path / "grid_scan_b",
         coordinate_directory_option="VALUE",
     )
+    grid_scan.execute()
 
     with pytest.raises(ValueError, match=re.escape("Unknown properties: ['INVALID']")):
-        grid_scan.execute(processing_method="run")
+        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # (c) Matrix extraction from two circuits through grid scan
     circuit_list = [
