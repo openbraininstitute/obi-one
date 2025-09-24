@@ -2,7 +2,7 @@
 
 import subprocess  # noqa: S404
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
 
 import entitysdk
 from entitysdk.types import ContentType
@@ -15,8 +15,8 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.entity_from_id import IonChannelRecordingFromID
-from obi_one.scientific.ion_channel_modeling.equations import equations as equations_module
+from obi_one.database.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.ion_channel_modeling import equations as equations_module
 
 
 class IonChannelFittingForm(Form):
@@ -54,10 +54,26 @@ class IonChannelFittingForm(Form):
 
     class Equations(Block):
         # equations
-        minf_eq: ClassVar[Any] = equations_module.MInfUnion
-        mtau_eq: ClassVar[Any] = equations_module.MTauUnion
-        hinf_eq: ClassVar[Any] = equations_module.HInfUnion
-        htau_eq: ClassVar[Any] = equations_module.HTauUnion
+        minf_eq: dict[str, equations_module.MInfUnion] = Field(
+            default_factory=dict,
+            title="m_{inf} equation",
+            reference_type=equations_module.MInfReference.__name__,
+        )
+        mtau_eq: dict[str, equations_module.MTauUnion] = Field(
+            default_factory=dict,
+            title=r"\tau_m equation",
+            reference_type=equations_module.MTauReference.__name__,
+        )
+        hinf_eq: dict[str, equations_module.HInfUnion] = Field(
+            default_factory=dict,
+            title="h_{inf} equation",
+            reference_type=equations_module.HInfReference.__name__,
+        )
+        htau_eq: dict[str, equations_module.HTauUnion] = Field(
+            default_factory=dict,
+            title=r"\tau_h equation",
+            reference_type=equations_module.HTauReference.__name__,
+        )
 
         # mod file creation
         m_power: int = Field(
@@ -255,16 +271,16 @@ class IonChannelFittingForm(Form):
         """Return the form as a dict."""
         return {
             "initialize": {
-                "recordings": [id_ for id_ in self.initialize.recordings.id_str],
+                "recordings": [rec.id_str for rec in self.initialize.recordings],
                 "suffix": self.initialize.suffix,
                 "ion": self.initialize.ion,
                 "temperature": self.initialize.temperature,
             },
             "equations": {
-                "minf_eq": self.equations.minf_eq.__class__.__name__,
-                "mtau_eq": self.equations.mtau_eq.__class__.__name__,
-                "hinf_eq": self.equations.hinf_eq.__class__.__name__,
-                "htau_eq": self.equations.htau_eq.__class__.__name__,
+                "minf_eq": self.equations.minf_eq["minf"].__class__.__name__,
+                "mtau_eq": self.equations.mtau_eq["mtau"].__class__.__name__,
+                "hinf_eq": self.equations.hinf_eq["hinf"].__class__.__name__,
+                "htau_eq": self.equations.htau_eq["htau"].__class__.__name__,
                 "m_power": self.equations.m_power,
                 "h_power": self.equations.h_power,
             },
@@ -353,10 +369,10 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
 
             # prepare data to feed
             eq_names = {
-                "minf": self.equations.minf_eq.equation_key,
-                "mtau": self.equations.mtau_eq.equation_key,
-                "hinf": self.equations.hinf_eq.equation_key,
-                "htau": self.equations.htau_eq.equation_key,
+                "minf": next(iter(self.equations.minf_eq.values())).equation_key,
+                "mtau": next(iter(self.equations.mtau_eq.values())).equation_key,
+                "hinf": next(iter(self.equations.hinf_eq.values())).equation_key,
+                "htau": next(iter(self.equations.htau_eq.values())).equation_key,
             }
             voltage_exclusion = {
                 "activation": {
@@ -398,7 +414,6 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             }
 
             # run ion_channel_builder main function to get optimised parameters
-            # TODO: should also implement output folder in ion_channel_builder and pass it there
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
                 ljps=trace_ljps,
@@ -412,14 +427,14 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             # create new mod file
             mechanisms_dir = self.coordinate_output_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = self.mechanisms_dir / f"{self.initialize.suffix}.mod"
+            output_name = mechanisms_dir / f"{self.initialize.suffix}.mod"
             write_vgate_output(
                 eq_names=eq_names,
                 eq_popt=eq_popt,
                 suffix=self.initialize.suffix,
                 ion=self.initialize.ion,
-                m_power=self.equations.minf_eq.m_power,
-                h_power=self.equations.minf_eq.h_power,
+                m_power=self.equations.m_power,
+                h_power=self.equations.h_power,
                 output_name=output_name,
             )
 
@@ -440,7 +455,7 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current=f"i{self.initialize.ion}",
                 # no need to actually give temperature because model is not temperature-dependent
-                temperature=self.initialilze.temperature,
+                temperature=self.initialize.temperature,
                 output_folder=self.coordinate_output_root,
                 savefig=True,
                 show=False,
@@ -459,22 +474,27 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
 
 def ion_channel_fitting_from_dict(icf_dict):
     """Create IonChannelFitting instance from a dict."""
+    print(icf_dict["equations"]["minf_eq"])
     return IonChannelFitting(
         initialize=IonChannelFittingForm.Initialize(
-            recordings=icf_dict["initialize"]["recordings"],
+            recordings=[
+                IonChannelRecordingFromID(id_str=icr_id)
+                for icr_id
+                in icf_dict["initialize"]["recordings"]
+            ],
             suffix=icf_dict["initialize"]["suffix"],
             ion=icf_dict["initialize"]["ion"],
             temperature=icf_dict["initialize"]["temperature"],
         ),
         equations=IonChannelFittingForm.Equations(
-            minf_eq=getattr(equations_module, icf_dict["equations"]["minf_eq"])(),
-            mtau_eq=getattr(equations_module, icf_dict["equations"]["mtau_eq"])(),
-            hinf_eq=getattr(equations_module, icf_dict["equations"]["hinf_eq"])(),
-            htau_eq=getattr(equations_module, icf_dict["equations"]["htau_eq"])(),
+            minf_eq={"minf": getattr(equations_module, icf_dict["equations"]["minf_eq"])()},
+            mtau_eq={"mtau": getattr(equations_module, icf_dict["equations"]["mtau_eq"])()},
+            hinf_eq={"hinf": getattr(equations_module, icf_dict["equations"]["hinf_eq"])()},
+            htau_eq={"htau": getattr(equations_module, icf_dict["equations"]["htau_eq"])()},
             m_power=icf_dict["equations"]["m_power"],
             h_power=icf_dict["equations"]["h_power"],
         ),
         expert=IonChannelFittingForm.Expert(
-            *icf_dict["expert"]
+            **icf_dict["expert"]
         )
     )

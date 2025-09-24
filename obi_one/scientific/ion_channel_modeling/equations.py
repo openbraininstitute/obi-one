@@ -1,12 +1,13 @@
 """Ion channel equations."""
 
 from abc import ABC
-from typing import Annotated, ClassVar
+from typing import Annotated, Any, ClassVar
 
 from ion_channel_builder.create_model import model_equations_mapping
 from pydantic import Discriminator
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 
 
 class IonChannelEquation(Block, ABC):
@@ -65,12 +66,39 @@ class SigFitHTau(IonChannelEquation):
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
 
-MInfUnion = Annotated[SigFitMInf, Discriminator("type")]
+MInfUnion = Annotated[SigFitMInf|None, Discriminator("type")]  # None: have to use a dummy fallback because pydantic forces me to have a 'real' Union here
+
 
 MTauUnion = Annotated[
     SigFitMTau | ThermoFitMTau | ThermoFitMTauV2 | BellFitMTau, Discriminator("type")
 ]
 
-HInfUnion = Annotated[SigFitHInf, Discriminator("type")]
 
-HTauUnion = Annotated[SigFitHTau, Discriminator("type")]
+HInfUnion = Annotated[SigFitHInf|None, Discriminator("type")]
+
+
+HTauUnion = Annotated[SigFitHTau|None, Discriminator("type")]
+
+
+class MInfReference(BlockReference):
+    """A reference to a StimulusUnion block."""
+
+    allowed_block_types: ClassVar[Any] = MInfUnion
+
+
+class MTauReference(BlockReference):
+    """A reference to a StimulusUnion block."""
+
+    allowed_block_types: ClassVar[Any] = MTauUnion
+
+
+class HInfReference(BlockReference):
+    """A reference to a StimulusUnion block."""
+
+    allowed_block_types: ClassVar[Any] = HInfUnion
+
+
+class HTauReference(BlockReference):
+    """A reference to a StimulusUnion block."""
+
+    allowed_block_types: ClassVar[Any] = HTauUnion
