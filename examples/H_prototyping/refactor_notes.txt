@@ -1,0 +1,12 @@
+Ideal renaming which would require migration:
+- GridScan -> GridScanGeneration
+- CoupledScan -> CoupledScanGeneration
+- GridScan.form -> single_config
+
+
+
+To add?
+- Move run_task_for_single_config to wider library
+    - Use in:
+        - Test simulation + deserialization
+        - 
