@@ -4,7 +4,7 @@ Ideal renaming which would require migration:
 - GridScan.form -> single_config
 - Names of specific Forms
 
-Get rid of Form references as much as possible (use renamed)
+Get rid of Form + SingleCoordinateMixin references as much as possible (use renamed)
 
 
 

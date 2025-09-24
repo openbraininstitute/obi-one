@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
+from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlots,
 )
 from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (

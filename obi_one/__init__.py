@@ -29,6 +29,7 @@ __all__ = [
     "AfferentSynapsesBlock",
     "AllNeurons",
     "BasicConnectivityPlot",
+    "BasicConnectivityPlotTask",
     "BasicConnectivityPlots",
     "Block",
     "BlockReference",
@@ -183,9 +184,10 @@ from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_bloc
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
-from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
+from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlot,
     BasicConnectivityPlots,
+    BasicConnectivityPlotTask,
 )
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.extracellular_location_sets import (

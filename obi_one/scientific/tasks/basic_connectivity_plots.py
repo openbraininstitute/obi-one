@@ -14,6 +14,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.scientific.basic_connectivity_plots.helpers import (
     compute_global_connectivity,
     connection_probability_pathway,
@@ -34,7 +35,18 @@ L = logging.getLogger(__name__)
 
 
 class BasicConnectivityPlots(Form):
-    """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object."""
+    """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
+
+    Supported plot types:
+      - "nodes": Node statistics (e.g., synapse class, layer, mtype).
+      - "connectivity_pathway": Connection probabilities per pathway/grouping.
+                                Not useful for small circuits.
+      - "connectivity_global": Global connection probabilities across the network.
+                                Not useful for small circuits
+      - "small_adj_and_stats": Matrix and node statistics for small connectomes only (<= 20 nodes).
+      - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
+      - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
+    """
 
     single_coord_class_name: ClassVar[str] = "BasicConnectivityPlot"
     name: ClassVar[str] = "Basic Connectivity Plots"
@@ -83,21 +95,13 @@ class BasicConnectivityPlots(Form):
 
 
 class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
-    """Generates and saves basic connectivity plots from a ConnectivityMatrix objects.
+    """Generates and saves basic connectivity plots from a ConnectivityMatrix objects."""
 
-    Supported plot types:
-      - "nodes": Node statistics (e.g., synapse class, layer, mtype).
-      - "connectivity_pathway": Connection probabilities per pathway/grouping.
-                                Not useful for small circuits.
-      - "connectivity_global": Global connection probabilities across the network.
-                                Not useful for small circuits
-      - "small_adj_and_stats": Matrix and node statistics for small connectomes only (<= 20 nodes).
-      - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
-      - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
 
-    Raises:
-        Exception: If any error occurs during processing or plotting.
-    """
+class BasicConnectivityPlotTask(Task):
+    """Task to generate and save basic connectivity plots from a ConnectivityMatrix object."""
+
+    config: BasicConnectivityPlot
 
     @staticmethod
     def nodes_plot(
@@ -246,7 +250,7 @@ class BasicConnectivityPlot(BasicConnectivityPlots, SingleCoordinateMixin):
                 output_file = Path(dir_path) / f"property_table.{fmt}"
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
-    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (
                 "Import of 'node_degree' or 'ER_model' failed. You probably need to install"
