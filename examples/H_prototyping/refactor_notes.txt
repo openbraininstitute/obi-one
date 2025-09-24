@@ -8,4 +8,5 @@ Get rid of Form references as much as possible (use renamed)
 
 
 
-Problem with circuit_simulations_example.ipynb
+- Problem with circuit_simulations_example.ipynb
+- "make test-local" generating logs
