@@ -5,8 +5,5 @@ Ideal renaming which would require migration:
 
 
 
-To add?
-- Move run_task_for_single_config to wider library
-    - Use in:
-        - Test simulation + deserialization
-        - 
+
+Problem with circuit_simulations_example.ipynb

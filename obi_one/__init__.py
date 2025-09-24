@@ -14,7 +14,12 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.validation import Validation
 from obi_one.core_new.scan_config import ScanConfig
-from obi_one.core_new.scan_wrapper import ScanWrapper
+from obi_one.core_new.scan_wrapper import (
+    ScanWrapper,
+    run_task_for_single_config,
+    run_task_for_single_configs,
+    run_task_for_single_configs_of_generated_scan,
+)
 from obi_one.core_new.single_config_mixin import SingleConfigMixin
 from obi_one.core_new.task import Task
 from obi_one.database.db_manager import db
@@ -154,6 +159,9 @@ __all__ = [
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
+    "run_task_for_single_config",
+    "run_task_for_single_configs",
+    "run_task_for_single_configs_of_generated_scan",
 ]
 
 from obi_one.database.circuit_from_id import CircuitFromID

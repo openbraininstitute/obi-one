@@ -2,41 +2,12 @@ from typing import Annotated, get_args
 
 from pydantic import Discriminator
 
-from obi_one.scientific.basic_connectivity_plots.basic_connectivity_plots import (
-    BasicConnectivityPlots,
-)
-from obi_one.scientific.circuit_extraction.circuit_extraction import (
-    CircuitExtractions,
-)
-from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extraction import (
-    ConnectivityMatrixExtractions,
-)
-from obi_one.scientific.folder_compression.folder_compression import (
-    FolderCompressions,
-)
-from obi_one.scientific.morphology_containerization.morphology_containerization import (
-    MorphologyContainerizationsForm,
-)
-from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
-    MorphologyDecontainerizationsForm,
-)
-from obi_one.scientific.morphology_locations import MorphologyLocationsForm
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
-    MorphologyMetricsForm,
-)
 from obi_one.scientific.tasks.example_task_1 import ExampleTask
 from obi_one.scientific.tasks.example_task_2 import ExampleTask2
-from obi_one.scientific.tasks.simulations import GenerateSimulationTask, SimulationsForm
-from obi_one.scientific.test_forms.test_form_single_block import (
-    MultiBlockEntitySDKTestForm,
-    SingleBlockEntityTestForm,
-    SingleBlockGenerateTestForm,
-)
+from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 
 TasksUnion = Annotated[
-    ExampleTask
-    | ExampleTask2
-    | GenerateSimulationTask,
+    ExampleTask | ExampleTask2 | GenerateSimulationTask,
     Discriminator("type"),
 ]
 
