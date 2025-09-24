@@ -199,6 +199,9 @@ class ScanGeneration(Task, abc.ABC):
                 json.dump(model_dump, json_file, indent=4)
 
         return model_dump
+    
+    def display_coordinate_parameters(self):
+        L.info("display_coordinate_parameters() not implemented yet.")
 
     def execute(
         self,
