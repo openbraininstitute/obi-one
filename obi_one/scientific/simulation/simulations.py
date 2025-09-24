@@ -37,6 +37,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.circuit.neuron_sets import AllNeurons
 
 L = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class SimulationsForm(Form):
         group_order=1,
     )
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=lambda: ALL_NEURON_SET_BLOCK_REFERENCE,
+        default_factory=lambda: {ALL_NEURON_SET_NAME: AllNeurons(block_name=ALL_NEURON_SET_NAME)},
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
@@ -280,7 +281,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.stimuli.values():
-            self._ensure_block_neuron_set(stimulus, circuit)
+            self._ensure_block_neuron_set(stimulus)
 
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
@@ -296,7 +297,7 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.recordings.values():
-            self._ensure_block_neuron_set(recording, circuit)
+            self._ensure_block_neuron_set(recording)
             self._sonata_config["reports"].update(
                 recording.config(
                     circuit, circuit.default_population_name, self.initialize.simulation_length
@@ -322,11 +323,30 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         if getattr(block, "neuron_set", None) is None:
             block.neuron_set = self._default_neuron_set_ref()
 
+        ref = block.neuron_set
+        try:
+            if not ref.has_block():
+                ref.block = self.neuron_sets[ref.block_name]
+        except KeyError as e:
+            raise OBIONEError(
+                f"Neuron set '{ref.block_name}' not found in self.neuron_sets."
+            ) from e
+
     def _ensure_neuron_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
         if self.initialize.node_set is None:
             L.info("initialize.node_set is None — setting default node set.")
             self.initialize.node_set = self._default_neuron_set_ref()
+
+        ref = self.initialize.node_set
+        try:
+            if not ref.has_block():
+                ref.block = self.neuron_sets[ref.block_name]
+        except KeyError as e:
+            raise OBIONEError(
+                f"Initialize -> node_set references '{ref.block_name}', "
+                "which is missing from self.neuron_sets."
+            ) from e
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
