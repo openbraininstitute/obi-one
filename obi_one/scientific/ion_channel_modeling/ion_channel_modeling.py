@@ -472,15 +472,13 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             return model_id
 
 
-def ion_channel_fitting_from_dict(icf_dict):
+def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFitting:
     """Create IonChannelFitting instance from a dict."""
-    print(icf_dict["equations"]["minf_eq"])
     return IonChannelFitting(
         initialize=IonChannelFittingForm.Initialize(
             recordings=[
                 IonChannelRecordingFromID(id_str=icr_id)
-                for icr_id
-                in icf_dict["initialize"]["recordings"]
+                for icr_id in icf_dict["initialize"]["recordings"]
             ],
             suffix=icf_dict["initialize"]["suffix"],
             ion=icf_dict["initialize"]["ion"],
@@ -494,7 +492,5 @@ def ion_channel_fitting_from_dict(icf_dict):
             m_power=icf_dict["equations"]["m_power"],
             h_power=icf_dict["equations"]["h_power"],
         ),
-        expert=IonChannelFittingForm.Expert(
-            **icf_dict["expert"]
-        )
+        expert=IonChannelFittingForm.Expert(**icf_dict["expert"]),
     )

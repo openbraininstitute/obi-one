@@ -66,7 +66,9 @@ class SigFitHTau(IonChannelEquation):
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
 
-MInfUnion = Annotated[SigFitMInf|None, Discriminator("type")]  # None: have to use a dummy fallback because pydantic forces me to have a 'real' Union here
+MInfUnion = Annotated[
+    SigFitMInf | None, Discriminator("type")
+]  # None: have to use a dummy fallback because pydantic forces me to have a 'real' Union here
 
 
 MTauUnion = Annotated[
@@ -74,10 +76,10 @@ MTauUnion = Annotated[
 ]
 
 
-HInfUnion = Annotated[SigFitHInf|None, Discriminator("type")]
+HInfUnion = Annotated[SigFitHInf | None, Discriminator("type")]
 
 
-HTauUnion = Annotated[SigFitHTau|None, Discriminator("type")]
+HTauUnion = Annotated[SigFitHTau | None, Discriminator("type")]
 
 
 class MInfReference(BlockReference):
