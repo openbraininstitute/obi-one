@@ -16,6 +16,7 @@ from morphio import MorphioError
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 
 N_NEURONS_FOR_CHECK = 20
@@ -24,6 +25,18 @@ L = logging.getLogger(__name__)
 
 
 class MorphologyDecontainerizationsForm(Form):
+    """Creates a circuit with individual morphology files instead of containerized morphologies,
+    which involves the following steps:
+    (1) Copy circuit to output location
+    (2) Extract individual .h5 morphologies from an .h5 container
+    (3) Convert .h5 morphologies to specified output format (.swc or .asc; skip if .h5)
+    (4) Update the circuit config, pointing to the individual morphology folder
+    (5) Delete .h5 container and .h5 files if that's not the specified output format
+    (7) Check loading individual morphologies
+    Important: The original circuit won't be modified! The circuit will be copied
+               to the output location where all operations take place.
+    """
+
     single_coord_class_name: ClassVar[str] = "MorphologyDecontainerization"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
@@ -38,21 +51,15 @@ class MorphologyDecontainerizationsForm(Form):
 
 
 class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):
-    """Creates a circuit with individual morphology files instead of containerized morphologies,
-    which involves the following steps:
-    (1) Copy circuit to output location
-    (2) Extract individual .h5 morphologies from an .h5 container
-    (3) Convert .h5 morphologies to specified output format (.swc or .asc; skip if .h5)
-    (4) Update the circuit config, pointing to the individual morphology folder
-    (5) Delete .h5 container and .h5 files if that's not the specified output format
-    (7) Check loading individual morphologies
-    Important: The original circuit won't be modified! The circuit will be copied
-               to the output location where all operations take place.
-    """
+    pass
+
+
+class MorphologyDecontainerizationTask(Task):
+    config: MorphologyDecontainerization
 
     def _copy_circuit_folder(self) -> Path:
-        input_path, input_config = os.path.split(self.initialize.circuit.path)
-        output_path = self.coordinate_output_root
+        input_path, input_config = os.path.split(self.config.initialize.circuit.path)
+        output_path = self.config.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
             msg = "ERROR: Output circuit already exists!"
@@ -85,7 +92,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                 msg = "ERROR: .h5 morphology path is not a container!"
                 raise ValueError(msg)
             h5_folder = Path(os.path.split(h5_container)[0]) / "h5"
-            target_folder = Path(os.path.split(h5_container)[0]) / self.initialize.output_format
+            target_folder = (
+                Path(os.path.split(h5_container)[0]) / self.config.initialize.output_format
+            )
 
             h5_folder.mkdir(parents=True, exist_ok=True)
             target_folder.mkdir(parents=True, exist_ok=True)
@@ -136,9 +145,11 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
                         for _key in f_container[_m]:
                             f_container.copy(f_container[f"{_m}/{_key}"], f_h5)
                     # Convert to required output format
-                    if self.initialize.output_format != "h5":
+                    if self.config.initialize.output_format != "h5":
                         src_file = Path(h5_folder) / (_m + ".h5")
-                        dest_file = Path(target_folder) / (_m + f".{self.initialize.output_format}")
+                        dest_file = Path(target_folder) / (
+                            _m + f".{self.config.initialize.output_format}"
+                        )
                         if not Path(dest_file).exists():
                             convert(src_file, dest_file)
         L.info(
@@ -147,7 +158,10 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         )
         if h5_container not in morph_containers_to_delete:
             morph_containers_to_delete.append(h5_container)
-        if self.initialize.output_format != "h5" and h5_folder not in morph_folders_to_delete:
+        if (
+            self.config.initialize.output_format != "h5"
+            and h5_folder not in morph_folders_to_delete
+        ):
             morph_folders_to_delete.append(h5_folder)
 
     @staticmethod
@@ -173,11 +187,11 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         return global_morph_entry
 
     def _set_global_morph_entry(self, cfg_dict: dict, rel_target_folder: Path) -> None:
-        if self.initialize.output_format == "h5":
+        if self.config.initialize.output_format == "h5":
             cfg_dict["components"]["alternate_morphologies"] = {"h5v1": str(rel_target_folder)}
             if "morphologies_dir" in cfg_dict["components"]:
                 cfg_dict["components"]["morphologies_dir"] = ""
-        elif self.initialize.output_format == "asc":
+        elif self.config.initialize.output_format == "asc":
             cfg_dict["components"]["alternate_morphologies"] = {
                 "neurolucida-asc": str(rel_target_folder)
             }
@@ -198,11 +212,11 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         for _ndict in cfg_dict["networks"]["nodes"]:
             if nodes.name in _ndict["populations"]:
                 pop = _ndict["populations"][nodes.name]
-                if self.initialize.output_format == "h5":
+                if self.config.initialize.output_format == "h5":
                     pop["alternate_morphologies"] = {"h5v1": str(h5_folder)}
                     if "morphologies_dir" in pop:
                         pop["morphologies_dir"] = ""
-                elif self.initialize.output_format == "asc":
+                elif self.config.initialize.output_format == "asc":
                     pop["alternate_morphologies"] = {"neurolucida-asc": str(rel_target_folder)}
                     if "morphologies_dir" in pop:
                         pop["morphologies_dir"] = ""
@@ -226,7 +240,9 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         rel_target_folder = Path("$BASE_DIR") / os.path.relpath(target_folder, root_path)
 
         if global_morph_entry is None:
-            global_morph_entry = MorphologyDecontainerization._check_global_morph_entry(cfg_dict)
+            global_morph_entry = MorphologyDecontainerizationTask._check_global_morph_entry(
+                cfg_dict
+            )
 
             if global_morph_entry:  # Set morphology path globally
                 self._set_global_morph_entry(cfg_dict, rel_target_folder)
@@ -236,8 +252,8 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
 
         return global_morph_entry
 
-    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Running morphology decontainerization for '{self.initialize.circuit}'")
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+        L.info(f"Running morphology decontainerization for '{self.config.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
@@ -306,7 +322,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             shutil.rmtree(_folder)
 
         # Reload and check morphologies in modified circuit
-        if not self._check_morphologies(circuit_config, self.initialize.output_format):
+        if not self._check_morphologies(circuit_config, self.config.initialize.output_format):
             msg = "ERROR: Morphology check not successful!"
             raise ValueError(msg)
         L.info("Morphology decontainerization DONE")

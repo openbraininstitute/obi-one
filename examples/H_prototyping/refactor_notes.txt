@@ -6,7 +6,7 @@ Ideal renaming which would require migration:
 
 Get rid of Form + SingleCoordinateMixin references as much as possible (use renamed)
 
-
+GIVE BETTER NAMES TO NON SIMULATION CONFIGS + TASKS
 
 - Problem with circuit_simulations_example.ipynb
 - "make test-local" generating logs

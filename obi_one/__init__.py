@@ -215,11 +215,11 @@ from obi_one.scientific.folder_compression.folder_compression import (
     FolderCompression,
     FolderCompressions,
 )
-from obi_one.scientific.morphology_containerization.morphology_containerization import (
+from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerization,
     MorphologyContainerizationsForm,
 )
-from obi_one.scientific.morphology_containerization.morphology_decontainerization import (
+from obi_one.scientific.tasks.morphology_decontainerization import (
     MorphologyDecontainerization,
     MorphologyDecontainerizationsForm,
 )

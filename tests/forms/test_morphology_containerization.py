@@ -4,7 +4,7 @@ import pytest
 from bluepysnap import BluepySnapError
 
 import obi_one as obi
-from obi_one.scientific import morphology_containerization
+from obi_one.scientific import tasks
 
 from tests.utils import CIRCUIT_DIR
 
@@ -18,7 +18,7 @@ def test_morphology_containerization(tmp_path):
         ),
     ]
 
-    hoc_path = Path(morphology_containerization.__file__).parent
+    hoc_path = Path(tasks.__file__).parent
     containerization_init = obi.MorphologyContainerizationsForm.Initialize(
         circuit=circuit_list,
         hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
@@ -34,10 +34,11 @@ def test_morphology_containerization(tmp_path):
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
-    grid_scan.execute(processing_method="run")
+    grid_scan.execute()
+    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Check that output circuits with containerized morphologies are created and accessible
-    instances = grid_scan.coordinate_instances()
+    instances = grid_scan.single_configs
     assert len(instances) == 1
     for instance in instances:
         cname = instance.initialize.circuit.name

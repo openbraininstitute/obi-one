@@ -19,12 +19,26 @@ from morphio import MorphioError
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
 
 class MorphologyContainerizationsForm(Form):
+    """Creates a circuit with containerized morphologies instead of individual morphology files,
+    which involves the following steps:
+    (1) Copy circuit to output location
+    (2) Convert morphologies to .h5, if not yet existing (from .swc or .asc)
+    (3) Merge individual .h5 morphologies into an .h5 container
+    (4) Update the circuit config, pointing to the .h5 container
+    (5) Update .hoc files so that they will work with .h5 containers
+    (6) Delete all individual morphologies
+    (7) Check containerized morphologies
+    Important: The original circuit won't be modified! The circuit will be copied
+               to the output location where all operations take place.
+    """
+
     single_coord_class_name: ClassVar[str] = "MorphologyContainerization"
     name: ClassVar[str] = "Morphology Containerization"
     description: ClassVar[str] = (
@@ -40,18 +54,11 @@ class MorphologyContainerizationsForm(Form):
 
 
 class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordinateMixin):
-    """Creates a circuit with containerized morphologies instead of individual morphology files,
-    which involves the following steps:
-    (1) Copy circuit to output location
-    (2) Convert morphologies to .h5, if not yet existing (from .swc or .asc)
-    (3) Merge individual .h5 morphologies into an .h5 container
-    (4) Update the circuit config, pointing to the .h5 container
-    (5) Update .hoc files so that they will work with .h5 containers
-    (6) Delete all individual morphologies
-    (7) Check containerized morphologies
-    Important: The original circuit won't be modified! The circuit will be copied
-               to the output location where all operations take place.
-    """
+    pass
+
+
+class MorphologyContainerizationTask(Task):
+    config: MorphologyContainerization
 
     CONTAINER_FILENAME: ClassVar[str] = "merged-morphologies.h5"
     NO_MORPH_NAME: ClassVar[str] = "_NONE"
@@ -105,7 +112,9 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             if (
                 morph_folder is not None
                 and len(
-                    MorphologyContainerization._filter_ext(Path(morph_folder).iterdir(), _morph_ext)
+                    MorphologyContainerizationTask._filter_ext(
+                        Path(morph_folder).iterdir(), _morph_ext
+                    )
                 )
                 == 0
             ):
@@ -248,7 +257,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             if nodes.type == "biophysical":
                 node_morphs = nodes.get(properties="morphology")
                 node_ids = node_morphs[
-                    node_morphs != MorphologyContainerization.NO_MORPH_NAME
+                    node_morphs != MorphologyContainerizationTask.NO_MORPH_NAME
                 ].index
                 for nid in node_ids[[0, -1]]:  # First/last node ID (with actual morphology!!)
                     try:
@@ -295,8 +304,8 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
     def _update_hoc_files(self, hoc_folder: str) -> None:
         """Update hoc files in a folder from code of an old to code from a new template."""
         # Extract code to be replaced from hoc templates
-        tmpl_old = Path(self.initialize.hoc_template_old).read_text(encoding="utf-8")
-        tmpl_new = Path(self.initialize.hoc_template_new).read_text(encoding="utf-8")
+        tmpl_old = Path(self.config.initialize.hoc_template_old).read_text(encoding="utf-8")
+        tmpl_new = Path(self.config.initialize.hoc_template_new).read_text(encoding="utf-8")
 
         proc_name = "load_morphology"
         _, _, hoc_code_old = self._find_hoc_proc(proc_name, tmpl_old)
@@ -320,7 +329,7 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             header_new = header.replace(
                 "*/",
                 f"Updated '{proc_name}' based on \
-                    '{os.path.split(self.initialize.hoc_template_new)[1]}' \
+                    '{os.path.split(self.config.initialize.hoc_template_new)[1]}' \
                         by {module_name}({version(module_name)}) at \
                         {datetime.datetime.now(tz=datetime.UTC)}\n*/",
             )
@@ -338,15 +347,15 @@ class MorphologyContainerization(MorphologyContainerizationsForm, SingleCoordina
             hoc_folders_updated.append(hoc_folder)
         return hoc_folder
 
-    def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Running morphology containerization for '{self.initialize.circuit}'")
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+        L.info(f"Running morphology containerization for '{self.config.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
         # Copy contents of original circuit folder to output_root
-        input_path, input_config = os.path.split(self.initialize.circuit.path)
-        output_path = self.coordinate_output_root
+        input_path, input_config = os.path.split(self.config.initialize.circuit.path)
+        output_path = self.config.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
             msg = "ERROR: Output circuit already exists!"
