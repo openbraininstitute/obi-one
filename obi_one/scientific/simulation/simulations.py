@@ -25,7 +25,7 @@ from obi_one.core.single import SingleCoordinateMixin
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.circuit.neuron_sets import AllNeurons, NeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -37,7 +37,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
-from obi_one.scientific.circuit.neuron_sets import AllNeurons
 
 L = logging.getLogger(__name__)
 
@@ -328,9 +327,8 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             if not ref.has_block():
                 ref.block = self.neuron_sets[ref.block_name]
         except KeyError as e:
-            raise OBIONEError(
-                f"Neuron set '{ref.block_name}' not found in self.neuron_sets."
-            ) from e
+            msg = f"Neuron set '{ref.block_name}' not found in self.neuron_sets."
+            raise OBIONEError(msg) from e
 
     def _ensure_neuron_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
@@ -343,10 +341,11 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
             if not ref.has_block():
                 ref.block = self.neuron_sets[ref.block_name]
         except KeyError as e:
-            raise OBIONEError(
+            msg = (
                 f"Initialize -> node_set references '{ref.block_name}', "
                 "which is missing from self.neuron_sets."
-            ) from e
+            )
+            raise OBIONEError(msg) from e
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
