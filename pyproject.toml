@@ -38,6 +38,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "starlette",
+    "python-multipart",  # Added python-multipart
     # JUPYTER
     "jupyter",
     "notebook",
@@ -48,7 +49,9 @@ dependencies = [
     # BLUEETL
     "blueetl",
     # NEUROM
+    "aiofiles",
     "neurom",
+    "morph-tool",
     # ENTITYSDK
     "entitysdk>=0.7.2",
     "obi-auth>=0.3.0",
@@ -68,7 +71,6 @@ dependencies = [
 connectivity = [
     "connectome-analysis>=1.0.1",
 ]
-
 
 [dependency-groups]
 audit = [
@@ -168,19 +170,12 @@ builtins-ignorelist = ["license"]
 convention = "google"
 
 [tool.ruff.lint.pylint]
-# Maximum number of arguments for function / method
 max-args = 12
-# Maximum number of locals for function / method body
 max-locals = 15
-# Maximum number of return / yield for function / method body
 max-returns = 6
-# Maximum number of branch for function / method body
 max-branches = 12
-# Maximum number of statements in function / method body
 max-statements = 50
-# Maximum number of public methods for a class (see R0904).
 max-public-methods = 60
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -192,7 +187,6 @@ addopts = [
     "--durations=10",
     "--durations-min=1.0",
 ]
-# asyncio_mode = "auto"
 testpaths = [
     "tests",
     "examples",
