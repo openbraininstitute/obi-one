@@ -2,7 +2,6 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.morphology_locations import MorphologyLocationsForm
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetricsForm,
 )
@@ -24,6 +23,7 @@ from obi_one.scientific.tasks.morphology_containerization import (
 from obi_one.scientific.tasks.morphology_decontainerization import (
     MorphologyDecontainerizationsForm,
 )
+from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsForm
 from obi_one.scientific.tasks.simulations import SimulationsForm
 from obi_one.scientific.test_forms.test_form_single_block import (
     MultiBlockEntitySDKTestForm,

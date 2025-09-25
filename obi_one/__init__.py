@@ -219,10 +219,6 @@ from obi_one.scientific.morphology_locations.morphology_location_block import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
-from obi_one.scientific.morphology_locations.morphology_location_form import (
-    MorphologyLocations,
-    MorphologyLocationsForm,
-)
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
     MorphologyMetricsForm,
@@ -275,6 +271,10 @@ from obi_one.scientific.tasks.morphology_containerization import (
 from obi_one.scientific.tasks.morphology_decontainerization import (
     MorphologyDecontainerization,
     MorphologyDecontainerizationsForm,
+)
+from obi_one.scientific.tasks.morphology_location_form import (
+    MorphologyLocations,
+    MorphologyLocationsForm,
 )
 from obi_one.scientific.tasks.scan_generation import (
     CoupledScan,

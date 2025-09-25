@@ -6,8 +6,10 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-
-from .specified_morphology_locations import _CEN_IDX, generate_neurite_locations_on
+from obi_one.scientific.morphology_locations.specified_morphology_locations import (
+    _CEN_IDX,
+    generate_neurite_locations_on,
+)
 
 _MIN_PD_SD = 0.1
 

@@ -15,10 +15,15 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.scientific.morphology_locations.specified_morphology_locations import (
+    _PRE_IDX,
+    _SEC_ID,
+    _SEG_ID,
+    _SEG_OFF,
+)
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-
-from .specified_morphology_locations import _PRE_IDX, _SEC_ID, _SEG_ID, _SEG_OFF
 
 L = logging.getLogger(__name__)
 
@@ -50,6 +55,12 @@ class MorphologyLocationsForm(Form):
 class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
     """Generates locations on a morphology skeleton."""
 
+
+class MorphologyLocationsTask(Task):
+    """Task to generate locations on a morphology skeleton."""
+
+    config: MorphologyLocations
+
     @staticmethod
     def generate_plot(m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:
         """Generate a plot of the morphology with locations on it."""
@@ -72,17 +83,17 @@ class MorphologyLocations(MorphologyLocationsForm, SingleCoordinateMixin):
         plt.axis("equal")
         return fig
 
-    def run(self, db_client: entitysdk.client.Client) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
         try:
-            if isinstance(self.initialize.morphology, Path):
-                m = morphio.Morphology(self.initialize.morphology)
+            if isinstance(self.config.initialize.morphology, Path):
+                m = morphio.Morphology(self.config.initialize.morphology)
             else:
-                m = self.initialize.morphology.morphio_morphology
-            dataframe = self.morph_locations.points_on(m)
+                m = self.config.initialize.morphology.morphio_morphology
+            dataframe = self.config.morph_locations.points_on(m)
 
-            fig = MorphologyLocations.generate_plot(m, dataframe)
-            fig.savefig(self.coordinate_output_root / "locations_plot.pdf")
-            dataframe.to_csv(self.coordinate_output_root / "morphology_locations.csv")
+            fig = MorphologyLocationsTask.generate_plot(m, dataframe)
+            fig.savefig(self.config.coordinate_output_root / "locations_plot.pdf")
+            dataframe.to_csv(self.config.coordinate_output_root / "morphology_locations.csv")
 
         except Exception as e:
             L.error(f"An error occurred: {e}")
