@@ -10,14 +10,13 @@ import entitysdk.client
 import h5py
 import numpy as np
 import tqdm
-from bluepysnap import Circuit
 from morph_tool import convert
 from morphio import MorphioError
 
 from obi_one.core.block import Block
 from obi_one.core.form import Form
-from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.scientific.circuit.circuit import Circuit
 
 N_NEURONS_FOR_CHECK = 20
 
@@ -32,7 +31,7 @@ class MorphologyDecontainerizationsForm(Form):
     )
 
     class Initialize(Block):
-        circuit_path: NamedPath | list[NamedPath]
+        circuit: Circuit | list[Circuit]
         output_format: Literal["h5", "asc", "swc"] | list[Literal["h5", "asc", "swc"]] = "h5"
 
     initialize: Initialize
@@ -52,7 +51,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
     """
 
     def _copy_circuit_folder(self) -> Path:
-        input_path, input_config = os.path.split(self.initialize.circuit_path.path)
+        input_path, input_config = os.path.split(self.initialize.circuit.path)
         output_path = self.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -64,7 +63,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         return circuit_config
 
     def _load_node_population(
-        self, c: Circuit, npop: str
+        self, c: snap.Circuit, npop: str
     ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
@@ -82,7 +81,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             h5_container = nodes.morph._get_morphology_base(  # noqa: SLF001
                 "h5"
             )  # TODO: Should not use private function!!
-            if Path(h5_container).fuffix.lower() != ".h5":
+            if Path(h5_container).suffix.lower() != ".h5":
                 msg = "ERROR: .h5 morphology path is not a container!"
                 raise ValueError(msg)
             h5_folder = Path(os.path.split(h5_container)[0]) / "h5"
@@ -95,7 +94,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
     @staticmethod
     def _check_morphologies(circuit_config: str, extension: str) -> bool:
         """Check modified circuit by loading some morphologies from each node population."""
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         for npop in c.nodes.population_names:
             nodes = c.nodes[npop]
             if nodes.type == "biophysical":
@@ -156,8 +155,8 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         if "manifest" not in cfg_dict or "$BASE_DIR" not in cfg_dict["manifest"]:
             msg = "ERROR: $BASE_DIR not defined!"
             raise ValueError(msg)
-        if cfg_dict["manifest"]["$BASE_DIR"] != "." or cfg_dict["manifest"]["$BASE_DIR"] != "./":
-            msg = "ERROR: $BASE_DIR is not corcuit root directory!"
+        if cfg_dict["manifest"]["$BASE_DIR"] != "." and cfg_dict["manifest"]["$BASE_DIR"] != "./":
+            msg = "ERROR: $BASE_DIR is not circuit root directory!"
             raise ValueError(msg)
 
     @staticmethod
@@ -175,17 +174,17 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
 
     def _set_global_morph_entry(self, cfg_dict: dict, rel_target_folder: Path) -> None:
         if self.initialize.output_format == "h5":
-            cfg_dict["components"]["alternate_morphologies"] = {"h5v1": rel_target_folder}
+            cfg_dict["components"]["alternate_morphologies"] = {"h5v1": str(rel_target_folder)}
             if "morphologies_dir" in cfg_dict["components"]:
                 cfg_dict["components"]["morphologies_dir"] = ""
         elif self.initialize.output_format == "asc":
             cfg_dict["components"]["alternate_morphologies"] = {
-                "neurolucida-asc": rel_target_folder
+                "neurolucida-asc": str(rel_target_folder)
             }
             if "morphologies_dir" in cfg_dict["components"]:
                 cfg_dict["components"]["morphologies_dir"] = ""
         else:
-            cfg_dict["components"]["morphologies_dir"] = rel_target_folder
+            cfg_dict["components"]["morphologies_dir"] = str(rel_target_folder)
             if "alternate_morphologies" in cfg_dict["components"]:
                 cfg_dict["components"]["alternate_morphologies"] = {}
 
@@ -200,15 +199,15 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
             if nodes.name in _ndict["populations"]:
                 pop = _ndict["populations"][nodes.name]
                 if self.initialize.output_format == "h5":
-                    pop["alternate_morphologies"] = {"h5v1": h5_folder}
+                    pop["alternate_morphologies"] = {"h5v1": str(h5_folder)}
                     if "morphologies_dir" in pop:
                         pop["morphologies_dir"] = ""
                 elif self.initialize.output_format == "asc":
-                    pop["alternate_morphologies"] = {"neurolucida-asc": rel_target_folder}
+                    pop["alternate_morphologies"] = {"neurolucida-asc": str(rel_target_folder)}
                     if "morphologies_dir" in pop:
                         pop["morphologies_dir"] = ""
                 else:
-                    pop["morphologies_dir"] = rel_target_folder
+                    pop["morphologies_dir"] = str(rel_target_folder)
                     if "alternate_morphologies" in pop:
                         pop["alternate_morphologies"] = {}
                 break
@@ -238,7 +237,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         return global_morph_entry
 
     def run(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
-        L.info(f"Running morphology decontainerization for '{self.initialize.circuit_path}'")
+        L.info(f"Running morphology decontainerization for '{self.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
@@ -247,7 +246,7 @@ class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoor
         circuit_config = self._copy_circuit_folder()
 
         # Load circuit at new location
-        c = Circuit(circuit_config)
+        c = snap.Circuit(circuit_config)
         node_populations = c.nodes.population_names
 
         # Iterate over node populations to find all morphologies
