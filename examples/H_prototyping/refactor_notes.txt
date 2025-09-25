@@ -10,3 +10,6 @@ GIVE BETTER NAMES TO NON SIMULATION CONFIGS + TASKS
 
 - Problem with circuit_simulations_example.ipynb
 - "make test-local" generating logs
+
+
+- Move ninja files from tasks
