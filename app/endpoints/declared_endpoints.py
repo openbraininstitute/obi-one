@@ -156,7 +156,7 @@ async def _process_and_convert_morphology(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"NeuroM failure: {e!s}",
+                "detail": f"Failed to load and convert the file: {e!s}",
             },
         ) from e
     else:
