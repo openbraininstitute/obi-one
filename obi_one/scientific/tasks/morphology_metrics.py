@@ -9,7 +9,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )

@@ -20,7 +20,6 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.validation import Validation
-from obi_one.database.db_manager import db
 
 __all__ = [
     "Activity",
@@ -162,11 +161,11 @@ __all__ = [
     "run_task_for_single_configs_of_generated_scan",
 ]
 
-from obi_one.database.cell_morphology_from_id import (
+from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
-from obi_one.database.circuit_from_id import CircuitFromID
-from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,

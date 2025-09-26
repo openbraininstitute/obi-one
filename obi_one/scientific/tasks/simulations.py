@@ -23,7 +23,7 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.database.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.blocks.neuron_sets import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_manipulations import (
