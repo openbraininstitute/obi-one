@@ -7,11 +7,6 @@ from typing import ClassVar
 import entitysdk
 from entitysdk.types import ContentType
 from fastapi import HTTPException
-"""
-from ion_channel_builder.create_model.main import extract_all_equations
-from ion_channel_builder.io.write_output import write_vgate_output
-from ion_channel_builder.run_model.run_model import run_ion_channel_model
-"""
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -21,17 +16,24 @@ from obi_one.core.task import Task
 from obi_one.database.ion_channel_recording_from_id import IonChannelRecordingFromID
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 
+"""
+from ion_channel_builder.create_model.main import extract_all_equations
+from ion_channel_builder.io.write_output import write_vgate_output
+from ion_channel_builder.run_model.run_model import run_ion_channel_model
+"""
+
 
 def extract_all_equations(
-        data_paths: list[Path],
-        ljps: list,
-        eq_names: list[str],
-        voltage_exclusion: dict,
-        stim_timings: dict,
-        stim_timings_corrections: dict,
-        output_folder: Path,
-):
+    data_paths: list[Path],
+    ljps: list,
+    eq_names: list[str],
+    voltage_exclusion: dict,
+    stim_timings: dict,
+    stim_timings_corrections: dict,
+    output_folder: Path,
+) -> None:
     pass
+
 
 def write_vgate_output(
     eq_names: dict[str, str],
@@ -40,9 +42,10 @@ def write_vgate_output(
     ion: str,
     m_power: int,
     h_power: int,
-    output_name: str
-):
+    output_name: str,
+) -> None:
     pass
+
 
 def run_ion_channel_model(
     mech_suffix: str,
@@ -51,10 +54,11 @@ def run_ion_channel_model(
     # no need to actually give temperature because model is not temperature-dependent
     temperature: float,
     output_folder: Path,
-    savefig: bool,
-    show: bool,
-):
+    savefig: bool,  # noqa: FBT001
+    show: bool,  # noqa: FBT001
+) -> None:
     pass
+
 
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""

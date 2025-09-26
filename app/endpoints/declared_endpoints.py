@@ -1,6 +1,5 @@
 import asyncio
 import pathlib
-import tempfile
 import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
@@ -8,7 +7,7 @@ from typing import Annotated, Literal
 import entitysdk.client
 import entitysdk.exception
 import morphio
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 

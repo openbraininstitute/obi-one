@@ -2,15 +2,18 @@
 
 from abc import ABC
 from typing import Annotated, Any, ClassVar
-"""
-from ion_channel_builder.create_model import model_equations_mapping
-"""
+
 from pydantic import Discriminator
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 
+"""
+from ion_channel_builder.create_model import model_equations_mapping
+"""
+
 model_equations_mapping = {}
+
 
 class IonChannelEquation(Block, ABC):
     """Abstract class for Ion Channel Equations. Only children of this class should be used."""
