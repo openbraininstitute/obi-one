@@ -81,7 +81,7 @@ class Assets(Block):
     h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
 
 
-class ReconstructionMorphology(Block):
+class CellMorphology(Block):
     name: str = Field(description="Name of the morphology")
     description: str = Field(description="Description")
     species_id: uuid.UUID | None = Field(default=None)
@@ -164,8 +164,8 @@ class ContributeMorphologyForm(Form):
         default_factory=Contribution, title="Contribution", description="Contributor."
     )
 
-    morphology: ReconstructionMorphology = Field(
-        default_factory=ReconstructionMorphology,
+    morphology: CellMorphology = Field(
+        default_factory=CellMorphology,
         title="Morphology",
         description="Information about the morphology.",
     )

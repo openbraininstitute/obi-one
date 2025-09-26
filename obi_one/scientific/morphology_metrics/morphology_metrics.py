@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar, Self
 
 import entitysdk
 import neurom
-from entitysdk.models.morphology import ReconstructionMorphology
+from entitysdk.models.cell_morphology import CellMorphology
 from fastapi import HTTPException
 from neurom import load_morphology
 from pydantic import BaseModel, Field
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 
 L = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class MorphologyMetricsForm(Form):
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] = Field(
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID] = Field(
             description="3. Morphology description"
         )
 
@@ -259,19 +259,17 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 
 
 def get_morphology_metrics(
-    reconstruction_morphology_id: str,
+    cell_morphology_id: str,
     db_client: entitysdk.client.Client,
     requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
-    morphology = db_client.get_entity(
-        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
-    )
+    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
             content = db_client.download_content(
                 entity_id=morphology.id,
-                entity_type=ReconstructionMorphology,
+                entity_type=CellMorphology,
                 asset_id=asset.id,
             ).decode(encoding="utf-8")
 
