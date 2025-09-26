@@ -1,4 +1,4 @@
-"""Ion channel modeling form."""
+"""Ion channel modeling scan config."""
 
 import subprocess  # noqa: S404
 from pathlib import Path
@@ -7,18 +7,54 @@ from typing import ClassVar
 import entitysdk
 from entitysdk.types import ContentType
 from fastapi import HTTPException
+"""
 from ion_channel_builder.create_model.main import extract_all_equations
 from ion_channel_builder.io.write_output import write_vgate_output
 from ion_channel_builder.run_model.run_model import run_ion_channel_model
+"""
 from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.database.ion_channel_recording_from_id import IonChannelRecordingFromID
-from obi_one.scientific.ion_channel_modeling import equations as equations_module
+from obi_one.scientific.blocks import ion_channel_equations as equations_module
 
+
+def extract_all_equations(
+        data_paths: list[Path],
+        ljps: list,
+        eq_names: list[str],
+        voltage_exclusion: dict,
+        stim_timings: dict,
+        stim_timings_corrections: dict,
+        output_folder: Path,
+):
+    pass
+
+def write_vgate_output(
+    eq_names: dict[str, str],
+    eq_popt: dict[str, list[float]],
+    suffix: str,
+    ion: str,
+    m_power: int,
+    h_power: int,
+    output_name: str
+):
+    pass
+
+def run_ion_channel_model(
+    mech_suffix: str,
+    # current is defined like this in mod file, see ion_channel_builder.io.write_output
+    mech_current: float,
+    # no need to actually give temperature because model is not temperature-dependent
+    temperature: float,
+    output_folder: Path,
+    savefig: bool,
+    show: bool,
+):
+    pass
 
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
@@ -292,8 +328,8 @@ class IonChannelFittingScanConfig(ScanConfig):
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     pass
 
-class IonChannelFittingTask(Task):
 
+class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
     def generate(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
@@ -302,7 +338,9 @@ class IonChannelFittingTask(Task):
         trace_ljps = []
         for recording in self.config.initialize.recordings:
             trace_paths.append(
-                recording.download_asset(dest_dir=self.config.coordinate_output_root, db_client=db_client)
+                recording.download_asset(
+                    dest_dir=self.config.coordinate_output_root, db_client=db_client
+                )
             )
             trace_ljps.append(recording.entity(db_client=db_client).ljp)
 

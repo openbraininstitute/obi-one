@@ -16,7 +16,7 @@ from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
 )
-from obi_one.core.single_config_mixin import SingleConfigMixin
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.validation import Validation
@@ -71,15 +71,18 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IonChannelFittingScanConfig",
+    "IonChannelFittingSingleConfig",
+    "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
-    "MorphologyContainerizationMultiConfig",
+    "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
-    "MorphologyLocationsMultiConfig",
+    "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
     "MorphologyMetricsOutput",
@@ -262,8 +265,13 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.ion_channel_modeling import (
+    IonChannelFittingScanConfig,
+    IonChannelFittingSingleConfig,
+    IonChannelFittingTask,
+)
 from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerizationMultiConfig,
+    MorphologyContainerizationScanConfig,
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
 )
@@ -273,7 +281,7 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
     MorphologyDecontainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_locations import (
-    MorphologyLocationsMultiConfig,
+    MorphologyLocationsScanConfig,
     MorphologyLocationsSingleConfig,
     MorphologyLocationsTask,
 )

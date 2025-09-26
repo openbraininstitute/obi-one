@@ -109,7 +109,7 @@ local_scheme = "no-local-version"
 required-version = ">=0.8.0"
 
 [tool.uv.sources]
-repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder", branch = "main" }
+repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 
 [tool.ruff]
 line-length = 100

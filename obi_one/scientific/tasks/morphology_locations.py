@@ -14,7 +14,7 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single_config_mixin import SingleConfigMixin
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.specified_morphology_locations import (
@@ -28,7 +28,7 @@ from obi_one.scientific.unions.unions_morphology_locations import MorphologyLoca
 L = logging.getLogger(__name__)
 
 
-class MorphologyLocationsMultiConfig(ScanConfig):
+class MorphologyLocationsScanConfig(ScanConfig):
     """ScanConfig for generating locations on a morphology skeleton."""
 
     single_coord_class_name: ClassVar[str] = "MorphologyLocationsSingleConfig"
@@ -49,7 +49,7 @@ class MorphologyLocationsMultiConfig(ScanConfig):
     )
 
 
-class MorphologyLocationsSingleConfig(MorphologyLocationsMultiConfig, SingleConfigMixin):
+class MorphologyLocationsSingleConfig(MorphologyLocationsScanConfig, SingleConfigMixin):
     """Generates locations on a morphology skeleton."""
 
 
