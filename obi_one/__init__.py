@@ -119,7 +119,7 @@ __all__ = [
     "ScanConfig",
     "ScanConfig",
     "ScanConfigsUnion",
-    "ScanGeneration",
+    "ScanGenerationTask",
     "ScanWrapper",
     "SectionIntracellularLocationSet",
     "SimplexMembershipBasedNeuronSet",
@@ -288,7 +288,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.scan_generation import (
     CoupledScan,
     GridScan,
-    ScanGeneration,
+    ScanGenerationTask,
 )
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
