@@ -71,8 +71,9 @@ __all__ = [
     "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
-    "MorphologyContainerization",
-    "MorphologyContainerizationsForm",
+    "MorphologyContainerizationSingleConfig",
+    "MorphologyContainerizationMultiConfig",
+    "MorphologyContainerizationTask",
     "MorphologyDecontainerization",
     "MorphologyDecontainerizationsForm",
     "MorphologyLocations",
@@ -263,8 +264,9 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionTask,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerization,
-    MorphologyContainerizationsForm,
+    MorphologyContainerizationSingleConfig,
+    MorphologyContainerizationMultiConfig,
+    MorphologyContainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_decontainerization import (
     MorphologyDecontainerization,

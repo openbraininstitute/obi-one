@@ -25,7 +25,7 @@ from obi_one.scientific.circuit.circuit import Circuit
 L = logging.getLogger(__name__)
 
 
-class MorphologyContainerizationsForm(ScanConfig):
+class MorphologyContainerizationMultiConfig(ScanConfig):
     """Creates a circuit with containerized morphologies instead of individual morphology files,
     which involves the following steps:
     (1) Copy circuit to output location
@@ -39,7 +39,7 @@ class MorphologyContainerizationsForm(ScanConfig):
                to the output location where all operations take place.
     """
 
-    single_coord_class_name: ClassVar[str] = "MorphologyContainerization"
+    single_coord_class_name: ClassVar[str] = "MorphologyContainerizationSingleConfig"
     name: ClassVar[str] = "Morphology Containerization"
     description: ClassVar[str] = (
         "Creates a circuit with containerized morphologies instead of individual morphology files"
@@ -53,12 +53,12 @@ class MorphologyContainerizationsForm(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyContainerization(MorphologyContainerizationsForm, SingleConfigMixin):
+class MorphologyContainerizationSingleConfig(MorphologyContainerizationMultiConfig, SingleConfigMixin):
     pass
 
 
 class MorphologyContainerizationTask(Task):
-    config: MorphologyContainerization
+    config: MorphologyContainerizationSingleConfig
 
     CONTAINER_FILENAME: ClassVar[str] = "merged-morphologies.h5"
     NO_MORPH_NAME: ClassVar[str] = "_NONE"

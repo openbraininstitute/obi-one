@@ -19,18 +19,18 @@ def test_morphology_containerization(tmp_path):
     ]
 
     hoc_path = Path(tasks.__file__).parent
-    containerization_init = obi.MorphologyContainerizationsForm.Initialize(
+    containerization_init = obi.MorphologyContainerizationMultiConfig.Initialize(
         circuit=circuit_list,
         hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
         hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
     )
-    morphology_containerization_form = obi.MorphologyContainerizationsForm(
+    morphology_containerization_scan_config = obi.MorphologyContainerizationMultiConfig(
         initialize=containerization_init
     )
 
     # Run containerization
     grid_scan = obi.GridScan(
-        form=morphology_containerization_form,
+        form=morphology_containerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
