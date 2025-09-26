@@ -8,7 +8,7 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
 from obi_one.scientific.tasks.contribute import ContributeMorphologyForm
-from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsForm
+from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressions
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationsForm
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationsForm
@@ -24,7 +24,7 @@ ScanConfigsUnion = Annotated[
     | ContributeMorphologyForm
     | FolderCompressions
     | MorphologyContainerizationsForm
-    | ElectrophysiologyMetricsForm
+    | ElectrophysiologyMetricsScanConfig
     | MorphologyDecontainerizationsForm
     | MorphologyMetricsTask
     | MorphologyLocationsForm,

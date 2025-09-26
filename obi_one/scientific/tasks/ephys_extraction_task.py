@@ -20,10 +20,10 @@ from obi_one.scientific.ephys_extraction.ephys_extraction import (
 )
 
 
-class ElectrophysiologyMetricsForm(ScanConfig):
+class ElectrophysiologyMetricsScanConfig(ScanConfig):
     """ScanConfig for extracting electrophysiological metrics from a trace."""
 
-    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetrics"
+    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetricsSingleConfig"
     name: ClassVar[str] = "Electrophysiology Metrics"
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
@@ -61,14 +61,14 @@ class ElectrophysiologyMetricsForm(ScanConfig):
     initialize: Initialize
 
 
-class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleConfigMixin):
+class ElectrophysiologyMetricsSingleConfig(ElectrophysiologyMetricsScanConfig, SingleConfigMixin):
     """Calculates electrophysiological metrics for a given trace."""
 
 
 class ElectrophysiologyMetricsTask(Task):
     """Task to calculate electrophysiological metrics for a given trace."""
 
-    config: ElectrophysiologyMetrics
+    config: ElectrophysiologyMetricsSingleConfig
 
     def execute(self, db_client: entitysdk.client.Client = None) -> ElectrophysiologyMetricsOutput:
         try:

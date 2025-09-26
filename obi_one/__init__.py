@@ -51,8 +51,8 @@ __all__ = [
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
-    "ElectrophysiologyMetrics",
-    "ElectrophysiologyMetricsForm",
+    "ElectrophysiologyMetricsSingleConfig",
+    "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
@@ -253,8 +253,8 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyForm,
 )
 from obi_one.scientific.tasks.ephys_extraction_task import (
-    ElectrophysiologyMetrics,
-    ElectrophysiologyMetricsForm,
+    ElectrophysiologyMetricsSingleConfig,
+    ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsTask,
 )
 from obi_one.scientific.tasks.folder_compression import (
