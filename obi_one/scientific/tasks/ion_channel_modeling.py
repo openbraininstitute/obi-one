@@ -13,17 +13,18 @@ from ion_channel_builder.run_model.run_model import run_ion_channel_model
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.scan_config import ScanConfig
+from obi_one.core.task import Task
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.database.ion_channel_recording_from_id import IonChannelRecordingFromID
 from obi_one.scientific.ion_channel_modeling import equations as equations_module
 
 
-class IonChannelFittingForm(Form):
+class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelFittingForm"
-    name: ClassVar[str] = "IonChannelFittingForm"
+    single_coord_class_name: ClassVar[str] = "IonChannelFittingScanConfig"
+    name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
     class Initialize(Block):
@@ -288,14 +289,20 @@ class IonChannelFittingForm(Form):
         }
 
 
-class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
+class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
+    pass
+
+class IonChannelFittingTask(Task):
+
+    config: IonChannelFittingSingleConfig
+
     def generate(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
-        for recording in self.initialize.recordings:
+        for recording in self.config.initialize.recordings:
             trace_paths.append(
-                recording.download_asset(dest_dir=self.coordinate_output_root, db_client=db_client)
+                recording.download_asset(dest_dir=self.config.coordinate_output_root, db_client=db_client)
             )
             trace_ljps.append(recording.entity(db_client=db_client).ljp)
 
@@ -306,9 +313,9 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
-            ion_name=self.initialize.ion,
-            read=f"e{self.initialize.ion}",
-            write=f"i{self.initialize.ion}",
+            ion_name=self.config.initialize.ion,
+            read=f"e{self.config.initialize.ion}",
+            write=f"i{self.config.initialize.ion}",
             valence=None,  # should we put None or 1 here?
             main_ion=True,
         )
@@ -316,9 +323,9 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             global_=None,
             range=[
                 [
-                    {f"g{self.initialize.suffix}bar": "S/cm2"},
-                    {"g{self.initialize.suffix}": "S/cm2"},
-                    {"i{self.initialize.ion}": "mA/cm2"},
+                    {f"g{self.config.initialize.suffix}bar": "S/cm2"},
+                    {"g{self.config.initialize.suffix}": "S/cm2"},
+                    {"i{self.config.initialize.ion}": "mA/cm2"},
                 ]
             ],
             useion=useion,
@@ -326,16 +333,16 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
         )
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
-                name=self.initialize.suffix,
-                nmodl_suffix=self.initialize.suffix,
+                name=self.config.initialize.suffix,
+                nmodl_suffix=self.config.initialize.suffix,
                 description=(
-                    f"Ion channel model of {self.initialize.suffix} "
-                    f"at {self.initialize.temperature} C."
+                    f"Ion channel model of {self.config.initialize.suffix} "
+                    f"at {self.config.initialize.temperature} C."
                 ),
                 contributions=None,  # TBD
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=self.initialize.temperature,
+                temperature_celsius=self.config.initialize.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
             )
@@ -369,47 +376,47 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
 
             # prepare data to feed
             eq_names = {
-                "minf": next(iter(self.equations.minf_eq.values())).equation_key,
-                "mtau": next(iter(self.equations.mtau_eq.values())).equation_key,
-                "hinf": next(iter(self.equations.hinf_eq.values())).equation_key,
-                "htau": next(iter(self.equations.htau_eq.values())).equation_key,
+                "minf": next(iter(self.config.equations.minf_eq.values())).equation_key,
+                "mtau": next(iter(self.config.equations.mtau_eq.values())).equation_key,
+                "hinf": next(iter(self.config.equations.hinf_eq.values())).equation_key,
+                "htau": next(iter(self.config.equations.htau_eq.values())).equation_key,
             }
             voltage_exclusion = {
                 "activation": {
-                    "above": self.expert.act_exclude_voltages_above,
-                    "below": self.expert.act_exclude_voltages_below,
+                    "above": self.config.expert.act_exclude_voltages_above,
+                    "below": self.config.expert.act_exclude_voltages_below,
                 },
                 "inactivation": {
-                    "above": self.expert.inact_exclude_voltages_above,
-                    "below": self.expert.inact_exclude_voltages_below,
+                    "above": self.config.expert.inact_exclude_voltages_above,
+                    "below": self.config.expert.inact_exclude_voltages_below,
                 },
             }
             stim_timings = {
                 "activation": {
-                    "start": self.expert.act_stim_start,
-                    "end": self.expert.act_stim_end,
+                    "start": self.config.expert.act_stim_start,
+                    "end": self.config.expert.act_stim_end,
                 },
                 "inactivation_iv": {
-                    "start": self.expert.inact_iv_stim_start,
-                    "end": self.expert.inact_iv_stim_end,
+                    "start": self.config.expert.inact_iv_stim_start,
+                    "end": self.config.expert.inact_iv_stim_end,
                 },
                 "inactivation_tc": {
-                    "start": self.expert.inact_tc_stim_start,
-                    "end": self.expert.inact_tc_stim_end,
+                    "start": self.config.expert.inact_tc_stim_start,
+                    "end": self.config.expert.inact_tc_stim_end,
                 },
             }
             stim_timings_corrections = {
                 "activation": {
-                    "start": self.expert.act_stim_start_correction,
-                    "end": self.expert.act_stim_end_correction,
+                    "start": self.config.expert.act_stim_start_correction,
+                    "end": self.config.expert.act_stim_end_correction,
                 },
                 "inactivation_iv": {
-                    "start": self.expert.inact_iv_stim_start_correction,
-                    "end": self.expert.inact_iv_stim_end_correction,
+                    "start": self.config.expert.inact_iv_stim_start_correction,
+                    "end": self.config.expert.inact_iv_stim_end_correction,
                 },
                 "inactivation_tc": {
-                    "start": self.expert.inact_tc_stim_start_correction,
-                    "end": self.expert.inact_tc_stim_end_correction,
+                    "start": self.config.expert.inact_tc_stim_start_correction,
+                    "end": self.config.expert.inact_tc_stim_end_correction,
                 },
             }
 
@@ -421,20 +428,20 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
                 voltage_exclusion=voltage_exclusion,
                 stim_timings=stim_timings,
                 stim_timings_corrections=stim_timings_corrections,
-                output_folder=self.coordinate_output_root,
+                output_folder=self.config.coordinate_output_root,
             )
 
             # create new mod file
-            mechanisms_dir = self.coordinate_output_root / "mechanisms"
+            mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = mechanisms_dir / f"{self.initialize.suffix}.mod"
+            output_name = mechanisms_dir / f"{self.config.initialize.suffix}.mod"
             write_vgate_output(
                 eq_names=eq_names,
                 eq_popt=eq_popt,
-                suffix=self.initialize.suffix,
-                ion=self.initialize.ion,
-                m_power=self.equations.m_power,
-                h_power=self.equations.h_power,
+                suffix=self.config.initialize.suffix,
+                ion=self.config.initialize.ion,
+                m_power=self.config.equations.m_power,
+                h_power=self.config.equations.h_power,
                 output_name=output_name,
             )
 
@@ -451,12 +458,12 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
 
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.initialize.suffix,
+                mech_suffix=self.config.initialize.suffix,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current=f"i{self.initialize.ion}",
+                mech_current=f"i{self.config.initialize.ion}",
                 # no need to actually give temperature because model is not temperature-dependent
-                temperature=self.initialize.temperature,
-                output_folder=self.coordinate_output_root,
+                temperature=self.config.initialize.temperature,
+                output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
             )
@@ -472,10 +479,10 @@ class IonChannelFitting(IonChannelFittingForm, SingleCoordinateMixin):  # Task
             return model_id
 
 
-def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFitting:
+def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFittingSingleConfig:
     """Create IonChannelFitting instance from a dict."""
-    return IonChannelFitting(
-        initialize=IonChannelFittingForm.Initialize(
+    return IonChannelFittingSingleConfig(
+        initialize=IonChannelFittingScanConfig.Initialize(
             recordings=[
                 IonChannelRecordingFromID(id_str=icr_id)
                 for icr_id in icf_dict["initialize"]["recordings"]
@@ -484,7 +491,7 @@ def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFitting:
             ion=icf_dict["initialize"]["ion"],
             temperature=icf_dict["initialize"]["temperature"],
         ),
-        equations=IonChannelFittingForm.Equations(
+        equations=IonChannelFittingScanConfig.Equations(
             minf_eq={"minf": getattr(equations_module, icf_dict["equations"]["minf_eq"])()},
             mtau_eq={"mtau": getattr(equations_module, icf_dict["equations"]["mtau_eq"])()},
             hinf_eq={"hinf": getattr(equations_module, icf_dict["equations"]["hinf_eq"])()},
@@ -492,5 +499,5 @@ def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFitting:
             m_power=icf_dict["equations"]["m_power"],
             h_power=icf_dict["equations"]["h_power"],
         ),
-        expert=IonChannelFittingForm.Expert(**icf_dict["expert"]),
+        expert=IonChannelFittingScanConfig.Expert(**icf_dict["expert"]),
     )
