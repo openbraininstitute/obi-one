@@ -8,7 +8,7 @@ from typing import ClassVar
 import entitysdk.client
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
@@ -18,7 +18,7 @@ L = logging.getLogger(__name__)
 _KIB_FACTOR = 1024
 
 
-class FolderCompressions(Form):
+class FolderCompressions(ScanConfig):
     """Compression of an entire folder (e.g., circuit) using the given compression file format.
 
     The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)

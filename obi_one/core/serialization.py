@@ -6,7 +6,7 @@ from entitysdk.models.entity import Entity
 from pydantic import TypeAdapter
 
 import obi_one as obi
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 
 
 def entity_encoder(obj: Any) -> dict[str, str]:
@@ -32,5 +32,5 @@ def deserialize_obi_object_from_json_file(json_path: Path) -> obi.OBIBaseModel:
 
 
 def deserialize_json_dict_to_form(json_dict: dict) -> obi.OBIBaseModel:
-    adapter = TypeAdapter(Form)
+    adapter = TypeAdapter(ScanConfig)
     return adapter.validate_python(json_dict)

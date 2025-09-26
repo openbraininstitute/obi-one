@@ -15,7 +15,7 @@ from brainbuilder.utils.sonata import split_population
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
@@ -25,7 +25,7 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 L = logging.getLogger(__name__)
 
 
-class CircuitExtractions(Form):
+class CircuitExtractions(ScanConfig):
     """Form for extracting sub-circuits from larger circuits."""
 
     single_coord_class_name: ClassVar[str] = "CircuitExtraction"

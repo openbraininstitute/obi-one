@@ -8,7 +8,7 @@ import entitysdk
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
 
@@ -139,12 +139,12 @@ class ScientificArtifact(Block):
     atlas_id: uuid.UUID | None = Field(default=None)
 
 
-class ContributeMorphologyForm(Form):
-    """Contribute Morphology Form."""
+class ContributeMorphologyForm(ScanConfig):
+    """Contribute Morphology ScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "ContributeMorphology"
     name: ClassVar[str] = "Contribute a Morphology"
-    description: ClassVar[str] = "Form to contribute a morphology to the OBI."
+    description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
     class Config:
         json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
@@ -213,12 +213,12 @@ class ContributeMorphologyTask(Task):
         pass
 
 
-class ContributeSubjectForm(Form):
-    """Contribute Morphology Form."""
+class ContributeSubjectForm(ScanConfig):
+    """Contribute Morphology ScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "ContributeSubject"
     name: ClassVar[str] = "Contribute a Subject"
-    description: ClassVar[str] = "Form to contribute a subject to the OBI."
+    description: ClassVar[str] = "ScanConfig to contribute a subject to the OBI."
 
     subject: Subject = Field(
         default_factory=Subject,

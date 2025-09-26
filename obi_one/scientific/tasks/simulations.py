@@ -19,7 +19,7 @@ from obi_one.core.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.core.exception import OBIONEError
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
@@ -55,8 +55,8 @@ CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="t
 
 
 # REFACTOR: SHOULD BE RENAMED GenerateSimulationMultiConfig
-class SimulationsForm(Form):
-    """Simulations Form."""
+class SimulationsForm(ScanConfig):
+    """Simulations ScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "Simulation"
     name: ClassVar[str] = "Simulation Campaign"

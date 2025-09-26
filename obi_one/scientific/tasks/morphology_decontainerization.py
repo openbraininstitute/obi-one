@@ -14,7 +14,7 @@ from morph_tool import convert
 from morphio import MorphioError
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
@@ -24,7 +24,7 @@ N_NEURONS_FOR_CHECK = 20
 L = logging.getLogger(__name__)
 
 
-class MorphologyDecontainerizationsForm(Form):
+class MorphologyDecontainerizationsForm(ScanConfig):
     """Creates a circuit with individual morphology files instead of containerized morphologies,
     which involves the following steps:
     (1) Copy circuit to output location

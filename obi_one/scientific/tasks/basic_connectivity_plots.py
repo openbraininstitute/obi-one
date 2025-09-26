@@ -11,7 +11,7 @@ from conntility import ConnectivityMatrix
 from pydantic import model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
@@ -34,7 +34,7 @@ with contextlib.suppress(ImportError):  # Try to import connalysis
 L = logging.getLogger(__name__)
 
 
-class BasicConnectivityPlots(Form):
+class BasicConnectivityPlots(ScanConfig):
     """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
 
     Supported plot types:

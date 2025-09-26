@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
@@ -17,7 +17,7 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 L = logging.getLogger(__name__)
 
 
-class MorphologyMetricsForm(Form):
+class MorphologyMetricsForm(ScanConfig):
     single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."

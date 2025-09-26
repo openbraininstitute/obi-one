@@ -12,4 +12,7 @@ GIVE BETTER NAMES TO NON SIMULATION CONFIGS + TASKS
 - "make test-local" generating logs
 
 
+generated endpoints must return campaign id
+
+
 - Move ninja files from tasks

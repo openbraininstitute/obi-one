@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
@@ -22,10 +22,11 @@ from obi_one.scientific.tasks.simulations import (
     Simulation,
     SimulationsForm,
 )
+from obi_one import run_task_for_single_configs_of_generated_scan
 
 
 def check_implementations_of_single_coordinate_class(
-    single_coordinate_cls: type[Form], processing_method: str, data_postprocessing_method: str
+    single_coordinate_cls: type[ScanConfig], processing_method: str, data_postprocessing_method: str
 ) -> str | type | None:
     """Return the class of the return type of a processing_method of the single coordinate class.
 
@@ -58,13 +59,13 @@ def check_implementations_of_single_coordinate_class(
 
 
 def create_endpoint_for_form(
-    model: type[Form],
-    single_coordinate_cls: type[Form],
+    model: type[ScanConfig],
+    single_coordinate_cls: type[ScanConfig],
     router: APIRouter,
     processing_method: str,
     data_postprocessing_method: str,
 ) -> None:
-    """Create a FastAPI endpoint for generating grid scans based on an OBI Form model."""
+    """Create a FastAPI endpoint for generating grid scans based on an OBI ScanConfig model."""
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
     # 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
@@ -108,6 +109,7 @@ def create_endpoint_for_form(
                         data_postprocessing_method=data_postprocessing_method,
                         db_client=db_client,
                     )
+                    run_task_for_single_configs_of_generated_scan(campaign)
 
             except Exception as e:
                 error_msg = str(e)
@@ -131,7 +133,7 @@ def create_endpoint_for_form(
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
-    # 1. Create endpoints for each OBI Form subclass.
+    # 1. Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method, single_coordinate_cls in [
         (SimulationsForm, "generate", "", Simulation),
         (SimulationsForm, "generate", "save", Simulation),

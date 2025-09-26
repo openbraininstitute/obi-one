@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.form import Form
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordinateMixin
 from obi_one.core.task import Task
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
@@ -20,8 +20,8 @@ from obi_one.scientific.ephys_extraction.ephys_extraction import (
 )
 
 
-class ElectrophysiologyMetricsForm(Form):
-    """Form for extracting electrophysiological metrics from a trace."""
+class ElectrophysiologyMetricsForm(ScanConfig):
+    """ScanConfig for extracting electrophysiological metrics from a trace."""
 
     single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetrics"
     name: ClassVar[str] = "Electrophysiology Metrics"
