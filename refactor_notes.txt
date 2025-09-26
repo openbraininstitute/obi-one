@@ -5,7 +5,6 @@ Ideal renaming which would require migration:
 - SimulationsForm, Simulation -> XScanConfig XSingleConfig
 
 Todo:
-- Better names to non simulation configs + tasks
 - Generated endpoints must return campaign id
 - Update all project notebooks
 - Move ninja files from tasks
