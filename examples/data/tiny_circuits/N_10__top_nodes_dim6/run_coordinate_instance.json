@@ -57,7 +57,7 @@
         }
     },
     "initialize": {
-        "type": "CircuitExtractions.Initialize",
+        "type": "CircuitExtractionScanConfig.Initialize",
         "circuit": {
             "type": "Circuit",
             "name": "nbS1-HEX0",

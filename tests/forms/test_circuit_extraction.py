@@ -151,7 +151,7 @@ def test_circuit_extraction(tmp_path):
         ),
     ]
 
-    extraction_init = obi.CircuitExtractions.Initialize(
+    extraction_init = obi.CircuitExtractionScanConfig.Initialize(
         circuit=circuit_list,
         do_virtual=[False, True],
         create_external=[False, True],
@@ -159,12 +159,12 @@ def test_circuit_extraction(tmp_path):
     )
     neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
 
-    circuit_extractions_form = obi.CircuitExtractions(
+    circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
         initialize=extraction_init, neuron_set=neuron_set
     )
 
     grid_scan = obi.GridScan(
-        form=circuit_extractions_form,
+        form=circuit_extractions_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",
     )

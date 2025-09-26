@@ -54,7 +54,7 @@ class BlockGroup(StrEnum):
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-# REFACTOR: SHOULD BE RENAMED GenerateSimulationMultiConfig
+# REFACTOR: SHOULD BE RENAMED GenerateSimulationScanConfig
 class SimulationsForm(ScanConfig):
     """Simulations ScanConfig."""
 

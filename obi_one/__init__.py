@@ -36,7 +36,7 @@ __all__ = [
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractionTask",
-    "CircuitExtractions",
+    "CircuitExtractionScanConfig",
     "CircuitFromID",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
@@ -241,8 +241,8 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
-    CircuitExtraction,
-    CircuitExtractions,
+    CircuitExtractionSingleConfig,
+    CircuitExtractionScanConfig,
     CircuitExtractionTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (

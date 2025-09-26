@@ -25,10 +25,10 @@ from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 L = logging.getLogger(__name__)
 
 
-class CircuitExtractions(ScanConfig):
+class CircuitExtractionScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitExtraction"
+    single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
         "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output"
@@ -60,7 +60,7 @@ class CircuitExtractions(ScanConfig):
     neuron_set: NeuronSetUnion
 
 
-class CircuitExtraction(CircuitExtractions, SingleConfigMixin):
+class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
 
     The output circuit will contain all morphologies, hoc files, and mod files
@@ -69,7 +69,7 @@ class CircuitExtraction(CircuitExtractions, SingleConfigMixin):
 
 
 class CircuitExtractionTask(Task):
-    config: CircuitExtraction
+    config: CircuitExtractionSingleConfig
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
