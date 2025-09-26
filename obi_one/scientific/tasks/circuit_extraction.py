@@ -16,7 +16,7 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
@@ -26,7 +26,7 @@ L = logging.getLogger(__name__)
 
 
 class CircuitExtractions(ScanConfig):
-    """Form for extracting sub-circuits from larger circuits."""
+    """ScanConfig for extracting sub-circuits from larger circuits."""
 
     single_coord_class_name: ClassVar[str] = "CircuitExtraction"
     name: ClassVar[str] = "Circuit Extraction"
@@ -60,7 +60,7 @@ class CircuitExtractions(ScanConfig):
     neuron_set: NeuronSetUnion
 
 
-class CircuitExtraction(CircuitExtractions, SingleCoordinateMixin):
+class CircuitExtraction(CircuitExtractions, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
 
     The output circuit will contain all morphologies, hoc files, and mod files

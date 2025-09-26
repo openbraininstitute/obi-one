@@ -7,7 +7,7 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
@@ -30,7 +30,7 @@ class MorphologyMetricsForm(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
+class MorphologyMetrics(MorphologyMetricsForm, SingleConfigMixin):
     """Calculates morphology metrics for a given morphology."""
 
 

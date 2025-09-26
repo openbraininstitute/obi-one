@@ -10,7 +10,7 @@ from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
 )
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.validation import Validation
 from obi_one.core.scan_config import ScanConfig
@@ -127,7 +127,7 @@ __all__ = [
     "SimulationNeuronSetUnion",
     "SimulationsForm",
     "SingleConfigMixin",
-    "SingleCoordinateMixin",
+    "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SomaVoltageRecording",

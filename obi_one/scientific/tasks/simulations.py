@@ -21,7 +21,7 @@ from obi_one.core.constants import (
 from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.info import Info
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.scientific.circuit.circuit import Circuit
@@ -261,7 +261,7 @@ class SimulationsForm(ScanConfig):
 
 
 # REFACTOR: SHOULD BE RENAMED GenerateSimulationSingleConfig
-class Simulation(SimulationsForm, SingleCoordinateMixin):
+class Simulation(SimulationsForm, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
 

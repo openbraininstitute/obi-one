@@ -15,7 +15,7 @@ from morphio import MorphioError
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 
@@ -50,7 +50,7 @@ class MorphologyDecontainerizationsForm(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleCoordinateMixin):
+class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleConfigMixin):
     pass
 
 

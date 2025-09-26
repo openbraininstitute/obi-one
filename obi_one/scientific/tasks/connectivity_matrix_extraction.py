@@ -7,7 +7,7 @@ import entitysdk.client
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.circuit.circuit import Circuit
 
@@ -44,7 +44,7 @@ class ConnectivityMatrixExtractions(ScanConfig):
     initialize: Initialize
 
 
-class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleCoordinateMixin):
+class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleConfigMixin):
     """Extracts a connectivity matrix of a given edge population of a SONATA circuit."""
 
 

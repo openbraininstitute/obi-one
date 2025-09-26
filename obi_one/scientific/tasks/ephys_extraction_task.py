@@ -8,7 +8,7 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     CALCULATED_FEATURES,
@@ -61,7 +61,7 @@ class ElectrophysiologyMetricsForm(ScanConfig):
     initialize: Initialize
 
 
-class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMixin):
+class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleConfigMixin):
     """Calculates electrophysiological metrics for a given trace."""
 
 

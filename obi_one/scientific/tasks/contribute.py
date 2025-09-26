@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 
 L = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ class ContributeMorphologyForm(ScanConfig):
     )
 
 
-class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
+class ContributeMorphology(ContributeMorphologyForm, SingleConfigMixin):
     """Placeholder here to maintain compatibility."""
 
 
@@ -227,7 +227,7 @@ class ContributeSubjectForm(ScanConfig):
     )
 
 
-class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
+class ContributeSubject(ContributeMorphologyForm, SingleConfigMixin):
     """Placeholder here to maintain compatibility."""
 
 
