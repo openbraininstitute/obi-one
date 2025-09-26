@@ -10,6 +10,7 @@ from obi_one.scientific.tasks.folder_compression import FolderCompressions
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationsForm
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationsForm
 from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsForm
+from obi_one.scientific.tasks.morphology_metrics_task import MorphologyMetricsTask
 from obi_one.scientific.tasks.simulations import SimulationsForm
 
 ScanConfigsUnion = Annotated[
@@ -21,6 +22,7 @@ ScanConfigsUnion = Annotated[
     | MorphologyContainerizationsForm
     | ElectrophysiologyMetricsForm
     | MorphologyDecontainerizationsForm
+    | MorphologyMetricsTask
     | MorphologyLocationsForm,
     Discriminator("type"),
 ]

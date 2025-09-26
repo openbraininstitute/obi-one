@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one.core.form import Form
-from obi_one.scientific.contribute.contribute import (
+from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
 )
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.tasks.morphology_metrics_task import (
     MorphologyMetrics,
     MorphologyMetricsForm,
 )

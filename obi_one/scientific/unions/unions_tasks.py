@@ -9,12 +9,13 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
+from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationTask
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask
 from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsTask
+from obi_one.scientific.tasks.morphology_metrics_task import MorphologyMetricsTask
 from obi_one.scientific.tasks.simulations import GenerateSimulationTask
-from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
@@ -25,6 +26,7 @@ TasksUnion = Annotated[
     | FolderCompressionTask
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
+    | MorphologyMetricsTask
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]

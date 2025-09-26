@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
+from obi_one.core_new.task import Task
 
 L = logging.getLogger(__name__)
 
@@ -204,14 +205,12 @@ class ContributeMorphologyForm(Form):
 class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:
-        pass
 
-    def save(
-        self,
-        campaign: entitysdk.models.SimulationCampaign,
-        db_client: entitysdk.client.Client,
-    ) -> None:
+class ContributeMorphologyTask(Task):
+
+    config: ContributeMorphology
+
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:
         pass
 
 
@@ -232,12 +231,10 @@ class ContributeSubjectForm(Form):
 class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> None:
-        pass
 
-    def save(
-        self,
-        campaign: entitysdk.models.SimulationCampaign,
-        db_client: entitysdk.client.Client,
-    ) -> None:
+class ContributeSubjectTask(Task):
+
+    config: ContributeSubject
+
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:
         pass

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.tasks.morphology_metrics_task import (
     MorphologyMetricsForm,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (

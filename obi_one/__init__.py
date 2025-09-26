@@ -53,6 +53,9 @@ __all__ = [
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
+    "ElectrophysiologyMetrics",
+    "ElectrophysiologyMetricsForm",
+    "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExtracellularLocationSet",
@@ -81,6 +84,7 @@ __all__ = [
     "MorphologyMetrics",
     "MorphologyMetricsForm",
     "MorphologyMetricsOutput",
+    "MorphologyMetricsTask",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
@@ -202,7 +206,7 @@ from obi_one.scientific.circuit.neuron_sets import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.contribute.contribute import (
+from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
 )
@@ -214,8 +218,6 @@ from obi_one.scientific.morphology_locations.morphology_location_block import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
-    MorphologyMetrics,
-    MorphologyMetricsForm,
     MorphologyMetricsOutput,
 )
 from obi_one.scientific.simulation.recording import (
@@ -253,6 +255,11 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractions,
     ConnectivityMatrixExtractionTask,
 )
+from obi_one.scientific.tasks.ephys_extraction_task import (
+    ElectrophysiologyMetrics,
+    ElectrophysiologyMetricsForm,
+    ElectrophysiologyMetricsTask,
+)
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompression,
     FolderCompressions,
@@ -269,6 +276,11 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 from obi_one.scientific.tasks.morphology_location_form import (
     MorphologyLocations,
     MorphologyLocationsForm,
+)
+from obi_one.scientific.tasks.morphology_metrics_task import (
+    MorphologyMetrics,
+    MorphologyMetricsForm,
+    MorphologyMetricsTask,
 )
 from obi_one.scientific.tasks.scan_generation import (
     CoupledScan,

@@ -1,18 +1,12 @@
 import io
 import logging
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, Self
 
 import entitysdk
 import neurom
 from entitysdk.models.morphology import ReconstructionMorphology
-from fastapi import HTTPException
 from neurom import load_morphology
 from pydantic import BaseModel, Field
-
-from obi_one.core.block import Block
-from obi_one.core.form import Form
-from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 
 L = logging.getLogger(__name__)
 
@@ -40,19 +34,6 @@ MORPHOLOGY_METRICS = [
     "section_branch_orders",
     "section_strahler_orders",
 ]
-
-
-class MorphologyMetricsForm(Form):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
-    name: ClassVar[str] = "Morphology Metrics"
-    description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
-
-    class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] = Field(
-            description="3. Morphology description"
-        )
-
-    initialize: Initialize
 
 
 class MorphologyMetricsOutput(BaseModel):
@@ -241,21 +222,6 @@ class MorphologyMetricsOutput(BaseModel):
     def from_morphology(cls, neurom_morphology: neurom.core.Morphology) -> Self:
         values = {metric: neurom.get(metric, neurom_morphology) for metric in MORPHOLOGY_METRICS}
         return cls(**values)
-
-
-class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
-    def run(self, db_client: entitysdk.client.Client = None) -> MorphologyMetricsOutput:
-        try:
-            L.info("Running Morphology Metrics...")
-            morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                self.initialize.morphology.neurom_morphology(db_client=db_client)
-            )
-            L.info(morphology_metrics)
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
-        else:
-            return morphology_metrics
 
 
 def get_morphology_metrics(
