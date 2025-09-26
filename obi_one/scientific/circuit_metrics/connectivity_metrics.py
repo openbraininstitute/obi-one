@@ -1,14 +1,17 @@
+import tempfile
+from pathlib import Path
+
 import bluepysnap as snap
 import numpy as np
-import obi_one as obi
 import pandas as pd
-import tempfile
+from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import uuid
 from httpx import HTTPStatusError
 from pydantic import BaseModel
-from connectome_manipulator.connectome_comparison import connectivity
+
+import obi_one as obi
 
 
 class ConnectivityMetricsOutput(BaseModel):
@@ -24,9 +27,8 @@ class TemporaryPartialCircuit:
     To avoid unnecessary data download, only the following circuit components are included:
     Circuit config, node sets, selected edges, src/tgt nodes of selected edges
     """
-    def __init__(
-        self, db_client: Client, circuit_id: str, edge_population: str
-    ) -> None:
+
+    def __init__(self, db_client: Client, circuit_id: str, edge_population: str) -> None:
         """Initialize TemporaryPartialCircuit."""
         self._db_client = db_client
         self._circuit_id = circuit_id
@@ -64,7 +66,8 @@ class TemporaryPartialCircuit:
             raise ValueError(msg)
         return edges[0]["edges_file"]
 
-    def _get_nodes_path(self, c: snap.Circuit, node_population: str) -> str:
+    @staticmethod
+    def _get_nodes_path(c: snap.Circuit, node_population: str) -> str:
         nodes_list = c.config["networks"]["nodes"]
         nodes = [n for n in nodes_list if node_population in n["populations"]]
         if len(nodes) != 1:
@@ -84,7 +87,9 @@ class TemporaryPartialCircuit:
             c = circuit.sonata_circuit
 
             # Download node sets file
-            rel_path = Path(c.config["node_sets_file"]).relative_to(Path(self.temp_dir.name).resolve())
+            rel_path = Path(c.config["node_sets_file"]).relative_to(
+                Path(self.temp_dir.name).resolve()
+            )
             self._download_file(rel_path)
 
             # Download edge population
@@ -109,23 +114,31 @@ class TemporaryPartialCircuit:
         self.temp_dir.__exit__(*args)
 
 
-def _get_neuron_selection(circuit: obi.Circuit, node_population: str, neuron_set: obi.NeuronSet | None = None) -> list | None:
-    if neuron_set is None:
-        nrn_sel = None
-    else:
-        nrn_sel = neuron_set.get_neuron_ids(circuit, node_population)
+def _get_neuron_selection(
+    circuit: obi.Circuit, node_population: str, neuron_set: obi.NeuronSet | None = None
+) -> list | None:
+    nrn_sel = None if neuron_set is None else neuron_set.get_neuron_ids(circuit, node_population)
     return nrn_sel
 
 
 def _get_stacked_dataframe(conn_dict: dict, data_sel: str) -> pd.DataFrame:
-    df = pd.DataFrame(conn_dict[data_sel]["data"], index=conn_dict["common"]["src_group_values"], columns=conn_dict["common"]["tgt_group_values"])
-    df.index.name = "pre"
-    df.columns.name = "post"
-    return df.stack()
+    df = pd.DataFrame(conn_dict[data_sel]["data"], columns=conn_dict["common"]["tgt_group_values"])
+    df["_pre_"] = conn_dict["common"]["src_group_values"]
+    df = df.melt("_pre_", var_name="_post_", value_name="data")
+    return df
 
 
-def get_connectivity_metrics(circuit_id: str, db_client: Client, edge_population: str, pre_neuron_set: obi.NeuronSet | None = None, post_neuron_set: obi.NeuronSet | None = None, group_by: str | None = None, max_distance: float | None = None) -> ConnectionProbabilityOutput:
-    # Download partial circuit (incl. config, node sets, selected edges, src/tgt nodes of selected edges)
+def get_connectivity_metrics(
+    circuit_id: str,
+    db_client: Client,
+    edge_population: str,
+    pre_neuron_set: obi.NeuronSet | None = None,
+    post_neuron_set: obi.NeuronSet | None = None,
+    group_by: str | None = None,
+    max_distance: float | None = None,
+) -> ConnectivityMetricsOutput:
+    # Download partial circuit
+    # (incl. config, node sets, selected edges, src/tgt nodes of selected edges)
     with TemporaryPartialCircuit(db_client, circuit_id, edge_population) as cfg_path:
         # Load circuit
         circuit = obi.Circuit(name=circuit_id, path=str(cfg_path))
@@ -133,24 +146,29 @@ def get_connectivity_metrics(circuit_id: str, db_client: Client, edge_population
 
         # Compute connection probability
         edges = c.edges[edge_population]
-        src_sel = _get_neuron_selection(circuit, edges.source.name)
-        tgt_sel = _get_neuron_selection(circuit, edges.target.name)
-    
-        if max_distance is None:
-            dist_props = None
-        else:
-            dist_props = ["x", "y", "z"]
+        src_sel = _get_neuron_selection(circuit, edges.source.name, pre_neuron_set)
+        tgt_sel = _get_neuron_selection(circuit, edges.target.name, post_neuron_set)
 
-        conn_dict = connectivity.compute(c, sel_src=src_sel, sel_dest=tgt_sel, edges_popul_name=edge_population, group_by=group_by, max_distance=max_distance, props_for_distance=dist_props)
+        dist_props = None if max_distance is None else ["x", "y", "z"]
+
+        conn_dict = connectivity.compute(
+            c,
+            sel_src=src_sel,
+            sel_dest=tgt_sel,
+            edges_popul_name=edge_population,
+            group_by=group_by,
+            max_distance=max_distance,
+            props_for_distance=dist_props,
+        )
 
     # Return results
     df_prob = _get_stacked_dataframe(conn_dict, "conn_prob")
     df_nsyn = _get_stacked_dataframe(conn_dict, "nsyn_conn")
     conn_output = ConnectivityMetricsOutput(
-        pre_type=df_prob.index.get_level_values("pre"),
-        post_type=df_prob.index.get_level_values("post"),
-        connection_probability=df_prob.to_numpy(),
-        mean_number_of_synapses=df_nsyn.to_numpy()
+        pre_type=df_prob["_pre_"],
+        post_type=df_prob["_post_"],
+        connection_probability=df_prob["data"],
+        mean_number_of_synapses=df_nsyn["data"],
     )
 
     return conn_output
