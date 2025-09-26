@@ -17,11 +17,10 @@ def test_deserialization(tmp_path):
 
     data = json.loads(simulation_json_path.read_bytes())
     simulation = obi.deserialize_obi_object_from_json_data(data)
-    assert isinstance(simulation, obi.Simulation)
     simulation.coordinate_output_root = tmp_path / "simulation_output"
-    simulation.generate()
+    obi.run_task_for_single_config(single_config=simulation)
 
     simulation = obi.deserialize_obi_object_from_json_file(simulation_json_path)
     assert isinstance(simulation, obi.Simulation)
     simulation.coordinate_output_root = tmp_path / "simulation_output_2"
-    simulation.generate()
+    obi.run_task_for_single_config(single_config=simulation)

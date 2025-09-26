@@ -3,7 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.simulation.stimulus import (
+from obi_one.scientific.blocks.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,

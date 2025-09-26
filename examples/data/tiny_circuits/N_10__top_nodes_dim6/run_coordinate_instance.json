@@ -1,6 +1,6 @@
 {
     "obi_one_version": "2025.5.2",
-    "type": "CircuitExtraction",
+    "type": "CircuitExtractionSingleConfig",
     "idx": 1,
     "coordinate_output_root": "../../../obi-output/circuit_extraction/grid_scan/neuron_set.neuron_ids=N_10__top_nodes_dim6",
     "scan_output_root": "../../../obi-output/circuit_extraction/grid_scan",
@@ -57,7 +57,7 @@
         }
     },
     "initialize": {
-        "type": "CircuitExtractions.Initialize",
+        "type": "CircuitExtractionScanConfig.Initialize",
         "circuit": {
             "type": "Circuit",
             "name": "nbS1-HEX0",

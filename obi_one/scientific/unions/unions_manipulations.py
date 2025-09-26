@@ -3,7 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.simulation.manipulations import (
+from obi_one.scientific.blocks.manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )

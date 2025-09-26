@@ -58,7 +58,7 @@ class SingleCoordinateScanParams(OBIBaseModel):
         return d
 
 
-class SingleCoordinateMixin:
+class SingleConfigMixin:
     """Mixin to enforce no lists in all Blocks and Blocks in Category dictionaries."""
 
     idx: int = -1

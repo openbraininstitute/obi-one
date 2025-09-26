@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class Block(OBIBaseModel):
-    """Defines a component of a Form.
+    """Defines a component of a ScanConfig.
 
     Parameters can be of type | list[type]
     when a list is used it is used as a dimension in a multi-dimensional parameter scan.

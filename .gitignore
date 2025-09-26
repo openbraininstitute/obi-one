@@ -8,6 +8,8 @@ coverage.xml
 **/analysis_output
 venv/
 temp/
+logs/
+.coverage*
 */arm64/
 **/arm64/
 examples/new_node_sets.json
