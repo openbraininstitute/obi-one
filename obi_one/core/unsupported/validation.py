@@ -3,6 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+
 class Validation(BaseModel, abc.ABC):
     """Base class for validation objects.
 

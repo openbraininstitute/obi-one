@@ -143,7 +143,6 @@ __all__ = [
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocations",
-    "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
@@ -156,11 +155,20 @@ __all__ = [
     "run_task_for_single_configs_of_generated_scan",
 ]
 
-from obi_one.scientific.from_id.cell_morphology_from_id import (
-    CellMorphologyFromID,
-)
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.scientific.blocks.afferent_synapses import (
+    AfferentSynapsesBlock,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
+    ClusteredSynapsesByCount,
+    ClusteredSynapsesByMaxDistance,
+    PathDistanceConstrainedFractionOfSynapses,
+    PathDistanceConstrainedNumberOfSynapses,
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
+)
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -196,19 +204,6 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.blocks.afferent_synapses import (
-    AfferentSynapsesBlock,
-    ClusteredPDSynapsesByCount,
-    ClusteredPDSynapsesByMaxDistance,
-    ClusteredSynapsesByCount,
-    ClusteredSynapsesByMaxDistance,
-    PathDistanceConstrainedFractionOfSynapses,
-    PathDistanceConstrainedNumberOfSynapses,
-    PathDistanceWeightedFractionOfSynapses,
-    PathDistanceWeightedNumberOfSynapses,
-    RandomlySelectedFractionOfSynapses,
-    RandomlySelectedNumberOfSynapses,
-)
 from obi_one.scientific.blocks.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
@@ -224,6 +219,10 @@ from obi_one.scientific.blocks.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.from_id.cell_morphology_from_id import (
+    CellMorphologyFromID,
+)
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,

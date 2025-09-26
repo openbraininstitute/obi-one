@@ -13,8 +13,8 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
+from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 
 """
 from ion_channel_builder.create_model.main import extract_all_equations
