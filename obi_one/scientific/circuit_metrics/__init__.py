@@ -1,1 +1,2 @@
 from .circuit_metrics import get_circuit_metrics as get_circuit_metrics
+from .connectivity_metrics import get_connectivity_metrics as get_connectivity_metrics
