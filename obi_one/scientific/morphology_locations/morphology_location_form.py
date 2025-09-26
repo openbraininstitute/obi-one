@@ -15,7 +15,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 from .specified_morphology_locations import _PRE_IDX, _SEC_ID, _SEG_ID, _SEG_OFF
@@ -34,8 +34,8 @@ class MorphologyLocationsForm(Form):
 
     class Initialize(Block):
         morphology: (
-            ReconstructionMorphologyFromID
-            | list[ReconstructionMorphologyFromID]
+            CellMorphologyFromID
+            | list[CellMorphologyFromID]
             | Path
             | list[Path]
         ) = Field(title="Morphology", description="The morphology skeleton to place locations on")
