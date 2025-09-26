@@ -80,8 +80,8 @@ __all__ = [
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsMultiConfig",
     "MorphologyLocationsTask",
-    "MorphologyMetrics",
-    "MorphologyMetricsForm",
+    "MorphologyMetricsSingleConfig",
+    "MorphologyMetricsScanConfig",
     "MorphologyMetricsOutput",
     "MorphologyMetricsTask",
     "MultiPulseCurrentClampSomaticStimulus",
@@ -255,7 +255,7 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
 )
-from obi_one.scientific.tasks.ephys_extraction_task import (
+from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsTask,
@@ -280,9 +280,9 @@ from obi_one.scientific.tasks.morphology_locations import (
     MorphologyLocationsMultiConfig,
     MorphologyLocationsTask,
 )
-from obi_one.scientific.tasks.morphology_metrics_task import (
-    MorphologyMetrics,
-    MorphologyMetricsForm,
+from obi_one.scientific.tasks.morphology_metrics import (
+    MorphologyMetricsSingleConfig,
+    MorphologyMetricsScanConfig,
     MorphologyMetricsTask,
 )
 from obi_one.scientific.tasks.scan_generation import (

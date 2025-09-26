@@ -17,8 +17,8 @@ from obi_one.scientific.morphology_metrics.morphology_metrics import (
 L = logging.getLogger(__name__)
 
 
-class MorphologyMetricsForm(ScanConfig):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetrics"
+class MorphologyMetricsScanConfig(ScanConfig):
+    single_coord_class_name: ClassVar[str] = "MorphologyMetricsSingleConfig"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
@@ -30,12 +30,12 @@ class MorphologyMetricsForm(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyMetrics(MorphologyMetricsForm, SingleConfigMixin):
+class MorphologyMetricsSingleConfig(MorphologyMetricsScanConfig, SingleConfigMixin):
     """Calculates morphology metrics for a given morphology."""
 
 
 class MorphologyMetricsTask(Task):
-    config: MorphologyMetrics
+    config: MorphologyMetricsSingleConfig
 
     def execute(self, db_client: entitysdk.client.Client = None) -> MorphologyMetricsOutput:
         try:
