@@ -4,7 +4,6 @@ from typing import Annotated, Self
 
 import entitysdk
 import neurom
-
 from entitysdk.models.cell_morphology import CellMorphology
 from neurom import load_morphology
 from pydantic import BaseModel, Field
