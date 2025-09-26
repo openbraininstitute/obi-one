@@ -11,3 +11,4 @@ Todo:
 - Rename Contribute configs + tasks (speak with Dan)
 - Remove database manager. Only used in entitysdk examples
 - Use obi-notebooks? Separate tickets?
+- Remove/use validations/cell_morphology_validation
