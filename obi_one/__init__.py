@@ -165,7 +165,7 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.from_id.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,

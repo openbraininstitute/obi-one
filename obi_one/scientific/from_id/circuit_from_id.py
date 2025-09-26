@@ -7,7 +7,7 @@ from entitysdk.models.entity import Entity
 from entitysdk.staging.circuit import stage_circuit
 from pydantic import PrivateAttr
 
-from obi_one.database.entity_from_id import EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 
 
 class CircuitFromID(EntityFromID):

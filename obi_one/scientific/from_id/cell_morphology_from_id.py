@@ -10,7 +10,7 @@ from entitysdk.models import CellMorphology
 from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
-from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
 L = logging.getLogger(__name__)
 

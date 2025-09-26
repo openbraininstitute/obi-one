@@ -8,7 +8,7 @@ from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
 from pydantic import PrivateAttr
 
-from obi_one.database.entity_from_id import EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelRecordingFromID(EntityFromID):
