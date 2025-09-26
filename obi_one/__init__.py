@@ -74,10 +74,12 @@ __all__ = [
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationMultiConfig",
     "MorphologyContainerizationTask",
-    "MorphologyDecontainerization",
-    "MorphologyDecontainerizationsForm",
-    "MorphologyLocations",
-    "MorphologyLocationsForm",
+    "MorphologyDecontainerizationSingleConfig",
+    "MorphologyDecontainerizationScanConfig",
+    "MorphologyDecontainerizationTask",
+    "MorphologyLocationsSingleConfig",
+    "MorphologyLocationsMultiConfig",
+    "MorphologyLocationsTask",
     "MorphologyMetrics",
     "MorphologyMetricsForm",
     "MorphologyMetricsOutput",
@@ -269,12 +271,14 @@ from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_decontainerization import (
-    MorphologyDecontainerization,
-    MorphologyDecontainerizationsForm,
+    MorphologyDecontainerizationSingleConfig,
+    MorphologyDecontainerizationScanConfig,
+    MorphologyDecontainerizationTask,
 )
-from obi_one.scientific.tasks.morphology_location_form import (
-    MorphologyLocations,
-    MorphologyLocationsForm,
+from obi_one.scientific.tasks.morphology_locations import (
+    MorphologyLocationsSingleConfig,
+    MorphologyLocationsMultiConfig,
+    MorphologyLocationsTask,
 )
 from obi_one.scientific.tasks.morphology_metrics_task import (
     MorphologyMetrics,

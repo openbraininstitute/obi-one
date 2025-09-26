@@ -24,7 +24,7 @@ N_NEURONS_FOR_CHECK = 20
 L = logging.getLogger(__name__)
 
 
-class MorphologyDecontainerizationsForm(ScanConfig):
+class MorphologyDecontainerizationScanConfig(ScanConfig):
     """Creates a circuit with individual morphology files instead of containerized morphologies,
     which involves the following steps:
     (1) Copy circuit to output location
@@ -37,7 +37,7 @@ class MorphologyDecontainerizationsForm(ScanConfig):
                to the output location where all operations take place.
     """
 
-    single_coord_class_name: ClassVar[str] = "MorphologyDecontainerization"
+    single_coord_class_name: ClassVar[str] = "MorphologyDecontainerizationSingleConfig"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
         "Creates a circuit with individual morphology files instead of containerized morphologies"
@@ -50,12 +50,12 @@ class MorphologyDecontainerizationsForm(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyDecontainerization(MorphologyDecontainerizationsForm, SingleConfigMixin):
+class MorphologyDecontainerizationSingleConfig(MorphologyDecontainerizationScanConfig, SingleConfigMixin):
     pass
 
 
 class MorphologyDecontainerizationTask(Task):
-    config: MorphologyDecontainerization
+    config: MorphologyDecontainerizationSingleConfig
 
     def _copy_circuit_folder(self) -> Path:
         input_path, input_config = os.path.split(self.config.initialize.circuit.path)

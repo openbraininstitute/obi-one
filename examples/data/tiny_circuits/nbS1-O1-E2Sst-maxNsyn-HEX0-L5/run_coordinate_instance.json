@@ -23,7 +23,7 @@
         "nested_coordinate_subpath_str": "nbS1-O1-E2Sst-maxNsyn-HEX0-L5/"
     },
     "initialize": {
-        "type": "MorphologyDecontainerizationsForm.Initialize",
+        "type": "MorphologyDecontainerizationScanConfig.Initialize",
         "circuit_path": {
             "type": "NamedPath",
             "name": "nbS1-O1-E2Sst-maxNsyn-HEX0-L5",

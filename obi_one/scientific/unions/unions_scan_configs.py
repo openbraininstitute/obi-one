@@ -11,8 +11,8 @@ from obi_one.scientific.tasks.contribute import ContributeMorphologyForm
 from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationMultiConfig
-from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationsForm
-from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsForm
+from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationScanConfig
+from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsMultiConfig
 from obi_one.scientific.tasks.morphology_metrics_task import MorphologyMetricsTask
 from obi_one.scientific.tasks.simulations import SimulationsForm
 
@@ -25,8 +25,8 @@ ScanConfigsUnion = Annotated[
     | FolderCompressionScanConfig
     | MorphologyContainerizationMultiConfig
     | ElectrophysiologyMetricsScanConfig
-    | MorphologyDecontainerizationsForm
+    | MorphologyDecontainerizationScanConfig
     | MorphologyMetricsTask
-    | MorphologyLocationsForm,
+    | MorphologyLocationsMultiConfig,
     Discriminator("type"),
 ]

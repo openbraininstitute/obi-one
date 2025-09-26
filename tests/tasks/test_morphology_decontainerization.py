@@ -18,16 +18,16 @@ def test_morphology_decontainerization(tmp_path):
         ),
     ]
 
-    decontainerization_init = obi.MorphologyDecontainerizationsForm.Initialize(
+    decontainerization_init = obi.MorphologyDecontainerizationScanConfig.Initialize(
         circuit=circuit_list, output_format=["swc", "asc", "h5"]
     )
-    morphology_decontainerization_form = obi.MorphologyDecontainerizationsForm(
+    morphology_decontainerization_scan_config = obi.MorphologyDecontainerizationScanConfig(
         initialize=decontainerization_init
     )
 
     # Run decontainerization
     grid_scan = obi.GridScan(
-        form=morphology_decontainerization_form,
+        form=morphology_decontainerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )

@@ -28,10 +28,10 @@ from obi_one.scientific.unions.unions_morphology_locations import MorphologyLoca
 L = logging.getLogger(__name__)
 
 
-class MorphologyLocationsForm(ScanConfig):
+class MorphologyLocationsMultiConfig(ScanConfig):
     """ScanConfig for generating locations on a morphology skeleton."""
 
-    single_coord_class_name: ClassVar[str] = "MorphologyLocations"
+    single_coord_class_name: ClassVar[str] = "MorphologyLocationsSingleConfig"
     name: ClassVar[str] = "Point locations on neurite skeletons"
     description: ClassVar[str] = (
         "Generates optionally clustered locations on neurites of a morphology skeleton"
@@ -52,14 +52,14 @@ class MorphologyLocationsForm(ScanConfig):
     )
 
 
-class MorphologyLocations(MorphologyLocationsForm, SingleConfigMixin):
+class MorphologyLocationsSingleConfig(MorphologyLocationsMultiConfig, SingleConfigMixin):
     """Generates locations on a morphology skeleton."""
 
 
 class MorphologyLocationsTask(Task):
     """Task to generate locations on a morphology skeleton."""
 
-    config: MorphologyLocations
+    config: MorphologyLocationsSingleConfig
 
     @staticmethod
     def generate_plot(m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:
