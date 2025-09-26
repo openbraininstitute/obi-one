@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import entitysdk.client
 import pytest
-from entitysdk.models.morphology import CellMorphology
+from entitysdk.models.cell_morphology import CellMorphology
 
 from app.dependencies.entitysdk import get_client
 
