@@ -18,13 +18,13 @@ L = logging.getLogger(__name__)
 _KIB_FACTOR = 1024
 
 
-class FolderCompressions(ScanConfig):
+class FolderCompressionScanConfig(ScanConfig):
     """Compression of an entire folder (e.g., circuit) using the given compression file format.
 
     The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
     """
 
-    single_coord_class_name: ClassVar[str] = "FolderCompression"
+    single_coord_class_name: ClassVar[str] = "FolderCompressionSingleConfig"
     name: ClassVar[str] = "Folder Compression"
     description: ClassVar[str] = "Compresses a folder using the specified compression format."
 
@@ -36,12 +36,12 @@ class FolderCompressions(ScanConfig):
     initialize: Initialize
 
 
-class FolderCompression(FolderCompressions, SingleConfigMixin):
+class FolderCompressionSingleConfig(FolderCompressionScanConfig, SingleConfigMixin):
     pass
 
 
 class FolderCompressionTask(Task):
-    config: FolderCompression
+    config: FolderCompressionSingleConfig
 
     FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 

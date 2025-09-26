@@ -58,9 +58,9 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExtracellularLocationSet",
     "ExtracellularLocationSetUnion",
-    "FolderCompression",
+    "FolderCompressionSingleConfig",
     "FolderCompressionTask",
-    "FolderCompressions",
+    "FolderCompressionScanConfig",
     "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -258,8 +258,8 @@ from obi_one.scientific.tasks.ephys_extraction_task import (
     ElectrophysiologyMetricsTask,
 )
 from obi_one.scientific.tasks.folder_compression import (
-    FolderCompression,
-    FolderCompressions,
+    FolderCompressionSingleConfig,
+    FolderCompressionScanConfig,
     FolderCompressionTask,
 )
 from obi_one.scientific.tasks.morphology_containerization import (

@@ -15,10 +15,10 @@ def test_folder_compression(tmp_path):
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc"),
         ),
     ]
-    compression_init = obi.FolderCompressions.Initialize(
+    compression_init = obi.FolderCompressionScanConfig.Initialize(
         folder_path=folder_list, file_format=["gz", "bz2", "xz"], file_name="circuit"
     )
-    folder_compressions_form = obi.FolderCompressions(initialize=compression_init)
+    folder_compressions_form = obi.FolderCompressionScanConfig(initialize=compression_init)
 
     # Run circuit folder compression
     grid_scan = obi.GridScan(
