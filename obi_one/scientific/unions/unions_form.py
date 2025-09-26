@@ -25,11 +25,6 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 )
 from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsForm
 from obi_one.scientific.tasks.simulations import SimulationsForm
-from obi_one.scientific.test_forms.test_form_single_block import (
-    MultiBlockEntitySDKTestForm,
-    SingleBlockEntityTestForm,
-    SingleBlockGenerateTestForm,
-)
 
 FormUnion = Annotated[
     BasicConnectivityPlots
@@ -40,9 +35,6 @@ FormUnion = Annotated[
     | MorphologyDecontainerizationsForm
     | MorphologyMetricsForm
     | SimulationsForm
-    | SingleBlockGenerateTestForm
-    | SingleBlockEntityTestForm
-    | MultiBlockEntitySDKTestForm
     | MorphologyLocationsForm,
     Discriminator("type"),
 ]
