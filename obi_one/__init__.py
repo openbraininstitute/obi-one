@@ -64,7 +64,6 @@ __all__ = [
     "FolderCompressionTask",
     "FolderCompressions",
     "Form",
-    "FormUnion",
     "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -290,9 +289,6 @@ from obi_one.scientific.tasks.scan_generation import (
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
 from obi_one.scientific.unions.unions_extracellular_location_sets import (
     ExtracellularLocationSetUnion,
-)
-from obi_one.scientific.unions.unions_form import (
-    FormUnion,
 )
 from obi_one.scientific.unions.unions_intracellular_location_sets import (
     IntracellularLocationSetUnion,
