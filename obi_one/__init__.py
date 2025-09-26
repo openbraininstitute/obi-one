@@ -202,7 +202,7 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.blocks.specified_afferent_synapses import (
+from obi_one.scientific.blocks.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,

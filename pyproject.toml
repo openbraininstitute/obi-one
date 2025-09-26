@@ -165,7 +165,7 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/circuit/neuron_sets.py" = [
     "SLF001"
 ]
-"obi_one/scientific/afferent_synapse_finder/specified_afferent_synapses_block.py" = [
+"obi_one/scientific/afferent_synapse_finder/afferent_synapses_block.py" = [
     "SIM102"
 ]
 
