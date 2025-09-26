@@ -147,7 +147,6 @@ from obi_one.database.cell_morphology_from_id import (
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.database.memodel_from_id import MEModelFromID
-
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
