@@ -11,7 +11,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.core_new.task import Task
+from obi_one.core.task import Task
 
 L = logging.getLogger(__name__)
 

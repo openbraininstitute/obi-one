@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core_new.single_config_mixin import SingleConfigMixin
+from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.scientific.tasks.scan_generation import ScanGeneration
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_tasks import get_configs_task_type

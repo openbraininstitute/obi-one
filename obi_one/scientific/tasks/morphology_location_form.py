@@ -15,7 +15,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.core_new.task import Task
+from obi_one.core.task import Task
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
 from obi_one.scientific.morphology_locations.specified_morphology_locations import (
     _PRE_IDX,

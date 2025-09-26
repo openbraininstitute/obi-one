@@ -22,7 +22,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.form import Form
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.core_new.task import Task
+from obi_one.core.task import Task
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import NeuronSet
