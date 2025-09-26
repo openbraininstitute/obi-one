@@ -1,6 +1,7 @@
 Ideal renaming which would require migration:
-- GridScan -> GridScanGeneration
-- CoupledScan -> CoupledScanGeneration
+- ScanGeneration -> ScanGenerationTask
+- GridScan -> GridScanGenerationTask
+- CoupledScan -> CoupledScanGenerationTask
 - GridScan.form -> single_config
 
 Todo:
