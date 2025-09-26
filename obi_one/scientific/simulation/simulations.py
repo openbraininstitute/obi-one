@@ -1,9 +1,10 @@
 import json
 import logging
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import entitysdk
 from pydantic import (
@@ -27,6 +28,7 @@ from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.memodel_from_id import MEModelFromID
 from obi_one.scientific.circuit.circuit import Circuit
 from obi_one.scientific.circuit.neuron_sets import AllNeurons, NeuronSet
+from obi_one.scientific.simulation.stimulus import SpikeStimulus
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -125,31 +127,26 @@ class SimulationsForm(Form):
 
     @model_validator(mode="before")
     @classmethod
-    def _inject_default_node_set(cls, data):
+    def _inject_default_node_set(cls, data: Mapping[str, Any] | None) -> dict[str, Any] | None:
         if not data:
             return data
+        out: dict[str, Any] = dict(data)
+        init = dict(out.get("initialize") or {})
+        ns = dict(out.get("neuron_sets") or {})
 
-        # ensure the containers exist
-        init = data.setdefault("initialize", {})
-        ns   = data.setdefault("neuron_sets", {})
-
-        # only act if user didn't specify initialize.node_set
         if init.get("node_set") is None:
-            # if no neuron sets were provided, create “All Neurons”
             if not ns:
                 ns[ALL_NEURON_SET_NAME] = AllNeurons(block_name=ALL_NEURON_SET_NAME)
-
-            # choose a deterministic default (prefer “All Neurons”)
             name = ALL_NEURON_SET_NAME if ALL_NEURON_SET_NAME in ns else next(iter(ns))
-
-            # inject an unbound reference; it will bind later in _ensure_neuron_set()
             init["node_set"] = {
                 "block_dict_name": "neuron_sets",
                 "block_name": name,
                 "type": "NeuronSetReference",
             }
+            out["initialize"] = init
+            out["neuron_sets"] = ns
 
-        return data
+        return out
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator]
@@ -346,18 +343,58 @@ class Simulation(SimulationsForm, SingleCoordinateMixin):
         """Returns the reference for the default neuron set."""
         return ALL_NEURON_SET_BLOCK_REFERENCE
 
-    def _ensure_block_neuron_set(self, block: Block) -> None:
-        """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-        if getattr(block, "neuron_set", None) is None:
-            block.neuron_set = self._default_neuron_set_ref()
-
-        ref = block.neuron_set
+    def _bind_ref_or_raise(self, ref: NeuronSetReference | None) -> None:
+        """Bind a NeuronSetReference to an in-model block, or raise a clear error."""
+        if ref is None:
+            return
+        if ref.has_block():
+            return
         try:
-            if not ref.has_block():
-                ref.block = self.neuron_sets[ref.block_name]
+            ref.block = self.neuron_sets[ref.block_name]
         except KeyError as e:
             msg = f"Neuron set '{ref.block_name}' not found in self.neuron_sets."
             raise OBIONEError(msg) from e
+
+    def _wire_spike_stimulus(self, block: SpikeStimulus) -> None:
+        """Wire neuron-set references for spike-based stimuli (source & target)."""
+        if block.targeted_neuron_set is None:
+            block.targeted_neuron_set = self._default_neuron_set_ref()
+
+        if block.source_neuron_set is None:
+            msg = f"{block.__class__.__name__} requires `source_neuron_set`."
+            raise OBIONEError(msg)
+
+        for ref in (block.source_neuron_set, block.targeted_neuron_set):
+            self._bind_ref_or_raise(ref)
+
+    def _wire_single_neuron_set_block(self, block: Block) -> None:
+        """Wire a single `neuron_set` attribute commonly used by somatic stimuli and recordings.
+        If missing, default to the simulation's default neuron set then bind the reference.
+        """
+        if getattr(block, "neuron_set", None) is None:
+            block.neuron_set = self._default_neuron_set_ref()
+        self._bind_ref_or_raise(block.neuron_set)
+
+    def _ensure_block_neuron_set(self, block: Block) -> None:
+        """Wire neuron-set references in a type-aware way.
+
+        - Somatic stimuli & recordings (objects exposing a single `neuron_set` attr):
+        default to the simulation's default set if missing then bind the ref.
+
+        - Spike stimuli (Poisson, synchronous, etc.):
+        require an explicit `source_neuron_set`, default the `targeted_neuron_set`,
+        then bind both refs.
+        """
+        if isinstance(block, SpikeStimulus):
+            self._wire_spike_stimulus(block)
+            return
+
+        if hasattr(block, "neuron_set"):
+            self._wire_single_neuron_set_block(block)
+            return
+
+        msg = f"Unsupported block type for neuron-set wiring: {block.__class__.__name__}"
+        raise OBIONEError(msg)
 
     def _ensure_neuron_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
