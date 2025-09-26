@@ -9,3 +9,5 @@ Todo:
 - Update all project notebooks
 - Move ninja files from tasks
 - Rename Contribute configs + tasks (speak with Dan)
+- Remove database manager. Only used in entitysdk examples
+- Use obi-notebooks? Separate tickets?
