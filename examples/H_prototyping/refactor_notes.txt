@@ -2,17 +2,9 @@ Ideal renaming which would require migration:
 - GridScan -> GridScanGeneration
 - CoupledScan -> CoupledScanGeneration
 - GridScan.form -> single_config
-- Names of specific Forms
 
-Get rid of Form + SingleCoordinateMixin references as much as possible (use renamed)
-
-GIVE BETTER NAMES TO NON SIMULATION CONFIGS + TASKS
-
-- Problem with circuit_simulations_example.ipynb
-- "make test-local" generating logs
-
-
-generated endpoints must return campaign id
-
-
+Todo:
+- Better names to non simulation configs + tasks
+- Generated endpoints must return campaign id
+- Update all project notebooks
 - Move ninja files from tasks

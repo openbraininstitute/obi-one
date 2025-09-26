@@ -34,7 +34,7 @@ __all__ = [
     "Block",
     "BlockReference",
     "Circuit",
-    "CircuitExtraction",
+    "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitExtractionScanConfig",
     "CircuitFromID",

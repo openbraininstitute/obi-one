@@ -48,7 +48,7 @@ obi-one has the following base classes, which inherit from OBIBaseModel and from
 
 - [**Scan**](obi_one/core/scan.py): takes a single Form as input, an output path and a string for specifying how output files should be stored. Then the function Scan.execute(processing_method) function can then be called which generates the multiple dimensional scan and calls processing_method.
 
-- [**SingleCoordinateMixin**](obi_one/core/single.py): (Todo)
+- [**SingleConfigMixin**](obi_one/core/single_config_mixin.py): (Todo)
 
 
 <br>
