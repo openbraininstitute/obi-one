@@ -15,7 +15,7 @@ from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 L = logging.getLogger(__name__)
 
 
-class ReconstructionMorphologyFromID(EntityFromID):
+class CellMorphologyFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = CellMorphology
     _entity: CellMorphology | None = PrivateAttr(default=None)
     _swc_file_path: Path | None = PrivateAttr(default=None)

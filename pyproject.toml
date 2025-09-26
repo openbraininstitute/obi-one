@@ -107,6 +107,9 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.8.0"
 
+[tool.uv.sources]
+repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder", branch = "main" }
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

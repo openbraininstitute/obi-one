@@ -15,17 +15,17 @@ ROUTE = "/declared/neuron-morphology-metrics"
 
 @pytest.fixture
 def morphology_json():
-    return json.loads((DATA_DIR / "reconstruction_morphology.json").read_bytes())
+    return json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
 
 
 @pytest.fixture
 def morphology_asc():
-    return (DATA_DIR / "reconstruction_morphology.asc").read_bytes()
+    return (DATA_DIR / "cell_morphology.asc").read_bytes()
 
 
 @pytest.fixture
 def morphology_swc():
-    return (DATA_DIR / "reconstruction_morphology.swc").read_bytes()
+    return (DATA_DIR / "cell_morphology.swc").read_bytes()
 
 
 def test_get(client, morphology_json, morphology_swc, monkeypatch):

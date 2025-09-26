@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 
 L = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class MorphologyMetricsForm(Form):
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] = Field(
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID] = Field(
             description="3. Morphology description"
         )
 
@@ -259,13 +259,11 @@ class MorphologyMetrics(MorphologyMetricsForm, SingleCoordinateMixin):
 
 
 def get_morphology_metrics(
-    reconstruction_morphology_id: str,
+    cell_morphology_id: str,
     db_client: entitysdk.client.Client,
     requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
-    morphology = db_client.get_entity(
-        entity_id=reconstruction_morphology_id, entity_type=CellMorphology
-    )
+    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
