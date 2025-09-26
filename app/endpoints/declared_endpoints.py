@@ -9,21 +9,21 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
-from obi_one.scientific.circuit_metrics.circuit_metrics import (
+from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
     CircuitPopulationsResponse,
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.ephys_extraction.ephys_extraction import (
+from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
     AmplitudeInput,
     ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,

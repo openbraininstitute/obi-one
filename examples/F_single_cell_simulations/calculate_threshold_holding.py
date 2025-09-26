@@ -1,5 +1,5 @@
 from bluecellulab import Cell
-from bluecellulab.circuit.circuit_access import EmodelProperties
+from bluecellulab.library.circuit_access import EmodelProperties
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
 from bluecellulab.tools import calculate_rheobase
 import json

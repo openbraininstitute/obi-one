@@ -2,6 +2,6 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.circuit.extracellular_location_sets import XYZExtracellularLocationSet
+from obi_one.scientific.blocks.extracellular_locations import XYZExtracellularLocations
 
-ExtracellularLocationSetUnion = Annotated[XYZExtracellularLocationSet, Discriminator("type")]
+ExtracellularLocationsUnion = Annotated[XYZExtracellularLocations, Discriminator("type")]

@@ -56,8 +56,8 @@ __all__ = [
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
-    "ExtracellularLocationSet",
-    "ExtracellularLocationSetUnion",
+    "ExtracellularLocations",
+    "ExtracellularLocationsUnion",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FolderCompressionScanConfig",
@@ -67,8 +67,6 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
-    "IntracellularLocationSet",
-    "IntracellularLocationSetUnion",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
     "MorphologyContainerizationSingleConfig",
@@ -121,7 +119,6 @@ __all__ = [
     "ScanConfigsUnion",
     "ScanGenerationTask",
     "ScanWrapper",
-    "SectionIntracellularLocationSet",
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
     "Simulation",
@@ -146,7 +143,7 @@ __all__ = [
     "Validation",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
-    "XYZExtracellularLocationSet",
+    "XYZExtracellularLocations",
     "db",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
@@ -165,7 +162,7 @@ from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
-from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
+from obi_one.scientific.blocks.specified_afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,
@@ -178,16 +175,12 @@ from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_bloc
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
-from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.extracellular_location_sets import (
-    ExtracellularLocationSet,
-    XYZExtracellularLocationSet,
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.blocks.extracellular_locations import (
+    ExtracellularLocations,
+    XYZExtracellularLocations,
 )
-from obi_one.scientific.circuit.intracellular_location_sets import (
-    IntracellularLocationSet,
-    SectionIntracellularLocationSet,
-)
-from obi_one.scientific.circuit.neuron_sets import (
+from obi_one.scientific.blocks.neuron_sets import (
     AllNeurons,
     CombinedNeuronSet,
     ExcitatoryNeurons,
@@ -206,22 +199,22 @@ from obi_one.scientific.circuit.neuron_sets import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.morphology_locations.morphology_location_block import (
+from obi_one.scientific.blocks.morphology_locations import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )
-from obi_one.scientific.simulation.recording import (
+from obi_one.scientific.blocks.recording import (
     Recording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.simulation.stimulus import (
+from obi_one.scientific.blocks.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -235,7 +228,7 @@ from obi_one.scientific.simulation.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
-from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
@@ -291,11 +284,8 @@ from obi_one.scientific.tasks.scan_generation import (
     ScanGenerationTask,
 )
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
-from obi_one.scientific.unions.unions_extracellular_location_sets import (
-    ExtracellularLocationSetUnion,
-)
-from obi_one.scientific.unions.unions_intracellular_location_sets import (
-    IntracellularLocationSetUnion,
+from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,

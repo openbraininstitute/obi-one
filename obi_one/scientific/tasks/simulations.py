@@ -24,8 +24,8 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.database.circuit_from_id import CircuitFromID
-from obi_one.scientific.circuit.circuit import Circuit
-from obi_one.scientific.circuit.neuron_sets import NeuronSet
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.blocks.neuron_sets import NeuronSet
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,

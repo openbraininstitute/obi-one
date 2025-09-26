@@ -16,7 +16,7 @@ from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, m
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
-from obi_one.scientific.circuit.circuit import Circuit
+from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -30,7 +30,7 @@ _INHIBITORY_NODE_SET = "Inhibitory"
 _MAX_PERCENT = 100.0
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
-    from obi_one.scientific.circuit.simplex_extractors import simplex_submat
+    from obi_one.scientific.library.simplex_extractors import simplex_submat
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):

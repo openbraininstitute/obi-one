@@ -15,7 +15,7 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.basic_connectivity_plots.helpers import (
+from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     compute_global_connectivity,
     connection_probability_pathway,
     connection_probability_within_pathway,

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
+from obi_one.scientific.blocks.specified_afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,

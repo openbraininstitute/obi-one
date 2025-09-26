@@ -10,7 +10,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )
 

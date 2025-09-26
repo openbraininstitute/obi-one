@@ -8,7 +8,7 @@ from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 
-from .find_specified_afferent_synapses import (
+from obi_one.scientific.library.find_specified_afferent_synapses import (
     add_section_types,
     all_syns_on,
     apply_filters,

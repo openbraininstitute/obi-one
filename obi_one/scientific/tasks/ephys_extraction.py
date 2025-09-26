@@ -10,7 +10,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.ephys_extraction.ephys_extraction import (
+from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     POSSIBLE_STIMULI_STR,
     STIMULI_TYPES,

@@ -6,7 +6,7 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-from obi_one.scientific.morphology_locations.specified_morphology_locations import (
+from obi_one.library.specified_morphology_locations import (
     _CEN_IDX,
     generate_neurite_locations_on,
 )
