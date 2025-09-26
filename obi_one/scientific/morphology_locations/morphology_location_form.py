@@ -33,12 +33,9 @@ class MorphologyLocationsForm(Form):
     )
 
     class Initialize(Block):
-        morphology: (
-            CellMorphologyFromID
-            | list[CellMorphologyFromID]
-            | Path
-            | list[Path]
-        ) = Field(title="Morphology", description="The morphology skeleton to place locations on")
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID] | Path | list[Path] = Field(
+            title="Morphology", description="The morphology skeleton to place locations on"
+        )
 
     initialize: Initialize
     morph_locations: MorphologyLocationUnion = Field(
