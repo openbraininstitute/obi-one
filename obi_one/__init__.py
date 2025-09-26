@@ -206,10 +206,6 @@ from obi_one.scientific.circuit.neuron_sets import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphology,
-    ContributeMorphologyForm,
-)
 from obi_one.scientific.morphology_locations.morphology_location_block import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
@@ -254,6 +250,10 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtraction,
     ConnectivityMatrixExtractions,
     ConnectivityMatrixExtractionTask,
+)
+from obi_one.scientific.tasks.contribute import (
+    ContributeMorphology,
+    ContributeMorphologyForm,
 )
 from obi_one.scientific.tasks.ephys_extraction_task import (
     ElectrophysiologyMetrics,

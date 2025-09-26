@@ -9,6 +9,7 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
+from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationTask
@@ -20,6 +21,7 @@ from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 TasksUnion = Annotated[
     GenerateSimulationTask
     | CircuitExtractionTask
+    | ContributeMorphologyTask
     | BasicConnectivityPlotTask
     | ConnectivityMatrixExtractionTask
     | ElectrophysiologyMetricsTask

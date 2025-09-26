@@ -207,7 +207,6 @@ class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
 
 
 class ContributeMorphologyTask(Task):
-
     config: ContributeMorphology
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
@@ -233,7 +232,6 @@ class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
 
 
 class ContributeSubjectTask(Task):
-
     config: ContributeSubject
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
