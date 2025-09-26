@@ -16,7 +16,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.specified_morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
@@ -39,8 +39,8 @@ class MorphologyLocationsMultiConfig(ScanConfig):
 
     class Initialize(Block):
         morphology: (
-            ReconstructionMorphologyFromID
-            | list[ReconstructionMorphologyFromID]
+            CellMorphologyFromID
+            | list[CellMorphologyFromID]
             | Path
             | list[Path]
         ) = Field(title="Morphology", description="The morphology skeleton to place locations on")

@@ -4,7 +4,8 @@ from typing import Annotated, Self
 
 import entitysdk
 import neurom
-from entitysdk.models.morphology import ReconstructionMorphology
+
+from entitysdk.models.cell_morphology import CellMorphology
 from neurom import load_morphology
 from pydantic import BaseModel, Field
 
@@ -225,19 +226,17 @@ class MorphologyMetricsOutput(BaseModel):
 
 
 def get_morphology_metrics(
-    reconstruction_morphology_id: str,
+    cell_morphology_id: str,
     db_client: entitysdk.client.Client,
     requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
-    morphology = db_client.get_entity(
-        entity_id=reconstruction_morphology_id, entity_type=ReconstructionMorphology
-    )
+    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
             content = db_client.download_content(
                 entity_id=morphology.id,
-                entity_type=ReconstructionMorphology,
+                entity_type=CellMorphology,
                 asset_id=asset.id,
             ).decode(encoding="utf-8")
 

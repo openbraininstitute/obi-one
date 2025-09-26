@@ -6,7 +6,7 @@ from typing import ClassVar
 import entitysdk
 import morphio
 import neurom
-from entitysdk.models import ReconstructionMorphology
+from entitysdk.models import CellMorphology
 from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
@@ -15,9 +15,9 @@ from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 L = logging.getLogger(__name__)
 
 
-class ReconstructionMorphologyFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = ReconstructionMorphology
-    _entity: ReconstructionMorphology | None = PrivateAttr(default=None)
+class CellMorphologyFromID(EntityFromID):
+    entitysdk_class: ClassVar[type[Entity]] = CellMorphology
+    _entity: CellMorphology | None = PrivateAttr(default=None)
     _swc_file_path: Path | None = PrivateAttr(default=None)
     _neurom_morphology: neurom.core.Morphology | None = PrivateAttr(default=None)
     _morphio_morphology: morphio.Morphology | None = PrivateAttr(default=None)

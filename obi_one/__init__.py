@@ -50,6 +50,8 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
+    "ContributeSubject",
+    "ContributeSubjectForm",
     "CoupledScan",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -104,8 +106,8 @@ __all__ = [
     "RandomMorphologyLocations",
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
-    "ReconstructionMorphologyFromID",
-    "ReconstructionMorphologyValidation",
+    "CellMorphologyFromID",
+    "CellMorphologyValidation",
     "Recording",
     "RecordingReference",
     "RecordingUnion",
@@ -160,7 +162,7 @@ __all__ = [
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.database.reconstruction_morphology_from_id import (
-    ReconstructionMorphologyFromID,
+    CellMorphologyFromID,
 )
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
@@ -247,6 +249,8 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
+    ContributeSubject,
+    ContributeSubjectForm,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
@@ -306,8 +310,8 @@ from obi_one.scientific.unions.unions_tasks import (
     get_tasks_config_type,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
-from obi_one.scientific.validations.reconstruction_morphology_validation import (
-    ReconstructionMorphologyValidation,
+from obi_one.scientific.validations.cell_morphology_validation import (
+    CellMorphologyValidation,
 )
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
