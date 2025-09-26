@@ -13,6 +13,8 @@ from obi_one.core.scan import GridScan
 from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
+    ContributeSubject,
+    ContributeSubjectForm,
 )
 from obi_one.scientific.morphology_metrics.morphology_metrics import (
     MorphologyMetrics,
@@ -131,14 +133,13 @@ def create_endpoint_for_form(
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
-    # 1. Create endpoints for each OBI Form subclass.
     for form, processing_method, data_postprocessing_method, single_coordinate_cls in [
         (SimulationsForm, "generate", "", Simulation),
         (SimulationsForm, "generate", "save", Simulation),
         (MorphologyMetricsForm, "run", "", MorphologyMetrics),
         (ContributeMorphologyForm, "generate", "", ContributeMorphology),
+        (ContributeSubjectForm, "generate", "", ContributeSubject),
     ]:
-        # Create endpoint
         create_endpoint_for_form(
             form,
             single_coordinate_cls,
@@ -146,5 +147,4 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
         )
-
     return router
