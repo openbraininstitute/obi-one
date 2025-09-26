@@ -9,7 +9,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )
@@ -23,7 +23,7 @@ class MorphologyMetricsScanConfig(ScanConfig):
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID] = Field(
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID] = Field(
             description="3. Morphology description"
         )
 

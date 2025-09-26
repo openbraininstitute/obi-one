@@ -161,7 +161,7 @@ __all__ = [
 
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
-from obi_one.database.reconstruction_morphology_from_id import (
+from obi_one.database.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
 from obi_one.scientific.blocks.extracellular_locations import (
