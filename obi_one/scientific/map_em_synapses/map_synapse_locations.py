@@ -13,6 +13,7 @@ _C_SEG_E = ["end_x", "end_y", "end_z"]
 _C_SEG_E_F = _C_SEG_E + ["end_d"]
 _C_SPINE_MESH = "spine_morphology"
 _C_SPINE_ID = "spine_id"
+_C_SP_INDEX = "spine_sharing_id"
 _C_SHARING_ID = "spine_sharing_id"
 _C_PSD_ID = "spine_psd_id"
 _C_ROTATION = ["spine_rotation_x", "spine_rotation_y",	"spine_rotation_z",	"spine_rotation_w"]
@@ -57,7 +58,7 @@ def find_nearest_mesh_points(mesh_pt_df, pts):
     dist, idx = tree.query(pts, k=1)
     idx = mesh_pt_df.index[idx]
     res = pandas.concat([
-        mesh_pt_df.loc[idx, [_C_SPINE_ID]],
+        mesh_pt_df.loc[idx, [_C_SP_INDEX]],
         pandas.DataFrame({"distance": dist},
                          index=idx)
     ], axis=1)
@@ -91,10 +92,10 @@ def morph_to_spine_and_soma_df(m):
     all_spine_points = pandas.concat(
             [pandas.DataFrame(m.spine_mesh_points(i), columns=["x", "y", "z"])
             for i in range(m.spine_count)],
-            axis=0, keys=m.spine_table["spine_id"], names=["spine_id"]
+            axis=0, keys=m.spine_table.index.to_numpy(), names=[_C_SP_INDEX]
         ).reset_index(0)
     soma_points = pandas.DataFrame(m.soma_mesh_points, columns=["x", "y", "z"])
-    soma_points["spine_id"] = -1
+    soma_points[_C_SP_INDEX] = -1
 
     spine_and_soma_points = pandas.concat([all_spine_points, soma_points], axis=0).reset_index(drop=True)
     return spine_and_soma_points
@@ -229,11 +230,15 @@ def edges_dataframe_for_shaft_syns(syns, m, mpd, is_on_shaft):
     return b
 
 def edges_dataframe_for_spine_syns(syns, m, mpd, is_on_spine):
-    a = m.spine_table.set_index("spine_id").loc[mpd.loc[is_on_spine, "spine_id"]].copy()  
+    a = m.spine_table.loc[mpd.loc[is_on_spine, _C_SP_INDEX]].copy()
+    a = a.drop(columns=['spine_orientation_vector_x', 'spine_orientation_vector_y',
+                        'spine_orientation_vector_z', 'spine_rotation_x',
+                        'spine_rotation_y', 'spine_rotation_z', 'spine_rotation_w'])
+    a.index.name = _C_SP_INDEX
     a["distance"] = mpd.loc[is_on_spine, "distance"].to_numpy()
     a["synapse_id"] = mpd.index[is_on_spine].to_numpy()
-    a = a.sort_index()
-    a[_C_SHARING_ID] = numpy.cumsum(numpy.hstack([0, numpy.diff(a.index)]) > 0)
+    # a = a.sort_index()
+    # a[_C_SHARING_ID] = numpy.cumsum(numpy.hstack([0, numpy.diff(a.index)]) > 0)
     a[_C_PSD_ID] = numpy.arange(len(a.index)) # For now simply all different
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()
     return a
@@ -245,8 +250,8 @@ def map_afferents_to_spiny_morphology(m, syns):
     mpd_nrt = map_points_to_segs_df(segs_df, syns[_C_P_LOCS])
     mpd_spn = find_nearest_mesh_points(spine_and_soma_points, syns[_C_P_LOCS])
 
-    is_on_spine = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn["spine_id"] != -1)
-    is_on_soma = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn["spine_id"] == -1)
+    is_on_spine = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn[_C_SP_INDEX] != -1)
+    is_on_soma = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn[_C_SP_INDEX] == -1)
     is_on_shaft = (~is_on_spine) & (~is_on_soma)
 
     df_soma = edges_dataframe_for_soma_syns(syns, m, mpd_spn, is_on_soma)
