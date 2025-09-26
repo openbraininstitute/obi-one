@@ -10,8 +10,12 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
 from obi_one.scientific.tasks.contribute import ContributeMorphologyForm
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
-from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationMultiConfig
-from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationScanConfig
+from obi_one.scientific.tasks.morphology_containerization import (
+    MorphologyContainerizationMultiConfig,
+)
+from obi_one.scientific.tasks.morphology_decontainerization import (
+    MorphologyDecontainerizationScanConfig,
+)
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsMultiConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.simulations import SimulationsForm

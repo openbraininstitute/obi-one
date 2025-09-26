@@ -53,7 +53,9 @@ class MorphologyContainerizationMultiConfig(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyContainerizationSingleConfig(MorphologyContainerizationMultiConfig, SingleConfigMixin):
+class MorphologyContainerizationSingleConfig(
+    MorphologyContainerizationMultiConfig, SingleConfigMixin
+):
     pass
 
 

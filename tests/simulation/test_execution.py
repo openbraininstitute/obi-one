@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from obi_one.scientific.simulation import execution
+from obi_one.scientific.library import simulation_execution as execution
 
 
 @pytest.fixture

@@ -50,7 +50,9 @@ class MorphologyDecontainerizationScanConfig(ScanConfig):
     initialize: Initialize
 
 
-class MorphologyDecontainerizationSingleConfig(MorphologyDecontainerizationScanConfig, SingleConfigMixin):
+class MorphologyDecontainerizationSingleConfig(
+    MorphologyDecontainerizationScanConfig, SingleConfigMixin
+):
     pass
 
 

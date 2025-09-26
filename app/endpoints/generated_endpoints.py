@@ -15,8 +15,8 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyForm,
 )
 from obi_one.scientific.tasks.morphology_metrics import (
-    MorphologyMetricsSingleConfig,
     MorphologyMetricsScanConfig,
+    MorphologyMetricsSingleConfig,
 )
 from obi_one.scientific.tasks.scan_generation import GridScan
 from obi_one.scientific.tasks.simulations import (

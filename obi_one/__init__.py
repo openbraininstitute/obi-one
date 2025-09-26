@@ -51,16 +51,16 @@ __all__ = [
     "ContributeMorphology",
     "ContributeMorphologyForm",
     "CoupledScan",
-    "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsScanConfig",
+    "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
-    "FolderCompressionScanConfig",
     "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -69,18 +69,18 @@ __all__ = [
     "InhibitoryNeurons",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
-    "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationMultiConfig",
+    "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
-    "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationScanConfig",
+    "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
-    "MorphologyLocationsSingleConfig",
     "MorphologyLocationsMultiConfig",
+    "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
-    "MorphologyMetricsSingleConfig",
-    "MorphologyMetricsScanConfig",
     "MorphologyMetricsOutput",
+    "MorphologyMetricsScanConfig",
+    "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
@@ -162,23 +162,16 @@ from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.database.reconstruction_morphology_from_id import (
     ReconstructionMorphologyFromID,
 )
-from obi_one.scientific.blocks.specified_afferent_synapses import (
-    AfferentSynapsesBlock,
-    ClusteredPDSynapsesByCount,
-    ClusteredPDSynapsesByMaxDistance,
-    ClusteredSynapsesByCount,
-    ClusteredSynapsesByMaxDistance,
-    PathDistanceConstrainedFractionOfSynapses,
-    PathDistanceConstrainedNumberOfSynapses,
-    PathDistanceWeightedFractionOfSynapses,
-    PathDistanceWeightedNumberOfSynapses,
-    RandomlySelectedFractionOfSynapses,
-    RandomlySelectedNumberOfSynapses,
-)
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
+)
+from obi_one.scientific.blocks.morphology_locations import (
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations,
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets import (
     AllNeurons,
@@ -199,20 +192,23 @@ from obi_one.scientific.blocks.neuron_sets import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.blocks.morphology_locations import (
-    ClusteredGroupedMorphologyLocations,
-    ClusteredMorphologyLocations,
-    ClusteredPathDistanceMorphologyLocations,
-    RandomGroupedMorphologyLocations,
-    RandomMorphologyLocations,
-)
-from obi_one.scientific.library.morphology_metrics import (
-    MorphologyMetricsOutput,
-)
 from obi_one.scientific.blocks.recording import (
     Recording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
+)
+from obi_one.scientific.blocks.specified_afferent_synapses import (
+    AfferentSynapsesBlock,
+    ClusteredPDSynapsesByCount,
+    ClusteredPDSynapsesByMaxDistance,
+    ClusteredSynapsesByCount,
+    ClusteredSynapsesByMaxDistance,
+    PathDistanceConstrainedFractionOfSynapses,
+    PathDistanceConstrainedNumberOfSynapses,
+    PathDistanceWeightedFractionOfSynapses,
+    PathDistanceWeightedNumberOfSynapses,
+    RandomlySelectedFractionOfSynapses,
+    RandomlySelectedNumberOfSynapses,
 )
 from obi_one.scientific.blocks.stimulus import (
     ConstantCurrentClampSomaticStimulus,
@@ -229,6 +225,10 @@ from obi_one.scientific.blocks.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.morphology_metrics import (
+    MorphologyMetricsOutput,
+)
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
@@ -249,33 +249,33 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyForm,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
-    ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsScanConfig,
+    ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
 )
 from obi_one.scientific.tasks.folder_compression import (
-    FolderCompressionSingleConfig,
     FolderCompressionScanConfig,
+    FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerizationSingleConfig,
     MorphologyContainerizationMultiConfig,
+    MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_decontainerization import (
-    MorphologyDecontainerizationSingleConfig,
     MorphologyDecontainerizationScanConfig,
+    MorphologyDecontainerizationSingleConfig,
     MorphologyDecontainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_locations import (
-    MorphologyLocationsSingleConfig,
     MorphologyLocationsMultiConfig,
+    MorphologyLocationsSingleConfig,
     MorphologyLocationsTask,
 )
 from obi_one.scientific.tasks.morphology_metrics import (
-    MorphologyMetricsSingleConfig,
     MorphologyMetricsScanConfig,
+    MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
 from obi_one.scientific.tasks.scan_generation import (

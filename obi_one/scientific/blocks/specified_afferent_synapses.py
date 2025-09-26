@@ -7,7 +7,6 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-
 from obi_one.scientific.library.find_specified_afferent_synapses import (
     add_section_types,
     all_syns_on,
@@ -121,10 +120,9 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
         return select_randomly(syns, n=self.n, raise_insufficient=False)
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.n, list):
-            if self.n <= 0:
-                msg = f"Number of synapses {self.n} <= 0"
-                raise ValueError(msg)
+        if (not isinstance(self.n, list)) and (self.n <= 0):
+            msg = f"Number of synapses {self.n} <= 0"
+            raise ValueError(msg)
 
 
 class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
@@ -142,10 +140,9 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
         return select_randomly(syns, p=self.p, raise_insufficient=False)
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.p, list):
-            if (self.p <= 0) or (self.p > 1.0):
-                msg = f"p: {self.p} should be > 0 and <= 1"
-                raise ValueError(msg)
+        if not isinstance(self.p, list) and ((self.p <= 0) or (self.p > 1.0)):
+            msg = f"p: {self.p} should be > 0 and <= 1"
+            raise ValueError(msg)
 
 
 class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
@@ -228,10 +225,9 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.soma_pd_sd, list):
-            if self.soma_pd_sd <= 0:
-                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
-                raise ValueError(msg)
+        if (not isinstance(self.soma_pd_sd, list)) and (self.soma_pd_sd <= 0):
+            msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
+            raise ValueError(msg)
 
     def _select_syns(
         self,
@@ -265,10 +261,9 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.soma_pd_sd, list):
-            if self.soma_pd_sd <= 0:
-                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
-                raise ValueError(msg)
+        if (not isinstance(self.soma_pd_sd, list)) and self.soma_pd_sd <= 0:
+            msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0"
+            raise ValueError(msg)
 
     def _select_syns(
         self,
@@ -302,14 +297,12 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.n_clusters, list):
-            if self.n_clusters <= 0:
-                msg = f"Number of clusters: {self.n_clusters} should be > 0!"
-                raise ValueError(msg)
-        if not isinstance(self.cluster_max_distance, list):
-            if self.cluster_max_distance < 0:
-                msg = f"Cluster distance: {self.cluster_max_distance} should be >= 0!"
-                raise ValueError(msg)
+        if (not isinstance(self.n_clusters, list)) and (self.n_clusters <= 0):
+            msg = f"Number of clusters: {self.n_clusters} should be > 0!"
+            raise ValueError(msg)
+        if (not isinstance(self.cluster_max_distance, list)) and (self.cluster_max_distance < 0):
+            msg = f"Cluster distance: {self.cluster_max_distance} should be >= 0!"
+            raise ValueError(msg)
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
@@ -341,14 +334,12 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.n_clusters, list):
-            if self.n_clusters <= 0:
-                msg = f"Number of clusters: {self.n_clusters} should be > 0!"
-                raise ValueError(msg)
-        if not isinstance(self.n_per_cluster, list):
-            if self.n_per_cluster <= 0:
-                msg = f"Number of synapses per cluster: {self.n_per_cluster} should be > 0!"
-                raise ValueError(msg)
+        if (not isinstance(self.n_clusters, list)) and (self.n_clusters <= 0):
+            msg = f"Number of clusters: {self.n_clusters} should be > 0!"
+            raise ValueError(msg)
+        if (not isinstance(self.n_per_cluster, list)) and (self.n_per_cluster <= 0):
+            msg = f"Number of synapses per cluster: {self.n_per_cluster} should be > 0!"
+            raise ValueError(msg)
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
@@ -382,10 +373,9 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.soma_pd_sd, list):
-            if self.soma_pd_sd <= 0:
-                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
-                raise ValueError(msg)
+        if (not isinstance(self.soma_pd_sd, list)) and (self.soma_pd_sd <= 0):
+            msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
+            raise ValueError(msg)
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
@@ -421,10 +411,9 @@ class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
     )
 
     def _check_parameter_values(self) -> None:
-        if not isinstance(self.soma_pd_sd, list):
-            if self.soma_pd_sd <= 0:
-                msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
-                raise ValueError(msg)
+        if (not isinstance(self.soma_pd_sd, list)) and (self.soma_pd_sd <= 0):
+            msg = f"Soma path distance SD: {self.soma_pd_sd} should be > 0!"
+            raise ValueError(msg)
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
