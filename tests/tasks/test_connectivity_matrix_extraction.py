@@ -21,12 +21,12 @@ def test_connectivity_matrix_extraction(tmp_path):
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
-    extraction_init = obi.ConnectivityMatrixExtractions.Initialize(
+    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="INVALID__S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
     )
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractions(
+    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
     grid_scan = obi.GridScan(
@@ -53,12 +53,12 @@ def test_connectivity_matrix_extraction(tmp_path):
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
-    extraction_init = obi.ConnectivityMatrixExtractions.Initialize(
+    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z", "INVALID"),
     )
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractions(
+    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
     grid_scan = obi.GridScan(
@@ -83,13 +83,13 @@ def test_connectivity_matrix_extraction(tmp_path):
         ),
     ]
 
-    extraction_init = obi.ConnectivityMatrixExtractions.Initialize(
+    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
     )
 
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractions(
+    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
 

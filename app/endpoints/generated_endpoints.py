@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
+from obi_one import run_task_for_single_configs_of_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphology,
@@ -22,7 +23,6 @@ from obi_one.scientific.tasks.simulations import (
     Simulation,
     SimulationsForm,
 )
-from obi_one import run_task_for_single_configs_of_generated_scan
 
 
 def check_implementations_of_single_coordinate_class(

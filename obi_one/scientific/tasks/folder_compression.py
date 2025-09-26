@@ -8,8 +8,8 @@ from typing import ClassVar
 import entitysdk.client
 
 from obi_one.core.block import Block
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.path import NamedPath
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
 

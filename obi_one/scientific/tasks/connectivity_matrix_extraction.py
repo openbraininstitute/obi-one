@@ -19,7 +19,7 @@ except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 
-class ConnectivityMatrixExtractions(ScanConfig):
+class ConnectivityMatrixExtractionScanConfig(ScanConfig):
     """ScanConfig for extracting connectivity matrices in ConnectomeUtilities format.
 
     The connectivity matrix is extracted in ConnectomeUtilities format, consisting of a sparse
@@ -27,7 +27,7 @@ class ConnectivityMatrixExtractions(ScanConfig):
     table (dataframe) of selected node attributes.
     """
 
-    single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtraction"
+    single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtractionSingleConfig"
     name: ClassVar[str] = "Connectivity Matrix Extraction"
     description: ClassVar[str] = (
         "Extracts a connectivity matrix of a given edge population of a SONATA circuit in"
@@ -44,12 +44,14 @@ class ConnectivityMatrixExtractions(ScanConfig):
     initialize: Initialize
 
 
-class ConnectivityMatrixExtraction(ConnectivityMatrixExtractions, SingleConfigMixin):
+class ConnectivityMatrixExtractionSingleConfig(
+    ConnectivityMatrixExtractionScanConfig, SingleConfigMixin
+):
     """Extracts a connectivity matrix of a given edge population of a SONATA circuit."""
 
 
 class ConnectivityMatrixExtractionTask(Task):
-    config: ConnectivityMatrixExtraction
+    config: ConnectivityMatrixExtractionSingleConfig
 
     DEFAULT_ATTRIBUTES: ClassVar[tuple[str, ...]] = (
         "x",

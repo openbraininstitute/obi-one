@@ -3,16 +3,8 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
-from obi_one.core.serialization import (
-    deserialize_obi_object_from_json_data,
-    deserialize_obi_object_from_json_file,
-)
-from obi_one.core.single_config_mixin import SingleConfigMixin
-from obi_one.core.tuple import NamedTuple
-from obi_one.core.validation import Validation
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_wrapper import (
     ScanWrapper,
@@ -20,23 +12,29 @@ from obi_one.core.scan_wrapper import (
     run_task_for_single_configs,
     run_task_for_single_configs_of_generated_scan,
 )
+from obi_one.core.serialization import (
+    deserialize_obi_object_from_json_data,
+    deserialize_obi_object_from_json_file,
+)
 from obi_one.core.single_config_mixin import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.tuple import NamedTuple
+from obi_one.core.validation import Validation
 from obi_one.database.db_manager import db
 
 __all__ = [
     "Activity",
     "AfferentSynapsesBlock",
     "AllNeurons",
+    "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
-    "BasicConnectivityPlotsScanConfig",
     "Block",
     "BlockReference",
     "Circuit",
+    "CircuitExtractionScanConfig",
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
-    "CircuitExtractionScanConfig",
     "CircuitFromID",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
@@ -46,9 +44,9 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
-    "ConnectivityMatrixExtraction",
+    "ConnectivityMatrixExtractionScanConfig",
+    "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
-    "ConnectivityMatrixExtractions",
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
@@ -63,7 +61,6 @@ __all__ = [
     "FolderCompression",
     "FolderCompressionTask",
     "FolderCompressions",
-    "ScanConfig",
     "FullySynchronousSpikeStimulus",
     "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -116,6 +113,7 @@ __all__ = [
     "RelativeLinearCurrentClampSomaticStimulus",
     "RelativeNormallyDistributedCurrentClampSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
+    "ScanConfig",
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGeneration",
@@ -236,18 +234,18 @@ from obi_one.scientific.simulation.stimulus import (
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsScanConfig,
+    BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
-    CircuitExtractionSingleConfig,
     CircuitExtractionScanConfig,
+    CircuitExtractionSingleConfig,
     CircuitExtractionTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
-    ConnectivityMatrixExtraction,
-    ConnectivityMatrixExtractions,
+    ConnectivityMatrixExtractionScanConfig,
+    ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
 )
 from obi_one.scientific.tasks.contribute import (
