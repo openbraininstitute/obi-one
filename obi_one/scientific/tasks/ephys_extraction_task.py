@@ -68,14 +68,16 @@ class ElectrophysiologyMetrics(ElectrophysiologyMetricsForm, SingleCoordinateMix
 class ElectrophysiologyMetricsTask(Task):
     """Task to calculate electrophysiological metrics for a given trace."""
 
+    config: ElectrophysiologyMetrics
+
     def run(self, db_client: entitysdk.client.Client = None) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
-                trace_id=self.initialize.trace_id,
+                trace_id=self.config.initialize.trace_id,
                 entity_client=db_client,
-                calculated_feature=self.initialize.requested_metrics,
-                amplitude=self.initialize.amplitude,
-                stimuli_types=self.initialize.protocols,
+                calculated_feature=self.config.initialize.requested_metrics,
+                amplitude=self.config.initialize.amplitude,
+                stimuli_types=self.config.initialize.protocols,
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e

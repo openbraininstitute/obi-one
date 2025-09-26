@@ -14,12 +14,14 @@ from obi_one.scientific.tasks.morphology_containerization import MorphologyConta
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask
 from obi_one.scientific.tasks.morphology_location_form import MorphologyLocationsTask
 from obi_one.scientific.tasks.simulations import GenerateSimulationTask
+from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
     | CircuitExtractionTask
     | BasicConnectivityPlotTask
     | ConnectivityMatrixExtractionTask
+    | ElectrophysiologyMetricsTask
     | FolderCompressionTask
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask

@@ -14,6 +14,7 @@ from obi_one.scientific.tasks.circuit_extraction import (
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractions,
 )
+from obi_one.scientific.tasks.ephys_extraction_task import ElectrophysiologyMetricsForm
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressions,
 )
@@ -30,6 +31,7 @@ FormUnion = Annotated[
     BasicConnectivityPlots
     | CircuitExtractions
     | ConnectivityMatrixExtractions
+    | ElectrophysiologyMetricsForm
     | FolderCompressions
     | MorphologyContainerizationsForm
     | MorphologyDecontainerizationsForm
