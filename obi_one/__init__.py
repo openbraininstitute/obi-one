@@ -1,4 +1,3 @@
-from obi_one.core.activity import Activity
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -19,10 +18,8 @@ from obi_one.core.serialization import (
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
-from obi_one.core.validation import Validation
 
 __all__ = [
-    "Activity",
     "AfferentSynapsesBlock",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
@@ -31,7 +28,6 @@ __all__ = [
     "Block",
     "BlockReference",
     "CellMorphologyFromID",
-    "CellMorphologyValidation",
     "Circuit",
     "CircuitExtractionScanConfig",
     "CircuitExtractionSingleConfig",
@@ -144,7 +140,6 @@ __all__ = [
     "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
-    "Validation",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocations",
@@ -317,9 +312,6 @@ from obi_one.scientific.unions.unions_tasks import (
     get_tasks_config_type,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
-from obi_one.scientific.validations.cell_morphology_validation import (
-    CellMorphologyValidation,
-)
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
 PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"

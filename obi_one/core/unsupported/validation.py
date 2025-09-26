@@ -3,10 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from obi_one.core.activity import Activity
-
-
-class Validation(Activity, abc.ABC):
+class Validation(BaseModel, abc.ABC):
     """Base class for validation objects.
 
     This class is used to define the structure of validation objects.
