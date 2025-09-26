@@ -83,7 +83,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "ruff",
+    "ruff<=0.12.7",
 ]
 
 [build-system]
