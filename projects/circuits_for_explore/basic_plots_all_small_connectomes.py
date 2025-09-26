@@ -42,7 +42,7 @@ matrix_path = [obi.NamedPath(name=circ_name, path=f"{root}ConnectivityMatrices/{
 print(f"Generating figures for {len(matrix_path)} connectomes")
 
 
-basic_connectivity_plots_form = obi.BasicConnectivityPlots(initialize=obi.BasicConnectivityPlots.Initialize(
+basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(initialize=obi.BasicConnectivityPlotsScanConfig.Initialize(
     matrix_path= matrix_path,
                  plot_formats=("png",),  # sub-tuple of ('png', 'pdf', a'svg'), if not specified all are plotted
                  plot_types=("nodes", "small_adj_and_stats","network_in_2D", "property_table",), 
@@ -52,7 +52,7 @@ basic_connectivity_plots_form = obi.BasicConnectivityPlots(initialize=obi.BasicC
                 # rendering_color_file = 'colors_tab10.csv' # path to colors with node identifiers for each node
                  )
                  )
-grid_scan = obi.GridScan(form=basic_connectivity_plots_form, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
+grid_scan = obi.GridScan(form=basic_connectivity_plots_scan_config, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
 
 # Run
 grid_scan.execute(processing_method='run')

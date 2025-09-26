@@ -28,9 +28,9 @@ __all__ = [
     "Activity",
     "AfferentSynapsesBlock",
     "AllNeurons",
-    "BasicConnectivityPlot",
-    "BasicConnectivityPlotTask",
-    "BasicConnectivityPlots",
+    "BasicConnectivityPlotsSingleConfig",
+    "BasicConnectivityPlotsTask",
+    "BasicConnectivityPlotsScanConfig",
     "Block",
     "BlockReference",
     "Circuit",
@@ -236,9 +236,9 @@ from obi_one.scientific.simulation.stimulus import (
 )
 from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlot,
-    BasicConnectivityPlots,
-    BasicConnectivityPlotTask,
+    BasicConnectivityPlotsSingleConfig,
+    BasicConnectivityPlotsScanConfig,
+    BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtraction,

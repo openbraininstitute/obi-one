@@ -34,7 +34,7 @@ with contextlib.suppress(ImportError):  # Try to import connalysis
 L = logging.getLogger(__name__)
 
 
-class BasicConnectivityPlots(ScanConfig):
+class BasicConnectivityPlotsScanConfig(ScanConfig):
     """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
 
     Supported plot types:
@@ -48,7 +48,7 @@ class BasicConnectivityPlots(ScanConfig):
       - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
     """
 
-    single_coord_class_name: ClassVar[str] = "BasicConnectivityPlot"
+    single_coord_class_name: ClassVar[str] = "BasicConnectivityPlotsSingleConfig"
     name: ClassVar[str] = "Basic Connectivity Plots"
     description: ClassVar[str] = (
         "Generates basic connectivity plots and stats from a ConnectivityMatrix object."
@@ -94,14 +94,14 @@ class BasicConnectivityPlots(ScanConfig):
     initialize: Initialize
 
 
-class BasicConnectivityPlot(BasicConnectivityPlots, SingleConfigMixin):
+class BasicConnectivityPlotsSingleConfig(BasicConnectivityPlotsScanConfig, SingleConfigMixin):
     """Generates and saves basic connectivity plots from a ConnectivityMatrix objects."""
 
 
-class BasicConnectivityPlotTask(Task):
+class BasicConnectivityPlotsTask(Task):
     """Task to generate and save basic connectivity plots from a ConnectivityMatrix object."""
 
-    config: BasicConnectivityPlot
+    config: BasicConnectivityPlotsSingleConfig
 
     @staticmethod
     def nodes_plot(

@@ -16,7 +16,7 @@ def test_basic_connectivity_plots(tmp_path):
         ),
     ]
 
-    plot_init = obi.BasicConnectivityPlots.Initialize(
+    plot_init = obi.BasicConnectivityPlotsScanConfig.Initialize(
         matrix_path=matrix_list,
         plot_formats=("png", "pdf", "svg"),
         rendering_cmap="custom",
@@ -24,7 +24,7 @@ def test_basic_connectivity_plots(tmp_path):
             EXAMPLES_DIR / "C_forms" / "basic_connectivity_plots" / "colors_tab10.csv"
         ),
     )
-    basic_connectivity_plots_form = obi.BasicConnectivityPlots(initialize=plot_init)
+    basic_connectivity_plots_form = obi.BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
     # Run plot generation
     grid_scan = obi.GridScan(

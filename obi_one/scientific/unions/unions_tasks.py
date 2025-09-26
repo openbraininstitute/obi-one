@@ -3,7 +3,7 @@ from typing import Annotated, get_args
 from pydantic import Discriminator
 
 from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlotTask,
+    BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionTask,
@@ -22,7 +22,7 @@ TasksUnion = Annotated[
     GenerateSimulationTask
     | CircuitExtractionTask
     | ContributeMorphologyTask
-    | BasicConnectivityPlotTask
+    | BasicConnectivityPlotsTask
     | ConnectivityMatrixExtractionTask
     | ElectrophysiologyMetricsTask
     | FolderCompressionTask
