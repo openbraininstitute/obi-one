@@ -11,6 +11,7 @@ from pydantic import (
     NonNegativeFloat,
     PositiveFloat,
     PrivateAttr,
+    model_validator,
 )
 
 from obi_one.core.block import Block
@@ -106,7 +107,7 @@ class SimulationsForm(Form):
         group_order=1,
     )
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=lambda: {ALL_NEURON_SET_NAME: AllNeurons(block_name=ALL_NEURON_SET_NAME)},
+        default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
@@ -121,6 +122,34 @@ class SimulationsForm(Form):
         group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
         group_order=1,
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _inject_default_node_set(cls, data):
+        if not data:
+            return data
+
+        # ensure the containers exist
+        init = data.setdefault("initialize", {})
+        ns   = data.setdefault("neuron_sets", {})
+
+        # only act if user didn't specify initialize.node_set
+        if init.get("node_set") is None:
+            # if no neuron sets were provided, create “All Neurons”
+            if not ns:
+                ns[ALL_NEURON_SET_NAME] = AllNeurons(block_name=ALL_NEURON_SET_NAME)
+
+            # choose a deterministic default (prefer “All Neurons”)
+            name = ALL_NEURON_SET_NAME if ALL_NEURON_SET_NAME in ns else next(iter(ns))
+
+            # inject an unbound reference; it will bind later in _ensure_neuron_set()
+            init["node_set"] = {
+                "block_dict_name": "neuron_sets",
+                "block_name": name,
+                "type": "NeuronSetReference",
+            }
+
+        return data
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator]
