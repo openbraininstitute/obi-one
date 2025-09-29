@@ -1,13 +1,10 @@
-from typing_extensions import Literal
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulations import GenerateSimulationTask
 
 
 class SimulationsForm(CircuitSimulationScanConfig):
-    
     class Initialize(CircuitSimulationScanConfig.Initialize):
         pass
 
@@ -15,7 +12,6 @@ class SimulationsForm(CircuitSimulationScanConfig):
 
 
 class Simulation(CircuitSimulationSingleConfig):
-
     class Initialize(CircuitSimulationScanConfig.Initialize):
         pass
 

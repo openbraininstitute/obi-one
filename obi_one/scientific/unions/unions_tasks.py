@@ -61,7 +61,5 @@ _config_tasks_map = {
 }
 
 
-
-
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[type(config).__name__]

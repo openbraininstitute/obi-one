@@ -124,8 +124,8 @@ __all__ = [
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
     "Simulation",
-    "SimulationsForm",
     "SimulationNeuronSetUnion",
+    "SimulationsForm",
     "SingleConfigMixin",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -293,6 +293,7 @@ from obi_one.scientific.tasks.simulations import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
@@ -304,10 +305,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
     SimulationNeuronSetUnion,
-)
-from obi_one.scientific.unions.aliases import (
-    SimulationsForm,
-    Simulation
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
