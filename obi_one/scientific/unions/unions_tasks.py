@@ -1,4 +1,4 @@
-from typing import Annotated, get_args
+from typing import Annotated
 
 from pydantic import Discriminator
 
@@ -34,15 +34,6 @@ TasksUnion = Annotated[
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]
-
-
-inner, *_ = get_args(TasksUnion)
-task_types = get_args(inner)
-
-_config_tasks_map = {
-    task.model_fields["config"].annotation if "config" in task.model_fields else None: task
-    for task in task_types
-}
 
 _config_tasks_map = {
     "Simulation": GenerateSimulationTask,
