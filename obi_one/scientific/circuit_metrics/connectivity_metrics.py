@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from typing import Annotated
 
 import bluepysnap as snap
 import numpy as np
@@ -9,16 +10,54 @@ from entitysdk.client import Client
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import uuid
 from httpx import HTTPStatusError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from pydantic.types import PositiveFloat
 
 import obi_one as obi
 
 
+class ConnectivityMetricsRequest(BaseModel):
+    circuit_id: str
+    edge_population: Annotated[
+        str, Field(description="Name of the edge population to extract connectivity metrics from")
+    ]
+    pre_selection: Annotated[
+        dict | None, Field(description="Property/value pairs for pre-synaptic node selection")
+    ] = None
+    post_selection: Annotated[
+        dict | None, Field(description="Property/value pairs for post-synaptic node selection")
+    ] = None
+    group_by: Annotated[str | None, Field(description="Property name to group connectivity by")] = (
+        None
+    )
+    max_distance: Annotated[
+        PositiveFloat | None,
+        Field(description="Maximum distance (in um) to take connectivity into account"),
+    ] = None
+
+
 class ConnectivityMetricsOutput(BaseModel):
-    pre_type: list[str | None] = [None]
-    post_type: list[str | None] = [None]
-    connection_probability: list[float] = [np.nan]
-    mean_number_of_synapses: list[float] = [np.nan]
+    pre_type: Annotated[
+        list[str | None],
+        Field(description="Pre-synaptic type values the output metrics are grouped by"),
+    ] = [None]
+    post_type: Annotated[
+        list[str | None],
+        Field(description="Post-synaptic type values the output metrics are grouped by"),
+    ] = [None]
+    connection_probability: Annotated[
+        list[float],
+        Field(
+            description="Connection probabilities (in percent) between pre- and post-synaptic types"
+        ),
+    ] = [np.nan]
+    mean_number_of_synapses: Annotated[
+        list[float],
+        Field(
+            description="Mean numbers of synapses per connection between pre- and"
+            " post-synaptic types"
+        ),
+    ] = [np.nan]
 
 
 class TemporaryPartialCircuit:
@@ -147,7 +186,7 @@ def get_connectivity_metrics(
             group_by=group_by,
             max_distance=max_distance,
             props_for_distance=dist_props,
-            skip_empty_groups=True
+            skip_empty_groups=True,
         )
 
     # Return results
