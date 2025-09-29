@@ -114,13 +114,6 @@ class TemporaryPartialCircuit:
         self.temp_dir.__exit__(*args)
 
 
-def _get_neuron_selection(
-    circuit: obi.Circuit, node_population: str, neuron_set: obi.NeuronSet | None = None
-) -> list | None:
-    nrn_sel = None if neuron_set is None else neuron_set.get_neuron_ids(circuit, node_population)
-    return nrn_sel
-
-
 def _get_stacked_dataframe(conn_dict: dict, data_sel: str) -> pd.DataFrame:
     df = pd.DataFrame(conn_dict[data_sel]["data"], columns=conn_dict["common"]["tgt_group_values"])
     df["_pre_"] = conn_dict["common"]["src_group_values"]
@@ -132,8 +125,8 @@ def get_connectivity_metrics(
     circuit_id: str,
     db_client: Client,
     edge_population: str,
-    pre_neuron_set: obi.NeuronSet | None = None,
-    post_neuron_set: obi.NeuronSet | None = None,
+    pre_selection: dict | None = None,
+    post_selection: dict | None = None,
     group_by: str | None = None,
     max_distance: float | None = None,
 ) -> ConnectivityMetricsOutput:
@@ -145,20 +138,16 @@ def get_connectivity_metrics(
         c = circuit.sonata_circuit
 
         # Compute connection probability
-        edges = c.edges[edge_population]
-        src_sel = _get_neuron_selection(circuit, edges.source.name, pre_neuron_set)
-        tgt_sel = _get_neuron_selection(circuit, edges.target.name, post_neuron_set)
-
         dist_props = None if max_distance is None else ["x", "y", "z"]
-
         conn_dict = connectivity.compute(
             c,
-            sel_src=src_sel,
-            sel_dest=tgt_sel,
+            sel_src=pre_selection,
+            sel_dest=post_selection,
             edges_popul_name=edge_population,
             group_by=group_by,
             max_distance=max_distance,
             props_for_distance=dist_props,
+            skip_empty_groups=True
         )
 
     # Return results
