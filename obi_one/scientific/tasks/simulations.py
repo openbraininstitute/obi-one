@@ -62,6 +62,8 @@ class SimulationsForm(ScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
+    _campaign: entitysdk.models.SimulationCampaign
+
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
@@ -211,7 +213,7 @@ class SimulationsForm(ScanConfig):
         group_order=0,
     )
 
-    def initialize_db_campaign(
+    def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
@@ -245,7 +247,7 @@ class SimulationsForm(ScanConfig):
 
         return self._campaign
 
-    def save(
+    def create_campaign_generation_entity(
         self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
     ) -> None:
         L.info("3. Saving completed simulation campaign generation")
@@ -263,6 +265,43 @@ class SimulationsForm(ScanConfig):
 # REFACTOR: SHOULD BE RENAMED GenerateSimulationSingleConfig
 class Simulation(SimulationsForm, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
+
+    _single_entity: entitysdk.models.Simulation
+
+    @property
+    def single_entity(self) -> entitysdk.models.Simulation:
+        return self._single_entity
+
+    def create_single_entity_with_config(
+        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
+    ) -> entitysdk.models.Simulation:
+        """Saves the simulation to the database."""
+        L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
+
+        if not isinstance(self.initialize.circuit, CircuitFromID):
+            msg = "Simulation can only be saved to entitycore if circuit is CircuitFromID or MEModelFromID"
+            raise OBIONEError(msg)
+
+
+        L.info("-- Register Simulation Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.Simulation(
+                name=f"Simulation {self.idx}",
+                description=f"Simulation {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                entity_id=self.initialize.circuit.id_str,
+                simulation_campaign_id=campaign.id,
+            )
+        )
+
+        L.info("-- Upload simulation_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.Simulation,
+            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_content_type="application/json",
+            asset_label="simulation_generation_config",
+        )
 
 
 class GenerateSimulationTask(Task):
@@ -307,7 +346,7 @@ class GenerateSimulationTask(Task):
         if len(manipulation_list) > 0:
             self._sonata_config["connection_overrides"] = manipulation_list
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
         self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
@@ -322,9 +361,11 @@ class GenerateSimulationTask(Task):
 
         if isinstance(self.config.initialize.circuit, CircuitFromID):
             L.info("initialize.circuit is a CircuitFromID instance.")
-            self._circuit_id = self.config.initialize.circuit.id_str
+
+            print(self.config.initialize.circuit.entity(db_client=db_client).assets)
 
             for asset in self.config.initialize.circuit.entity(db_client=db_client).assets:
+                print(asset.label)
                 if asset.label == "sonata_circuit":
                     self.config.initialize.circuit.download_circuit_directory(
                         dest_dir=self.config.coordinate_output_root, db_client=db_client
@@ -409,35 +450,15 @@ class GenerateSimulationTask(Task):
         with simulation_config_path.open("w", encoding="utf-8") as f:
             json.dump(self._sonata_config, f, indent=2)
 
-    def save(
-        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
+        if db_client:
+            self.save_generated_simulation_assets_to_entity(db_client)
+
+    def save_generated_simulation_assets_to_entity(
+        self, db_client: entitysdk.client.Client
     ) -> None:
-        """Saves the simulation to the database."""
-        L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
-
-        L.info("-- Register Simulation Entity")
-        simulation = db_client.register_entity(
-            entitysdk.models.Simulation(
-                name=f"Simulation {self.idx}",
-                description=f"Simulation {self.idx}",
-                scan_parameters=self.config.single_coordinate_scan_params.dictionary_representaiton(),
-                entity_id=self._circuit_id,
-                simulation_campaign_id=campaign.id,
-            )
-        )
-
-        L.info("-- Upload simulation_generation_config")
-        _ = db_client.upload_file(
-            entity_id=simulation.id,
-            entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.config.coordinate_output_root, "run_coordinate_instance.json"),
-            file_content_type="application/json",
-            asset_label="simulation_generation_config",
-        )
-
         L.info("-- Upload sonata_simulation_config")
         _ = db_client.upload_file(
-            entity_id=simulation.id,
+            entity_id=self.config.single_entity.id,
             entity_type=entitysdk.models.Simulation,
             file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
             file_content_type="application/json",
@@ -446,7 +467,7 @@ class GenerateSimulationTask(Task):
 
         L.info("-- Upload custom_node_sets")
         _ = db_client.upload_file(
-            entity_id=simulation.id,
+            entity_id=self.config.single_entity.id,
             entity_type=entitysdk.models.Simulation,
             file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
             file_content_type="application/json",
@@ -459,11 +480,9 @@ class GenerateSimulationTask(Task):
                 spike_file = self._sonata_config["inputs"][input_]["spike_file"]
                 if spike_file is not None:
                     _ = db_client.upload_file(
-                        entity_id=simulation.id,
+                        entity_id=self.config.single_entity.id,
                         entity_type=entitysdk.models.Simulation,
                         file_path=Path(self.config.coordinate_output_root, spike_file),
                         file_content_type="application/x-hdf5",
                         asset_label="replay_spikes",
                     )
-
-        return simulation
