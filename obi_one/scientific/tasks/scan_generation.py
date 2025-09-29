@@ -218,10 +218,9 @@ class ScanGenerationTask(Task, abc.ABC):
         if db_client and hasattr(self.form, "create_campaign_entity_with_config"):
             campaign = self.form.create_campaign_entity_with_config(
                 output_root=self.output_root,
-                multiple_value_parameters_dictionary=self.multiple_value_parameters_dictionary, 
+                multiple_value_parameters_dictionary=self.multiple_value_parameters_dictionary,
                 db_client=db_client,
             )
-            print("campaign: ", campaign)
 
         # Create the single_configs
         self._single_configs = self.create_single_configs()
@@ -239,14 +238,14 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Create the single coordinate entity
             if db_client and hasattr(single_coord_config, "create_single_entity_with_config"):
-                single_coord_config.create_single_entity_with_config(campaign=campaign, db_client=db_client)
+                single_coord_config.create_single_entity_with_config(
+                    campaign=campaign, db_client=db_client
+                )
 
         # Create the campaign generation entity
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
             self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
-
-        return self._single_configs, None
 
 
 # REFACTORING NOTE: Should be renmaed to GridScanGenerationTask

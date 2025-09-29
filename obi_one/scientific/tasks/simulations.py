@@ -62,7 +62,14 @@ class SimulationsForm(ScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    _campaign: entitysdk.models.SimulationCampaign
+    _campaign: entitysdk.models.SimulationCampaign = None
+
+    @property
+    def campaign(self) -> entitysdk.models.SimulationCampaign:
+        if self._campaign is None:
+            msg = "Campaign entity has not been created yet!"
+            raise OBIONEError(msg)
+        return self._campaign
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
@@ -279,9 +286,11 @@ class Simulation(SimulationsForm, SingleConfigMixin):
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
         if not isinstance(self.initialize.circuit, CircuitFromID):
-            msg = "Simulation can only be saved to entitycore if circuit is CircuitFromID or MEModelFromID"
+            msg = (
+                "Simulation can only be saved to entitycore if circuit is CircuitFromID "
+                "or MEModelFromID"
+            )
             raise OBIONEError(msg)
-
 
         L.info("-- Register Simulation Entity")
         self._single_entity = db_client.register_entity(
@@ -362,10 +371,7 @@ class GenerateSimulationTask(Task):
         if isinstance(self.config.initialize.circuit, CircuitFromID):
             L.info("initialize.circuit is a CircuitFromID instance.")
 
-            print(self.config.initialize.circuit.entity(db_client=db_client).assets)
-
             for asset in self.config.initialize.circuit.entity(db_client=db_client).assets:
-                print(asset.label)
                 if asset.label == "sonata_circuit":
                     self.config.initialize.circuit.download_circuit_directory(
                         dest_dir=self.config.coordinate_output_root, db_client=db_client
