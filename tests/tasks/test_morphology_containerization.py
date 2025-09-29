@@ -29,7 +29,7 @@ def test_morphology_containerization(tmp_path):
     )
 
     # Run containerization
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=morphology_containerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",

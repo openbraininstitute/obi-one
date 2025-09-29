@@ -26,7 +26,7 @@ def test_morphology_decontainerization(tmp_path):
     )
 
     # Run decontainerization
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=morphology_decontainerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",

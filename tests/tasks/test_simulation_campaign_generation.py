@@ -24,7 +24,7 @@ def _setup_sim():
     ]
 
     sim_duration = 3000.0
-    sim_conf = obi.SimulationsForm.empty_config()
+    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
@@ -72,7 +72,7 @@ def _setup_sim():
     sim_conf.add(syn_manip_mg, name="SynapticMgManipulation")
     sim_conf.add(syn_manip_use, name="ScaleAcetylcholineUSESynapticManipulation")
 
-    simulations_initialize = obi.SimulationsForm.Initialize(
+    simulations_initialize = obi.CircuitSimulationScanConfig.Initialize(
         circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=sim_duration
     )
 
@@ -272,7 +272,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         for idx in range(2)
     ]
     init_dict = {
-        "type": "SimulationsForm.Initialize",
+        "type": "CircuitSimulationScanConfig.Initialize",
         "circuit": circuit_list,
         "node_set": id10_ref,
         "simulation_length": 3000.0,
@@ -286,7 +286,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "campaign_description": "Test description",
     }
     form_dict = {
-        "type": "SimulationsForm",
+        "type": "CircuitSimulationScanConfig",
         "timestamps": {"RegularTimestamps": ts_dict},
         "stimuli": {"PoissonInputStimulus": poisson_dict, "SynchronousInputStimulus": sync_dict},
         "recordings": {"VoltageRecording": volt_dict},
@@ -310,7 +310,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             cfg = json.load(f)
 
         assert len(cfg.pop("obi_one_version")) > 0
-        assert cfg.pop("type") == "Simulation"
+        assert cfg.pop("type") == "CircuitSimulationSingleConfig"
         assert cfg.pop("idx") == instance.idx
         assert cfg.pop("coordinate_output_root") == str(scan.output_root / str(instance.idx))
         assert cfg.pop("scan_output_root") == str(scan.output_root)
@@ -416,7 +416,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
         }
         init_dict = {
-            "type": "SimulationsForm.Initialize",
+            "type": "CircuitSimulationScanConfig.Initialize",
             "circuit": circuit_dict,
             "node_set": id10_ref,
             "simulation_length": 3000.0,
@@ -442,7 +442,7 @@ def test_simulation_campaign_generation(tmp_path):
     validated_sim_conf = sim_conf.validated_config()
 
     # Generate a grid scan
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -464,7 +464,7 @@ def test_simulation_campaign_generation(tmp_path):
         obi.run_task_for_single_configs_of_generated_scan(grid_scan)
 
     # Generate a coupled coordinate scan
-    coupled_scan = obi.CoupledScan(
+    coupled_scan = obi.CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -510,7 +510,7 @@ def test_simulation_campaign_generation(tmp_path):
     # Use different numbers of coordinates in coupled scan --> Error
     sim_conf.synaptic_manipulations["SynapticMgManipulation"].magnesium_value = [2.0, 2.4, 2.8]
     validated_sim_conf = sim_conf.validated_config()
-    coupled_scan2 = obi.CoupledScan(
+    coupled_scan2 = obi.CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan_err",
         coordinate_directory_option="ZERO_INDEX",

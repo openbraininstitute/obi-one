@@ -21,6 +21,6 @@ basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(
                         #plot_types=("nodes",) # sub-tuple of ('nodes', 'connectivity_global', 'connectivity_pathway'), if not specified all are plotted
                         )
                         )
-grid_scan = obi.GridScan(form=basic_connectivity_plots_scan_config, output_root=output_root, coordinate_directory_option="VALUE")
+grid_scan = obi.GridScanGenerationTask(form=basic_connectivity_plots_scan_config, output_root=output_root, coordinate_directory_option="VALUE")
 
 grid_scan.execute(processing_method='run')

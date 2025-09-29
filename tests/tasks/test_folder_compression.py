@@ -21,7 +21,7 @@ def test_folder_compression(tmp_path):
     folder_compressions_form = obi.FolderCompressionScanConfig(initialize=compression_init)
 
     # Run circuit folder compression
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=folder_compressions_form,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",

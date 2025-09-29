@@ -54,11 +54,10 @@ class BlockGroup(StrEnum):
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-# REFACTOR: SHOULD BE RENAMED GenerateSimulationScanConfig
-class SimulationsForm(ScanConfig):
-    """Simulations ScanConfig."""
+class CircuitSimulationScanConfig(ScanConfig):
+    """CircuitSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "Simulation"
+    single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -269,8 +268,7 @@ class SimulationsForm(ScanConfig):
         )
 
 
-# REFACTOR: SHOULD BE RENAMED GenerateSimulationSingleConfig
-class Simulation(SimulationsForm, SingleConfigMixin):
+class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
     _single_entity: entitysdk.models.Simulation
@@ -314,7 +312,7 @@ class Simulation(SimulationsForm, SingleConfigMixin):
 
 
 class GenerateSimulationTask(Task):
-    config: Simulation
+    config: CircuitSimulationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"

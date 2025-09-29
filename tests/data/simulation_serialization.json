@@ -1,6 +1,6 @@
 {
     "obi_one_version": "2025.9.1.dev26",
-    "type": "Simulation",
+    "type": "CircuitSimulationSingleConfig",
     "idx": 0,
     "coordinate_output_root": "../../../../obi-output/circuit_simulations/grid_scan_explicit/stimuli.CurrentStimulus.amplitude=0.2/initialize.circuit=N_10__top_nodes_dim6",
     "scan_output_root": "../../../../obi-output/circuit_simulations/grid_scan_explicit",
@@ -136,7 +136,7 @@
     },
     "synaptic_manipulations": {},
     "initialize": {
-        "type": "SimulationsForm.Initialize",
+        "type": "CircuitSimulationScanConfig.Initialize",
         "circuit": {
             "name": "N_10__top_nodes_dim6",
             "path": "examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",

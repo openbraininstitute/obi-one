@@ -6,7 +6,6 @@ from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_wrapper import (
-    ScanWrapper,
     run_task_for_single_config,
     run_task_for_single_configs,
     run_task_for_single_configs_of_generated_scan,
@@ -33,6 +32,8 @@ __all__ = [
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitFromID",
+    "CircuitSimulationScanConfig",
+    "CircuitSimulationSingleConfig",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -50,6 +51,7 @@ __all__ = [
     "ContributeSubject",
     "ContributeSubjectForm",
     "CoupledScan",
+    "CoupledScanGenerationTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -62,6 +64,7 @@ __all__ = [
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
     "GridScan",
+    "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
@@ -118,12 +121,9 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
-    "ScanWrapper",
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
-    "Simulation",
     "SimulationNeuronSetUnion",
-    "SimulationsForm",
     "SingleConfigMixin",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -157,8 +157,8 @@ __all__ = [
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 from obi_one.core.scan_generation import (
-    CoupledScan,
-    GridScan,
+    CoupledScanGenerationTask,
+    GridScanGenerationTask,
     ScanGenerationTask,
 )
 from obi_one.scientific.blocks.afferent_synapses import (
@@ -288,7 +288,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
-from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
+from obi_one.scientific.tasks.simulations import (
+    CircuitSimulationScanConfig,
+    CircuitSimulationSingleConfig,
+)
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
@@ -314,3 +317,11 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference, Tim
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
 PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"
+
+
+class GridScan(GridScanGenerationTask):
+    pass
+
+
+class CoupledScan(CoupledScanGenerationTask):
+    pass

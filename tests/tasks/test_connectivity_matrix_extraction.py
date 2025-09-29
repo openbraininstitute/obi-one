@@ -29,7 +29,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_a",
         coordinate_directory_option="VALUE",
@@ -61,7 +61,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_b",
         coordinate_directory_option="VALUE",
@@ -93,7 +93,7 @@ def test_connectivity_matrix_extraction(tmp_path):
         initialize=extraction_init
     )
 
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_c",
         coordinate_directory_option="VALUE",

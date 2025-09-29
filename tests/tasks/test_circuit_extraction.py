@@ -163,7 +163,7 @@ def test_circuit_extraction(tmp_path):
         initialize=extraction_init, neuron_set=neuron_set
     )
 
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=circuit_extractions_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",

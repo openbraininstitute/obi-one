@@ -19,10 +19,12 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 )
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
-from obi_one.scientific.tasks.simulations import SimulationsForm
+from obi_one.scientific.tasks.simulations import CircuitSimulationScanConfig
+from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[
-    SimulationsForm
+    CircuitSimulationScanConfig
+    | SimulationsForm  # Alias for backward compatibility
     | CircuitExtractionScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig

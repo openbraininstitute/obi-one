@@ -10,7 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_task_for_single_configs_of_generated_scan
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.scan_generation import GridScan
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyForm,
     ContributeSubjectForm,
@@ -19,7 +19,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
 from obi_one.scientific.tasks.simulations import (
-    SimulationsForm,
+    CircuitSimulationScanConfig,
 )
 
 
@@ -51,7 +51,7 @@ def create_endpoint_for_form(
         campaign = None
         try:
             with tempfile.TemporaryDirectory() as tdir:
-                grid_scan = GridScan(
+                grid_scan = GridScanGenerationTask(
                     form=form,
                     # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
                     #        / "grid_scan", => ERA001 Found commented-out code
@@ -88,8 +88,8 @@ def create_endpoint_for_form(
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
-        (SimulationsForm, "generate", ""),
-        (SimulationsForm, "generate", "save"),
+        (CircuitSimulationScanConfig, "generate", ""),
+        (CircuitSimulationScanConfig, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyForm, "generate", ""),
         (ContributeSubjectForm, "generate", ""),

@@ -121,7 +121,7 @@ class ScanGenerationTask(Task, abc.ABC):
                 (i.e. timestamps.timestamps_1.interval = [1.0, 5.0] ->
                     timestamps.timestamps_1.interval = 1.0)
             - Casting the form to its single_config_class_name type
-                (i.e. SimulationsForm -> Simulation)
+                (i.e. CircuitSimulationScanConfig -> CircuitSimulationSingleConfig)
         """
         single_configs = []
 
@@ -249,8 +249,7 @@ class ScanGenerationTask(Task, abc.ABC):
             self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
 
 
-# REFACTORING NOTE: Should be renmaed to GridScanGenerationTask
-class GridScan(ScanGenerationTask):
+class GridScanGenerationTask(ScanGenerationTask):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
@@ -287,8 +286,7 @@ class GridScan(ScanGenerationTask):
         return self._coordinate_parameters
 
 
-# REFACTORING NOTE: Should be renmaed to CoupledScanGenerationTask
-class CoupledScan(ScanGenerationTask):
+class CoupledScanGenerationTask(ScanGenerationTask):
     """Description."""
 
     def coordinate_parameters(self, *, display: bool = False) -> list:

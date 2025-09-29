@@ -27,7 +27,7 @@ def test_basic_connectivity_plots(tmp_path):
     basic_connectivity_plots_form = obi.BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
     # Run plot generation
-    grid_scan = obi.GridScan(
+    grid_scan = obi.GridScanGenerationTask(
         form=basic_connectivity_plots_form,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",

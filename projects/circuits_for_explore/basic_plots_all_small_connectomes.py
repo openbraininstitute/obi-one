@@ -52,7 +52,7 @@ basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(init
                 # rendering_color_file = 'colors_tab10.csv' # path to colors with node identifiers for each node
                  )
                  )
-grid_scan = obi.GridScan(form=basic_connectivity_plots_scan_config, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
+grid_scan = obi.GridScanGenerationTask(form=basic_connectivity_plots_scan_config, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
 
 # Run
 grid_scan.execute(processing_method='run')
