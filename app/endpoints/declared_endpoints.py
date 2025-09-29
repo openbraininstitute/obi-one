@@ -16,6 +16,10 @@ from obi_one.scientific.circuit_metrics.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.circuit_metrics.connectivity_metrics import (
+    ConnectivityMetricsOutput,
+    get_connectivity_metrics,
+)
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -215,5 +219,64 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:  # noqa: C901
             ) from err
 
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
+
+    @router.get(
+        "/connectivity-metrics/{circuit_id}",
+        summary="connectivity metrics",
+        description="This calculates connectivity metrics",
+    )
+    def connectivity_metrics_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        edge_population: Annotated[
+            str,
+            Query(
+                description="Name of the edge population to extract connectivity metrics from",
+            ),
+        ],
+        pre_selection: Annotated[
+            None,  # dict | None,
+            Query(
+                description="Property/value pairs for pre-synaptic node selection",
+            ),
+        ] = None,
+        post_selection: Annotated[
+            None,  # dict | None,
+            Query(
+                description="Property/value pairs for post-synaptic node selection",
+            ),
+        ] = None,
+        group_by: Annotated[
+            str | None,
+            Query(
+                description="Property name to group connectivity by",
+            ),
+        ] = None,
+        max_distance: Annotated[
+            float | None,
+            Query(
+                description="Maximum distance to take connectivity into account",
+            ),
+        ] = None,
+    ) -> ConnectivityMetricsOutput:
+        try:
+            conn_metrics = get_connectivity_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                edge_population=edge_population,
+                pre_selection=pre_selection,
+                post_selection=post_selection,
+                group_by=group_by,
+                max_distance=max_distance,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+        return conn_metrics
 
     return router
