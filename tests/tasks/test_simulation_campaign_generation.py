@@ -450,7 +450,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(grid_scan.multiple_value_parameters()) == 2
     assert len(grid_scan.coordinate_parameters()) == 4
     grid_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+    obi.run_tasks_for_generated_scan(grid_scan)
 
     _check_generated_sims(tmp_path, grid_scan)
     _check_generated_sonata_configs(tmp_path, grid_scan)
@@ -461,7 +461,7 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+        obi.run_tasks_for_generated_scan(grid_scan)
 
     # Generate a coupled coordinate scan
     coupled_scan = obi.CoupledScanGenerationTask(
@@ -472,7 +472,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(coupled_scan.multiple_value_parameters()) == 2
     assert len(coupled_scan.coordinate_parameters()) == 2
     coupled_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(coupled_scan)
+    obi.run_tasks_for_generated_scan(coupled_scan)
 
     _check_generated_sims(tmp_path, coupled_scan)
     _check_generated_sonata_configs(tmp_path, coupled_scan)
@@ -483,7 +483,7 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_task_for_single_configs_of_generated_scan(coupled_scan)
+        obi.run_tasks_for_generated_scan(coupled_scan)
 
     # Use a neuron set reference without adding it to the simulation config --> Error
     sim_neuron_set2 = obi.IDNeuronSet(

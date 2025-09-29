@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
-from obi_one import run_task_for_single_configs_of_generated_scan
+from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.contribute import (
@@ -63,7 +63,7 @@ def create_endpoint_for_form(
                     db_client=db_client,
                 )
                 campaign = grid_scan.form.campaign
-                run_task_for_single_configs_of_generated_scan(grid_scan, db_client=db_client)
+                run_tasks_for_generated_scan(grid_scan, db_client=db_client)
 
         except Exception as e:
             error_msg = str(e)

@@ -169,13 +169,13 @@ def test_circuit_extraction(tmp_path):
         coordinate_directory_option="ZERO_INDEX",
     )
     grid_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+    obi.run_tasks_for_generated_scan(grid_scan)
 
     # Rerun --> Error since output file already exists
     with pytest.raises(
         ValueError, match=re.escape("Unable to synchronously create group (name already exists)")
     ):
-        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+        obi.run_tasks_for_generated_scan(grid_scan)
 
     # Check extracted circuits
     for instance in grid_scan.single_configs:

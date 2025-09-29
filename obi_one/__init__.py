@@ -8,7 +8,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_wrapper import (
     run_task_for_single_config,
     run_task_for_single_configs,
-    run_task_for_single_configs_of_generated_scan,
+    run_tasks_for_generated_scan,
 )
 from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
@@ -153,7 +153,7 @@ __all__ = [
     "rCA1CA3Inputs",
     "run_task_for_single_config",
     "run_task_for_single_configs",
-    "run_task_for_single_configs_of_generated_scan",
+    "run_tasks_for_generated_scan",
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod

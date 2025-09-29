@@ -40,7 +40,7 @@ def test_connectivity_matrix_extraction(tmp_path):
         ValueError,
         match=f"Edge population '{extraction_init.edge_population}' not found in circuit!",
     ):
-        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+        obi.run_tasks_for_generated_scan(grid_scan)
 
     # (b) Matrix extraction with invalid node attribute --> Error
     circuit_list = [
@@ -69,7 +69,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     grid_scan.execute()
 
     with pytest.raises(ValueError, match=re.escape("Unknown properties: ['INVALID']")):
-        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+        obi.run_tasks_for_generated_scan(grid_scan)
 
     # (c) Matrix extraction from two circuits through grid scan
     circuit_list = [
@@ -99,7 +99,7 @@ def test_connectivity_matrix_extraction(tmp_path):
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+    obi.run_tasks_for_generated_scan(grid_scan)
 
     # Rerun --> Error since output file already exists
     with pytest.raises(
@@ -110,7 +110,7 @@ def test_connectivity_matrix_extraction(tmp_path):
             }' already exists!"
         ),
     ):
-        obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+        obi.run_tasks_for_generated_scan(grid_scan)
 
     # Check extracted matrices
     for circuit in circuit_list:

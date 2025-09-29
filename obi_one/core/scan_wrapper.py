@@ -20,7 +20,7 @@ def run_task_for_single_configs(
         run_task_for_single_config(single_config, db_client=db_client)
 
 
-def run_task_for_single_configs_of_generated_scan(
+def run_tasks_for_generated_scan(
     scan_generation: ScanGenerationTask, db_client: entitysdk.client.Client = None
 ) -> None:
     run_task_for_single_configs(scan_generation.single_configs, db_client=db_client)

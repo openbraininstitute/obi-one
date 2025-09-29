@@ -35,7 +35,7 @@ def test_morphology_containerization(tmp_path):
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+    obi.run_tasks_for_generated_scan(grid_scan)
 
     # Check that output circuits with containerized morphologies are created and accessible
     instances = grid_scan.single_configs

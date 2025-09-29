@@ -27,7 +27,7 @@ def test_folder_compression(tmp_path):
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_task_for_single_configs_of_generated_scan(grid_scan)
+    obi.run_tasks_for_generated_scan(grid_scan)
 
     # Check that expected files have been created
     instances = grid_scan.single_configs
