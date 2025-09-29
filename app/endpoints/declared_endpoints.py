@@ -236,7 +236,9 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:  # noqa: C901
                 db_client=db_client,
                 edge_population=conn_request.edge_population,
                 pre_selection=conn_request.pre_selection,
+                pre_node_set=conn_request.pre_node_set,
                 post_selection=conn_request.post_selection,
+                post_node_set=conn_request.post_node_set,
                 group_by=conn_request.group_by,
                 max_distance=conn_request.max_distance,
             )

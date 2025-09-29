@@ -22,10 +22,17 @@ class ConnectivityMetricsRequest(BaseModel):
         str, Field(description="Name of the edge population to extract connectivity metrics from")
     ]
     pre_selection: Annotated[
-        dict | None, Field(description="Property/value pairs for pre-synaptic node selection")
+        dict | None, Field(description="Property/value pairs for pre-synaptic neuron selection")
+    ] = None
+    pre_node_set: Annotated[
+        str | None, Field(description="Existing node set to apply pre-synaptic neuron selection in")
     ] = None
     post_selection: Annotated[
-        dict | None, Field(description="Property/value pairs for post-synaptic node selection")
+        dict | None, Field(description="Property/value pairs for post-synaptic neuron selection")
+    ] = None
+    post_node_set: Annotated[
+        str | None,
+        Field(description="Existing node set to apply post-synaptic neuron selection in"),
     ] = None
     group_by: Annotated[str | None, Field(description="Property name to group connectivity by")] = (
         None
@@ -165,7 +172,9 @@ def get_connectivity_metrics(
     db_client: Client,
     edge_population: str,
     pre_selection: dict | None = None,
+    pre_node_set: str | None = None,
     post_selection: dict | None = None,
+    post_node_set: str | None = None,
     group_by: str | None = None,
     max_distance: float | None = None,
 ) -> ConnectivityMetricsOutput:
@@ -177,11 +186,13 @@ def get_connectivity_metrics(
         c = circuit.sonata_circuit
 
         # Compute connection probability
+        pre_dict = pre_selection | {"node_set": pre_node_set}
+        post_dict = post_selection | {"node_set": post_node_set}
         dist_props = None if max_distance is None else ["x", "y", "z"]
         conn_dict = connectivity.compute(
             c,
-            sel_src=pre_selection,
-            sel_dest=post_selection,
+            sel_src=pre_dict,
+            sel_dest=post_dict,
             edges_popul_name=edge_population,
             group_by=group_by,
             max_distance=max_distance,
