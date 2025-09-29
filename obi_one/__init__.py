@@ -123,6 +123,8 @@ __all__ = [
     "ScanGenerationTask",
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
+    "Simulation",
+    "SimulationsForm",
     "SimulationNeuronSetUnion",
     "SingleConfigMixin",
     "SingleConfigMixin",
@@ -146,7 +148,6 @@ __all__ = [
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
-    "get_tasks_config_type",
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
@@ -304,6 +305,10 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetUnion,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.aliases import (
+    SimulationsForm,
+    Simulation
+)
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
@@ -311,7 +316,6 @@ from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import (
     TasksUnion,
     get_configs_task_type,
-    get_tasks_config_type,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
