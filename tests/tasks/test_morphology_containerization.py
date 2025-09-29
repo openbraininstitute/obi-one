@@ -4,7 +4,7 @@ import pytest
 from bluepysnap import BluepySnapError
 
 import obi_one as obi
-from obi_one.scientific import tasks
+from obi_one.scientific import library
 
 from tests.utils import CIRCUIT_DIR
 
@@ -18,7 +18,7 @@ def test_morphology_containerization(tmp_path):
         ),
     ]
 
-    hoc_path = Path(tasks.__file__).parent
+    hoc_path = Path(library.__file__).parent
     containerization_init = obi.MorphologyContainerizationScanConfig.Initialize(
         circuit=circuit_list,
         hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
