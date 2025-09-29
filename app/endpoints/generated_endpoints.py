@@ -10,6 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_task_for_single_configs_of_generated_scan
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.scan_generation import GridScan
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyForm,
     ContributeSubjectForm,
@@ -17,7 +18,6 @@ from obi_one.scientific.tasks.contribute import (
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
-from obi_one.core.scan_generation import GridScan
 from obi_one.scientific.tasks.simulations import (
     SimulationsForm,
 )

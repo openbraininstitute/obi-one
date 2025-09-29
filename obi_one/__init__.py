@@ -156,6 +156,11 @@ __all__ = [
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.scan_generation import (
+    CoupledScan,
+    GridScan,
+    ScanGenerationTask,
+)
 from obi_one.scientific.blocks.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
@@ -282,11 +287,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
-)
-from obi_one.core.scan_generation import (
-    CoupledScan,
-    GridScan,
-    ScanGenerationTask,
 )
 from obi_one.scientific.tasks.simulations import Simulation, SimulationsForm
 from obi_one.scientific.unions.unions_extracellular_locations import (
