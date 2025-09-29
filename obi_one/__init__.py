@@ -283,7 +283,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
-from obi_one.scientific.tasks.scan_generation import (
+from obi_one.core.scan_generation import (
     CoupledScan,
     GridScan,
     ScanGenerationTask,
