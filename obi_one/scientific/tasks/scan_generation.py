@@ -26,6 +26,7 @@ class ScanGenerationTask(Task, abc.ABC):
     form: ScanConfigsUnion  # REFACTORING NOTE: Should be renmaed to scan_config
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
+    obi_one_version: str | None = None
     _multiple_value_parameters: list = None
     _coordinate_parameters: list = PrivateAttr(default=[])
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])
