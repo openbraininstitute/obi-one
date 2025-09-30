@@ -5,10 +5,10 @@ import entitysdk
 from entitysdk.models import Circuit
 from entitysdk.models.entity import Entity
 from entitysdk.staging.circuit import stage_circuit
-from obi_one.core.exception import OBIONEError
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.exception import OBIONEError
 
 
 class CircuitFromID(EntityFromID):
@@ -32,4 +32,5 @@ class CircuitFromID(EntityFromID):
 
                 return circuit_dir
 
-        raise OBIONEError(f"No 'sonata_circuit' asset found for Circuit with ID {self.id_str}.")
+        msg = f"No 'sonata_circuit' asset found for Circuit with ID {self.id_str}."
+        raise OBIONEError(msg)

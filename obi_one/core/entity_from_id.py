@@ -20,12 +20,12 @@ class EntityFromID(OBIBaseModel, abc.ABC):
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
-    def _fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
+    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
         return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)
 
     def entity(self, db_client: entitysdk.client.Client) -> Entity:
         if self._entity is None:
-            self._entity = self.__class__._fetch(self.id_str, db_client=db_client)
+            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
         return self._entity
 
     @property
