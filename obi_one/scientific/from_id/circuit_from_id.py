@@ -5,6 +5,7 @@ import entitysdk
 from entitysdk.models import Circuit
 from entitysdk.models.entity import Entity
 from entitysdk.staging.circuit import stage_circuit
+from obi_one.core.exception import OBIONEError
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
@@ -16,7 +17,7 @@ class CircuitFromID(EntityFromID):
 
     def download_circuit_directory(
         self, dest_dir: Path = Path(), db_client: entitysdk.client.Client = None
-    ) -> None:
+    ) -> Path:
         for asset in self.entity(db_client=db_client).assets:
             if asset.label == "sonata_circuit":
                 circuit_dir = dest_dir / asset.path
@@ -29,4 +30,6 @@ class CircuitFromID(EntityFromID):
                     client=db_client, model=circuit, output_dir=circuit_dir, max_concurrent=4
                 )
 
-                break
+                return circuit_dir
+
+        raise OBIONEError(f"No 'sonata_circuit' asset found for Circuit with ID {self.id_str}.")

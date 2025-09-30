@@ -368,16 +368,17 @@ class GenerateSimulationTask(Task):
 
         if isinstance(self.config.initialize.circuit, CircuitFromID):
             L.info("initialize.circuit is a CircuitFromID instance.")
-
+            
             for asset in self.config.initialize.circuit.entity(db_client=db_client).assets:
                 if asset.label == "sonata_circuit":
-                    self.config.initialize.circuit.download_circuit_directory(
+        
+                    circuit_dir = self.config.initialize.circuit.download_circuit_directory(
                         dest_dir=self.config.coordinate_output_root, db_client=db_client
                     )
                     circuit = Circuit(
                         name=self.config.initialize.circuit.entity(db_client=db_client).name,
                         path=str(
-                            self.config.coordinate_output_root / asset.path / "circuit_config.json"
+                            circuit_dir / "circuit_config.json"
                         ),
                     )
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name

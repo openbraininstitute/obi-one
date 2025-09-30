@@ -41,7 +41,7 @@ class MorphologyMetricsTask(Task):
         try:
             L.info("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                self.initialize.morphology.neurom_morphology(db_client=db_client)
+                self.config.initialize.morphology.neurom_morphology(db_client=db_client)
             )
             L.info(morphology_metrics)
 
