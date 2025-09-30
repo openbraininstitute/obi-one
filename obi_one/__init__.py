@@ -4,12 +4,12 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.run_tasks import (
     run_task_for_single_config,
     run_task_for_single_configs,
     run_tasks_for_generated_scan,
 )
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.serialization import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
