@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import entitysdk.client
 import pytest
-from entitysdk.models.morphology import ReconstructionMorphology
+from entitysdk.models.cell_morphology import CellMorphology
 
 from app.dependencies.entitysdk import get_client
 
@@ -15,21 +15,21 @@ ROUTE = "/declared/neuron-morphology-metrics"
 
 @pytest.fixture
 def morphology_json():
-    return json.loads((DATA_DIR / "reconstruction_morphology.json").read_bytes())
+    return json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
 
 
 @pytest.fixture
 def morphology_asc():
-    return (DATA_DIR / "reconstruction_morphology.asc").read_bytes()
+    return (DATA_DIR / "cell_morphology.asc").read_bytes()
 
 
 @pytest.fixture
 def morphology_swc():
-    return (DATA_DIR / "reconstruction_morphology.swc").read_bytes()
+    return (DATA_DIR / "cell_morphology.swc").read_bytes()
 
 
 def test_get(client, morphology_json, morphology_swc, monkeypatch):
-    morphology = ReconstructionMorphology.model_validate(morphology_json)
+    morphology = CellMorphology.model_validate(morphology_json)
     entitysdk_client_mock = MagicMock(entitysdk.client.Client)
     entitysdk_client_mock.get_entity.return_value = morphology
     entitysdk_client_mock.download_content.return_value = morphology_swc
@@ -56,7 +56,7 @@ def test_get(client, morphology_json, morphology_swc, monkeypatch):
 
 
 def test_get_not_found(client, morphology_json, monkeypatch):
-    morphology = ReconstructionMorphology.model_validate(morphology_json)
+    morphology = CellMorphology.model_validate(morphology_json)
     morphology = morphology.model_copy(update={"assets": []})
     entitysdk_client_mock = MagicMock(entitysdk.client.Client)
     entitysdk_client_mock.get_entity.return_value = morphology

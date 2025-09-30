@@ -24,6 +24,8 @@ __all__ = [
     "BasicConnectivityPlots",
     "Block",
     "BlockReference",
+    "CellMorphologyFromID",
+    "CellMorphologyValidation",
     "Circuit",
     "CircuitExtraction",
     "CircuitExtractions",
@@ -41,6 +43,8 @@ __all__ = [
     "ConstantCurrentClampSomaticStimulus",
     "ContributeMorphology",
     "ContributeMorphologyForm",
+    "ContributeSubject",
+    "ContributeSubjectForm",
     "CoupledScan",
     "EntityFromID",
     "ExcitatoryNeurons",
@@ -93,8 +97,6 @@ __all__ = [
     "RandomMorphologyLocations",
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
-    "ReconstructionMorphologyFromID",
-    "ReconstructionMorphologyValidation",
     "Recording",
     "RecordingReference",
     "RecordingUnion",
@@ -138,11 +140,11 @@ __all__ = [
     "rCA1CA3Inputs",
 ]
 
+from obi_one.database.cell_morphology_from_id import (
+    CellMorphologyFromID,
+)
 from obi_one.database.circuit_from_id import CircuitFromID
 from obi_one.database.entity_from_id import EntityFromID, LoadAssetMethod
-from obi_one.database.reconstruction_morphology_from_id import (
-    ReconstructionMorphologyFromID,
-)
 from obi_one.scientific.afferent_synapse_finder.specified_afferent_synapses_block import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
@@ -199,6 +201,8 @@ from obi_one.scientific.connectivity_matrix_extraction.connectivity_matrix_extra
 from obi_one.scientific.contribute.contribute import (
     ContributeMorphology,
     ContributeMorphologyForm,
+    ContributeSubject,
+    ContributeSubjectForm,
 )
 from obi_one.scientific.folder_compression.folder_compression import (
     FolderCompression,
@@ -279,8 +283,8 @@ from obi_one.scientific.unions.unions_recordings import RecordingReference, Reco
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
-from obi_one.scientific.validations.reconstruction_morphology_validation import (
-    ReconstructionMorphologyValidation,
+from obi_one.scientific.validations.cell_morphology_validation import (
+    CellMorphologyValidation,
 )
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"

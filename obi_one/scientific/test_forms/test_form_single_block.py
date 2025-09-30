@@ -7,7 +7,7 @@ from obi_one.core.block import Block
 from obi_one.core.form import Form
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateMixin
-from obi_one.database.reconstruction_morphology_from_id import ReconstructionMorphologyFromID
+from obi_one.database.cell_morphology_from_id import CellMorphologyFromID
 
 L = logging.getLogger("obi-one")
 
@@ -46,7 +46,7 @@ class SingleBlockEntityTestForm(Form):
     description: ClassVar[str] = "Test form for testing a single block form with entity SDK"
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID]
 
     initialize: Initialize
 
@@ -60,7 +60,7 @@ class SingleBlockEntitySDKTest(SingleBlockEntityTestForm, SingleCoordinateMixin)
 
 
 class BlockForMultiBlockEntitySDKTest(Block):
-    morphology_2: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+    morphology_2: CellMorphologyFromID | list[CellMorphologyFromID]
 
 
 class MultiBlockEntitySDKTestForm(Form):
@@ -73,7 +73,7 @@ class MultiBlockEntitySDKTestForm(Form):
     test_blocks: dict[str, BlockForMultiBlockEntitySDKTest] = Field(description="Test blocks")
 
     class Initialize(Block):
-        morphology: ReconstructionMorphologyFromID | list[ReconstructionMorphologyFromID]
+        morphology: CellMorphologyFromID | list[CellMorphologyFromID]
 
     initialize: Initialize
 

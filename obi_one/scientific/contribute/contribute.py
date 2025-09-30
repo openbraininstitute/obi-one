@@ -81,19 +81,18 @@ class Assets(Block):
     h5_file: str | None = Field(default=None, description="H5 file for the morphology.")
 
 
-class ReconstructionMorphology(Block):
-    name: str = Field(description="Name of the morphology")  # Add default
-    description: str = Field(description="Description")  # Add default
-    species_id: uuid.UUID | None = Field(default=None)  # Make nullable with default
+class CellMorphology(Block):
+    name: str = Field(description="Name of the morphology")
+    description: str = Field(description="Description")
+    species_id: uuid.UUID | None = Field(default=None)
     strain_id: uuid.UUID | None = Field(default=None)
-    brain_region_id: uuid.UUID | None = Field(default=None)  # Make nullable
+    brain_region_id: uuid.UUID | None = Field(default=None)
 
 
 class Subject(Block):
-    name: str = Field(default="", description="Subject name")
-    description: str = Field(default="", description="Subject description")
+    name: str = Field(..., description="Subject name")
+    description: str = Field(..., description="Subject description")
     sex: Annotated[Sex, Field(title="Sex", description="Sex of the subject")] = Sex.unknown
-
     weight: float | None = Field(
         default=None,
         title="Weight",
@@ -101,16 +100,16 @@ class Subject(Block):
         gt=0.0,
         json_schema_extra={"default": None},
     )
-    age_value: timedelta | None = Field(
-        default=None,
+    age_value: timedelta = Field(
+        ...,
         title="Age value",
-        description="Age value interval.",
+        description="Age value.",
         gt=timedelta(0),
     )
     age_min: timedelta | None = Field(
         default=None,
-        title="Minimum age range",
-        description="Minimum age range",
+        title="Minimum age (of range)",
+        description="Minimum age (of range)",
         gt=timedelta(0),
     )
     age_max: timedelta | None = Field(
@@ -120,8 +119,9 @@ class Subject(Block):
         gt=timedelta(0),
     )
     age_period: AgePeriod | None = AgePeriod.unknown
-
     model_config: ClassVar[dict[str, str]] = {"extra": "forbid"}
+    species_id: uuid.UUID = Field(..., description="Species UUID")
+    strain_id: uuid.UUID | None = Field(default=None)
 
 
 class License(Block):
@@ -164,10 +164,10 @@ class ContributeMorphologyForm(Form):
         default_factory=Contribution, title="Contribution", description="Contributor."
     )
 
-    morphology: ReconstructionMorphology = Field(
-        default_factory=ReconstructionMorphology,
+    morphology: CellMorphology = Field(
+        default_factory=CellMorphology,
         title="Morphology",
-        description="Information about contributors.",
+        description="Information about the morphology.",
     )
 
     publication: Publication = Field(
@@ -216,7 +216,7 @@ class ContributeMorphology(ContributeMorphologyForm, SingleCoordinateMixin):
 
 
 class ContributeSubjectForm(Form):
-    """Contribute Morphology Form."""
+    """Contribute Subject Form."""
 
     single_coord_class_name: ClassVar[str] = "ContributeSubject"
     name: ClassVar[str] = "Contribute a Subject"
@@ -229,7 +229,7 @@ class ContributeSubjectForm(Form):
     )
 
 
-class ContributeSubject(ContributeMorphologyForm, SingleCoordinateMixin):
+class ContributeSubject(ContributeSubjectForm, SingleCoordinateMixin):
     """Placeholder here to maintain compatibility."""
 
     def generate(self, db_client: entitysdk.client.Client = None) -> None:
