@@ -42,7 +42,7 @@ dependencies = [
     # JUPYTER
     "jupyter",
     "notebook",
-    "jupyterlab",
+    "jupyterlab>=4.4.8",
     "ipykernel",
     # DATABASE
     "sqlalchemy",
