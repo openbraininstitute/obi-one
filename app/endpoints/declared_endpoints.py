@@ -386,5 +386,4 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_ephys_endpoint(router)
     activate_test_endpoint(router)
     activate_circuit_endpoints(router)
-
     return router

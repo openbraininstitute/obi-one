@@ -209,5 +209,4 @@ def get_connectivity_metrics(
         connection_probability=df_prob["data"],
         mean_number_of_synapses=df_nsyn["data"],
     )
-
     return conn_output
