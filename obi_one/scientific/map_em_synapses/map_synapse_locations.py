@@ -30,7 +30,7 @@ _STR_SEC_OFF = "section_pos" #!
 # Prefix and columns that can be both afferent or efferent
 _PF_AFF = "afferent_"
 _PF_EFF = "efferent_"
-_WITH_DIR = _C_CENTER + _C_SURFACE + [_STR_SEC_ID, _STR_SEG_ID, _STR_SEG_OFF, _STR_SEC_OFF]
+_WITH_DIR = _C_CENTER + _C_SURFACE + _C_P_LOCS + [_STR_SEC_ID, _STR_SEG_ID, _STR_SEG_OFF, _STR_SEC_OFF]
 
 # Names of groups in the morphology-w-spines hdf5 file
 GRP_EDGES = "edges"
@@ -204,26 +204,26 @@ def edges_dataframe_for_soma_syns(syns, m, mpd, is_on_soma):
     mapped_syn_idx = syns.index[is_on_soma]
     c = pandas.concat([
             syns.loc[mapped_syn_idx, _C_P_LOCS].rename(columns={
-            _C_P_LOCS[0]: _PF_AFF + _C_SURFACE[0],
-            _C_P_LOCS[1]: _PF_AFF + _C_SURFACE[1],
-            _C_P_LOCS[2]: _PF_AFF + _C_SURFACE[2],
+            _C_P_LOCS[0]: _C_SURFACE[0],
+            _C_P_LOCS[1]: _C_SURFACE[1],
+            _C_P_LOCS[2]: _C_SURFACE[2],
         }),
-        syns.loc[mapped_syn_idx, _C_P_LOCS].rename(columns={
-            _C_P_LOCS[0]: _PF_AFF + _C_CENTER[0],
-            _C_P_LOCS[1]: _PF_AFF + _C_CENTER[1],
-            _C_P_LOCS[2]: _PF_AFF + _C_CENTER[2],
-        })
+        syns.loc[mapped_syn_idx, _C_P_LOCS]
     ], axis=1)
-    c[_PF_AFF + _STR_SEC_ID] = 0
-    c[_PF_AFF + _STR_SEG_ID] = 0
-    c[_PF_AFF + _STR_SEG_OFF] = 0.0
-    c[_PF_AFF + _STR_SEC_OFF] = calc_section_offset(c, m, prefix=_PF_AFF)
+    c[_STR_SEC_ID] = 0
+    c[_STR_SEG_ID] = 0
+    c[_STR_SEG_OFF] = 0.0
+    c[_STR_SEC_OFF] = calc_section_offset(c, m)
+    for _col, _coord in zip(_C_CENTER, m.soma.center):
+        c[_col] = _coord
     c["distance"] = mpd.loc[is_on_soma, "distance"]
+    c = rename_directed_dataframe_colums(c, prefix=_PF_AFF)
     return c
 
 def edges_dataframe_for_shaft_syns(syns, m, mpd, is_on_shaft):
-    b = pandas.concat([syns.loc[is_on_shaft, _C_P_LOCS].rename(columns=dict(zip(_C_P_LOCS, _C_SURFACE))),
-                    mpd.loc[is_on_shaft]], axis=1)
+    b = pandas.concat([syns.loc[is_on_shaft, _C_P_LOCS],
+                       syns.loc[is_on_shaft, _C_P_LOCS].rename(columns=dict(zip(_C_P_LOCS, _C_SURFACE))),
+                       mpd.loc[is_on_shaft]], axis=1)
     b = pandas.concat([b, calc_center_positions(b, m)], axis=1)
     b[_STR_SEC_OFF] = calc_section_offset(b, m)
     b = rename_directed_dataframe_colums(b, _PF_AFF)
@@ -237,9 +237,9 @@ def edges_dataframe_for_spine_syns(syns, m, mpd, is_on_spine):
     a.index.name = _C_SP_INDEX
     a["distance"] = mpd.loc[is_on_spine, "distance"].to_numpy()
     a["synapse_id"] = mpd.index[is_on_spine].to_numpy()
-    # a = a.sort_index()
-    # a[_C_SHARING_ID] = numpy.cumsum(numpy.hstack([0, numpy.diff(a.index)]) > 0)
     a[_C_PSD_ID] = numpy.arange(len(a.index)) # For now simply all different
+    for _col in _C_P_LOCS:
+        a[_PF_AFF + _col] = syns.loc[is_on_spine, _col].to_numpy()  # Could also be a pandas.concat after reset_index()
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()
     return a
 
