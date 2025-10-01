@@ -243,7 +243,7 @@ wheels = [
 
 [[package]]
 name = "bluepyefe"
-version = "2.3.50"
+version = "2.3.51"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "efel" },
@@ -254,9 +254,9 @@ dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/a7/74861a818c10a7543a34cbc39ad9609e8b0e3ef6414fde1a3ed3f9352ffa/bluepyefe-2.3.50.tar.gz", hash = "sha256:ec9c7c9ab176ff9bba1f6781ef589a829e7e4eb5e4b6a956d743b97611f6f750", size = 1028938, upload-time = "2025-08-22T11:58:23.906Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/0b/80bcf81a4288ed87398f54ff5026de8b79bfdcfe8b5e72462cf0fb5f25c3/bluepyefe-2.3.51.tar.gz", hash = "sha256:644de602869cc8dd6f5ee9889146cfbad0b2609bbaac2ba6c12e2a42a6699645", size = 1028787, upload-time = "2025-09-24T11:52:52.341Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/fa/155381fbeb82d4c4081b0acfbf56bfdf049f205f323dc3a7e5c55a7044b5/bluepyefe-2.3.50-py3-none-any.whl", hash = "sha256:00b0f460613fc4088e53abdadad6f145d50a1349ee3903d07d6f64a68ab33839", size = 67106, upload-time = "2025-08-22T11:58:22.345Z" },
+    { url = "https://files.pythonhosted.org/packages/36/df/baf6a3389ead3ea9c6b4dc09e2dfcd65d3b5787a2cebf43af3131aa6ce88/bluepyefe-2.3.51-py3-none-any.whl", hash = "sha256:e40e1347df66293216f44ab15e6e39eda7002b0f3626c6b5b661ad6464008822", size = 67112, upload-time = "2025-09-24T11:52:50.885Z" },
 ]
 
 [[package]]
@@ -707,14 +707,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.8.0"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/11/fa8c10c34aa3ad06df747ecf71dcc1e8e066e1491eeb576e80dd724370ea/entitysdk-0.8.0.tar.gz", hash = "sha256:e02c8e2de364d96aae0f5f420f5b907f391055d8515a914bc10c49f9e59dbf2d", size = 1411264, upload-time = "2025-09-25T12:49:23.768Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/c0/09aae24a25f4514fc554f57c67d6f73626a46c61c1d00720ff3433bf7e18/entitysdk-0.8.1.tar.gz", hash = "sha256:285474c6c2ae005c489f49f390e37b1b6d5a39d9c33a49433218c73d5d3f73b9", size = 1449620, upload-time = "2025-09-26T14:03:04.139Z" }
 
 [[package]]
 name = "executing"
@@ -1880,13 +1880,13 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.62" },
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.50" },
+    { name = "bluepyefe", specifier = ">=2.3.51" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk", specifier = ">=0.8.0" },
+    { name = "entitysdk", specifier = ">=0.8.1" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel" },
