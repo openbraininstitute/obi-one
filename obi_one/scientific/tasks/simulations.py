@@ -24,7 +24,7 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets import NeuronSet
+from obi_one.scientific.blocks.neuron_sets import AllNeurons, NeuronSet
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -269,6 +269,13 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     )
 
 
+ALL_NEURON_SET_NAME = "All Neurons"
+ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
+    block_dict_name="neuron_sets", block_name=ALL_NEURON_SET_NAME
+)
+DEFAULT_NEURON_SETS_DICTIONARY = {ALL_NEURON_SET_NAME: AllNeurons()}
+
+
 class CircuitSimulationScanConfig(SimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
@@ -277,7 +284,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
+        default_factory=lambda: DEFAULT_NEURON_SETS_DICTIONARY,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
