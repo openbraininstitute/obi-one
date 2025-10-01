@@ -56,6 +56,7 @@ class BlockGroup(StrEnum):
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[Circuit | MEModelFromID, Field(discriminator="type")]
 
+DEFAULT_NODE_SET = "All"
 
 class SimulationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
@@ -175,6 +176,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             sonata_config = {}
             sonata_config["version"] = self._sonata_version
             sonata_config["target_simulator"] = self._target_simulator
+            sonata_config["node_set"] = DEFAULT_NODE_SET
 
             sonata_config["run"] = {}
             sonata_config["run"]["dt"] = self._timestep
@@ -449,6 +451,28 @@ class GenerateSimulationTask(Task):
             self._sonata_config["network"] = Path(circuit.path).name  # Correct?
 
         return circuit
+    
+    
+
+    # def _ensure_block_neuron_set(self, block: Block) -> None:
+    #     """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
+    #     if getattr(block, "neuron_set", None) is None:
+    #         block.neuron_set = self._default_neuron_set_ref()
+
+
+    def _default_neuron_set_ref(self) -> NeuronSetReference:
+        """Returns the reference for the default neuron set."""
+
+        if ALL_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
+            self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
+
+        return ALL_NEURON_SET_BLOCK_REFERENCE
+
+    def _ensure_simulation_target_neuron_set(self) -> None:
+        """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
+        if self.initialize.node_set is None:
+            L.info("initialize.node_set is None — setting default node set.")
+            self.initialize.node_set = self._default_neuron_set_ref()
 
     def _resolve_neuron_sets(self, circuit: Circuit) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
@@ -460,6 +484,8 @@ class GenerateSimulationTask(Task):
 
         if hasattr(self.config, "neuron_sets"):
             sonata_circuit = circuit.sonata_circuit
+
+            self._ensure_simulation_target_neuron_set()
 
             for _name, _nset in self.config.neuron_sets.items():
                 # Resolve node set based on current coordinate circuit's default node population
@@ -506,8 +532,6 @@ class GenerateSimulationTask(Task):
             )
             self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-        else:
-            self._sonata_config["node_set"] = "All"
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
