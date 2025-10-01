@@ -18,6 +18,12 @@ class Recording(Block, ABC):
         | None
     ) = None
 
+    def resolve_neuron_set_to_node_set(self) -> str:
+        if self.neuron_set is None:
+            return "All"
+
+        return self.neuron_set.block.block_name
+
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
 
@@ -75,7 +81,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": self.neuron_set.block.block_name,
+            "cells": self.resolve_neuron_set_to_node_set(),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
