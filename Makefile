@@ -68,7 +68,8 @@ test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test
 
 pip-audit:
-	uv run --group audit pip-audit --progress-spinner off -f json -o pip-audit-output.json
+	uv export --format=requirements.txt --no-hashes --group dev --extra connectivity > requirements.txt
+	uv run --group audit pip-audit -r requirements.txt --progress-spinner off -f json -o pip-audit-output.json
 
 run-local: ## Run the application locally
 	@$(call load_env,run-local)
