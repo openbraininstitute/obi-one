@@ -346,6 +346,7 @@ class GridScan(Scan):
         """Description."""
         single_values_by_multi_value = []
         multi_value_parameters = self.multiple_value_parameters()
+
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 single_values = [
