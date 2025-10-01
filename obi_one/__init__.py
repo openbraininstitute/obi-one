@@ -230,6 +230,7 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
@@ -302,7 +303,6 @@ from obi_one.scientific.unions.unions_manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,

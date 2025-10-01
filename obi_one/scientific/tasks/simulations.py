@@ -24,11 +24,10 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.blocks.neuron_sets import NeuronSet
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -53,13 +52,15 @@ class BlockGroup(StrEnum):
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
+
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[Circuit | MEModelFromID, Field(discriminator="type")]
+
 
 class SimulationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
-    single_coord_class_name: ClassVar[str] = "SimulationSingleConfig"
+    single_coord_class_name: ClassVar[str]
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -111,7 +112,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
     )
 
     class Initialize(Block):
-
         circuit: None
         simulation_length: (
             Annotated[
@@ -209,7 +209,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             multiple_value_parameters_dictionary = {}
 
         L.info("-- Register SimulationCampaign Entity")
-        if isinstance(self.initialize.circuit, CircuitFromID) or isinstance(self.initialize.circuit, MEModelFromID):
+        if isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
             entity_id = self.initialize.circuit.id_str
         elif isinstance(self.initialize.circuit, list):
             entity_id = self.initialize.circuit[0].id_str
@@ -268,6 +268,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group_order=1,
     )
 
+
 class CircuitSimulationScanConfig(SimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
@@ -308,8 +309,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
 
-
-
 class SimulationSingleConfigMixin(abc.ABC):
     """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
 
@@ -325,7 +324,9 @@ class SimulationSingleConfigMixin(abc.ABC):
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if not isinstance(self.initialize.circuit, CircuitFromID) or not isinstance(self.initialize.circuit, MEModelFromID):
+        if not isinstance(self.initialize.circuit, CircuitFromID) or not isinstance(
+            self.initialize.circuit, MEModelFromID
+        ):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
                 "or MEModelFromID"
@@ -353,17 +354,19 @@ class SimulationSingleConfigMixin(abc.ABC):
         )
 
 
-class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin):
+class CircuitSimulationSingleConfig(
+    CircuitSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+):
     """Only allows single values."""
 
 
-class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin):
+class MEModelSimulationSingleConfig(
+    MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+):
     """Only allows single values."""
-
 
 
 class GenerateSimulationTask(Task):
-    
     config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
@@ -397,17 +400,15 @@ class GenerateSimulationTask(Task):
             )
 
     def _add_sonata_simulation_config_manipulations(self) -> None:
-
         if hasattr(self.config, "synaptic_manipulations"):
-
             # Generate list of synaptic manipulation configs (executed in the order in the list)
             # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
             manipulation_list = [
-                manipulation.config() for manipulation in self.config.synaptic_manipulations.values()
+                manipulation.config()
+                for manipulation in self.config.synaptic_manipulations.values()
             ]
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
-
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
@@ -441,9 +442,8 @@ class GenerateSimulationTask(Task):
             self._sonata_config["network"] = Path(circuit.path).name  # Correct?
 
         return circuit
-    
-    def _resolve_neuron_sets(self, circuit: Circuit) -> None:
 
+    def _resolve_neuron_sets(self, circuit: Circuit) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
         # set, even for a PredefinedNeuronSet in which case a new node set will be created
@@ -470,7 +470,10 @@ class GenerateSimulationTask(Task):
                         raise OBIONEError(msg)
 
                     # Assert that simulation neuron set is biophysical
-                    if _nset.population_type(circuit, circuit.default_population_name) != "biophysical":
+                    if (
+                        _nset.population_type(circuit, circuit.default_population_name)
+                        != "biophysical"
+                    ):
                         msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
                         "is not biophysical!"
                         raise OBIONEError(msg)
@@ -497,10 +500,9 @@ class GenerateSimulationTask(Task):
             self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
         else:
-            self._sonata_config["node_set"] = 'All'
-    
+            self._sonata_config["node_set"] = "All"
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
         # Initialize the SONATA simulation config
         self._sonata_config = self.config.initialize.initial_sonata_simulation_config()

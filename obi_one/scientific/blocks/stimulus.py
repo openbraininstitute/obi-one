@@ -54,7 +54,6 @@ class SomaticStimulus(Stimulus, ABC):
         | None
     ) = None
 
-
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
