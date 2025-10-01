@@ -386,6 +386,7 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
+            self._ensure_block_neuron_set(stimulus, circuit)
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     circuit,
@@ -400,6 +401,7 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
+            self._ensure_block_neuron_set(recording, circuit)
             self._sonata_config["reports"].update(
                 recording.config(
                     circuit,
@@ -454,10 +456,12 @@ class GenerateSimulationTask(Task):
     
     
 
-    # def _ensure_block_neuron_set(self, block: Block) -> None:
-    #     """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-    #     if getattr(block, "neuron_set", None) is None:
-    #         block.neuron_set = self._default_neuron_set_ref()
+    def _ensure_block_neuron_set(self, block: Block) -> None:
+        """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
+
+        if hasattr(self.config, "neuron_sets"):
+            if getattr(block, "neuron_set", None) is None:
+                block.neuron_set = self._default_neuron_set_ref()
 
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
