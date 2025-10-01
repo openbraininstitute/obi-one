@@ -74,6 +74,7 @@ __all__ = [
     "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelFromID",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -301,6 +302,7 @@ from obi_one.scientific.unions.unions_manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,

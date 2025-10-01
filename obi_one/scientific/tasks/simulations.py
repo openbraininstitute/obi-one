@@ -1,3 +1,4 @@
+import abc
 import json
 import logging
 from datetime import UTC, datetime
@@ -23,9 +24,11 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.blocks.neuron_sets import NeuronSet
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -50,14 +53,13 @@ class BlockGroup(StrEnum):
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
-
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
+MEModelDiscriminator = Annotated[Circuit | MEModelFromID, Field(discriminator="type")]
 
+class SimulationScanConfig(ScanConfig, abc.ABC):
+    """Abstract base class for simulation scan configurations."""
 
-class CircuitSimulationScanConfig(ScanConfig):
-    """CircuitSimulationScanConfig."""
-
-    single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
+    single_coord_class_name: ClassVar[str] = "SimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -107,28 +109,10 @@ class CircuitSimulationScanConfig(ScanConfig):
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=1,
     )
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
-        reference_type=NeuronSetReference.__name__,
-        description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=0,
-    )
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
-        default_factory=dict,
-        reference_type=SynapticManipulationsReference.__name__,
-        description="Synaptic manipulations for the simulation.",
-        singular_name="Synaptic Manipulation",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=1,
-    )
 
     class Initialize(Block):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator]
-        node_set: Annotated[
-            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        ]
+
+        circuit: None
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -206,12 +190,6 @@ class CircuitSimulationScanConfig(ScanConfig):
 
             return sonata_config
 
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
-    )
     info: Info = Field(
         title="Info",
         description="Information about the simulation campaign.",
@@ -231,13 +209,16 @@ class CircuitSimulationScanConfig(ScanConfig):
             multiple_value_parameters_dictionary = {}
 
         L.info("-- Register SimulationCampaign Entity")
+        if isinstance(self.initialize.circuit, CircuitFromID) or isinstance(self.initialize.circuit, MEModelFromID):
+            entity_id = self.initialize.circuit.id_str
+        elif isinstance(self.initialize.circuit, list):
+            entity_id = self.initialize.circuit[0].id_str
+
         self._campaign = db_client.register_entity(
             entitysdk.models.SimulationCampaign(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
-                entity_id=self.initialize.circuit.id_str
-                if isinstance(self.initialize.circuit, CircuitFromID)
-                else self.initialize.circuit[0].id_str,
+                entity_id=entity_id,
                 scan_parameters=multiple_value_parameters_dictionary,
             )
         )
@@ -268,8 +249,69 @@ class CircuitSimulationScanConfig(ScanConfig):
         )
 
 
-class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMixin):
-    """Only allows single values and ensures nested attributes follow the same rule."""
+class MEModelSimulationScanConfig(SimulationScanConfig):
+    """MEModelSimulationScanConfig."""
+
+    single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
+    name: ClassVar[str] = "Simulation Campaign"
+    description: ClassVar[str] = "SONATA simulation campaign"
+
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
+            title="ME Model", description="ME Model to simulate."
+        )
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
+class CircuitSimulationScanConfig(SimulationScanConfig):
+    """CircuitSimulationScanConfig."""
+
+    single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
+    name: ClassVar[str] = "Simulation Campaign"
+    description: ClassVar[str] = "SONATA simulation campaign"
+
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        default_factory=dict,
+        reference_type=NeuronSetReference.__name__,
+        description="Neuron sets for the simulation.",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+    )
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        default_factory=dict,
+        reference_type=SynapticManipulationsReference.__name__,
+        description="Synaptic manipulations for the simulation.",
+        singular_name="Synaptic Manipulation",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=1,
+    )
+
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+            title="Circuit", description="Circuit to simulate."
+        )
+        node_set: Annotated[
+            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+        ]
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
+
+
+
+class SimulationSingleConfigMixin(abc.ABC):
+    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
 
     _single_entity: entitysdk.models.Simulation
 
@@ -283,7 +325,7 @@ class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMix
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if not isinstance(self.initialize.circuit, CircuitFromID):
+        if not isinstance(self.initialize.circuit, CircuitFromID) or not isinstance(self.initialize.circuit, MEModelFromID):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
                 "or MEModelFromID"
@@ -311,8 +353,18 @@ class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMix
         )
 
 
+class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin):
+    """Only allows single values."""
+
+
+class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin):
+    """Only allows single values."""
+
+
+
 class GenerateSimulationTask(Task):
-    config: CircuitSimulationSingleConfig
+    
+    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -345,28 +397,26 @@ class GenerateSimulationTask(Task):
             )
 
     def _add_sonata_simulation_config_manipulations(self) -> None:
-        # Generate list of synaptic manipulation configs (executed in the order in the list)
-        # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
-        manipulation_list = [
-            manipulation.config() for manipulation in self.config.synaptic_manipulations.values()
-        ]
-        if len(manipulation_list) > 0:
-            self._sonata_config["connection_overrides"] = manipulation_list
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
-        """Generates SONATA simulation config .json file."""
-        # Initialize the SONATA simulation config
-        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
+        if hasattr(self.config, "synaptic_manipulations"):
 
-        # Set circuit variable based on the type of initialize.circuit
-        # circuit is used through-out generate rather than self.initialize.circuit
+            # Generate list of synaptic manipulation configs (executed in the order in the list)
+            # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
+            manipulation_list = [
+                manipulation.config() for manipulation in self.config.synaptic_manipulations.values()
+            ]
+            if len(manipulation_list) > 0:
+                self._sonata_config["connection_overrides"] = manipulation_list
+
+
+    def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
         circuit = None
         if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
             circuit = self.config.initialize.circuit
             self._sonata_config["network"] = self.config.initialize.circuit.path
 
-        if isinstance(self.config.initialize.circuit, CircuitFromID):
+        elif isinstance(self.config.initialize.circuit, CircuitFromID):
             L.info("initialize.circuit is a CircuitFromID instance.")
 
             for asset in self.config.initialize.circuit.entity(db_client=db_client).assets:
@@ -381,20 +431,18 @@ class GenerateSimulationTask(Task):
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name
                     break
 
-        self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        self._sonata_config["conditions"]["mechanisms"] = {
-            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        }
+        elif isinstance(self.config.initialize.circuit, MEModelFromID):
+            L.info("initialize.circuit is a MEModelFromID instance.")
+            self._circuit_id = self.config.initialize.circuit.id_str
 
-        # Add stimulus inputs to sonata simulation config
-        self._add_sonata_simulation_config_inputs(circuit)
+            circuit = self.config.initialize.circuit.stage_memodel_as_circuit(
+                db_client=db_client, dest_dir=self.config.coordinate_output_root
+            )
+            self._sonata_config["network"] = Path(circuit.path).name  # Correct?
 
-        # Add recordings to sonata simulation config
-        self._add_sonata_simulation_config_reports(circuit)
-
-        # Add synaptic manipulations to sonata simulation config
-        self._add_sonata_simulation_config_manipulations()
+        return circuit
+    
+    def _resolve_neuron_sets(self, circuit: Circuit) -> None:
 
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
@@ -402,50 +450,75 @@ class GenerateSimulationTask(Task):
         # which just references the existing one. This is the most consistent behavior since
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
-        Path(self.config.coordinate_output_root).mkdir(parents=True, exist_ok=True)
 
-        sonata_circuit = circuit.sonata_circuit
-        for _name, _nset in self.config.neuron_sets.items():
-            # Resolve node set based on current coordinate circuit's default node population
-            # TODO: Better handling of (default) node population in case there is more than one
-            # TODO: Inconsistency possible in case a node set definition would span multiple
-            # populations. May consider force_resolve_ids=False to enforce resolving into given
-            # population (but which won't be a human-readable representation any more)
-            if _name != _nset.block_name:
-                msg = "Neuron set name mismatch!"
-                raise OBIONEError(msg)  # This should never happen if properly initialized
+        if hasattr(self.config, "neuron_sets"):
+            sonata_circuit = circuit.sonata_circuit
 
-            if self.config.initialize.node_set.block.block_name == _name:
-                if self._sonata_config.get("node_set") is not None:
-                    msg = "Node set config entry already defined!"
-                    raise OBIONEError(msg)
+            for _name, _nset in self.config.neuron_sets.items():
+                # Resolve node set based on current coordinate circuit's default node population
+                # TODO: Better handling of (default) node population in case there is more than one
+                # TODO: Inconsistency possible in case a node set definition would span multiple
+                # populations. May consider force_resolve_ids=False to enforce resolving into given
+                # population (but which won't be a human-readable representation any more)
+                if _name != _nset.block_name:
+                    msg = "Neuron set name mismatch!"
+                    raise OBIONEError(msg)  # This should never happen if properly initialized
 
-                # Assert that simulation neuron set is biophysical
-                if _nset.population_type(circuit, circuit.default_population_name) != "biophysical":
-                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
-                    "is not biophysical!"
-                    raise OBIONEError(msg)
+                if self.config.initialize.node_set.block.block_name == _name:
+                    if self._sonata_config.get("node_set") is not None:
+                        msg = "Node set config entry already defined!"
+                        raise OBIONEError(msg)
 
-                self._sonata_config["node_set"] = _name
+                    # Assert that simulation neuron set is biophysical
+                    if _nset.population_type(circuit, circuit.default_population_name) != "biophysical":
+                        msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
+                        "is not biophysical!"
+                        raise OBIONEError(msg)
 
-            # Add node set to SONATA circuit object
-            # (will raise an error in case already existing)
-            nset_def = _nset.get_node_set_definition(
-                circuit, circuit.default_population_name, force_resolve_ids=True
+                    self._sonata_config["node_set"] = _name
+
+                # Add node set to SONATA circuit object
+                # (will raise an error in case already existing)
+                nset_def = _nset.get_node_set_definition(
+                    circuit, circuit.default_population_name, force_resolve_ids=True
+                )
+                NeuronSet.add_node_set_to_circuit(
+                    sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
+                )
+
+            # Write node sets from SONATA circuit object to .json file
+            # (will raise an error if file already exists)
+            NeuronSet.write_circuit_node_set_file(
+                sonata_circuit,
+                self.config.coordinate_output_root,
+                file_name=self.NODE_SETS_FILE_NAME,
+                overwrite_if_exists=False,
             )
-            NeuronSet.add_node_set_to_circuit(
-                sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
-            )
+            self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-        # Write node sets from SONATA circuit object to .json file
-        # (will raise an error if file already exists)
-        NeuronSet.write_circuit_node_set_file(
-            sonata_circuit,
-            self.config.coordinate_output_root,
-            file_name=self.NODE_SETS_FILE_NAME,
-            overwrite_if_exists=False,
-        )
-        self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
+        else:
+            self._sonata_config["node_set"] = 'All'
+    
+
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: C901
+        """Generates SONATA simulation config .json file."""
+        # Initialize the SONATA simulation config
+        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
+
+        # Set circuit variable based on the type of initialize.circuit
+        # circuit is used through-out generate rather than self.initialize.circuit
+        circuit = self._resolve_circuit(db_client)
+
+        self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
+        self._sonata_config["conditions"]["mechanisms"] = {
+            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+        }
+
+        self._add_sonata_simulation_config_inputs(circuit)
+        self._add_sonata_simulation_config_reports(circuit)
+        self._add_sonata_simulation_config_manipulations()
+        self._resolve_neuron_sets(circuit)
 
         # Write simulation config file (.json)
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
