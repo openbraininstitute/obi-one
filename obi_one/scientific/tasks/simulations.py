@@ -58,6 +58,7 @@ MEModelDiscriminator = Annotated[Circuit | MEModelFromID, Field(discriminator="t
 
 DEFAULT_NODE_SET = "All"
 
+
 class SimulationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
@@ -333,9 +334,7 @@ class SimulationSingleConfigMixin(abc.ABC):
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if not isinstance(self.initialize.circuit, CircuitFromID) or not isinstance(
-            self.initialize.circuit, MEModelFromID
-        ):
+        if not isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
                 "or MEModelFromID"
@@ -386,7 +385,7 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
-            self._ensure_block_neuron_set(stimulus, circuit)
+            self._ensure_block_neuron_set(stimulus)
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     circuit,
@@ -401,7 +400,7 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
-            self._ensure_block_neuron_set(recording, circuit)
+            self._ensure_block_neuron_set(recording)
             self._sonata_config["reports"].update(
                 recording.config(
                     circuit,
@@ -453,20 +452,14 @@ class GenerateSimulationTask(Task):
             self._sonata_config["network"] = Path(circuit.path).name  # Correct?
 
         return circuit
-    
-    
 
     def _ensure_block_neuron_set(self, block: Block) -> None:
         """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-
-        if hasattr(self.config, "neuron_sets"):
-            if getattr(block, "neuron_set", None) is None:
-                block.neuron_set = self._default_neuron_set_ref()
-
+        if hasattr(self.config, "neuron_sets") and getattr(block, "neuron_set", None) is None:
+            block.neuron_set = self._default_neuron_set_ref()
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
-
         if ALL_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
             self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
 
@@ -535,7 +528,6 @@ class GenerateSimulationTask(Task):
                 overwrite_if_exists=False,
             )
             self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
-
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation config .json file."""
