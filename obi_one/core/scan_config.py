@@ -100,7 +100,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                             "block_dict_name": attr_name,
                             "reference_type": reference_type,
                         }
-                        
+
         return self._block_mapping
 
     def fill_block_reference_for_block(self, block: Block) -> None:
