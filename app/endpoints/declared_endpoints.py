@@ -19,6 +19,7 @@ from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
+    CircuitPopulationsResponse,
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
@@ -297,7 +298,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
     def circuit_populations_endpoint(
         circuit_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    ) -> CircuitNodesetsResponse:
+    ) -> CircuitPopulationsResponse:
         try:
             circuit_metrics = get_circuit_metrics(
                 circuit_id=circuit_id,
@@ -313,7 +314,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                     "detail": f"Circuit {circuit_id} not found.",
                 },
             ) from err
-        return CircuitNodesetsResponse(
+        return CircuitPopulationsResponse(
             populations=circuit_metrics.names_of_biophys_node_populations
         )
 
