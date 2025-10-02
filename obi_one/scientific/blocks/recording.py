@@ -7,15 +7,7 @@ from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
-
-
-def resolve_neuron_set_to_node_set(neuron_set_reference: NeuronSetReference | None) -> str:
-    if neuron_set_reference is None:
-        return "All"
-
-    return neuron_set_reference.block.block_name
-
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference, resolve_neuron_set_ref_to_node_set
 
 class Recording(Block, ABC):
     neuron_set: (
@@ -82,7 +74,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": resolve_neuron_set_to_node_set(self.neuron_set),
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
