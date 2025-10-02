@@ -23,6 +23,11 @@ from obi_one.scientific.circuit_metrics.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.circuit_metrics.connectivity_metrics import (
+    ConnectivityMetricsOutput,
+    ConnectivityMetricsRequest,
+    get_connectivity_metrics,
+)
 from obi_one.scientific.ephys_extraction.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -343,6 +348,37 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                 },
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
+
+    @router.post(
+        "/connectivity-metrics/{circuit_id}",
+        summary="connectivity metrics",
+        description="This calculates connectivity metrics",
+    )
+    def connectivity_metrics_endpoint(
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        conn_request: ConnectivityMetricsRequest,
+    ) -> ConnectivityMetricsOutput:
+        try:
+            conn_metrics = get_connectivity_metrics(
+                circuit_id=conn_request.circuit_id,
+                db_client=db_client,
+                edge_population=conn_request.edge_population,
+                pre_selection=conn_request.pre_selection,
+                pre_node_set=conn_request.pre_node_set,
+                post_selection=conn_request.post_selection,
+                post_node_set=conn_request.post_node_set,
+                group_by=conn_request.group_by,
+                max_distance=conn_request.max_distance,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {conn_request.circuit_id} not found.",
+                },
+            ) from err
+        return conn_metrics
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
