@@ -4,7 +4,8 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, get_type_hints
+from copy import deepcopy
 
 import entitysdk
 from pydantic import (
@@ -177,7 +178,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             sonata_config = {}
             sonata_config["version"] = self._sonata_version
             sonata_config["target_simulator"] = self._target_simulator
-            sonata_config["node_set"] = DEFAULT_NODE_SET
 
             sonata_config["run"] = {}
             sonata_config["run"]["dt"] = self._timestep
@@ -287,7 +287,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=lambda: DEFAULT_NEURON_SETS_DICTIONARY,
+        default_factory=lambda: deepcopy(DEFAULT_NEURON_SETS_DICTIONARY),
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
@@ -455,8 +455,15 @@ class GenerateSimulationTask(Task):
 
     def _ensure_block_neuron_set(self, block: Block) -> None:
         """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-        if hasattr(self.config, "neuron_sets") and getattr(block, "neuron_set", None) is None:
-            block.neuron_set = self._default_neuron_set_ref()
+        type_hints = get_type_hints(block.__class__)
+
+        for attr_name, attr_type in type_hints.items():
+            if attr_type == NeuronSetReference or (
+                getattr(attr_type, "__origin__", None) is None and attr_type is NeuronSetReference
+            ):
+                attr_value = getattr(block, attr_name, None)
+                if attr_value is None:
+                    setattr(block, attr_name, self._default_neuron_set_ref())
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
@@ -465,11 +472,15 @@ class GenerateSimulationTask(Task):
 
         return ALL_NEURON_SET_BLOCK_REFERENCE
 
-    def _ensure_simulation_target_neuron_set(self) -> None:
+    def _ensure_simulation_target_neuron_set_ref(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
-        if self.initialize.node_set is None:
+        if self.config.initialize.node_set is None:
             L.info("initialize.node_set is None — setting default node set.")
-            self.initialize.node_set = self._default_neuron_set_ref()
+            self.config.initialize.node_set = self._default_neuron_set_ref()
+
+    def _ensure_simulation_target_node_set(self) -> str:
+
+        self.config._sonata_config["node_set"] = DEFAULT_NODE_SET
 
     def _resolve_neuron_sets(self, circuit: Circuit) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
@@ -479,10 +490,12 @@ class GenerateSimulationTask(Task):
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
 
-        if hasattr(self.config, "neuron_sets"):
+        if not hasattr(self.config, "neuron_sets"):
+            self._ensure_simulation_target_node_set()
+        else:
             sonata_circuit = circuit.sonata_circuit
 
-            self._ensure_simulation_target_neuron_set()
+            self._ensure_simulation_target_neuron_set_ref()
 
             for _name, _nset in self.config.neuron_sets.items():
                 # Resolve node set based on current coordinate circuit's default node population

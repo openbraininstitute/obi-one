@@ -10,6 +10,13 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 
+def resolve_neuron_set_to_node_set(neuron_set_reference: NeuronSetReference | None) -> str:
+    if neuron_set_reference is None:
+        return "All"
+
+    return neuron_set_reference.block.block_name
+
+
 class Recording(Block, ABC):
     neuron_set: (
         Annotated[
@@ -17,12 +24,6 @@ class Recording(Block, ABC):
         ]
         | None
     ) = None
-
-    def resolve_neuron_set_to_node_set(self) -> str:
-        if self.neuron_set is None:
-            return "All"
-
-        return self.neuron_set.block.block_name
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
@@ -81,7 +82,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": self.resolve_neuron_set_to_node_set(),
+            "cells": resolve_neuron_set_to_node_set(self.neuron_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",

@@ -28,6 +28,9 @@ def _setup_sim():
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
+    # all_neurons_set = obi.AllNeurons()
+    # sim_conf.add(all_neurons_set, name="All Neurons")
+
     sim_neuron_set = obi.IDNeuronSet(
         neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
     )
@@ -255,6 +258,11 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "sample_seed": 1,
         "neuron_ids": id3,
     }
+    all_neurons_dict = {
+        "sample_percentage": 100.0,
+        "sample_seed": 1,
+        "type": "AllNeurons",
+    }
     vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
     mg = scan.form.synaptic_manipulations["SynapticMgManipulation"].magnesium_value
     mg_dict = {"type": "SynapticMgManipulation", "magnesium_value": mg}
@@ -290,7 +298,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "timestamps": {"RegularTimestamps": ts_dict},
         "stimuli": {"PoissonInputStimulus": poisson_dict, "SynchronousInputStimulus": sync_dict},
         "recordings": {"VoltageRecording": volt_dict},
-        "neuron_sets": {"ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict},
+        "neuron_sets": {"All Neurons": all_neurons_dict, "ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict}, 
         "synaptic_manipulations": {
             "SynapticMgManipulation": mg_dict,
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
@@ -404,8 +412,13 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "sample_seed": 1,
             "neuron_ids": id3,
         }
+        all_neurons_dict = {
+            "sample_percentage": 100.0,
+            "sample_seed": 1,
+            "type": "AllNeurons",
+        }
         vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
-        assert cfg.pop("neuron_sets") == {"ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict}
+        assert cfg.pop("neuron_sets") == {"All Neurons": all_neurons_dict,"ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict}
         mg_dict = {"type": "SynapticMgManipulation", "magnesium_value": mg}
         use_dict = {
             "type": "ScaleAcetylcholineUSESynapticManipulation",
