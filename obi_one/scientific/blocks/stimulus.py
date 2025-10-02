@@ -11,7 +11,10 @@ from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference, resolve_neuron_set_ref_to_node_set
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
@@ -25,13 +28,6 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 )
 
 _MAX_POISSON_SPIKE_LIMIT = 5000000
-
-
-def resolve_neuron_set_ref_to_node_set(neuron_set_reference: NeuronSetReference | None) -> str:
-    if neuron_set_reference is None:
-        return "All"
-
-    return neuron_set_reference.block.block_name
 
 
 class Stimulus(Block, ABC):

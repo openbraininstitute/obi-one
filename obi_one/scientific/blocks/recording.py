@@ -7,7 +7,11 @@ from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference, resolve_neuron_set_ref_to_node_set
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
+
 
 class Recording(Block, ABC):
     neuron_set: (
