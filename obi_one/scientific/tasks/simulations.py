@@ -1,11 +1,11 @@
 import abc
 import json
 import logging
+from copy import deepcopy
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, get_type_hints
-from copy import deepcopy
 
 import entitysdk
 from pydantic import (
@@ -479,8 +479,7 @@ class GenerateSimulationTask(Task):
             self.config.initialize.node_set = self._default_neuron_set_ref()
 
     def _ensure_simulation_target_node_set(self) -> str:
-
-        self.config._sonata_config["node_set"] = DEFAULT_NODE_SET
+        self._sonata_config["node_set"] = DEFAULT_NODE_SET
 
     def _resolve_neuron_sets(self, circuit: Circuit) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
