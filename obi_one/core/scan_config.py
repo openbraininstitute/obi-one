@@ -1,5 +1,6 @@
 import types
 from typing import ClassVar, get_args, get_origin
+
 import entitysdk
 from pydantic import model_validator
 
@@ -26,7 +27,11 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     _campaign: None = None
 
     @property
-    def campaign(self) -> entitysdk.models.SimulationCampaign | None: # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
+    def campaign(
+        self,
+    ) -> (
+        entitysdk.models.SimulationCampaign | None
+    ):  # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
         return self._campaign
 
     @classmethod
