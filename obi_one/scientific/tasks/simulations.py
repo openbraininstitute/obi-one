@@ -63,13 +63,6 @@ class CircuitSimulationScanConfig(ScanConfig):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    @property
-    def campaign(self) -> entitysdk.models.SimulationCampaign:
-        if self._campaign is None:
-            msg = "Campaign entity has not been created yet!"
-            raise OBIONEError(msg)
-        return self._campaign
-
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
