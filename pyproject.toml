@@ -42,7 +42,7 @@ dependencies = [
     # JUPYTER
     "jupyter",
     "notebook",
-    "jupyterlab",
+    "jupyterlab>=4.4.8",
     "ipykernel",
     # DATABASE
     "sqlalchemy",
@@ -53,13 +53,13 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.0",
+    "entitysdk>=0.8.1",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-    "bluepyefe>=2.3.50",
+    "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "bluecellulab>=2.6.62",
