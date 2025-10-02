@@ -385,7 +385,8 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
-            self._ensure_block_neuron_set(stimulus)
+            if not hasattr(self.config, "neuron_sets"):
+                self._ensure_block_neuron_set(stimulus)
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     circuit,
@@ -400,7 +401,8 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
-            self._ensure_block_neuron_set(recording)
+            if not hasattr(self.config, "neuron_sets"):
+                self._ensure_block_neuron_set(recording)
             self._sonata_config["reports"].update(
                 recording.config(
                     circuit,
