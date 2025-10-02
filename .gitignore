@@ -19,3 +19,5 @@ dist/*
 pip-audit-output.json
 *~
 examples/data/blueetl_data/output/
+requirements.txt
+pip-audit-output.json
