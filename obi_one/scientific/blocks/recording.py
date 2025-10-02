@@ -40,7 +40,9 @@ class Recording(Block, ABC):
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
     ) -> dict:
-        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+        if (self.neuron_set is not None) and (
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
                 f"'{self.block_name}' should be biophysical!"

@@ -19,7 +19,10 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 )
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
-from obi_one.scientific.tasks.simulations import CircuitSimulationScanConfig
+from obi_one.scientific.tasks.simulations import (
+    CircuitSimulationScanConfig,
+    MEModelSimulationScanConfig,
+)
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[
@@ -30,6 +33,7 @@ ScanConfigsUnion = Annotated[
     | ConnectivityMatrixExtractionScanConfig
     | ContributeMorphologyForm
     | FolderCompressionScanConfig
+    | MEModelSimulationScanConfig
     | MorphologyContainerizationScanConfig
     | ElectrophysiologyMetricsScanConfig
     | MorphologyDecontainerizationScanConfig

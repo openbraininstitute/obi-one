@@ -79,7 +79,9 @@ class SomaticStimulus(Stimulus, ABC):
     calculation of the extracellular signal."""
 
     def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+        if (self.neuron_set is not None) and (
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
                 f"'{self.block_name}' should be biophysical!"
@@ -497,7 +499,9 @@ class SpikeStimulus(Stimulus):
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
     def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
+        if (self.targeted_neuron_set is not None) and (
+            self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Target Neuron Set '{self.targeted_neuron_set.block.block_name}' for "
                 f"{self.__class__.__name__}: '{self.block_name}' should be biophysical!"

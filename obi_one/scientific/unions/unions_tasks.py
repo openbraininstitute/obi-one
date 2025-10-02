@@ -45,6 +45,7 @@ _config_tasks_map = {
     "ElectrophysiologyMetricsSingleConfig": ElectrophysiologyMetricsTask,
     "FolderCompressionSingleConfig": FolderCompressionTask,
     "IonChannelFittingSingleConfig": IonChannelFittingTask,
+    "MEModelSimulationSingleConfig": GenerateSimulationTask,
     "MorphologyContainerizationSingleConfig": MorphologyContainerizationTask,
     "MorphologyDecontainerizationSingleConfig": MorphologyDecontainerizationTask,
     "MorphologyMetricsSingleConfig": MorphologyMetricsTask,

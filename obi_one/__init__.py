@@ -63,6 +63,7 @@ __all__ = [
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GenerateSimulationTask",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -75,6 +76,8 @@ __all__ = [
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
     "MEModelFromID",
+    "MEModelSimulationScanConfig",
+    "MEModelSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -294,6 +297,9 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
+    GenerateSimulationTask,
+    MEModelSimulationScanConfig,
+    MEModelSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.unions_extracellular_locations import (

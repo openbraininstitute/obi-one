@@ -21,7 +21,7 @@ class MEModelFromID(EntityFromID):
         memodel = super().entity(db_client)
 
         circuit_config_path = stage_sonata_from_memodel(
-            client=db_client, memodel=memodel, output_dir=dest_dir
+            client=db_client, memodel=memodel, output_dir=dest_dir / "sonata_circuit"
         )
 
         return Circuit(name="single_cell", path=str(circuit_config_path))
