@@ -1,6 +1,7 @@
 import types
 from typing import ClassVar, get_args, get_origin
 
+import entitysdk
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -30,6 +31,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     single_coord_class_name: ClassVar[str] = ""
 
     _block_mapping: dict = None
+
+    _campaign: None = None
+
+    @property
+    def campaign(
+        self,
+    ) -> (
+        entitysdk.models.SimulationCampaign | None
+    ):  # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
+        return self._campaign
 
     @classmethod
     def empty_config(cls) -> "ScanConfig":

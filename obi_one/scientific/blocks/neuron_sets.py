@@ -1150,7 +1150,7 @@ class PairMotifNeuronSet(NeuronSet):
         # Add new columns for feed-forward selection
         conn_mat.add_edge_property(
             "nsyn_ff_",
-            conn_mat.edges[conn_mat._default_edge],  # noqa: SLF001
+            conn_mat.edges[conn_mat._default_edge],
         )  # Default column expected to represent #synapses/connection
         conn_mat.add_edge_property(
             "iloc_ff_", np.arange(conn_mat.edges.shape[0])

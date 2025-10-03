@@ -139,10 +139,10 @@ class ScientificArtifact(Block):
     atlas_id: uuid.UUID | None = Field(default=None)
 
 
-class ContributeMorphologyForm(ScanConfig):
+class ContributeMorphologyScanConfig(ScanConfig):
     """Contribute Morphology ScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "ContributeMorphology"
+    single_coord_class_name: ClassVar[str] = "ContributeMorphologySingleConfig"
     name: ClassVar[str] = "Contribute a Morphology"
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
@@ -202,21 +202,21 @@ class ContributeMorphologyForm(ScanConfig):
     )
 
 
-class ContributeMorphology(ContributeMorphologyForm, SingleConfigMixin):
+class ContributeMorphologySingleConfig(ContributeMorphologyScanConfig, SingleConfigMixin):
     """Placeholder here to maintain compatibility."""
 
 
 class ContributeMorphologyTask(Task):
-    config: ContributeMorphology
+    config: ContributeMorphologySingleConfig
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
         pass
 
 
-class ContributeSubjectForm(ScanConfig):
+class ContributeSubjectScanConfig(ScanConfig):
     """Contribute Morphology ScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "ContributeSubject"
+    single_coord_class_name: ClassVar[str] = "ContributeSubjectSingleConfig"
     name: ClassVar[str] = "Contribute a Subject"
     description: ClassVar[str] = "ScanConfig to contribute a subject to the OBI."
 
@@ -227,12 +227,12 @@ class ContributeSubjectForm(ScanConfig):
     )
 
 
-class ContributeSubject(ContributeMorphologyForm, SingleConfigMixin):
+class ContributeSubjectSingleConfig(ContributeMorphologyScanConfig, SingleConfigMixin):
     """Placeholder here to maintain compatibility."""
 
 
 class ContributeSubjectTask(Task):
-    config: ContributeSubject
+    config: ContributeSubjectSingleConfig
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
         pass

@@ -69,13 +69,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    @property
-    def campaign(self) -> entitysdk.models.SimulationCampaign:
-        if self._campaign is None:
-            msg = "Campaign entity has not been created yet!"
-            raise OBIONEError(msg)
-        return self._campaign
-
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
@@ -376,6 +369,49 @@ class MEModelSimulationSingleConfig(
 
 class GenerateSimulationTask(Task):
     config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
+
+    _single_entity: entitysdk.models.Simulation
+
+    @property
+    def single_entity(self) -> entitysdk.models.Simulation:
+        return self._single_entity
+
+    def create_single_entity_with_config(
+        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
+    ) -> entitysdk.models.Simulation:
+        """Saves the simulation to the database."""
+        L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
+
+        if not isinstance(self.initialize.circuit, CircuitFromID):
+            msg = (
+                "Simulation can only be saved to entitycore if circuit is CircuitFromID "
+                "or MEModelFromID"
+            )
+            raise OBIONEError(msg)
+
+        L.info("-- Register Simulation Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.Simulation(
+                name=f"Simulation {self.idx}",
+                description=f"Simulation {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                entity_id=self.initialize.circuit.id_str,
+                simulation_campaign_id=campaign.id,
+            )
+        )
+
+        L.info("-- Upload simulation_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.Simulation,
+            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_content_type="application/json",
+            asset_label="simulation_generation_config",
+        )
+
+
+class GenerateSimulationTask(Task):
+    config: CircuitSimulationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
