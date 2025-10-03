@@ -165,9 +165,6 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/blocks/neuron_sets.py" = [
     "SLF001"
 ]
-"obi_one/scientific/afferent_synapse_finder/afferent_synapses_block.py" = [
-    "SIM102"
-]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
