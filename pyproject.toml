@@ -162,7 +162,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/circuit/neuron_sets.py" = [
+"obi_one/scientific/blocks/neuron_sets.py" = [
     "SLF001"
 ]
 "obi_one/scientific/afferent_synapse_finder/afferent_synapses_block.py" = [

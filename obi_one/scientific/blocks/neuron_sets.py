@@ -945,13 +945,13 @@ class PairMotifNeuronSet(NeuronSet):
 
         Note: Will be added even if they are not part of the filtered selection.
         """
-        etab = conn_mat._edge_indices.copy()  # noqa: SLF001
+        etab = conn_mat._edge_indices.copy()
         etab = etab.reset_index(drop=True)
-        etab["nsyn_ff_"] = conn_mat._edges["nsyn_ff_"].to_numpy()  # noqa: SLF001
-        etab["iloc_ff_"] = conn_mat._edges["iloc_ff_"].to_numpy()  # noqa: SLF001
+        etab["nsyn_ff_"] = conn_mat._edges["nsyn_ff_"].to_numpy()
+        etab["iloc_ff_"] = conn_mat._edges["iloc_ff_"].to_numpy()
         etab = etab.set_index(["row", "col"])
 
-        etab_filt = conn_mat_filt._edge_indices.copy()  # noqa: SLF001
+        etab_filt = conn_mat_filt._edge_indices.copy()
         etab_filt["nsyn_fb_"] = 0
         etab_filt["iloc_fb_"] = -1
         etab_filt = etab_filt.set_index(["row", "col"])
@@ -1011,16 +1011,16 @@ class PairMotifNeuronSet(NeuronSet):
 
     @staticmethod
     def _remove_autapses(conn_mat: ConnectivityMatrix) -> ConnectivityMatrix:
-        sel_idx = (conn_mat._edge_indices["row"] != conn_mat._edge_indices["col"]).reset_index(  # noqa: SLF001
+        sel_idx = (conn_mat._edge_indices["row"] != conn_mat._edge_indices["col"]).reset_index(
             drop=True
         )
         return conn_mat.subedges(
-            conn_mat._edge_indices.reset_index(drop=True)[sel_idx].index.values  # noqa: SLF001
+            conn_mat._edge_indices.reset_index(drop=True)[sel_idx].index.values
         )
 
     @staticmethod
     def _selected_pair_table(conn_mat_filt: ConnectivityMatrix) -> pd.DataFrame:
-        pair_tab = conn_mat_filt._edge_indices.copy()  # noqa: SLF001
+        pair_tab = conn_mat_filt._edge_indices.copy()
         pair_tab = pair_tab.reset_index(drop=True)
         pair_tab.columns = ["nrn1", "nrn2"]
         pair_tab["nsyn_ff"] = conn_mat_filt.edges["nsyn_ff_"].to_numpy()
@@ -1150,7 +1150,7 @@ class PairMotifNeuronSet(NeuronSet):
         # Add new columns for feed-forward selection
         conn_mat.add_edge_property(
             "nsyn_ff_",
-            conn_mat.edges[conn_mat._default_edge],  # noqa: SLF001
+            conn_mat.edges[conn_mat._default_edge],
         )  # Default column expected to represent #synapses/connection
         conn_mat.add_edge_property(
             "iloc_ff_", np.arange(conn_mat.edges.shape[0])
