@@ -3,7 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.simulation.timestamps import RegularTimestamps, SingleTimestamp
+from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp
 
 TimestampsUnion = Annotated[SingleTimestamp | RegularTimestamps, Discriminator("type")]
 
