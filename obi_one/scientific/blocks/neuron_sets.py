@@ -208,12 +208,12 @@ class AbstractNeuronSet(Block, abc.ABC):
         """
         self.enforce_no_lists()
         population = self._population(population)
-        self.check_population(circuit, population)
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit, population)
         else:
             # Individual IDs need to be resolved
+            self.check_population(circuit, population)
             expression = {
                 "population": population,
                 "node_id": self.get_neuron_ids(circuit, population).tolist(),
@@ -345,7 +345,7 @@ class NeuronSet(AbstractNeuronSet):
         return population
 
 
-class PredefinedNeuronSet(NeuronSet):
+class PredefinedNeuronSet(AbstractNeuronSet):
     """Neuron set wrapper of an existing (named) node sets already predefined in the node \
         sets file.
     """
@@ -360,7 +360,10 @@ class PredefinedNeuronSet(NeuronSet):
             msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str) -> list:
+    def _population(self, population: str | None = None) -> None:
+        return population
+
+    def _get_expression(self, circuit: Circuit, population: str | None) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [self.node_set]
