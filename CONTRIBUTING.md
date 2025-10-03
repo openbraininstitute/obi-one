@@ -17,3 +17,22 @@ as `repo_name = { git = "https://github.com/repo_name/snap.git", branch = "branc
 - Issues may belong to individual product repositories (i.e. single_cell_lab) or the obi-one repository. This allows us to group the issues by product in the project board.
 - "Milestones" are also used for grouping to support sprint development. As issues belong to different repositories we created several generically named milestones (i.e. OBI-ONE Milestone A, OBI-ONE Milestone B, ...) in each product repository. This avoids having to create new milestones everytime a new milestone is begun. Instead we can assign a previously finished milestone (i.e. OBI-ONE Milestone C) to issues associated with the new milestone. 
 - The goal of each milestone can be viewed by clicking the "Project details" icon in the top right of the project board.
+
+
+# Logging: 
+The package's logging level can be set like this from your script / notebook:
+```
+L = logging.getLogger(obi.__name__)
+L.setLevel(logging.WARNING) 
+```
+
+or written to file:
+```
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='app.log',  # optional: logs to a file instead of console
+    filemode='w'         # optional: overwrite the log file each time
+    force=True
+)
+```
