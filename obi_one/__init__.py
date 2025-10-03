@@ -46,10 +46,10 @@ __all__ = [
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
     "ConstantCurrentClampSomaticStimulus",
-    "ContributeMorphology",
-    "ContributeMorphologyForm",
-    "ContributeSubject",
-    "ContributeSubjectForm",
+    "ContributeMorphologyScanConfig",
+    "ContributeMorphologySingleConfig",
+    "ContributeSubjectScanConfig",
+    "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "ElectrophysiologyMetricsScanConfig",
@@ -249,10 +249,10 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionTask,
 )
 from obi_one.scientific.tasks.contribute import (
-    ContributeMorphology,
-    ContributeMorphologyForm,
-    ContributeSubject,
-    ContributeSubjectForm,
+    ContributeMorphologyScanConfig,
+    ContributeMorphologySingleConfig,
+    ContributeSubjectScanConfig,
+    ContributeSubjectSingleConfig,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

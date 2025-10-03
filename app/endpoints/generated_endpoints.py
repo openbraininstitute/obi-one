@@ -12,8 +12,8 @@ from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologyForm,
-    ContributeSubjectForm,
+    ContributeMorphologyScanConfig,
+    ContributeSubjectScanConfig,
 )
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
@@ -92,8 +92,8 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (CircuitSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
-        (ContributeMorphologyForm, "generate", ""),
-        (ContributeSubjectForm, "generate", ""),
+        (ContributeMorphologyScanConfig, "generate", ""),
+        (ContributeSubjectScanConfig, "generate", ""),
     ]:
         create_endpoint_for_form(
             form,
