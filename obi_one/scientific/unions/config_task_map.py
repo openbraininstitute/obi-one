@@ -10,7 +10,10 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
 )
-from obi_one.scientific.tasks.contribute import ContributeMorphology, ContributeMorphologyTask
+from obi_one.scientific.tasks.contribute import (
+    ContributeMorphologySingleConfig,
+    ContributeMorphologyTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -49,7 +52,7 @@ _config_tasks_map = {
     Simulation: GenerateSimulationTask,
     CircuitSimulationSingleConfig: GenerateSimulationTask,
     CircuitExtractionSingleConfig: CircuitExtractionTask,
-    ContributeMorphology: ContributeMorphologyTask,
+    ContributeMorphologySingleConfig: ContributeMorphologyTask,
     BasicConnectivityPlotsSingleConfig: BasicConnectivityPlotsTask,
     ConnectivityMatrixExtractionSingleConfig: ConnectivityMatrixExtractionTask,
     ElectrophysiologyMetricsSingleConfig: ElectrophysiologyMetricsTask,
