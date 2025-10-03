@@ -112,7 +112,14 @@ class AbstractNeuronSet(Block, abc.ABC):
         """Returns the SONATA node set expression (w/o subsampling)."""
 
     @staticmethod
-    def check_population(circuit: Circuit, population: str) -> None:
+    def check_population(
+        circuit: Circuit, population: str | None, *, ignore_none: bool = False
+    ) -> None:
+        if population is None:
+            if ignore_none:
+                return
+            msg = "A node population name must be provided!"
+            raise ValueError(msg)
         if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
             msg = f"Node population '{population}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
@@ -215,6 +222,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
+            self.check_population(circuit, population, ignore_none=True)
             expression = self._get_expression(circuit, population)
         else:
             # Individual IDs need to be resolved
