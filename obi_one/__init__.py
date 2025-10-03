@@ -294,6 +294,7 @@ from obi_one.scientific.tasks.simulations import (
     CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
+from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
@@ -310,10 +311,7 @@ from obi_one.scientific.unions.unions_recordings import RecordingReference, Reco
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_tasks import (
-    TasksUnion,
-    get_configs_task_type,
-)
+from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"

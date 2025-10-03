@@ -2,12 +2,8 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.tasks.basic_connectivity_plots import (
-    BasicConnectivityPlotsTask,
-)
-from obi_one.scientific.tasks.circuit_extraction import (
-    CircuitExtractionTask,
-)
+from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsTask
+from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
@@ -34,23 +30,3 @@ TasksUnion = Annotated[
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]
-
-_config_tasks_map = {
-    "Simulation": GenerateSimulationTask,
-    "CircuitSimulationSingleConfig": GenerateSimulationTask,
-    "CircuitExtractionSingleConfig": CircuitExtractionTask,
-    "ContributeMorphologySingleConfig": ContributeMorphologyTask,
-    "BasicConnectivityPlotsSingleConfig": BasicConnectivityPlotsTask,
-    "ConnectivityMatrixExtractionSingleConfig": ConnectivityMatrixExtractionTask,
-    "ElectrophysiologyMetricsSingleConfig": ElectrophysiologyMetricsTask,
-    "FolderCompressionSingleConfig": FolderCompressionTask,
-    "IonChannelFittingSingleConfig": IonChannelFittingTask,
-    "MorphologyContainerizationSingleConfig": MorphologyContainerizationTask,
-    "MorphologyDecontainerizationSingleConfig": MorphologyDecontainerizationTask,
-    "MorphologyMetricsSingleConfig": MorphologyMetricsTask,
-    "MorphologyLocationsSingleConfig": MorphologyLocationsTask,
-}
-
-
-def get_configs_task_type(config: object) -> type:
-    return _config_tasks_map[type(config).__name__]

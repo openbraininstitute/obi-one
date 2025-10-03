@@ -2,7 +2,7 @@ import entitysdk
 
 from obi_one.core.scan_generation import ScanGenerationTask
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.unions.unions_tasks import get_configs_task_type
+from obi_one.scientific.unions.config_task_map import get_configs_task_type
 
 
 def run_task_for_single_config(
