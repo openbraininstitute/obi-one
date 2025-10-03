@@ -1,5 +1,6 @@
 """Ion channel modeling scan config."""
 
+from enum import StrEnum
 import subprocess  # noqa: S404
 from pathlib import Path
 from typing import ClassVar
@@ -60,12 +61,31 @@ def run_ion_channel_model(
     pass
 
 
+class BlockGroup(StrEnum):
+    """Authentication and authorization errors.""" # TODO:update this
+
+    SETUP = "Setup"
+    EQUATIONS = "Equations"
+    GATESPARAMETERS = "Gates Parameters"
+    ADVANCED = "Advanced"
+
+
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
     single_coord_class_name: ClassVar[str] = "IonChannelFittingScanConfig"
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
+
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "block_block_group_order": [
+                BlockGroup.SETUP,
+                BlockGroup.EQUATIONS,
+                BlockGroup.GATESPARAMETERS,
+                BlockGroup.ADVANCED,
+            ]
+        }
 
     class Initialize(Block):
         # traces
@@ -93,29 +113,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
         )
 
-    class Equations(Block):
-        # equations
-        minf_eq: dict[str, equations_module.MInfUnion] = Field(
-            default_factory=dict,
-            title="m_{inf} equation",
-            reference_type=equations_module.MInfReference.__name__,
-        )
-        mtau_eq: dict[str, equations_module.MTauUnion] = Field(
-            default_factory=dict,
-            title=r"\tau_m equation",
-            reference_type=equations_module.MTauReference.__name__,
-        )
-        hinf_eq: dict[str, equations_module.HInfUnion] = Field(
-            default_factory=dict,
-            title="h_{inf} equation",
-            reference_type=equations_module.HInfReference.__name__,
-        )
-        htau_eq: dict[str, equations_module.HTauUnion] = Field(
-            default_factory=dict,
-            title=r"\tau_h equation",
-            reference_type=equations_module.HTauReference.__name__,
-        )
-
+    class GatesParameters(Block):  # TODO: put m and h outside of this block
         # mod file creation
         m_power: int = Field(
             title="m exponent in channel equation",
@@ -304,29 +302,56 @@ class IonChannelFittingScanConfig(ScanConfig):
             units="ms",
         )
 
-    initialize: Initialize
-    equations: Equations
-    expert: Expert
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP,
+        group_order=0,
+    )
 
-    def as_dict(self) -> dict:
-        """Return the form as a dict."""
-        return {
-            "initialize": {
-                "recordings": [rec.id_str for rec in self.initialize.recordings],
-                "suffix": self.initialize.suffix,
-                "ion": self.initialize.ion,
-                "temperature": self.initialize.temperature,
-            },
-            "equations": {
-                "minf_eq": self.equations.minf_eq["minf"].__class__.__name__,
-                "mtau_eq": self.equations.mtau_eq["mtau"].__class__.__name__,
-                "hinf_eq": self.equations.hinf_eq["hinf"].__class__.__name__,
-                "htau_eq": self.equations.htau_eq["htau"].__class__.__name__,
-                "m_power": self.equations.m_power,
-                "h_power": self.equations.h_power,
-            },
-            "expert": vars(self.expert),
-        }
+    # equations: Equations
+    minf_eq: dict[str, equations_module.MInfUnion] = Field(
+        default_factory=dict,
+        title="m_{inf} equation",
+        reference_type=equations_module.MInfReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=0,
+    )
+    mtau_eq: dict[str, equations_module.MTauUnion] = Field(
+        default_factory=dict,
+        title=r"\tau_m equation",
+        reference_type=equations_module.MTauReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=1,
+    )
+    hinf_eq: dict[str, equations_module.HInfUnion] = Field(
+        default_factory=dict,
+        title="h_{inf} equation",
+        reference_type=equations_module.HInfReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=2,
+    )
+    htau_eq: dict[str, equations_module.HTauUnion] = Field(
+        default_factory=dict,
+        title=r"\tau_h equation",
+        reference_type=equations_module.HTauReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=3,
+    )
+
+    gates_param: GatesParameters = Field(
+        title="Gates parameters",
+        description="Set the power of m and h gates used in HH formalism equations.",
+        group=BlockGroup.GATESPARAMETERS,
+        group_order=0,
+    )
+
+    expert: Expert = Field(
+        title="Expert",
+        description="Advanced setup.",
+        group=BlockGroup.ADVANCED,
+        group_order=0,
+    )
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
@@ -336,7 +361,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
+    def download_input(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
@@ -408,13 +433,13 @@ class IonChannelFittingTask(Task):
 
         return model.id
 
-    def run(
+    def execute(
         self, db_client: entitysdk.client.Client = None
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
             # download traces asset and metadata given id. Get ljp from metadata
-            trace_paths, trace_ljps = self.generate(db_client=db_client)
+            trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
             # prepare data to feed
             eq_names = {
@@ -519,27 +544,3 @@ class IonChannelFittingTask(Task):
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
         else:
             return model_id
-
-
-def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFittingSingleConfig:
-    """Create IonChannelFitting instance from a dict."""
-    return IonChannelFittingSingleConfig(
-        initialize=IonChannelFittingScanConfig.Initialize(
-            recordings=[
-                IonChannelRecordingFromID(id_str=icr_id)
-                for icr_id in icf_dict["initialize"]["recordings"]
-            ],
-            suffix=icf_dict["initialize"]["suffix"],
-            ion=icf_dict["initialize"]["ion"],
-            temperature=icf_dict["initialize"]["temperature"],
-        ),
-        equations=IonChannelFittingScanConfig.Equations(
-            minf_eq={"minf": getattr(equations_module, icf_dict["equations"]["minf_eq"])()},
-            mtau_eq={"mtau": getattr(equations_module, icf_dict["equations"]["mtau_eq"])()},
-            hinf_eq={"hinf": getattr(equations_module, icf_dict["equations"]["hinf_eq"])()},
-            htau_eq={"htau": getattr(equations_module, icf_dict["equations"]["htau_eq"])()},
-            m_power=icf_dict["equations"]["m_power"],
-            h_power=icf_dict["equations"]["h_power"],
-        ),
-        expert=IonChannelFittingScanConfig.Expert(**icf_dict["expert"]),
-    )
