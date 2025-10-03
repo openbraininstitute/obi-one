@@ -168,9 +168,6 @@ class AbstractNeuronSet(Block, abc.ABC):
         return self._population(population)
 
     def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
-        if population is None:
-            msg = "Must specify a node population name!"
-            raise ValueError(msg)
         return population
 
     def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
@@ -367,9 +364,6 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         if self.node_set not in circuit.node_sets:
             msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
-
-    def _population(self, population: str | None = None) -> None:
-        return population
 
     def _get_expression(self, circuit: Circuit, population: str | None) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
