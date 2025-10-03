@@ -365,7 +365,7 @@ class PredefinedNeuronSet(AbstractNeuronSet):
             msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str | None) -> list:
+    def _get_expression(self, circuit: Circuit, population: str) -> list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [self.node_set]
