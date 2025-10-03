@@ -180,7 +180,15 @@ class AbstractNeuronSet(Block, abc.ABC):
         expression = self._get_expression(circuit, population)
         name = "__TMP_NODE_SET__"
         self.add_node_set_to_circuit(c, {name: expression})
-        return c.nodes[population].ids(name)
+
+        try:
+            node_ids = c.nodes[population].ids(name)
+        except snap.BluepySnapError as e:
+            # In case of an error, return empty list
+            L.warning(e)
+            node_ids = []
+
+        return node_ids
 
     def get_neuron_ids(self, circuit: Circuit, population: str | None = None) -> np.ndarray:
         """Returns list of neuron IDs (with subsampling, if specified)."""
@@ -196,7 +204,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
         if len(ids) == 0:
-            L.warning("WARNING: Neuron set empty!")
+            L.warning("Neuron set empty!")
 
         return ids
 
@@ -1184,7 +1192,7 @@ class PairMotifNeuronSet(NeuronSet):
             )
 
         if pair_tab.shape[0] == 0:
-            L.warning("WARNING: Pair table empty!")
+            L.warning("Pair table empty!")
 
         return pair_tab
 
