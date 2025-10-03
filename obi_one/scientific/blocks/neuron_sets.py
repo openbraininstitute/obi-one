@@ -118,7 +118,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         if population is None:
             if ignore_none:
                 return
-            msg = "A node population name must be provided!"
+            msg = "Must specify a node population name!"
             raise ValueError(msg)
         if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
             msg = f"Node population '{population}' not found in circuit '{circuit}'!"
