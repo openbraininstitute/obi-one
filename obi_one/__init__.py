@@ -63,6 +63,7 @@ __all__ = [
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GenerateSimulationTask",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -74,6 +75,9 @@ __all__ = [
     "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelFromID",
+    "MEModelSimulationScanConfig",
+    "MEModelSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -229,6 +233,7 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
@@ -292,6 +297,9 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
+    GenerateSimulationTask,
+    MEModelSimulationScanConfig,
+    MEModelSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type

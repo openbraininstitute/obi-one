@@ -11,6 +11,14 @@ from obi_one.core.exception import OBIONEError
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 
 
+def get_all_annotations(cls: type) -> dict[str, type]:
+    """Collect annotations from a class and all its parent classes."""
+    annotations = {}
+    for base in reversed(cls.__mro__):  # reversed so base class first, then subclasses override
+        annotations.update(getattr(base, "__annotations__", {}))
+    return annotations
+
+
 class ScanConfig(OBIBaseModel, extra="forbid"):
     """A ScanConfig is a configuration for single or multi-dimensional parameter scans.
 
@@ -47,7 +55,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         """Returns a mapping of block class names to block_dict_name and reference_type."""
         if self._block_mapping is None:
             # Get type annotations of the instance's class
-            annotations = self.__class__.__annotations__
+            annotations = get_all_annotations(self.__class__)
 
             # Initialize an empty mapping
             self._block_mapping = {}

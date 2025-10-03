@@ -7,13 +7,19 @@ from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
 
 
 class Recording(Block, ABC):
-    neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
-    ]
+    neuron_set: (
+        Annotated[
+            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
+        ]
+        | None
+    ) = None
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
@@ -34,7 +40,9 @@ class Recording(Block, ABC):
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
     ) -> dict:
-        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+        if (self.neuron_set is not None) and (
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
                 f"'{self.block_name}' should be biophysical!"
@@ -72,7 +80,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": self.neuron_set.block.block_name,
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
