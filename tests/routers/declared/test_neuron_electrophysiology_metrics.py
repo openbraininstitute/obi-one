@@ -8,7 +8,7 @@ import pytest
 from entitysdk.models import ElectricalCellRecording
 
 from app.dependencies.entitysdk import get_client
-from obi_one.scientific.ephys_extraction.ephys_extraction import parse_bpe_logs
+from obi_one.scientific.library.ephys_extraction import parse_bpe_logs
 
 from tests.utils import DATA_DIR
 
