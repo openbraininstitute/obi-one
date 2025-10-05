@@ -30,3 +30,28 @@ class StepDict(TypedDict):
     start: float
     end: float
     step: float
+
+
+from pydantic import BaseModel, Field, PositiveInt
+from typing import Annotated
+
+class IntRange(BaseModel):
+    start: int
+    step: PositiveInt
+    end: int
+    _values: list[int]
+    def __init__(self, *, start, step, end):
+        super().__init__(start=start, step=step, end=end)
+        self._values = list(range(start, end, step))
+    def __ge__(self, v):
+        return all(_v >= v for _v in self._values)
+    def __gt__(self, v):
+        return all(_v > v for _v in self._values)
+    def __le__(self, v):
+        return all(_v <= v for _v in self._values)
+    def __lt__(self, v):
+        return all(_v < v for _v in self._values)
+    def __len__(self):
+        return len(self._values)
+    def __iter__(self):
+        return self._values.__iter__()
