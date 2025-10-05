@@ -17,6 +17,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -353,7 +354,9 @@ class PredefinedNeuronSet(NeuronSet):
         sets file.
     """
 
-    node_set: Annotated[NodeSetType, Field(min_length=1, circuit_property_type="CircuitNodeSet")]
+    node_set: Annotated[
+        NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
+    ]
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:

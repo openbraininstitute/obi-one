@@ -23,6 +23,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -344,7 +345,6 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
 
-
     @router.get(
         "/mapped-circuit-properties/{circuit_id}",
         summary="Mapped circuit properties",
@@ -362,7 +362,9 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                 level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
             )
             mapped_circuit_properties = {}
-            mapped_circuit_properties["CircuitNodeSet"] = circuit_metrics.names_of_nodesets
+            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
+                circuit_metrics.names_of_nodesets
+            )
 
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
@@ -373,7 +375,6 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                 },
             ) from err
         return mapped_circuit_properties
-
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
