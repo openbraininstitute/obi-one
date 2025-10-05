@@ -1,6 +1,6 @@
 # OBI-ONE
 
-OBI-ONE is a standardized library of workflows for biophysically-detailed brain modeling, with the following features:
+OBI-ONE is a library of standardized workflows for biophysically-detailed brain modeling, with the following features:
 - Integration with a standardized cloud database for neuroscience and computational neuroscience through [**entitysdk**](github.com/openbraininstitute/entitysdk).
 - Standardized provenence of workflows.
 - Standardized parameter scans across different modeling workflows.
@@ -9,20 +9,18 @@ OBI-ONE is a standardized library of workflows for biophysically-detailed brain 
 
 <br>
 
-# Examples
-Example Jupyter notebooks are available in [**examples/**](examples/)
+[**examples**](examples/) (Jupter notebooks)
 
-<br>
+[**CONTRIBUTIONS.md**](CONTRIBUTIONS.md)
 
 
-# Installation
 
-Pre-installation
+### Pre-installation
 ```
 brew install uv open-mpi boost cmake
 ```
 
-Virtual environment (registered as a Jupyter kernel)
+### Virtual environment (registered as a Jupyter kernel)
 ```
 make install
 ```
@@ -30,7 +28,7 @@ make install
 <br>
 
 
-# Technical Overview / Glossary
+## Overview
 
 The [**obi_one**](obi_one/core/) package is split into [**core**](obi_one/core/) and [**scientific**](obi_one/scientific/) code.
 
@@ -52,6 +50,12 @@ The [**obi_one**](obi_one/core/) package is split into [**core**](obi_one/core/)
 
 <br>
 
+[**scientific**](obi_one/scientific/) is composed of the following directories:
+
+
+
+<br>
+
 
 # FAST API Service
 
@@ -62,9 +66,6 @@ make run-local
 
 <br>
 
-# Contributions
-Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to contribute.
- 
 # Acknowledgements
 Copyright © 2025 Open Brain Institute
 
