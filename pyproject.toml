@@ -38,35 +38,39 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "starlette",
+    "python-multipart",  # Added python-multipart
     # JUPYTER
     "jupyter",
     "notebook",
-    "jupyterlab",
+    "jupyterlab>=4.4.8",
     "ipykernel",
     # DATABASE
     "sqlalchemy",
     # BLUEETL
     "blueetl",
     # NEUROM
+    "aiofiles",
     "neurom",
+    "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.7.2",
+    "entitysdk>=0.8.1",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-    "bluepyefe>=2.3.50",
+    "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "bluecellulab>=2.6.62",
+    # OBI NOTEBOOK
+    "obi_notebook",
 ]
 
 [project.optional-dependencies]
 connectivity = [
     "connectome-analysis>=1.0.1",
 ]
-
 
 [dependency-groups]
 audit = [
@@ -79,7 +83,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "ruff",
+    "ruff<=0.12.7",
 ]
 
 [build-system]
@@ -103,6 +107,9 @@ local_scheme = "no-local-version"
 
 [tool.uv]
 required-version = ">=0.8.0"
+
+[tool.uv.sources]
+repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 
 [tool.ruff]
 line-length = 100
@@ -155,30 +162,20 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/circuit/neuron_sets.py" = [
+"obi_one/scientific/blocks/neuron_sets.py" = [
     "SLF001"
-]
-"obi_one/scientific/afferent_synapse_finder/specified_afferent_synapses_block.py" = [
-    "SIM102"
 ]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.pylint]
-# Maximum number of arguments for function / method
 max-args = 12
-# Maximum number of locals for function / method body
 max-locals = 15
-# Maximum number of return / yield for function / method body
 max-returns = 6
-# Maximum number of branch for function / method body
 max-branches = 12
-# Maximum number of statements in function / method body
 max-statements = 50
-# Maximum number of public methods for a class (see R0904).
 max-public-methods = 60
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -190,9 +187,9 @@ addopts = [
     "--durations=10",
     "--durations-min=1.0",
 ]
-# asyncio_mode = "auto"
 testpaths = [
     "tests",
+    "examples",
 ]
 
 [tool.coverage.run]

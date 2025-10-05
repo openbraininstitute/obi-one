@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class Block(OBIBaseModel):
-    """Defines a component of a Form.
+    """Defines a component of a ScanConfig.
 
     Parameters can be of type | list[type]
     when a list is used it is used as a dimension in a multi-dimensional parameter scan.
@@ -29,29 +29,22 @@ class Block(OBIBaseModel):
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
-    _simulation_level_name: str | None = PrivateAttr(default=None)
-
     _ref = None
-
-    def check_simulation_init(self) -> None:
-        if self._simulation_level_name is None:
-            msg = f"'{self.__class__.__name__}' initialization within a simulation required!"
-            raise ValueError(msg)
+    _block_name = None
 
     @property
-    def name(self) -> str:
-        """Returns name."""
-        self.check_simulation_init()
-        return self._simulation_level_name
-
-    def has_name(self) -> bool:
-        return self._simulation_level_name is not None
-
-    def set_simulation_level_name(self, value: str) -> None:
-        if not isinstance(value, str) or not value:
-            msg = "Simulation level name must be a non-empty string."
+    def block_name(self) -> str:
+        """Returns the block name."""
+        if self._block_name is None:
+            msg = "Block name has not been set. Please add the block to a form and validate."
             raise ValueError(msg)
-        self._simulation_level_name = value
+        return self._block_name
+
+    def set_block_name(self, name: str) -> None:
+        self._block_name = name
+
+    def has_block_name(self) -> bool:
+        return self._block_name is not None
 
     @property
     def ref(self) -> "BlockReference":
@@ -62,6 +55,9 @@ class Block(OBIBaseModel):
 
     def set_ref(self, value: "BlockReference") -> None:
         self._ref = value
+
+    def has_ref(self) -> bool:
+        return self._ref is not None
 
     def multiple_value_parameters(
         self, category_name: str, block_key: str = ""
