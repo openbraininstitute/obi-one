@@ -345,6 +345,37 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
 
 
+    @router.get(
+        "/mapped-circuit-properties/{circuit_id}",
+        summary="Mapped circuit properties",
+        description="Returns a dictionary of mapped circuit properties.",
+    )
+    def mapped_circuit_properties_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> dict[str, str]:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+            mapped_circuit_properties = {}
+            mapped_circuit_properties["CircuitNodeSet"] = circuit_metrics.names_of_nodesets
+
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+        return mapped_circuit_properties
+
+
+
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_morphology_endpoint(router)
