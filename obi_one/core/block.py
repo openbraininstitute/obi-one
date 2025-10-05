@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.param import MultiValueScanParam
 from obi_one.core.multi_value_types import Step
+from obi_one.core.param import MultiValueScanParam
 
 if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
