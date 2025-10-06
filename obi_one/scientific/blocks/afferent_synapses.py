@@ -99,7 +99,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
     def synapses_on(
         self, circ: snap.Circuit, node_population: str, node_id: int
     ) -> pandas.DataFrame:
-        self.enforce_no_lists()
+        self.enforce_no_multi_param()
         numpy.random.seed(self.random_seed)  # noqa: NPY002
         args = self.gather_synapse_info(circ, node_population, node_id)
         return self._select_syns(*args)

@@ -10,7 +10,7 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
-from obi_one.core.multi_value_types import Step
+from obi_one.core.multi_value_types import FloatRange
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
@@ -92,7 +92,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
-    amplitude: float | list[float] | Step = Field(
+    amplitude: float | list[float] | FloatRange = Field(
         default=0.1,
         description="The injected current. Given in nanoamps.",
         title="Amplitude",

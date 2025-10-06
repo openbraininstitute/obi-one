@@ -196,7 +196,7 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     def get_neuron_ids(self, circuit: Circuit, population: str | None = None) -> np.ndarray:
         """Returns list of neuron IDs (with subsampling, if specified)."""
-        self.enforce_no_lists()
+        self.enforce_no_multi_param()
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
@@ -218,7 +218,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         """Returns the SONATA node set definition, optionally forcing to resolve individual \
             IDs.
         """
-        self.enforce_no_lists()
+        self.enforce_no_multi_param()
         population = self._population(population)
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved

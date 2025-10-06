@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.multi_value_types import Step
+from obi_one.core.multi_value_types import ParametericMultiValue
 from obi_one.core.param import MultiValueScanParam
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ class Block(OBIBaseModel):
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
-            if isinstance(value, Step):
+            if isinstance(value, ParametericMultiValue):
                 multi_values = self.generate_values_from_step(value)
 
             elif isinstance(value, list):  # and len(value) > 1:
@@ -89,19 +89,12 @@ class Block(OBIBaseModel):
 
         return self._multiple_value_parameters
 
-    @staticmethod
-    def generate_values_from_step(step: Step) -> list[float]:
-        values: list[float] = []
-
-        current = step.start
-        while current < step.end:
-            values.append(current)
-            current += step.step
-        return values
-
-    def enforce_no_lists(self) -> None:
+    def enforce_no_multi_param(self) -> None:
         """Raise a TypeError if any attribute is a list."""
         for key, value in self.__dict__.items():
             if isinstance(value, list):
                 msg = f"Attribute '{key}' must not be a list."
+                raise TypeError(msg)
+            if isinstance(value, ParametericMultiValue):
+                msg = f"Attribute '{key}' must not be a ParametericMultiValue."
                 raise TypeError(msg)
