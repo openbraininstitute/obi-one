@@ -72,11 +72,11 @@ class FloatRange(ParametericMultiValue):
 
     @model_validator(mode="after")
     def generate_values(self) -> Self:
-        n = int(round((self.end - self.start) / self.step))
+        n = round((self.end - self.start) / self.step)
         self._values = np.linspace(self.start, self.start + n * self.step, n + 1)
 
         # Round to avoid floating point precision issues
-        decimals = len(str(self.step).split('.')[-1])
+        decimals = len(str(self.step).split(".")[-1])
         self._values = np.round(self._values, decimals)
 
         if self._values[-1] > self.end:
