@@ -46,27 +46,26 @@ class ConnectivityMetricsRequest(BaseModel):
 
 
 class ConnectivityMetricsOutput(BaseModel):
-    pre_type: Annotated[
-        list[str | None],
-        Field(description="Pre-synaptic type values the output metrics are grouped by"),
-    ] = [None]
-    post_type: Annotated[
-        list[str | None],
-        Field(description="Post-synaptic type values the output metrics are grouped by"),
-    ] = [None]
-    connection_probability: Annotated[
-        list[float],
-        Field(
-            description="Connection probabilities (in percent) between pre- and post-synaptic types"
-        ),
-    ] = [np.nan]
-    mean_number_of_synapses: Annotated[
-        list[float],
-        Field(
-            description="Mean numbers of synapses per connection between pre- and"
-            " post-synaptic types"
-        ),
-    ] = [np.nan]
+    connection_probability: (
+        Annotated[
+            dict,
+            Field(
+                description="Connection probabilities (in percent) between pre- and"
+                " post-synaptic types as dict representation of a dataframe"
+            ),
+        ]
+        | None
+    ) = None
+    mean_number_of_synapses: (
+        Annotated[
+            dict,
+            Field(
+                description="Mean numbers of synapses per connection between pre- and"
+                " post-synaptic types as dict representation of a dataframe"
+            ),
+        ]
+        | None
+    ) = None
 
 
 class TemporaryPartialCircuit:
@@ -164,8 +163,8 @@ class TemporaryPartialCircuit:
 
 def _get_stacked_dataframe(conn_dict: dict, data_sel: str) -> pd.DataFrame:
     df = pd.DataFrame(conn_dict[data_sel]["data"], columns=conn_dict["common"]["tgt_group_values"])
-    df["_pre_"] = conn_dict["common"]["src_group_values"]
-    df = df.melt("_pre_", var_name="_post_", value_name="data")
+    df["pre"] = conn_dict["common"]["src_group_values"]
+    df = df.melt("pre", var_name="post", value_name="data")
     return df
 
 
@@ -206,9 +205,7 @@ def get_connectivity_metrics(
     df_prob = _get_stacked_dataframe(conn_dict, "conn_prob")
     df_nsyn = _get_stacked_dataframe(conn_dict, "nsyn_conn")
     conn_output = ConnectivityMetricsOutput(
-        pre_type=df_prob["_pre_"],
-        post_type=df_prob["_post_"],
-        connection_probability=df_prob["data"],
-        mean_number_of_synapses=df_nsyn["data"],
+        connection_probability=df_prob.to_dict(),
+        mean_number_of_synapses=df_nsyn.to_dict(),
     )
     return conn_output
