@@ -1,39 +1,10 @@
-from dataclasses import Field
-from typing import Annotated, Literal, Self, TypedDict
+from typing import Self
 
-from pydantic import BaseModel, PositiveInt, field_validator, model_validator
-
-
-class Step(BaseModel):
-    type: Literal["step"]
-    start: float
-    end: float
-    step: float
-
-    @field_validator("step")
-    @classmethod
-    def step_positive(cls, v: float) -> float:
-        if v <= 0.0:
-            error = "step must be strictly positive"
-            raise ValueError(error)
-        return v
-
-    @model_validator(mode="after")
-    def valid_range(self) -> Self:
-        if self.start >= self.end:
-            error = "start must be < end when step is positive"
-            raise ValueError(error)
-        return self
+from core.base import OBIBaseModel
+from pydantic import PositiveInt, model_validator
 
 
-class StepDict(TypedDict):
-    type: Literal["step"]
-    start: float
-    end: float
-    step: float
-
-
-class IntRange(BaseModel):
+class IntRange(OBIBaseModel):
     start: int
     step: PositiveInt
     end: int
@@ -49,7 +20,7 @@ class IntRange(BaseModel):
     def __init__(self, *, start: int, step: PositiveInt, end: int) -> None:
         """Initialize IntRange and precompute values."""
         super().__init__(start=start, step=step, end=end)
-        self._values = list(range(start, end, step))
+        self._values = list(range(start, end + 1, step)) # + 1 includes end in range
 
     def __ge__(self, v: int) -> bool:
         """Greater than or equal to operator for IntRange."""
