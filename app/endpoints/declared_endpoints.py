@@ -16,20 +16,21 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
-from obi_one.scientific.circuit_metrics.circuit_metrics import (
+from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
+    CircuitPopulationsResponse,
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.ephys_extraction.ephys_extraction import (
+from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
     AmplitudeInput,
     ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
-from obi_one.scientific.morphology_metrics.morphology_metrics import (
+from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
@@ -52,14 +53,12 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
     """Define neuron morphology metrics endpoint."""
 
     @router.get(
-        "/neuron-morphology-metrics/{reconstruction_morphology_id}",
+        "/neuron-morphology-metrics/{cell_morphology_id}",
         summary="Neuron morphology metrics",
-        description=(
-            "This calculates neuron morphology metrics for a given reconstruction morphology."
-        ),
+        description=("This calculates neuron morphology metrics for a given cell morphology."),
     )
     def neuron_morphology_metrics_endpoint(
-        reconstruction_morphology_id: str,
+        cell_morphology_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         requested_metrics: Annotated[
             list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]
@@ -71,7 +70,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
         L.info("get_morphology_metrics")
         try:
             metrics = get_morphology_metrics(
-                reconstruction_morphology_id=reconstruction_morphology_id,
+                cell_morphology_id=cell_morphology_id,
                 db_client=db_client,
                 requested_metrics=requested_metrics,
             )
@@ -80,17 +79,13 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
                 status_code=HTTPStatus.NOT_FOUND,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
-                    "detail": (
-                        f"Reconstruction morphology {reconstruction_morphology_id} not found."
-                    ),
+                    "detail": (f"Cell morphology {cell_morphology_id} not found."),
                 },
             ) from err
 
         if metrics:
             return metrics
-        L.error(
-            f"Reconstruction morphology {reconstruction_morphology_id} metrics computation issue"
-        )
+        L.error(f"Cell morphology {cell_morphology_id} metrics computation issue")
         raise ApiError(
             message="Asset not found",
             error_code=ApiErrorCode.NOT_FOUND,
@@ -303,7 +298,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
     def circuit_populations_endpoint(
         circuit_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    ) -> CircuitNodesetsResponse:
+    ) -> CircuitPopulationsResponse:
         try:
             circuit_metrics = get_circuit_metrics(
                 circuit_id=circuit_id,
@@ -319,7 +314,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                     "detail": f"Circuit {circuit_id} not found.",
                 },
             ) from err
-        return CircuitNodesetsResponse(
+        return CircuitPopulationsResponse(
             populations=circuit_metrics.names_of_biophys_node_populations
         )
 

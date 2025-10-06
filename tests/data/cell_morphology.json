@@ -1,0 +1,168 @@
+{
+  "id": "9720aa4a-0cd1-4f10-b6ad-04deb8f997b6",
+  "type": "cell_morphology",
+  "update_date": "2024-10-29T13:36:30.827776Z",
+  "creation_date": "2024-09-10T14:25:03.707956Z",
+  "created_by": null,
+  "updated_by": null,
+  "authorized_public": true,
+  "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
+  "assets": [
+    {
+      "label": null,
+      "id": "a90bab5c-8529-4829-99fc-e90a270e8b30",
+      "update_date": null,
+      "creation_date": null,
+      "path": "mpg150211_A_idA.swc",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/cell_morphology/9720aa4a-0cd1-4f10-b6ad-04deb8f997b6/mpg150211_A_idA.swc",
+      "is_directory": false,
+      "content_type": "application/swc",
+      "label": "morphology",
+      "size": 561221,
+      "sha256_digest": "8b850eface3e7b881db62c361dc5da62be008ca81501c406a59646bf7075c95b",
+      "status": "created",
+      "meta": {
+        "legacy": {
+          "@id": "https://bbp.epfl.ch/data/public/morphologies/42315b31-081f-4d40-8b94-b72dbd16c99e",
+          "name": "mpg150211_A_idA.swc",
+          "@type": "DataDownload",
+          "digest": {
+            "value": "8b850eface3e7b881db62c361dc5da62be008ca81501c406a59646bf7075c95b",
+            "algorithm": "SHA-256"
+          },
+          "atLocation": {
+            "@type": "Location",
+            "store": {
+              "@id": "nxv:diskStorageDefault",
+              "_rev": 1,
+              "@type": "DiskStorage"
+            }
+          },
+          "contentUrl": "https://bbp.epfl.ch/nexus/v1/files/public/morphologies/https:%2F%2Fbbp.epfl.ch%2Fdata%2Fpublic%2Fmorphologies%2F42315b31-081f-4d40-8b94-b72dbd16c99e",
+          "contentSize": {
+            "value": 561221,
+            "unitCode": "bytes"
+          },
+          "encodingFormat": "application/swc"
+        }
+      }
+    },
+    {
+      "label": null,
+      "id": "56394210-d2fb-4755-990c-8083a97a46fd",
+      "update_date": null,
+      "creation_date": null,
+      "path": "mpg150211_A_idA.ASC",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/cell_morphology/9720aa4a-0cd1-4f10-b6ad-04deb8f997b6/mpg150211_A_idA.ASC",
+      "is_directory": false,
+      "content_type": "application/asc",
+      "label": "morphology",
+      "size": 525332,
+      "sha256_digest": "bf00878444539ead825f2d451cdf6f87072526f9a82c87de35fca5563ae5596b",
+      "status": "created",
+      "meta": {
+        "legacy": {
+          "@id": "https://bbp.epfl.ch/data/public/morphologies/7f422a37-48f0-4ea4-8760-f1481403d51f",
+          "name": "mpg150211_A_idA.ASC",
+          "@type": "DataDownload",
+          "digest": {
+            "value": "bf00878444539ead825f2d451cdf6f87072526f9a82c87de35fca5563ae5596b",
+            "algorithm": "SHA-256"
+          },
+          "atLocation": {
+            "@type": "Location",
+            "store": {
+              "@id": "nxv:diskStorageDefault",
+              "_rev": 1,
+              "@type": "DiskStorage"
+            }
+          },
+          "contentUrl": "https://bbp.epfl.ch/nexus/v1/files/public/morphologies/https:%2F%2Fbbp.epfl.ch%2Fdata%2Fpublic%2Fmorphologies%2F7f422a37-48f0-4ea4-8760-f1481403d51f",
+          "contentSize": {
+            "value": 525332,
+            "unitCode": "bytes"
+          },
+          "encodingFormat": "application/asc"
+        }
+      }
+    }
+  ],
+  "name": "mpg150211_A_idA",
+  "location": null,
+  "brain_region": {
+    "id": "38553ac8-7d71-4591-bfee-2fc72e2dffdf",
+    "update_date": "2025-05-09T13:32:18.034672Z",
+    "creation_date": "2025-05-09T13:32:18.034672Z",
+    "name": "Accessory abducens nucleus",
+    "annotation_value": 568,
+    "acronym": "ACVI",
+    "parent_structure_id": "596305b3-71b2-41e4-afd3-b9f2e90f79f8",
+    "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd",
+    "color_hex_triplet": "1000"
+  },
+  "description": "Neuronal morphology of excitatory neuron cell 'mpg150211_A_idA' in Field CA1, pyramidal layer of cell type SR_PC. A neuron that releases excitatory neurotransmitters. This neuron doesn't have axon, has a basal dendrite and apical dendrite.",
+  "species": {
+    "id": "0895fa61-fa6d-4674-9014-7300f9edf8da",
+    "update_date": "2025-03-29T16:48:36.175090Z",
+    "creation_date": "2025-03-29T16:48:36.175090Z",
+    "name": "Mus musculus",
+    "taxonomy_id": "NCBITaxon:10090"
+  },
+  "strain": null,
+  "license": null,
+  "contributions": [
+    {
+      "id": "79987156-9f97-4095-b69e-6b4e5ca213bb",
+      "update_date": "2025-03-29T16:49:12.446844Z",
+      "creation_date": "2025-03-29T16:49:12.446844Z",
+      "agent": {
+        "id": "eda92bb4-560b-4ad2-9c4b-4649bb254e83",
+        "update_date": "2024-04-22T14:40:13.122739Z",
+        "creation_date": "2021-03-17T16:59:51.555000Z",
+        "type": "person",
+        "pref_label": "Maurizio Pezzoli Gonzalez",
+        "given_name": "Maurizio",
+        "family_name": "Pezzoli Gonzalez"
+      },
+      "role": {
+        "id": "8b06e557-277b-4b0c-a439-bfb02d41927c",
+        "update_date": "2025-03-29T16:48:36.192831Z",
+        "creation_date": "2025-03-29T16:48:36.192831Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      },
+      "entity": null
+    },
+    {
+      "id": "7f43ce20-e63d-48c1-bc73-dabb38ee181b",
+      "update_date": "2025-03-29T16:49:12.449364Z",
+      "creation_date": "2025-03-29T16:49:12.449364Z",
+      "agent": {
+        "id": "f27cfa11-d1bc-4a14-b651-174bb53674ff",
+        "update_date": "2021-04-14T09:51:14.062000Z",
+        "creation_date": "2021-04-14T09:51:14.062000Z",
+        "type": "organization",
+        "pref_label": "École Polytechnique Fédérale de Lausanne",
+        "alternative_name": ""
+      },
+      "role": {
+        "id": "8b06e557-277b-4b0c-a439-bfb02d41927c",
+        "update_date": "2025-03-29T16:48:36.192831Z",
+        "creation_date": "2025-03-29T16:48:36.192831Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      },
+      "entity": null
+    }
+  ],
+  "mtypes": [
+    {
+      "id": "b2221a58-008a-45a6-8464-7159c324c985",
+      "update_date": "2021-09-06T15:47:05.039000Z",
+      "creation_date": "2021-09-06T15:47:04.890000Z",
+      "pref_label": "SR_PC",
+      "definition": "",
+      "alt_label": ""
+    }
+  ]
+}
