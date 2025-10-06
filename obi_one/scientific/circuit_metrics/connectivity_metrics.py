@@ -22,13 +22,15 @@ class ConnectivityMetricsRequest(BaseModel):
         str, Field(description="Name of the edge population to extract connectivity metrics from")
     ]
     pre_selection: Annotated[
-        dict | None, Field(description="Property/value pairs for pre-synaptic neuron selection")
+        dict[str, str | list[str]] | None,
+        Field(description="Property/value pairs for pre-synaptic neuron selection"),
     ] = None
     pre_node_set: Annotated[
         str | None, Field(description="Existing node set to apply pre-synaptic neuron selection in")
     ] = None
     post_selection: Annotated[
-        dict | None, Field(description="Property/value pairs for post-synaptic neuron selection")
+        dict[str, str | list[str]] | None,
+        Field(description="Property/value pairs for post-synaptic neuron selection"),
     ] = None
     post_node_set: Annotated[
         str | None,
