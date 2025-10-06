@@ -68,9 +68,9 @@ class Block(OBIBaseModel):
 
         for key, value in self.__dict__.items():
             if isinstance(value, ParametericMultiValue):
-                multi_values = self.generate_values_from_step(value)
+                multi_values = list(value)
 
-            elif isinstance(value, list):  # and len(value) > 1:
+            elif isinstance(value, list):
                 multi_values = value
 
             else:
