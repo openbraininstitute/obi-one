@@ -1,7 +1,9 @@
 """Ion channel modeling scan config."""
 
 from enum import StrEnum
+import logging
 import subprocess  # noqa: S404
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
 
@@ -11,11 +13,15 @@ from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
+from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+
+L = logging.getLogger(__name__)
 
 """
 from ion_channel_builder.create_model.main import extract_all_equations
@@ -73,7 +79,7 @@ class BlockGroup(StrEnum):
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelFittingScanConfig"
+    single_coord_class_name: ClassVar[str] = "IonChannelFittingSingleConfig"
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
@@ -306,6 +312,13 @@ class IonChannelFittingScanConfig(ScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP,
+        group_order=1,
+    )
+
+    info: Info = Field(
+        title="Info",
+        description="Information about the ion channel modeling campaign.",
+        group=BlockGroup.SETUP,
         group_order=0,
     )
 
@@ -353,9 +366,103 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
+    def create_campaign_entity_with_config(self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: entitysdk.client.Client = None,
+    ) -> entitysdk.models.IonChannelModelingCampaign:
+        """Initializes the ion channel modeling campaign in the database."""
+        # TODO: and implement related entities on entitysdk
+        L.info("1. Initializing ion channel modeling campaign in the database...")
+        if multiple_value_parameters_dictionary is None:
+            multiple_value_parameters_dictionary = {}
+
+        L.info("-- Register IonChannelModelingCampaign Entity")
+        self._campaign = db_client.register_entity(
+            entitysdk.models.IonChannelModelingCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                input_recording_ids=[rec.id_str for rec in self.initialize.recordings],
+                scan_parameters=multiple_value_parameters_dictionary,
+            )
+        )
+
+        L.info("-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.IonChannelModelingCampaign,
+            file_path=output_root / "run_scan_config.json",
+            file_content_type="application/json",
+            asset_label="campaign_generation_config",
+        )
+
+        return self._campaign
+
+    def create_campaign_generation_entity(
+        self,
+        ion_channel_modelings: list[entitysdk.models.IonChannelModeling],
+        db_client: entitysdk.client.Client
+    ) -> None:
+        """Register the activity generating the ion channel modeling tasks in the database."""
+        # TODO: also implement entitysdk related entities
+        L.info("3. Saving completed ion channel modeling campaign generation")
+
+        L.info("-- Register IonChannelModelingGeneration Entity")
+        db_client.register_entity(
+            entitysdk.models.IonChannelModelingGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=ion_channel_modelings,
+            )
+        )
+
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
-    pass
+    """Only allows single values and ensures nested attributes follow the same rule."""
+
+    _single_entity: entitysdk.models.IonChannelModeling
+
+    @property
+    def single_entity(self) -> entitysdk.models.IonChannelModeling:
+        return self._single_entity
+
+    def create_single_entity_with_config(
+        self,
+        campaign: entitysdk.models.IonChannelModelingCampaign,
+        db_client: entitysdk.client.Client
+    ) -> entitysdk.models.IonChannelModeling:
+        # TODO: also add related entities in entitysdk
+        """Saves the simulation to the database."""
+        L.info(f"2.{self.idx} Saving ion channel modeling {self.idx} to database...")
+
+        for recording in self.initialize.recordings:
+            if not isinstance(recording, IonChannelRecordingFromID):
+                msg = (
+                    "IonChannelModeling can only be saved to entitycore if all input recordings "
+                    "are IonChannelRecordingFromID"
+                )
+                raise OBIONEError(msg)
+
+        L.info("-- Register IonChannelModeling Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.IonChannelModeling(
+                name=f"IonChannelModeling {self.idx}",
+                description=f"IonChannelModeling {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                input_recording_ids=[rec.id_str for rec in self.initialize.recordings],
+                ion_channel_modeling_campaign_id=campaign.id,
+            )
+        )
+
+        L.info("-- Upload ion_channel_modeling_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.IonChannelModeling,
+            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_content_type="application/json",
+            asset_label="ion_channel_modeling_generation_config",
+        )
+
 
 
 class IonChannelFittingTask(Task):
@@ -422,6 +529,8 @@ class IonChannelFittingTask(Task):
             file_content_type=ContentType.application_mod,
             asset_label="mod file",
         )
+        # TODO: save figures etc as in https://github.com/openbraininstitute/prod-explore-functionality/issues/142#issuecomment-3365393270
+        # TODO: along with json file
         for key, fpath in figure_filepaths.items():
             _ = db_client.upload_file(
                 entity_id=model.id,
@@ -430,6 +539,16 @@ class IonChannelFittingTask(Task):
                 file_content_type=ContentType.application_pdf,
                 asset_label=key,
             )
+
+        # register the Activity
+        L.info("-- Register IonChannelExecution Entity")
+        db_client.register_entity(
+            entitysdk.models.IonChannelExecution(
+                start_time=datetime.now(UTC),
+                used=[self.config.single_entity],
+                generated=[model],
+            )
+        )
 
         return model.id
 
@@ -536,9 +655,11 @@ class IonChannelFittingTask(Task):
             )
 
             # register the mod file and figures to the platform
-            model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
-            )
+            # commented out for testing -> uncomment before merging
+            # model_id = self.save(
+            #     mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
+            # )
+            model_id = None
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
