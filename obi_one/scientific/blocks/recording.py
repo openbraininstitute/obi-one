@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Self
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
+from obi_one.core.multi_value_types import FloatRange
 
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
@@ -21,6 +22,7 @@ class Recording(Block, ABC):
     dt: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
+        | Annotated[FloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
     ) = Field(
         default=0.1,
         title="Timestep",
