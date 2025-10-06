@@ -1,7 +1,7 @@
-from typing import Annotated, Self
+from typing import Self
 
 import numpy as np
-from pydantic import Field, PositiveInt, model_validator
+from pydantic import NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
 
 from obi_one.core.base import OBIBaseModel
 
@@ -58,7 +58,7 @@ class IntRange(ParametericMultiValue):
 
 class FloatRange(ParametericMultiValue):
     start: float
-    step: PositiveInt
+    step: PositiveFloat
     end: float
     _values: list[float]
 
@@ -98,11 +98,23 @@ class FloatRange(ParametericMultiValue):
 
 
 class PositiveIntRange(IntRange):
-    start: Annotated[int, Field(gt=0)]
+    start: PositiveInt
+    end: PositiveInt
 
 
 class NonNegativeIntRange(IntRange):
-    start: Annotated[int, Field(ge=0)]
+    start: NonNegativeInt
+    end: NonNegativeInt
+
+
+class PositiveFloatRange(FloatRange):
+    start: PositiveFloat
+    end: PositiveFloat
+
+
+class NonNegativeFloatRange(FloatRange):
+    start: NonNegativeFloat
+    end: NonNegativeFloat
 
 
 """
@@ -137,13 +149,8 @@ b = Block(r=IntRange(start=2, step=1, end=10))
 
 
 #### Defining specific range types
-class PositiveIntRange(IntRange):
-    start: Annotated[int, Field(gt=0)]
 
 p = PositiveIntRange(start=1, step=1, end=5)
-
-class NonNegativeIntRange(IntRange):
-    start: Annotated[int, Field(ge=0)]
 
 n = NonNegativeIntRange(start=0, step=1, end=5)
 """
