@@ -102,3 +102,4 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
             data_postprocessing_method=data_postprocessing_method,
         )
     return router
+
