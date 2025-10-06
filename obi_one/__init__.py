@@ -59,6 +59,7 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatRange",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
@@ -69,6 +70,7 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntRange",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -94,6 +96,8 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "NonNegativeFloatRange",
+    "NonNegativeIntRange",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -103,6 +107,8 @@ __all__ = [
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
+    "PositiveFloatRange",
+    "PositiveIntRange",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -157,6 +163,14 @@ __all__ = [
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.parametric_multi_values import (
+    FloatRange,
+    IntRange,
+    NonNegativeFloatRange,
+    NonNegativeIntRange,
+    PositiveFloatRange,
+    PositiveIntRange,
+)
 from obi_one.core.scan_generation import (
     CoupledScanGenerationTask,
     GridScanGenerationTask,
