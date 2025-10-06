@@ -353,7 +353,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
     def mapped_circuit_properties_endpoint(
         circuit_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    ) -> dict[str, str]:
+    ) -> dict:
         try:
             circuit_metrics = get_circuit_metrics(
                 circuit_id=circuit_id,
