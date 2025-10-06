@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
+from entitysdk.models import Asset
 from entitysdk.models.circuit import Circuit
-from entitysdk.types import uuid
 from httpx import HTTPStatusError
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
@@ -86,13 +86,13 @@ class TemporaryPartialCircuit:
         self._db_client.download_file(
             entity_id=self._circuit_id,
             entity_type=Circuit,
-            asset_id=self.asset_id,
+            asset_id=self.asset.id,
             output_path=temp_file_path,
             asset_path=rel_path,
         )
         return temp_file_path
 
-    def _get_sonata_asset_id(self) -> uuid.UUID:
+    def _get_sonata_asset(self) -> Asset:
         circuit = self._db_client.get_entity(
             entity_id=self._circuit_id,
             entity_type=Circuit,
@@ -103,7 +103,7 @@ class TemporaryPartialCircuit:
         if len(sonata_assets) != 1:
             msg = "Circuit must have exactly one SONATA circuit directory asset!"
             raise ValueError(msg)
-        return sonata_assets[0].id
+        return sonata_assets[0]
 
     def _get_edges_path(self, c: snap.Circuit) -> str:
         edges_list = c.config["networks"]["edges"]
@@ -124,12 +124,20 @@ class TemporaryPartialCircuit:
 
     def __enter__(self) -> Path:
         """Enter."""
-        self.asset_id = self._get_sonata_asset_id()
+        self.temp_dir = None
+        self.asset = self._get_sonata_asset()
+
+        # Try circuit mount
+        config_fn = "circuit_config.json"
+        circuit_config_file = Path("/") / self.asset.full_path / config_fn
+        if circuit_config_file.is_file():
+            return circuit_config_file
+
+        # Otherwise, download circuit in temp directory
         self.temp_dir = tempfile.TemporaryDirectory()
         try:
             # Download circuit config
-            rel_path = "circuit_config.json"
-            circuit_config_file = self._download_file(rel_path)
+            circuit_config_file = self._download_file(config_fn)
             circuit = obi.Circuit(name=str(self._circuit_id), path=str(circuit_config_file))
             c = circuit.sonata_circuit
 
@@ -158,7 +166,8 @@ class TemporaryPartialCircuit:
 
     def __exit__(self, *args) -> None:
         """Exit."""
-        self.temp_dir.__exit__(*args)
+        if self.temp_dir is not None:
+            self.temp_dir.__exit__(*args)
 
 
 def _get_stacked_dataframe(conn_dict: dict, data_sel: str) -> pd.DataFrame:
