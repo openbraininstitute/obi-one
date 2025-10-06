@@ -12,6 +12,13 @@ class ParametericMultiValue(OBIBaseModel):
     These types define a range of values using parameters such as start, step, and end.
     """
 
+    @model_validator(mode="after")
+    def valid_range(self) -> Self:
+        if self.start >= self.end:
+            error = "start must be < end"
+            raise ValueError(error)
+        return self
+
     def __len__(self) -> int:
         """Length operator."""
         return len(self._values)
@@ -24,16 +31,9 @@ class IntRange(ParametericMultiValue):
     _values: list[int]
 
     @model_validator(mode="after")
-    def valid_range(self) -> Self:
-        if self.start >= self.end:
-            error = "start must be < end"
-            raise ValueError(error)
+    def generate_values(self) -> Self:
+        self._values = list(range(self.start, self.end + 1, self.step))  # + 1 includes end in range
         return self
-
-    def __init__(self, *, type: str,start: int, step: PositiveInt, end: int) -> None:
-        """Initialize and precompute values."""
-        super().__init__(start=start, step=step, end=end)
-        self._values = list(range(start, end + 1, step))  # + 1 includes end in range
 
     def __ge__(self, v: int | None) -> bool:
         """Greater than or equal to operator."""
@@ -71,18 +71,11 @@ class FloatRange(ParametericMultiValue):
     _values: list[float]
 
     @model_validator(mode="after")
-    def valid_range(self) -> Self:
-        if self.start >= self.end:
-            error = "start must be < end"
-            raise ValueError(error)
+    def generate_values(self) -> Self:
+        self._values = np.arange(self.start, self.end, self.step).tolist()
+        if self._values[-1] + self.step == self.end:
+            self._values.append(self.end)
         return self
-
-    def __init__(self, *, type: str, start: float, step: PositiveInt, end: float) -> None:
-        """Initialize and precompute values."""
-        super().__init__(start=start, step=step, end=end)
-        self._values = np.arange(start, end, step).tolist() 
-        if self._values[-1] + step == end:
-            self._values.append(end)
 
     def __ge__(self, v: float | None) -> bool:
         """Greater than or equal to operator."""

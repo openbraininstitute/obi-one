@@ -16,7 +16,10 @@ from starlette.responses import Response
 from app.config import settings
 from app.dependencies.auth import user_verified
 from app.endpoints.declared_endpoints import activate_declared_endpoints
-from app.endpoints.generated_endpoints import activate_generated_endpoints, activate_parameteric_multi_value_endpoints
+from app.endpoints.generated_endpoints import (
+    activate_generated_endpoints,
+    activate_parameteric_multi_value_endpoints,
+)
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
@@ -137,6 +140,8 @@ generated_router = APIRouter(
 app.include_router(activate_generated_endpoints(generated_router))
 
 generated_router_2 = APIRouter(
-    prefix="/generated/parameteric-multi-value", tags=["generated"], dependencies=[Depends(user_verified)]
+    prefix="/generated/parameteric-multi-value",
+    tags=["generated/parameteric-multi-value"],
+    dependencies=[Depends(user_verified)],
 )
 app.include_router(activate_parameteric_multi_value_endpoints(generated_router_2))
