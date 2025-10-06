@@ -30,25 +30,33 @@ class IntRange(ParametericMultiValue):
             raise ValueError(error)
         return self
 
-    def __init__(self, *, start: int, step: PositiveInt, end: int) -> None:
+    def __init__(self, *, type: str,start: int, step: PositiveInt, end: int) -> None:
         """Initialize and precompute values."""
         super().__init__(start=start, step=step, end=end)
         self._values = list(range(start, end + 1, step))  # + 1 includes end in range
 
-    def __ge__(self, v: int) -> bool:
+    def __ge__(self, v: int | None) -> bool:
         """Greater than or equal to operator."""
+        if v is None:
+            return True
         return all(_v >= v for _v in self._values)
 
-    def __gt__(self, v: int) -> bool:
+    def __gt__(self, v: int | None) -> bool:
         """Greater than operator."""
+        if v is None:
+            return True
         return all(_v > v for _v in self._values)
 
-    def __le__(self, v: int) -> bool:
+    def __le__(self, v: int | None) -> bool:
         """Less than or equal to operator."""
+        if v is None:
+            return True
         return all(_v <= v for _v in self._values)
 
-    def __lt__(self, v: int) -> bool:
+    def __lt__(self, v: int | None) -> bool:
         """Less than operator."""
+        if v is None:
+            return True
         return all(_v < v for _v in self._values)
 
     def __iter__(self) -> int:
@@ -69,27 +77,35 @@ class FloatRange(ParametericMultiValue):
             raise ValueError(error)
         return self
 
-    def __init__(self, *, start: float, step: PositiveInt, end: float) -> None:
+    def __init__(self, *, type: str, start: float, step: PositiveInt, end: float) -> None:
         """Initialize and precompute values."""
         super().__init__(start=start, step=step, end=end)
-        self._values = list(np.arange(start, end, step))
+        self._values = np.arange(start, end, step).tolist() 
         if self._values[-1] + step == end:
             self._values.append(end)
 
-    def __ge__(self, v: float) -> bool:
+    def __ge__(self, v: float | None) -> bool:
         """Greater than or equal to operator."""
+        if v is None:
+            return True
         return all(_v >= v for _v in self._values)
 
-    def __gt__(self, v: float) -> bool:
+    def __gt__(self, v: float | None) -> bool:
         """Greater than operator."""
+        if v is None:
+            return True
         return all(_v > v for _v in self._values)
 
-    def __le__(self, v: float) -> bool:
+    def __le__(self, v: float | None) -> bool:
         """Less than or equal to operator."""
+        if v is None:
+            return True
         return all(_v <= v for _v in self._values)
 
-    def __lt__(self, v: float) -> bool:
+    def __lt__(self, v: float | None) -> bool:
         """Less than operator."""
+        if v is None:
+            return True
         return all(_v < v for _v in self._values)
 
     def __iter__(self) -> float:

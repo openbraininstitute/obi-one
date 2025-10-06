@@ -1,16 +1,29 @@
+from dataclasses import Field
 import re
 import tempfile
-from typing import Annotated
+from typing import Annotated, Optional, get_type_hints
 
 import entitysdk.client
 import entitysdk.common
 from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi.params import Query
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.parametric_multi_values import (
+    ParametericMultiValue,
+    FloatRange,
+    IntRange,
+    NonNegativeFloatRange,
+    NonNegativeIntRange,
+    PositiveFloatRange,
+    PositiveIntRange,
+)
+
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
@@ -84,10 +97,58 @@ def create_endpoint_for_form(
 
             L.info("No campaign generated")
             return ""
+        
+def create_endpoint_for_parameteric_multi_value_type(
+    model: type[ParametericMultiValue], router: APIRouter
+) -> None:
+    """Fill in later."""
+    # model_name: model in lowercase with underscores between words
+    model_name = "-".join([word.lower() for word in re.findall(r"[A-Z][^A-Z]*", model.__name__)])
+
+    value_type = get_type_hints(model, include_extras=True).get("start")
+
+    # Create endpoint name
+    endpoint_name_with_slash = "/" + model_name
+    # model.name model.description
+    model_name =  ""    
+    model_description = ""
+    @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
+    def endpoint(
+        parameteric_multi_value_type: model,
+        # Query-level constraints
+        ge: Annotated[Optional[value_type], Query(description="Require all values to be ≥ this")] = None,
+        gt: Annotated[Optional[value_type], Query(description="Require all values to be > this")] = None,
+        le: Annotated[Optional[value_type], Query(description="Require all values to be ≤ this")] = None,
+        lt: Annotated[Optional[value_type], Query(description="Require all values to be < this")] = None,
+    ) -> list[value_type]:
+        
+        if ge and gt:
+            raise HTTPException(status_code=400, detail="Cannot specify both ge and gt")
+        if le and lt:
+            raise HTTPException(status_code=400, detail="Cannot specify both le and lt")
+
+        vals = list(parameteric_multi_value_type)
+
+        # Assertions over the whole set
+        if ge is not None and any(v < ge for v in vals):
+            raise HTTPException(status_code=400, detail=f"All values must be ≥ {ge}")
+        if gt is not None and any(v <= gt for v in vals):
+            raise HTTPException(status_code=400, detail=f"All values must be > {gt}")
+        if le is not None and any(v > le for v in vals):
+            raise HTTPException(status_code=400, detail=f"All values must be ≤ {le}")
+        if lt is not None and any(v >= lt for v in vals):
+            raise HTTPException(status_code=400, detail=f"All values must be < {lt}")
+
+
+        return list(vals)
+
+
+
+        
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
-    # 1. Create endpoints for each OBI ScanConfig subclass.
+    # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
@@ -101,5 +162,23 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
         )
+
+    return router
+
+def activate_parameteric_multi_value_endpoints(router: APIRouter) -> APIRouter:
+    # Create endpoints for each ParametericMultiValue subclass.
+
+    for parameteric_multi_value_type in [FloatRange,
+                                        IntRange,
+                                        NonNegativeFloatRange,
+                                        NonNegativeIntRange,
+                                        PositiveFloatRange,
+                                        PositiveIntRange]:
+        
+        create_endpoint_for_parameteric_multi_value_type(
+            parameteric_multi_value_type,
+            router,
+        )
+
     return router
 
