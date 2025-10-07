@@ -1,9 +1,17 @@
-from typing import Self
+from typing import Annotated, Self, TypeAlias
 
 import numpy as np
-from pydantic import NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
+from pydantic import (
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    model_validator,
+)
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.exception import OBIONEError
 
 
 class ParametericMultiValue(OBIBaseModel):
@@ -133,40 +141,61 @@ class NonNegativeFloatRange(FloatRange):
     end: NonNegativeFloat
 
 
-"""
-# This will fail
-IntRange(start=0, step=0, end=10)
-
-# OK
-r = IntRange(start=0, step=1, end=10)
-
-list(r)
->> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-r > 3
-False
-
-len(r)
+NonNegativeFloatUnion = NonNegativeFloat | list[NonNegativeFloat] | NonNegativeFloatRange
 
 
-#### Using IntRange within another class with annotations
+def check_annotation_arguments_and_create_kwargs(ge: type, gt: type, le: type, lt: type) -> dict:
+    """Check that only one of ge/gt and le/lt are provided and create Field kwargs."""
+    field_kwargs = {}
 
-class Block(BaseModel):
-    r: Annotated[IntRange, Field(ge=2, le=10, min_length=5)]
+    if ge and gt:
+        raise OBIONEError("Only one of ge or gt can be provided.")
+    if le and lt:
+        raise OBIONEError("Only one of le or lt can be provided.")
 
-# This will fail
-Block(r=IntRange(start=0, step=1, end=25))
+    if ge is not None:
+        field_kwargs["ge"] = ge
+    if gt is not None:
+        field_kwargs["gt"] = gt
+    if le is not None:
+        field_kwargs["le"] = le
+    if lt is not None:
+        field_kwargs["lt"] = lt
 
-# This will fail
-Block(r=IntRange(start=2, step=5, end=20))
-
-# OK
-b = Block(r=IntRange(start=2, step=1, end=10))
+    return field_kwargs
 
 
-#### Defining specific range types
 
-p = PositiveIntRange(start=1, step=1, end=5)
+def float_union(
+    *,
+    ge: float | None = None,
+    gt: float | None = None,
+    le: float | None = None,
+    lt: float | None = None,
+):
+    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
 
-n = NonNegativeIntRange(start=0, step=1, end=5)
-"""
+    return (
+        Annotated[float, Field(**field_kwargs)]
+        | list[Annotated[float, Field(**field_kwargs)]]
+        | Annotated[FloatRange, Field(**field_kwargs)]
+    )
+
+
+def non_negative_float_union(
+    *,
+    ge: NonNegativeFloat | None = None,
+    gt: NonNegativeFloat | None = None,
+    le: NonNegativeFloat | None = None,
+    lt: NonNegativeFloat | None = None,
+):
+    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
+
+    return (
+        Annotated[NonNegativeFloat, Field(**field_kwargs)]
+        | list[Annotated[NonNegativeFloat, Field(**field_kwargs)]]
+        | Annotated[NonNegativeFloatRange, Field(**field_kwargs)]
+    )
+
+
+NonNegativeFloatUnion: TypeAlias = non_negative_float_union()
