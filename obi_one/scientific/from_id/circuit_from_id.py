@@ -1,0 +1,36 @@
+from pathlib import Path
+from typing import ClassVar
+
+import entitysdk
+from entitysdk.models import Circuit
+from entitysdk.models.entity import Entity
+from entitysdk.staging.circuit import stage_circuit
+from pydantic import PrivateAttr
+
+from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.exception import OBIONEError
+
+
+class CircuitFromID(EntityFromID):
+    entitysdk_class: ClassVar[type[Entity]] = Circuit
+    _entity: Circuit | None = PrivateAttr(default=None)
+
+    def download_circuit_directory(
+        self, dest_dir: Path = Path(), db_client: entitysdk.client.Client = None
+    ) -> Path:
+        for asset in self.entity(db_client=db_client).assets:
+            if asset.label == "sonata_circuit":
+                circuit_dir = dest_dir / asset.path
+                if circuit_dir.exists():
+                    msg = f"Circuit directory '{circuit_dir}' already exists and is not empty."
+                    raise FileExistsError(msg)
+
+                circuit = db_client.get_entity(entity_id=self.id_str, entity_type=Circuit)
+                stage_circuit(
+                    client=db_client, model=circuit, output_dir=circuit_dir, max_concurrent=4
+                )
+
+                return circuit_dir
+
+        msg = f"No 'sonata_circuit' asset found for Circuit with ID {self.id_str}."
+        raise OBIONEError(msg)

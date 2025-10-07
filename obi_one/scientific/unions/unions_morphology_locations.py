@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.morphology_locations import (
+from obi_one.scientific.blocks.morphology_locations import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,

@@ -53,13 +53,13 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.0",
+    "entitysdk>=0.8.1",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
     "httpx>=0.28.1",
-    "bluepyefe>=2.3.50",
+    "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator",
@@ -84,7 +84,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "ruff",
+    "ruff<=0.12.7",
 ]
 
 [build-system]
@@ -110,7 +110,7 @@ local_scheme = "no-local-version"
 required-version = ">=0.8.0"
 
 [tool.uv.sources]
-repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder", branch = "main" }
+repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 
 [tool.ruff]
 line-length = 100
@@ -163,11 +163,8 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/circuit/neuron_sets.py" = [
+"obi_one/scientific/blocks/neuron_sets.py" = [
     "SLF001"
-]
-"obi_one/scientific/afferent_synapse_finder/specified_afferent_synapses_block.py" = [
-    "SIM102"
 ]
 
 [tool.ruff.lint.pydocstyle]

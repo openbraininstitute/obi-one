@@ -8,6 +8,8 @@ coverage.xml
 **/analysis_output
 venv/
 temp/
+logs/
+.coverage*
 */arm64/
 **/arm64/
 examples/new_node_sets.json
@@ -17,3 +19,5 @@ dist/*
 pip-audit-output.json
 *~
 examples/data/blueetl_data/output/
+requirements.txt
+pip-audit-output.json
