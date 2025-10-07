@@ -81,7 +81,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
                     "detail": (f"Cell morphology {cell_morphology_id} not found."),
@@ -94,7 +94,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
         raise ApiError(
             message="Asset not found",
             error_code=ApiErrorCode.NOT_FOUND,
-            http_status_code=HTTPStatus.NOT_FOUND,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
@@ -287,7 +287,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
                     "detail": f"Circuit {circuit_id} not found.",
@@ -313,7 +313,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
                     "detail": f"Circuit {circuit_id} not found.",
@@ -341,7 +341,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
                     "detail": f"Circuit {circuit_id} not found.",
@@ -375,7 +375,7 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
                     "detail": f"Circuit {conn_request.circuit_id} not found.",
