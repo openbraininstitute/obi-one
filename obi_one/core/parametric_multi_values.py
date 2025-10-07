@@ -1,4 +1,4 @@
-from typing import Annotated, Self, TypeAlias
+from typing import Annotated, Self
 
 import numpy as np
 from pydantic import (
@@ -149,9 +149,11 @@ def check_annotation_arguments_and_create_kwargs(ge: type, gt: type, le: type, l
     field_kwargs = {}
 
     if ge and gt:
-        raise OBIONEError("Only one of ge or gt can be provided.")
+        msg = "Only one of ge or gt can be provided."
+        raise OBIONEError(msg)
     if le and lt:
-        raise OBIONEError("Only one of le or lt can be provided.")
+        msg = "Only one of le or lt can be provided."
+        raise OBIONEError(msg)
 
     if ge is not None:
         field_kwargs["ge"] = ge
@@ -165,14 +167,13 @@ def check_annotation_arguments_and_create_kwargs(ge: type, gt: type, le: type, l
     return field_kwargs
 
 
-
 def float_union(
     *,
     ge: float | None = None,
     gt: float | None = None,
     le: float | None = None,
     lt: float | None = None,
-):
+) -> float | list[float] | FloatRange:
     field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
 
     return (
@@ -188,7 +189,7 @@ def non_negative_float_union(
     gt: NonNegativeFloat | None = None,
     le: NonNegativeFloat | None = None,
     lt: NonNegativeFloat | None = None,
-):
+) -> NonNegativeFloat | list[NonNegativeFloat] | NonNegativeFloatRange:
     field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
 
     return (
@@ -196,6 +197,3 @@ def non_negative_float_union(
         | list[Annotated[NonNegativeFloat, Field(**field_kwargs)]]
         | Annotated[NonNegativeFloatRange, Field(**field_kwargs)]
     )
-
-
-NonNegativeFloatUnion: TypeAlias = non_negative_float_union()

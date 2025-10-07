@@ -6,7 +6,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
-from obi_one.core.parametric_multi_values import NonNegativeFloatRange, non_negative_float_union
+from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
