@@ -352,7 +352,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
     @router.post(
         "/connectivity-metrics/{circuit_id}",
         summary="Connectivity metrics",
-        description="This calculates connectivity metrics, such as connection probabilities and mean number of synapses per connection between different groups of neurons.",
+        description=(
+            "This calculates connectivity metrics, such as connection probabilities and"
+            " mean number of synapses per connection between different groups of neurons."
+        ),
     )
     def connectivity_metrics_endpoint(
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
