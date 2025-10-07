@@ -69,7 +69,7 @@ class ConnectivityMetricsOutput(BaseModel):
 
 
 class TemporaryPartialCircuit:
-    """Partial circuit downloaded to temporary folder.
+    """Access mounted circuit if possible. Otherwise, download partial circuit to temporary folder.
 
     To avoid unnecessary data download, only the following circuit components are included:
     Circuit config, node sets, selected edges, src/tgt nodes of selected edges
@@ -188,7 +188,7 @@ def get_connectivity_metrics(
     group_by: str | None = None,
     max_distance: float | None = None,
 ) -> ConnectivityMetricsOutput:
-    # Download partial circuit
+    # Acces mounted circuit if possible, or download partial circuit otherwise
     # (incl. config, node sets, selected edges, src/tgt nodes of selected edges)
     with TemporaryPartialCircuit(db_client, circuit_id, edge_population) as cfg_path:
         # Load circuit
