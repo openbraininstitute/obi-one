@@ -35,7 +35,8 @@ def create_endpoint_for_form(
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
     # 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
-    model_name = "-".join([word.lower() for word in re.findall(r"[A-Z][^A-Z]*", model_base_name)])
+    pattern = r"[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+"
+    model_name = "-".join(word.lower() for word in re.findall(pattern, model_base_name))
 
     # Create endpoint name
     endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
