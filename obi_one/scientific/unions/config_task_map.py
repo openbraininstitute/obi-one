@@ -44,6 +44,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationSingleConfig,
+    MEModelSimulationSingleConfig,
     GenerateSimulationTask,
 )
 from obi_one.scientific.unions.aliases import Simulation
@@ -52,6 +53,7 @@ _config_tasks_map = {
     Simulation: GenerateSimulationTask,
     CircuitSimulationSingleConfig: GenerateSimulationTask,
     CircuitExtractionSingleConfig: CircuitExtractionTask,
+    MEModelSimulationSingleConfig: GenerateSimulationTask,
     ContributeMorphologySingleConfig: ContributeMorphologyTask,
     BasicConnectivityPlotsSingleConfig: BasicConnectivityPlotsTask,
     ConnectivityMatrixExtractionSingleConfig: ConnectivityMatrixExtractionTask,
