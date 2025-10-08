@@ -20,6 +20,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationScanConfig,
+    MEModelSimulationScanConfig,
 )
 from obi_one.scientific.unions.aliases import SimulationsForm
 
@@ -90,6 +91,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
+        (MEModelSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),
