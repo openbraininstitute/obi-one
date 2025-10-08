@@ -44,8 +44,8 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.simulations import (
     CircuitSimulationSingleConfig,
-    MEModelSimulationSingleConfig,
     GenerateSimulationTask,
+    MEModelSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation
 
