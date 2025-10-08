@@ -209,6 +209,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         if isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
             entity_id = self.initialize.circuit.id_str
         elif isinstance(self.initialize.circuit, list):
+            if len(self.initialize.circuit) != 1:
+                msg = "Only single circuit/MEModel currently supported for \
+                    simulation campaign database persistence."
+                raise OBIONEError(msg)
             entity_id = self.initialize.circuit[0].id_str
 
         self._campaign = db_client.register_entity(
