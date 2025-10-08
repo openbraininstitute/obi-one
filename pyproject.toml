@@ -53,7 +53,7 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.1",
+    "entitysdk @ git+https://github.com/openbraininstitute/entitysdk.git@main",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
