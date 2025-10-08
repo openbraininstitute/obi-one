@@ -185,6 +185,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             sonata_config["conditions"]["v_init"] = self.v_init
             sonata_config["conditions"]["spike_location"] = self._spike_location
 
+            sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
+            sonata_config["conditions"]["mechanisms"] = {
+                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            }
+
             return sonata_config
 
     info: Info = Field(
@@ -421,6 +427,8 @@ class GenerateSimulationTask(Task):
                 self._sonata_config["connection_overrides"] = manipulation_list
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
+        """Set circuit variable based on the type of initialize.circuit"""
+        
         circuit = None
         if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -528,65 +536,61 @@ class GenerateSimulationTask(Task):
             )
             self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:
-        """Generates SONATA simulation config .json file."""
-        # Initialize the SONATA simulation config
-        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
-
-        # Set circuit variable based on the type of initialize.circuit
-        # circuit is used through-out generate rather than self.initialize.circuit
-        circuit = self._resolve_circuit(db_client)
-
-        self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        self._sonata_config["conditions"]["mechanisms"] = {
-            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        }
-
-        self._add_sonata_simulation_config_inputs(circuit)
-        self._add_sonata_simulation_config_reports(circuit)
-        self._add_sonata_simulation_config_manipulations()
-        self._resolve_neuron_sets(circuit)
-
-        # Write simulation config file (.json)
+    def _write_simiulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
         with simulation_config_path.open("w", encoding="utf-8") as f:
             json.dump(self._sonata_config, f, indent=2)
 
-        if db_client:
-            self.save_generated_simulation_assets_to_entity(db_client)
+    def execute(self, db_client: entitysdk.client.Client = None) -> None:
+        """Generates SONATA simulation files."""
+        
+        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
+        circuit = self._resolve_circuit(db_client)
+
+        self._add_sonata_simulation_config_inputs(circuit)
+        self._add_sonata_simulation_config_reports(circuit)
+        self._add_sonata_simulation_config_manipulations()
+
+        self._resolve_neuron_sets(circuit)
+
+        self._write_simiulation_config_to_file()
+
+        self.save_generated_simulation_assets_to_entity(db_client)
 
     def save_generated_simulation_assets_to_entity(
-        self, db_client: entitysdk.client.Client
+        self, db_client: entitysdk.client.Client | None
     ) -> None:
-        L.info("-- Upload sonata_simulation_config")
-        _ = db_client.upload_file(
-            entity_id=self.config.single_entity.id,
-            entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
-            file_content_type="application/json",
-            asset_label="sonata_simulation_config",
-        )
+        
+        if db_client:
 
-        if hasattr(self.config, "neuron_sets"):
-            L.info("-- Upload custom_node_sets")
+            L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,
-                file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
                 file_content_type="application/json",
-                asset_label="custom_node_sets",
+                asset_label="sonata_simulation_config",
             )
 
-        L.info("-- Upload spike replay files")
-        for input_ in self._sonata_config["inputs"]:
-            if "spike_file" in list(self._sonata_config["inputs"][input_]):
-                spike_file = self._sonata_config["inputs"][input_]["spike_file"]
-                if spike_file is not None:
-                    _ = db_client.upload_file(
-                        entity_id=self.config.single_entity.id,
-                        entity_type=entitysdk.models.Simulation,
-                        file_path=Path(self.config.coordinate_output_root, spike_file),
-                        file_content_type="application/x-hdf5",
-                        asset_label="replay_spikes",
-                    )
+            if hasattr(self.config, "neuron_sets"):
+                L.info("-- Upload custom_node_sets")
+                _ = db_client.upload_file(
+                    entity_id=self.config.single_entity.id,
+                    entity_type=entitysdk.models.Simulation,
+                    file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                    file_content_type="application/json",
+                    asset_label="custom_node_sets",
+                )
+
+            L.info("-- Upload spike replay files")
+            for input_ in self._sonata_config["inputs"]:
+                if "spike_file" in list(self._sonata_config["inputs"][input_]):
+                    spike_file = self._sonata_config["inputs"][input_]["spike_file"]
+                    if spike_file is not None:
+                        _ = db_client.upload_file(
+                            entity_id=self.config.single_entity.id,
+                            entity_type=entitysdk.models.Simulation,
+                            file_path=Path(self.config.coordinate_output_root, spike_file),
+                            file_content_type="application/x-hdf5",
+                            asset_label="replay_spikes",
+                        )
