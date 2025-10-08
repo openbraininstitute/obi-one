@@ -432,7 +432,10 @@ class GenerateSimulationTask(Task):
                 name=circuit_dir.name,
                 path=str(circuit_dir / "circuit_config.json"),
             )
-            self._sonata_config["network"] = str(circuit_dir.relative_to(self.config.coordinate_output_root) / Path(circuit.path).name)
+            self._sonata_config["network"] = str(
+                circuit_dir.relative_to(self.config.coordinate_output_root)
+                / Path(circuit.path).name
+            )
 
         elif isinstance(self.config.initialize.circuit, MEModelFromID):
             L.info("initialize.circuit is a MEModelFromID instance.")
@@ -441,7 +444,9 @@ class GenerateSimulationTask(Task):
             circuit = self.config.initialize.circuit.stage_memodel_as_circuit(
                 db_client=db_client, dest_dir=self.config.coordinate_output_root / "sonata_circuit"
             )
-            self._sonata_config["network"] = str(Path(circuit.path).relative_to(self.config.coordinate_output_root))
+            self._sonata_config["network"] = str(
+                Path(circuit.path).relative_to(self.config.coordinate_output_root)
+            )
 
         return circuit
 

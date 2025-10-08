@@ -18,7 +18,6 @@ class MEModelFromID(EntityFromID):
     def stage_memodel_as_circuit(
         self, db_client: Client = None, dest_dir: Path | None = None
     ) -> Circuit:
-
         circuit_config_path = stage_sonata_from_memodel(
             client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
         )

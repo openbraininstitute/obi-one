@@ -26,7 +26,10 @@ class CircuitFromID(EntityFromID):
                     raise FileExistsError(msg)
 
                 stage_circuit(
-                    client=db_client, model=self.entity(db_client), output_dir=circuit_dir, max_concurrent=4
+                    client=db_client,
+                    model=self.entity(db_client),
+                    output_dir=circuit_dir,
+                    max_concurrent=4,
                 )
 
                 return circuit_dir
