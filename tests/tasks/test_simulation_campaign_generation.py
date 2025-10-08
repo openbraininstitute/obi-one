@@ -28,9 +28,6 @@ def _setup_sim():
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
-    # all_neurons_set = obi.AllNeurons()
-    # sim_conf.add(all_neurons_set, name="All Neurons")
-
     sim_neuron_set = obi.IDNeuronSet(
         neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
     )
