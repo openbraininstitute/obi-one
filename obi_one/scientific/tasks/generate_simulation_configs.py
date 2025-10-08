@@ -56,6 +56,9 @@ class BlockGroup(StrEnum):
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
 
+TARGET_SIMULATOR = "NEURON"
+SONATA_VERSION = 2.4
+
 
 class SimulationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
@@ -155,13 +158,17 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
             default="soma"
         )
-        _sonata_version: list[NonNegativeFloat] | NonNegativeFloat = PrivateAttr(default=2.4)
-        _target_simulator: (
-            Literal["NEURON", "CORENEURON"] | list[Literal["NEURON", "CORENEURON"]]
-        ) = PrivateAttr(default="NEURON")  # Target simulator for the simulation
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
             default=0.025
         )  # Simulation time step in ms
+
+        @property
+        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
+            return self._timestep
+
+        @property
+        def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
+            return self._spike_location
 
     info: Info = Field(
         title="Info",

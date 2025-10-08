@@ -16,6 +16,8 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulation_configs import (
     ALL_NEURON_SET_NAME,
+    SONATA_VERSION,
+    TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
 )
@@ -45,11 +47,11 @@ class GenerateSimulationTask(Task):
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
         self._sonata_config = {}
-        self._sonata_config["version"] = self.config.initialize._sonata_version
-        self._sonata_config["target_simulator"] = self.config.initialize._target_simulator
+        self._sonata_config["version"] = SONATA_VERSION
+        self._sonata_config["target_simulator"] = TARGET_SIMULATOR
 
         self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.config.initialize._timestep
+        self._sonata_config["run"]["dt"] = self.config.initialize.timestep
         self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed
         self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
 
@@ -58,7 +60,7 @@ class GenerateSimulationTask(Task):
             self.config.initialize.extracellular_calcium_concentration
         )
         self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        self._sonata_config["conditions"]["spike_location"] = self.config.initialize._spike_location
+        self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         self._sonata_config["conditions"]["mechanisms"] = {
