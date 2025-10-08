@@ -75,6 +75,7 @@ __all__ = [
     "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
@@ -235,6 +236,7 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )

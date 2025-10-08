@@ -8,7 +8,7 @@ from entitysdk.staging.memodel import stage_sonata_from_memodel
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID):
@@ -17,9 +17,9 @@ class MEModelFromID(EntityFromID):
 
     def stage_memodel_as_circuit(
         self, db_client: Client = None, dest_dir: Path | None = None
-    ) -> Circuit:
+    ) -> MEModelCircuit:
         circuit_config_path = stage_sonata_from_memodel(
             client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
         )
 
-        return Circuit(name="single_cell", path=str(circuit_config_path))
+        return MEModelCircuit(name="single_cell", path=str(circuit_config_path))
