@@ -427,8 +427,7 @@ class GenerateSimulationTask(Task):
                 self._sonata_config["connection_overrides"] = manipulation_list
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
-        """Set circuit variable based on the type of initialize.circuit"""
-        
+        """Set circuit variable based on the type of initialize.circuit."""
         circuit = None
         if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -543,7 +542,6 @@ class GenerateSimulationTask(Task):
 
     def execute(self, db_client: entitysdk.client.Client = None) -> None:
         """Generates SONATA simulation files."""
-        
         self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
         circuit = self._resolve_circuit(db_client)
 
@@ -560,9 +558,7 @@ class GenerateSimulationTask(Task):
     def save_generated_simulation_assets_to_entity(
         self, db_client: entitysdk.client.Client | None
     ) -> None:
-        
         if db_client:
-
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
