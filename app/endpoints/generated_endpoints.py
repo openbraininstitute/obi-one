@@ -15,12 +15,12 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
-from obi_one.scientific.tasks.morphology_metrics import (
-    MorphologyMetricsScanConfig,
-)
-from obi_one.scientific.tasks.simulations import (
+from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     MEModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.morphology_metrics import (
+    MorphologyMetricsScanConfig,
 )
 from obi_one.scientific.unions.aliases import SimulationsForm
 

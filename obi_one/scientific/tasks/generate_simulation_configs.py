@@ -1,11 +1,10 @@
 import abc
-import json
 import logging
 from copy import deepcopy
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, get_type_hints
+from typing import Annotated, ClassVar, Literal
 
 import entitysdk
 from pydantic import (
@@ -24,8 +23,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets import AllNeurons, NeuronSet
+from obi_one.scientific.blocks.neuron_sets import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -57,8 +55,6 @@ class BlockGroup(StrEnum):
 
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
-
-DEFAULT_NODE_SET = "All"
 
 
 class SimulationScanConfig(ScanConfig, abc.ABC):
@@ -167,32 +163,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             default=0.025
         )  # Simulation time step in ms
 
-        def initial_sonata_simulation_config(self) -> dict:
-            """Returns the default SONATA conditions dictionary."""
-            sonata_config = {}
-            sonata_config["version"] = self._sonata_version
-            sonata_config["target_simulator"] = self._target_simulator
-
-            sonata_config["run"] = {}
-            sonata_config["run"]["dt"] = self._timestep
-            sonata_config["run"]["random_seed"] = self.random_seed
-            sonata_config["run"]["tstop"] = self.simulation_length
-
-            sonata_config["conditions"] = {}
-            sonata_config["conditions"]["extracellular_calcium"] = (
-                self.extracellular_calcium_concentration
-            )
-            sonata_config["conditions"]["v_init"] = self.v_init
-            sonata_config["conditions"]["spike_location"] = self._spike_location
-
-            sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-            sonata_config["conditions"]["mechanisms"] = {
-                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            }
-
-            return sonata_config
-
     info: Info = Field(
         title="Info",
         description="Information about the simulation campaign.",
@@ -277,9 +247,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
 
 
 ALL_NEURON_SET_NAME = "All Neurons"
-ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
-    block_dict_name="neuron_sets", block_name=ALL_NEURON_SET_NAME
-)
 DEFAULT_NEURON_SETS_DICTIONARY = {ALL_NEURON_SET_NAME: AllNeurons()}
 
 
@@ -376,217 +343,3 @@ class MEModelSimulationSingleConfig(
     MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
 ):
     """Only allows single values."""
-
-
-class GenerateSimulationTask(Task):
-    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
-
-    CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
-    NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
-
-    _sonata_config: dict = PrivateAttr(default={})
-
-    def _add_sonata_simulation_config_inputs(self, circuit: Circuit) -> None:
-        self._sonata_config["inputs"] = {}
-        for stimulus in self.config.stimuli.values():
-            if not hasattr(self.config, "neuron_sets"):
-                self._ensure_block_neuron_set(stimulus)
-            if hasattr(stimulus, "generate_spikes"):
-                stimulus.generate_spikes(
-                    circuit,
-                    self.config.coordinate_output_root,
-                    self.config.initialize.simulation_length,
-                    source_node_population=circuit.default_population_name,
-                )
-            self._sonata_config["inputs"].update(
-                stimulus.config(circuit, circuit.default_population_name)
-            )
-
-    def _add_sonata_simulation_config_reports(self, circuit: Circuit) -> None:
-        self._sonata_config["reports"] = {}
-        for recording in self.config.recordings.values():
-            if not hasattr(self.config, "neuron_sets"):
-                self._ensure_block_neuron_set(recording)
-            self._sonata_config["reports"].update(
-                recording.config(
-                    circuit,
-                    circuit.default_population_name,
-                    self.config.initialize.simulation_length,
-                )
-            )
-
-    def _add_sonata_simulation_config_manipulations(self) -> None:
-        if hasattr(self.config, "synaptic_manipulations"):
-            # Generate list of synaptic manipulation configs (executed in the order in the list)
-            # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
-            manipulation_list = [
-                manipulation.config()
-                for manipulation in self.config.synaptic_manipulations.values()
-            ]
-            if len(manipulation_list) > 0:
-                self._sonata_config["connection_overrides"] = manipulation_list
-
-    def _resolve_circuit(self, db_client: entitysdk.client.Client) -> Circuit:
-        """Set circuit variable based on the type of initialize.circuit."""
-        circuit = None
-        if isinstance(self.config.initialize.circuit, Circuit):
-            L.info("initialize.circuit is a Circuit instance.")
-            circuit = self.config.initialize.circuit
-            self._sonata_config["network"] = self.config.initialize.circuit.path
-
-        elif isinstance(self.config.initialize.circuit, (CircuitFromID, MEModelFromID)):
-            L.info("initialize.circuit is a MEModelFromID instance.")
-            self._circuit_id = self.config.initialize.circuit.id_str
-
-            circuit = self.config.initialize.circuit.stage_circuit(
-                db_client=db_client, dest_dir=self.config.coordinate_output_root / "sonata_circuit"
-            )
-            self._sonata_config["network"] = str(
-                Path(circuit.path).relative_to(self.config.coordinate_output_root)
-            )
-
-        return circuit
-
-    def _ensure_block_neuron_set(self, block: Block) -> None:
-        """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-        type_hints = get_type_hints(block.__class__)
-
-        for attr_name, attr_type in type_hints.items():
-            if attr_type == NeuronSetReference or (
-                getattr(attr_type, "__origin__", None) is None and attr_type is NeuronSetReference
-            ):
-                attr_value = getattr(block, attr_name, None)
-                if attr_value is None:
-                    setattr(block, attr_name, self._default_neuron_set_ref())
-
-    def _default_neuron_set_ref(self) -> NeuronSetReference:
-        """Returns the reference for the default neuron set."""
-        if ALL_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
-            self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
-
-        return ALL_NEURON_SET_BLOCK_REFERENCE
-
-    def _ensure_simulation_target_neuron_set_ref(self) -> None:
-        """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
-        if self.config.initialize.node_set is None:
-            L.info("initialize.node_set is None — setting default node set.")
-            self.config.initialize.node_set = self._default_neuron_set_ref()
-
-    def _ensure_simulation_target_node_set(self) -> str:
-        self._sonata_config["node_set"] = DEFAULT_NODE_SET
-
-    def _resolve_neuron_sets(self, circuit: Circuit) -> None:
-        # Resolve neuron sets and add them to the SONATA circuit object
-        # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
-        # set, even for a PredefinedNeuronSet in which case a new node set will be created
-        # which just references the existing one. This is the most consistent behavior since
-        # it will behave exactly the same no matter if random subsampling is used or not.
-        # But this also means that existing names cannot be used as dict keys.
-
-        if not hasattr(self.config, "neuron_sets"):
-            self._ensure_simulation_target_node_set()
-        else:
-            sonata_circuit = circuit.sonata_circuit
-
-            self._ensure_simulation_target_neuron_set_ref()
-
-            for _name, _nset in self.config.neuron_sets.items():
-                # Resolve node set based on current coordinate circuit's default node population
-                # TODO: Better handling of (default) node population in case there is more than one
-                # TODO: Inconsistency possible in case a node set definition would span multiple
-                # populations. May consider force_resolve_ids=False to enforce resolving into given
-                # population (but which won't be a human-readable representation any more)
-                if _name != _nset.block_name:
-                    msg = "Neuron set name mismatch!"
-                    raise OBIONEError(msg)  # This should never happen if properly initialized
-
-                if self.config.initialize.node_set.block.block_name == _name:
-                    if self._sonata_config.get("node_set") is not None:
-                        msg = "Node set config entry already defined!"
-                        raise OBIONEError(msg)
-
-                    # Assert that simulation neuron set is biophysical
-                    if (
-                        _nset.population_type(circuit, circuit.default_population_name)
-                        != "biophysical"
-                    ):
-                        msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
-                        "is not biophysical!"
-                        raise OBIONEError(msg)
-
-                    self._sonata_config["node_set"] = _name
-
-                # Add node set to SONATA circuit object
-                # (will raise an error in case already existing)
-                nset_def = _nset.get_node_set_definition(
-                    circuit, circuit.default_population_name, force_resolve_ids=True
-                )
-                NeuronSet.add_node_set_to_circuit(
-                    sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
-                )
-
-            # Write node sets from SONATA circuit object to .json file
-            # (will raise an error if file already exists)
-            NeuronSet.write_circuit_node_set_file(
-                sonata_circuit,
-                self.config.coordinate_output_root,
-                file_name=self.NODE_SETS_FILE_NAME,
-                overwrite_if_exists=False,
-            )
-            self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
-
-    def _write_simiulation_config_to_file(self) -> None:
-        simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
-        with simulation_config_path.open("w", encoding="utf-8") as f:
-            json.dump(self._sonata_config, f, indent=2)
-
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:
-        """Generates SONATA simulation files."""
-        self._sonata_config = self.config.initialize.initial_sonata_simulation_config()
-        circuit = self._resolve_circuit(db_client)
-
-        self._add_sonata_simulation_config_inputs(circuit)
-        self._add_sonata_simulation_config_reports(circuit)
-        self._add_sonata_simulation_config_manipulations()
-
-        self._resolve_neuron_sets(circuit)
-
-        self._write_simiulation_config_to_file()
-
-        self.save_generated_simulation_assets_to_entity(db_client)
-
-    def save_generated_simulation_assets_to_entity(
-        self, db_client: entitysdk.client.Client | None
-    ) -> None:
-        if db_client:
-            L.info("-- Upload sonata_simulation_config")
-            _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,
-                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
-                file_content_type="application/json",
-                asset_label="sonata_simulation_config",
-            )
-
-            if hasattr(self.config, "neuron_sets"):
-                L.info("-- Upload custom_node_sets")
-                _ = db_client.upload_file(
-                    entity_id=self.config.single_entity.id,
-                    entity_type=entitysdk.models.Simulation,
-                    file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
-                    file_content_type="application/json",
-                    asset_label="custom_node_sets",
-                )
-
-            L.info("-- Upload spike replay files")
-            for input_ in self._sonata_config["inputs"]:
-                if "spike_file" in list(self._sonata_config["inputs"][input_]):
-                    spike_file = self._sonata_config["inputs"][input_]["spike_file"]
-                    if spike_file is not None:
-                        _ = db_client.upload_file(
-                            entity_id=self.config.single_entity.id,
-                            entity_type=entitysdk.models.Simulation,
-                            file_path=Path(self.config.coordinate_output_root, spike_file),
-                            file_content_type="application/x-hdf5",
-                            asset_label="replay_spikes",
-                        )

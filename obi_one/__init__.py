@@ -271,6 +271,15 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationScanConfig,
+    CircuitSimulationSingleConfig,
+    MEModelSimulationScanConfig,
+    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulation_task import (
+    GenerateSimulationTask,
+)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
@@ -295,13 +304,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
-)
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationScanConfig,
-    CircuitSimulationSingleConfig,
-    GenerateSimulationTask,
-    MEModelSimulationScanConfig,
-    MEModelSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
