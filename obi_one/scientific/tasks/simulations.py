@@ -431,7 +431,7 @@ class GenerateSimulationTask(Task):
                         dest_dir=self.config.coordinate_output_root, db_client=db_client
                     )
                     circuit = Circuit(
-                        name=self.config.initialize.circuit.entity(db_client=db_client).name,
+                        name=circuit_dir.name,
                         path=str(circuit_dir / "circuit_config.json"),
                     )
                     self._sonata_config["network"] = asset.path + "/" + Path(circuit.path).name
