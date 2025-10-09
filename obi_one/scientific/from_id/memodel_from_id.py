@@ -16,14 +16,15 @@ class MEModelFromID(EntityFromID):
     _entity: MEModel | None = PrivateAttr(default=None)
 
     def stage_circuit(
-        self, db_client: Client = None, dest_dir: Path | None = None
+        self, db_client: Client = None, dest_dir: Path | None = None, entity_cache: bool = False
     ) -> MEModelCircuit:
-        if dest_dir.exists():
+        if not entity_cache and dest_dir.exists():
             msg = f"Circuit directory '{dest_dir}' already exists and is not empty."
             raise FileExistsError(msg)
 
-        circuit_config_path = stage_sonata_from_memodel(
-            client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
-        )
+        if (not entity_cache) | (entity_cache and not dest_dir.exists()):
+            circuit_config_path = stage_sonata_from_memodel(
+                client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
+            )
 
         return MEModelCircuit(name="single_cell", path=str(circuit_config_path))

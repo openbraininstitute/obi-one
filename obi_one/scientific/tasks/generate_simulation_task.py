@@ -84,14 +84,21 @@ class GenerateSimulationTask(Task):
             L.info("initialize.circuit is a MEModelFromID instance.")
             self._circuit_id = self.config.initialize.circuit.id_str
 
+            circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
             if self._entity_cache and db_client:
                 L.info("Use entity cache")
+                circuit_dest_dir = (
+                    self.config.coordinate_output_root.parent / "entity_cache/sonata_circuit"
+                )
 
             self._circuit = self.config.initialize.circuit.stage_circuit(
-                db_client=db_client, dest_dir=self.config.coordinate_output_root / "sonata_circuit"
+                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
             )
+
             self._sonata_config["network"] = str(
-                Path(self._circuit.path).relative_to(self.config.coordinate_output_root)
+                Path(self._circuit.path).relative_to(
+                    self.config.coordinate_output_root, walk_up=True
+                )
             )
 
         if self._circuit is None:
@@ -305,7 +312,9 @@ class GenerateSimulationTask(Task):
                             asset_label="replay_spikes",
                         )
 
-    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> None:
+    def execute(
+        self, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+    ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
