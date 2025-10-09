@@ -1,11 +1,10 @@
 import asyncio
 import pathlib
-
-# nosec
-import subprocess
+import pynwb
 import tempfile
 import zipfile
 from http import HTTPStatus
+from pynwb import NWBHDF5IO
 from typing import Annotated, Literal
 
 import entitysdk.client
@@ -258,15 +257,8 @@ def activate_test_endpoint(router: APIRouter) -> None:
 async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:  # Removed file_extension
     """Validate nwb file with pynwb."""
     try:
-        command = ["pynwb-validate", temp_file_path]
-        # Run the command in a separate thread to avoid blocking the event loop
-        await asyncio.to_thread(
-            subprocess.run,
-            command,
-            check=True,  # Raise an exception for non-zero return codes (i.e., errors)
-            capture_output=True,  # Capture stdout and stderr
-            text=True,  # Decode stdout and stderr as text
-        )
+        with NWBHDF5IO(temp_file_path, "r") as io:
+            nwb_file = io.read()
     except Exception as e:
         L.error(f"Nwb error validating file {file.filename}: {e!s}")
         raise HTTPException(
