@@ -1,6 +1,8 @@
 import asyncio
 import pathlib
-import subprocess  # nosec
+
+# nosec
+import subprocess
 import tempfile
 import zipfile
 from http import HTTPStatus
