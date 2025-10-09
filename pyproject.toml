@@ -65,6 +65,7 @@ dependencies = [
     "bluecellulab>=2.6.62",
     # OBI NOTEBOOK
     "obi_notebook",
+    "strawberry-graphql[cli,fastapi]>=0.283.2",
 ]
 
 [project.optional-dependencies]
