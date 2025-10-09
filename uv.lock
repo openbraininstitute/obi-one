@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12.2, <3.13"
 
 [[package]]
@@ -2051,6 +2051,7 @@ dependencies = [
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "pynwb" },
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
@@ -2106,6 +2107,7 @@ requires-dist = [
     { name = "pydantic-core" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
+    { name = "pynwb" },
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
