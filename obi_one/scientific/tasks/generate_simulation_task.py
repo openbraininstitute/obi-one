@@ -201,11 +201,10 @@ class GenerateSimulationTask(Task):
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
 
-        NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
-        set, even for a PredefinedNeuronSet in which case a new node set will be created
-        which just references the existing one. This is the most consistent behavior since
-        it will behave exactly the same no matter if random subsampling is used or not.
-        But this also means that existing names cannot be used as dict keys.
+        The neuron_sets dict key is always used as the name of the new node set, even for a 
+        PredefinedNeuronSet, in which case a new node set is created which references the 
+        existing one. This makes behaviour consistent whether random subsampling is used or not.
+        It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
         """
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
