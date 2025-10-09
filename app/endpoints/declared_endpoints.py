@@ -83,8 +83,10 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": (f"Cell morphology {cell_morphology_id} not found."),
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": (
+                        f"Internal error retrieving the cell morphology {cell_morphology_id}."
+                    ),
                 },
             ) from err
 
@@ -92,8 +94,8 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             return metrics
         L.error(f"Cell morphology {cell_morphology_id} metrics computation issue")
         raise ApiError(
-            message="Asset not found",
-            error_code=ApiErrorCode.NOT_FOUND,
+            message="Internal error retrieving the asset.",
+            error_code=ApiErrorCode.INTERNAL_ERROR,
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
@@ -289,8 +291,8 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return circuit_metrics
@@ -315,8 +317,8 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitPopulationsResponse(
@@ -343,8 +345,8 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
@@ -377,8 +379,8 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {conn_request.circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {conn_request.circuit_id}.",
                 },
             ) from err
         return conn_metrics
