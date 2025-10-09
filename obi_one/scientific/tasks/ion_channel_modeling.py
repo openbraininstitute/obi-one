@@ -403,8 +403,7 @@ class IonChannelFittingScanConfig(ScanConfig):
 
     def create_campaign_generation_entity(
         self,
-        # ion_channel_modelings: list[entitysdk.models.IonChannelModeling],
-        ion_channel_modelings: list,
+        ion_channel_modelings: list[entitysdk.models.IonChannelModeling],
         db_client: entitysdk.client.Client
     ) -> None:
         """Register the activity generating the ion channel modeling tasks in the database."""
@@ -423,18 +422,15 @@ class IonChannelFittingScanConfig(ScanConfig):
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
-    # _single_entity: entitysdk.models.IonChannelModeling
-    _single_entity = None
+    _single_entity: entitysdk.models.IonChannelModeling
 
     @property
-    # def single_entity(self) -> entitysdk.models.IonChannelModeling:
-    def single_entity(self):
+    def single_entity(self) -> entitysdk.models.IonChannelModeling:
         return self._single_entity
 
     def create_single_entity_with_config(
         self,
-        # campaign: entitysdk.models.IonChannelModelingCampaign,
-        campaign,
+        campaign: entitysdk.models.IonChannelModelingCampaign,
         db_client: entitysdk.client.Client
     ) -> entitysdk.models.IonChannelModeling:
         """Saves the simulation to the database."""
