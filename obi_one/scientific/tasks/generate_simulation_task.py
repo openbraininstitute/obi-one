@@ -1,8 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar, get_type_hints, Optional
-from typing import get_origin, get_args, Union
+from typing import ClassVar, get_args, get_type_hints
 
 import entitysdk
 from pydantic import PrivateAttr
@@ -141,17 +140,16 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
-        def is_optional_neuronsetreference(attr_value):
+
+        def is_optional_neuronsetreference(attr_value: type) -> bool:
             args = get_args(attr_value)
-            if args == (NeuronSetReference, type(None)):
-                return True
-            return False
+            return args == (NeuronSetReference, type(None))
 
         if hasattr(self.config, "neuron_sets"):
             type_hints = get_type_hints(block.__class__)
 
             for attr_name, attr_type in type_hints.items():
-                if is_optional_neuronsetreference(attr_type) == True:
+                if is_optional_neuronsetreference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
@@ -182,7 +180,9 @@ class GenerateSimulationTask(Task):
             raise OBIONEError(msg)
 
         if DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
-            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = DEFAULT_NEURON_SET_BLOCK_REFERENCE.block
+            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = (
+                DEFAULT_NEURON_SET_BLOCK_REFERENCE.block
+            )
 
         return DEFAULT_NEURON_SET_BLOCK_REFERENCE
 

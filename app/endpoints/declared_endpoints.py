@@ -23,6 +23,12 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.connectivity_metrics import (
+    ConnectivityMetricsOutput,
+    ConnectivityMetricsRequest,
+    get_connectivity_metrics,
+)
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -76,10 +82,12 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": (f"Cell morphology {cell_morphology_id} not found."),
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": (
+                        f"Internal error retrieving the cell morphology {cell_morphology_id}."
+                    ),
                 },
             ) from err
 
@@ -87,9 +95,9 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             return metrics
         L.error(f"Cell morphology {cell_morphology_id} metrics computation issue")
         raise ApiError(
-            message="Asset not found",
-            error_code=ApiErrorCode.NOT_FOUND,
-            http_status_code=HTTPStatus.NOT_FOUND,
+            message="Internal error retrieving the asset.",
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
@@ -282,10 +290,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return circuit_metrics
@@ -308,10 +316,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitPopulationsResponse(
@@ -336,13 +344,82 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
+
+    @router.get(
+        "/mapped-circuit-properties/{circuit_id}",
+        summary="Mapped circuit properties",
+        description="Returns a dictionary of mapped circuit properties.",
+    )
+    def mapped_circuit_properties_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> dict:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+            mapped_circuit_properties = {}
+            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
+                circuit_metrics.names_of_nodesets
+            )
+
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
+                },
+            ) from err
+        return mapped_circuit_properties
+
+
+def activate_connectivity_endpoints(router: APIRouter) -> None:
+    """Define circuit-related endpoints."""
+
+    @router.post(
+        "/connectivity-metrics/{circuit_id}",
+        summary="Connectivity metrics",
+        description=(
+            "This calculates connectivity metrics, such as connection probabilities and"
+            " mean number of synapses per connection between different groups of neurons."
+        ),
+    )
+    def connectivity_metrics_endpoint(
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        conn_request: ConnectivityMetricsRequest,
+    ) -> ConnectivityMetricsOutput:
+        try:
+            conn_metrics = get_connectivity_metrics(
+                circuit_id=conn_request.circuit_id,
+                db_client=db_client,
+                edge_population=conn_request.edge_population,
+                pre_selection=conn_request.pre_selection,
+                pre_node_set=conn_request.pre_node_set,
+                post_selection=conn_request.post_selection,
+                post_node_set=conn_request.post_node_set,
+                group_by=conn_request.group_by,
+                max_distance=conn_request.max_distance,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {conn_request.circuit_id}.",
+                },
+            ) from err
+        return conn_metrics
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
@@ -351,4 +428,5 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_ephys_endpoint(router)
     activate_test_endpoint(router)
     activate_circuit_endpoints(router)
+    activate_connectivity_endpoints(router)
     return router

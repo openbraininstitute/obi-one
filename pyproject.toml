@@ -62,7 +62,8 @@ dependencies = [
     "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
-    "bluecellulab>=2.6.62",
+    "connectome-manipulator",
+    "bluecellulab>=2.6.71",
     # OBI NOTEBOOK
     "obi_notebook",
 ]

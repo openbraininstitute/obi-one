@@ -64,10 +64,10 @@ def test_get_not_found(client, morphology_json, monkeypatch):
 
     entity_id = uuid.uuid4()
     response = client.get(f"{ROUTE}/{entity_id}")
-    assert response.status_code == 404
+    assert response.status_code == 500
     assert response.json() == {
-        "message": "Asset not found",
-        "error_code": "NOT_FOUND",
+        "message": "Internal error retrieving the asset.",
+        "error_code": "INTERNAL_ERROR",
         "details": None,
     }
     assert entitysdk_client_mock.get_entity.call_count == 1

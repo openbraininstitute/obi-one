@@ -17,6 +17,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
@@ -31,6 +32,9 @@ _EXCITATORY_NODE_SET = "Excitatory"
 _INHIBITORY_NODE_SET = "Inhibitory"
 
 _MAX_PERCENT = 100.0
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
     from obi_one.scientific.library.simplex_extractors import simplex_submat
@@ -115,7 +119,14 @@ class AbstractNeuronSet(Block, abc.ABC):
         """Returns the SONATA node set expression (w/o subsampling)."""
 
     @staticmethod
-    def check_population(circuit: Circuit, population: str) -> None:
+    def check_population(
+        circuit: Circuit, population: str | None, *, ignore_none: bool = False
+    ) -> None:
+        if population is None:
+            if ignore_none:
+                return
+            msg = "Must specify a node population name!"
+            raise ValueError(msg)
         if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
             msg = f"Node population '{population}' not found in circuit '{circuit}'!"
             raise ValueError(msg)
@@ -135,9 +146,6 @@ class AbstractNeuronSet(Block, abc.ABC):
         return self._population(population)
 
     def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
-        if population is None:
-            msg = "Must specify a node population name!"
-            raise ValueError(msg)
         return population
 
     def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
@@ -147,7 +155,15 @@ class AbstractNeuronSet(Block, abc.ABC):
         expression = self._get_expression(circuit, population)
         name = "__TMP_NODE_SET__"
         add_node_set_to_circuit(c, {name: expression})
-        return c.nodes[population].ids(name)
+
+        try:
+            node_ids = c.nodes[population].ids(name)
+        except snap.BluepySnapError as e:
+            # In case of an error, return empty list
+            L.warning(e)
+            node_ids = []
+
+        return node_ids
 
     def get_neuron_ids(self, circuit: Circuit, population: str | None = None) -> np.ndarray:
         """Returns list of neuron IDs (with subsampling, if specified)."""
@@ -163,7 +179,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
         if len(ids) == 0:
-            L.warning("WARNING: Neuron set empty!")
+            L.warning("Neuron set empty!")
 
         return ids
 
@@ -175,12 +191,13 @@ class AbstractNeuronSet(Block, abc.ABC):
         """
         self.enforce_no_lists()
         population = self._population(population)
-        self.check_population(circuit, population)
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
+            self.check_population(circuit, population, ignore_none=True)
             expression = self._get_expression(circuit, population)
         else:
             # Individual IDs need to be resolved
+            self.check_population(circuit, population)
             expression = {
                 "population": population,
                 "node_id": self.get_neuron_ids(circuit, population).tolist(),
@@ -312,15 +329,14 @@ class NeuronSet(AbstractNeuronSet):
         return population
 
 
-class PredefinedNeuronSet(NeuronSet):
+class PredefinedNeuronSet(AbstractNeuronSet):
     """Neuron set wrapper of an existing (named) node sets already predefined in the node \
         sets file.
     """
 
-    node_set: (
-        Annotated[str, Field(min_length=1)]
-        | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
-    )
+    node_set: Annotated[
+        NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
+    ]
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
@@ -1148,7 +1164,7 @@ class PairMotifNeuronSet(NeuronSet):
             )
 
         if pair_tab.shape[0] == 0:
-            L.warning("WARNING: Pair table empty!")
+            L.warning("Pair table empty!")
 
         return pair_tab
 
