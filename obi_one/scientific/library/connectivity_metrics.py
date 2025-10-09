@@ -1,3 +1,4 @@
+import os
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -129,9 +130,19 @@ class TemporaryPartialCircuit:
 
         # Try circuit mount
         config_fn = "circuit_config.json"
-        circuit_config_file = Path("/") / self.asset.full_path / config_fn
-        if circuit_config_file.is_file():
-            return circuit_config_file
+        mount_base_dir = os.environ.get("MOUNT_BASE_DIR")
+        if mount_base_dir is not None:
+            if self.asset.full_path.startswith("public/"):
+                storage_type = "aws_s3_internal"
+            else:
+                storage_type = "aws_s3_open"
+            # TODO: storage_type could be replaced by self.asset.storage_type once available
+            #       in entitysdk
+            circuit_config_file = (
+                Path(mount_base_dir) / storage_type / self.asset.full_path / config_fn
+            )
+            if circuit_config_file.is_file():
+                return circuit_config_file
 
         # Otherwise, download circuit in temp directory
         self.temp_dir = tempfile.TemporaryDirectory()
