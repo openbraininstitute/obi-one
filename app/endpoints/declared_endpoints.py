@@ -253,18 +253,16 @@ def activate_test_endpoint(router: APIRouter) -> None:
                     L.error(f"Error deleting temporary files: {e!s}")
 
 
-async def _process_nwb(
-    file: UploadFile, temp_file_path: str, file_extension: str
-)  -> None:
+async def _process_nwb(file: UploadFile, temp_file_path: str, file_extension: str) -> None:
     """Validate nwb file with pynwb."""
     try:
         command = ["pynwb-validate", temp_file_path]
         # Run the command
         result = subprocess.run(
-        command,
-        check=True,  # Raise an exception for non-zero return codes (i.e., errors)
-        capture_output=True, # Capture stdout and stderr
-        text=True # Decode stdout and stderr as text
+            command,
+            check=True,  # Raise an exception for non-zero return codes (i.e., errors)
+            capture_output=True,  # Capture stdout and stderr
+            text=True,  # Decode stdout and stderr as text
         )
     except Exception as e:
         L.error(f"Nwb error validating file {file.filename}: {e!s}")
@@ -276,7 +274,7 @@ async def _process_nwb(
             },
         ) from e
     else:
-        return 
+        return
 
 
 async def _validate_and_read_nwb_file(file: UploadFile) -> tuple[bytes, str]:
@@ -317,7 +315,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
         content, file_extension = await _validate_and_read_nwb_file(file)
 
         temp_file_path = ""
-        
+
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
@@ -325,7 +323,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             await _process_nwb(
                 file=file, temp_file_path=temp_file_path, file_extension=file_extension
             )
-            return 
+            return
         finally:
             if temp_file_path:
                 try:
