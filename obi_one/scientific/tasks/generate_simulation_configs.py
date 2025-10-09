@@ -265,7 +265,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=lambda: deepcopy(DEFAULT_NEURON_SETS_DICTIONARY),
+        default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",

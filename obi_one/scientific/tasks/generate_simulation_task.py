@@ -164,6 +164,14 @@ class GenerateSimulationTask(Task):
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
+
+        if ALL_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets and not isinstance(
+            self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name], AllNeurons
+        ):
+            msg = f"Default neuron set name '{ALL_NEURON_SET_BLOCK_REFERENCE.block_name}' \
+                already exists in neuron_sets but is not an AllNeurons set!"
+            raise OBIONEError(msg)
+
         if ALL_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
             self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
 
@@ -205,19 +213,18 @@ class GenerateSimulationTask(Task):
         PredefinedNeuronSet, in which case a new node set is created which references the 
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
+
+        Resolve node set based on current coordinate circuit's default node population
+        TODO: Better handling of (default) node population in case there is more than one
+        TODO: Inconsistency possible in case a node set definition would span multiple
+        populations. May consider force_resolve_ids=False to enforce resolving into given
+        population (but which won't be a human-readable representation any more).
         """
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
             sonata_circuit = self._circuit.sonata_circuit
 
             for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():
-                """
-                Resolve node set based on current coordinate circuit's default node population
-                # TODO: Better handling of (default) node population in case there is more than one
-                # TODO: Inconsistency possible in case a node set definition would span multiple
-                # populations. May consider force_resolve_ids=False to enforce resolving into given
-                # population (but which won't be a human-readable representation any more)
-                """
 
                 # 1. Check that the neuron sets block name matches the dict key
                 if _neuron_set_key != _neuron_set.block_name:
@@ -225,10 +232,10 @@ class GenerateSimulationTask(Task):
                         Using sim_conf.add(neuron_set, name=neuron_set_name) should ensure this."
                     raise OBIONEError(msg)
 
-                # Add node set to SONATA circuit object - raises error if already existing
+                # 2.Add node set to SONATA circuit object - raises error if already existing
                 _neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
-            # Write node sets from SONATA circuit object to .json file
+            # 3. Write node sets from SONATA circuit object to .json file
             write_circuit_node_set_file(
                 sonata_circuit,
                 self.config.coordinate_output_root,
