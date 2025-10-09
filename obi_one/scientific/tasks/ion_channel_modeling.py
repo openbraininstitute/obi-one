@@ -1,17 +1,18 @@
 """Ion channel modeling scan config."""
 
-from enum import StrEnum
+import json
 import logging
 import subprocess  # noqa: S404
+import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import entitysdk
 from entitysdk import models
-from entitysdk.types import ContentType, AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 from fastapi import HTTPException
-import json
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -325,7 +326,6 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    # equations: Equations
     minf_eq: dict[str, equations_module.MInfUnion] = Field(
         default_factory=dict,
         title="m_{inf} equation",
@@ -369,7 +369,8 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    def create_campaign_entity_with_config(self,
+    def create_campaign_entity_with_config(
+        self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
@@ -404,7 +405,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     def create_campaign_generation_entity(
         self,
         ion_channel_modelings: list[entitysdk.models.IonChannelModeling],
-        db_client: entitysdk.client.Client
+        db_client: entitysdk.client.Client,
     ) -> None:
         """Register the activity generating the ion channel modeling tasks in the database."""
         # TODO: also implement entitysdk related entities
@@ -422,6 +423,7 @@ class IonChannelFittingScanConfig(ScanConfig):
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
+
     _single_entity: entitysdk.models.IonChannelModeling
 
     @property
@@ -431,7 +433,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
     def create_single_entity_with_config(
         self,
         campaign: entitysdk.models.IonChannelModelingCampaign,
-        db_client: entitysdk.client.Client
+        db_client: entitysdk.client.Client,
     ) -> entitysdk.models.IonChannelModeling:
         """Saves the simulation to the database."""
         # TODO: also add related entities in entitysdk
@@ -466,11 +468,12 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         )
 
 
-
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
-    def download_input(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
+    def download_input(
+        self, db_client: entitysdk.client.Client = None
+    ) -> tuple[list[Path], list[float]]:
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
@@ -485,7 +488,9 @@ class IonChannelFittingTask(Task):
         return trace_paths, trace_ljps
 
     @staticmethod
-    def register_json(client, id_, json_path):
+    def register_json(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, json_path: str | Path
+    ) -> None:
         client.upload_file(
             entity_id=id_,
             entity_type=models.IonChannelModel,
@@ -495,7 +500,9 @@ class IonChannelFittingTask(Task):
         )
 
     @staticmethod
-    def register_thumbnail(client, id_, path_to_register):
+    def register_thumbnail(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, path_to_register: str | Path
+    ) -> None:
         client.upload_file(
             entity_id=id_,
             entity_type=models.IonChannelModel,
@@ -504,16 +511,17 @@ class IonChannelFittingTask(Task):
             asset_label=AssetLabel.ion_channel_model_thumbnail,
         )
 
-    def cleanup_dict(self, d):
+    def cleanup_dict(self, d: Any) -> Any:
         if isinstance(d, Path):
             return str(d.name)
-        elif isinstance(d, dict):
-            return {key: self.cleanup_dict(value) for key, value in d.items() if key!="thumbnail"}
-        else:
-            return d
+        if isinstance(d, dict):
+            return {key: self.cleanup_dict(value) for key, value in d.items() if key != "thumbnail"}
+        return d
 
     @staticmethod
-    def register_plots(client, id_, paths_to_register):
+    def register_plots(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, paths_to_register: list[str | Path]
+    ) -> None:
         for path in paths_to_register:
             client.upload_file(
                 entity_id=id_,
@@ -523,7 +531,9 @@ class IonChannelFittingTask(Task):
                 asset_label=AssetLabel.ion_channel_model_figure,
             )
 
-    def register_plots_and_json(self, db_client, figure_filepaths, model_id):
+    def register_plots_and_json(
+        self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
+    ) -> None:
         # get the paths of the pdf figures
         paths_to_register = [
             value
@@ -534,7 +544,7 @@ class IonChannelFittingTask(Task):
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
-        with open(json_path, "w") as f:
+        with json_path.open("w") as f:
             json.dump(figure_summary_dict, f, indent=4)
 
         self.register_plots(db_client, model_id, paths_to_register)
@@ -591,7 +601,7 @@ class IonChannelFittingTask(Task):
             file_content_type=ContentType.application_mod,
             asset_label="mod file",
         )
-        
+
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
 
         # register the Activity
