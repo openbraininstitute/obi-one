@@ -197,3 +197,13 @@ def non_negative_float_union(
         | list[Annotated[NonNegativeFloat, Field(**field_kwargs)]]
         | Annotated[NonNegativeFloatRange, Field(**field_kwargs)]
     )
+
+
+ParametericMultiValueUnion = (
+    IntRange
+    | PositiveIntRange
+    | NonNegativeIntRange
+    | FloatRange
+    | PositiveFloatRange
+    | NonNegativeFloatRange
+)

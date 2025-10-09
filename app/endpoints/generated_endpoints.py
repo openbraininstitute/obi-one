@@ -17,6 +17,7 @@ from obi_one.core.parametric_multi_values import (
     NonNegativeFloatRange,
     NonNegativeIntRange,
     ParametericMultiValue,
+    ParametericMultiValueUnion,
     PositiveFloatRange,
     PositiveIntRange,
 )
@@ -101,34 +102,32 @@ def create_endpoint_for_parameteric_multi_value_type(
     model: type[ParametericMultiValue], router: APIRouter
 ) -> None:
     """Fill in later."""
-    # model_name: model in lowercase with underscores between words
-    model_name = "-".join([word.lower() for word in re.findall(r"[A-Z][^A-Z]*", model.__name__)])
 
-    value_type = get_type_hints(model, include_extras=True).get("start")
+    model_name = "parametric-multi-value"
 
     # Create endpoint name
     endpoint_name_with_slash = "/" + model_name
     # model.name model.description
-    model_name = ""
-    model_description = ""
+    model_name = model.name
+    model_description = model.description
 
     @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
     def endpoint(
         parameteric_multi_value_type: model,
         # Query-level constraints
         ge: Annotated[
-            value_type | None, Query(description="Require all values to be ≥ this")
+            float | int | None, Query(description="Require all values to be ≥ this")
         ] = None,
         gt: Annotated[
-            value_type | None, Query(description="Require all values to be > this")
+            float | int | None, Query(description="Require all values to be > this")
         ] = None,
         le: Annotated[
-            value_type | None, Query(description="Require all values to be ≤ this")
+            float | int | None, Query(description="Require all values to be ≤ this")
         ] = None,
         lt: Annotated[
-            value_type | None, Query(description="Require all values to be < this")
+            float | int | None, Query(description="Require all values to be < this")
         ] = None,
-    ) -> list[value_type]:
+    ) -> list[float] | list[int]:
         try:
             # Create class to allow static annotations with constraints
             class MultiParamHolder(BaseModel):
@@ -187,12 +186,7 @@ def activate_parameteric_multi_value_endpoints(router: APIRouter) -> APIRouter:
     # Create endpoints for each ParametericMultiValue subclass.
 
     for parameteric_multi_value_type in [
-        FloatRange,
-        IntRange,
-        NonNegativeFloatRange,
-        NonNegativeIntRange,
-        PositiveFloatRange,
-        PositiveIntRange,
+        ParametericMultiValueUnion,
     ]:
         create_endpoint_for_parameteric_multi_value_type(
             parameteric_multi_value_type,

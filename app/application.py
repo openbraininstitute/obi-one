@@ -140,7 +140,7 @@ generated_router = APIRouter(
 app.include_router(activate_generated_endpoints(generated_router))
 
 generated_router_2 = APIRouter(
-    prefix="/generated/parameteric-multi-value",
+    prefix="/generated",
     tags=["generated/parameteric-multi-value"],
     dependencies=[Depends(user_verified)],
 )
