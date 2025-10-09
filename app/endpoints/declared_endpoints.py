@@ -1,8 +1,9 @@
 import asyncio
 import pathlib
+import subprocess
 import tempfile
 import zipfile
-import subprocess
+
 from http import HTTPStatus
 from typing import Annotated, Literal
 
@@ -253,12 +254,13 @@ def activate_test_endpoint(router: APIRouter) -> None:
                     L.error(f"Error deleting temporary files: {e!s}")
 
 
-async def _process_nwb(file: UploadFile, temp_file_path: str, file_extension: str) -> None:
+async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:  # Removed file_extension
     """Validate nwb file with pynwb."""
     try:
         command = ["pynwb-validate", temp_file_path]
-        # Run the command
-        subprocess.run(
+        # Run the command in a separate thread to avoid blocking the event loop
+        await asyncio.to_thread(
+            subprocess.run,
             command,
             check=True,  # Raise an exception for non-zero return codes (i.e., errors)
             capture_output=True,  # Capture stdout and stderr
@@ -320,9 +322,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
-            await _process_nwb(
-                file=file, temp_file_path=temp_file_path, file_extension=file_extension
-            )
+            await _process_nwb(file=file, temp_file_path=temp_file_path)
             return
         finally:
             if temp_file_path:
