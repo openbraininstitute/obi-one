@@ -258,7 +258,7 @@ async def _process_nwb(file: UploadFile, temp_file_path: str, file_extension: st
     try:
         command = ["pynwb-validate", temp_file_path]
         # Run the command
-        result = subprocess.run(
+        subprocess.run(
             command,
             check=True,  # Raise an exception for non-zero return codes (i.e., errors)
             capture_output=True,  # Capture stdout and stderr
