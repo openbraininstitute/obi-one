@@ -63,7 +63,7 @@ class ConnectivityMatrixExtractionTask(Task):
         "synapse_class",
     )
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> None:  # noqa: ARG002
         L.info(f"Info: Running idx {self.config.idx}")
 
         output_file = Path(self.config.coordinate_output_root) / "connectivity_matrix.h5"

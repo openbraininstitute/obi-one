@@ -250,7 +250,7 @@ class BasicConnectivityPlotsTask(Task):
                 output_file = Path(dir_path) / f"property_table.{fmt}"
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> None:  # noqa: ARG002
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (
                 "Import of 'node_degree' or 'ER_model' failed. You probably need to install"

@@ -45,7 +45,7 @@ class FolderCompressionTask(Task):
 
     FILE_FORMATS: ClassVar[tuple[str, ...]] = ("gz", "bz2", "xz")  # Supported compression formats
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: Path | None = None) -> None:  # noqa: ARG002
         # Initial checks
         if not Path(self.config.initialize.folder_path.path).is_dir():
             msg = f"Folder path '{self.config.initialize.folder_path}' is not a valid directory!"

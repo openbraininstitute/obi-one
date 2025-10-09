@@ -47,6 +47,7 @@ class GenerateSimulationTask(Task):
 
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
+    _entity_cache: bool = PrivateAttr(default=False)
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -82,6 +83,9 @@ class GenerateSimulationTask(Task):
         elif isinstance(self.config.initialize.circuit, (CircuitFromID, MEModelFromID)):
             L.info("initialize.circuit is a MEModelFromID instance.")
             self._circuit_id = self.config.initialize.circuit.id_str
+
+            if self._entity_cache and db_client:
+                L.info("Use entity cache")
 
             self._circuit = self.config.initialize.circuit.stage_circuit(
                 db_client=db_client, dest_dir=self.config.coordinate_output_root / "sonata_circuit"
@@ -301,8 +305,9 @@ class GenerateSimulationTask(Task):
                             asset_label="replay_spikes",
                         )
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> None:
         """Generates SONATA simulation files."""
+        self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()

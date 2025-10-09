@@ -70,7 +70,7 @@ class ElectrophysiologyMetricsTask(Task):
 
     config: ElectrophysiologyMetricsSingleConfig
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> ElectrophysiologyMetricsOutput:
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
                 trace_id=self.config.initialize.trace_id,

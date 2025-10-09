@@ -228,7 +228,7 @@ class CircuitExtractionTask(Task):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> str:  # noqa: ARG002
+    def execute(self, db_client: entitysdk.client.Client = None, entity_cache: bool = False) -> str:  # noqa: ARG002
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         nset_name = self.config.neuron_set.__class__.__name__
