@@ -35,7 +35,11 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
+from obi_one.scientific.unions.unions_stimuli import (
+    MEModelStimulusUnion,
+    StimulusReference,
+    StimulusUnion,
+)
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
@@ -85,15 +89,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         description="Timestamps for the simulation.",
         singular_name="Timestamps",
         group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
-    )
-    stimuli: dict[str, StimulusUnion] = Field(
-        default_factory=dict,
-        title="Stimuli",
-        reference_type=StimulusReference.__name__,
-        description="Stimuli for the simulation.",
-        singular_name="Stimulus",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=0,
     )
     recordings: dict[str, RecordingUnion] = Field(
@@ -250,6 +245,16 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group_order=1,
     )
 
+    stimuli: dict[str, MEModelStimulusUnion] = Field(
+        default_factory=dict,
+        title="Stimuli",
+        reference_type=StimulusReference.__name__,
+        description="Stimuli for the simulation.",
+        singular_name="Stimulus",
+        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+        group_order=0,
+    )
+
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
     """CircuitSimulationScanConfig."""
@@ -288,6 +293,16 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
+    )
+
+    stimuli: dict[str, StimulusUnion] = Field(
+        default_factory=dict,
+        title="Stimuli",
+        reference_type=StimulusReference.__name__,
+        description="Stimuli for the simulation.",
+        singular_name="Stimulus",
+        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+        group_order=0,
     )
 
 

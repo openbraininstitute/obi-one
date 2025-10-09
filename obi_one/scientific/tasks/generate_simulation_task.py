@@ -1,7 +1,8 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar, get_type_hints
+from typing import ClassVar, get_type_hints, Optional
+from typing import get_origin, get_args, Union
 
 import entitysdk
 from pydantic import PrivateAttr
@@ -32,6 +33,8 @@ DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
 DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
     block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
 )
+DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
+DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 
 L = logging.getLogger(__name__)
@@ -138,14 +141,17 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
+        def is_optional_neuronsetreference(attr_value):
+            args = get_args(attr_value)
+            if args == (NeuronSetReference, type(None)):
+                return True
+            return False
+
         if hasattr(self.config, "neuron_sets"):
             type_hints = get_type_hints(block.__class__)
 
             for attr_name, attr_type in type_hints.items():
-                if attr_type == NeuronSetReference or (
-                    getattr(attr_type, "__origin__", None) is None
-                    and attr_type is NeuronSetReference
-                ):
+                if is_optional_neuronsetreference(attr_type) == True:
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
@@ -176,7 +182,7 @@ class GenerateSimulationTask(Task):
             raise OBIONEError(msg)
 
         if DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
-            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
+            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = DEFAULT_NEURON_SET_BLOCK_REFERENCE.block
 
         return DEFAULT_NEURON_SET_BLOCK_REFERENCE
 
@@ -226,9 +232,9 @@ class GenerateSimulationTask(Task):
         populations. May consider force_resolve_ids=False to enforce resolving into given
         population (but which won't be a human-readable representation any more).
         """
+        sonata_circuit = self._circuit.sonata_circuit
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
-            sonata_circuit = self._circuit.sonata_circuit
 
             for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():
                 # 1. Check that the neuron sets block name matches the dict key
@@ -242,7 +248,7 @@ class GenerateSimulationTask(Task):
 
         else:
             neuron_set = AllNeurons()
-            neuron_set.block_name = DEFAULT_NODE_SET_NAME
+            neuron_set.set_block_name(DEFAULT_NODE_SET_NAME)
             neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
         # 3. Write node sets from SONATA circuit object to .json file
