@@ -60,4 +60,3 @@ Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to con
  
 # Acknowledgements
 Copyright © 2025 Open Brain Institute
-
