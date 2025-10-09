@@ -164,7 +164,6 @@ class GenerateSimulationTask(Task):
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
-
         if ALL_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets and not isinstance(
             self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name], AllNeurons
         ):
@@ -209,8 +208,8 @@ class GenerateSimulationTask(Task):
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
 
-        The neuron_sets dict key is always used as the name of the new node set, even for a 
-        PredefinedNeuronSet, in which case a new node set is created which references the 
+        The neuron_sets dict key is always used as the name of the new node set, even for a
+        PredefinedNeuronSet, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
 
@@ -225,7 +224,6 @@ class GenerateSimulationTask(Task):
             sonata_circuit = self._circuit.sonata_circuit
 
             for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():
-
                 # 1. Check that the neuron sets block name matches the dict key
                 if _neuron_set_key != _neuron_set.block_name:
                     msg = "Neuron set name mismatch! \

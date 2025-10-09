@@ -1,6 +1,5 @@
 import abc
 import logging
-from copy import deepcopy
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
