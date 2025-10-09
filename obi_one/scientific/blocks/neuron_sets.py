@@ -17,6 +17,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 
 L = logging.getLogger("obi-one")
 _NBS1_VPM_NODE_POP = "VPM"
@@ -28,6 +29,9 @@ _EXCITATORY_NODE_SET = "Excitatory"
 _INHIBITORY_NODE_SET = "Inhibitory"
 
 _MAX_PERCENT = 100.0
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
     from obi_one.scientific.library.simplex_extractors import simplex_submat
@@ -363,10 +367,9 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         sets file.
     """
 
-    node_set: (
-        Annotated[str, Field(min_length=1)]
-        | Annotated[list[Annotated[str, Field(min_length=1)]], Field(min_length=1)]
-    )
+    node_set: Annotated[
+        NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
+    ]
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
