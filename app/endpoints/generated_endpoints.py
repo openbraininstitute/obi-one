@@ -100,9 +100,7 @@ def create_endpoint_for_parameteric_multi_value_type(
 
     # Create endpoint name
     endpoint_name_with_slash = "/" + model_name
-    # model.name model.description
-    model_name = model.name
-    model_description = model.description
+    model_description = "Temp description."
 
     @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
     def endpoint(
