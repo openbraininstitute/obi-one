@@ -253,7 +253,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     )
 
 
-ALL_NEURON_SET_NAME = "All Neurons"
+ALL_NEURON_SET_NAME = "All Biophysical Neurons"
 DEFAULT_NEURON_SETS_DICTIONARY = {ALL_NEURON_SET_NAME: AllNeurons()}
 
 
