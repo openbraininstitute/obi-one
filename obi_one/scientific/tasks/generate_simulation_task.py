@@ -93,8 +93,6 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
-            if not hasattr(self.config, "neuron_sets"):
-                self._ensure_block_neuron_set(stimulus)
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
                     self._circuit,
@@ -109,8 +107,6 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_reports(self) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
-            if not hasattr(self.config, "neuron_sets"):
-                self._ensure_block_neuron_set(recording)
             self._sonata_config["reports"].update(
                 recording.config(
                     self._circuit,
@@ -130,17 +126,37 @@ class GenerateSimulationTask(Task):
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
 
-    def _ensure_block_neuron_set(self, block: Block) -> None:
-        """Ensure that any block with a missing neuron_set gets the default set, if applicable."""
-        type_hints = get_type_hints(block.__class__)
+    def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+        self, block: Block
+    ) -> None:
+        """If the block's NeuronSetReference is None, set it to the default NeuronSetReference.
 
-        for attr_name, attr_type in type_hints.items():
-            if attr_type == NeuronSetReference or (
-                getattr(attr_type, "__origin__", None) is None and attr_type is NeuronSetReference
-            ):
-                attr_value = getattr(block, attr_name, None)
-                if attr_value is None:
-                    setattr(block, attr_name, self._default_neuron_set_ref())
+        This is only done if the config has a neuron_sets attribute.
+        """
+        if hasattr(self.config, "neuron_sets"):
+            type_hints = get_type_hints(block.__class__)
+
+            for attr_name, attr_type in type_hints.items():
+                if attr_type == NeuronSetReference or (
+                    getattr(attr_type, "__origin__", None) is None
+                    and attr_type is NeuronSetReference
+                ):
+                    attr_value = getattr(block, attr_name, None)
+                    if attr_value is None:
+                        setattr(block, attr_name, self._default_neuron_set_ref())
+
+    def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
+        """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
+        if hasattr(self.config, "neuron_sets"):
+            for recording in self.config.recordings.values():
+                self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                    recording
+                )
+
+            for stimulus in self.config.stimuli.values():
+                self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                    stimulus
+                )
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
@@ -149,14 +165,14 @@ class GenerateSimulationTask(Task):
 
         return ALL_NEURON_SET_BLOCK_REFERENCE
 
-    def _ensure_simulation_target_neuron_set_ref(self) -> None:
+    def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
-        if self.config.initialize.node_set is None:
-            L.info("initialize.node_set is None — setting default node set.")
-            self.config.initialize.node_set = self._default_neuron_set_ref()
-
-    def _ensure_simulation_target_node_set(self) -> str:
-        self._sonata_config["node_set"] = DEFAULT_NODE_SET
+        if hasattr(self.config, "neuron_sets"):
+            if self.config.initialize.node_set is None:
+                L.info("initialize.node_set is None — setting default node set.")
+                self.config.initialize.node_set = self._default_neuron_set_ref()
+        else:
+            self._sonata_config["node_set"] = DEFAULT_NODE_SET
 
     def _resolve_neuron_sets(self) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
@@ -166,12 +182,8 @@ class GenerateSimulationTask(Task):
         # it will behave exactly the same no matter if random subsampling is used or not.
         # But this also means that existing names cannot be used as dict keys.
 
-        if not hasattr(self.config, "neuron_sets"):
-            self._ensure_simulation_target_node_set()
-        else:
+        if hasattr(self.config, "neuron_sets"):
             sonata_circuit = self._circuit.sonata_circuit
-
-            self._ensure_simulation_target_neuron_set_ref()
 
             for _name, _nset in self.config.neuron_sets.items():
                 # Resolve node set based on current coordinate circuit's default node population
@@ -263,6 +275,8 @@ class GenerateSimulationTask(Task):
         """Generates SONATA simulation files."""
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)
+        self._ensure_simulation_target_node_set()
+        self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports()
         self._add_sonata_simulation_config_manipulations()
