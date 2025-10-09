@@ -1,17 +1,22 @@
 """GraphQL endpoints for the obi-one application."""
 
 from enum import Enum
-from typing import Annotated, Literal
 
 import entitysdk.client
 import strawberry
+from fastapi import Depends
 from strawberry.experimental.pydantic import type as pydantic_type
 from strawberry.fastapi import GraphQLRouter
-from fastapi import Depends
 
 from app.dependencies.entitysdk import get_client
+from obi_one.scientific.library.circuit_metrics import (
+    CircuitMetricsEdgePopulation,
+    CircuitMetricsNodePopulation,
+    CircuitMetricsOutput,
+    CircuitStatsLevelOfDetail,
+    get_circuit_metrics,
+)
 from obi_one.scientific.library.morphology_metrics import (
-    MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
@@ -21,6 +26,7 @@ from obi_one.scientific.library.morphology_metrics import (
 @strawberry.enum
 class MorphologyMetric(Enum):
     """Enum for morphology metrics."""
+
     ASPECT_RATIO = "aspect_ratio"
     CIRCULARITY = "circularity"
     LENGTH_FRACTION_ABOVE_SOMA = "length_fraction_above_soma"
@@ -45,10 +51,35 @@ class MorphologyMetric(Enum):
     SECTION_STRAHLER_ORDERS = "section_strahler_orders"
 
 
+# Create GraphQL enum for circuit stats level of detail
+@strawberry.enum
+class CircuitStatsLevelOfDetailEnum(Enum):
+    """Enum for circuit stats level of detail."""
+
+    NONE = 0
+    BASIC = 1
+    ADVANCED = 2
+    FULL = 3
+
+
 @pydantic_type(model=MorphologyMetricsOutput, all_fields=True)
 class MorphologyMetricsOutputType:
     """Strawberry type for MorphologyMetricsOutput."""
-    pass
+
+
+@pydantic_type(model=CircuitMetricsNodePopulation, all_fields=True)
+class CircuitMetricsNodePopulationType:
+    """Strawberry type for CircuitMetricsNodePopulation."""
+
+
+@pydantic_type(model=CircuitMetricsEdgePopulation, all_fields=True)
+class CircuitMetricsEdgePopulationType:
+    """Strawberry type for CircuitMetricsEdgePopulation."""
+
+
+@pydantic_type(model=CircuitMetricsOutput, all_fields=True)
+class CircuitMetricsOutputType:
+    """Strawberry type for CircuitMetricsOutput."""
 
 
 @strawberry.type
@@ -67,14 +98,13 @@ class Query:
         requested_metrics: list[MorphologyMetric] | None = None,
         info: strawberry.Info = strawberry.UNSET,
     ) -> MorphologyMetricsOutputType:
-        """
-        Get morphology metrics for a given cell morphology ID.
-        
+        """Get morphology metrics for a given cell morphology ID.
+
         Args:
             cell_morphology_id: The ID of the cell morphology
             requested_metrics: Optional list of specific metrics to calculate (enum values)
             info: Strawberry info object containing request context
-            
+
         Returns:
             MorphologyMetricsOutputType containing the calculated metrics
         """
@@ -82,25 +112,69 @@ class Query:
         db_client = info.context.get("db_client")
         if not db_client:
             raise ValueError("Database client not available in context")
-        
+
         # Convert enum values back to strings for the underlying function
         metrics_strings = None
         if requested_metrics:
             metrics_strings = [metric.value for metric in requested_metrics]
-        
+
         # Get the Pydantic model instance
         pydantic_result = get_morphology_metrics(
             cell_morphology_id=cell_morphology_id,
             db_client=db_client,
             requested_metrics=metrics_strings,
         )
-        
+
         # Convert Pydantic instance to Strawberry type
         return MorphologyMetricsOutputType.from_pydantic(pydantic_result)
+
+    @strawberry.field
+    def circuit_metrics(
+        self,
+        circuit_id: str,
+        level_of_detail_nodes: CircuitStatsLevelOfDetailEnum = CircuitStatsLevelOfDetailEnum.NONE,
+        level_of_detail_edges: CircuitStatsLevelOfDetailEnum = CircuitStatsLevelOfDetailEnum.NONE,
+        info: strawberry.Info = strawberry.UNSET,
+    ) -> CircuitMetricsOutputType:
+        """Get circuit metrics for a given circuit ID.
+
+        Args:
+            circuit_id: The ID of the circuit
+            level_of_detail_nodes: Level of detail for node populations analysis
+            level_of_detail_edges: Level of detail for edge populations analysis
+            info: Strawberry info object containing request context
+
+        Returns:
+            CircuitMetricsOutputType containing the calculated circuit metrics
+        """
+        # Get the db_client from the request context
+        db_client = info.context.get("db_client")
+        if not db_client:
+            raise ValueError("Database client not available in context")
+
+        # Convert enum values back to CircuitStatsLevelOfDetail
+        level_of_detail_nodes_dict = {
+            "_ALL_": CircuitStatsLevelOfDetail(level_of_detail_nodes.value)
+        }
+        level_of_detail_edges_dict = {
+            "_ALL_": CircuitStatsLevelOfDetail(level_of_detail_edges.value)
+        }
+
+        # Get the Pydantic model instance
+        pydantic_result = get_circuit_metrics(
+            circuit_id=circuit_id,
+            db_client=db_client,
+            level_of_detail_nodes=level_of_detail_nodes_dict,
+            level_of_detail_edges=level_of_detail_edges_dict,
+        )
+
+        # Convert Pydantic instance to Strawberry type
+        return CircuitMetricsOutputType.from_pydantic(pydantic_result)
 
 
 # Create strawberry schema
 schema = strawberry.Schema(query=Query)
+
 
 # Create GraphQL router with context dependency injection
 async def get_context(
@@ -109,8 +183,9 @@ async def get_context(
     """Create GraphQL context with dependencies."""
     return {"db_client": db_client}
 
+
 graphql_router = GraphQLRouter(
-    schema, 
+    schema,
     allow_queries_via_get=False,
     context_getter=get_context,
 )
