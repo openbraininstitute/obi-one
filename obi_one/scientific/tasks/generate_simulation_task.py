@@ -9,11 +9,14 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets import AllNeurons, NeuronSet
+from obi_one.scientific.blocks.neuron_sets import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    write_circuit_node_set_file,
+)
 from obi_one.scientific.tasks.generate_simulation_configs import (
     ALL_NEURON_SET_NAME,
     SONATA_VERSION,
@@ -196,41 +199,38 @@ class GenerateSimulationTask(Task):
             self._sonata_config["node_set"] = DEFAULT_NODE_SET
 
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
-        # Resolve neuron sets and add them to the SONATA circuit object
-        # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
-        # set, even for a PredefinedNeuronSet in which case a new node set will be created
-        # which just references the existing one. This is the most consistent behavior since
-        # it will behave exactly the same no matter if random subsampling is used or not.
-        # But this also means that existing names cannot be used as dict keys.
+        """Resolve neuron sets and add them to the SONATA circuit object.
 
+        NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
+        set, even for a PredefinedNeuronSet in which case a new node set will be created
+        which just references the existing one. This is the most consistent behavior since
+        it will behave exactly the same no matter if random subsampling is used or not.
+        But this also means that existing names cannot be used as dict keys.
+        """
         if hasattr(self.config, "neuron_sets"):
+            # circuit.sonata_circuit should be created once. Currently this would break other code.
             sonata_circuit = self._circuit.sonata_circuit
 
             for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():
-                # Resolve node set based on current coordinate circuit's default node population
+                """
+                Resolve node set based on current coordinate circuit's default node population
                 # TODO: Better handling of (default) node population in case there is more than one
                 # TODO: Inconsistency possible in case a node set definition would span multiple
                 # populations. May consider force_resolve_ids=False to enforce resolving into given
                 # population (but which won't be a human-readable representation any more)
+                """
 
                 # 1. Check that the neuron sets block name matches the dict key
-                # This should always be the case if properly initialized
                 if _neuron_set_key != _neuron_set.block_name:
-                    msg = "Neuron set name mismatch!"
+                    msg = "Neuron set name mismatch! \
+                        Using sim_conf.add(neuron_set, name=neuron_set_name) should ensure this."
                     raise OBIONEError(msg)
 
-                # Add node set to SONATA circuit object
-                # (will raise an error in case already existing)
-                nset_def = _neuron_set.get_node_set_definition(
-                    self._circuit, self._circuit.default_population_name, force_resolve_ids=True
-                )
-                NeuronSet.add_node_set_to_circuit(
-                    sonata_circuit, {_neuron_set_key: nset_def}, overwrite_if_exists=False
-                )
+                # Add node set to SONATA circuit object - raises error if already existing
+                _neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
             # Write node sets from SONATA circuit object to .json file
-            # (will raise an error if file already exists)
-            NeuronSet.write_circuit_node_set_file(
+            write_circuit_node_set_file(
                 sonata_circuit,
                 self.config.coordinate_output_root,
                 file_name=self.NODE_SETS_FILE_NAME,

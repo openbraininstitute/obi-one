@@ -150,6 +150,7 @@ __all__ = [
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocations",
+    "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
@@ -159,6 +160,7 @@ __all__ = [
     "run_task_for_single_config",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
+    "write_circuit_node_set_file",
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
@@ -239,6 +241,10 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
+)
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
+    write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
