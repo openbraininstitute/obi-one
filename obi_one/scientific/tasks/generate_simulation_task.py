@@ -23,6 +23,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
 )
 
 DEFAULT_NODE_SET = "All"
@@ -166,15 +167,35 @@ class GenerateSimulationTask(Task):
         return ALL_NEURON_SET_BLOCK_REFERENCE
 
     def _ensure_simulation_target_node_set(self) -> None:
-        """Ensure a neuron set exists matching `initialize.node_set`. Infer default if needed."""
+        """Ensure a neuron set exists matching `initialize.node_set`.
+
+        Infer default if needed. Assert biophysical.
+        """
         if hasattr(self.config, "neuron_sets"):
             if self.config.initialize.node_set is None:
                 L.info("initialize.node_set is None — setting default node set.")
                 self.config.initialize.node_set = self._default_neuron_set_ref()
+
+            # Assert that simulation neuron set is biophysical
+            if isinstance(self.config.initialize.node_set, NeuronSetReference) and (
+                self.config.initialize.node_set.block.population_type(
+                    self._circuit, self._circuit.default_population_name
+                )
+                != "biophysical"
+            ):
+                msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
+                    '{self.config.initialize.node_set.name}' "
+                "is not biophysical!"
+                raise OBIONEError(msg)
+
+            self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
+                self.config.initialize.node_set
+            )
+
         else:
             self._sonata_config["node_set"] = DEFAULT_NODE_SET
 
-    def _resolve_neuron_sets(self) -> None:
+    def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         # Resolve neuron sets and add them to the SONATA circuit object
         # NOTE: The name that is used as neuron_sets dict key is always used as name for a new node
         # set, even for a PredefinedNeuronSet in which case a new node set will be created
@@ -185,39 +206,26 @@ class GenerateSimulationTask(Task):
         if hasattr(self.config, "neuron_sets"):
             sonata_circuit = self._circuit.sonata_circuit
 
-            for _name, _nset in self.config.neuron_sets.items():
+            for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():
                 # Resolve node set based on current coordinate circuit's default node population
                 # TODO: Better handling of (default) node population in case there is more than one
                 # TODO: Inconsistency possible in case a node set definition would span multiple
                 # populations. May consider force_resolve_ids=False to enforce resolving into given
                 # population (but which won't be a human-readable representation any more)
-                if _name != _nset.block_name:
+
+                # 1. Check that the neuron sets block name matches the dict key
+                # This should always be the case if properly initialized
+                if _neuron_set_key != _neuron_set.block_name:
                     msg = "Neuron set name mismatch!"
-                    raise OBIONEError(msg)  # This should never happen if properly initialized
-
-                if self.config.initialize.node_set.block.block_name == _name:
-                    if self._sonata_config.get("node_set") is not None:
-                        msg = "Node set config entry already defined!"
-                        raise OBIONEError(msg)
-
-                    # Assert that simulation neuron set is biophysical
-                    if (
-                        _nset.population_type(self._circuit, self._circuit.default_population_name)
-                        != "biophysical"
-                    ):
-                        msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{_name}' "
-                        "is not biophysical!"
-                        raise OBIONEError(msg)
-
-                    self._sonata_config["node_set"] = _name
+                    raise OBIONEError(msg)
 
                 # Add node set to SONATA circuit object
                 # (will raise an error in case already existing)
-                nset_def = _nset.get_node_set_definition(
+                nset_def = _neuron_set.get_node_set_definition(
                     self._circuit, self._circuit.default_population_name, force_resolve_ids=True
                 )
                 NeuronSet.add_node_set_to_circuit(
-                    sonata_circuit, {_name: nset_def}, overwrite_if_exists=False
+                    sonata_circuit, {_neuron_set_key: nset_def}, overwrite_if_exists=False
                 )
 
             # Write node sets from SONATA circuit object to .json file
@@ -230,7 +238,7 @@ class GenerateSimulationTask(Task):
             )
             self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-    def _write_simiulation_config_to_file(self) -> None:
+    def _write_simulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
         with simulation_config_path.open("w", encoding="utf-8") as f:
             json.dump(self._sonata_config, f, indent=2)
@@ -280,6 +288,6 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports()
         self._add_sonata_simulation_config_manipulations()
-        self._resolve_neuron_sets()
-        self._write_simiulation_config_to_file()
+        self._resolve_neuron_sets_and_write_simulation_node_sets_file()
+        self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
