@@ -1,6 +1,5 @@
 import asyncio
 import pathlib
-import pynwb
 import tempfile
 import zipfile
 from http import HTTPStatus
@@ -258,7 +257,7 @@ async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:  # Remove
     """Validate nwb file with pynwb."""
     try:
         with NWBHDF5IO(temp_file_path, "r") as io:
-            nwb_file = io.read()
+            io.read()
     except Exception as e:
         L.error(f"Nwb error validating file {file.filename}: {e!s}")
         raise HTTPException(
