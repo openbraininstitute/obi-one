@@ -23,6 +23,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -343,6 +344,37 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                 },
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
+
+    @router.get(
+        "/mapped-circuit-properties/{circuit_id}",
+        summary="Mapped circuit properties",
+        description="Returns a dictionary of mapped circuit properties.",
+    )
+    def mapped_circuit_properties_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> dict:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+            mapped_circuit_properties = {}
+            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
+                circuit_metrics.names_of_nodesets
+            )
+
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail={
+                    "code": ApiErrorCode.NOT_FOUND,
+                    "detail": f"Circuit {circuit_id} not found.",
+                },
+            ) from err
+        return mapped_circuit_properties
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
