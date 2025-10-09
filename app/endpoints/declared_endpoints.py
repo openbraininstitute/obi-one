@@ -352,6 +352,41 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
 
+    @router.get(
+        "/mapped-circuit-properties/{circuit_id}",
+        summary="Mapped circuit properties",
+        description="Returns a dictionary of mapped circuit properties.",
+    )
+    def mapped_circuit_properties_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> dict:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+            mapped_circuit_properties = {}
+            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
+                circuit_metrics.names_of_nodesets
+            )
+
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
+                },
+            ) from err
+        return mapped_circuit_properties
+
+
+def activate_connectivity_endpoints(router: APIRouter) -> None:
+    """Define circuit-related endpoints."""
+
     @router.post(
         "/connectivity-metrics/{circuit_id}",
         summary="Connectivity metrics",
@@ -386,37 +421,6 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             ) from err
         return conn_metrics
 
-    @router.get(
-        "/mapped-circuit-properties/{circuit_id}",
-        summary="Mapped circuit properties",
-        description="Returns a dictionary of mapped circuit properties.",
-    )
-    def mapped_circuit_properties_endpoint(
-        circuit_id: str,
-        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    ) -> dict:
-        try:
-            circuit_metrics = get_circuit_metrics(
-                circuit_id=circuit_id,
-                db_client=db_client,
-                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
-                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
-            )
-            mapped_circuit_properties = {}
-            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
-                circuit_metrics.names_of_nodesets
-            )
-
-        except entitysdk.exception.EntitySDKError as err:
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": ApiErrorCode.INTERNAL_ERROR,
-                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
-                },
-            ) from err
-        return mapped_circuit_properties
-
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
@@ -424,4 +428,5 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_ephys_endpoint(router)
     activate_test_endpoint(router)
     activate_circuit_endpoints(router)
+    activate_connectivity_endpoints(router)
     return router
