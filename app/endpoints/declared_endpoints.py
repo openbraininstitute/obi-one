@@ -409,10 +409,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
 
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return mapped_circuit_properties
