@@ -1,6 +1,8 @@
 """GraphQL endpoints for the obi-one application."""
 
+import json
 from enum import Enum
+from typing import NewType
 
 import entitysdk.client
 import strawberry
@@ -19,6 +21,13 @@ from obi_one.scientific.library.circuit_metrics import (
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
+)
+
+# Create JSON scalar for complex dict fields
+JSON = strawberry.scalar(
+    NewType("JSON", str),
+    serialize=lambda v: json.dumps(v) if v is not None else None,
+    parse_value=lambda v: json.loads(v) if v is not None else None,
 )
 
 
@@ -51,30 +60,34 @@ class MorphologyMetric(Enum):
     SECTION_STRAHLER_ORDERS = "section_strahler_orders"
 
 
-# Create GraphQL enum for circuit stats level of detail
-@strawberry.enum
-class CircuitStatsLevelOfDetailEnum(Enum):
-    """Enum for circuit stats level of detail."""
-
-    NONE = 0
-    BASIC = 1
-    ADVANCED = 2
-    FULL = 3
-
-
 @pydantic_type(model=MorphologyMetricsOutput, all_fields=True)
 class MorphologyMetricsOutputType:
     """Strawberry type for MorphologyMetricsOutput."""
 
 
-@pydantic_type(model=CircuitMetricsNodePopulation, all_fields=True)
+@pydantic_type(model=CircuitMetricsNodePopulation, all_fields=False)
 class CircuitMetricsNodePopulationType:
     """Strawberry type for CircuitMetricsNodePopulation."""
+    # Define all fields explicitly, using JSON for dict fields
+    number_of_nodes: strawberry.auto
+    name: strawberry.auto
+    population_type: strawberry.auto
+    property_names: strawberry.auto
+    property_unique_values: JSON
+    property_value_counts: JSON
+    node_location_info: JSON | None
 
 
-@pydantic_type(model=CircuitMetricsEdgePopulation, all_fields=True)
+@pydantic_type(model=CircuitMetricsEdgePopulation, all_fields=False)
 class CircuitMetricsEdgePopulationType:
     """Strawberry type for CircuitMetricsEdgePopulation."""
+    # Define all fields explicitly, using JSON for dict fields
+    number_of_edges: strawberry.auto
+    name: strawberry.auto
+    population_type: strawberry.auto
+    property_names: strawberry.auto
+    property_stats: JSON | None
+    degree_stats: JSON | None
 
 
 @pydantic_type(model=CircuitMetricsOutput, all_fields=True)
@@ -132,16 +145,12 @@ class Query:
     def circuit_metrics(
         self,
         circuit_id: str,
-        level_of_detail_nodes: CircuitStatsLevelOfDetailEnum = CircuitStatsLevelOfDetailEnum.NONE,
-        level_of_detail_edges: CircuitStatsLevelOfDetailEnum = CircuitStatsLevelOfDetailEnum.NONE,
         info: strawberry.Info = strawberry.UNSET,
     ) -> CircuitMetricsOutputType:
         """Get circuit metrics for a given circuit ID.
 
         Args:
             circuit_id: The ID of the circuit
-            level_of_detail_nodes: Level of detail for node populations analysis
-            level_of_detail_edges: Level of detail for edge populations analysis
             info: Strawberry info object containing request context
 
         Returns:
@@ -152,12 +161,16 @@ class Query:
         if not db_client:
             raise ValueError("Database client not available in context")
 
+        # Auto-detect level of detail from query
+        level_of_detail_nodes = _detect_node_level_of_detail(info)
+        level_of_detail_edges = _detect_edge_level_of_detail(info)
+
         # Convert enum values back to CircuitStatsLevelOfDetail
         level_of_detail_nodes_dict = {
-            "_ALL_": CircuitStatsLevelOfDetail(level_of_detail_nodes.value)
+            "_ALL_": level_of_detail_nodes
         }
         level_of_detail_edges_dict = {
-            "_ALL_": CircuitStatsLevelOfDetail(level_of_detail_edges.value)
+            "_ALL_": level_of_detail_edges
         }
 
         # Get the Pydantic model instance
@@ -170,6 +183,48 @@ class Query:
 
         # Convert Pydantic instance to Strawberry type
         return CircuitMetricsOutputType.from_pydantic(pydantic_result)
+
+
+def _detect_node_level_of_detail(info: strawberry.Info) -> CircuitStatsLevelOfDetail:
+    """Detect the required level of detail for node populations based on the query."""
+    query_str = str(info.field_nodes)
+    
+    # Check for advanced fields that require higher levels of detail
+    if any(field in query_str for field in [
+        "nodeLocationInfo", "propertyUniqueValues", "propertyValueCounts"
+    ]):
+        return CircuitStatsLevelOfDetail.advanced
+    
+    # Check for basic fields that require basic level
+    if any(field in query_str for field in [
+        "biophysicalNodePopulations", "virtualNodePopulations", 
+        "propertyNames", "numberOfNodes"
+    ]):
+        return CircuitStatsLevelOfDetail.basic
+    
+    # Default to none if only basic counts are requested
+    return CircuitStatsLevelOfDetail.none
+
+
+def _detect_edge_level_of_detail(info: strawberry.Info) -> CircuitStatsLevelOfDetail:
+    """Detect the required level of detail for edge populations based on the query."""
+    query_str = str(info.field_nodes)
+    
+    # Check for advanced fields that require higher levels of detail
+    if any(field in query_str for field in [
+        "propertyStats", "degreeStats"
+    ]):
+        return CircuitStatsLevelOfDetail.advanced
+    
+    # Check for basic fields that require basic level
+    if any(field in query_str for field in [
+        "chemicalEdgePopulations", "electricalEdgePopulations",
+        "propertyNames", "numberOfEdges"
+    ]):
+        return CircuitStatsLevelOfDetail.basic
+    
+    # Default to none if only basic counts are requested
+    return CircuitStatsLevelOfDetail.none
 
 
 # Create strawberry schema
