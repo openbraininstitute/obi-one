@@ -212,6 +212,9 @@ class GenerateSimulationTask(Task):
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
 
+        In the case where there is no neuron_sets dictionary in the config, the default
+        AllNeurons neuron set is created and added to the SONATA circuit object.
+
         The neuron_sets dict key is always used as the name of the new node set, even for a
         PredefinedNeuronSet, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
