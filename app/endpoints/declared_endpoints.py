@@ -3,7 +3,6 @@ import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
-from pynwb import NWBHDF5IO
 from typing import Annotated, Literal
 
 import entitysdk.client
@@ -12,6 +11,7 @@ import morphio
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pynwb import NWBHDF5IO
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
