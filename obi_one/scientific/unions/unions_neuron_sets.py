@@ -56,8 +56,10 @@ class NeuronSetReference(BlockReference):
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
 
 
-def resolve_neuron_set_ref_to_node_set(neuron_set_reference: NeuronSetReference | None) -> str:
+def resolve_neuron_set_ref_to_node_set(
+    neuron_set_reference: NeuronSetReference | None, default_node_set: str
+) -> str:
     if neuron_set_reference is None:
-        return "All"
+        return default_node_set
 
     return neuron_set_reference.block.block_name

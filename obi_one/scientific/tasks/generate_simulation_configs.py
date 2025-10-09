@@ -22,7 +22,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.blocks.neuron_sets import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -250,10 +249,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
     )
-
-
-ALL_NEURON_SET_NAME = "All Biophysical Neurons"
-DEFAULT_NEURON_SETS_DICTIONARY = {ALL_NEURON_SET_NAME: AllNeurons()}
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):

@@ -36,8 +36,7 @@ class Stimulus(Block, ABC):
         Field(title="Timestamps", description="Timestamps at which the stimulus is applied."),
     ]
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:  # noqa: ARG002
-        return self._generate_config()
+    _default_node_set: str = PrivateAttr(default="All")
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -78,7 +77,11 @@ class SomaticStimulus(Stimulus, ABC):
     but produce a membrane current, which is included in the \
     calculation of the extracellular signal."""
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:
+    def config(
+        self, circuit: Circuit, population: str | None = None, default_node_set: str = "All"
+    ) -> dict:
+        self._default_node_set = default_node_set
+
         if (self.neuron_set is not None) and (
             self.neuron_set.block.population_type(circuit, population) != "biophysical"
         ):
@@ -113,7 +116,9 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -145,7 +150,9 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current,
@@ -184,7 +191,9 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
@@ -226,7 +235,9 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current_start,
@@ -265,7 +276,9 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean": self.mean_amplitude,
@@ -307,7 +320,9 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean_percent": self.mean_percentage_of_threshold_current,
@@ -360,7 +375,9 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -411,7 +428,9 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.maximum_amplitude,
@@ -447,7 +466,9 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_less": self.percentage_below_threshold,
@@ -474,7 +495,9 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "represents_physical_electrode": self._represents_physical_electrode,
@@ -498,7 +521,11 @@ class SpikeStimulus(Stimulus):
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:
+    def config(
+        self, circuit: Circuit, population: str | None = None, default_node_set: str = "All"
+    ) -> dict:
+        self._default_node_set = default_node_set
+
         if (self.targeted_neuron_set is not None) and (
             self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical"
         ):
@@ -522,7 +549,9 @@ class SpikeStimulus(Stimulus):
         sonata_config[self.block_name] = {
             "delay": 0.0,  # If present, the simulation filters out those times before the delay
             "duration": self._simulation_length,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.targeted_neuron_set),
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                self.targeted_neuron_set, self._default_node_set
+            ),
             "module": self._module,
             "input_type": self._input_type,
             "spike_file": str(self._spike_file),  # os.path.relpath #

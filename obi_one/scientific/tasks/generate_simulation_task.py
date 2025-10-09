@@ -18,7 +18,6 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
-    ALL_NEURON_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
@@ -29,10 +28,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
-DEFAULT_NODE_SET = "All"
-
-ALL_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
-    block_dict_name="neuron_sets", block_name=ALL_NEURON_SET_NAME
+DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
+DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
+    block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
 )
 
 
@@ -105,7 +103,9 @@ class GenerateSimulationTask(Task):
                     source_node_population=self._circuit.default_population_name,
                 )
             self._sonata_config["inputs"].update(
-                stimulus.config(self._circuit, self._circuit.default_population_name)
+                stimulus.config(
+                    self._circuit, self._circuit.default_population_name, DEFAULT_NODE_SET_NAME
+                )
             )
 
     def _add_sonata_simulation_config_reports(self) -> None:
@@ -116,6 +116,7 @@ class GenerateSimulationTask(Task):
                     self._circuit,
                     self._circuit.default_population_name,
                     self.config.initialize.simulation_length,
+                    DEFAULT_NODE_SET_NAME,
                 )
             )
 
@@ -164,17 +165,20 @@ class GenerateSimulationTask(Task):
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
-        if ALL_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets and not isinstance(
-            self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name], AllNeurons
+        if (
+            DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets
+            and not isinstance(
+                self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name], AllNeurons
+            )
         ):
-            msg = f"Default neuron set name '{ALL_NEURON_SET_BLOCK_REFERENCE.block_name}' \
+            msg = f"Default neuron set name '{DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name}' \
                 already exists in neuron_sets but is not an AllNeurons set!"
             raise OBIONEError(msg)
 
-        if ALL_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
-            self.config.neuron_sets[ALL_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
+        if DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:
+            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = AllNeurons()
 
-        return ALL_NEURON_SET_BLOCK_REFERENCE
+        return DEFAULT_NEURON_SET_BLOCK_REFERENCE
 
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.
@@ -199,11 +203,11 @@ class GenerateSimulationTask(Task):
                 raise OBIONEError(msg)
 
             self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
-                self.config.initialize.node_set
+                self.config.initialize.node_set, DEFAULT_NODE_SET_NAME
             )
 
         else:
-            self._sonata_config["node_set"] = DEFAULT_NODE_SET
+            self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
 
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
@@ -233,14 +237,19 @@ class GenerateSimulationTask(Task):
                 # 2.Add node set to SONATA circuit object - raises error if already existing
                 _neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
-            # 3. Write node sets from SONATA circuit object to .json file
-            write_circuit_node_set_file(
-                sonata_circuit,
-                self.config.coordinate_output_root,
-                file_name=self.NODE_SETS_FILE_NAME,
-                overwrite_if_exists=False,
-            )
-            self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
+        else:
+            neuron_set = AllNeurons()
+            neuron_set.block_name = DEFAULT_NODE_SET_NAME
+            neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+
+        # 3. Write node sets from SONATA circuit object to .json file
+        write_circuit_node_set_file(
+            sonata_circuit,
+            self.config.coordinate_output_root,
+            file_name=self.NODE_SETS_FILE_NAME,
+            overwrite_if_exists=False,
+        )
+        self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
     def _write_simulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
