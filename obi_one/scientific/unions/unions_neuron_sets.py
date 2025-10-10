@@ -45,7 +45,8 @@ SimulationNeuronSetUnion = Annotated[
     | nbS1POmInputs
     | AllNeurons
     | ExcitatoryNeurons
-    | InhibitoryNeurons,
+    | InhibitoryNeurons
+    | PredefinedNeuronSet,
     Discriminator("type"),
 ]
 
@@ -54,3 +55,12 @@ class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
+
+
+def resolve_neuron_set_ref_to_node_set(
+    neuron_set_reference: NeuronSetReference | None, default_node_set: str
+) -> str:
+    if neuron_set_reference is None:
+        return default_node_set
+
+    return neuron_set_reference.block.block_name

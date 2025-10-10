@@ -34,6 +34,20 @@ StimulusUnion = Annotated[
     Discriminator("type"),
 ]
 
+MEModelStimulusUnion = Annotated[
+    ConstantCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus,
+    Discriminator("type"),
+]
+
 
 class StimulusReference(BlockReference):
     """A reference to a StimulusUnion block."""
