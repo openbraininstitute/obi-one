@@ -63,6 +63,7 @@ __all__ = [
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GenerateSimulationTask",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -74,6 +75,10 @@ __all__ = [
     "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelCircuit",
+    "MEModelFromID",
+    "MEModelSimulationScanConfig",
+    "MEModelSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -145,6 +150,7 @@ __all__ = [
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocations",
+    "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
@@ -154,6 +160,7 @@ __all__ = [
     "run_task_for_single_config",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
+    "write_circuit_node_set_file",
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
@@ -229,9 +236,15 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
+)
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
+    write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -264,6 +277,15 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationScanConfig,
+    CircuitSimulationSingleConfig,
+    MEModelSimulationScanConfig,
+    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulation_task import (
+    GenerateSimulationTask,
+)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
@@ -288,10 +310,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
-)
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationScanConfig,
-    CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type

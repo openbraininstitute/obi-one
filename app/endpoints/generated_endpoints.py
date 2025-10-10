@@ -15,11 +15,12 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationScanConfig,
+    MEModelSimulationScanConfig,
+)
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
-)
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.aliases import SimulationsForm
 
@@ -34,7 +35,8 @@ def create_endpoint_for_form(
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
     # 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
-    model_name = "-".join([word.lower() for word in re.findall(r"[A-Z][^A-Z]*", model_base_name)])
+    pattern = r"[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+"
+    model_name = "-".join(word.lower() for word in re.findall(pattern, model_base_name))
 
     # Create endpoint name
     endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
@@ -90,6 +92,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     # 1. Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
+        (MEModelSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),

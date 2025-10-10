@@ -1,19 +1,25 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Self
 
-from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
 
 
 class Recording(Block, ABC):
-    neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
-    ]
+    neuron_set: (
+        Annotated[
+            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
+        ]
+        | None
+    ) = None
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
@@ -28,13 +34,20 @@ class Recording(Block, ABC):
         units="ms",
     )
 
+    _default_node_set: str = PrivateAttr(default="All")
+
     def config(
         self,
         circuit: Circuit,
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
+        default_node_set: str = "All",
     ) -> dict:
-        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+        self._default_node_set = default_node_set
+
+        if (self.neuron_set is not None) and (
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
                 f"'{self.block_name}' should be biophysical!"
@@ -72,7 +85,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": self.neuron_set.block.block_name,
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
