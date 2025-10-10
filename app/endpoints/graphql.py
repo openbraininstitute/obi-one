@@ -15,7 +15,6 @@ from neurom import load_morphology
 from neurom.core.morphology import Morphology
 from strawberry.experimental.pydantic import type as pydantic_type
 from strawberry.fastapi import GraphQLRouter
-from strawberry.dataloader import DataLoader
 
 from app.dependencies.entitysdk import get_client
 from obi_one.scientific.library.morphology_metrics import (
@@ -23,45 +22,32 @@ from obi_one.scientific.library.morphology_metrics import (
     get_morphology_metrics,
 )
 
-# DataLoader for morphology fetching
-class MorphologyDataLoader(DataLoader[str, Morphology]):
-    def __init__(self, db_client: entitysdk.client.Client):
-        super().__init__(load_fn=self._load_morphologies)
-        self.db_client = db_client
+# Dependencies
+def get_morphology(
+        cell_morphology_id: str,
+        db_client: entitysdk.client.Client,
+    ) -> Morphology:
+    """Fetch morphology by ID and return its metrics."""
+    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
 
-    async def _load_morphologies(self, cell_morphology_ids: list[str]) -> list[Morphology]:
-        """Load multiple morphologies by their IDs."""
-        morphologies = []
-        for cell_morphology_id in cell_morphology_ids:
-            try:
-                morphology = self.db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
+    for asset in morphology.assets:
+        if asset.content_type == "application/swc":
+            content = db_client.download_content(
+                entity_id=morphology.id,
+                entity_type=CellMorphology,
+                asset_id=asset.id,
+            ).decode(encoding="utf-8")
 
-                for asset in morphology.assets:
-                    if asset.content_type == "application/swc":
-                        content = self.db_client.download_content(
-                            entity_id=morphology.id,
-                            entity_type=CellMorphology,
-                            asset_id=asset.id,
-                        ).decode(encoding="utf-8")
-
-                        neurom_morphology = load_morphology(io.StringIO(content), reader="swc")
-                        morphologies.append(neurom_morphology)
-                        break
-                else:
-                    raise ValueError(f"No SWC asset found for CellMorphology with ID {cell_morphology_id}")
-            except Exception as e:
-                # Handle individual failures gracefully
-                morphologies.append(None)
-        return morphologies
+            neurom_morphology = load_morphology(io.StringIO(content), reader="swc")
+            return neurom_morphology
+    else:
+        raise ValueError(f"No SWC asset found for CellMorphology with ID {cell_morphology_id}")
 
 
 # Context getter for GraphQL
 async def get_context(db_client: entitysdk.client.Client = Depends(get_client)) -> Dict[str, Any]:
     """Create GraphQL context with dependencies."""
-    return {
-        "db_client": db_client,
-        "morphology_loader": MorphologyDataLoader(db_client)
-    }
+    return {"db_client": db_client}
 
 
 # Types
@@ -192,19 +178,14 @@ class Query:
     """GraphQL Query root for obi-one API."""
 
     @strawberry.field(description="Get morphology metrics for a specific cell morphology ID.")
-    async def morphology_metrics(self, info: strawberry.Info, cell_morphology_id: str) -> MorphologyMetrics:
+    def morphology_metrics(self, info: strawberry.Info, cell_morphology_id: str) -> MorphologyMetrics:
         """Get morphology metrics for a specific cell morphology ID."""
-        morphology_loader = info.context["morphology_loader"]
-        # The DataLoader will handle caching and batching
-        morphology = await morphology_loader.load(cell_morphology_id)
-        
-        if morphology is None:
-            raise ValueError(f"Morphology with ID '{cell_morphology_id}' not found or could not be loaded")
-        
+        db_client = info.context["db_client"]
+        morphology = get_morphology(cell_morphology_id, db_client)
         return MorphologyMetrics(morphology)
 
     @strawberry.field
-    async def hello(self) -> str:
+    def hello(self) -> str:
         """Simple test query to verify GraphQL is working."""
         return "Hello from GraphQL!"
 
