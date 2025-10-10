@@ -54,10 +54,12 @@ async def get_context(
 # Types
 @strawberry.type
 class MultipleValuesContainer:
-    values: list[float]
-    length: int
-    mean: float
-    std: float
+    """Container for statistical information about a list of values."""
+
+    values: list[float] = strawberry.field(description="The list of individual values.")
+    length: int = strawberry.field(description="The number of values in the list.")
+    mean: float = strawberry.field(description="The arithmetic mean of all values.")
+    std: float = strawberry.field(description="The standard deviation of all values.")
 
 
 @strawberry.type
