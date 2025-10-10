@@ -7,6 +7,7 @@ from obi_one.scientific.unions.config_task_map import get_configs_task_type
 
 def run_task_for_single_config(
     single_config: SingleConfigMixin,
+    *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
 ) -> None:
@@ -17,6 +18,7 @@ def run_task_for_single_config(
 
 def run_task_for_single_configs(
     single_configs: list[SingleConfigMixin],
+    *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
 ) -> None:
@@ -26,6 +28,7 @@ def run_task_for_single_configs(
 
 def run_tasks_for_generated_scan(
     scan_generation: ScanGenerationTask,
+    *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
 ) -> None:

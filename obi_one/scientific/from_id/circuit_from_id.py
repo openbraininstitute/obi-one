@@ -15,6 +15,7 @@ class CircuitFromID(EntityFromID):
 
     def stage_circuit(
         self,
+        *,
         dest_dir: Path = Path(),
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,

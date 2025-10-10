@@ -16,7 +16,11 @@ class MEModelFromID(EntityFromID):
     _entity: MEModel | None = PrivateAttr(default=None)
 
     def stage_circuit(
-        self, db_client: Client = None, dest_dir: Path | None = None, entity_cache: bool = False
+        self,
+        *,
+        db_client: Client = None,
+        dest_dir: Path | None = None,
+        entity_cache: bool = False,
     ) -> MEModelCircuit:
         if not entity_cache and dest_dir.exists():
             msg = f"Circuit directory '{dest_dir}' already exists and is not empty."

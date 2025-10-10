@@ -251,7 +251,10 @@ class BasicConnectivityPlotsTask(Task):
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
     def execute(
-        self, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        entity_cache: bool = False,  # noqa: ARG002
     ) -> None:
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (

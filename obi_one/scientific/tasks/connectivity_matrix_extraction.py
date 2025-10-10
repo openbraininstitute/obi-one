@@ -64,7 +64,10 @@ class ConnectivityMatrixExtractionTask(Task):
     )
 
     def execute(
-        self, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        entity_cache: bool = False,  # noqa: ARG002
     ) -> None:
         L.info(f"Info: Running idx {self.config.idx}")
 
