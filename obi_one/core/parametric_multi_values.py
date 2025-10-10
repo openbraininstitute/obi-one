@@ -14,6 +14,7 @@ from pydantic import (
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.exception import OBIONEError
 
+MAX_N_COORDINATES = 100
 
 class ParametericMultiValue(OBIBaseModel):
     """Base class for parameteric multi-value types.
@@ -81,7 +82,11 @@ class FloatRange(ParametericMultiValue):
 
     @model_validator(mode="after")
     def generate_values(self) -> Self:
+        
         n = round((self.end - self.start) / self.step)
+        if n > MAX_N_COORDINATES:
+            msg = f"Number of coordinates in FloatRange exceeds maximum of {MAX_N_COORDINATES}."
+            raise OBIONEError(msg)
         self._values = np.linspace(self.start, self.start + n * self.step, n + 1)
 
         decimals = len(str(self.step).split(".")[-1])
