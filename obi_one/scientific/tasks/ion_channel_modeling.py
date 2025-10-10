@@ -1,20 +1,30 @@
 """Ion channel modeling scan config."""
 
+import json
+import logging
 import subprocess  # noqa: S404
+import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import entitysdk
-from entitysdk.types import ContentType
+from entitysdk import models
+from entitysdk.types import AssetLabel, ContentType
 from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
+from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+
+L = logging.getLogger(__name__)
 
 """
 from ion_channel_builder.create_model.main import extract_all_equations
@@ -53,6 +63,7 @@ def run_ion_channel_model(
     mech_current: float,
     # no need to actually give temperature because model is not temperature-dependent
     temperature: float,
+    mech_conductance_name: str,
     output_folder: Path,
     savefig: bool,  # noqa: FBT001
     show: bool,  # noqa: FBT001
@@ -60,12 +71,31 @@ def run_ion_channel_model(
     pass
 
 
+class BlockGroup(StrEnum):
+    """Block Groups."""
+
+    SETUP = "Setup"
+    EQUATIONS = "Equations"
+    GATESPARAMETERS = "Gates Parameters"
+    ADVANCED = "Advanced"
+
+
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelFittingScanConfig"
+    single_coord_class_name: ClassVar[str] = "IonChannelFittingSingleConfig"
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
+
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "block_block_group_order": [
+                BlockGroup.SETUP,
+                BlockGroup.EQUATIONS,
+                BlockGroup.GATESPARAMETERS,
+                BlockGroup.ADVANCED,
+            ]
+        }
 
     class Initialize(Block):
         # traces
@@ -93,29 +123,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
         )
 
-    class Equations(Block):
-        # equations
-        minf_eq: dict[str, equations_module.MInfUnion] = Field(
-            default_factory=dict,
-            title="m_{inf} equation",
-            reference_type=equations_module.MInfReference.__name__,
-        )
-        mtau_eq: dict[str, equations_module.MTauUnion] = Field(
-            default_factory=dict,
-            title=r"\tau_m equation",
-            reference_type=equations_module.MTauReference.__name__,
-        )
-        hinf_eq: dict[str, equations_module.HInfUnion] = Field(
-            default_factory=dict,
-            title="h_{inf} equation",
-            reference_type=equations_module.HInfReference.__name__,
-        )
-        htau_eq: dict[str, equations_module.HTauUnion] = Field(
-            default_factory=dict,
-            title=r"\tau_h equation",
-            reference_type=equations_module.HTauReference.__name__,
-        )
-
+    class GatesParameters(Block):
         # mod file creation
         m_power: int = Field(
             title="m exponent in channel equation",
@@ -304,39 +312,168 @@ class IonChannelFittingScanConfig(ScanConfig):
             units="ms",
         )
 
-    initialize: Initialize
-    equations: Equations
-    expert: Expert
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP,
+        group_order=1,
+    )
 
-    def as_dict(self) -> dict:
-        """Return the form as a dict."""
-        return {
-            "initialize": {
-                "recordings": [rec.id_str for rec in self.initialize.recordings],
-                "suffix": self.initialize.suffix,
-                "ion": self.initialize.ion,
-                "temperature": self.initialize.temperature,
-            },
-            "equations": {
-                "minf_eq": self.equations.minf_eq["minf"].__class__.__name__,
-                "mtau_eq": self.equations.mtau_eq["mtau"].__class__.__name__,
-                "hinf_eq": self.equations.hinf_eq["hinf"].__class__.__name__,
-                "htau_eq": self.equations.htau_eq["htau"].__class__.__name__,
-                "m_power": self.equations.m_power,
-                "h_power": self.equations.h_power,
-            },
-            "expert": vars(self.expert),
-        }
+    info: Info = Field(
+        title="Info",
+        description="Information about the ion channel modeling campaign.",
+        group=BlockGroup.SETUP,
+        group_order=0,
+    )
+
+    minf_eq: dict[str, equations_module.MInfUnion] = Field(
+        default_factory=dict,
+        title="m_{inf} equation",
+        reference_type=equations_module.MInfReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=0,
+    )
+    mtau_eq: dict[str, equations_module.MTauUnion] = Field(
+        default_factory=dict,
+        title=r"\tau_m equation",
+        reference_type=equations_module.MTauReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=1,
+    )
+    hinf_eq: dict[str, equations_module.HInfUnion] = Field(
+        default_factory=dict,
+        title="h_{inf} equation",
+        reference_type=equations_module.HInfReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=2,
+    )
+    htau_eq: dict[str, equations_module.HTauUnion] = Field(
+        default_factory=dict,
+        title=r"\tau_h equation",
+        reference_type=equations_module.HTauReference.__name__,
+        group=BlockGroup.EQUATIONS,
+        group_order=3,
+    )
+
+    gates_param: GatesParameters = Field(
+        title="Gates parameters",
+        description="Set the power of m and h gates used in HH formalism equations.",
+        group=BlockGroup.GATESPARAMETERS,
+        group_order=0,
+    )
+
+    expert: Expert = Field(
+        title="Expert",
+        description="Advanced setup.",
+        group=BlockGroup.ADVANCED,
+        group_order=0,
+    )
+
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: entitysdk.client.Client = None,
+    ) -> entitysdk.models.IonChannelModelingCampaign:
+        """Initializes the ion channel modeling campaign in the database."""
+        # TODO: and implement related entities on entitysdk
+        L.info("1. Initializing ion channel modeling campaign in the database...")
+        if multiple_value_parameters_dictionary is None:
+            multiple_value_parameters_dictionary = {}
+
+        L.info("-- Register IonChannelModelingCampaign Entity")
+        self._campaign = db_client.register_entity(
+            entitysdk.models.IonChannelModelingCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                input_recording_ids=[rec.id_str for rec in self.initialize.recordings],
+                scan_parameters=multiple_value_parameters_dictionary,
+            )
+        )
+
+        L.info("-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.IonChannelModelingCampaign,
+            file_path=output_root / "run_scan_config.json",
+            file_content_type="application/json",
+            asset_label="campaign_generation_config",
+        )
+
+        return self._campaign
+
+    def create_campaign_generation_entity(
+        self,
+        ion_channel_modelings: list[entitysdk.models.IonChannelModeling],
+        db_client: entitysdk.client.Client,
+    ) -> None:
+        """Register the activity generating the ion channel modeling tasks in the database."""
+        # TODO: also implement entitysdk related entities
+        L.info("3. Saving completed ion channel modeling campaign generation")
+
+        L.info("-- Register IonChannelModelingGeneration Entity")
+        db_client.register_entity(
+            entitysdk.models.IonChannelModelingGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=ion_channel_modelings,
+            )
+        )
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
-    pass
+    """Only allows single values and ensures nested attributes follow the same rule."""
+
+    _single_entity: entitysdk.models.IonChannelModeling
+
+    @property
+    def single_entity(self) -> entitysdk.models.IonChannelModeling:
+        return self._single_entity
+
+    def create_single_entity_with_config(
+        self,
+        campaign: entitysdk.models.IonChannelModelingCampaign,
+        db_client: entitysdk.client.Client,
+    ) -> entitysdk.models.IonChannelModeling:
+        """Saves the simulation to the database."""
+        # TODO: also add related entities in entitysdk
+        L.info(f"2.{self.idx} Saving ion channel modeling {self.idx} to database...")
+
+        for recording in self.initialize.recordings:
+            if not isinstance(recording, IonChannelRecordingFromID):
+                msg = (
+                    "IonChannelModeling can only be saved to entitycore if all input recordings "
+                    "are IonChannelRecordingFromID"
+                )
+                raise OBIONEError(msg)
+
+        L.info("-- Register IonChannelModeling Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.IonChannelModeling(
+                name=f"IonChannelModeling {self.idx}",
+                description=f"IonChannelModeling {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                input_recording_ids=[rec.id_str for rec in self.initialize.recordings],
+                ion_channel_modeling_campaign_id=campaign.id,
+            )
+        )
+
+        L.info("-- Upload ion_channel_modeling_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.IonChannelModeling,
+            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_content_type="application/json",
+            asset_label="ion_channel_modeling_generation_config",
+        )
 
 
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
-    def generate(self, db_client: entitysdk.client.Client = None) -> tuple[list[Path], list[float]]:
+    def download_input(
+        self, db_client: entitysdk.client.Client = None
+    ) -> tuple[list[Path], list[float]]:
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
@@ -349,6 +486,73 @@ class IonChannelFittingTask(Task):
             trace_ljps.append(recording.entity(db_client=db_client).ljp)
 
         return trace_paths, trace_ljps
+
+    @staticmethod
+    def register_json(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, json_path: str | Path
+    ) -> None:
+        client.upload_file(
+            entity_id=id_,
+            entity_type=models.IonChannelModel,
+            file_path=json_path,
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.ion_channel_model_figure_summary_json,
+        )
+
+    @staticmethod
+    def register_thumbnail(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, path_to_register: str | Path
+    ) -> None:
+        client.upload_file(
+            entity_id=id_,
+            entity_type=models.IonChannelModel,
+            file_path=path_to_register,
+            file_content_type=ContentType.image_png,
+            asset_label=AssetLabel.ion_channel_model_thumbnail,
+        )
+
+    def cleanup_dict(self, d: Any) -> Any:
+        if isinstance(d, Path):
+            return str(d.name)
+        if isinstance(d, dict):
+            return {key: self.cleanup_dict(value) for key, value in d.items() if key != "thumbnail"}
+        return d
+
+    @staticmethod
+    def register_plots(
+        client: entitysdk.client.Client, id_: str | uuid.UUID, paths_to_register: list[str | Path]
+    ) -> None:
+        for path in paths_to_register:
+            client.upload_file(
+                entity_id=id_,
+                entity_type=models.IonChannelModel,
+                file_path=path,
+                file_content_type=ContentType.application_pdf,
+                asset_label=AssetLabel.ion_channel_model_figure,
+            )
+
+    def register_plots_and_json(
+        self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
+    ) -> None:
+        # get the paths of the pdf figures
+        paths_to_register = [
+            value
+            for key1, d in figure_filepaths.items()
+            if key1 != "thumbnail"
+            for key, value in d.items()
+            if key != "order"
+        ]
+        figure_summary_dict = self.cleanup_dict(figure_filepaths)
+        json_path = self.config.coordinate_output_root / "figure_summary.json"
+        with json_path.open("w") as f:
+            json.dump(figure_summary_dict, f, indent=4)
+
+        self.register_plots(db_client, model_id, paths_to_register)
+        if "thumbnail" in figure_filepaths:
+            self.register_thumbnail(db_client, model_id, figure_filepaths["thumbnail"])
+
+        if figure_summary_dict != {}:
+            self.register_json(db_client, model_id, json_path)
 
     def save(
         self, mod_filepath: Path, figure_filepaths: dict[Path], db_client: entitysdk.client.Client
@@ -397,31 +601,35 @@ class IonChannelFittingTask(Task):
             file_content_type=ContentType.application_mod,
             asset_label="mod file",
         )
-        for key, fpath in figure_filepaths.items():
-            _ = db_client.upload_file(
-                entity_id=model.id,
-                entity_type=entitysdk.models.IonChannelModel,
-                file_path=fpath,
-                file_content_type=ContentType.application_pdf,
-                asset_label=key,
+
+        self.register_plots_and_json(db_client, figure_filepaths, model.id)
+
+        # register the Activity
+        L.info("-- Register IonChannelExecution Entity")
+        db_client.register_entity(
+            entitysdk.models.IonChannelExecution(
+                start_time=datetime.now(UTC),
+                used=[self.config.single_entity],
+                generated=[model],
             )
+        )
 
         return model.id
 
-    def run(
+    def execute(
         self, db_client: entitysdk.client.Client = None
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
             # download traces asset and metadata given id. Get ljp from metadata
-            trace_paths, trace_ljps = self.generate(db_client=db_client)
+            trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
             # prepare data to feed
             eq_names = {
-                "minf": next(iter(self.config.equations.minf_eq.values())).equation_key,
-                "mtau": next(iter(self.config.equations.mtau_eq.values())).equation_key,
-                "hinf": next(iter(self.config.equations.hinf_eq.values())).equation_key,
-                "htau": next(iter(self.config.equations.htau_eq.values())).equation_key,
+                "minf": next(iter(self.config.minf_eq.values())).equation_key,
+                "mtau": next(iter(self.config.mtau_eq.values())).equation_key,
+                "hinf": next(iter(self.config.hinf_eq.values())).equation_key,
+                "htau": next(iter(self.config.htau_eq.values())).equation_key,
             }
             voltage_exclusion = {
                 "activation": {
@@ -482,8 +690,8 @@ class IonChannelFittingTask(Task):
                 eq_popt=eq_popt,
                 suffix=self.config.initialize.suffix,
                 ion=self.config.initialize.ion,
-                m_power=self.config.equations.m_power,
-                h_power=self.config.equations.h_power,
+                m_power=self.config.gates_param.m_power,
+                h_power=self.config.gates_param.h_power,
                 output_name=output_name,
             )
 
@@ -505,6 +713,7 @@ class IonChannelFittingTask(Task):
                 mech_current=f"i{self.config.initialize.ion}",
                 # no need to actually give temperature because model is not temperature-dependent
                 temperature=self.config.initialize.temperature,
+                mech_conductance_name=f"g{self.config.initialize.suffix}bar",
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
@@ -519,27 +728,3 @@ class IonChannelFittingTask(Task):
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
         else:
             return model_id
-
-
-def ion_channel_fitting_from_dict(icf_dict: dict) -> IonChannelFittingSingleConfig:
-    """Create IonChannelFitting instance from a dict."""
-    return IonChannelFittingSingleConfig(
-        initialize=IonChannelFittingScanConfig.Initialize(
-            recordings=[
-                IonChannelRecordingFromID(id_str=icr_id)
-                for icr_id in icf_dict["initialize"]["recordings"]
-            ],
-            suffix=icf_dict["initialize"]["suffix"],
-            ion=icf_dict["initialize"]["ion"],
-            temperature=icf_dict["initialize"]["temperature"],
-        ),
-        equations=IonChannelFittingScanConfig.Equations(
-            minf_eq={"minf": getattr(equations_module, icf_dict["equations"]["minf_eq"])()},
-            mtau_eq={"mtau": getattr(equations_module, icf_dict["equations"]["mtau_eq"])()},
-            hinf_eq={"hinf": getattr(equations_module, icf_dict["equations"]["hinf_eq"])()},
-            htau_eq={"htau": getattr(equations_module, icf_dict["equations"]["htau_eq"])()},
-            m_power=icf_dict["equations"]["m_power"],
-            h_power=icf_dict["equations"]["h_power"],
-        ),
-        expert=IonChannelFittingScanConfig.Expert(**icf_dict["expert"]),
-    )
