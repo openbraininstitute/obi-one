@@ -11,12 +11,13 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import PlainTextResponse, Response
 
 from app.config import settings
 from app.dependencies.auth import user_verified
 from app.endpoints.declared_endpoints import activate_declared_endpoints
 from app.endpoints.generated_endpoints import activate_generated_endpoints
+from app.endpoints.graphql import graphql_router, schema
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
@@ -135,3 +136,12 @@ generated_router = APIRouter(
     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
 )
 app.include_router(activate_generated_endpoints(generated_router))
+
+app.include_router(graphql_router, prefix="/graphql")
+
+
+# Add GraphQL schema export endpoint
+@app.get("/graphl/schema", response_class=PlainTextResponse)
+async def graphql_schema() -> PlainTextResponse:
+    """Export GraphQL schema as SDL (Schema Definition Language) file."""
+    return schema.as_str()
