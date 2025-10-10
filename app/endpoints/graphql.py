@@ -4,6 +4,7 @@ import io
 import json
 from enum import Enum
 from typing import Annotated, NewType, Dict, Any
+import numpy as np
 
 import entitysdk.client
 import neurom
@@ -80,17 +81,110 @@ class MorphologyMetrics:
     def __init__(self, morphology: Morphology):
         self.morphology = morphology
     
+    def _get_list_metric(self, metric_name: str) -> MultipleValuesContainer:
+        """Helper method to get list metrics and convert to MultipleValuesContainer."""
+        values = neurom.get(metric_name, self.morphology)
+        if values is None:
+            return MultipleValuesContainer(values=[], length=0, mean=0.0, std=0.0)
+        
+        # Convert numpy array to list of floats
+        values_list = values.tolist() if hasattr(values, 'tolist') else list(values)
+        values_array = np.array(values_list)
+        
+        return MultipleValuesContainer(
+            values=values_list,
+            length=len(values_list),
+            mean=float(np.mean(values_array)) if len(values_array) > 0 else 0.0,
+            std=float(np.std(values_array)) if len(values_array) > 0 else 0.0
+        )
+    
     @strawberry.field(description="Aspect ratio of the morphology.")
     def aspect_ratio(self) -> float:
         return neurom.get("aspect_ratio", self.morphology)
     
-    @strawberry.field(description="Total length of the morphology in micrometers.")
+    @strawberry.field(description="Circularity of the morphology points along the plane.")
+    def circularity(self) -> float:
+        return neurom.get("circularity", self.morphology)
+    
+    @strawberry.field(description="Length fraction of segments with midpoints higher than soma.")
+    def length_fraction_above_soma(self) -> float:
+        return neurom.get("length_fraction_above_soma", self.morphology)
+    
+    @strawberry.field(description="Maximum radial distance from the soma in micrometers.")
+    def max_radial_distance(self) -> float:
+        return neurom.get("max_radial_distance", self.morphology)
+    
+    @strawberry.field(description="Number of neurites in the morphology.")
+    def number_of_neurites(self) -> int:
+        return neurom.get("number_of_neurites", self.morphology)
+    
+    @strawberry.field(description="Radius of the soma in micrometers.")
+    def soma_radius(self) -> float:
+        return neurom.get("soma_radius", self.morphology)
+    
+    @strawberry.field(description="Surface area of the soma in square micrometers.")
+    def soma_surface_area(self) -> float:
+        return neurom.get("soma_surface_area", self.morphology)
+    
+    @strawberry.field(description="Total length of the morphology neurites in micrometers.")
     def total_length(self) -> float:
         return neurom.get("total_length", self.morphology)
+    
+    @strawberry.field(description="Total height (Y-range) of the morphology in micrometers.")
+    def total_height(self) -> float:
+        return neurom.get("total_height", self.morphology)
+    
+    @strawberry.field(description="Total width (X-range) of the morphology in micrometers.")
+    def total_width(self) -> float:
+        return neurom.get("total_width", self.morphology)
+    
+    @strawberry.field(description="Total depth (Z-range) of the morphology in micrometers.")
+    def total_depth(self) -> float:
+        return neurom.get("total_depth", self.morphology)
+    
+    @strawberry.field(description="Total surface area of all sections in square micrometers.")
+    def total_area(self) -> float:
+        return neurom.get("total_area", self.morphology)
+    
+    @strawberry.field(description="Total volume of all sections in cubic micrometers.")
+    def total_volume(self) -> float:
+        return neurom.get("total_volume", self.morphology)
+    
+    @strawberry.field(description="Distribution of lengths per section in micrometers.")
+    def section_lengths(self) -> MultipleValuesContainer:
+        return self._get_list_metric("section_lengths")
+    
+    @strawberry.field(description="Distribution of radii of the morphology in micrometers.")
+    def segment_radii(self) -> MultipleValuesContainer:
+        return self._get_list_metric("segment_radii")
     
     @strawberry.field(description="Number of sections in the morphology.")
     def number_of_sections(self) -> int:
         return neurom.get("number_of_sections", self.morphology)
+    
+    @strawberry.field(description="Angles between sections computed at bifurcation (local) in radians.")
+    def local_bifurcation_angles(self) -> MultipleValuesContainer:
+        return self._get_list_metric("local_bifurcation_angles")
+    
+    @strawberry.field(description="Angles between sections computed at section ends (remote) in radians.")
+    def remote_bifurcation_angles(self) -> MultipleValuesContainer:
+        return self._get_list_metric("remote_bifurcation_angles")
+    
+    @strawberry.field(description="Path distances from soma to section endpoints in micrometers.")
+    def section_path_distances(self) -> MultipleValuesContainer:
+        return self._get_list_metric("section_path_distances")
+    
+    @strawberry.field(description="Radial distance from soma to section endpoints in micrometers.")
+    def section_radial_distances(self) -> MultipleValuesContainer:
+        return self._get_list_metric("section_radial_distances")
+    
+    @strawberry.field(description="Distribution of branch orders of sections, computed from soma.")
+    def section_branch_orders(self) -> MultipleValuesContainer:
+        return self._get_list_metric("section_branch_orders")
+    
+    @strawberry.field(description="Distribution of strahler branch orders of sections, computed from terminals.")
+    def section_strahler_orders(self) -> MultipleValuesContainer:
+        return self._get_list_metric("section_strahler_orders")
 
 
 @strawberry.type
@@ -103,6 +197,10 @@ class Query:
         morphology_loader = info.context["morphology_loader"]
         # The DataLoader will handle caching and batching
         morphology = await morphology_loader.load(cell_morphology_id)
+        
+        if morphology is None:
+            raise ValueError(f"Morphology with ID '{cell_morphology_id}' not found or could not be loaded")
+        
         return MorphologyMetrics(morphology)
 
     @strawberry.field
