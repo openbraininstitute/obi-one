@@ -46,7 +46,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         return self
 
     def points_on(self, morphology: morphio.Morphology) -> pandas.DataFrame:
-        self.enforce_no_lists()
+        self.enforce_no_multi_param()
         return self._make_points(morphology)
 
 

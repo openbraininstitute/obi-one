@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
+from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -27,6 +28,7 @@ class Recording(Block, ABC):
     dt: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
+        | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
     ) = Field(
         default=0.1,
         title="Timestep",
