@@ -23,25 +23,29 @@ from obi_one.scientific.library.morphology_metrics import (
 )
 
 # Dependencies
-def get_morphology(
-        cell_morphology_id: str,
+def get_morphologies(
+        cell_morphology_ids: list[str],
         db_client: entitysdk.client.Client,
-    ) -> Morphology:
-    """Fetch morphology by ID and return its metrics."""
-    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
+    ) -> dict[str, Morphology]:
+    """Fetch multiple morphologies by IDs and return their metrics."""
+    morphologies = {}
+    for cell_morphology_id in cell_morphology_ids:
+        morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
 
-    for asset in morphology.assets:
-        if asset.content_type == "application/swc":
-            content = db_client.download_content(
-                entity_id=morphology.id,
-                entity_type=CellMorphology,
-                asset_id=asset.id,
-            ).decode(encoding="utf-8")
+        for asset in morphology.assets:
+            if asset.content_type == "application/swc":
+                content = db_client.download_content(
+                    entity_id=morphology.id,
+                    entity_type=CellMorphology,
+                    asset_id=asset.id,
+                ).decode(encoding="utf-8")
 
-            neurom_morphology = load_morphology(io.StringIO(content), reader="swc")
-            return neurom_morphology
-    else:
-        raise ValueError(f"No SWC asset found for CellMorphology with ID {cell_morphology_id}")
+                neurom_morphology = load_morphology(io.StringIO(content), reader="swc")
+                morphologies[cell_morphology_id] = neurom_morphology
+                break
+        else:
+            raise ValueError(f"No SWC asset found for CellMorphology with ID {cell_morphology_id}")
+    return morphologies
 
 
 # Context getter for GraphQL
@@ -64,7 +68,8 @@ class MultipleValuesContainer:
 class MorphologyMetrics:
     """Morphology metrics container."""
     
-    def __init__(self, morphology: Morphology):
+    def __init__(self, morphology_id: str, morphology: Morphology):
+        self.morphology_id = morphology_id
         self.morphology = morphology
     
     def _get_list_metric(self, metric_name: str) -> MultipleValuesContainer:
@@ -83,6 +88,10 @@ class MorphologyMetrics:
             mean=float(np.mean(values_array)) if len(values_array) > 0 else 0.0,
             std=float(np.std(values_array)) if len(values_array) > 0 else 0.0
         )
+    
+    @strawberry.field(description="ID of the morphology in the database.")
+    def id(self) -> str:
+        return self.morphology_id
     
     @strawberry.field(description="Aspect ratio of the morphology.")
     def aspect_ratio(self) -> float:
@@ -177,12 +186,13 @@ class MorphologyMetrics:
 class Query:
     """GraphQL Query root for obi-one API."""
 
-    @strawberry.field(description="Get morphology metrics for a specific cell morphology ID.")
-    def morphology_metrics(self, info: strawberry.Info, cell_morphology_id: str) -> MorphologyMetrics:
-        """Get morphology metrics for a specific cell morphology ID."""
+    @strawberry.field(description="Get morphology metrics for one or more cell morphology IDs.")
+    def morphology_metrics(self, info: strawberry.Info, cell_morphology_ids: list[str]) -> list[MorphologyMetrics]:
+        """Get morphology metrics for one or more cell morphology IDs."""
         db_client = info.context["db_client"]
-        morphology = get_morphology(cell_morphology_id, db_client)
-        return MorphologyMetrics(morphology)
+        morphologies_dict = get_morphologies(cell_morphology_ids, db_client)
+        # Maintain the original order by iterating through the input list
+        return [MorphologyMetrics(morphology_id, morphologies_dict[morphology_id]) for morphology_id in cell_morphology_ids]
 
     @strawberry.field
     def hello(self) -> str:
