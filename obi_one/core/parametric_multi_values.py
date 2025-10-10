@@ -1,6 +1,5 @@
+from decimal import Decimal
 from typing import Annotated, Self
-
-from decimal import *
 
 import numpy as np
 from pydantic import (
@@ -82,13 +81,14 @@ class FloatRange(ParametericMultiValue):
 
     @model_validator(mode="after")
     def generate_values(self) -> Self:
-        
         n = round((self.end - self.start) / self.step)
         self._values = np.linspace(self.start, self.start + n * self.step, n + 1)
-        
+
         decimals = len(str(self.step).split(".")[-1])
 
-        q = Decimal(1).scaleb(-decimals) # Shift decimal point of 1 to the left by 'decimals' places
+        q = Decimal(1).scaleb(
+            -decimals
+        )  # Shift decimal point of 1 to the left by 'decimals' places
         self._values = [float(Decimal(str(v)).quantize(q)) for v in self._values]
 
         return self
