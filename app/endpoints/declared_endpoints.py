@@ -4,8 +4,6 @@ import tempfile
 import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
-from pydantic import BaseModel, Field, ValidationError
-import re
 
 import entitysdk.client
 import entitysdk.exception
@@ -14,12 +12,16 @@ import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pydantic import BaseModel, Field, ValidationError
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
-from obi_one.core.parametric_multi_values import MAX_N_COORDINATES
+from obi_one.core.parametric_multi_values import (
+    MAX_N_COORDINATES,
+    ParametericMultiValueUnion,
+)
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -48,9 +50,6 @@ from obi_one.scientific.library.morphology_metrics import (
 )
 from obi_one.scientific.unions.unions_scan_configs import (
     ScanConfigsUnion,
-)
-from obi_one.core.parametric_multi_values import (
-    ParametericMultiValueUnion,
 )
 
 
@@ -464,7 +463,7 @@ def activate_scan_config_endpoint(router: APIRouter) -> dict:
         n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
 
         return n_grid_scan_coordinates
-    
+
 
 def process_value_validation_errors(e: ValidationError) -> None:
     for err in e.errors():
@@ -489,9 +488,8 @@ def process_value_validation_errors(e: ValidationError) -> None:
         if err["type"] == "custom_n_greater_than_max":
             raise HTTPException(status_code=400, detail=err["msg"]) from e
 
-def activate_parameteric_multi_value_endpoint(
-    router: APIRouter
-) -> None:
+
+def activate_parameteric_multi_value_endpoint(router: APIRouter) -> None:
     """Fill in later."""
     model_name = "parametric-multi-value"
 
@@ -519,7 +517,9 @@ def activate_parameteric_multi_value_endpoint(
         try:
             # Create class to allow static annotations with constraints
             class MultiParamHolder(BaseModel):
-                multi_value_class: Annotated[ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)]
+                multi_value_class: Annotated[
+                    ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)
+                ]
 
             mvh = MultiParamHolder(
                 multi_value_class=parameteric_multi_value_type
@@ -532,6 +532,7 @@ def activate_parameteric_multi_value_endpoint(
             raise HTTPException(status_code=400, detail="Unknown Error") from e
 
         return list(mvh.multi_value_class)
+
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""

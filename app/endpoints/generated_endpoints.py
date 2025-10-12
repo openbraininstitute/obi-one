@@ -5,13 +5,10 @@ from typing import Annotated
 import entitysdk.client
 import entitysdk.common
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.params import Query
-from pydantic import BaseModel, Field, ValidationError
 
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
-
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.contribute import (
@@ -109,4 +106,3 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         )
 
     return router
-
