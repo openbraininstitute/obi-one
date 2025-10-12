@@ -94,6 +94,30 @@ def create_endpoint_for_form(
             return ""
 
 
+def process_value_validation_errors(e: ValidationError) -> None:
+    for err in e.errors():
+        if err["type"] == "greater_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be > {err['ctx'].get('gt')}"
+            ) from e
+        if err["type"] == "greater_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≥ {err['ctx'].get('ge')}"
+            ) from e
+        if err["type"] == "less_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be < {err['ctx'].get('lt')}"
+            ) from e
+        if err["type"] == "less_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≤ {err['ctx'].get('le')}"
+            ) from e
+        if err["type"] == "value_error":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+        if err["type"] == "custom_n_greater_than_max":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+
+
 def create_endpoint_for_parameteric_multi_value_type(
     model: type[ParametericMultiValue], router: APIRouter
 ) -> None:
@@ -129,26 +153,9 @@ def create_endpoint_for_parameteric_multi_value_type(
             mvh = MultiParamHolder(
                 multi_value_class=parameteric_multi_value_type
             )  # Validate constraints
+
         except ValidationError as e:
-            for err in e.errors():
-                if err["type"] == "greater_than":
-                    raise HTTPException(
-                        status_code=400, detail=f"All values must be > {err['ctx'].get('gt')}"
-                    ) from e
-                if err["type"] == "greater_than_equal":
-                    raise HTTPException(
-                        status_code=400, detail=f"All values must be ≥ {err['ctx'].get('ge')}"
-                    ) from e
-                if err["type"] == "less_than":
-                    raise HTTPException(
-                        status_code=400, detail=f"All values must be < {err['ctx'].get('lt')}"
-                    ) from e
-                if err["type"] == "less_than_equal":
-                    raise HTTPException(
-                        status_code=400, detail=f"All values must be ≤ {err['ctx'].get('le')}"
-                    ) from e
-                if err["type"] == "value_error":
-                    raise HTTPException(status_code=400, detail=err["msg"]) from e
+            process_value_validation_errors(e)
 
         except Exception as e:
             raise HTTPException(status_code=400, detail="Unknown Error") from e
