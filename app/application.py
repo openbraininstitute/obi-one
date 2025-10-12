@@ -18,7 +18,6 @@ from app.dependencies.auth import user_verified
 from app.endpoints.declared_endpoints import activate_declared_endpoints
 from app.endpoints.generated_endpoints import (
     activate_generated_endpoints,
-    activate_parameteric_multi_value_endpoints,
 )
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
@@ -138,10 +137,3 @@ generated_router = APIRouter(
     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
 )
 app.include_router(activate_generated_endpoints(generated_router))
-
-generated_router_2 = APIRouter(
-    prefix="/generated",
-    tags=["generated/parameteric-multi-value"],
-    dependencies=[Depends(user_verified)],
-)
-app.include_router(activate_parameteric_multi_value_endpoints(generated_router_2))
