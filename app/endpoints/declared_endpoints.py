@@ -4,11 +4,11 @@ import tempfile
 import zipfile
 from http import HTTPStatus
 from typing import Annotated, Literal
-import numpy as np
 
 import entitysdk.client
 import entitysdk.exception
 import morphio
+import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
@@ -17,6 +17,8 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
+from obi_one.core.parametric_multi_values import MAX_N_COORDINATES
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
@@ -42,13 +44,9 @@ from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
-
-from obi_one.core.scan_generation import GridScanGenerationTask
-
 from obi_one.scientific.unions.unions_scan_configs import (
     ScanConfigsUnion,
 )
-from obi_one.core.parametric_multi_values import MAX_N_COORDINATES
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -428,41 +426,39 @@ def activate_connectivity_endpoints(router: APIRouter) -> None:
                 },
             ) from err
         return conn_metrics
-    
+
 
 def activate_scan_config_endpoint(router: APIRouter) -> dict:
     """Define scan configuration endpoints."""
+
     @router.post(
         "/scan_config/grid-scan-coordinate-count",
         summary="Grid scan coordinate count",
-        description=(
-            "This calculates the number of coordinates for a grid scan configuration."
-        ),
+        description=("This calculates the number of coordinates for a grid scan configuration."),
     )
     def grid_scan_parameters_endpoint(
-        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         scan_config: ScanConfigsUnion,
     ) -> int:
-        
         L.info("grid_scan_parameters_endpoint")
         grid_scan = GridScanGenerationTask(
             form=scan_config,
-            output_root='',
+            output_root="",
             coordinate_directory_option="ZERO_INDEX",
         )
 
-        n_grid_scan_coordinates = np.prod([len(mv.values) for mv in grid_scan.multiple_value_parameters()])
+        n_grid_scan_coordinates = np.prod(
+            [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
+        )
         if n_grid_scan_coordinates > MAX_N_COORDINATES:
             raise HTTPException(
-                status_code=400, detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds maximum allowed {MAX_N_COORDINATES}."
+                status_code=400,
+                detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
+                    maximum allowed {MAX_N_COORDINATES}.",
             )
 
         n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
-        
-        
-        return n_grid_scan_coordinates
 
-        
+        return n_grid_scan_coordinates
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
