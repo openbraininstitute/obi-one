@@ -440,7 +440,7 @@ def activate_scan_config_endpoint(router: APIRouter) -> dict:
         summary="Grid scan coordinate count",
         description=("This calculates the number of coordinates for a grid scan configuration."),
     )
-    def grid_scan_parameters_endpoint(
+    def grid_scan_parameters_count_endpoint(
         scan_config: ScanConfigsUnion,
     ) -> int:
         L.info("grid_scan_parameters_endpoint")
