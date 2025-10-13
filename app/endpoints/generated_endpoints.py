@@ -61,11 +61,9 @@ def create_endpoint_for_form(
                     output_root=tdir,
                     coordinate_directory_option="ZERO_INDEX",
                 )
-                grid_scan.execute(
-                    db_client=db_client,
-                )
+                grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
-                run_tasks_for_generated_scan(grid_scan, db_client=db_client)
+                run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
         except Exception as e:
             error_msg = str(e)
