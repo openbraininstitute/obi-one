@@ -88,7 +88,10 @@ class GenerateSimulationTask(Task):
             if self._entity_cache and db_client:
                 L.info("Use entity cache")
                 circuit_dest_dir = (
-                    self.config.coordinate_output_root.parent / "entity_cache" / "sonata_circuit" / self._circuit_id
+                    self.config.coordinate_output_root.parent
+                    / "entity_cache"
+                    / "sonata_circuit"
+                    / self._circuit_id
                 )
 
             self._circuit = self.config.initialize.circuit.stage_circuit(
