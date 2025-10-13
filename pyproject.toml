@@ -30,6 +30,7 @@ dependencies = [
     # PYDANTIC
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
+    "pydantic-core",
     # CIRCUIT EXTRACTION
     "brainbuilder>=0.20.2",
     # MORPHOLOGY CONTAINERIZATION

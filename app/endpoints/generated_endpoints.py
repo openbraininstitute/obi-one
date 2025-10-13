@@ -89,7 +89,7 @@ def create_endpoint_for_form(
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
-    # 1. Create endpoints for each OBI ScanConfig subclass.
+    # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
         (MEModelSimulationScanConfig, "generate", ""),
@@ -104,4 +104,5 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
         )
+
     return router
