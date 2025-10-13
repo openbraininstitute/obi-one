@@ -3,10 +3,10 @@ Copyright (c) 2025 Open Brain Institute
 
 Authors: James B. Isbister
 
-last modified: 07.2025
+last modified: 10.2025
 
 ## Summary
-Basic notebook for loading the data of a circuit simulation campaign.
+Basic notebook for loading and plotting the spiking activity of multiple circuit simulation campaigns.
 
 ## Use
-Simply enter your virtual lab and project ids, as well as the simulation campaign id, and run the cells of the notebook. 
+Select your project and one or several simulation campaigns using the provided widgets.
