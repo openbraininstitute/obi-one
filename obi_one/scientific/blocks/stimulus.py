@@ -510,12 +510,10 @@ class SpikeStimulus(Stimulus):
     _simulation_length: float | None = None
     source_neuron_set: (
         (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
-        | None
-    ) = None
+    )
     targeted_neuron_set: (
         Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
-        | None
-    ) = None
+    )
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
