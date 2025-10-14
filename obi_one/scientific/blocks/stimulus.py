@@ -45,16 +45,14 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: (
-        Annotated[
-            NeuronSetReference,
-            Field(
-                title="Neuron Set",
-                description="Neuron set to which the stimulus is applied.",
-                supports_virtual=False,
-            ),
-        ]
-    )
+    neuron_set: Annotated[
+        NeuronSetReference,
+        Field(
+            title="Neuron Set",
+            description="Neuron set to which the stimulus is applied.",
+            supports_virtual=False,
+        ),
+    ]
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
