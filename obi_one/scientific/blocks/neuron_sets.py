@@ -330,9 +330,9 @@ class NeuronSet(AbstractNeuronSet):
 
 
 class PredefinedNeuronSet(AbstractNeuronSet):
-    """Neuron set wrapper of an existing (named) node sets already predefined in the node \
-        sets file.
-    """
+    """Use an existing node set already defined in the circuit's node sets file."""
+
+    title: ClassVar[str] = "Predefined Neuron Set"
 
     node_set: Annotated[
         NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
