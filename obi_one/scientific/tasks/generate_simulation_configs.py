@@ -26,6 +26,7 @@ from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.blocks.neuron_sets import AllNeurons
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -43,6 +44,9 @@ from obi_one.scientific.unions.unions_stimuli import (
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
+
+
+DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
 
 
 class BlockGroup(StrEnum):
@@ -79,7 +83,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
                 BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            ]
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            }
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
