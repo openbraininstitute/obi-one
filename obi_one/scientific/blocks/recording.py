@@ -19,8 +19,7 @@ class Recording(Block, ABC):
         Annotated[
             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
         ]
-        | None
-    ) = None
+    )
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
