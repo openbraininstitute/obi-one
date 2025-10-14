@@ -37,7 +37,12 @@ class MorphologyMetricsSingleConfig(MorphologyMetricsScanConfig, SingleConfigMix
 class MorphologyMetricsTask(Task):
     config: MorphologyMetricsSingleConfig
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> MorphologyMetricsOutput:
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,
+        entity_cache: bool = False,  # noqa: ARG002
+    ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(

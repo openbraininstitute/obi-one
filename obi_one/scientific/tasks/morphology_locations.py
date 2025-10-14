@@ -80,7 +80,12 @@ class MorphologyLocationsTask(Task):
         plt.axis("equal")
         return fig
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        entity_cache: bool = False,  # noqa: ARG002
+    ) -> None:
         try:
             if isinstance(self.config.initialize.morphology, Path):
                 m = morphio.Morphology(self.config.initialize.morphology)

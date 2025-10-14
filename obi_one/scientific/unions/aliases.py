@@ -1,4 +1,4 @@
-from obi_one.scientific.tasks.simulations import (
+from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )

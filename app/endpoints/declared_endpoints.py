@@ -8,14 +8,21 @@ from typing import Annotated, Literal
 import entitysdk.client
 import entitysdk.exception
 import morphio
+import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pydantic import BaseModel, Field, ValidationError
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
+from obi_one.core.parametric_multi_values import (
+    MAX_N_COORDINATES,
+    ParametericMultiValueUnion,
+)
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
@@ -23,6 +30,12 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.connectivity_metrics import (
+    ConnectivityMetricsOutput,
+    ConnectivityMetricsRequest,
+    get_connectivity_metrics,
+)
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     STIMULI_TYPES,
@@ -34,6 +47,9 @@ from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
+)
+from obi_one.scientific.unions.unions_scan_configs import (
+    ScanConfigsUnion,
 )
 
 
@@ -76,10 +92,12 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": (f"Cell morphology {cell_morphology_id} not found."),
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": (
+                        f"Internal error retrieving the cell morphology {cell_morphology_id}."
+                    ),
                 },
             ) from err
 
@@ -87,9 +105,9 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
             return metrics
         L.error(f"Cell morphology {cell_morphology_id} metrics computation issue")
         raise ApiError(
-            message="Asset not found",
-            error_code=ApiErrorCode.NOT_FOUND,
-            http_status_code=HTTPStatus.NOT_FOUND,
+            message="Internal error retrieving the asset.",
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
@@ -282,10 +300,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return circuit_metrics
@@ -308,10 +326,10 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitPopulationsResponse(
@@ -336,13 +354,184 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
             )
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
-                status_code=HTTPStatus.NOT_FOUND,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
-                    "code": ApiErrorCode.NOT_FOUND,
-                    "detail": f"Circuit {circuit_id} not found.",
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
                 },
             ) from err
         return CircuitNodesetsResponse(nodesets=circuit_metrics.names_of_nodesets)
+
+    @router.get(
+        "/mapped-circuit-properties/{circuit_id}",
+        summary="Mapped circuit properties",
+        description="Returns a dictionary of mapped circuit properties.",
+    )
+    def mapped_circuit_properties_endpoint(
+        circuit_id: str,
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ) -> dict:
+        try:
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+                level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
+            )
+            mapped_circuit_properties = {}
+            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
+                circuit_metrics.names_of_nodesets
+            )
+
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {circuit_id}.",
+                },
+            ) from err
+        return mapped_circuit_properties
+
+
+def activate_connectivity_endpoints(router: APIRouter) -> None:
+    """Define circuit-related endpoints."""
+
+    @router.post(
+        "/connectivity-metrics/{circuit_id}",
+        summary="Connectivity metrics",
+        description=(
+            "This calculates connectivity metrics, such as connection probabilities and"
+            " mean number of synapses per connection between different groups of neurons."
+        ),
+    )
+    def connectivity_metrics_endpoint(
+        db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+        conn_request: ConnectivityMetricsRequest,
+    ) -> ConnectivityMetricsOutput:
+        try:
+            conn_metrics = get_connectivity_metrics(
+                circuit_id=conn_request.circuit_id,
+                db_client=db_client,
+                edge_population=conn_request.edge_population,
+                pre_selection=conn_request.pre_selection,
+                pre_node_set=conn_request.pre_node_set,
+                post_selection=conn_request.post_selection,
+                post_node_set=conn_request.post_node_set,
+                group_by=conn_request.group_by,
+                max_distance=conn_request.max_distance,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Internal error retrieving the circuit {conn_request.circuit_id}.",
+                },
+            ) from err
+        return conn_metrics
+
+
+def activate_scan_config_endpoint(router: APIRouter) -> dict:
+    """Define scan configuration endpoints."""
+
+    @router.post(
+        "/scan_config/grid-scan-coordinate-count",
+        summary="Grid scan coordinate count",
+        description=("This calculates the number of coordinates for a grid scan configuration."),
+    )
+    def grid_scan_parameters_count_endpoint(
+        scan_config: ScanConfigsUnion,
+    ) -> int:
+        L.info("grid_scan_parameters_endpoint")
+        grid_scan = GridScanGenerationTask(
+            form=scan_config,
+            output_root="",
+            coordinate_directory_option="ZERO_INDEX",
+        )
+
+        n_grid_scan_coordinates = np.prod(
+            [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
+        )
+        if n_grid_scan_coordinates > MAX_N_COORDINATES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
+                    maximum allowed {MAX_N_COORDINATES}.",
+            )
+
+        n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
+
+        return n_grid_scan_coordinates
+
+
+def process_value_validation_errors(e: ValidationError) -> None:
+    for err in e.errors():
+        if err["type"] == "greater_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be > {err['ctx'].get('gt')}"
+            ) from e
+        if err["type"] == "greater_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≥ {err['ctx'].get('ge')}"
+            ) from e
+        if err["type"] == "less_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be < {err['ctx'].get('lt')}"
+            ) from e
+        if err["type"] == "less_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≤ {err['ctx'].get('le')}"
+            ) from e
+        if err["type"] == "value_error":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+        if err["type"] == "custom_n_greater_than_max":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+
+
+def activate_parameteric_multi_value_endpoint(router: APIRouter) -> None:
+    """Fill in later."""
+    model_name = "parametric-multi-value"
+
+    # Create endpoint name
+    endpoint_name_with_slash = "/" + model_name
+    model_description = "Temp description."
+
+    @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
+    def endpoint(
+        parameteric_multi_value_type: ParametericMultiValueUnion,
+        # Query-level constraints
+        ge: Annotated[
+            float | int | None, Query(description="Require all values to be ≥ this")
+        ] = None,
+        gt: Annotated[
+            float | int | None, Query(description="Require all values to be > this")
+        ] = None,
+        le: Annotated[
+            float | int | None, Query(description="Require all values to be ≤ this")
+        ] = None,
+        lt: Annotated[
+            float | int | None, Query(description="Require all values to be < this")
+        ] = None,
+    ) -> list[float] | list[int]:
+        try:
+            # Create class to allow static annotations with constraints
+            class MultiParamHolder(BaseModel):
+                multi_value_class: Annotated[
+                    ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)
+                ]
+
+            mvh = MultiParamHolder(
+                multi_value_class=parameteric_multi_value_type
+            )  # Validate constraints
+
+        except ValidationError as e:
+            process_value_validation_errors(e)
+
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Unknown Error") from e
+
+        return list(mvh.multi_value_class)
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
@@ -351,4 +540,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_ephys_endpoint(router)
     activate_test_endpoint(router)
     activate_circuit_endpoints(router)
+    activate_connectivity_endpoints(router)
+    activate_scan_config_endpoint(router)
+    activate_parameteric_multi_value_endpoint(router)
     return router

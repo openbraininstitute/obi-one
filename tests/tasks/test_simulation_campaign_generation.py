@@ -290,7 +290,11 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "timestamps": {"RegularTimestamps": ts_dict},
         "stimuli": {"PoissonInputStimulus": poisson_dict, "SynchronousInputStimulus": sync_dict},
         "recordings": {"VoltageRecording": volt_dict},
-        "neuron_sets": {"ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict},
+        "neuron_sets": {
+            "ID10": id10_dict,
+            "ID3": id3_dict,
+            "VPM_input": vpm_dict,
+        },
         "synaptic_manipulations": {
             "SynapticMgManipulation": mg_dict,
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
@@ -405,7 +409,11 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "neuron_ids": id3,
         }
         vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
-        assert cfg.pop("neuron_sets") == {"ID10": id10_dict, "ID3": id3_dict, "VPM_input": vpm_dict}
+        assert cfg.pop("neuron_sets") == {
+            "ID10": id10_dict,
+            "ID3": id3_dict,
+            "VPM_input": vpm_dict,
+        }
         mg_dict = {"type": "SynapticMgManipulation", "magnesium_value": mg}
         use_dict = {
             "type": "ScaleAcetylcholineUSESynapticManipulation",
