@@ -18,9 +18,9 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
+    DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
-    DEFAULT_NODE_SET_NAME,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
 )
@@ -28,7 +28,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-
 
 L = logging.getLogger(__name__)
 
