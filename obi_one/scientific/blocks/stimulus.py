@@ -45,17 +45,14 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: (
-        Annotated[
-            NeuronSetReference,
-            Field(
-                title="Neuron Set",
-                description="Neuron set to which the stimulus is applied.",
-                supports_virtual=False,
-            ),
-        ]
-        | None
-    ) = None
+    neuron_set: Annotated[
+        NeuronSetReference,
+        Field(
+            title="Neuron Set",
+            description="Neuron set to which the stimulus is applied.",
+            supports_virtual=False,
+        ),
+    ]
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
@@ -511,14 +508,12 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: (
-        (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
-        | None
-    ) = None
-    targeted_neuron_set: (
-        Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
-        | None
-    ) = None
+    source_neuron_set: Annotated[
+        NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)
+    ]
+    targeted_neuron_set: Annotated[
+        NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)
+    ]
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
