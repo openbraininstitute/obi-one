@@ -254,7 +254,12 @@ class MorphologyDecontainerizationTask(Task):
 
         return global_morph_entry
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:  # noqa: ARG002
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        entity_cache: bool = False,  # noqa: ARG002
+    ) -> None:
         L.info(f"Running morphology decontainerization for '{self.config.initialize.circuit}'")
 
         # Set logging level to WARNING to prevent large debug output from morph_tool.convert()

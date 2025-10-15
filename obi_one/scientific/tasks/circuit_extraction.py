@@ -18,8 +18,8 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
 
 L = logging.getLogger(__name__)
@@ -228,7 +228,12 @@ class CircuitExtractionTask(Task):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> str:  # noqa: ARG002
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        entity_cache: bool = False,  # noqa: ARG002
+    ) -> str:
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         nset_name = self.config.neuron_set.__class__.__name__
@@ -236,9 +241,7 @@ class CircuitExtractionTask(Task):
             self.config.initialize.circuit, self.config.initialize.circuit.default_population_name
         )
         sonata_circuit = self.config.initialize.circuit.sonata_circuit
-        NeuronSet.add_node_set_to_circuit(
-            sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
-        )
+        add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self.config.initialize.circuit.name}'")

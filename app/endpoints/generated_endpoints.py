@@ -15,11 +15,12 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationScanConfig,
+    MEModelSimulationScanConfig,
+)
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
-)
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.aliases import SimulationsForm
 
@@ -34,7 +35,8 @@ def create_endpoint_for_form(
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
     # 'morphology_metrics_example')
     model_base_name = model.__name__.removesuffix("Form")
-    model_name = "-".join([word.lower() for word in re.findall(r"[A-Z][^A-Z]*", model_base_name)])
+    pattern = r"[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+"
+    model_name = "-".join(word.lower() for word in re.findall(pattern, model_base_name))
 
     # Create endpoint name
     endpoint_name_with_slash = "/" + model_name + "-" + processing_method + "-grid"
@@ -59,11 +61,9 @@ def create_endpoint_for_form(
                     output_root=tdir,
                     coordinate_directory_option="ZERO_INDEX",
                 )
-                grid_scan.execute(
-                    db_client=db_client,
-                )
+                grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
-                run_tasks_for_generated_scan(grid_scan, db_client=db_client)
+                run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
         except Exception as e:
             error_msg = str(e)
@@ -87,9 +87,10 @@ def create_endpoint_for_form(
 
 
 def activate_generated_endpoints(router: APIRouter) -> APIRouter:
-    # 1. Create endpoints for each OBI ScanConfig subclass.
+    # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
+        (MEModelSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),
@@ -101,4 +102,5 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
         )
+
     return router
