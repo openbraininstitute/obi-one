@@ -4,20 +4,14 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated
 
 import bluepysnap as snap
 import numpy as np
-import pandas as pd
-import typing_extensions
-from conntility import ConnectivityMatrix
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, field_validator, model_validator
+from pydantic import Field, NonNegativeFloat
 
-from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
@@ -37,8 +31,7 @@ CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
-    from obi_one.scientific.library.simplex_extractors import simplex_submat
-
+    pass
 
 
 class AbstractNeuronSet(Block, abc.ABC):

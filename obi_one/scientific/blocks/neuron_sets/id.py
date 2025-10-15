@@ -1,4 +1,13 @@
+import logging
+from typing import Annotated, ClassVar
 
+from pydantic import Field
+
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
 
 
 class IDNeuronSet(AbstractNeuronSet):
@@ -19,4 +28,3 @@ class IDNeuronSet(AbstractNeuronSet):
         population = self._population(population)
         self.check_neuron_ids(circuit, population)
         return {"population": population, "node_id": list(self.neuron_ids.elements)}
-    

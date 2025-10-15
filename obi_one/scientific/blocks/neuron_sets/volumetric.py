@@ -1,3 +1,18 @@
+import contextlib
+import logging
+
+import numpy as np
+import pandas as pd
+from pydantic import Field, NonNegativeFloat, NonNegativeInt
+
+from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
+
+
+with contextlib.suppress(ImportError):  # Try to import connalysis
+    pass
 
 
 class VolumetricCountNeuronSet(PropertyNeuronSet):
@@ -48,7 +63,8 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}
         return expression
-    
+
+
 class VolumetricRadiusNeuronSet(PropertyNeuronSet):
     """Volumetric neuron set selection based on a radius."""
 

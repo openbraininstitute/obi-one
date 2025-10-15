@@ -1,3 +1,20 @@
+import contextlib
+import logging
+from typing import Annotated, Literal, Self
+
+import numpy as np
+from pydantic import Field, field_validator, model_validator
+
+from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
+
+with contextlib.suppress(ImportError):  # Try to import connalysis
+    from obi_one.scientific.library.simplex_extractors import simplex_submat
 
 
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):

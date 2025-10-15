@@ -1,4 +1,27 @@
+import contextlib
+import logging
+from typing import Annotated, ClassVar
 
+import typing_extensions
+from pydantic import Field
+
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
+_NBS1_VPM_NODE_POP = "VPM"
+_NBS1_POM_NODE_POP = "POm"
+_RCA1_CA3_NODE_POP = "CA3_projections"
+
+_ALL_NODE_SET = "All"
+_EXCITATORY_NODE_SET = "Excitatory"
+_INHIBITORY_NODE_SET = "Inhibitory"
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
+
+with contextlib.suppress(ImportError):  # Try to import connalysis
+    pass
 
 
 class AllNeurons(AbstractNeuronSet):
@@ -107,20 +130,3 @@ class rCA1CA3Inputs(AbstractNeuronSet):  # noqa: N801
     @typing_extensions.override
     def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
         return {"population": _RCA1_CA3_NODE_POP}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

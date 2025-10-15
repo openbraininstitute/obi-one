@@ -1,3 +1,20 @@
+import abc
+import logging
+from typing import Annotated, Self
+
+import numpy as np
+import pandas as pd
+from pydantic import Field, model_validator
+
+from obi_one.core.base import OBIBaseModel
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
+
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
@@ -52,6 +69,7 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
             for value in filter_value:
                 string_rep += f"{value},"
         return string_rep[:-1]  # Remove trailing comma and space
+
 
 class PropertyNeuronSet(NeuronSet):
     """Neuron set definition based on neuron properties, optionally combined with (named) node \

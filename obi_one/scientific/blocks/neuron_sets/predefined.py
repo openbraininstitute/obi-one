@@ -1,3 +1,17 @@
+import logging
+from typing import Annotated, ClassVar
+
+from pydantic import Field
+
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+
+L = logging.getLogger("obi-one")
+
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
+
 
 class PredefinedNeuronSet(AbstractNeuronSet):
     """Use an existing node set already defined in the circuit's node sets file."""

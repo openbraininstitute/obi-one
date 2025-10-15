@@ -1,3 +1,16 @@
+import contextlib
+import logging
+from typing import Annotated
+
+from pydantic import Field
+
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.library.circuit import Circuit
+
+L = logging.getLogger("obi-one")
+
+with contextlib.suppress(ImportError):  # Try to import connalysis
+    pass
 
 
 class CombinedNeuronSet(NeuronSet):
