@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 
 L = logging.getLogger("obi-one")
 
@@ -18,7 +19,7 @@ NodeSetType = CircuitNode | list[CircuitNode]
 
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
-    filter_dict: dict[str, list] = Field(
+    filter_dict: Annotated[dict[str, list], Field(entity_property_types=[CircuitPropertyType.NODE_SET])] = Field(
         name="Filter",
         description="Filter dictionary. Note as this is NOT a Block and the list here is \
                     not to support multi-dimensional parameters but to support a key-value pair \
