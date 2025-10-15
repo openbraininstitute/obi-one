@@ -2,18 +2,16 @@ import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
+from obi_one.scientific.blocks.morphology_locations import MorphologyLocationsBlock
+from obi_one.scientific.blocks.morphology_locations.random import (
+    RandomGroupedMorphologyLocations,
+)
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
     generate_neurite_locations_on,
 )
 
 _MIN_PD_SD = 0.1
-
-
-from obi_one.scientific.blocks.morphology_locations import MorphologyLocationsBlock
-from obi_one.scientific.blocks.morphology_locations.random import (
-    RandomGroupedMorphologyLocations,
-)
 
 
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
