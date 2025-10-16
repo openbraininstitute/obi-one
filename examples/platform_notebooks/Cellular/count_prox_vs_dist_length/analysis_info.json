@@ -1,0 +1,25 @@
+{
+    "name": "Count proximal vs. distal dendritic length",
+    "authors": ["OBI", "Michael W. Reimann", "Aurélien Jaquier"],
+    "description": "This analysis how much dendritic length of a reconstructed morphology lies between specified path distance cutoffs.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "morphology",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "pandas>=2.0.1",
+        "neurom>=3.2.2",
+        "ipywidgets>=8.1.0",
+        "matplotlib>=3.7.1",
+        "entitysdk>=0.5.0",
+        "obi-auth>=0.3.0"
+    ]
+}

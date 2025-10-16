@@ -1,0 +1,26 @@
+{
+    "name": "Single cell impedance analysis",
+    "authors": ["OBI", "Aurélien Jaquier", "Darshan Mandge"],
+    "description": "This notebook showcases how to run a single cell with a ZAP stimulus, record its current input and voltage output, use them to compute the cell's impedance and plot the impedance vs frequency graph.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SimulatableNeuron",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requires-python": ">=3.9,<3.13",
+    "requirements": [
+        "bluecellulab>=2.6.39",
+        "bluepyemodel>=1.0.32",
+        "numpy>=1.24.3",
+        "matplotlib>=3.7.1",
+        "entitysdk>=0.5.0",
+        "obi-auth>=0.3.0"
+    ]
+}

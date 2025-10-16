@@ -1,0 +1,25 @@
+{
+    "name": "Search and download morphologies",
+    "authors": ["OBI", "Lida Kanari"],
+    "description": "A series of notebooks to analyze a set of morphologies.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python3.11",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "CellMorphology",
+                "required_properties": []
+            },
+            "class": "list"
+        }
+    ],
+    "requirements": [
+	"rich",
+	"obi-auth",
+	"entitysdk",
+	"tmd",
+	"neurom",
+	"matplotlib"
+    ]
+}

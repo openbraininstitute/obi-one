@@ -1,0 +1,25 @@
+{
+    "name": "LFPy: active single cell model IClamp",
+    "authors": ["OBI", "Darshan Mandge", "Aurélien Jaquier"],
+    "description": "In this notebook, we inject a step current in soma of the an single cell model and record the local field potentials on a microelectrode array (MEA).",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SimulatableNeuron",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requires-python": ">=3.9,<3.13",
+    "requirements": [
+        "neuron>=8.2.6",
+        "LFPy>=2.3.5",
+        "matplotlib=3.10.0",
+        "entitysdk>=0.5.0",
+        "obi-auth>=0.3.0"
+    ]
+}

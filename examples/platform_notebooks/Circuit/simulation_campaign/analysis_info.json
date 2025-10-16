@@ -1,0 +1,21 @@
+{
+    "name": "Load circuit simulation campaign results",
+    "authors": ["OBI", "James B. Isbister"],
+    "description": "Notebook for downloading a successfully run simulation campaign, and using BluePySnap to load the spiking activity. Note that the circuit is also downloaded as part of the downloaded directory and can also be accessed with BluePySnap.",
+    "scale": "circuit",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SimulationCampaign",
+                "required_properties": []
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "bluepysnap>=3.0.2",
+        "obi-auth>=0.3.0",
+        "entitysdk>=0.7.3"    ]
+}
