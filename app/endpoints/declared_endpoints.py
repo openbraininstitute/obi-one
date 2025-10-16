@@ -263,7 +263,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , VUNWBReader]
 
 
-def test_all_nwb_readers(nwb_file_path, target_protocols):
+def test_all_nwb_readers(nwb_file_path, target_protocols)-> None:
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
