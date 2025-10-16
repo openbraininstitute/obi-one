@@ -292,7 +292,7 @@ def test_all_nwb_readers(nwb_file_path: str, target_protocols: List[str]) -> Any
                 return data
 
         except (ValueError, IOError, RuntimeError) as e:
-            logging.warning(f"Reader {readerclass.__name__} failed for file {nwb_file_path}: {str(e)}")
+            logging.warning("Reader %s failed for file %s: %s", readerclass.__name__, nwb_file_path, str(e))
             continue
 
     # If the loop finishes without returning, no reader worked.
