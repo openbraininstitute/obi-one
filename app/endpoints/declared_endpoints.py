@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 import entitysdk.client
 import entitysdk.exception
@@ -261,11 +261,8 @@ def activate_test_endpoint(router: APIRouter) -> None:
 # List of all available NWB Reader classes to iterate over
 NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]
 
-# Define a reasonable default set of protocols for the readers
-DEFAULT_PROTOCOLS = ["IDRest", "IV"]
 
-
-def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
+def test_all_nwb_readers(nwb_file_path: str, target_protocols: list[str]) -> Any:
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
@@ -275,10 +272,10 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
-    for ReaderClass in NWB_READERS:
+    for reader_class in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
-            reader = ReaderClass(nwb_file_path, target_protocols=target_protocols)
+            reader = reader_class(nwb_file_path, target_protocols=target_protocols)
 
             # 2. Attempt to read the data
             data = reader.read()
@@ -287,9 +284,12 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
             if data is not None:
                 return data
 
-        except Exception as e:
-            # Log the error and continue to the next reader
-            L.warning(f"Reader {ReaderClass.__name__} failed for file {nwb_file_path}: {e}")
+        except (ValueError, KeyError, AttributeError, IndexError) as e:
+            # Catch common data parsing errors and continue to the next reader.
+            L.warning(
+                f"Reader {reader_class.__name__} failed for file "
+                f"{nwb_file_path}: {e}"
+            )
             pass
 
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
