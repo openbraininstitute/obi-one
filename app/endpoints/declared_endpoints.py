@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
-from typing import Annotated, Literal
+from typing import Annotated, Any, List, Literal
 
 import entitysdk.client
 import entitysdk.exception
@@ -264,6 +264,7 @@ NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , V
 
 # Define a reasonable default set of protocols for the readers
 DEFAULT_PROTOCOLS = ["IDRest", "IV"]
+
 
 def test_all_nwb_readers(nwb_file_path: str, target_protocols: List[str]) -> Any:
     """Tests all registered NWB readers on the given file path.
