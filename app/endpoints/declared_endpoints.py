@@ -284,7 +284,13 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
             if data is not None:
                 return data
 
-        except Exception:
+        except Exception as e:
+            L.warning(
+                "Reader %s failed for file %s: %s",
+                readerclass.__name__,
+                nwb_file_path,
+                str(e)
+            )
             continue
 
     # If the loop finishes without returning, no reader worked.
