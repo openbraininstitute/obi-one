@@ -276,7 +276,7 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
- 
+    
     for ReaderClass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
@@ -290,12 +290,7 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
                 return data
 
         except Exception as e:
-            # Different readers might throw different errors
-            # (e.g., FileNotFoundError, NWBFormatError) which are caught here.
-            # Continue to the next reader
-
-    # If the loop finishes without returning, no reader worked.
-    # This is the point where we raise an error as requested.
+  
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
     error_message = (
         f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
@@ -305,7 +300,7 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
 
 
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
-    """Define neuron file test endpoint."""
+    """Define nwb file test endpoint."""
 
     @router.post(
         "/test-nwb-file",
