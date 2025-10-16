@@ -290,7 +290,6 @@ def test_all_nwb_readers(nwb_file_path: str, target_protocols: list[str]) -> Any
                 f"Reader {reader_class.__name__} failed for file "
                 f"{nwb_file_path}: {e}"
             )
-            pass
 
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
     error_message = (
