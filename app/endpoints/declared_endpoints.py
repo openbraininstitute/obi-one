@@ -263,7 +263,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , VUNWBReader]
 
 
-def test_all_nwb_readers(nwb_file_path, target_protocols)-> None:
+def test_all_nwb_readers(nwb_file_path: str) -> None:
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
@@ -275,7 +275,7 @@ def test_all_nwb_readers(nwb_file_path, target_protocols)-> None:
     for readerclass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
-            reader = readerclass(nwb_file_path, target_protocols)
+            reader = readerclass(nwb_file_path, ["IDRest", "IV"])
 
             # 2. Attempt to read the data
             data = reader.read()
@@ -327,8 +327,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             return await loop.run_in_executor(
                 None,  # Uses the default thread pool executor
                 test_all_nwb_readers,
-                temp_file_path,
-                ["IDRest", "IV"]
+                temp_file_path
             )
 
         finally:
