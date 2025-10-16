@@ -276,10 +276,10 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
-    for readerClass in NWB_READERS:
+    for readerclass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
-            reader = readerClass(nwb_file_path, target_protocols=target_protocols)
+            reader = readerclass(nwb_file_path, target_protocols=target_protocols)
 
             # 2. Attempt to read the data
             data = reader.read()
