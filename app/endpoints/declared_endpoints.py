@@ -265,15 +265,19 @@ NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , V
 # Define a reasonable default set of protocols for the readers
 DEFAULT_PROTOCOLS = ["IDRest", "IV"]
 
-
-def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
+def test_all_nwb_readers(nwb_file_path: str, target_protocols: List[str]) -> Any:
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
-    Raises a RuntimeError if all readers fail.
-    :param nwb_file_path: The path to the NWB file.
-    :param target_protocols: The list of protocols required by the NWB readers.
-    :return: The extracted data object from the first successful reader.
-    :raises RuntimeError: If no reader is able to read the file.
+    
+    Args:
+        nwb_file_path: The path to the NWB file.
+        target_protocols: The list of protocols required by the NWB readers.
+    
+    Returns:
+        The extracted data object from the first successful reader.
+    
+    Raises:
+        RuntimeError: If no reader is able to read the file.
     """
     for readerclass in NWB_READERS:
         try:
@@ -287,11 +291,11 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
             if data is not None:
                 return data
 
-        except Exception:
+        except (ValueError, IOError, RuntimeError) as e:
+            logging.warning(f"Reader {readerclass.__name__} failed for file {nwb_file_path}: {str(e)}")
             continue
 
     # If the loop finishes without returning, no reader worked.
-    # This is the point where we raise an error as requested.
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
     error_message = (
         f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
