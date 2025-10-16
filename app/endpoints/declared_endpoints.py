@@ -270,7 +270,6 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
-    
     :param nwb_file_path: The path to the NWB file.
     :param target_protocols: The list of protocols required by the NWB readers.
     :return: The extracted data object from the first successful reader.
