@@ -268,14 +268,14 @@ DEFAULT_PROTOCOLS = ["IDRest", "IV"]
 def test_all_nwb_readers(nwb_file_path: str, target_protocols: List[str]) -> Any:
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
-    
+
     Args:
         nwb_file_path: The path to the NWB file.
         target_protocols: The list of protocols required by the NWB readers.
-    
+
     Returns:
         The extracted data object from the first successful reader.
-    
+
     Raises:
         RuntimeError: If no reader is able to read the file.
     """
@@ -291,8 +291,13 @@ def test_all_nwb_readers(nwb_file_path: str, target_protocols: List[str]) -> Any
             if data is not None:
                 return data
 
-        except (ValueError, IOError, RuntimeError) as e:
-            logging.warning("Reader %s failed for file %s: %s", readerclass.__name__, nwb_file_path, str(e))
+        except (OSError, ValueError, RuntimeError) as e:
+            L.warning(
+                "Reader %s failed for file %s: %s",
+                readerclass.__name__,
+                nwb_file_path,
+                str(e)
+            )
             continue
 
     # If the loop finishes without returning, no reader worked.
