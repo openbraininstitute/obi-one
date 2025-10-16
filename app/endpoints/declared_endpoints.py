@@ -284,7 +284,7 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
             if data is not None:
                 return data
 
-        except Exception as e:
+        except Exception as e:# noqa: BLE001
             L.warning(
                 "Reader %s failed for file %s: %s",
                 readerclass.__name__,
