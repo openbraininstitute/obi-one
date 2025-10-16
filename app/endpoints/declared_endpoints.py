@@ -259,7 +259,6 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 
 # List of all available NWB Reader classes to iterate over
-
 NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]
 
 # Define a reasonable default set of protocols for the readers
@@ -270,13 +269,12 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
     """Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
-    
+
     :param nwb_file_path: The path to the NWB file.
     :param target_protocols: The list of protocols required by the NWB readers.
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
-
     for ReaderClass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
@@ -290,7 +288,10 @@ def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
                 return data
 
         except Exception as e:
-  
+            # Log the error and continue to the next reader
+            L.warning(f"Reader {ReaderClass.__name__} failed for file {nwb_file_path}: {e}")
+            pass
+
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
     error_message = (
         f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
@@ -330,7 +331,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                 None,  # Uses the default thread pool executor
                 test_all_nwb_readers,
                 temp_file_path,
-                ["IDRest", "IV"]
+                ["IDRest", "IV"],
             )
 
         finally:
