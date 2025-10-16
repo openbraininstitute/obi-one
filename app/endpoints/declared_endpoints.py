@@ -16,6 +16,7 @@ from pynwb import NWBHDF5IO
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from bluepyefe.reader import BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader#, VUNWBReader
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -253,46 +254,53 @@ def activate_test_endpoint(router: APIRouter) -> None:
                     L.error(f"Error deleting temporary files: {e!s}")
 
 
-async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:  # Removed file_extension
-    """Validate nwb file with pynwb."""
-    try:
-        with NWBHDF5IO(temp_file_path, "r") as io:
-            io.read()
-    except Exception as e:
-        L.error(f"Nwb error validating file {file.filename}: {e!s}")
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"Failed to validate the file: {e!s}",
-            },
-        ) from e
-    else:
-        return
+# List of all available NWB Reader classes to iterate over
 
+NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]#, VUNWBReader]
 
-async def _validate_and_read_nwb_file(file: UploadFile) -> tuple[bytes, str]:
-    """Validates file extension and reads content."""
-    L.info(f"Received file upload: {file.filename}")
-    allowed_extensions = {".nwb"}
-    file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
+# Define a reasonable default set of protocols for the readers
+DEFAULT_PROTOCOLS = ["IDRest", "IV"]
 
-    if not file.filename or file_extension not in allowed_extensions:
-        L.error(f"Invalid file extension: {file_extension}")
-        valid_extensions = ", ".join(allowed_extensions)
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"Invalid file extension. Must be one of {valid_extensions}",
-            },
-        )
+def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
+    """
+    Tests all registered NWB readers on the given file path.
+    Succeeds if at least one reader can successfully process the file.
+    Raises a RuntimeError if all readers fail.
+    
+    :param nwb_file_path: The path to the NWB file.
+    :param target_protocols: The list of protocols required by the NWB readers.
+    :return: The extracted data object from the first successful reader.
+    :raises RuntimeError: If no reader is able to read the file.
+    """
+    print(f"\n--- Starting compatibility test for '{nwb_file_path}' ---")
 
-    content = await file.read()
-    if not content:
-        _handle_empty_file(file)
+    for ReaderClass in NWB_READERS:
+        try:
+            # 1. Initialize the reader with both file path AND target_protocols
+            reader = ReaderClass(nwb_file_path, target_protocols=target_protocols)
+            
+            # 2. Attempt to read the data
+            data = reader.read()
+            
+            # 3. Check for success (data is not None)
+            if data is not None:
+                print(f"\n[FINAL RESULT] Success! File was read by: {ReaderClass.__name__}")
+                return data
 
-    return content, file_extension
+        except Exception as e:
+            # In a real scenario, different readers might throw different errors 
+            # (e.g., FileNotFoundError, NWBFormatError) which are caught here.
+            print(f"[ERROR] Reader {ReaderClass.__name__} failed with unexpected exception: {e}")
+            # Continue to the next reader
+
+    # If the loop finishes without returning, no reader worked.
+    # This is the point where we raise an error as requested.
+    reader_names = ", ".join([r.__name__ for r in NWB_READERS])
+    error_message = (
+        f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
+        f"Attempted readers: {reader_names}"
+    )
+    raise RuntimeError(error_message)
 
 
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
@@ -306,16 +314,29 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
     async def test_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> FileResponse:
-        content, file_extension = await _validate_and_read_nwb_file(file)
-
+        file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
 
         try:
+            content = await file.read()
+            if not content:
+                _handle_empty_file(file)
+            
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
-            await _process_nwb(file=file, temp_file_path=temp_file_path)
-            return
+            
+            # Get the current event loop
+            loop = asyncio.get_running_loop()
+
+            # Run the blocking function in a separate thread and await the result
+            return await loop.run_in_executor(
+                None,  # Uses the default thread pool executor
+                test_all_nwb_readers, 
+                temp_file_path, 
+                ["IDRest", "IV"]
+            )
+            
         finally:
             if temp_file_path:
                 try:
