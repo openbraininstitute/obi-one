@@ -3,24 +3,20 @@ import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 import entitysdk.client
 import entitysdk.exception
 import morphio
-from bluepyefe.reader import (
-    AIBSNWBReader,
-    BBPNWBReader,
-    ScalaNWBReader,
-    TRTNWBReader,
-)
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pynwb import NWBHDF5IO
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from bluepyefe.reader import BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader#, VUNWBReader
 from obi_one.core.exception import ProtocolNotFoundError
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -259,38 +255,46 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 
 # List of all available NWB Reader classes to iterate over
-NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]
 
+NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]#, VUNWBReader]
 
-def test_all_nwb_readers(nwb_file_path: str, target_protocols: list[str]) -> Any:
-    """Tests all registered NWB readers on the given file path.
+# Define a reasonable default set of protocols for the readers
+DEFAULT_PROTOCOLS = ["IDRest", "IV"]
+
+def test_all_nwb_readers(nwb_file_path, target_protocols=DEFAULT_PROTOCOLS):
+    """
+    Tests all registered NWB readers on the given file path.
     Succeeds if at least one reader can successfully process the file.
     Raises a RuntimeError if all readers fail.
-
+    
     :param nwb_file_path: The path to the NWB file.
     :param target_protocols: The list of protocols required by the NWB readers.
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
-    for reader_class in NWB_READERS:
+    print(f"\n--- Starting compatibility test for '{nwb_file_path}' ---")
+
+    for ReaderClass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
-            reader = reader_class(nwb_file_path, target_protocols=target_protocols)
-
+            reader = ReaderClass(nwb_file_path, target_protocols=target_protocols)
+            
             # 2. Attempt to read the data
             data = reader.read()
-
+            
             # 3. Check for success (data is not None)
             if data is not None:
+                print(f"\n[FINAL RESULT] Success! File was read by: {ReaderClass.__name__}")
                 return data
 
-        except (ValueError, KeyError, AttributeError, IndexError) as e:
-            # Catch common data parsing errors and continue to the next reader.
-            L.warning(
-                f"Reader {reader_class.__name__} failed for file "
-                f"{nwb_file_path}: {e}"
-            )
+        except Exception as e:
+            # In a real scenario, different readers might throw different errors 
+            # (e.g., FileNotFoundError, NWBFormatError) which are caught here.
+            print(f"[ERROR] Reader {ReaderClass.__name__} failed with unexpected exception: {e}")
+            # Continue to the next reader
 
+    # If the loop finishes without returning, no reader worked.
+    # This is the point where we raise an error as requested.
     reader_names = ", ".join([r.__name__ for r in NWB_READERS])
     error_message = (
         f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
@@ -300,7 +304,7 @@ def test_all_nwb_readers(nwb_file_path: str, target_protocols: list[str]) -> Any
 
 
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
-    """Define nwb file test endpoint."""
+    """Define neuron file test endpoint."""
 
     @router.post(
         "/test-nwb-file",
@@ -317,22 +321,22 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             content = await file.read()
             if not content:
                 _handle_empty_file(file)
-
+            
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
-
+            
             # Get the current event loop
             loop = asyncio.get_running_loop()
 
             # Run the blocking function in a separate thread and await the result
             return await loop.run_in_executor(
                 None,  # Uses the default thread pool executor
-                test_all_nwb_readers,
-                temp_file_path,
-                ["IDRest", "IV"],
+                test_all_nwb_readers, 
+                temp_file_path, 
+                ["IDRest", "IV"]
             )
-
+            
         finally:
             if temp_file_path:
                 try:
