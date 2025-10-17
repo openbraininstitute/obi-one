@@ -22,6 +22,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
+    SynaptomeSimulationSingleConfig
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -40,7 +41,7 @@ L = logging.getLogger(__name__)
 
 
 class GenerateSimulationTask(Task):
-    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
+    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig | SynaptomeSimulationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"

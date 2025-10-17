@@ -141,6 +141,8 @@ __all__ = [
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSetUnion",
     "SynapticMgManipulation",
+    "SynaptomeSimulationScanConfig",
+    "SynaptomeSimulationSingleConfig",
     "Task",
     "TasksUnion",
     "TimeWindowSomaVoltageRecording",
@@ -282,6 +284,8 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
+    SynaptomeSimulationScanConfig,
+    SynaptomeSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulation_task import (
     GenerateSimulationTask,
