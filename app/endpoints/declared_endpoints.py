@@ -8,14 +8,21 @@ from typing import Annotated, Literal
 import entitysdk.client
 import entitysdk.exception
 import morphio
+import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pydantic import BaseModel, Field, ValidationError
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.core.exception import ProtocolNotFoundError
+from obi_one.core.parametric_multi_values import (
+    MAX_N_COORDINATES,
+    ParametericMultiValueUnion,
+)
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
@@ -40,6 +47,9 @@ from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
+)
+from obi_one.scientific.unions.unions_scan_configs import (
+    ScanConfigsUnion,
 )
 
 
@@ -422,6 +432,108 @@ def activate_connectivity_endpoints(router: APIRouter) -> None:
         return conn_metrics
 
 
+def activate_scan_config_endpoint(router: APIRouter) -> dict:
+    """Define scan configuration endpoints."""
+
+    @router.post(
+        "/scan_config/grid-scan-coordinate-count",
+        summary="Grid scan coordinate count",
+        description=("This calculates the number of coordinates for a grid scan configuration."),
+    )
+    def grid_scan_parameters_count_endpoint(
+        scan_config: ScanConfigsUnion,
+    ) -> int:
+        L.info("grid_scan_parameters_endpoint")
+        grid_scan = GridScanGenerationTask(
+            form=scan_config,
+            output_root="",
+            coordinate_directory_option="ZERO_INDEX",
+        )
+
+        n_grid_scan_coordinates = np.prod(
+            [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
+        )
+        if n_grid_scan_coordinates > MAX_N_COORDINATES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
+                    maximum allowed {MAX_N_COORDINATES}.",
+            )
+
+        n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
+
+        return n_grid_scan_coordinates
+
+
+def process_value_validation_errors(e: ValidationError) -> None:
+    for err in e.errors():
+        if err["type"] == "greater_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be > {err['ctx'].get('gt')}"
+            ) from e
+        if err["type"] == "greater_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≥ {err['ctx'].get('ge')}"
+            ) from e
+        if err["type"] == "less_than":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be < {err['ctx'].get('lt')}"
+            ) from e
+        if err["type"] == "less_than_equal":
+            raise HTTPException(
+                status_code=400, detail=f"All values must be ≤ {err['ctx'].get('le')}"
+            ) from e
+        if err["type"] == "value_error":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+        if err["type"] == "custom_n_greater_than_max":
+            raise HTTPException(status_code=400, detail=err["msg"]) from e
+
+
+def activate_parameteric_multi_value_endpoint(router: APIRouter) -> None:
+    """Fill in later."""
+    model_name = "parametric-multi-value"
+
+    # Create endpoint name
+    endpoint_name_with_slash = "/" + model_name
+    model_description = "Temp description."
+
+    @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
+    def endpoint(
+        parameteric_multi_value_type: ParametericMultiValueUnion,
+        # Query-level constraints
+        ge: Annotated[
+            float | int | None, Query(description="Require all values to be ≥ this")
+        ] = None,
+        gt: Annotated[
+            float | int | None, Query(description="Require all values to be > this")
+        ] = None,
+        le: Annotated[
+            float | int | None, Query(description="Require all values to be ≤ this")
+        ] = None,
+        lt: Annotated[
+            float | int | None, Query(description="Require all values to be < this")
+        ] = None,
+    ) -> list[float] | list[int]:
+        try:
+            # Create class to allow static annotations with constraints
+            class MultiParamHolder(BaseModel):
+                multi_value_class: Annotated[
+                    ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)
+                ]
+
+            mvh = MultiParamHolder(
+                multi_value_class=parameteric_multi_value_type
+            )  # Validate constraints
+
+        except ValidationError as e:
+            process_value_validation_errors(e)
+
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Unknown Error") from e
+
+        return list(mvh.multi_value_class)
+
+
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_morphology_endpoint(router)
@@ -429,4 +541,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_test_endpoint(router)
     activate_circuit_endpoints(router)
     activate_connectivity_endpoints(router)
+    activate_scan_config_endpoint(router)
+    activate_parameteric_multi_value_endpoint(router)
     return router

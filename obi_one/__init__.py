@@ -59,6 +59,7 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatRange",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
@@ -70,6 +71,7 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntRange",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -99,15 +101,20 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "NonNegativeFloatRange",
+    "NonNegativeIntRange",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
+    "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
+    "PositiveFloatRange",
+    "PositiveIntRange",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -166,6 +173,14 @@ __all__ = [
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.parametric_multi_values import (
+    FloatRange,
+    IntRange,
+    NonNegativeFloatRange,
+    NonNegativeIntRange,
+    PositiveFloatRange,
+    PositiveIntRange,
+)
 from obi_one.core.scan_generation import (
     CoupledScanGenerationTask,
     GridScanGenerationTask,
@@ -188,31 +203,39 @@ from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
 )
-from obi_one.scientific.blocks.morphology_locations import (
+from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
-from obi_one.scientific.blocks.neuron_sets import (
-    AllNeurons,
-    CombinedNeuronSet,
-    ExcitatoryNeurons,
-    IDNeuronSet,
-    InhibitoryNeurons,
-    NeuronPropertyFilter,
-    NeuronSet,
-    PairMotifNeuronSet,
-    PredefinedNeuronSet,
-    PropertyNeuronSet,
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
+from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter, PropertyNeuronSet
+from obi_one.scientific.blocks.neuron_sets.simplex import (
     SimplexMembershipBasedNeuronSet,
     SimplexNeuronSet,
-    VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
+)
+from obi_one.scientific.blocks.neuron_sets.volumetric import (
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
 )
 from obi_one.scientific.blocks.recording import (
     Recording,

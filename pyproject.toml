@@ -30,6 +30,7 @@ dependencies = [
     # PYDANTIC
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
+    "pydantic-core",
     # CIRCUIT EXTRACTION
     "brainbuilder>=0.20.2",
     # MORPHOLOGY CONTAINERIZATION
@@ -163,7 +164,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets.py" = [
+"obi_one/scientific/blocks/neuron_sets/pair.py" = [
     "SLF001"
 ]
 

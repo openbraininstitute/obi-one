@@ -10,6 +10,7 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
+from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -44,17 +45,14 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: (
-        Annotated[
-            NeuronSetReference,
-            Field(
-                title="Neuron Set",
-                description="Neuron set to which the stimulus is applied.",
-                supports_virtual=False,
-            ),
-        ]
-        | None
-    ) = None
+    neuron_set: Annotated[
+        NeuronSetReference,
+        Field(
+            title="Neuron Set",
+            description="Neuron set to which the stimulus is applied.",
+            supports_virtual=False,
+        ),
+    ]
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
@@ -102,7 +100,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
-    amplitude: float | list[float] = Field(
+    amplitude: float | list[float] | FloatRange = Field(
         default=0.1,
         description="The injected current. Given in nanoamps.",
         title="Amplitude",
@@ -510,14 +508,12 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: (
-        (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
-        | None
-    ) = None
-    targeted_neuron_set: (
-        Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
-        | None
-    ) = None
+    source_neuron_set: Annotated[
+        NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)
+    ]
+    targeted_neuron_set: Annotated[
+        NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)
+    ]
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 

@@ -9,7 +9,7 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets import AllNeurons
+from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -48,6 +48,7 @@ class GenerateSimulationTask(Task):
 
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
+    _entity_cache: bool = PrivateAttr(default=False)
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -84,11 +85,24 @@ class GenerateSimulationTask(Task):
             L.info("initialize.circuit is a MEModelFromID instance.")
             self._circuit_id = self.config.initialize.circuit.id_str
 
+            circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
+            if self._entity_cache and db_client:
+                L.info("Use entity cache")
+                circuit_dest_dir = (
+                    self.config.scan_output_root
+                    / "entity_cache"
+                    / "sonata_circuit"
+                    / self._circuit_id
+                )
+
             self._circuit = self.config.initialize.circuit.stage_circuit(
-                db_client=db_client, dest_dir=self.config.coordinate_output_root / "sonata_circuit"
+                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
             )
+
             self._sonata_config["network"] = str(
-                Path(self._circuit.path).relative_to(self.config.coordinate_output_root)
+                Path(self._circuit.path).relative_to(
+                    self.config.coordinate_output_root, walk_up=True
+                )
             )
 
         if self._circuit is None:
@@ -302,8 +316,11 @@ class GenerateSimulationTask(Task):
                             asset_label="replay_spikes",
                         )
 
-    def execute(self, db_client: entitysdk.client.Client = None) -> None:
+    def execute(
+        self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+    ) -> None:
         """Generates SONATA simulation files."""
+        self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()

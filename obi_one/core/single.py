@@ -75,11 +75,11 @@ class SingleConfigMixin:
             for dict_value in value.values():
                 if isinstance(dict_value, Block):
                     block = dict_value
-                    block.enforce_no_lists()  # Enforce no lists
+                    block.enforce_no_multi_param()  # Enforce no lists
 
         if isinstance(value, Block):  # For Block instances at the 1st level
             block = value
-            value.enforce_no_lists()  # Enforce no lists
+            value.enforce_no_multi_param()  # Enforce no lists
 
         return value
 

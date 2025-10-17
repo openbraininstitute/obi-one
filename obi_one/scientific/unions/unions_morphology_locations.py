@@ -2,12 +2,15 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.blocks.morphology_locations import (
+from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
-    MorphologyLocationsBlock,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
@@ -16,7 +19,6 @@ MorphologyLocationUnion = Annotated[
     ClusteredGroupedMorphologyLocations
     | ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
-    | MorphologyLocationsBlock
     | PathDistanceMorphologyLocations
     | RandomGroupedMorphologyLocations
     | RandomMorphologyLocations,
