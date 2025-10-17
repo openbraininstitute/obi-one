@@ -6,7 +6,6 @@ This module provides functionality to run simulations using different backends
 
 import json
 import logging
-import sys
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
