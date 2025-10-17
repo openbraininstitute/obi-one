@@ -90,7 +90,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             "block_block_group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EQUATIONS,
-                BlockGroup.GATESPARAMETERS,
+                BlockGroup.GATEEXPONENTS,
                 BlockGroup.ADVANCED,
             ]
         }
