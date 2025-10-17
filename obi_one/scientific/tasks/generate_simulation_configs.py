@@ -6,12 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import (
-    Field,
-    NonNegativeFloat,
-    PositiveFloat,
-    PrivateAttr,
-)
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.constants import (
@@ -22,6 +17,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -34,13 +30,19 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions.unions_recordings import (
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions.unions_stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
     StimulusUnion,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    TimestampsUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -256,6 +258,62 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     )
 
 
+class SynaptomeSimulationScanConfig(SimulationScanConfig):
+    """SynaptomeSimulationScanConfig."""
+
+    single_coord_class_name: ClassVar[str] = "SynaptomeSimulationSingleConfig"
+    name: ClassVar[str] = "Simulation Campaign"
+    description: ClassVar[str] = "SONATA simulation campaign"
+
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        default_factory=lambda: {"SynaptomeCell": AllNeurons(type="AllNeurons")},
+        reference_type=NeuronSetReference.__name__,
+        description="Implicit neuron set for the single synaptome",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+    )
+
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+            title="Synaptome", description="Synaptome to simulate."
+        )
+        node_set: Annotated[
+            NeuronSetReference | None,
+            Field(
+                title="Neuron Set",
+                description="Implicit neuron set for single synaptome cell.",
+                default=None,
+            ),
+        ] = None
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        default_factory=dict,
+        reference_type=SynapticManipulationsReference.__name__,
+        description="Synaptic manipulations for the simulation.",
+        singular_name="Synaptic Manipulation",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=1,
+    )
+
+    stimuli: dict[str, StimulusUnion] = Field(
+        default_factory=dict,
+        title="Stimuli",
+        reference_type=StimulusReference.__name__,
+        description="Stimuli for the simulation.",
+        singular_name="Stimulus",
+        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+        group_order=0,
+    )
+
+
 class CircuitSimulationScanConfig(SimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
@@ -357,5 +415,11 @@ class CircuitSimulationSingleConfig(
 
 class MEModelSimulationSingleConfig(
     MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+):
+    """Only allows single values."""
+
+
+class SynaptomeSimulationSingleConfig(
+    SynaptomeSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
 ):
     """Only allows single values."""
