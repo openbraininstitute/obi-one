@@ -363,8 +363,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     stimulus_voltage_exclusion: StimulusVoltageExclusion = Field(
         title="Stimulus voltage exclusion",
         description=(
-            "Set the maximum and minimum voltages to consider "
-            "for activation and inactivation."
+            "Set the maximum and minimum voltages to consider for activation and inactivation."
         ),
         group=BlockGroup.ADVANCED,
         group_order=0,
