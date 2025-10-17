@@ -21,11 +21,6 @@ from neuron import h
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
 logger = logging.getLogger(__name__)
 
 # Initialize MPI rank
