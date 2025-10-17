@@ -6,13 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
-from pydantic import (
-    Field,
-    NonNegativeFloat,
-    PositiveFloat,
-    PrivateAttr,
-)
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.constants import (
@@ -23,6 +17,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -35,13 +30,19 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions.unions_recordings import (
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions.unions_stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
     StimulusUnion,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    TimestampsUnion,
+)
 
 L = logging.getLogger(__name__)
 
