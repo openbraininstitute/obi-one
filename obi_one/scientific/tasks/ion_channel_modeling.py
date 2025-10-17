@@ -141,7 +141,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=("Raise h to this power in the BREAKPOINT equation."),
         )
 
-    class Expert(Block):
+    class StimulusVoltageExclusion(Block):
         # trace loading customisation: voltage exclusion
         act_exclude_voltages_above: float | None = Field(
             title="Exclude activation voltages above",
@@ -180,6 +180,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             units="mV",
         )
 
+    class StimulusTimings(Block):
         # trace loading customisation: stimulus timings
         act_stim_start: NonNegativeFloat | None = Field(
             title="Activation stimulus start time",
@@ -359,11 +360,18 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    expert: Expert = Field(
-        title="Expert",
-        description="Advanced setup.",
+    stimulus_voltage_exclusion: StimulusVoltageExclusion = Field(
+        title="Stimulus voltage exclusion",
+        description="Set the maximum and minimum voltages to consider for activation and inactivation.",
         group=BlockGroup.ADVANCED,
         group_order=0,
+    )
+
+    stimulus_timings: StimulusTimings = Field(
+        title="Stimulus timings",
+        description="Set the stimulus start and end timings for activation and inactivation.",
+        group=BlockGroup.ADVANCED,
+        group_order=1,
     )
 
     def create_campaign_entity_with_config(
