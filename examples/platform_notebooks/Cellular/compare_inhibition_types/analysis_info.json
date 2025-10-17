@@ -1,0 +1,24 @@
+{
+    "name": "Compare proximal and distal inhibition",
+    "authors": ["OBI", "Michael W. Reimann", "Aurélien Jaquier"],
+    "description": "This analysis compares the effect of proximal and distal inhibition on spike counts.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "SingleCellSimulation",
+                "required_properties": []
+            },
+            "class": "multiple"
+        }
+    ],
+    "requirements": [
+        "pandas>=2.0.1",
+        "matplotlib>=3.7.1",
+        "scipy>=1.15.0",
+        "entitysdk>=0.7.3",
+        "obi-auth>=0.3.0"
+    ]
+}

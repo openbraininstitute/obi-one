@@ -1,0 +1,23 @@
+{
+    "name": "Analysis of theta oscillation",
+    "authors": ["OBI", "Armando Romani"],
+    "description": "This analysis run on one simulation set to reproduce theta oscillation in CA1. The notebook plots the activity of PC and one PV+ interneuron. The plot shows how the PV+ neuron entrains the activity of PC, so the two neuron classes have opposite phases. This simulation is far from the activity seen in the complete CA1 model, but it represents a useful simplify model which allows to test simple hypotheses.",
+    "scale": "circuit",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "CircuitSimulation",
+                "required_properties": [
+                ]
+            },
+            "class": "single"
+        }
+    ],
+    "requirements": [
+        "bluepysnap>=3.0.1",
+        "jupyter>=1.1.1",
+        "matplotlib>=3.10.0"
+    ]
+}

@@ -1,0 +1,27 @@
+{
+    "name": "Conduct morphology quality checks",
+    "authors": ["OBI", "Michael W. Reimann"],
+    "description": "This analysis tests a list of morphologies against some common issues that may cause issues with tools and analyses using the morphologies.",
+    "scale": "cellular",
+    "type": "notebook",
+    "kernel": "python",
+    "input": [
+        {
+            "data_type": {
+                "artefact": "CellMorphology",
+                "required_properties": []
+            },
+            "class": "list"
+        }
+    ],
+    "requirements": [
+        "pandas>=2.0.1",
+        "neurom>=3.2.2",
+        "requests>=2.31.0",
+        "ipywidgets>=8.1.0",
+        "matplotlib>=3.7.1",
+        "obi_auth>=0.3.0",
+        "obi_notebook>=0.2.dev0",
+        "entitysdk>=0.7.4"
+    ]
+}
