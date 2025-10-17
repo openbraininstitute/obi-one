@@ -6,13 +6,13 @@ import subprocess  # noqa: S404
 import uuid
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
 from fastapi import HTTPException
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
@@ -74,7 +74,7 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     EQUATIONS = "Equations"
-    GATESPARAMETERS = "Gates Parameters"
+    GATEEXPONENTS = "Gates Exponents"
     ADVANCED = "Advanced"
 
 
@@ -105,8 +105,9 @@ class IonChannelFittingScanConfig(ScanConfig):
         suffix: str = Field(
             title="Ion channel SUFFIX (ion channel name to use in the mod file)",
             description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
+            min_length=1,
         )
-        ion: str = Field(
+        ion: Literal["k", "ca", "na"] = Field(
             # we will only have potassium recordings first,
             # so it makes sense to have this default value here
             title="Ion",
@@ -119,9 +120,11 @@ class IonChannelFittingScanConfig(ScanConfig):
                 "Temperature of the model. "
                 "Should be consistent with the one at which the recordings were made. "
             ),
+            units="C",
+            ge=-273,
         )
 
-    class GatesParameters(Block):
+    class GateExponents(Block):
         # mod file creation
         m_power: int = Field(
             title="m exponent in channel equation",
@@ -178,7 +181,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         )
 
         # trace loading customisation: stimulus timings
-        act_stim_start: int | None = Field(
+        act_stim_start: NonNegativeFloat | None = Field(
             title="Activation stimulus start time",
             default=None,
             description=(
@@ -188,7 +191,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        act_stim_end: int | None = Field(
+        act_stim_end: NonNegativeFloat | None = Field(
             title="Activation stimulus end time",
             default=None,
             description=(
@@ -198,7 +201,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_iv_stim_start: int | None = Field(
+        inact_iv_stim_start: NonNegativeFloat | None = Field(
             title="Inactivation stimulus start time for IV computation",
             default=None,
             description=(
@@ -208,7 +211,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_iv_stim_end: int | None = Field(
+        inact_iv_stim_end: NonNegativeFloat | None = Field(
             title="Inactivation stimulus end time for IV computation",
             default=None,
             description=(
@@ -218,7 +221,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_tc_stim_start: int | None = Field(
+        inact_tc_stim_start: NonNegativeFloat | None = Field(
             title="Inactivation stimulus start time for time constant computation",
             default=None,
             description=(
@@ -228,7 +231,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_tc_stim_end: int | None = Field(
+        inact_tc_stim_end: NonNegativeFloat | None = Field(
             title="Inactivation stimulus end time for time constant computation",
             default=None,
             description=(
@@ -240,7 +243,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         )
 
         # trace loading customisation: stimulus timings corrections
-        act_stim_start_correction: int = Field(
+        act_stim_start_correction: float = Field(
             title=(
                 "Correction to apply to activation stimulus start time taken from source file, "
                 "in ms."
@@ -251,7 +254,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        act_stim_end_correction: int = Field(
+        act_stim_end_correction: float = Field(
             title=(
                 "Correction to apply to activation stimulus end time taken from source file, in ms."
             ),
@@ -261,7 +264,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_iv_stim_start_correction: int = Field(
+        inact_iv_stim_start_correction: float = Field(
             title=(
                 "Correction to apply to inactivation stimulus start time "
                 "for IV computation taken from source file, in ms."
@@ -273,7 +276,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_iv_stim_end_correction: int = Field(
+        inact_iv_stim_end_correction: float = Field(
             title=(
                 "Correction to apply to inactivation stimulus end time "
                 "for IV computation taken from source file, in ms."
@@ -285,7 +288,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_tc_stim_start_correction: int = Field(
+        inact_tc_stim_start_correction: float = Field(
             title=(
                 "Correction to apply to inactivation stimulus start time "
                 "for time constant computation taken from source file, in ms."
@@ -297,7 +300,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             ),
             units="ms",
         )
-        inact_tc_stim_end_correction: int = Field(
+        inact_tc_stim_end_correction: float = Field(
             title=(
                 "Correction to apply to inactivation stimulus end time "
                 "for time constant computation taken from source file, in ms."
@@ -324,39 +327,35 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    minf_eq: dict[str, equations_module.MInfUnion] = Field(
-        default_factory=dict,
+    minf_eq: equations_module.MInfUnion = Field(
         title="m_{inf} equation",
         reference_type=equations_module.MInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=0,
     )
-    mtau_eq: dict[str, equations_module.MTauUnion] = Field(
-        default_factory=dict,
+    mtau_eq: equations_module.MTauUnion = Field(
         title=r"\tau_m equation",
         reference_type=equations_module.MTauReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=1,
     )
-    hinf_eq: dict[str, equations_module.HInfUnion] = Field(
-        default_factory=dict,
+    hinf_eq: equations_module.HInfUnion = Field(
         title="h_{inf} equation",
         reference_type=equations_module.HInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=2,
     )
-    htau_eq: dict[str, equations_module.HTauUnion] = Field(
-        default_factory=dict,
+    htau_eq: equations_module.HTauUnion = Field(
         title=r"\tau_h equation",
         reference_type=equations_module.HTauReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=3,
     )
 
-    gates_param: GatesParameters = Field(
-        title="Gates parameters",
+    gate_exponents: GateExponents = Field(
+        title="m & h gate exponents",
         description="Set the power of m and h gates used in HH formalism equations.",
-        group=BlockGroup.GATESPARAMETERS,
+        group=BlockGroup.GATEEXPONENTS,
         group_order=0,
     )
 
@@ -550,15 +549,16 @@ class IonChannelFittingTask(Task):
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
-            # download traces asset and metadata given id. Get ljp from metadata
+            # download traces asset and metadata given id.
+            # Get ljp (liquid junction potential) voltage corection from metadata
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
             # prepare data to feed
             eq_names = {
-                "minf": next(iter(self.config.minf_eq.values())).equation_key,
-                "mtau": next(iter(self.config.mtau_eq.values())).equation_key,
-                "hinf": next(iter(self.config.hinf_eq.values())).equation_key,
-                "htau": next(iter(self.config.htau_eq.values())).equation_key,
+                "minf": self.config.minf_eq.equation_key,
+                "mtau": self.config.mtau_eq.equation_key,
+                "hinf": self.config.hinf_eq.equation_key,
+                "htau": self.config.htau_eq.equation_key,
             }
             voltage_exclusion = {
                 "activation": {
@@ -619,8 +619,8 @@ class IonChannelFittingTask(Task):
                 eq_popt=eq_popt,
                 suffix=self.config.initialize.suffix,
                 ion=self.config.initialize.ion,
-                m_power=self.config.gates_param.m_power,
-                h_power=self.config.gates_param.h_power,
+                m_power=self.config.gate_exponents.m_power,
+                h_power=self.config.gate_exponents.h_power,
                 output_name=output_name,
             )
 
