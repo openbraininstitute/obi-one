@@ -107,7 +107,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
             min_length=1,
         )
-        ion: Literal["k", "ca", "na"] = Field(
+        ion: Literal["k"] = Field(
             # we will only have potassium recordings first,
             # so it makes sense to have this default value here
             title="Ion",
