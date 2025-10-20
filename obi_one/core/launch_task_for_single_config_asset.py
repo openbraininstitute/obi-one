@@ -22,7 +22,7 @@ def main() -> None:
                 asset ID: {config_asset_id}"
         )
 
-        db_client = [HOW DO WE INITIALIZE CLIENT? PASSING TOKEN AS A PARAMETER? WITH LAB + PROJECT ID FOR PROJECT CONTEXT?]
+        db_client = [HOW DO WE INITIALIZE CLIENT? PASSING TOKEN, LAB ID, PROJECT ID AS PARAMETERS?]
 
         run_task_for_single_config_asset(
             entity_type=getattr(entitysdk.models, entity_type),
