@@ -81,6 +81,8 @@ __all__ = [
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
+    "MEModelWithSynapsesCircuitSimulationScanConfig",
+    "MEModelWithSynapsesCircuitSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -148,8 +150,6 @@ __all__ = [
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseSetUnion",
     "SynapticMgManipulation",
-    "SynaptomeSimulationScanConfig",
-    "SynaptomeSimulationSingleConfig",
     "Task",
     "TasksUnion",
     "TimeWindowSomaVoltageRecording",
@@ -307,8 +307,8 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
-    SynaptomeSimulationScanConfig,
-    SynaptomeSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulation_task import (
     GenerateSimulationTask,

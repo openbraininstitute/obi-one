@@ -22,7 +22,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
-    SynaptomeSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -44,7 +44,7 @@ class GenerateSimulationTask(Task):
     config: (
         CircuitSimulationSingleConfig
         | MEModelSimulationSingleConfig
-        | SynaptomeSimulationSingleConfig
+        | MEModelWithSynapsesCircuitSimulationSingleConfig
     )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
@@ -210,7 +210,7 @@ class GenerateSimulationTask(Task):
 
         Infer default if needed. Assert biophysical.
         """
-        if hasattr(self.config, "neuron_sets"):
+        if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
             if self.config.initialize.node_set is None:
                 L.info("initialize.node_set is None — setting default node set.")
                 self.config.initialize.node_set = self._default_neuron_set_ref()

@@ -18,7 +18,7 @@ from obi_one.scientific.tasks.contribute import (
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     MEModelSimulationScanConfig,
-    SynaptomeSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
@@ -92,7 +92,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
         (MEModelSimulationScanConfig, "generate", ""),
-        (SynaptomeSimulationScanConfig, "generate", ""),
+        (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),

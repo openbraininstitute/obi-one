@@ -17,3 +17,13 @@ class MEModelCircuit(Circuit):
             msg = "MEModelCircuit must not contain any synapses."
             raise OBIONEError(msg)
         return self
+
+
+class MEModelWithSynapsesCircuit(Circuit):
+    @model_validator(mode="after")
+    def confirm_single_neuron(self) -> Self:
+        sonata_circuit = self.sonata_circuit
+        if len(sonata_circuit.nodes.ids()) != 1:
+            msg = "MEModelWithSynapsesCircuit must contain exactly one neuron."
+            raise OBIONEError(msg)
+        return self
