@@ -8,6 +8,7 @@ from obi_one.core.run_tasks import (
     run_task_for_single_config,
     run_task_for_single_configs,
     run_tasks_for_generated_scan,
+    run_task_for_single_config_asset
 )
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.serialization import (
@@ -167,6 +168,7 @@ __all__ = [
     "run_task_for_single_config",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
+    "run_task_for_single_config_asset",
     "write_circuit_node_set_file",
 ]
 
