@@ -109,6 +109,7 @@ __all__ = [
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
+    "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
@@ -200,10 +201,15 @@ from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
 )
-from obi_one.scientific.blocks.morphology_locations import (
+from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
