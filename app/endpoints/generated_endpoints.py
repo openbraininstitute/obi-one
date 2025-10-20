@@ -96,7 +96,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),
         (ContributeSubjectScanConfig, "generate", ""),
-        (IonChannelFittingScanConfig, "generate", "")
+        (IonChannelFittingScanConfig, "generate", ""),
     ]:
         create_endpoint_for_form(
             form,
