@@ -17,14 +17,14 @@ from app.config import settings
 from app.dependencies.auth import user_verified
 from app.endpoints.circuit_connectivity import activate_connectivity_endpoints
 from app.endpoints.circuit_properties import activate_circuit_property_endpoints
+from app.endpoints.count_scan_coordinates import activate_count_scan_coordinates_endpoint
 from app.endpoints.ephys_metrics import activate_ephys_endpoint
-from app.endpoints.generated_endpoints import (
-    activate_generated_endpoints,
-)
 from app.endpoints.morphology_metrics import activate_morphology_endpoint
 from app.endpoints.morphology_validation import activate_test_endpoint
 from app.endpoints.multi_values import activate_parameteric_multi_value_endpoint
-from app.endpoints.scan_config import activate_scan_config_endpoint
+from app.endpoints.scan_config import (
+    activate_scan_config_endpoints,
+)
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
@@ -141,7 +141,7 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_test_endpoint(router)
     activate_connectivity_endpoints(router)
     activate_circuit_property_endpoints(router)
-    activate_scan_config_endpoint(router)
+    activate_count_scan_coordinates_endpoint(router)
     activate_parameteric_multi_value_endpoint(router)
     return router
 
@@ -154,4 +154,4 @@ app.include_router(activate_declared_endpoints(declared_endpoints_router))
 generated_router = APIRouter(
     prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
 )
-app.include_router(activate_generated_endpoints(generated_router))
+app.include_router(activate_scan_config_endpoints(generated_router))
