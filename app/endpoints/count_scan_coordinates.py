@@ -11,7 +11,7 @@ from obi_one.scientific.unions.unions_scan_configs import (
 )
 
 
-def activate_scan_config_endpoint(router: APIRouter) -> dict:
+def activate_count_scan_coordinates_endpoint(router: APIRouter) -> dict:
     """Define scan configuration endpoints."""
 
     @router.post(
