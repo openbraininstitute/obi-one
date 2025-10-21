@@ -3,7 +3,6 @@ import tempfile
 from typing import Annotated
 
 import entitysdk.client
-import entitysdk.common
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -25,7 +24,7 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 
-def create_endpoint_for_form(
+def create_endpoint_for_scan_config(
     model: type[ScanConfig],
     router: APIRouter,
     processing_method: str,
@@ -96,7 +95,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (ContributeMorphologyScanConfig, "generate", ""),
         (ContributeSubjectScanConfig, "generate", ""),
     ]:
-        create_endpoint_for_form(
+        create_endpoint_for_scan_config(
             form,
             router,
             processing_method=processing_method,

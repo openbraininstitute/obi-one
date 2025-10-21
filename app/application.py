@@ -15,10 +15,16 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.dependencies.auth import user_verified
-from app.endpoints.declared_endpoints import activate_declared_endpoints
+from app.endpoints.circuit_connectivity import activate_connectivity_endpoints
+from app.endpoints.circuit_properties import activate_circuit_property_endpoints
+from app.endpoints.ephys_metrics import activate_ephys_endpoint
 from app.endpoints.generated_endpoints import (
     activate_generated_endpoints,
 )
+from app.endpoints.morphology_metrics import activate_morphology_endpoint
+from app.endpoints.morphology_validation import activate_test_endpoint
+from app.endpoints.multi_values import activate_parameteric_multi_value_endpoint
+from app.endpoints.scan_config import activate_scan_config_endpoint
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
@@ -126,6 +132,18 @@ async def version() -> dict:
         "app_version": settings.APP_VERSION,
         "commit_sha": settings.COMMIT_SHA,
     }
+
+
+def activate_declared_endpoints(router: APIRouter) -> APIRouter:
+    """Activate all declared endpoints for the router."""
+    activate_morphology_endpoint(router)
+    activate_ephys_endpoint(router)
+    activate_test_endpoint(router)
+    activate_connectivity_endpoints(router)
+    activate_circuit_property_endpoints(router)
+    activate_scan_config_endpoint(router)
+    activate_parameteric_multi_value_endpoint(router)
+    return router
 
 
 declared_endpoints_router = APIRouter(
