@@ -262,6 +262,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=-1,
             description=(
                 "Correction to add to the timing taken from nwb file for activation stimulus end."
+                " -1 is a valid value."
             ),
             units="ms",
         )
@@ -286,6 +287,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus end for IV computation."
+                " -1 is a valid value."
             ),
             units="ms",
         )
@@ -310,6 +312,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus end for time constant computation."
+                " -1 is a valid value."
             ),
             units="ms",
         )
