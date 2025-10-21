@@ -252,6 +252,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=0,
             description=(
                 "Correction to add to the timing taken from nwb file for activation stimulus start."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Positive values are expected since we usually want to remove the response "
+                "right after the beginning of the stimulus, but negative values are also accepted."
             ),
             units="ms",
         )
@@ -262,7 +266,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=-1,
             description=(
                 "Correction to add to the timing taken from nwb file for activation stimulus end."
-                " -1 is a valid value."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Negative values are expected since we usually want to remove the response "
+                "right before the end of the stimulus, but positive values are also accepted."
             ),
             units="ms",
         )
@@ -275,6 +282,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus start for IV computation."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Positive values are expected since we usually want to remove the response "
+                "right after the beginning of the stimulus, but negative values are also accepted."
             ),
             units="ms",
         )
@@ -287,7 +298,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus end for IV computation."
-                " -1 is a valid value."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Negative values are expected since we usually want to remove the response "
+                "right before the end of the stimulus, but positive values are also accepted."
             ),
             units="ms",
         )
@@ -300,6 +314,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus start for time constant computation."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Positive values are expected since we usually want to remove the response "
+                "right after the beginning of the stimulus, but negative values are also accepted."
             ),
             units="ms",
         )
@@ -312,7 +330,10 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=(
                 "Correction to add to the timing taken from nwb file "
                 "for inactivation stimulus end for time constant computation."
-                " -1 is a valid value."
+                "This is mainly used to remove artefacts "
+                "that appear when stimulus is applied/removed."
+                "Negative values are expected since we usually want to remove the response "
+                "right before the end of the stimulus, but positive values are also accepted."
             ),
             units="ms",
         )
