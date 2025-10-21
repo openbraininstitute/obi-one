@@ -19,6 +19,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     MEModelSimulationScanConfig,
 )
+from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
@@ -95,6 +96,7 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),
         (ContributeSubjectScanConfig, "generate", ""),
+        (IonChannelFittingScanConfig, "generate", ""),
     ]:
         create_endpoint_for_form(
             form,
