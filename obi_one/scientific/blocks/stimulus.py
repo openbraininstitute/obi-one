@@ -8,7 +8,11 @@ import pandas as pd
 from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.constants import _DEFAULT_SIMULATION_LENGTH_MILLISECONDS, _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
+from obi_one.core.constants import (
+    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    _MIN_NON_NEGATIVE_FLOAT_VALUE,
+    _MIN_TIME_STEP_MILLISECONDS,
+)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.scientific.library.circuit import Circuit
