@@ -6,7 +6,7 @@ from http import HTTPStatus
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,11 +14,17 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.config import settings
-from app.dependencies.auth import user_verified
-from app.endpoints.declared_endpoints import activate_declared_endpoints
-from app.endpoints.generated_endpoints import (
-    activate_generated_endpoints,
+from app.endpoints import (
+    circuit_connectivity,
+    circuit_properties,
+    count_scan_coordinates,
+    ephys_metrics,
+    morphology_metrics,
+    morphology_validation,
+    multi_values,
+    scan_config,
 )
+from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
@@ -128,12 +134,12 @@ async def version() -> dict:
     }
 
 
-declared_endpoints_router = APIRouter(
-    prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)]
-)
-app.include_router(activate_declared_endpoints(declared_endpoints_router))
-
-generated_router = APIRouter(
-    prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)]
-)
-app.include_router(activate_generated_endpoints(generated_router))
+app.include_router(circuit_connectivity.router)
+app.include_router(circuit_properties.router)
+app.include_router(count_scan_coordinates.router)
+app.include_router(ephys_metrics.router)
+app.include_router(morphology_metrics.router)
+app.include_router(morphology_validation.router)
+app.include_router(multi_values.router)
+activate_scan_config_endpoints()
+app.include_router(scan_config.router)

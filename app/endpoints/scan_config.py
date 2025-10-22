@@ -3,9 +3,9 @@ import tempfile
 from typing import Annotated
 
 import entitysdk.client
-import entitysdk.common
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
@@ -25,10 +25,11 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.unions.aliases import SimulationsForm
 
+router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
 
-def create_endpoint_for_form(
+
+def create_endpoint_for_scan_config(
     model: type[ScanConfig],
-    router: APIRouter,
     processing_method: str,
     data_postprocessing_method: str,
 ) -> None:
@@ -87,7 +88,7 @@ def create_endpoint_for_form(
             return ""
 
 
-def activate_generated_endpoints(router: APIRouter) -> APIRouter:
+def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
@@ -98,9 +99,8 @@ def activate_generated_endpoints(router: APIRouter) -> APIRouter:
         (ContributeSubjectScanConfig, "generate", ""),
         (IonChannelFittingScanConfig, "generate", ""),
     ]:
-        create_endpoint_for_form(
+        create_endpoint_for_scan_config(
             form,
-            router,
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
         )
