@@ -57,6 +57,20 @@ SimulationNeuronSetUnion = Annotated[
 ]
 
 
+CircuitExtractionNeuronSetUnion = Annotated[
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | PredefinedNeuronSet
+    | CombinedNeuronSet
+    | PropertyNeuronSet
+    | VolumetricCountNeuronSet
+    | VolumetricRadiusNeuronSet
+    | IDNeuronSet,
+    Discriminator("type"),
+]
+
+
 class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
 

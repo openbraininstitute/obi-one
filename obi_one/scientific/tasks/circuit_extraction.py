@@ -20,7 +20,7 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 
 L = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
 
     initialize: Initialize
-    neuron_set: NeuronSetUnion
+    neuron_set: CircuitExtractionNeuronSetUnion
 
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
