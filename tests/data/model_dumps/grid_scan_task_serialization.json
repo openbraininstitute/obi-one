@@ -99,7 +99,7 @@
             "campaign_description": "Simulation of O1 circuit with predefined neuron set and constant current stimulus"
         },
         "neuron_sets": {
-            "All Neurons": {
+            "All Biophysical Neurons": {
                 "type": "AllNeurons",
                 "sample_percentage": 100.0,
                 "sample_seed": 1

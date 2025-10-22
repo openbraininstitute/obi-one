@@ -20,34 +20,32 @@ def test_add_and_write_node_sets(tmp_path):
     c = circuit.sonata_circuit
 
     # Add a new node sets to the SONATA circuit
-    obi.NeuronSet.add_node_set_to_circuit(c, {"Layer23": {"layer": ["2", "3"]}})
+    obi.add_node_set_to_circuit(c, {"Layer23": {"layer": ["2", "3"]}})
 
     with pytest.raises(ValueError, match="Node set 'Layer23' already exists!"):
         # Add a node set with an exising name --> Must raise an error
-        obi.NeuronSet.add_node_set_to_circuit(c, {"Layer23": {"layer": ["2", "3"]}})
+        obi.add_node_set_to_circuit(c, {"Layer23": {"layer": ["2", "3"]}})
 
     # Update/overwrite an existing node set
-    obi.NeuronSet.add_node_set_to_circuit(
-        c, {"Layer23": ["Layer2", "Layer3"]}, overwrite_if_exists=True
-    )
+    obi.add_node_set_to_circuit(c, {"Layer23": ["Layer2", "Layer3"]}, overwrite_if_exists=True)
 
     # Add multiple node sets
-    obi.NeuronSet.add_node_set_to_circuit(
+    obi.add_node_set_to_circuit(
         c, {"Layer45": ["Layer4", "Layer5"], "Layer56": ["Layer5", "Layer6"]}
     )
 
     # Add a node set from NeuronSet object, resolved in the circuit's default node population
     neuron_set = obi.CombinedNeuronSet(node_sets=("Layer1", "Layer2", "Layer3"))
-    obi.NeuronSet.add_node_set_to_circuit(
+    obi.add_node_set_to_circuit(
         c,
         {"Layer123": neuron_set.get_node_set_definition(circuit, circuit.default_population_name)},
     )
 
     # Add a node sets based on previously added node sets
-    obi.NeuronSet.add_node_set_to_circuit(c, {"AllLayers": ["Layer123", "Layer4", "Layer56"]})
+    obi.add_node_set_to_circuit(c, {"AllLayers": ["Layer123", "Layer4", "Layer56"]})
 
     # Write new circuit's node set file
-    obi.NeuronSet.write_circuit_node_set_file(
+    obi.write_circuit_node_set_file(
         c, output_path=tmp_path, file_name="new_node_sets.json", overwrite_if_exists=False
     )
 
@@ -59,12 +57,12 @@ def test_add_and_write_node_sets(tmp_path):
         ),
     ):
         # Write again using the same filename (w/o overwrite) --> Must raise an error
-        obi.NeuronSet.write_circuit_node_set_file(
+        obi.write_circuit_node_set_file(
             c, output_path=tmp_path, file_name="new_node_sets.json", overwrite_if_exists=False
         )
 
     # Write again, this time with overwrite
-    obi.NeuronSet.write_circuit_node_set_file(
+    obi.write_circuit_node_set_file(
         c, output_path=tmp_path, file_name="new_node_sets.json", overwrite_if_exists=True
     )
 
@@ -223,7 +221,7 @@ def test_property_neuron_set():
 
     # (a) Invalid neuron property --> Error
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
+        property_filter=obi.NeuronPropertyFilter(
             filter_dict={"INVALID": ["x"], "layer": ["5", "6"], "synapse_class": ["EXC"]}
         ),
     )
@@ -232,7 +230,7 @@ def test_property_neuron_set():
 
     # (b) Invalid property value --> Empty neuron set
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
+        property_filter=obi.NeuronPropertyFilter(
             filter_dict={"layer": ["5", "6"], "synapse_class": ["INVALID"]}
         ),
     )
@@ -241,7 +239,7 @@ def test_property_neuron_set():
 
     # (c) Valid property neuron set
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
+        property_filter=obi.NeuronPropertyFilter(
             filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
         ),
     )
@@ -252,9 +250,7 @@ def test_property_neuron_set():
 
     # (d) Valid property neuron set combined with existing node sets --> Enforces resolving node IDs
     neuron_set = obi.PropertyNeuronSet(
-        property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
-            filter_dict={"synapse_class": ["EXC"]}
-        ),
+        property_filter=obi.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
         node_sets=("Layer3", "Layer6"),
     )
     neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
@@ -298,9 +294,7 @@ def test_volumetric_neuron_sets():
             oy=25.0,
             oz=100.0,
             n=n,
-            property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
-                filter_dict={"synapse_class": ["EXC"]}
-            ),
+            property_filter=obi.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
         neuron_set_def = neuron_set.get_node_set_definition(
@@ -331,7 +325,7 @@ def test_volumetric_neuron_sets():
             oy=25.0,
             oz=100.0,
             radius=r,
-            property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(
+            property_filter=obi.NeuronPropertyFilter(
                 filter_dict={"layer": ["5", "6"], "synapse_class": ["EXC"]}
             ),
         )
@@ -373,7 +367,7 @@ def test_simplex_neuron_sets():
             dim=dim,
             central_neuron_simplex_position=pos,
             subsample=False,
-            property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(),
+            property_filter=obi.NeuronPropertyFilter(),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
         neuron_set_def = neuron_set.get_node_set_definition(
@@ -400,7 +394,7 @@ def test_simplex_neuron_sets():
             dim=dim,
             central_neuron_simplex_position=pos,
             subsample=False,
-            property_filter=obi.scientific.blocks.neuron_sets.NeuronPropertyFilter(),
+            property_filter=obi.NeuronPropertyFilter(),
         )
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
         neuron_set_def = neuron_set.get_node_set_definition(
