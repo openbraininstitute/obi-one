@@ -6,12 +6,15 @@ from http import HTTPStatus
 from typing import Annotated
 
 import morphio
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 
+from app.dependencies.auth import user_verified
 from app.errors import ApiErrorCode
 from app.logger import L
+
+router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -118,37 +121,34 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
     return content, file_extension
 
 
-def activate_test_endpoint(router: APIRouter) -> None:
-    """Define neuron file test endpoint."""
+@router.post(
+    "/test-neuron-file",
+    summary="Validate morphology format and returns the conversion to other formats.",
+    description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
+)
+async def test_neuron_file(
+    file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
+) -> FileResponse:
+    content, file_extension = await _validate_and_read_file(file)
 
-    @router.post(
-        "/test-neuron-file",
-        summary="Validate morphology format and returns the conversion to other formats.",
-        description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
-    )
-    async def test_neuron_file(
-        file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    ) -> FileResponse:
-        content, file_extension = await _validate_and_read_file(file)
+    temp_file_path = ""
+    outputfile1, outputfile2 = "", ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
 
-        temp_file_path = ""
-        outputfile1, outputfile2 = "", ""
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                temp_file.write(content)
-                temp_file_path = temp_file.name
+        outputfile1, outputfile2 = await _process_and_convert_morphology(
+            file=file, temp_file_path=temp_file_path, file_extension=file_extension
+        )
 
-            outputfile1, outputfile2 = await _process_and_convert_morphology(
-                file=file, temp_file_path=temp_file_path, file_extension=file_extension
-            )
+        return await _create_and_return_zip(outputfile1, outputfile2)
 
-            return await _create_and_return_zip(outputfile1, outputfile2)
-
-        finally:
-            if temp_file_path:
-                try:
-                    pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                    pathlib.Path(outputfile1).unlink(missing_ok=True)
-                    pathlib.Path(outputfile2).unlink(missing_ok=True)
-                except OSError as e:
-                    L.error(f"Error deleting temporary files: {e!s}")
+    finally:
+        if temp_file_path:
+            try:
+                pathlib.Path(temp_file_path).unlink(missing_ok=True)
+                pathlib.Path(outputfile1).unlink(missing_ok=True)
+                pathlib.Path(outputfile2).unlink(missing_ok=True)
+            except OSError as e:
+                L.error(f"Error deleting temporary files: {e!s}")

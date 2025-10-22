@@ -1,11 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError
 
+from app.dependencies.auth import user_verified
 from obi_one.core.parametric_multi_values import (
     ParametericMultiValueUnion,
 )
+
+router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
 def process_value_validation_errors(e: ValidationError) -> None:
@@ -32,46 +35,32 @@ def process_value_validation_errors(e: ValidationError) -> None:
             raise HTTPException(status_code=400, detail=err["msg"]) from e
 
 
-def activate_parameteric_multi_value_endpoint(router: APIRouter) -> None:
-    """Fill in later."""
-    model_name = "parametric-multi-value"
+@router.post(
+    "/parametric-multi-value", summary="Parameteric Multi Value", description="Temp description."
+)
+def parametric_multi_value_endpoint(
+    parameteric_multi_value_type: ParametericMultiValueUnion,
+    # Query-level constraints
+    ge: Annotated[float | int | None, Query(description="Require all values to be ≥ this")] = None,
+    gt: Annotated[float | int | None, Query(description="Require all values to be > this")] = None,
+    le: Annotated[float | int | None, Query(description="Require all values to be ≤ this")] = None,
+    lt: Annotated[float | int | None, Query(description="Require all values to be < this")] = None,
+) -> list[float] | list[int]:
+    try:
+        # Create class to allow static annotations with constraints
+        class MultiParamHolder(BaseModel):
+            multi_value_class: Annotated[
+                ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)
+            ]
 
-    # Create endpoint name
-    endpoint_name_with_slash = "/" + model_name
-    model_description = "Temp description."
+        mvh = MultiParamHolder(
+            multi_value_class=parameteric_multi_value_type
+        )  # Validate constraints
 
-    @router.post(endpoint_name_with_slash, summary=model_name, description=model_description)
-    def endpoint(
-        parameteric_multi_value_type: ParametericMultiValueUnion,
-        # Query-level constraints
-        ge: Annotated[
-            float | int | None, Query(description="Require all values to be ≥ this")
-        ] = None,
-        gt: Annotated[
-            float | int | None, Query(description="Require all values to be > this")
-        ] = None,
-        le: Annotated[
-            float | int | None, Query(description="Require all values to be ≤ this")
-        ] = None,
-        lt: Annotated[
-            float | int | None, Query(description="Require all values to be < this")
-        ] = None,
-    ) -> list[float] | list[int]:
-        try:
-            # Create class to allow static annotations with constraints
-            class MultiParamHolder(BaseModel):
-                multi_value_class: Annotated[
-                    ParametericMultiValueUnion, Field(ge=ge, gt=gt, le=le, lt=lt)
-                ]
+    except ValidationError as e:
+        process_value_validation_errors(e)
 
-            mvh = MultiParamHolder(
-                multi_value_class=parameteric_multi_value_type
-            )  # Validate constraints
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Unknown Error") from e
 
-        except ValidationError as e:
-            process_value_validation_errors(e)
-
-        except Exception as e:
-            raise HTTPException(status_code=400, detail="Unknown Error") from e
-
-        return list(mvh.multi_value_class)
+    return list(mvh.multi_value_class)
