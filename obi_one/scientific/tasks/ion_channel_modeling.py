@@ -421,7 +421,7 @@ class IonChannelFittingScanConfig(ScanConfig):
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: Any
+    _single_entity = None
 
     @property
     def single_entity(self) -> Any:
@@ -579,7 +579,7 @@ class IonChannelFittingTask(Task):
         return model.id
 
     def execute(
-        self, db_client: entitysdk.client.Client = None
+        self, db_client: entitysdk.client.Client = None, entity_cache=None,
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
@@ -596,40 +596,40 @@ class IonChannelFittingTask(Task):
             }
             voltage_exclusion = {
                 "activation": {
-                    "above": self.config.expert.act_exclude_voltages_above,
-                    "below": self.config.expert.act_exclude_voltages_below,
+                    "above": self.config.stimulus_voltage_exclusion.act_exclude_voltages_above,
+                    "below": self.config.stimulus_voltage_exclusion.act_exclude_voltages_below,
                 },
                 "inactivation": {
-                    "above": self.config.expert.inact_exclude_voltages_above,
-                    "below": self.config.expert.inact_exclude_voltages_below,
+                    "above": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_above,
+                    "below": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_below,
                 },
             }
             stim_timings = {
                 "activation": {
-                    "start": self.config.expert.act_stim_start,
-                    "end": self.config.expert.act_stim_end,
+                    "start": self.config.stimulus_timings.act_stim_start,
+                    "end": self.config.stimulus_timings.act_stim_end,
                 },
                 "inactivation_iv": {
-                    "start": self.config.expert.inact_iv_stim_start,
-                    "end": self.config.expert.inact_iv_stim_end,
+                    "start": self.config.stimulus_timings.inact_iv_stim_start,
+                    "end": self.config.stimulus_timings.inact_iv_stim_end,
                 },
                 "inactivation_tc": {
-                    "start": self.config.expert.inact_tc_stim_start,
-                    "end": self.config.expert.inact_tc_stim_end,
+                    "start": self.config.stimulus_timings.inact_tc_stim_start,
+                    "end": self.config.stimulus_timings.inact_tc_stim_end,
                 },
             }
             stim_timings_corrections = {
                 "activation": {
-                    "start": self.config.expert.act_stim_start_correction,
-                    "end": self.config.expert.act_stim_end_correction,
+                    "start": self.config.stimulus_timings.act_stim_start_correction,
+                    "end": self.config.stimulus_timings.act_stim_end_correction,
                 },
                 "inactivation_iv": {
-                    "start": self.config.expert.inact_iv_stim_start_correction,
-                    "end": self.config.expert.inact_iv_stim_end_correction,
+                    "start": self.config.stimulus_timings.inact_iv_stim_start_correction,
+                    "end": self.config.stimulus_timings.inact_iv_stim_end_correction,
                 },
                 "inactivation_tc": {
-                    "start": self.config.expert.inact_tc_stim_start_correction,
-                    "end": self.config.expert.inact_tc_stim_end_correction,
+                    "start": self.config.stimulus_timings.inact_tc_stim_start_correction,
+                    "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
                 },
             }
 
@@ -683,9 +683,10 @@ class IonChannelFittingTask(Task):
             )
 
             # register the mod file and figures to the platform
-            model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
-            )
+            # model_id = self.save(
+            #     mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
+            # )
+            model_id = None
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
