@@ -65,6 +65,32 @@ def find_nearest_mesh_points(mesh_pt_df, pts):
     res.index = pts.index
     return res
 
+def add_competing_mesh_distances(mesh_pt_df, pts):
+    tree = KDTree(mesh_pt_df[["x", "y", "z"]])
+    competitor_dists = pandas.Series(-numpy.ones(len(pts)), index=pts.index,
+                                     name="competing_distance")
+    mask = competitor_dists < 0
+    mask_idx = competitor_dists[mask].index
+    k = 100
+
+    while (len(mask_idx) > 0) and (k < 1E6):
+        dist, idx = tree.query(pts.loc[mask_idx], k=k)
+        competitor_ids = mesh_pt_df.spine_sharing_id.to_numpy()[idx]
+        is_different = competitor_ids[:, 0] != competitor_ids[:, -1]
+        first_different = [numpy.nonzero(_x)[0][0] + 1
+                        for _x in numpy.diff(competitor_ids[is_different], axis=1) != 0]
+        competitor_dists[mask_idx[is_different]] = dist[is_different][range(len(first_different)), first_different]
+
+        mask = competitor_dists < 0
+        mask_idx = competitor_dists[mask].index
+        k = k * 4
+    return competitor_dists
+
+def estimate_mesh_resolution(mesh_pt_df):
+    tree = KDTree(mesh_pt_df[["x", "y", "z"]])
+    dist, _ = tree.query(mesh_pt_df[["x", "y", "z"]], k=2)
+    return dist[:, 1].mean()
+
 def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_position"):
     if not isinstance(pt_root_id, list):
         pt_root_id = [pt_root_id]
@@ -243,7 +269,7 @@ def edges_dataframe_for_spine_syns(syns, m, mpd, is_on_spine):
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()
     return a
 
-def map_afferents_to_spiny_morphology(m, syns):
+def map_afferents_to_spiny_morphology(m, syns, add_quality_info=False):
     segs_df = morph_to_segs_df(m)
     spine_and_soma_points = morph_to_spine_and_soma_df(m)
 
@@ -261,4 +287,15 @@ def map_afferents_to_spiny_morphology(m, syns):
     fill_defaults_for_missing_columns(df_spine, df_soma)
     fill_defaults_for_missing_columns(df_spine, df_shaft)
 
-    return pandas.concat([df_soma, df_shaft, df_spine], axis=0).sort_index()
+    DF = pandas.concat([df_soma, df_shaft, df_spine], axis=0).sort_index()
+
+    if add_quality_info:
+        competing_dist = add_competing_mesh_distances(spine_and_soma_points, syns[_C_P_LOCS])
+        competing_dist[is_on_shaft] = mpd_spn.loc[is_on_shaft, "distance"]
+        competing_dist[is_on_soma] = numpy.minimum(competing_dist[is_on_soma].to_numpy(),
+                                                mpd_nrt.loc[is_on_soma, "distance"].to_numpy())
+        competing_dist[is_on_spine] = numpy.minimum(competing_dist[is_on_spine].to_numpy(),
+                                                    mpd_nrt.loc[is_on_spine, "distance"].to_numpy())
+        DF["competing_distance"] = competing_dist
+        return DF, estimate_mesh_resolution(spine_and_soma_points)
+    return DF
