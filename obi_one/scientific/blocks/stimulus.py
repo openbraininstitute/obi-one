@@ -9,7 +9,8 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.constants import (
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
@@ -61,7 +62,7 @@ class SomaticStimulus(Stimulus, ABC):
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         units="ms",
@@ -355,7 +356,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
-        default=50.0,
+        default=_DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms",
@@ -616,7 +617,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         units="ms",
