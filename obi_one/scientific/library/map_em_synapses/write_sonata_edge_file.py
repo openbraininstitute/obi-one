@@ -47,5 +47,5 @@ def write_edges(fn_out, population_name, syn_pre_post, syn_data, source_pop_name
     h5.close()
     n_src = len(syn_pre_post[_STR_PRE_NODE].drop_duplicates())
     n_tgt = len(syn_pre_post[_STR_POST_NODE].drop_duplicates())
-    _write_indexes(fn_out, population_name, n_src, n_tgt)
+    _write_indexes(str(fn_out), population_name, n_src, n_tgt)
 

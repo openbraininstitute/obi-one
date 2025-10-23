@@ -21,6 +21,8 @@ from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, Circuit
 from entitysdk._server_schemas import CircuitBuildCategory, CircuitScale
 from entitysdk._server_schemas import AssetLabel, ContentType
 
+from neurom.io.utils import load_morphology_with_spines
+
 from typing import ClassVar
 
 from obi_one.core.scan_config import ScanConfig
@@ -37,7 +39,7 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     description : ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
 
     class Initialize(Block):
-        spiny_neuron : CellMorphologyFromID | CellMorphology
+        spiny_neuron : CellMorphologyFromID
         edge_population_name : str = "synaptome_afferents"
         node_population_pre : str = "synaptome_afferent_neurons"
         node_population_post : str = "biophysical_neuron"
@@ -51,18 +53,36 @@ class EMSynapseMappingTask(Task):
     config : EMSynapseMappingSingleConfig
 
     def execute(self, db_client : Client = None):
-        spiny_morph = self.config.spiny_neuron.spiny_morphology(db_client)
-        morph_entity = self.config.spiny_neuron.entity(db_client)
-        smooth_morph = self.config.spiny_neuron.neurom_morphology(db_client)
+        if db_client is None:
+            raise ValueError("Synapse lookup and mapping requires a working db_client!")
+        morph_entity = self.config.initialize.spiny_neuron.entity(db_client)
+        
+        # Prepare output location
+        out_root = self.config.coordinate_output_root
+        print(f"Preparing output at {out_root}...")
+        os.makedirs(out_root / "morphologies/morphology", exist_ok=True)
 
+        # Place and load morphologies
+        print("Placing morphologies...")
+        fn_morphology_out_h5 = os.path.join("morphologies", morph_entity.name + ".h5")
+        fn_morphology_out_swc = os.path.join("morphologies/morphology", morph_entity.name + ".swc")
+        self.config.initialize.spiny_neuron.write_spiny_neuron_h5(out_root / fn_morphology_out_h5,
+                                                                  db_client=db_client)
+        smooth_morph = self.config.initialize.spiny_neuron.neurom_morphology(db_client)
+        smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
+        spiny_morph = load_morphology_with_spines(str(out_root / fn_morphology_out_h5))
+
+        print("Resolving skeleton provenance...")
         pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(db_client, morph_entity)
 
-        em_dataset = EMDataSetFromID(source_dataset.id)
-
-        syns, coll_pre, coll_post = self.synapses_and_nodes_dataframes_from_EM(em_dataset, source_dataset,
-                                                                               source_mesh_entity,
-                                                                               pt_root_id)
+        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id),
+                                     cave_version=source_mesh_entity.release_version)
         
+        print("Reading data from source EM reconstruction...")
+        syns, coll_pre, coll_post = self.synapses_and_nodes_dataframes_from_EM(em_dataset,
+                                                                               pt_root_id,
+                                                                               db_client)
+        print("Mapping synapses onto morphology...")
         mapped_synapses_df = map_afferents_to_spiny_morphology(spiny_morph, syns)
 
         pre_pt_root_to_sonata = syns["pre_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("pre_pt_root_id")
@@ -72,14 +92,13 @@ class EMSynapseMappingTask(Task):
         syn_pre_post_df[_STR_POST_NODE] = 0
         syn_pre_post_df = syn_pre_post_df.reset_index(drop=True)
 
+        print("Writing the results...")
         # Write the results
-        out_root = self.config.coordinate_output_root
-
         # Edges h5 file
         fn_edges_out = "synaptome-edges.h5"
-        edge_population_name = self.config.edge_population_name
-        node_population_pre = self.config.node_population_pre
-        node_population_post = self.config.node_population_post
+        edge_population_name = self.config.initialize.edge_population_name
+        node_population_pre = self.config.initialize.node_population_pre
+        node_population_post = self.config.initialize.node_population_post
         write_edges(out_root / fn_edges_out, edge_population_name, syn_pre_post_df,
                     mapped_synapses_df, node_population_pre, node_population_post)
         
@@ -89,15 +108,6 @@ class EMSynapseMappingTask(Task):
         write_nodes(out_root / fn_nodes_out, node_population_pre, coll_pre, write_mode="w")
         write_nodes(out_root / fn_nodes_out, node_population_post, coll_post, write_mode="a")
 
-        # Neuron morphologies
-        fn_morphology_out_h5 = os.path.join("morphologies", spiny_morph.name + ".h5")
-        fn_morphology_out_swc = os.path.join("morphologies/morphology", spiny_morph.name + ".swc")
-
-        os.makedirs(out_root / "morphologies/morphology", exist_ok=True)
-        self.config.spiny_neuron.write_spiny_neuron_h5(out_root / fn_morphology_out_h5)
-        morphio_morph = spiny_morph.to_morphio().as_mutable()
-        morphio_morph.write(out_root / fn_morphology_out_swc)
-
         # Sonata config.json
         sonata_cfg = sonata_config_for(fn_edges_out, fn_nodes_out, edge_population_name,
                             node_population_pre, node_population_post,
@@ -106,40 +116,28 @@ class EMSynapseMappingTask(Task):
             json.dump(sonata_cfg, fid, indent=2)
 
         # Register entity, if possible
-        if db_client is not None:
-            file_paths = {
-                "circuit_config.json": os.path.join(out_root, "circuit_config.json"),
-                fn_nodes_out : os.path.join(out_root, fn_nodes_out),
-                fn_edges_out: os.path.join(out_root, fn_edges_out),
-                fn_morphology_out_h5: os.path.join(out_root, fn_morphology_out_h5),
-                fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
-            }
-            compressed_path = self.compress_output()
-            self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        print("Registering the output...")
+        file_paths = {
+            "circuit_config.json": os.path.join(out_root, "circuit_config.json"),
+            fn_nodes_out : os.path.join(out_root, fn_nodes_out),
+            fn_edges_out: os.path.join(out_root, fn_edges_out),
+            fn_morphology_out_h5: os.path.join(out_root, fn_morphology_out_h5),
+            fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
+        }
+        compressed_path = self.compress_output()
+        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
         
-    def synapses_and_nodes_dataframes_from_EM(self, em_dataset, source_dataset, source_mesh_entity, pt_root_id):
-        try:
-            from caveclient import CAVEclient
-        except ImportError:
-            print("Optional dependency 'caveclient' not installed!")
-            raise
-
-        _version = source_mesh_entity.release_version
-        _datastack_name = source_dataset.cave_datastack
-        _cave_client_url = source_dataset.cave_client_url
-
-        cave_client = CAVEclient(_datastack_name, server_address=_cave_client_url)
-        cave_client.version = _version
-
+    def synapses_and_nodes_dataframes_from_EM(self, em_dataset, pt_root_id, db_client):
         # SYNAPSES
-        syns = em_dataset.synapse_info_df(cave_client, pt_root_id, cave_client.info.viewer_resolution(),
-                                          col_location="post_pt_position")
+        syns = em_dataset.synapse_info_df(pt_root_id,
+                                          col_location="post_pt_position",
+                                          db_client=db_client)
         # NODES
         pre_pt_root_to_sonata = syns["pre_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("pre_pt_root_id")
         post_pt_root_to_sonata = syns["post_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("post_pt_root_id")
-        node_spec = default_node_spec_for(cave_client, em_dataset)
-        coll_pre = assemble_collection_from_specs(cave_client, node_spec, pre_pt_root_to_sonata)
-        coll_post = assemble_collection_from_specs(cave_client, node_spec, post_pt_root_to_sonata)
+        node_spec = default_node_spec_for(em_dataset, db_client)
+        coll_pre = assemble_collection_from_specs(em_dataset, db_client, node_spec, pre_pt_root_to_sonata)
+        coll_post = assemble_collection_from_specs(em_dataset, db_client, node_spec, post_pt_root_to_sonata)
 
         return syns, coll_pre, coll_post
 

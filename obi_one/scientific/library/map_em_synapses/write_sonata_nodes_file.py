@@ -2,18 +2,18 @@ import pandas
 import voxcell
 
 
-def access_cave_client_table(client, table_name):
-    tbl = client.materialize.query_table(table_name)
-    counts = tbl["pt_root_id"].value_counts()
-    tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
-    return tbl
+# def access_cave_client_table(client, table_name):
+#     tbl = client.materialize.query_table(table_name)
+#     counts = tbl["pt_root_id"].value_counts()
+#     tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
+#     return tbl
 
-def get_specified_tables(client, specs):
+def get_specified_tables(em_dataset, db_client, specs):
     lst_tbls = []
     for _x in specs.values():
         if _x["table"] not in lst_tbls:
             lst_tbls.append(_x["table"])
-    return dict([(tbl_name, access_cave_client_table(client, tbl_name))
+    return dict([(tbl_name, em_dataset.neuron_info_df(tbl_name, db_client=db_client))
                  for tbl_name in lst_tbls])
 
 def resolve_position_to_xyz(resolutions):
@@ -30,8 +30,8 @@ def resolve_position_to_xyz(resolutions):
     return func
 
 
-def assemble_collection_from_specs(client, specs, pt_root_mapping):
-    tables = get_specified_tables(client, specs)
+def assemble_collection_from_specs(em_dataset, db_client, specs, pt_root_mapping):
+    tables = get_specified_tables(em_dataset, db_client, specs)
 
     out_cols = []
     for col_out, entry in specs.items():

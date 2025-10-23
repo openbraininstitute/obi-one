@@ -5,8 +5,10 @@ import tqdm
 from scipy.spatial.transform import Rotation
 from scipy.spatial import KDTree
 
+from obi_one.scientific.from_id.em_dataset_from_id import _C_P_LOCS
+
 # Columns of edge table dataframes
-_C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
+# _C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]  # moved to em_dataset_from_id
 _C_SEG_S = ["start_x", "start_y", "start_z"]
 _C_SEG_S_F = _C_SEG_S + ["start_d"]
 _C_SEG_E = ["end_x", "end_y", "end_z"]

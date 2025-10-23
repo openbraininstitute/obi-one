@@ -45,36 +45,8 @@ SYNAPTOME_SONATA_CONFIG = {
     "templates_dir": ""
   },
   "networks": {
-    "edges": [
-      {
-        "edges_file": "$BASE_DIR/",
-        "populations": {
-        }
-      }
-    ],
-    "nodes": [
-      {
-        "nodes_file": "$BASE_DIR/",
-        "populations": {
-          node_population_post: {
-            "alternate_morphologies": {
-              "h5v1": "$BASE_DIR/" + fn_morphology_out_h5
-            },
-            "biophysical_neuron_models_dir": "$BASE_DIR/emodels_hoc",
-            "morphologies_dir": "$BASE_DIR/morphologies",
-            "type": "biophysical"
-          }
-        }
-      },
-      {
-        "nodes_file": "$BASE_DIR/" + fn_nodes_out,
-        "populations": {
-          node_population_pre: {
-            "type": "virtual"
-          }
-        }
-      }
-    ]
+    "edges": [],
+    "nodes": []
   },
   "node_sets_file": "$BASE_DIR/node_sets.json",
   "version": 2.3,
@@ -83,14 +55,14 @@ SYNAPTOME_SONATA_CONFIG = {
   }
 }
 
-def default_node_spec_for(cave_client, em_dataset_entity):
-    node_specs = DEFAULT_NODE_SPECS[em_dataset_entity.name].copy()
+def default_node_spec_for(em_dataset, db_client):
+    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()
 
-    info = cave_client._info.get_datastack_info()
+    resolution = em_dataset.viewer_resolution(db_client)
     node_specs["__position"]["resolution"] = {
-        "x": info["viewer_resolution_x"] * 1E-3,
-        "y": info["viewer_resolution_y"] * 1E-3,
-        "z": info["viewer_resolution_z"] * 1E-3
+        "x": resolution[0] * 1E-3,
+        "y": resolution[1] * 1E-3,
+        "z": resolution[2] * 1E-3
     }
     return node_specs
 
@@ -99,11 +71,15 @@ def sonata_config_for(fn_edges_out, fn_nodes_out, edge_population_name,
                       fn_morphology_out_h5):
     cfg = deepcopy(SYNAPTOME_SONATA_CONFIG)
 
-    cfg["network"]["edges"]["edges_file"] += fn_edges_out
-    cfg["network"]["edges"]["populations"][edge_population_name] = {
-            "type": "chemical"
-    }
-    cfg["network"]["nodes"] = [
+    cfg["networks"]["edges"].extend([
+      {
+        "edges_file": "$BASE_DIR/" + fn_edges_out,
+        "populations": {
+            edge_population_name: {"type": "chemical"}
+        }
+      }
+    ])
+    cfg["networks"]["nodes"].extend([
         {
             "nodes_file": "$BASE_DIR/" + fn_nodes_out,
             "populations": {
@@ -125,5 +101,5 @@ def sonata_config_for(fn_edges_out, fn_nodes_out, edge_population_name,
             }
             }
         }
-    ]
+    ])
     return cfg
