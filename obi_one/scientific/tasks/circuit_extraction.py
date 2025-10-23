@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import ClassVar
 
@@ -12,14 +13,17 @@ import h5py
 import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
+from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 
 L = logging.getLogger(__name__)
@@ -37,7 +41,9 @@ class CircuitExtractionScanConfig(ScanConfig):
     )
 
     class Initialize(Block):
-        circuit: Circuit | list[Circuit]
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+            title="Circuit", description="Parent circuit to extract a sub-circuit from."
+        )
         run_validation: bool = False
         do_virtual: bool | list[bool] = Field(
             default=True,
@@ -70,6 +76,52 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
 
 class CircuitExtractionTask(Task):
     config: CircuitExtractionSingleConfig
+    _circuit: Circuit | None = PrivateAttr(default=None)
+    _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
+
+    def __del__(self) -> None:
+        """Destructor for automatic clean-up (if something goes wrong)."""
+        self._cleanup_temp_dir()
+
+    def _create_temp_dir(self) -> Path:
+        """Creation of a new temporary directory."""
+        self._cleanup_temp_dir()  # In case it exists already
+        self._temp_dir = tempfile.TemporaryDirectory()
+        return Path(self._temp_dir.name).resolve()
+
+    def _cleanup_temp_dir(self) -> None:
+        """Clean-up of temporary directory, if any."""
+        if self._temp_dir is not None:
+            self._temp_dir.cleanup()
+            self._temp_dir = None
+
+    def _resolve_circuit(self, *, db_client: entitysdk.client.Client, entity_cache: bool) -> None:
+        """Set circuit variable based on the type of initialize.circuit."""
+        if isinstance(self.config.initialize.circuit, Circuit):
+            L.info("initialize.circuit is a Circuit instance.")
+            self._circuit = self.config.initialize.circuit
+
+        elif isinstance(self.config.initialize.circuit, CircuitFromID):
+            L.info("initialize.circuit is a CircuitFromID instance.")
+            circuit_id = self.config.initialize.circuit.id_str
+
+            if entity_cache:
+                # Use a cache directory at the campaign root --> Won't be deleted after extraction!
+                L.info("Use entity cache")
+                circuit_dest_dir = (
+                    self.config.scan_output_root / "entity_cache" / "sonata_circuit" / circuit_id
+                )
+            else:
+                # Stage circuit in a temporary directory --> Will be deleted after extraction!
+                circuit_dest_dir = self._create_temp_dir() / "sonata_circuit"
+
+            self._circuit = self.config.initialize.circuit.stage_circuit(
+                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=entity_cache
+            )
+
+        if self._circuit is None:
+            msg = "Failed to resolve circuit!"
+            raise OBIONEError(msg)
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -231,20 +283,23 @@ class CircuitExtractionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,
+        entity_cache: bool = False,
     ) -> str:
+        # Resolve parent circuit (local path or staging from ID)
+        self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         nset_name = self.config.neuron_set.__class__.__name__
         nset_def = self.config.neuron_set.get_node_set_definition(
-            self.config.initialize.circuit, self.config.initialize.circuit.default_population_name
+            self._circuit, self._circuit.default_population_name
         )
-        sonata_circuit = self.config.initialize.circuit.sonata_circuit
+        sonata_circuit = self._circuit.sonata_circuit
         add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
 
         # Create subcircuit using "brainbuilder"
-        L.info(f"Extracting subcircuit from '{self.config.initialize.circuit.name}'")
+        L.info(f"Extracting subcircuit from '{self._circuit.name}'")
         split_population.split_subcircuit(
             self.config.coordinate_output_root,
             nset_name,
@@ -257,7 +312,7 @@ class CircuitExtractionTask(Task):
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
-        old_base = os.path.split(self.config.initialize.circuit.path)[0]
+        old_base = os.path.split(self._circuit.path)[0]
 
         # Quick fix to deal with symbolic links in base circuit (not usually required)
         # > alt_base = old_base  # Alternative old base
@@ -282,7 +337,7 @@ class CircuitExtractionTask(Task):
             json.dump(config_dict, config_file, indent=4)
 
         # Copy subcircuit morphologies and e-models (separately per node population)
-        original_circuit = self.config.initialize.circuit.sonata_circuit
+        original_circuit = self._circuit.sonata_circuit
         new_circuit = snap.Circuit(new_circuit_path)
         for pop_name, pop in new_circuit.nodes.items():
             if pop.config["type"] == "biophysical":
@@ -295,15 +350,16 @@ class CircuitExtractionTask(Task):
                     self._copy_hoc_files(pop_name, pop, original_circuit)
 
         # Copy .mod files, if any
-        self._copy_mod_files(
-            self.config.initialize.circuit.path, self.config.coordinate_output_root, "mod"
-        )
+        self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
 
         # Run circuit validation
         if self.config.initialize.run_validation:
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
+
+        # Clean-up
+        self._cleanup_temp_dir()
 
     def save(self) -> None:
         """Currently should return a created entity."""
