@@ -10,6 +10,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.constants import (
+    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
@@ -129,7 +130,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 Field(min_length=1),
             ]
         ) = Field(
-            default=1000.0,
+            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             units="ms",
