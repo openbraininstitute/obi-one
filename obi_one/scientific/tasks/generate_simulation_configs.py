@@ -45,6 +45,9 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference, Tim
 L = logging.getLogger(__name__)
 
 
+DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
+
+
 class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
@@ -79,7 +82,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
                 BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            ]
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            },
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
