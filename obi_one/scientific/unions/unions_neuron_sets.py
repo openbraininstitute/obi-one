@@ -62,10 +62,10 @@ CircuitExtractionNeuronSetUnion = Annotated[
     | ExcitatoryNeurons
     | InhibitoryNeurons
     | PredefinedNeuronSet
-    | CombinedNeuronSet
-    | PropertyNeuronSet
-    | VolumetricCountNeuronSet
-    | VolumetricRadiusNeuronSet
+    # | CombinedNeuronSet  # To be added later
+    # | PropertyNeuronSet  # To be added later
+    # | VolumetricCountNeuronSet  # To be added later
+    # | VolumetricRadiusNeuronSet  # To be added later
     | IDNeuronSet,
     Discriminator("type"),
 ]
