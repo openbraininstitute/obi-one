@@ -27,49 +27,48 @@ license-files = ["LICENSE"]
 dynamic = ["version"]
 
 dependencies = [
-    # PYDANTIC
+
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
     "pydantic-core",
-    # CIRCUIT EXTRACTION
-    "brainbuilder>=0.20.2",
-    # MORPHOLOGY CONTAINERIZATION
+
+    "bluecellulab>=2.6.71",
+    "blueetl",
+    "bluepyefe>=2.3.51",
     "bluepysnap>=3.0.2",
-    # FAST API SERVICE
-    "fastapi",
-    "uvicorn",
-    "starlette",
-    "python-multipart",  # Added python-multipart
-    # JUPYTER
+    "brainbuilder>=0.20.2",
+    "connectome-manipulator",
+    "connectome-utilities>=0.4.11",
+    "entitysdk>=0.8.4",
+    "morph-tool", # used for containerization
+    "networkx>=3.4.2", # used in connectivity plots
+    "neurom",
+
+    # NOT NEEDED?
+    # "sqlalchemy",
+    # "aiofiles",
+]
+
+[project.optional-dependencies]
+notebook = [
     "jupyter",
     "notebook",
     "jupyterlab>=4.4.8",
     "ipykernel",
-    # DATABASE
-    "sqlalchemy",
-    # BLUEETL
-    "blueetl",
-    # NEUROM
-    "aiofiles",
-    "neurom",
-    "morph-tool",
-    # ENTITYSDK
-    "entitysdk>=0.8.3",
     "obi-auth>=0.3.0",
-    "networkx>=3.4.2",
-    "pyjwt>=2.10.1",
-    "cachetools>=5.5.2",
-    "httpx>=0.28.1",
-    "bluepyefe>=2.3.51",
-    # CONNECTOME-UTILITIES
-    "connectome-utilities>=0.4.11",
-    "connectome-manipulator",
-    "bluecellulab>=2.6.71",
-    # OBI NOTEBOOK
     "obi_notebook",
 ]
 
-[project.optional-dependencies]
+service = [
+    "fastapi",
+    "uvicorn",
+    "starlette",
+    "cachetools>=5.5.2",
+    "httpx>=0.28.1",
+    "pyjwt>=2.10.1",
+    "python-multipart",
+]
+
 connectivity = [
     "connectome-analysis>=1.0.1",
 ]
