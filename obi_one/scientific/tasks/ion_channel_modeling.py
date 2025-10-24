@@ -29,6 +29,7 @@ try:
     from ion_channel_builder.io.write_output import write_vgate_output
     from ion_channel_builder.run_model.run_model import run_ion_channel_model
 except ImportError:
+
     def extract_all_equations(
         data_paths: list[Path],
         ljps: list,
@@ -40,7 +41,6 @@ except ImportError:
     ) -> None:
         pass
 
-
     def write_vgate_output(
         eq_names: dict[str, str],
         eq_popt: dict[str, list[float]],
@@ -51,7 +51,6 @@ except ImportError:
         output_name: str,
     ) -> None:
         pass
-
 
     def run_ion_channel_model(
         mech_suffix: str,
