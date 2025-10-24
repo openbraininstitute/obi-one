@@ -21,6 +21,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
+    DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
@@ -32,15 +33,13 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
-DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
+L = logging.getLogger(__name__)
+
 DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
     block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
 )
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
-
-
-L = logging.getLogger(__name__)
 
 
 class GenerateSimulationTask(Task):
