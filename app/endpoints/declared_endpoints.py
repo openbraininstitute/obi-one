@@ -334,7 +334,7 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
 
 
 # Helper function for background cleanup
-def _cleanup_file(file_path: str):
+def _cleanup_file(file_path: str) -> None:
     """Synchronously deletes a file."""
     if file_path:
         try:
@@ -358,7 +358,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
         success_file_path = ""  # Track the success file path for cleanup
-        SUCCESS_FILENAME = "SUCCESS.txt"  # Define the desired output filename
+        success_filename = "SUCCESS.txt"  # Fix N806: Renamed from SUCCESS_FILENAME
 
         content = await file.read()
         if not content:
@@ -372,7 +372,10 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
 
             test_all_nwb_readers(temp_file_path_local)
 
-            with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8", suffix=".txt") as success_file:
+            # Fix E501: Split line onto multiple lines
+            with tempfile.NamedTemporaryFile(
+                delete=False, mode="w", encoding="utf-8", suffix=".txt"
+            ) as success_file:
                 success_file.write("NWB file validation successful.")
                 success_file_path_local = success_file.name
 
@@ -395,7 +398,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
             # The FileResponse uses the absolute temporary path.
             return FileResponse(
                 path=success_file_path,
-                filename=SUCCESS_FILENAME,
+                filename=success_filename, # Use the corrected variable name
                 media_type="text/plain",
                 background=background_tasks,  # Attach the cleanup task
             )
