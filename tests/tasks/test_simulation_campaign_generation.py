@@ -62,7 +62,7 @@ def _setup_sim():
     )
     sim_conf.add(sync_input, name="SynchronousInputStimulus")
 
-    voltage_recording = obi.SomaVoltageRecording(
+    voltage_recording = obi.TimeWindowSomaVoltageRecording(
         neuron_set=sim_neuron_set.ref, start_time=0.0, end_time=sim_duration
     )
     sim_conf.add(voltage_recording, name="VoltageRecording")
@@ -498,7 +498,7 @@ def test_simulation_campaign_generation(tmp_path):
         neuron_ids=obi.NamedTuple(name="IDNeuronSet3", elements=range(5))
     )
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.SomaVoltageRecording(
+        _ = obi.TimeWindowSomaVoltageRecording(
             neuron_set=sim_neuron_set2.ref,
             start_time=0.0,
             end_time=sim_conf.initialize.simulation_length,
