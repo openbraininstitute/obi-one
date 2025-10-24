@@ -14,10 +14,6 @@ from pydantic import (
 )
 
 from obi_one.core.block import Block
-from obi_one.core.constants import (
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
-)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
@@ -25,6 +21,11 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.constants import (
+    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+)
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
@@ -122,7 +123,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 Field(min_length=1),
             ]
         ) = Field(
-            default=1000.0,
+            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             units="ms",
