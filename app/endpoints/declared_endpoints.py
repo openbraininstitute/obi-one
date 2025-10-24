@@ -272,10 +272,41 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
+    test_protocols = ["APThreshold","SAPThres1","SAPThres2","SAPThres3","SAPTres1",
+                      "SAPTres2","SAPTres3","Step_150","Step_200",
+                        "Step_250","Step_150_hyp","Step_200_hyp","Step_250_hyp",
+                        "C1HP1sec","C1_HP_1sec","IRrest","SDelta","SIDRest",
+                        "SIDThres","SIDTres","SRac","pulser","A","maria-STEP",
+                        "APDrop","APResh","C1_HP_0.5sec","C1step_1sec",
+                        "C1step_ag","C1step_highres","HighResThResp",
+                        "IDRestTest","LoOffset1","LoOffset3","Rin","STesteCode",
+                        "SSponAPs", "SponAPs","SpontAPs","Test_eCode", 
+                        "TesteCode","step_1","step_2","step_3", "IV_Test",
+                        "SIV","APWaveform","SAPWaveform","Delta","FirePattern",
+                        "H10S8","H20S8","H40S8", "IDRest","IDThres","IDThresh",
+                        "IDrest","IDthresh","IV","IV2","IV_-120","IV_-120_hyp",
+                        "IV_-140","Rac","RMP","SetAmpl","SetISI","SetISITest",
+                        "TestAmpl","TestRheo","TestSpikeRec","SpikeRec","ADHPdepol",
+                        "ADHPhyperpol","ADHPrest","SSpikeRec","SpikeRec_Ih",
+                        "SpikeRec_Kv1.1","scope","spuls","RPip","RSealClose",
+                        "RSealOpen","CalOU01","CalOU04","ElecCal","NoiseOU3",
+                        "NoisePP","SNoisePP","SNoiseSpiking","OU10Hi01","OU10Lo01",
+                        "OU10Me01","SResetITC","STrueNoise","SubWhiteNoise",
+                        "Truenoise","WhiteNoise","ResetITC","SponHold25","SponHold3",
+                        "SponHold30","SSponHold","SponNoHold20","SponNoHold30",
+                        "SSponNoHold","Spontaneous","hold_dep","hold_hyp",
+                        "StartHold","StartNoHold","StartStandeCode","VacuumPulses",
+                        "sAHP","IRdepol","IRhyperpol","IDdepol","IDhyperpol",
+                        "SsAHP","HyperDePol","DeHyperPol","NegCheops","NegCheops1",
+                        "NegCheops2","NegCheops3","NegCheops4","NegCheops5",
+                        "PosCheops","Rin_dep","Rin_hyp","SineSpec","SSineSpec",
+                        "Pulse","S2","s2","S30","SIne20Hz","A___.ibw" ]
+
+ #no "Step"                 
     for readerclass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
-            reader = readerclass(nwb_file_path, ["IDRest", "IV"])
+            reader = readerclass(nwb_file_path, test_protocols)
 
             # 2. Attempt to read the data
             data = reader.read()
