@@ -398,7 +398,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
             # The FileResponse uses the absolute temporary path.
             return FileResponse(
                 path=success_file_path,
-                filename=success_filename, # Use the corrected variable name
+                filename=success_filename,  # Use the corrected variable name
                 media_type="text/plain",
                 background=background_tasks,  # Attach the cleanup task
             )
