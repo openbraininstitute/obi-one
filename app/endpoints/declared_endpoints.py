@@ -346,23 +346,23 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
     ) -> FileResponse:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
-        
+
         # 1. Read content async (usually non-blocking)
         content = await file.read()
         if not content:
             _handle_empty_file(file)
-        
+
         # Define a synchronous function to handle all blocking I/O (write + read)
         def blocking_file_operations(file_content: bytes, suffix: str) -> str:
             """Synchronously writes the file and runs the NWB reader."""
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_file.write(file_content)
                 temp_file_path_local = temp_file.name
-            
-            test_all_nwb_readers(temp_file_path_local) 
-            
-            return temp_file_path_local # Return the path for cleanup
-            
+
+            test_all_nwb_readers(temp_file_path_local)
+
+            return temp_file_path_local  # Return the path for cleanup
+
         try:
             loop = asyncio.get_running_loop()
 
@@ -373,20 +373,18 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                 content,
                 file_extension,
             )
-            
+
             return FileResponse(path="SUCCESS.txt", filename="SUCCESS.txt", media_type="text/plain")
 
-        except Exception as e:
-            # Re-raise or handle exceptions from the executor
-            raise e
-            
+        # The except block is removed because exceptions are automatically propagated by 'await'.
+
         finally:
             if temp_file_path:
                 try:
                     pathlib.Path(temp_file_path).unlink(missing_ok=True)
                 except OSError as e:
                     L.error(f"Error deleting temporary files: {e!s}")
-
+                    
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
