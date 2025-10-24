@@ -13,6 +13,7 @@ from obi_one.scientific.tasks.folder_compression import FolderCompressionScanCon
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     MEModelSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.morphology_containerization import (
@@ -39,6 +40,7 @@ ScanConfigsUnion = Annotated[
     | MorphologyDecontainerizationScanConfig
     | MorphologyMetricsScanConfig
     | MorphologyLocationsScanConfig
-    | IonChannelFittingScanConfig,
+    | IonChannelFittingScanConfig
+    | MEModelWithSynapsesCircuitSimulationScanConfig,
     Discriminator("type"),
 ]

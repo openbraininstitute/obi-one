@@ -10,7 +10,10 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -23,6 +26,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -39,7 +43,11 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 
 class GenerateSimulationTask(Task):
-    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
+    config: (
+        CircuitSimulationSingleConfig
+        | MEModelSimulationSingleConfig
+        | MEModelWithSynapsesCircuitSimulationSingleConfig
+    )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -79,8 +87,10 @@ class GenerateSimulationTask(Task):
             self._circuit = self.config.initialize.circuit
             self._sonata_config["network"] = self.config.initialize.circuit.path
 
-        elif isinstance(self.config.initialize.circuit, (CircuitFromID, MEModelFromID)):
-            L.info("initialize.circuit is a MEModelFromID instance.")
+        elif isinstance(
+            self.config.initialize.circuit,
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+        ):
             self._circuit_id = self.config.initialize.circuit.id_str
 
             circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
@@ -204,7 +214,7 @@ class GenerateSimulationTask(Task):
 
         Infer default if needed. Assert biophysical.
         """
-        if hasattr(self.config, "neuron_sets"):
+        if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
             if self.config.initialize.node_set is None:
                 L.info("initialize.node_set is None — setting default node set.")
                 self.config.initialize.node_set = self._default_neuron_set_ref()
