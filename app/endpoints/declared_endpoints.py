@@ -202,8 +202,7 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
     """Validates file extension and reads content."""
     L.info(f"Received file upload: {file.filename}")
     allowed_extensions = {".swc", ".h5", ".asc"}
-    file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
-
+    file_extension = Path(file.filename).suffix.lower() if file.filename else ""
     if not file.filename or file_extension not in allowed_extensions:
         L.error(f"Invalid file extension: {file_extension}")
         valid_extensions = ", ".join(allowed_extensions)
@@ -262,17 +261,7 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , VUNWBReader]
 
-
-def test_all_nwb_readers(nwb_file_path: str) -> None:
-    """Tests all registered NWB readers on the given file path.
-    Succeeds if at least one reader can successfully process the file.
-    Raises a RuntimeError if all readers fail.
-    :param nwb_file_path: The path to the NWB file.
-    :param target_protocols: The list of protocols required by the NWB readers.
-    :return: The extracted data object from the first successful reader.
-    :raises RuntimeError: If no reader is able to read the file.
-    """
-    test_protocols = ["APThreshold", "SAPThres1", "SAPThres2", "SAPThres3", "SAPTres1",
+test_protocols = ["APThreshold", "SAPThres1", "SAPThres2", "SAPThres3", "SAPTres1",
                       "SAPTres2", "SAPTres3", "Step_150", "Step_200",
                         "Step_250", "Step_150_hyp", "Step_200_hyp", "Step_250_hyp",
                         "C1HP1sec", "C1_HP_1sec", "IRrest", "SDelta", "SIDRest",
@@ -302,6 +291,17 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
                         "PosCheops", "Rin_dep", "Rin_hyp", "SineSpec", "SSineSpec",
                         "Pulse", "S2", "s2", "S30", "SIne20Hz", "A___.ibw"]
 
+
+def validate_all_nwb_readers(nwb_file_path: str) -> None:
+    """Tests all registered NWB readers on the given file path.
+    Succeeds if at least one reader can successfully process the file.
+    Raises a RuntimeError if all readers fail.
+    :param nwb_file_path: The path to the NWB file.
+    :param target_protocols: The list of protocols required by the NWB readers.
+    :return: The extracted data object from the first successful reader.
+    :raises RuntimeError: If no reader is able to read the file.
+    """
+    
     for readerclass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
@@ -352,56 +352,45 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         summary="Validate new format.",
         description="Tests a new file (.nwb) with basic validation.",
     )
+    
     async def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
-    ) -> FileResponse:
+    ) -> dict:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
-        success_file_path = ""  # Track the success file path for cleanup
-        success_filename = "SUCCESS.txt"  # Fix N806: Renamed from SUCCESS_FILENAME
-
+        
         content = await file.read()
         if not content:
             _handle_empty_file(file)
 
-        # Define a synchronous function to handle all blocking I/O (write + read)
-        def blocking_file_operations(file_content: bytes, suffix: str) -> tuple[str, str]:
+        #Simplified synchronous function
+        def blocking_file_operations(file_content: bytes, suffix: str) -> str:
+            """Synchronously writes the file and runs the NWB reader. Returns NWB temp path."""
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_file.write(file_content)
                 temp_file_path_local = temp_file.name
 
-            test_all_nwb_readers(temp_file_path_local)
+            validate_all_nwb_readers(temp_file_path_local)
 
-            # Fix E501: Split line onto multiple lines
-            with tempfile.NamedTemporaryFile(
-                delete=False, mode="w", encoding="utf-8", suffix=".txt"
-            ) as success_file:
-                success_file.write("NWB file validation successful.")
-                success_file_path_local = success_file.name
-
-            return temp_file_path_local, success_file_path_local
+            #The logic to create success_file is removed
+            return temp_file_path_local
 
         try:
             loop = asyncio.get_running_loop()
 
-            temp_file_path, success_file_path = await loop.run_in_executor(
+            #Executor only returns one path (the NWB file)
+            temp_file_path = await loop.run_in_executor(
                 None,
                 blocking_file_operations,
                 content,
                 file_extension,
             )
 
-            # Schedule the cleanup of the success file to happen AFTER the response is sent.
-            background_tasks = BackgroundTasks()
-            background_tasks.add_task(_cleanup_file, file_path=success_file_path)
-
-            # The FileResponse uses the absolute temporary path.
-            return FileResponse(
-                path=success_file_path,
-                filename=success_filename,  # Use the corrected variable name
-                media_type="text/plain",
-                background=background_tasks,  # Attach the cleanup task
-            )
+            #Return a JSON payload directly
+            return {
+                "status": "success",
+                "message": "NWB file validation successful.",
+            }
 
         except Exception as e:
             if isinstance(e, RuntimeError):
@@ -412,9 +401,10 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
                         "detail": f"NWB validation failed: {e!s}",
                     },
                 ) from e
-            raise  # Proper re-raise
+            raise
 
         finally:
+            # Cleanup for the NWB file remains (as it's still temp_file_path)
             if temp_file_path:
                 _cleanup_file(temp_file_path)
 
