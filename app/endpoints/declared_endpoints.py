@@ -14,7 +14,7 @@ from bluepyefe.reader import (  # , VUNWBReader
     ScalaNWBReader,
     TRTNWBReader,
 )
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 
@@ -333,6 +333,17 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
     raise RuntimeError(error_message)
 
 
+# Helper function for background cleanup
+def _cleanup_file(file_path: str):
+    """Synchronously deletes a file."""
+    if file_path:
+        try:
+            pathlib.Path(file_path).unlink(missing_ok=True)
+            L.info(f"Successfully deleted temporary file: {file_path}")
+        except OSError as e:
+            L.error(f"Error deleting temporary file {file_path}: {e!s}")
+
+
 def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     """Define neuron file test endpoint."""
 
@@ -346,6 +357,8 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     ) -> FileResponse:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
+        success_file_path = "" # Track the success file path for cleanup
+        SUCCESS_FILENAME = "SUCCESS.txt" # Define the desired output filename
 
         # 1. Read content async (usually non-blocking)
         content = await file.read()
@@ -353,37 +366,63 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
             _handle_empty_file(file)
 
         # Define a synchronous function to handle all blocking I/O (write + read)
-        def blocking_file_operations(file_content: bytes, suffix: str) -> str:
-            """Synchronously writes the file and runs the NWB reader."""
+        def blocking_file_operations(file_content: bytes, suffix: str) -> tuple[str, str]:
+            """Synchronously writes the file, runs the NWB reader, and creates a SUCCESS.txt temp file."""
+            
+            # 1. Write the NWB file
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_file.write(file_content)
                 temp_file_path_local = temp_file.name
 
+            # 2. Run the NWB reader (blocking call)
             test_all_nwb_readers(temp_file_path_local)
 
-            return temp_file_path_local  # Return the path for cleanup
+            # 3. Create the SUCCESS file (blocking I/O) in a temporary location
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', suffix=".txt") as success_file:
+                success_file.write("NWB file validation successful.")
+                success_file_path_local = success_file.name
+            
+            return temp_file_path_local, success_file_path_local
 
         try:
             loop = asyncio.get_running_loop()
 
-            # 2. Run ALL blocking file operations (write and read) in the thread pool
-            temp_file_path = await loop.run_in_executor(
-                None,  # Uses the default thread pool executor
+            # 2. Run ALL blocking file operations (write, read, create success file) in the thread pool
+            temp_file_path, success_file_path = await loop.run_in_executor(
+                None,
                 blocking_file_operations,
                 content,
                 file_extension,
             )
 
-            return FileResponse(path="SUCCESS.txt", filename="SUCCESS.txt", media_type="text/plain")
+            # Schedule the cleanup of the success file to happen AFTER the response is sent.
+            background_tasks = BackgroundTasks()
+            background_tasks.add_task(_cleanup_file, file_path=success_file_path)
 
-        # The except block is removed because exceptions are automatically propagated by 'await'.
+            # The FileResponse uses the absolute temporary path.
+            return FileResponse(
+                path=success_file_path, 
+                filename=SUCCESS_FILENAME, 
+                media_type="text/plain",
+                background=background_tasks, # Attach the cleanup task
+            )
+
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise HTTPException(
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": ApiErrorCode.BAD_REQUEST,
+                        "detail": f"NWB validation failed: {e!s}",
+                    },
+                ) from e
+            raise # Proper re-raise
 
         finally:
+            # ONLY clean up the NWB temporary file here. 
+            # The SUCCESS file cleanup is handled by the BackgroundTask.
             if temp_file_path:
-                try:
-                    pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                except OSError as e:
-                    L.error(f"Error deleting temporary files: {e!s}")
+                _cleanup_file(temp_file_path)
 
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
