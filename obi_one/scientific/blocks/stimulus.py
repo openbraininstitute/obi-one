@@ -8,15 +8,16 @@ import pandas as pd
 from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.constants import (
-    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MIN_NON_NEGATIVE_FLOAT_VALUE,
-    _MIN_TIME_STEP_MILLISECONDS,
-)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.constants import (
+    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    _MAX_POISSON_SPIKE_LIMIT,
+    _MIN_NON_NEGATIVE_FLOAT_VALUE,
+    _MIN_TIME_STEP_MILLISECONDS,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -32,8 +33,6 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
     description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
     units="ms",
 )
-
-_MAX_POISSON_SPIKE_LIMIT = 5000000
 
 
 class Stimulus(Block, ABC):

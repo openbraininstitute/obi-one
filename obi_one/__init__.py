@@ -6,6 +6,7 @@ from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import (
     run_task_for_single_config,
+    run_task_for_single_config_asset,
     run_task_for_single_configs,
     run_tasks_for_generated_scan,
 )
@@ -168,6 +169,7 @@ __all__ = [
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
     "run_task_for_single_config",
+    "run_task_for_single_config_asset",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
     "write_circuit_node_set_file",
