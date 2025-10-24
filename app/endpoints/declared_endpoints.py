@@ -355,7 +355,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     async def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> dict:
-        file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
+        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
         temp_file_path = ""
 
         content = await file.read()
