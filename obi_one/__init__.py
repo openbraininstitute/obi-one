@@ -261,8 +261,10 @@ from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimest
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
