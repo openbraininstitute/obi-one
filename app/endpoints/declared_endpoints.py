@@ -3,6 +3,7 @@ import pathlib
 import tempfile
 import zipfile
 from http import HTTPStatus
+from pathlib import Path
 from typing import Annotated, Literal
 
 import entitysdk.client
@@ -384,12 +385,6 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
                 file_extension,
             )
 
-            # Return a JSON payload directly
-            return {
-                "status": "success",
-                "message": "NWB file validation successful.",
-            }
-
         except Exception as e:
             if isinstance(e, RuntimeError):
                 raise HTTPException(
@@ -400,12 +395,18 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
                     },
                 ) from e
             raise
+        else:
+            # Return a JSON payload directly (Moved here to fix TRY300)
+            return {
+                "status": "success",
+                "message": "NWB file validation successful.",
+            }
 
         finally:
             # Cleanup for the NWB file remains (as it's still temp_file_path)
             if temp_file_path:
                 _cleanup_file(temp_file_path)
-
+         
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
