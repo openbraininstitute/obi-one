@@ -360,6 +360,3 @@ class CircuitExtractionTask(Task):
 
         # Clean-up
         self._cleanup_temp_dir()
-
-    def save(self) -> None:
-        """Currently should return a created entity."""
