@@ -14,7 +14,7 @@ from bluepyefe.reader import (  # , VUNWBReader
     ScalaNWBReader,
     TRTNWBReader,
 )
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 
@@ -301,7 +301,6 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
     :return: The extracted data object from the first successful reader.
     :raises RuntimeError: If no reader is able to read the file.
     """
-    
     for readerclass in NWB_READERS:
         try:
             # 1. Initialize the reader with both file path AND target_protocols
@@ -352,18 +351,17 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         summary="Validate new format.",
         description="Tests a new file (.nwb) with basic validation.",
     )
-    
     async def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> dict:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
-        
+
         content = await file.read()
         if not content:
             _handle_empty_file(file)
 
-        #Simplified synchronous function
+        # Simplified synchronous function
         def blocking_file_operations(file_content: bytes, suffix: str) -> str:
             """Synchronously writes the file and runs the NWB reader. Returns NWB temp path."""
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
@@ -372,13 +370,13 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
 
             validate_all_nwb_readers(temp_file_path_local)
 
-            #The logic to create success_file is removed
+            # The logic to create success_file is removed
             return temp_file_path_local
 
         try:
             loop = asyncio.get_running_loop()
 
-            #Executor only returns one path (the NWB file)
+            # Executor only returns one path (the NWB file)
             temp_file_path = await loop.run_in_executor(
                 None,
                 blocking_file_operations,
@@ -386,7 +384,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
                 file_extension,
             )
 
-            #Return a JSON payload directly
+            # Return a JSON payload directly
             return {
                 "status": "success",
                 "message": "NWB file validation successful.",
