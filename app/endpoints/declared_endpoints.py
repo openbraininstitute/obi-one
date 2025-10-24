@@ -406,7 +406,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
             # Cleanup for the NWB file remains (as it's still temp_file_path)
             if temp_file_path:
                 _cleanup_file(temp_file_path)
-         
+
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
