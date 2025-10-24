@@ -333,15 +333,15 @@ def test_all_nwb_readers(nwb_file_path: str) -> None:
     raise RuntimeError(error_message)
 
 
-def activate_test_nwb_endpoint(router: APIRouter) -> None:
+def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     """Define neuron file test endpoint."""
 
     @router.post(
-        "/test-nwb-file",
+        "/validate-nwb-file",
         summary="Validate new format.",
         description="Tests a new file (.nwb) with basic validation.",
     )
-    async def test_nwb_file(
+    async def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> FileResponse:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
@@ -516,6 +516,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     activate_morphology_endpoint(router)
     activate_ephys_endpoint(router)
     activate_test_endpoint(router)
-    activate_test_nwb_endpoint(router)
+    activate_validate_nwb_endpoint(router)
     activate_circuit_endpoints(router)
     return router
