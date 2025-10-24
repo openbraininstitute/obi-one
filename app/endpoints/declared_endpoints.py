@@ -346,26 +346,40 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
     ) -> FileResponse:
         file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
         temp_file_path = ""
-
+        
+        # 1. Read content async (usually non-blocking)
+        content = await file.read()
+        if not content:
+            _handle_empty_file(file)
+        
+        # Define a synchronous function to handle all blocking I/O (write + read)
+        def blocking_file_operations(file_content: bytes, suffix: str) -> str:
+            """Synchronously writes the file and runs the NWB reader."""
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                temp_file.write(file_content)
+                temp_file_path_local = temp_file.name
+            
+            test_all_nwb_readers(temp_file_path_local) 
+            
+            return temp_file_path_local # Return the path for cleanup
+            
         try:
-            content = await file.read()
-            if not content:
-                _handle_empty_file(file)
-
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                temp_file.write(content)
-                temp_file_path = temp_file.name
-
-            # Get the current event loop
             loop = asyncio.get_running_loop()
 
-            # Run the blocking function in a separate thread and await the result
-            return await loop.run_in_executor(
+            # 2. Run ALL blocking file operations (write and read) in the thread pool
+            temp_file_path = await loop.run_in_executor(
                 None,  # Uses the default thread pool executor
-                test_all_nwb_readers,
-                temp_file_path
+                blocking_file_operations,
+                content,
+                file_extension,
             )
+            
+            return FileResponse(path="SUCCESS.txt", filename="SUCCESS.txt", media_type="text/plain")
 
+        except Exception as e:
+            # Re-raise or handle exceptions from the executor
+            raise e
+            
         finally:
             if temp_file_path:
                 try:
