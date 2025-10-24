@@ -190,7 +190,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             multiple_value_parameters_dictionary = {}
 
         L.info("-- Register SimulationCampaign Entity")
-        if isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
+        if isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID)):
             entity_id = self.initialize.circuit.id_str
         elif isinstance(self.initialize.circuit, list):
             if len(self.initialize.circuit) != 1:
@@ -349,7 +349,7 @@ class SimulationSingleConfigMixin(abc.ABC):
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if not isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
+        if not isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID)):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
                 "or MEModelFromID"
