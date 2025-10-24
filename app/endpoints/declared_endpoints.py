@@ -384,7 +384,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                     pathlib.Path(temp_file_path).unlink(missing_ok=True)
                 except OSError as e:
                     L.error(f"Error deleting temporary files: {e!s}")
-                    
+
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
