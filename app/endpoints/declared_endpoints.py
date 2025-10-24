@@ -365,7 +365,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         # Simplified synchronous function
         def blocking_file_operations(file_content: bytes, suffix: str) -> str:
             """Synchronously writes the file and runs the NWB reader. Returns NWB temp path."""
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:  
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 # the suffix is needed to make the file readable by the validators
                 temp_file.write(file_content)
                 temp_file_path_local = temp_file.name
