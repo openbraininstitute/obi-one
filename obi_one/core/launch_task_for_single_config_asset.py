@@ -37,10 +37,12 @@ def main() -> int:
     parser.add_argument("--config_asset_id", required=True, help="Configuration Asset ID as string")
     parser.add_argument(
         "--scan_output_root",
-        required=False,
+        required=True,
         help="scan_output_root as string. The coordinate output root will be relative to this in\
                 a directory named using the idx of the single coordinate config.",
     )
+    parser.add_argument("--entity_cache", required=True, help="Boolean flag for campaign entity caching.\
+                                                    Check if enabled for particular EntityFromID types.")
     parser.add_argument("--lab_id", required=True, help="Virtual Lab ID as string")
     parser.add_argument("--project_id", required=True, help="Project ID as string.")
 
@@ -55,6 +57,7 @@ def main() -> int:
     entity_id = args.entity_id
     config_asset_id = args.config_asset_id
     scan_output_root = args.scan_output_root
+    entity_cache = args.entity_cache
     lab_id = args.lab_id
     project_id = args.project_id
 
@@ -75,6 +78,7 @@ def main() -> int:
         config_asset_id=config_asset_id,
         scan_output_root=scan_output_root,
         db_client=db_client,
+        entity_cache=entity_cache,
     )
 
     # except OBIONEError as e:
