@@ -23,13 +23,13 @@ class SynapticManipulation(Block, ABC):
         }
 
         return sonata_config
-    
-class GlobalSynapticManipulation(SynapticManipulation):
 
+
+class GlobalSynapticManipulation(SynapticManipulation):
     def _get_modoverride_name(self) -> str:
         pass
-    
-    def _generate_config(self):
+
+    def _generate_config(self) -> dict:
         sonata_config = {
             "name": self._get_override_name(),
             "source": "All",
@@ -88,6 +88,7 @@ class SynapticMgManipulation(GlobalSynapticManipulation):
 
     def _get_synapse_configure(self) -> str:
         return f"mg = {self.magnesium_value}"
-    
-    def _get_modoverride_name(self) -> str:
+
+    @staticmethod
+    def _get_modoverride_name() -> str:
         return "GluSynapse"
