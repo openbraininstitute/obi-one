@@ -30,9 +30,9 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
-    MEModelWithSynapsesNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,

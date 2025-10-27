@@ -58,8 +58,7 @@ SimulationNeuronSetUnion = Annotated[
 
 
 MEModelWithSynapsesNeuronSetUnion = Annotated[
-    nbS1VPMInputs
-    | nbS1POmInputs,
+    nbS1VPMInputs | nbS1POmInputs,
     Discriminator("type"),
 ]
 
