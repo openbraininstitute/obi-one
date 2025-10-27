@@ -16,14 +16,14 @@ def main() -> int:
 
     Example usage.
 
-    python launch_task_for_single_config_asset.py
-        --entity_type Simulation
-        --entity_id babb299c-782a-41f1-b782-bc4c5da45462
-        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8
-        --scan_output_root ./grid_scan
-        --entity_cache True
-        --entity_core_api_url https://staging.openbraininstitute.org/api/entitycore
-        --lab_id e6030ed8-a589-4be2-80a6-f975406eb1f6
+    python launch_task_for_single_config_asset.py 
+        --entity_type Simulation 
+        --entity_id babb299c-782a-41f1-b782-bc4c5da45462 
+        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8 
+        --scan_output_root ./grid_scan 
+        --entity_cache True 
+        --entity_core_api_url https://staging.openbraininstitute.org/api/entitycore 
+        --lab_id e6030ed8-a589-4be2-80a6-f975406eb1f6 
         --project_id 2720f785-a3a2-4472-969d-19a53891c817
 
     Environment Variables Required:
@@ -51,6 +51,7 @@ def main() -> int:
             help="Boolean flag for campaign entity caching.\
                     Check if enabled for particular EntityFromID types.",
         )
+        parser.add_argument("--entity_core_api_url", required=True, help="Entity Core API URL as string.")
         parser.add_argument("--lab_id", required=True, help="Virtual Lab ID as string")
         parser.add_argument("--project_id", required=True, help="Project ID as string.")
 
