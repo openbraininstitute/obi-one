@@ -9,13 +9,15 @@ from typing import ClassVar
 import bluepysnap as snap
 import bluepysnap.circuit_validation
 import h5py
+import numpy as np
 import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
-from entitysdk import Client, models
+from entitysdk import Client, models, types
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
+from obi_one.core.constants import _MAX_SMALL_MICROCIRCUIT_SIZE, _NEURON_PAIR_SIZE
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
@@ -130,35 +132,98 @@ class CircuitExtractionTask(Task):
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
+    @staticmethod
+    def get_circuit_size(c: Circuit) -> (str, int, int, int):
+        c_sonata = c.sonata_circuit
+        num_nrn = c_sonata.nodes[c.default_population_name].size
+        if num_nrn == 1:
+            scale = types.CircuitScale.single
+        elif num_nrn == _NEURON_PAIR_SIZE:
+            scale = types.CircuitScale.pair
+        elif num_nrn <= _MAX_SMALL_MICROCIRCUIT_SIZE:
+            scale = types.CircuitScale.small
+        else:
+            scale = types.CircuitScale.microcircuit
+        # TODO: Add support for other scales as well
+
+        if scale == types.CircuitScale.single:
+            # Special case: Include extrinsic synapses & connections
+            edge_pops = Circuit.get_edge_population_names(c_sonata, incl_virtual=True)
+            edge_pops = [
+                e for e in edge_pops if c_sonata.edges[e].target.name == c.default_population_name
+            ]
+        else:
+            # Default case: Only include intrinsic synapse & connections
+            edge_pops = [c.default_edge_population_name]
+
+        num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
+        num_conn = np.sum(
+            [
+                len(
+                    list(
+                        c_sonata.edges[e].iter_connections(
+                            target={"population": c_sonata.edges[e].target.name}
+                        )
+                    )
+                )
+                for e in edge_pops
+            ]
+        ).astype(int)
+
+        return scale, num_nrn, num_syn, num_conn
+
     def _create_circuit_entity(self, db_client: Client, circuit_path: Path) -> models.Circuit:
         """Register a new Circuit entity of the extracted SONATA circuit (w/o assets)."""
         parent = self._circuit_entity  # Parent circuit entity
-        # TODO...
-        circuit_model = models.Circuit(
-            name=f"{parent.name}__{self.config.idx}",
-            description=circuit["description"],
-            subject=subject_dict[circuit["subjectName"]],
-            brain_region=region_dict[circuit["brainRegion"]],
-            license=license_dict[circuit["license_url"]],
-            number_neurons=count_dict["num_nrn"],
-            number_synapses=count_dict["num_syn"],
-            number_connections=count_dict["num_conn"],
-            has_morphologies=circuit["has_morphologies"],
-            has_point_neurons=circuit["has_point_neurons"],
-            has_electrical_cell_models=circuit["has_electrical_cell_models"],
-            has_spines=circuit["has_spines"],
-            scale=circuit["scale"],
-            build_category=circuit["buildCategory"],
-            root_circuit_id=None if root is None else root.id,
-            atlas_id=None,  # TODO: To be addressed later
-            contact_email=circuit["contact"],
-            published_in=circuit["contributorSimple"],
-            experiment_date=exp_date,
-            authorized_public=make_public,  # Make it public
+
+        # Define metadata for extracted circuit entity
+        campaign_str = self.config.info.campaign_name.replace(" ", "-")
+        circuit_name = f"{parent.name}__{campaign_str}-{self.config.idx}"
+        params = self.config.single_coordinate_scan_params.scan_params
+        instance_info = [
+            f"{p.location_str}={
+                f'{p.value.entity(db_client).name}[{p.value.id_str}]'
+                if isinstance(p.value, CircuitFromID)
+                else p.value
+            }"
+            for p in params
+        ]
+        instance_info = ", ".join(instance_info)
+        circuit_descr = (
+            self.config.info.campaign_description
+            + f" - Instance {self.config.idx}: {instance_info}"
         )
-        registered_circuit = client.register_entity(circuit_model)
+
+        # Get counts
+        c = Circuit(name=circuit_name, path=str(circuit_path))
+        scale, num_nrn, num_syn, num_conn = CircuitExtractionTask.get_circuit_size(c)
+
+        # Create circuit model
+        circuit_model = models.Circuit(
+            name=circuit_name,
+            description=circuit_descr,
+            subject=parent.subject,
+            brain_region=parent.brain_region,
+            license=parent.license,
+            number_neurons=num_nrn,
+            number_synapses=num_syn,
+            number_connections=num_conn,
+            has_morphologies=parent.has_morphologies,
+            has_point_neurons=parent.has_point_neurons,
+            has_electrical_cell_models=parent.has_electrical_cell_models,
+            has_spines=parent.has_spines,
+            scale=scale,
+            build_category=parent.build_category,
+            root_circuit_id=parent.root_circuit_id,
+            atlas_id=parent.atlas_id,
+            contact_email=parent.contact_email,
+            published_in=parent.published_in,
+            experiment_date=parent.experiment_date,
+            authorized_public=False,
+        )
+        registered_circuit = db_client.register_entity(circuit_model)
         return registered_circuit
-    
+
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
         return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
@@ -393,14 +458,16 @@ class CircuitExtractionTask(Task):
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
-        
+
         # Register new circuit entity incl. assets
         if db_client and self._circuit_entity:
-            new_circuit_entity = self._create_circuit_entity(db_client=db_client, circuit_path=new_circuit_path)
+            new_circuit_entity = self._create_circuit_entity(
+                db_client=db_client, circuit_path=new_circuit_path
+            )
 
             # TODO...
             # self._add_circuit_assets(db_client=db_client, circuit_path=new_circuit_path, entity=new_circuit_entity)
-            
+
             L.info("Registration DONE")
 
         # Clean-up
