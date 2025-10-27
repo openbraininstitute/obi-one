@@ -322,8 +322,10 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
                 str(e)
             )
             continue
-
-    raise RuntimeError("All NWB readers failed.")
+    
+    # Fixes TRY003 & EM101: Assigning string literal to a variable before raising.
+    error_message = "All NWB readers failed."
+    raise RuntimeError(error_message)
 
 
 def activate_validate_nwb_endpoint(router: APIRouter) -> None:
@@ -337,8 +339,7 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> dict:
-        """
-        Synchronously processes the NWB file validation.
+        """Synchronously processes the NWB file validation.
 
         It uses a TemporaryDirectory context manager to ensure all temporary
         files created during processing are automatically cleaned up.
@@ -350,9 +351,13 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         except Exception as e:
             # Handle potential reading errors
             L.error(f"Error reading uploaded file content: {e!s}")
+            # Fix E501: Break long line
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={"code": ApiErrorCode.INTERNAL_SERVER_ERROR, "detail": "Failed to read file content"},
+                detail={
+                    "code": ApiErrorCode.INTERNAL_SERVER_ERROR,
+                    "detail": "Failed to read file content"
+                },
             ) from e
 
         if not content:
@@ -361,7 +366,8 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         # File extension is needed for the NWB readers to recognize the file type
         file_extension = Path(file.filename).suffix.lower() if file.filename else ""
         if file_extension not in {".nwb", ".swc", ".h5", ".asc"}:
-             raise HTTPException(
+            # Fix E111/E117: Corrected indentation from 13 spaces to 8 spaces
+            raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={
                     "code": ApiErrorCode.BAD_REQUEST,
@@ -378,13 +384,17 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
 
             # 1. Write the content to the temporary file path
             try:
-                with open(temp_file_path, "wb") as temp_file:
-                    temp_file.write(content)
+                # Fix PTH123/FURB103: Use Path.write_bytes for cleaner file writing
+                Path(temp_file_path).write_bytes(content)
             except Exception as e:
                 L.error(f"Error writing file to disk: {e!s}")
+                # Fix E501: Break long line
                 raise HTTPException(
                     status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail={"code": ApiErrorCode.INTERNAL_SERVER_ERROR, "detail": "Failed to write file to disk"},
+                    detail={
+                        "code": ApiErrorCode.INTERNAL_SERVER_ERROR,
+                        "detail": "Failed to write file to disk"
+                    },
                 ) from e
 
             # 2. Run the synchronous validation function
