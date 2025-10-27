@@ -8,15 +8,16 @@ from typing import ClassVar
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
-import entitysdk.client
 import h5py
 import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
+from entitysdk import Client, models
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
+from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -64,6 +65,10 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     initialize: Initialize
     neuron_set: CircuitExtractionNeuronSetUnion
+    info: Info = Field(
+        title="Info",
+        description="Information about the circuit extraction campaign.",
+    )
 
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
@@ -77,6 +82,7 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
 class CircuitExtractionTask(Task):
     config: CircuitExtractionSingleConfig
     _circuit: Circuit | None = PrivateAttr(default=None)
+    _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
     def __del__(self) -> None:
@@ -95,7 +101,7 @@ class CircuitExtractionTask(Task):
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def _resolve_circuit(self, *, db_client: entitysdk.client.Client, entity_cache: bool) -> None:
+    def _resolve_circuit(self, *, db_client: Client, entity_cache: bool) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
         if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -118,11 +124,41 @@ class CircuitExtractionTask(Task):
             self._circuit = self.config.initialize.circuit.stage_circuit(
                 db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=entity_cache
             )
+            self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)
 
         if self._circuit is None:
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
+    def _create_circuit_entity(self, db_client: Client, circuit_path: Path) -> models.Circuit:
+        """Register a new Circuit entity of the extracted SONATA circuit (w/o assets)."""
+        parent = self._circuit_entity  # Parent circuit entity
+        # TODO...
+        circuit_model = models.Circuit(
+            name=f"{parent.name}__{self.config.idx}",
+            description=circuit["description"],
+            subject=subject_dict[circuit["subjectName"]],
+            brain_region=region_dict[circuit["brainRegion"]],
+            license=license_dict[circuit["license_url"]],
+            number_neurons=count_dict["num_nrn"],
+            number_synapses=count_dict["num_syn"],
+            number_connections=count_dict["num_conn"],
+            has_morphologies=circuit["has_morphologies"],
+            has_point_neurons=circuit["has_point_neurons"],
+            has_electrical_cell_models=circuit["has_electrical_cell_models"],
+            has_spines=circuit["has_spines"],
+            scale=circuit["scale"],
+            build_category=circuit["buildCategory"],
+            root_circuit_id=None if root is None else root.id,
+            atlas_id=None,  # TODO: To be addressed later
+            contact_email=circuit["contact"],
+            published_in=circuit["contributorSimple"],
+            experiment_date=exp_date,
+            authorized_public=make_public,  # Make it public
+        )
+        registered_circuit = client.register_entity(circuit_model)
+        return registered_circuit
+    
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
         return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
@@ -283,9 +319,9 @@ class CircuitExtractionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: Client = None,
         entity_cache: bool = False,
-    ) -> str:
+    ) -> None:
         # Resolve parent circuit (local path or staging from ID)
         self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
@@ -357,6 +393,15 @@ class CircuitExtractionTask(Task):
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
+        
+        # Register new circuit entity incl. assets
+        if db_client and self._circuit_entity:
+            new_circuit_entity = self._create_circuit_entity(db_client=db_client, circuit_path=new_circuit_path)
+
+            # TODO...
+            # self._add_circuit_assets(db_client=db_client, circuit_path=new_circuit_path, entity=new_circuit_entity)
+            
+            L.info("Registration DONE")
 
         # Clean-up
         self._cleanup_temp_dir()
