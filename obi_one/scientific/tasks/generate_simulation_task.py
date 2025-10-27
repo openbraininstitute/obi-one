@@ -291,15 +291,14 @@ class GenerateSimulationTask(Task):
                 asset_label="sonata_simulation_config",
             )
 
-            if hasattr(self.config, "neuron_sets"):
-                L.info("-- Upload custom_node_sets")
-                _ = db_client.upload_file(
-                    entity_id=self.config.single_entity.id,
-                    entity_type=entitysdk.models.Simulation,
-                    file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
-                    file_content_type="application/json",
-                    asset_label="custom_node_sets",
-                )
+            L.info("-- Upload custom_node_sets")
+            _ = db_client.upload_file(
+                entity_id=self.config.single_entity.id,
+                entity_type=entitysdk.models.Simulation,
+                file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                file_content_type="application/json",
+                asset_label="custom_node_sets",
+            )
 
             L.info("-- Upload spike replay files")
             for input_ in self._sonata_config["inputs"]:
