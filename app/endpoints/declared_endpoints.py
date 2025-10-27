@@ -323,25 +323,7 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
             )
             continue
 
-    # If the loop finishes without returning, no reader worked.
-    # This is the point where we raise an error as requested.
-    reader_names = ", ".join([r.__name__ for r in NWB_READERS])
-    error_message = (
-        f"All {len(NWB_READERS)} NWB readers failed to read the file '{nwb_file_path}'.\n"
-        f"Attempted readers: {reader_names}"
-    )
-    raise RuntimeError(error_message)
-
-
-# Helper function for background cleanup
-def _cleanup_file(file_path: str) -> None:
-    """Synchronously deletes a file."""
-    if file_path:
-        try:
-            pathlib.Path(file_path).unlink(missing_ok=True)
-            L.info(f"Successfully deleted temporary file: {file_path}")
-        except OSError as e:
-            L.error(f"Error deleting temporary file {file_path}: {e!s}")
+    raise RuntimeError("All NWB readers failed.")
 
 
 def activate_validate_nwb_endpoint(router: APIRouter) -> None:
@@ -352,42 +334,68 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
         summary="Validate new format.",
         description="Tests a new file (.nwb) with basic validation.",
     )
-    async def validate_nwb_file(
+    def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
     ) -> dict:
-        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
-        temp_file_path = ""
+        """
+        Synchronously processes the NWB file validation.
 
-        content = await file.read()
+        It uses a TemporaryDirectory context manager to ensure all temporary
+        files created during processing are automatically cleaned up.
+        """
+        # Read the file content synchronously using the underlying file handle.
+        try:
+            content = file.file.read()
+
+        except Exception as e:
+            # Handle potential reading errors
+            L.error(f"Error reading uploaded file content: {e!s}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": ApiErrorCode.INTERNAL_SERVER_ERROR, "detail": "Failed to read file content"},
+            ) from e
+
         if not content:
             _handle_empty_file(file)
 
-        # Simplified synchronous function
-        def blocking_file_operations(file_content: bytes, suffix: str) -> str:
-            """Synchronously writes the file and runs the NWB reader. Returns NWB temp path."""
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-                # the suffix is needed to make the file readable by the validators
-                temp_file.write(file_content)
-                temp_file_path_local = temp_file.name
-
-            validate_all_nwb_readers(temp_file_path_local)
-
-            # The logic to create success_file is removed
-            return temp_file_path_local
-
-        try:
-            loop = asyncio.get_running_loop()
-
-            # Executor only returns one path (the NWB file)
-            temp_file_path = await loop.run_in_executor(
-                None,
-                blocking_file_operations,
-                content,
-                file_extension,
+        # File extension is needed for the NWB readers to recognize the file type
+        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
+        if file_extension not in {".nwb", ".swc", ".h5", ".asc"}:
+             raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": "Invalid file extension. Must be .nwb, .swc, .h5, or .asc",
+                },
             )
 
-        except Exception as e:
-            if isinstance(e, RuntimeError):
+        # Use TemporaryDirectory for robust, automatic cleanup of the file path
+        # after validation, regardless of success or failure.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_file_path = str(Path(temp_dir) / f"uploaded_file{file_extension}")
+
+            L.info(f"Writing file content to temporary path: {temp_file_path}")
+
+            # 1. Write the content to the temporary file path
+            try:
+                with open(temp_file_path, "wb") as temp_file:
+                    temp_file.write(content)
+            except Exception as e:
+                L.error(f"Error writing file to disk: {e!s}")
+                raise HTTPException(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    detail={"code": ApiErrorCode.INTERNAL_SERVER_ERROR, "detail": "Failed to write file to disk"},
+                ) from e
+
+            # 2. Run the synchronous validation function
+            try:
+                # This function now runs synchronously and cleanup is handled
+                # automatically when exiting the 'with' block.
+                validate_all_nwb_readers(temp_file_path)
+
+            except RuntimeError as e:
+                L.error(f"NWB validation failed: {e!s}")
+                # Raise an HTTPException on validation failure
                 raise HTTPException(
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                     detail={
@@ -395,18 +403,12 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
                         "detail": f"NWB validation failed: {e!s}",
                     },
                 ) from e
-            raise
-        else:
-            # Return a JSON payload directly (Moved here to fix TRY300)
-            return {
-                "status": "success",
-                "message": "NWB file validation successful.",
-            }
 
-        finally:
-            # Cleanup for the NWB file remains (as it's still temp_file_path)
-            if temp_file_path:
-                _cleanup_file(temp_file_path)
+        # If the context manager exits and no exception was raised, validation succeeded.
+        return {
+            "status": "success",
+            "message": "NWB file validation successful.",
+        }
 
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
