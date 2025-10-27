@@ -49,6 +49,13 @@ class MEModelWithSynapsesCircuitFromID(EntityFromID):
     entitysdk_class: ClassVar[type[entitysdk.models.entity.Entity]] = entitysdk.models.Circuit
     _entity: entitysdk.models.Circuit | None = PrivateAttr(default=None)
 
+    def entity(self, db_client: entitysdk.client.Client) -> entitysdk.models.Circuit:
+        entity = super().entity(db_client=db_client)
+        if entity.scale != "single":
+            msg = "Entity must be a circuit of scale 'single'."
+            raise OBIONEError(msg)
+        return entity
+
     def stage_circuit(
         self,
         *,
