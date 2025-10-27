@@ -32,6 +32,7 @@ from obi_one.scientific.unions.unions_manipulations import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
+    MEModelWithSynapsesNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -329,6 +330,15 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+        default_factory=dict,
+        reference_type=NeuronSetReference.__name__,
+        description="Neuron sets for the simulation.",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+    )
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: (
