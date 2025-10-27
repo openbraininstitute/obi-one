@@ -322,7 +322,7 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
                 str(e)
             )
             continue
-    
+
     # Fixes TRY003 & EM101: Assigning string literal to a variable before raising.
     error_message = "All NWB readers failed."
     raise RuntimeError(error_message)
