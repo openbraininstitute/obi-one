@@ -68,7 +68,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     )
     grid_scan.execute()
 
-    with pytest.raises(ValueError, match=re.escape("Unknown properties: ['INVALID']")):
+    with pytest.raises(ValueError, match=re.escape("Unknown properties: [np.str_('INVALID')]")):
         obi.run_tasks_for_generated_scan(grid_scan)
 
     # (c) Matrix extraction from two circuits through grid scan
