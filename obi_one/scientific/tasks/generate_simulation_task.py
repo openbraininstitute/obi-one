@@ -75,10 +75,11 @@ class GenerateSimulationTask(Task):
         self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        self._sonata_config["conditions"]["mechanisms"] = {
-            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        }
+        if isinstance(self.config, (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig)):
+            self._sonata_config["conditions"]["mechanisms"] = {
+                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            }
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
