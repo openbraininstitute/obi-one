@@ -25,6 +25,22 @@ class SynapticManipulation(Block, ABC):
         return sonata_config
 
 
+class GlobalSynapticManipulation(SynapticManipulation):
+    def _get_modoverride_name(self) -> str:
+        pass
+
+    def _generate_config(self) -> dict:
+        sonata_config = {
+            "name": self._get_override_name(),
+            "source": "All",
+            "target": "All",
+            "synapse_configure": self._get_synapse_configure(),
+            "modoverride": self._get_modoverride_name(),
+        }
+
+        return sonata_config
+
+
 class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
     """Applying a scaling factor to the U_SE parameter.
 
@@ -51,7 +67,7 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
         return f"%s.Use *= {self.use_scaling}"
 
 
-class SynapticMgManipulation(SynapticManipulation):
+class SynapticMgManipulation(GlobalSynapticManipulation):
     """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.
 
     This is applied for all synapses between biophysical neurons.
@@ -62,7 +78,7 @@ class SynapticMgManipulation(SynapticManipulation):
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=2.4,
         title="Extracellular Magnesium Concentration",
-        description="Extracellular calcium concentration in millimoles (mM).",
+        description="Extracellular magnesium concentration in millimoles (mM).",
         units="mM",
     )
 
@@ -71,4 +87,8 @@ class SynapticMgManipulation(SynapticManipulation):
         return "Mg"
 
     def _get_synapse_configure(self) -> str:
-        return f"%s.mg = {self.magnesium_value}"
+        return f"mg = {self.magnesium_value}"
+
+    @staticmethod
+    def _get_modoverride_name() -> str:
+        return "GluSynapse"
