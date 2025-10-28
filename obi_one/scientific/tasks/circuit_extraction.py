@@ -145,6 +145,7 @@ class CircuitExtractionTask(Task):
         else:
             scale = types.CircuitScale.microcircuit
         # TODO: Add support for other scales as well
+        # https://github.com/openbraininstitute/obi-one/issues/463
 
         if scale == types.CircuitScale.single:
             # Special case: Include extrinsic synapses & connections
@@ -261,6 +262,60 @@ class CircuitExtractionTask(Task):
         L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
         return directory_asset
 
+    def _add_derivation_link(self, db_client: Client, registered_circuit: models.Circuit) -> models.Derivation:
+        """Add a derivation link to the parent circuit."""
+        parent = self._circuit_entity  # Parent circuit entity
+        derivation_type = types.DerivationType.circuit_extraction
+        derivation_model = models.Derivation(
+            used=parent,
+            generated=registered_circuit,
+            derivation_type=derivation_type,
+            authorized_public=False,
+        )
+        registered_derivation = client.register_entity(derivation_model)
+        L.info(f"Derivation link '{derivation_type}' registered")
+        return registered_derivation
+
+    def _add_contributions(db_client: Client, registered_circuit: models.Circuit) -> list:
+        """Add circuit contributions (from the parent circuit)."""
+        # Get parent contributions
+        parent = self._circuit_entity  # Parent circuit entity
+        parent_contributions = db_client.search_entity(entity_type=models.Contribution, query={"entity__id": parent.id}).all()
+
+        # Register same contributions for extracted circuit
+        contributions_list = []
+        for contr in parent_contributions:
+            contr_model = models.Contribution(
+                agent=contr.agent,
+                role=contr.role,
+                entity=registered_circuit
+            )
+            registered_contr = client.register_entity(contr_model)
+            contributions_list.append(registered_contr)
+        # TODO: Additional contributors to be added by the user?
+        L.info(f"{len(contributions_list)} contributions registered")
+        return contributions_list
+
+    def _add_publications(db_client: Client, registered_circuit: models.Circuit) -> list:
+        """Add circuit publications (from the parent circuit)."""
+        # Get parent publications
+        parent = self._circuit_entity  # Parent circuit entity
+        parent_publications = db_client.search_entity(entity_type=models.ScientificArtifactPublicationLink, query={"scientific_artifact__id": parent.id}).all()
+
+        # Register same publications for extracted circuit
+        publications_list = []
+        for publ in parent_publications:
+            publ_link_model = models.ScientificArtifactPublicationLink(
+                publication=publ.publication,
+                scientific_artifact=registered_circuit,
+                publication_type=publ.publication_type,
+                authorized_public=False,
+            )
+            registered_publ_link = client.register_entity(publ_link_model)
+            publications_list.append(registered_publ_link)
+        L.info(f"{len(publications_list)} publications registered")
+        return publications_list
+
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
         return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
@@ -345,7 +400,9 @@ class CircuitExtractionTask(Task):
         for _morph_ext, _src_dir in src_morph_dirs.items():
             if _morph_ext == "h5" and Path(_src_dir).is_file():
                 # TODO: If there is only one neuron extracted, consider removing
-                #       the container!!
+                #       the container
+                # https://github.com/openbraininstitute/obi-one/issues/387
+
                 # Copy containerized morphologies into new container
                 Path(os.path.split(dest_morph_dirs[_morph_ext])[0]).mkdir(
                     parents=True, exist_ok=True
@@ -496,7 +553,7 @@ class CircuitExtractionTask(Task):
 
         L.info("Extraction DONE")
 
-        # Register new circuit entity incl. assets
+        # Register new circuit entity incl. assets and linked entities
         if db_client and self._circuit_entity:
             new_circuit_entity = self._create_circuit_entity(
                 db_client=db_client, circuit_path=new_circuit_path
@@ -507,27 +564,40 @@ class CircuitExtractionTask(Task):
                 db_client=db_client, circuit_path=new_circuit_path, entity=new_circuit_entity
             )
 
-            # Register compressed circuit asset
+            # TODO: Register compressed circuit asset
+            # https://github.com/openbraininstitute/obi-one/issues/462
             # --> Requires running circuit compression
             # self._add_compressed_circuit_asset(db_client=db_client, circuit_path=new_circuit_path,
             # entity=new_circuit_entity)
 
-            # Connectivity matrix folder asset
+            # TODO: Connectivity matrix folder asset
+            # https://github.com/openbraininstitute/obi-one/issues/441
             # --> Requires running matrix extraction
             # self._add_matrix_folder_asset(db_client=db_client, circuit_path=new_circuit_path,
             # entity=new_circuit_entity)
 
-            # Circuit figures for detailed explore page
+            # TODO: Circuit figures for detailed explore page
+            # https://github.com/openbraininstitute/obi-one/issues/442
             # --> Requires generating a new overview figure
             # --> Requires running circuit analysis & plotting
             # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
             # entity=new_circuit_entity)
 
-            # Circuit figure for simulation designer
+            # TODO: Circuit figure for simulation designer
+            # https://github.com/openbraininstitute/obi-one/issues/442
             # --> Requires generating a new simulation designer figure
             # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
             # entity=new_circuit_entity)
 
+            # Derivation link
+            self._add_derivation_link(db_client=db_client, entity=new_circuit_entity)
+        
+            # Contribution links
+            self._add_contributions(db_client=db_client, entity=new_circuit_entity)
+            
+            # Publication links
+            self._add_publications(db_client=db_client, entity=new_circuit_entity)
+            
             L.info("Registration DONE")
 
         # Clean-up
