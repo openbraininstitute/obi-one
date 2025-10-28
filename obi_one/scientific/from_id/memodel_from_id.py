@@ -30,5 +30,7 @@ class MEModelFromID(EntityFromID):
             circuit_config_path = stage_sonata_from_memodel(
                 client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
             )
+        else:
+            circuit_config_path = dest_dir / "circuit_config.json"
 
         return MEModelCircuit(name="single_cell", path=str(circuit_config_path))
