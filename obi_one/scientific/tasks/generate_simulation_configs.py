@@ -302,9 +302,12 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Circuit to simulate."
         )
-        node_set: Annotated[
-            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        ]
+        node_set: (
+            Annotated[
+                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+            ]
+            | None
+        ) = None
 
     initialize: Initialize = Field(
         title="Initialization",
