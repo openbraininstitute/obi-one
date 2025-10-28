@@ -75,7 +75,10 @@ class GenerateSimulationTask(Task):
         self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        if isinstance(self.config, (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig)):
+        if isinstance(
+            self.config,
+            (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
+        ):
             self._sonata_config["conditions"]["mechanisms"] = {
                 "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
                 "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
