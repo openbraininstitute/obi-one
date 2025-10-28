@@ -16,6 +16,7 @@ class EMDataSetFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = EMDenseReconstructionDataset
     _entity: EMDenseReconstructionDataset | None = PrivateAttr(default=None) 
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
+    _auth_token: str | None = PrivateAttr(default=None)
     cave_version: int
 
     def synapse_info_df(self, pt_root_id, db_client=None, col_location="ctr_pt_position"):
@@ -56,6 +57,7 @@ class EMDataSetFromID(EntityFromID):
         _datastack_name = entity.cave_datastack
         _cave_client_url = entity.cave_client_url
 
-        cave_client = CAVEclient(_datastack_name, server_address=_cave_client_url)
+        cave_client = CAVEclient(_datastack_name, server_address=_cave_client_url,
+                                 auth_token=self._auth_token)
         cave_client.version = self.cave_version
         return cave_client
