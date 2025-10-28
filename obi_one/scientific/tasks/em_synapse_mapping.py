@@ -75,13 +75,14 @@ class EMSynapseMappingTask(Task):
         print("Resolving skeleton provenance...")
         pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(db_client, morph_entity)
 
-        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id),
-                                     cave_version=source_mesh_entity.release_version)
+        cave_version=source_mesh_entity.release_version
+        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id))
         
         print("Reading data from source EM reconstruction...")
         syns, coll_pre, coll_post = self.synapses_and_nodes_dataframes_from_EM(em_dataset,
                                                                                pt_root_id,
-                                                                               db_client)
+                                                                               db_client,
+                                                                               cave_version)
         print("Mapping synapses onto morphology...")
         mapped_synapses_df = map_afferents_to_spiny_morphology(spiny_morph, syns)
 
@@ -125,11 +126,11 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
         }
         compressed_path = self.compress_output()
-        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
         
-    def synapses_and_nodes_dataframes_from_EM(self, em_dataset, pt_root_id, db_client):
+    def synapses_and_nodes_dataframes_from_EM(self, em_dataset, pt_root_id, db_client, cave_version):
         # SYNAPSES
-        syns = em_dataset.synapse_info_df(pt_root_id,
+        syns = em_dataset.synapse_info_df(pt_root_id, cave_version,
                                           col_location="post_pt_position",
                                           db_client=db_client)
         # NODES
@@ -168,7 +169,7 @@ class EMSynapseMappingTask(Task):
                 "-1",
                 str(out_root / "sonata.tar")
             ])
-        return str(out_root / "sonata.tar")
+        return str(out_root / "sonata.tar.gz")
     
 
     def register_output(self, db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path):
@@ -202,6 +203,7 @@ class EMSynapseMappingTask(Task):
                    file_path=compressed_path,
                    file_content_type=ContentType.application_gzip,
                    asset_label=AssetLabel.compressed_sonata_circuit)
+        print(f"Output registered as: {existing_circuit.id}")
 
 
 

@@ -17,10 +17,10 @@ class EMDataSetFromID(EntityFromID):
     _entity: EMDenseReconstructionDataset | None = PrivateAttr(default=None) 
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     _auth_token: str | None = PrivateAttr(default=None)
-    cave_version: int
+    # cave_version: int
 
-    def synapse_info_df(self, pt_root_id, db_client=None, col_location="ctr_pt_position"):
-        client = self._make_cave_client(db_client)
+    def synapse_info_df(self, pt_root_id, cave_version, db_client=None, col_location="ctr_pt_position"):
+        client = self._make_cave_client(db_client, cave_version=cave_version)
         if self._viewer_resolution is None:
             self._viewer_resolution = client.info.viewer_resolution()
         
@@ -35,19 +35,23 @@ class EMDataSetFromID(EntityFromID):
         syns.index.name = "synapse_id"
         return syns
     
-    def neuron_info_df(self, table_name, db_client=None):
-        client = self._make_cave_client(db_client)
+    def neuron_info_df(self, table_name, cave_version, db_client=None):
+        client = self._make_cave_client(db_client, cave_version=cave_version)
         tbl = client.materialize.query_table(table_name)
         counts = tbl["pt_root_id"].value_counts()
         tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
         return tbl
+    
+    def get_versions(self, db_client=None):
+        client = self._make_cave_client(db_client)
+        return client.materialize.get_versions()
         
     def viewer_resolution(self, db_client=None):
         if self._viewer_resolution is None:
             self._viewer_resolution = self._make_cave_client(db_client=db_client).info.viewer_resolution()
         return self._viewer_resolution
     
-    def _make_cave_client(self, db_client):
+    def _make_cave_client(self, db_client, cave_version=None):
         try:
             from caveclient import CAVEclient
         except ImportError:
@@ -59,5 +63,5 @@ class EMDataSetFromID(EntityFromID):
 
         cave_client = CAVEclient(_datastack_name, server_address=_cave_client_url,
                                  auth_token=self._auth_token)
-        cave_client.version = self.cave_version
+        cave_client.version = cave_version
         return cave_client

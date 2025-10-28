@@ -8,12 +8,12 @@ import voxcell
 #     tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
 #     return tbl
 
-def get_specified_tables(em_dataset, db_client, specs):
+def get_specified_tables(em_dataset, db_client, cave_version, specs):
     lst_tbls = []
     for _x in specs.values():
         if _x["table"] not in lst_tbls:
             lst_tbls.append(_x["table"])
-    return dict([(tbl_name, em_dataset.neuron_info_df(tbl_name, db_client=db_client))
+    return dict([(tbl_name, em_dataset.neuron_info_df(tbl_name, cave_version, db_client=db_client))
                  for tbl_name in lst_tbls])
 
 def resolve_position_to_xyz(resolutions):
@@ -30,8 +30,8 @@ def resolve_position_to_xyz(resolutions):
     return func
 
 
-def assemble_collection_from_specs(em_dataset, db_client, specs, pt_root_mapping):
-    tables = get_specified_tables(em_dataset, db_client, specs)
+def assemble_collection_from_specs(em_dataset, db_client, cave_version, specs, pt_root_mapping):
+    tables = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []
     for col_out, entry in specs.items():
