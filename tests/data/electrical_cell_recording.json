@@ -122,39 +122,39 @@
   "stimuli": [
     {
       "type": "electrical_recording_stimulus",
-      "id": "b487b0da-33dd-4cf1-a9c7-6d19a2b55ab7",
-      "name": "GenericStep",
+      "id": "05ae312f-4ae3-4c07-af1c-387433e37e27",
+      "creation_date": "2025-05-17T15:50:57.242124Z",
+      "update_date": "2025-05-17T15:50:57.242124Z",
+      "name": "Step",
       "description": "",
-      "dt": null,
       "injection_type": "current_clamp",
       "shape": "step",
-      "start_time": null,
-      "end_time": null,
-      "recording_id": "98dece14-e154-4ff1-9c1d-34e1563cdd0a"
+      "authorized_public": false,
+      "assets": []
     },
     {
       "type": "electrical_recording_stimulus",
-      "id": "fed29e0c-cf49-4841-9025-213606ab1bc4",
-      "name": "GenericStep",
+      "id": "6c5a8c67-6d4e-4d21-993d-2d8a2ee6ff4e",
+      "creation_date": "2025-05-17T15:50:57.245436Z",
+      "update_date": "2025-05-17T15:50:57.245436Z",
+      "name": "Step",
       "description": "",
-      "dt": null,
       "injection_type": "current_clamp",
       "shape": "step",
-      "start_time": null,
-      "end_time": null,
-      "recording_id": "98dece14-e154-4ff1-9c1d-34e1563cdd0a"
+      "authorized_public": false,
+      "assets": []
     },
     {
       "type": "electrical_recording_stimulus",
-      "id": "5d0664fd-7785-48e0-b760-532a73f59f14",
-      "name": "GenericStep",
+      "id": "20f93aea-cfd8-4996-b825-7d46b725e98a",
+      "creation_date": "2025-05-17T15:50:57.248745Z",
+      "update_date": "2025-05-17T15:50:57.248745Z",
+      "name": "Step",
       "description": "",
-      "dt": null,
       "injection_type": "current_clamp",
       "shape": "step",
-      "start_time": null,
-      "end_time": null,
-      "recording_id": "98dece14-e154-4ff1-9c1d-34e1563cdd0a"
+      "authorized_public": false,
+      "assets": []
     }
   ],
   "etypes": [
