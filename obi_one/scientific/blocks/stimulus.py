@@ -10,6 +10,7 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
+from obi_one.scientific.blocks.timestamps import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -22,7 +23,10 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    resolve_timestamps_ref_to_timestamps,
+)
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI
@@ -42,6 +46,7 @@ class Stimulus(Block, ABC):
     ]
 
     _default_node_set: str = PrivateAttr(default="All")
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -83,9 +88,16 @@ class SomaticStimulus(Stimulus, ABC):
     calculation of the extracellular signal."""
 
     def config(
-        self, circuit: Circuit, population: str | None = None, default_node_set: str = "All"
+        self,
+        circuit: Circuit,
+        population: str | None = None,
+        default_node_set: str = "All",
+        default_timestamps: TimestampsReference = None,
     ) -> dict:
         self._default_node_set = default_node_set
+        if default_timestamps is None:
+            default_timestamps = SingleTimestamp(start_time=0.0)
+        self._default_timestamps = default_timestamps
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.population_type(circuit, population) != "biophysical"
@@ -117,7 +129,9 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -151,7 +165,9 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -192,7 +208,9 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -236,7 +254,9 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -277,7 +297,9 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -321,7 +343,9 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -376,7 +400,9 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -429,7 +455,9 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -467,7 +495,9 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -496,7 +526,9 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
+
+        for t_ind, timestamp in enumerate(timestamps):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
@@ -653,7 +685,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block.get_population(source_node_population)
-        timestamps = self.timestamps.block.timestamps()
+        timestamps = resolve_timestamps_ref_to_timestamps(self.timestamps, self._default_timestamps)
 
         if (
             self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps)
