@@ -222,7 +222,44 @@ class CircuitExtractionTask(Task):
             authorized_public=False,
         )
         registered_circuit = db_client.register_entity(circuit_model)
+        L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
         return registered_circuit
+
+    @staticmethod
+    def _add_circuit_folder_asset(
+        db_client: Client, circuit_path: Path, registered_circuit: models.Circuit
+    ) -> models.Asset:
+        """Upload a circuit folder directory asset to a registered circuit entity."""
+        asset_label = "sonata_circuit"
+        circuit_folder = circuit_path.parent
+        if not circuit_folder.is_dir():
+            msg = "Circuit folder does not exist!"
+            raise OBIONEError(msg)
+
+        # Collect circuit files
+        circuit_files = {
+            str(path.relative_to(circuit_folder)): path
+            for path in circuit_folder.rglob("*")
+            if path.is_file()
+        }
+        L.info(f"{len(circuit_files)} files in '{circuit_folder}'")
+        if "circuit_config.json" not in circuit_files:
+            msg = "Circuit config file not found in circuit folder!"
+            raise OBIONEError(msg)
+        if "node_sets.json" not in circuit_files:
+            msg = "Node sets file not found in circuit folder!"
+            raise OBIONEError(msg)
+
+        # Upload asset
+        directory_asset = db_client.upload_directory(
+            label=asset_label,
+            name=asset_label,
+            entity_id=registered_circuit.id,
+            entity_type=models.Circuit,
+            paths=circuit_files,
+        )
+        L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
+        return directory_asset
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -465,8 +502,31 @@ class CircuitExtractionTask(Task):
                 db_client=db_client, circuit_path=new_circuit_path
             )
 
-            # TODO...
-            # self._add_circuit_assets(db_client=db_client, circuit_path=new_circuit_path, entity=new_circuit_entity)
+            # Register circuit folder asset
+            self._add_circuit_folder_asset(
+                db_client=db_client, circuit_path=new_circuit_path, entity=new_circuit_entity
+            )
+
+            # Register compressed circuit asset
+            # --> Requires running circuit compression
+            # self._add_compressed_circuit_asset(db_client=db_client, circuit_path=new_circuit_path,
+            # entity=new_circuit_entity)
+
+            # Connectivity matrix folder asset
+            # --> Requires running matrix extraction
+            # self._add_matrix_folder_asset(db_client=db_client, circuit_path=new_circuit_path,
+            # entity=new_circuit_entity)
+
+            # Circuit figures for detailed explore page
+            # --> Requires generating a new overview figure
+            # --> Requires running circuit analysis & plotting
+            # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
+            # entity=new_circuit_entity)
+
+            # Circuit figure for simulation designer
+            # --> Requires generating a new simulation designer figure
+            # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
+            # entity=new_circuit_entity)
 
             L.info("Registration DONE")
 
