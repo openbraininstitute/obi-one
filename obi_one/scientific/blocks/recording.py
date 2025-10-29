@@ -4,10 +4,10 @@ from typing import Annotated, ClassVar, Self
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -15,9 +15,12 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 
 
 class Recording(Block, ABC):
-    neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
-    ]
+    neuron_set: (
+        Annotated[
+            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
+        ]
+        | None
+    ) = None
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0

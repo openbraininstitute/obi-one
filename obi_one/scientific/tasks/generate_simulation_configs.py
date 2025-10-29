@@ -6,43 +6,53 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import (
-    Field,
-    NonNegativeFloat,
-    PositiveFloat,
-    PrivateAttr,
-)
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.constants import (
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
-)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.library.constants import (
+    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+)
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions.unions_recordings import (
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions.unions_stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
     StimulusUnion,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    TimestampsUnion,
+)
 
 L = logging.getLogger(__name__)
+
+
+DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
+DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 
 
 class BlockGroup(StrEnum):
@@ -57,6 +67,9 @@ class BlockGroup(StrEnum):
 
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
+MEModelWithSynapsesCircuitDiscriminator = Annotated[
+    MEModelWithSynapsesCircuit | MEModelWithSynapsesCircuitFromID, Field(discriminator="type")
+]
 
 TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
@@ -79,7 +92,11 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
                 BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            ]
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            },
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
@@ -122,7 +139,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 Field(min_length=1),
             ]
         ) = Field(
-            default=1000.0,
+            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             units="ms",
@@ -182,7 +199,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             multiple_value_parameters_dictionary = {}
 
         L.info("-- Register SimulationCampaign Entity")
-        if isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
+        if isinstance(
+            self.initialize.circuit,
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+        ):
             entity_id = self.initialize.circuit.id_str
         elif isinstance(self.initialize.circuit, list):
             if len(self.initialize.circuit) != 1:
@@ -284,9 +304,12 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Circuit to simulate."
         )
-        node_set: Annotated[
-            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        ]
+        node_set: (
+            Annotated[
+                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+            ]
+            | None
+        ) = None
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -306,6 +329,35 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
 
+class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
+    """MEModelWithSynapsesCircuitSimulationScanConfig."""
+
+    single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
+    name: ClassVar[str] = "Simulation Campaign"
+    description: ClassVar[str] = "SONATA simulation campaign"
+
+    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+        default_factory=dict,
+        reference_type=NeuronSetReference.__name__,
+        description="Neuron sets for the simulation.",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+    )
+
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: (
+            MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
+        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
+
 class SimulationSingleConfigMixin(abc.ABC):
     """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
 
@@ -321,7 +373,10 @@ class SimulationSingleConfigMixin(abc.ABC):
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if not isinstance(self.initialize.circuit, (CircuitFromID, MEModelFromID)):
+        if not isinstance(
+            self.initialize.circuit,
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+        ):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
                 "or MEModelFromID"
@@ -357,5 +412,11 @@ class CircuitSimulationSingleConfig(
 
 class MEModelSimulationSingleConfig(
     MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+):
+    """Only allows single values."""
+
+
+class MEModelWithSynapsesCircuitSimulationSingleConfig(
+    MEModelWithSynapsesCircuitSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
 ):
     """Only allows single values."""

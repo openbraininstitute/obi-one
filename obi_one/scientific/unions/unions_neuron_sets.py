@@ -71,6 +71,12 @@ CircuitExtractionNeuronSetUnion = Annotated[
 ]
 
 
+MEModelWithSynapsesNeuronSetUnion = Annotated[
+    nbS1VPMInputs | nbS1POmInputs,
+    Discriminator("type"),
+]
+
+
 class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
 

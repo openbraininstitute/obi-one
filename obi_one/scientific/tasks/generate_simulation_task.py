@@ -10,7 +10,11 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.blocks.timestamps import SingleTimestamp
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -18,29 +22,35 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
+    DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
 
-DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
+L = logging.getLogger(__name__)
+
 DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
     block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
 )
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
-
-L = logging.getLogger(__name__)
+DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
 
 class GenerateSimulationTask(Task):
-    config: CircuitSimulationSingleConfig | MEModelSimulationSingleConfig
+    config: (
+        CircuitSimulationSingleConfig
+        | MEModelSimulationSingleConfig
+        | MEModelWithSynapsesCircuitSimulationSingleConfig
+    )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -68,10 +78,14 @@ class GenerateSimulationTask(Task):
         self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        self._sonata_config["conditions"]["mechanisms"] = {
-            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        }
+        if isinstance(
+            self.config,
+            (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
+        ):
+            self._sonata_config["conditions"]["mechanisms"] = {
+                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            }
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -80,8 +94,10 @@ class GenerateSimulationTask(Task):
             self._circuit = self.config.initialize.circuit
             self._sonata_config["network"] = self.config.initialize.circuit.path
 
-        elif isinstance(self.config.initialize.circuit, (CircuitFromID, MEModelFromID)):
-            L.info("initialize.circuit is a MEModelFromID instance.")
+        elif isinstance(
+            self.config.initialize.circuit,
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+        ):
             self._circuit_id = self.config.initialize.circuit.id_str
 
             circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
@@ -120,7 +136,10 @@ class GenerateSimulationTask(Task):
                 )
             self._sonata_config["inputs"].update(
                 stimulus.config(
-                    self._circuit, self._circuit.default_population_name, DEFAULT_NODE_SET_NAME
+                    self._circuit,
+                    self._circuit.default_population_name,
+                    DEFAULT_NODE_SET_NAME,
+                    DEFAULT_TIMESTAMPS,
                 )
             )
 
@@ -205,7 +224,7 @@ class GenerateSimulationTask(Task):
 
         Infer default if needed. Assert biophysical.
         """
-        if hasattr(self.config, "neuron_sets"):
+        if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
             if self.config.initialize.node_set is None:
                 L.info("initialize.node_set is None — setting default node set.")
                 self.config.initialize.node_set = self._default_neuron_set_ref()
@@ -292,15 +311,14 @@ class GenerateSimulationTask(Task):
                 asset_label="sonata_simulation_config",
             )
 
-            if hasattr(self.config, "neuron_sets"):
-                L.info("-- Upload custom_node_sets")
-                _ = db_client.upload_file(
-                    entity_id=self.config.single_entity.id,
-                    entity_type=entitysdk.models.Simulation,
-                    file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
-                    file_content_type="application/json",
-                    asset_label="custom_node_sets",
-                )
+            L.info("-- Upload custom_node_sets")
+            _ = db_client.upload_file(
+                entity_id=self.config.single_entity.id,
+                entity_type=entitysdk.models.Simulation,
+                file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                file_content_type="application/json",
+                asset_label="custom_node_sets",
+            )
 
             L.info("-- Upload spike replay files")
             for input_ in self._sonata_config["inputs"]:
