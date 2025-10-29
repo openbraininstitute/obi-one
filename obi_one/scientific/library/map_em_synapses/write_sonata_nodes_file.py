@@ -13,8 +13,14 @@ def get_specified_tables(em_dataset, db_client, cave_version, specs):
     for _x in specs.values():
         if _x["table"] not in lst_tbls:
             lst_tbls.append(_x["table"])
-    return dict([(tbl_name, em_dataset.neuron_info_df(tbl_name, cave_version, db_client=db_client))
-                 for tbl_name in lst_tbls])
+    
+    dict_tpls = []
+    lst_notices = []
+    for tbl_name in lst_tbls:
+        data, notice = em_dataset.neuron_info_df(tbl_name, cave_version, db_client=db_client)
+        lst_notices.append(notice)
+        dict_tpls.append((tbl_name, data))
+    return dict(dict_tpls), lst_notices
 
 def resolve_position_to_xyz(resolutions):
     def func(lst_xyz):
@@ -31,7 +37,7 @@ def resolve_position_to_xyz(resolutions):
 
 
 def assemble_collection_from_specs(em_dataset, db_client, cave_version, specs, pt_root_mapping):
-    tables = get_specified_tables(em_dataset, db_client, cave_version, specs)
+    tables, lst_notices = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []
     for col_out, entry in specs.items():
@@ -45,7 +51,7 @@ def assemble_collection_from_specs(em_dataset, db_client, cave_version, specs, p
     out_df = pandas.concat(out_cols, axis=1)
     out_df = out_df.reset_index().rename(columns={"pre_pt_root_id": "pt_root_id"})
     out_df.index = pandas.Index(range(1, len(out_df) + 1))
-    return voxcell.CellCollection.from_dataframe(out_df)
+    return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
 def write_nodes(fn_out, population_name, cell_collection, write_mode="w"):

@@ -105,10 +105,10 @@ class EMSynapseMappingTask(Task):
                                      auth_token=self.config.cave_token)
         
         print("Reading data from source EM reconstruction...")
-        syns, coll_pre, coll_post = self.synapses_and_nodes_dataframes_from_EM(em_dataset,
-                                                                               pt_root_id,
-                                                                               db_client,
-                                                                               cave_version)
+        syns, coll_pre, coll_post, lst_notices = self.synapses_and_nodes_dataframes_from_EM(em_dataset,
+                                                                                            pt_root_id,
+                                                                                            db_client,
+                                                                                            cave_version)
         print("Mapping synapses onto morphology...")
         mapped_synapses_df, mesh_res = map_afferents_to_spiny_morphology(spiny_morph, syns, add_quality_info=True)
 
@@ -154,21 +154,25 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
         }
         compressed_path = self.compress_output()
-        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        print("The following are the notices for the used data:")
+        for notice in lst_notices:
+            print(notice)
+            print("\n")
         
     def synapses_and_nodes_dataframes_from_EM(self, em_dataset, pt_root_id, db_client, cave_version):
         # SYNAPSES
-        syns = em_dataset.synapse_info_df(pt_root_id, cave_version,
-                                          col_location="post_pt_position",
-                                          db_client=db_client)
+        syns, syns_notice = em_dataset.synapse_info_df(pt_root_id, cave_version,
+                                                       col_location="post_pt_position",
+                                                       db_client=db_client)
         # NODES
         pre_pt_root_to_sonata = syns["pre_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("pre_pt_root_id")
         post_pt_root_to_sonata = syns["post_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("post_pt_root_id")
         node_spec = default_node_spec_for(em_dataset, db_client)
-        coll_pre = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, pre_pt_root_to_sonata)
-        coll_post = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, post_pt_root_to_sonata)
+        coll_pre, nodes_notice = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, pre_pt_root_to_sonata)
+        coll_post, _ = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, post_pt_root_to_sonata)
 
-        return syns, coll_pre, coll_post
+        return syns, coll_pre, coll_post, [syns_notice] + nodes_notice
 
 
     def resolve_provenance(self, db_client, morph_entity):

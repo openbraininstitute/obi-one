@@ -35,14 +35,18 @@ class EMDataSetFromID(EntityFromID):
                                                           index=_C_P_LOCS))
         syns = pandas.concat([syns, syn_locs], axis=1).reset_index(drop=True)
         syns.index.name = "synapse_id"
-        return syns
+
+        notice_text = client.materialize.get_table_metadata(client.materialize.synapse_table).get("notice_text")
+        return syns, notice_text
     
     def neuron_info_df(self, table_name, cave_version, db_client=None):
         client = self._make_cave_client(db_client, cave_version=cave_version)
         tbl = client.materialize.query_table(table_name)
         counts = tbl["pt_root_id"].value_counts()
         tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
-        return tbl
+
+        notice_text = client.materialize.get_table_metadata(table_name).get("notice_text")
+        return tbl, notice_text
     
     def get_versions(self, db_client=None):
         client = self._make_cave_client(db_client)
