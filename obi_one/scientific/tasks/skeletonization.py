@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
@@ -23,6 +23,7 @@ from obi_one.core.block import Block
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
@@ -58,13 +59,26 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     # _campaign: entitysdk.models.SimulationCampaign = None
 
     class Initialize(Block):
-        circuit: None
-      
-        v_init: list[float] | float = Field(
-            default=-80.0,
-            title="Initial Voltage",
-            description="Initial membrane potential in millivolts (mV).",
-            units="mV",
+        cell_mesh: EMCellMeshFromID
+
+        neuron_voxel_size: Annotated[PositiveFloat, Field(ge=0.001, le=1.0)] | list[Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]] = Field(
+            default=0.1,
+            title="Neuron Voxel Size",
+            description="Neuron reconstruction resolution in micrometers.",
+            units="μm",
+        )
+
+        spines_voxel_size: Annotated[PositiveFloat, Field(ge=0.001, le=0.1)] | list[Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]] = Field(
+            default=0.05,
+            title="Spine Voxel Size",
+            description="Spine reconstruction resolution in micrometers.",
+            units="μm",
+        )
+
+        segment_spines: bool = Field(
+            default=True,
+            title="Segment Spines",
+            description="Segment dendritic spines from the neuron morphology."
         )
         
 
@@ -198,39 +212,42 @@ class GenerateSimulationTask(Task):
 
         http_client = httpx.Client()
 
+        token = os.getenv("OBI_AUTHENTICATION_TOKEN")
+        project_context = db_client.project_context
+
         mesh_api_headers = httpx.Headers({
-        "Authorization": f"Bearer {token}",
-        "virtual-lab-id": str(project_context.virtual_lab_id),
-        "project-id": str(project_context.project_id)
+            "Authorization": f"Bearer {token}",
+            "virtual-lab-id": str(project_context.virtual_lab_id),
+            "project-id": str(project_context.project_id)
         })
 
 
         # Prepare task params
         input_params = {
-            "name": mesh_id,
+            "name": self.config.cell_mesh.id_str,
             "description": "Reconstructed morphology from an EM surface mesh"
         }
 
         skeletonization_params = {
-            "em_cell_mesh_id": mesh_id,
-            "neuron_voxel_size": 0.1, # in microns
-            "spines_voxel_size": 0.05, # in microns
-            "segment_spines": True
+            "em_cell_mesh_id": self.config.initialize.cell_mesh.id_str,
+            "neuron_voxel_size": self.config.initialize.neuron_voxel_size, # in microns
+            "spines_voxel_size": self.config.initialize.spines_voxel_size, # in microns
+            "segment_spines": self.config.initialize.segment_spines
         }
 
         # Submit mesh skeletonization task
         start_res = http_client.post(
-        f"{mesh_api_base_url}/run",
-        params=skeletonization_params,
-        headers=mesh_api_headers,
-        json=input_params
+            f"{mesh_api_base_url}/run",
+            params=skeletonization_params,
+            headers=mesh_api_headers,
+            json=input_params
         )
 
         job_id = None
 
         if start_res.is_success:
             job_id = start_res.json().get("id")
-            else:
+        else:
             print(start_res.text)
             raise RuntimeError("Failed to submit mesh skeletonization task")
 
