@@ -240,7 +240,13 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "targeted_neuron_set": id10_ref,
         "timestamp_offset": 0.0,
     }
-    volt_dict = {"type": "TimeWindowSomaVoltageRecording", "neuron_set": id10_ref, "dt": 0.1, 'start_time': 0.0, 'end_time': 3000.0}
+    volt_dict = {
+        "type": "TimeWindowSomaVoltageRecording",
+        "neuron_set": id10_ref,
+        "dt": 0.1,
+        "start_time": 0.0,
+        "end_time": 3000.0,
+    }
     id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
     id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
     id10_dict = {
@@ -392,8 +398,13 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "PoissonInputStimulus": poisson_dict,
             "SynchronousInputStimulus": sync_dict,
         }
-        volt_dict = {"type": "TimeWindowSomaVoltageRecording", "neuron_set": id10_ref, "dt": 0.1, "start_time": 0.0,
-            "end_time": 3000.0}
+        volt_dict = {
+            "type": "TimeWindowSomaVoltageRecording",
+            "neuron_set": id10_ref,
+            "dt": 0.1,
+            "start_time": 0.0,
+            "end_time": 3000.0,
+        }
         assert cfg.pop("recordings") == {"VoltageRecording": volt_dict}
         id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
         id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
