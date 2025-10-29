@@ -1,94 +1,123 @@
 {
-  "type": "electrical_cell_recording",
-  "id": "7b7db396-00cb-4f72-924c-f2676a5ecd6f",
-  "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
-  "authorized_public": true,
+  "contributions": [
+    {
+      "id": "05dd09b6-0553-4d8e-a7bf-4b5841a697ae",
+      "agent": {
+        "id": "30189f0d-9f0a-4d2e-8869-2706399986cc",
+        "given_name": "Anil",
+        "family_name": "Tuncel",
+        "pref_label": "Anil Tuncel",
+        "type": "person"
+      },
+      "role": {
+        "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
+        "creation_date": "2025-06-27T11:10:53.209515Z",
+        "update_date": "2025-06-27T11:10:53.209515Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      }
+    },
+    {
+      "id": "8fcdd90d-c36e-411c-a1f4-dea613c4acdf",
+      "agent": {
+        "id": "36b621f5-5d56-45a2-9b49-f36261142cc4",
+        "pref_label": "École Polytechnique Fédérale de Lausanne",
+        "alternative_name": "",
+        "type": "organization"
+      },
+      "role": {
+        "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
+        "creation_date": "2025-06-27T11:10:53.209515Z",
+        "update_date": "2025-06-27T11:10:53.209515Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "size": 1657656,
+      "sha256_digest": "96cc3960ce65133a79be19af9b8b5fa614eb42328cb2e4c67fbe0f96c51c28e2",
+      "path": "S1FL_L5_DBC_cIR_4.nwb",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/electrical_cell_recording/98dece14-e154-4ff1-9c1d-34e1563cdd0a/S1FL_L5_DBC_cIR_4.nwb",
+      "is_directory": false,
+      "content_type": "application/nwb",
+      "meta": {},
+      "label": "nwb",
+      "storage_type": "aws_s3_internal",
+      "id": "898ef0f4-d36f-4426-8af7-145cdb202004",
+      "status": "created"
+    }
+  ],
   "license": {
-    "id": "cd613e30-d8f1-4adf-91b7-584a2265b1f5",
-    "creation_date": "2025-05-17T15:41:58.735608Z",
-    "update_date": "2025-05-17T15:41:58.735611Z",
+    "id": "c268a20e-b78a-4332-a5e1-38e26c4454b9",
+    "creation_date": "2025-06-27T11:10:28.715323Z",
+    "update_date": "2025-06-27T11:10:28.715324Z",
     "name": "https://bbp.epfl.ch/neurosciencegraph/data/licenses/97521f71-605d-4f42-8f1b-c37e742a30bf",
     "description": "undefined",
     "label": "undefined"
   },
   "creation_date": "2021-06-15T09:42:25.311000Z",
   "update_date": "2024-01-11T07:56:56.842835Z",
+  "created_by": {
+    "id": "4067c358-4ee2-47f8-9a94-e3e8ab73738f",
+    "given_name": "Anna-Kristin",
+    "family_name": "Kaufmann",
+    "pref_label": "Anna-Kristin Kaufmann",
+    "type": "person"
+  },
+  "updated_by": {
+    "id": "bd143fa9-b714-410c-a65d-7435c1066932",
+    "given_name": "Christina",
+    "family_name": "Gonzalez",
+    "pref_label": "Christina Gonzalez",
+    "type": "person"
+  },
+  "brain_region": {
+    "creation_date": "2025-06-27T11:10:27.186088Z",
+    "update_date": "2025-06-27T11:10:27.186088Z",
+    "id": "61d89b07-dfa0-439a-9187-7ebfe60e212b",
+    "annotation_value": 322,
+    "name": "Primary somatosensory area",
+    "acronym": "SSp",
+    "color_hex_triplet": "188064",
+    "parent_structure_id": "9680c40f-ccfe-4804-851f-1024ff0d6409",
+    "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd"
+  },
+  "subject": {
+    "id": "9fb86d35-6bda-4b8d-9eb3-2715c98fff3b",
+    "name": "Unknown",
+    "description": "",
+    "sex": "unknown",
+    "weight": null,
+    "age_value": null,
+    "age_min": null,
+    "age_max": null,
+    "age_period": null,
+    "species": {
+      "id": "3b1c2a25-b4fb-468d-98d2-d2d431ac8b4a",
+      "name": "Rattus norvegicus",
+      "taxonomy_id": "NCBITaxon:10116"
+    },
+    "strain": null
+  },
+  "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
+  "authorized_public": true,
+  "type": "electrical_cell_recording",
+  "id": "98dece14-e154-4ff1-9c1d-34e1563cdd0a",
+  "experiment_date": null,
+  "contact_email": null,
+  "published_in": null,
   "name": "S1FL_L5_DBC_cIR_4",
   "description": "This dataset is about simulated electrophysiology traces for cell instance S1FL_L5_DBC_cIR_4. The dataset contains one distribution of the traces in NWB file format.",
   "ljp": 0.0,
   "recording_location": [],
   "recording_type": "intracellular",
   "recording_origin": "in_silico",
+  "temperature": null,
   "comment": "SSCX Simulation Data",
   "legacy_id": [
     "https://bbp.epfl.ch/neurosciencegraph/data/traces/0eae2191-0c15-4261-b2bb-06d753504ac1"
-  ],
-  "subject": {
-    "id": "cef9af44-73ff-4639-8164-4598d982b57f",
-    "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
-    "authorized_public": true,
-    "creation_date": "2025-05-17T15:50:57.215187Z",
-    "update_date": "2025-05-17T15:50:57.215187Z",
-    "name": "Unknown",
-    "description": "",
-    "sex": "unknown",
-    "species": {
-      "id": "157a935b-0f61-4e65-9bfa-0b8585e02dff",
-      "creation_date": "2025-05-17T15:43:33.885603Z",
-      "update_date": "2025-05-17T15:43:33.885603Z",
-      "name": "Rattus norvegicus",
-      "taxonomy_id": "NCBITaxon:10116"
-    },
-    "assets": []
-  },
-  "brain_region": {
-    "creation_date": "2025-05-17T15:41:56.308111Z",
-    "update_date": "2025-05-17T15:41:56.308111Z",
-    "id": "659812bf-4a18-4afe-adf4-a7486e7703ae",
-    "annotation_value": 322,
-    "name": "Primary somatosensory area",
-    "acronym": "SSp",
-    "color_hex_triplet": "188064",
-    "parent_structure_id": "4f73efb1-70dc-4c84-b569-62c2706c360e",
-    "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd"
-  },
-  "assets": [
-    {
-      "path": "S1FL_L5_DBC_cIR_4.nwb",
-      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/electrical_cell_recording/7b7db396-00cb-4f72-924c-f2676a5ecd6f/S1FL_L5_DBC_cIR_4.nwb",
-      "is_directory": false,
-      "content_type": "application/nwb",
-      "size": 1657656,
-      "sha256_digest": "696ffb1e4eb24839c53407d1d5beee030316ef61648bea5a6e15eae6486fd813",
-      "label": "nwb",
-      "meta": {
-        "legacy": {
-          "name": "S1FL_L5_DBC_cIR_4.nwb",
-          "@type": "DataDownload",
-          "digest": {
-            "value": "696ffb1e4eb24839c53407d1d5beee030316ef61648bea5a6e15eae6486fd813",
-            "algorithm": "SHA-256"
-          },
-          "atLocation": {
-            "@type": "Location",
-            "store": {
-              "@id": "https://bbp.epfl.ch/neurosciencegraph/data/4820323e-bee0-48d2-824f-9d9d404dbbee",
-              "_rev": 1,
-              "@type": "RemoteDiskStorage"
-            },
-            "location": "file:///gpfs/bbp.cscs.ch/data/project/proj109/nexus/public/sscx/e/7/8/9/f/1/9/8/S1FL_L5_DBC_cIR_4.nwb"
-          },
-          "contentUrl": "https://bbp.epfl.ch/nexus/v1/files/public/sscx/https%3A%2F%2Fbbp.epfl.ch%2Fneurosciencegraph%2Fdata%2F9d5c0ddd-fa0e-48ad-ac67-a9b795eda811",
-          "contentSize": {
-            "value": 1657656,
-            "unitCode": "bytes"
-          },
-          "encodingFormat": "application/nwb"
-        }
-      },
-      "id": "a5bac9da-2b2f-401c-b109-51194cea7dee",
-      "status": "created"
-    }
   ],
   "stimuli": [
     {
@@ -126,6 +155,16 @@
       "shape": "step",
       "authorized_public": false,
       "assets": []
+    }
+  ],
+  "etypes": [
+    {
+      "id": "73ca007f-ef07-4925-96c9-f675379b4d11",
+      "creation_date": "2020-03-16T12:03:52.032000Z",
+      "update_date": "2024-11-22T11:10:05.015470Z",
+      "pref_label": "cIR",
+      "alt_label": "Continuous irregular electrical type",
+      "definition": "Continuous irregular electrical type"
     }
   ]
 }

@@ -179,7 +179,8 @@ def _check_generated_sonata_configs(tmp_path, scan):
             "name": "Mg",
             "source": "All",
             "target": "All",
-            "synapse_configure": f"%s.mg = {mg}",
+            "modoverride": "GluSynapse",
+            "synapse_configure": f"mg = {mg}",
         }
         use_dict = {
             "name": "ach_use",
