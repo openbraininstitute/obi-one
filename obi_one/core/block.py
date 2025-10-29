@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
 
 
-class Block(OBIBaseModel):
+class Block(OBIBaseModel, extra="forbid"):
     """Defines a component of a ScanConfig.
 
     Parameters can be of type | list[type]
@@ -26,7 +26,7 @@ class Block(OBIBaseModel):
         super().__init_subclass__(**kwargs)
 
         # Use the subclass-provided title, or fall back to the class name
-        cls.model_config = {"title": cls.title or cls.__name__}
+        cls.model_config.update({"title": cls.title or cls.__name__})
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
