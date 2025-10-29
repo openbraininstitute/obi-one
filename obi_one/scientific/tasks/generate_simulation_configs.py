@@ -364,7 +364,7 @@ class SimulationSingleConfigMixin(abc.ABC):
     @property
     def single_entity(self) -> entitysdk.models.Simulation:
         return self._single_entity
-    
+
     def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
         """Sets the single entity attribute to the given entity."""
         self._single_entity = entity
