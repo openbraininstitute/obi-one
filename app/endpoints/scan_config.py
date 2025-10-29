@@ -18,6 +18,7 @@ from obi_one.scientific.tasks.contribute import (
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
     MEModelSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
@@ -93,6 +94,7 @@ def activate_scan_config_endpoints() -> None:
     for form, processing_method, data_postprocessing_method in [
         (CircuitSimulationScanConfig, "generate", ""),
         (MEModelSimulationScanConfig, "generate", ""),
+        (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", ""),
         (SimulationsForm, "generate", "save"),
         (MorphologyMetricsScanConfig, "run", ""),
         (ContributeMorphologyScanConfig, "generate", ""),
