@@ -158,9 +158,10 @@ def test_circuit_extraction(tmp_path):
         run_validation=False,
     )
     neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
+    info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
 
     circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
-        initialize=extraction_init, neuron_set=neuron_set
+        initialize=extraction_init, neuron_set=neuron_set, info=info
     )
 
     grid_scan = obi.GridScanGenerationTask(
