@@ -26,13 +26,10 @@ class SigFitMInf(IonChannelEquation):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "latex_equation": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}"
+            "latex_equation": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
         }
 
-    # class Config:
-    #     json_schema_extra: ClassVar[dict[str, str]] = {"james": "Sigmoid equation for m_inf"}
-
-    latex_equation: ClassVar[str] = r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}"
+    
 
 
 class SigFitMTau(IonChannelEquation):
@@ -40,12 +37,15 @@ class SigFitMTau(IonChannelEquation):
 
     title: ClassVar[str] = r"Sigmoid equation combination for \tau_m"
 
-    # latex_equation: ClassVar[str] = (
-    #     "\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
-    #     "\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
-    #     "( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
-    #     " \frac{A_2}{ 1. + e^{ \frac{v - {v_2}}{k_2} } } "
-    # )
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": (
+                "\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
+                "\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
+                "( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
+                " \frac{A_2}{ 1. + e^{ \frac{v - {v_2}}{k_2} } } "
+            ),
+        }
 
 
 class ThermoFitMTau(IonChannelEquation):
@@ -53,7 +53,10 @@ class ThermoFitMTau(IonChannelEquation):
 
     title: ClassVar[str] = r"Double exponential denominator equation for \tau_m"
 
-    latex_equation: ClassVar[str] = r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }",
+        }
 
 
 class ThermoFitMTauV2(IonChannelEquation):
@@ -63,7 +66,10 @@ class ThermoFitMTauV2(IonChannelEquation):
         r"Double exponential denominator equation with slope constraint for \tau_m"
     )
 
-    latex_equation: ClassVar[str] = r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } } + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } } + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
+        }
 
 
 class BellFitMTau(IonChannelEquation):
@@ -71,7 +77,10 @@ class BellFitMTau(IonChannelEquation):
 
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
-    latex_equation: ClassVar[str] = r"\frac{1.}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": r"\frac{1.}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+        }
 
 
 class SigFitHInf(IonChannelEquation):
@@ -79,7 +88,10 @@ class SigFitHInf(IonChannelEquation):
 
     title: ClassVar[str] = r"Sigmoid equation for h_{\infty}"
 
-    latex_equation: ClassVar[str] = r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
+        }
 
 
 class SigFitHTau(IonChannelEquation):
@@ -87,7 +99,10 @@ class SigFitHTau(IonChannelEquation):
 
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
-    latex_equation: ClassVar[str] = r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "latex_equation": r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
+        }
 
 
 MInfUnion = Annotated[
