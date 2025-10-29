@@ -37,6 +37,7 @@ from obi_one.core.task import Task
 class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     name : ClassVar[str] = "Map synapse locations"
     description : ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
+    cave_token : str | None = None
 
     class Initialize(Block):
         spiny_neuron : CellMorphologyFromID
@@ -76,7 +77,8 @@ class EMSynapseMappingTask(Task):
         pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(db_client, morph_entity)
 
         cave_version=source_mesh_entity.release_version
-        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id))
+        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id),
+                                     auth_token=self.config.cave_token)
         
         print("Reading data from source EM reconstruction...")
         syns, coll_pre, coll_post = self.synapses_and_nodes_dataframes_from_EM(em_dataset,
@@ -126,7 +128,7 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
         }
         compressed_path = self.compress_output()
-        self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
         
     def synapses_and_nodes_dataframes_from_EM(self, em_dataset, pt_root_id, db_client, cave_version):
         # SYNAPSES
@@ -137,14 +139,14 @@ class EMSynapseMappingTask(Task):
         pre_pt_root_to_sonata = syns["pre_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("pre_pt_root_id")
         post_pt_root_to_sonata = syns["post_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("post_pt_root_id")
         node_spec = default_node_spec_for(em_dataset, db_client)
-        coll_pre = assemble_collection_from_specs(em_dataset, db_client, node_spec, pre_pt_root_to_sonata)
-        coll_post = assemble_collection_from_specs(em_dataset, db_client, node_spec, post_pt_root_to_sonata)
+        coll_pre = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, pre_pt_root_to_sonata)
+        coll_post = assemble_collection_from_specs(em_dataset, db_client, cave_version, node_spec, post_pt_root_to_sonata)
 
         return syns, coll_pre, coll_post
 
 
     def resolve_provenance(self, db_client, morph_entity):
-        pt_root_id = int(morph_entity.name.split("-")[1])
+        pt_root_id = int(morph_entity.name.split("-")[-1])
         source_mesh_entity = list(db_client.search_entity(entity_type=EMCellMesh, query={
                                     "dense_reconstruction_cell_id": pt_root_id
                                 }))[0]

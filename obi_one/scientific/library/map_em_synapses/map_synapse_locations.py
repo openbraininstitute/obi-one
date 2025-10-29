@@ -106,13 +106,17 @@ def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_positi
 
 def morph_to_segs_df(morph):
     segs = []
+    sec_id_keys = []
     for sec in morph.sections:
+        if len(sec.points) < 2:
+            continue
         seg_start, seg_end = zip(*sec.segments)
         seg_start = pandas.DataFrame(seg_start, columns=_C_SEG_S_F)
         seg_end = pandas.DataFrame(seg_end, columns=_C_SEG_E_F)
         seg = pandas.concat([seg_start, seg_end], axis=1).reset_index(drop=False).rename(columns={"index": _STR_SEG_ID})
         segs.append(seg)
-    segs = pandas.concat(segs, axis=0, keys=range(1, len(segs) + 1), names=[_STR_SEC_ID])
+        sec_id_keys.append(sec.id + 1)
+    segs = pandas.concat(segs, axis=0, keys=sec_id_keys, names=[_STR_SEC_ID])
     segs = segs.droplevel(1).reset_index()
     return segs
 
