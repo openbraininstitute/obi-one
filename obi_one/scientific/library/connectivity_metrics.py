@@ -206,10 +206,26 @@ def get_connectivity_metrics(
         circuit = obi.Circuit(name=circuit_id, path=str(cfg_path))
         c = circuit.sonata_circuit
 
-        # Compute connection probability
-        pre_dict = pre_selection | {"node_set": pre_node_set}
-        post_dict = post_selection | {"node_set": post_node_set}
+        # Check inputs
+        if pre_node_set is None:
+            pre_dict = pre_selection
+        else:
+            node_set_dict = {"node_set": pre_node_set}
+            if pre_selection is None:
+                pre_dict = node_set_dict
+            else:
+                pre_dict = pre_selection | node_set_dict
+        if post_node_set is None:
+            post_dict = post_selection
+        else:
+            node_set_dict = {"node_set": post_node_set}
+            if post_selection is None:
+                post_dict = node_set_dict
+            else:
+                post_dict = post_selection | node_set_dict
         dist_props = None if max_distance is None else ["x", "y", "z"]
+
+        # Compute connection probability
         conn_dict = connectivity.compute(
             c,
             sel_src=pre_dict,
