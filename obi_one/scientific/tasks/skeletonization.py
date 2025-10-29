@@ -30,6 +30,21 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 
+import httpx
+import os
+import time 
+import json 
+import pathlib
+from uuid import UUID
+from urllib.parse import urlparse
+from IPython.display import display, HTML
+from obi_auth import get_token
+from obi_notebook import get_projects, get_entities
+from entitysdk.client import Client
+from entitysdk.models import CellMorphology
+from entitysdk.models.asset import AssetLabel
+
+
 L = logging.getLogger(__name__)
 
 
@@ -177,4 +192,81 @@ class GenerateSimulationTask(Task):
     def execute(
         self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
     ) -> None:
-        pass
+        entitycore_api_url = urlparse(db_client.api_url)
+        platform_base_url = f"{entitycore_api_url.scheme}://{entitycore_api_url.netloc}"
+        mesh_api_base_url = f"{platform_base_url}/api/small-scale-simulator/mesh/skeletonization"
+
+        http_client = httpx.Client()
+
+        mesh_api_headers = httpx.Headers({
+        "Authorization": f"Bearer {token}",
+        "virtual-lab-id": str(project_context.virtual_lab_id),
+        "project-id": str(project_context.project_id)
+        })
+
+
+        # Prepare task params
+        input_params = {
+            "name": mesh_id,
+            "description": "Reconstructed morphology from an EM surface mesh"
+        }
+
+        skeletonization_params = {
+            "em_cell_mesh_id": mesh_id,
+            "neuron_voxel_size": 0.1, # in microns
+            "spines_voxel_size": 0.05, # in microns
+            "segment_spines": True
+        }
+
+        # Submit mesh skeletonization task
+        start_res = http_client.post(
+        f"{mesh_api_base_url}/run",
+        params=skeletonization_params,
+        headers=mesh_api_headers,
+        json=input_params
+        )
+
+        job_id = None
+
+        if start_res.is_success:
+            job_id = start_res.json().get("id")
+            else:
+            print(start_res.text)
+            raise RuntimeError("Failed to submit mesh skeletonization task")
+
+        # Wait for the job to complete
+        output_morphology_id = None
+        prev_status = None
+
+        while True:
+            status_res = http_client.get(
+                f"{mesh_api_base_url}/jobs/{job_id}",
+                headers=mesh_api_headers
+            )
+
+            if not status_res.is_success:
+                print(status_res.text)
+                raise RuntimeError("Failed to get job status")
+
+            job = status_res.json()
+            status = job.get('status')
+
+            if status != prev_status:
+                print(f"{time.strftime("%H:%M:%S", time.localtime())}  Status: {status}")
+                prev_status = status
+
+            if status == 'finished':
+                output_morphology_id = UUID(job.get('output').get('morphology').get('id'))
+                break
+            elif status == 'failed':
+                print(json.dumps(job, indent=2))
+                raise RuntimeError("Skeletonization failed")
+
+            time.sleep(15)
+    
+        # Get the resulting registered morphology
+        cell_morphology = db_client.get_entity(output_morphology_id, entity_type=CellMorphology)
+        asset = next((asset for asset in cell_morphology.assets if asset.label == AssetLabel.morphology_with_spines), None)
+
+        # Download the file
+        db_client.download_assets(cell_morphology,selection={"label": AssetLabel.morphology_with_spines}, output_path=pathlib.Path(os.getcwd())).one()
