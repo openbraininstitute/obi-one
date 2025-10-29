@@ -51,7 +51,8 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-DEFAULT_NODE_SET_NAME = "Default All Biophysical Neurons"
+DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
+DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 
 
 class BlockGroup(StrEnum):
@@ -94,6 +95,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             ],
             "default_block_reference_labels": {
                 NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             },
         }
 
