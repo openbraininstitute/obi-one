@@ -6,6 +6,8 @@ from entitysdk.models import EMDenseReconstructionDataset
 from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
+from caveclient import CAVEclient
+
 from obi_one.core.entity_from_id import EntityFromID
 
 _C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
@@ -52,11 +54,6 @@ class EMDataSetFromID(EntityFromID):
         return self._viewer_resolution
     
     def _make_cave_client(self, db_client, cave_version=None):
-        try:
-            from caveclient import CAVEclient
-        except ImportError:
-            print("Optional dependency 'caveclient' not installed!")
-            raise
         entity = self.entity(db_client=db_client)
         _datastack_name = entity.cave_datastack
         _cave_client_url = entity.cave_client_url
