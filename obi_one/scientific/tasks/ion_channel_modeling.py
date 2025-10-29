@@ -24,49 +24,46 @@ from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelR
 
 L = logging.getLogger(__name__)
 
-"""
-from ion_channel_builder.create_model.main import extract_all_equations
-from ion_channel_builder.io.write_output import write_vgate_output
-from ion_channel_builder.run_model.run_model import run_ion_channel_model
-"""
+try:
+    from ion_channel_builder.create_model.main import extract_all_equations
+    from ion_channel_builder.io.write_output import write_vgate_output
+    from ion_channel_builder.run_model.run_model import run_ion_channel_model
+except ImportError:
 
+    def extract_all_equations(
+        data_paths: list[Path],
+        ljps: list,
+        eq_names: list[str],
+        voltage_exclusion: dict,
+        stim_timings: dict,
+        stim_timings_corrections: dict,
+        output_folder: Path,
+    ) -> None:
+        pass
 
-def extract_all_equations(
-    data_paths: list[Path],
-    ljps: list,
-    eq_names: list[str],
-    voltage_exclusion: dict,
-    stim_timings: dict,
-    stim_timings_corrections: dict,
-    output_folder: Path,
-) -> None:
-    pass
+    def write_vgate_output(
+        eq_names: dict[str, str],
+        eq_popt: dict[str, list[float]],
+        suffix: str,
+        ion: str,
+        m_power: int,
+        h_power: int,
+        output_name: str,
+    ) -> None:
+        pass
 
-
-def write_vgate_output(
-    eq_names: dict[str, str],
-    eq_popt: dict[str, list[float]],
-    suffix: str,
-    ion: str,
-    m_power: int,
-    h_power: int,
-    output_name: str,
-) -> None:
-    pass
-
-
-def run_ion_channel_model(
-    mech_suffix: str,
-    # current is defined like this in mod file, see ion_channel_builder.io.write_output
-    mech_current: float,
-    # no need to actually give temperature because model is not temperature-dependent
-    temperature: float,
-    mech_conductance_name: str,
-    output_folder: Path,
-    savefig: bool,  # noqa: FBT001
-    show: bool,  # noqa: FBT001
-) -> None:
-    pass
+    def run_ion_channel_model(
+        mech_suffix: str,
+        # current is defined like this in mod file, see ion_channel_builder.io.write_output
+        mech_current: float,
+        # no need to actually give temperature because model is not temperature-dependent
+        temperature: float,
+        mech_conductance_name: str,
+        output_folder: Path,
+        savefig: bool,  # noqa: FBT001
+        show: bool,  # noqa: FBT001
+    ) -> None:
+        pass
 
 
 class BlockGroup(StrEnum):
@@ -579,7 +576,10 @@ class IonChannelFittingTask(Task):
         return model.id
 
     def execute(
-        self, db_client: entitysdk.client.Client = None
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,
+        entity_cache: bool = False,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
@@ -596,40 +596,40 @@ class IonChannelFittingTask(Task):
             }
             voltage_exclusion = {
                 "activation": {
-                    "above": self.config.expert.act_exclude_voltages_above,
-                    "below": self.config.expert.act_exclude_voltages_below,
+                    "above": self.config.stimulus_voltage_exclusion.act_exclude_voltages_above,
+                    "below": self.config.stimulus_voltage_exclusion.act_exclude_voltages_below,
                 },
                 "inactivation": {
-                    "above": self.config.expert.inact_exclude_voltages_above,
-                    "below": self.config.expert.inact_exclude_voltages_below,
+                    "above": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_above,
+                    "below": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_below,
                 },
             }
             stim_timings = {
                 "activation": {
-                    "start": self.config.expert.act_stim_start,
-                    "end": self.config.expert.act_stim_end,
+                    "start": self.config.stimulus_timings.act_stim_start,
+                    "end": self.config.stimulus_timings.act_stim_end,
                 },
                 "inactivation_iv": {
-                    "start": self.config.expert.inact_iv_stim_start,
-                    "end": self.config.expert.inact_iv_stim_end,
+                    "start": self.config.stimulus_timings.inact_iv_stim_start,
+                    "end": self.config.stimulus_timings.inact_iv_stim_end,
                 },
                 "inactivation_tc": {
-                    "start": self.config.expert.inact_tc_stim_start,
-                    "end": self.config.expert.inact_tc_stim_end,
+                    "start": self.config.stimulus_timings.inact_tc_stim_start,
+                    "end": self.config.stimulus_timings.inact_tc_stim_end,
                 },
             }
             stim_timings_corrections = {
                 "activation": {
-                    "start": self.config.expert.act_stim_start_correction,
-                    "end": self.config.expert.act_stim_end_correction,
+                    "start": self.config.stimulus_timings.act_stim_start_correction,
+                    "end": self.config.stimulus_timings.act_stim_end_correction,
                 },
                 "inactivation_iv": {
-                    "start": self.config.expert.inact_iv_stim_start_correction,
-                    "end": self.config.expert.inact_iv_stim_end_correction,
+                    "start": self.config.stimulus_timings.inact_iv_stim_start_correction,
+                    "end": self.config.stimulus_timings.inact_iv_stim_end_correction,
                 },
                 "inactivation_tc": {
-                    "start": self.config.expert.inact_tc_stim_start_correction,
-                    "end": self.config.expert.inact_tc_stim_end_correction,
+                    "start": self.config.stimulus_timings.inact_tc_stim_start_correction,
+                    "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
                 },
             }
 
