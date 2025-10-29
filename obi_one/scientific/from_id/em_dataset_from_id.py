@@ -47,6 +47,17 @@ class EMDataSetFromID(EntityFromID):
     def get_versions(self, db_client=None):
         client = self._make_cave_client(db_client)
         return client.materialize.get_versions()
+    
+    def get_tables(self, cave_version, db_client=None):
+        client = self._make_cave_client(db_client, cave_version=cave_version)
+        tables = {}
+        for tbl_name in client.materialize.get_tables():
+            meta = client.materialize.get_table_metadata(tbl_name)
+            tables[tbl_name] = {
+                "description": meta["description"],
+                "notice": meta["notice_text"],
+            }
+        return tables
         
     def viewer_resolution(self, db_client=None):
         if self._viewer_resolution is None:
