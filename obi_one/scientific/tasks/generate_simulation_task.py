@@ -10,6 +10,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
+from obi_one.scientific.blocks.timestamps import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -40,6 +41,8 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
 )
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
+
+DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
 
 class GenerateSimulationTask(Task):
@@ -133,7 +136,10 @@ class GenerateSimulationTask(Task):
                 )
             self._sonata_config["inputs"].update(
                 stimulus.config(
-                    self._circuit, self._circuit.default_population_name, DEFAULT_NODE_SET_NAME
+                    self._circuit,
+                    self._circuit.default_population_name,
+                    DEFAULT_NODE_SET_NAME,
+                    DEFAULT_TIMESTAMPS,
                 )
             )
 
