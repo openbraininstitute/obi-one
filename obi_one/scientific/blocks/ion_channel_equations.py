@@ -16,8 +16,6 @@ class IonChannelEquation(Block, ABC):
 
     title: ClassVar[str] = "Abstract class for Ion Channel Equations"
 
-    
-
 
 class SigFitMInf(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_minf"
@@ -29,8 +27,6 @@ class SigFitMInf(IonChannelEquation):
             "latex_equation": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
         }
 
-    
-
 
 class SigFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_mtau"
@@ -40,9 +36,9 @@ class SigFitMTau(IonChannelEquation):
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "latex_equation": (
-                "\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
+                "\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \\cdot "
                 "\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
-                "( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
+                "( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \\cdot "
                 " \frac{A_2}{ 1. + e^{ \frac{v - {v_2}}{k_2} } } "
             ),
         }
@@ -55,7 +51,9 @@ class ThermoFitMTau(IonChannelEquation):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "latex_equation": r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }",
+            "latex_equation": (
+                "\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
+            )
         }
 
 
@@ -68,7 +66,10 @@ class ThermoFitMTauV2(IonChannelEquation):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "latex_equation": r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } } + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
+            "latex_equation": (
+                "\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \\delta } }"
+                " + e^{ \frac{v - v_2}{k / (1 - \\delta)} } }"
+            ),
         }
 
 
