@@ -1,6 +1,7 @@
 import os
 import subprocess
 import json
+import numpy
 
 from obi_one.scientific.library.map_em_synapses import (
     map_afferents_to_spiny_morphology, write_edges, write_nodes,
@@ -32,6 +33,29 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphology, C
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+
+
+def plot_mapping_stats(mapped_synapses_df, mesh_res,
+                       plt_max_dist=3.0, nbins=99):
+    from matplotlib import pyplot as plt
+
+    dbins = numpy.linspace(0, plt_max_dist, nbins)
+    w = numpy.mean(numpy.diff(dbins))
+
+    frst_dist = numpy.maximum(mapped_synapses_df["distance"], 0.0)
+    sec_dist = mapped_synapses_df["competing_distance"]
+
+    fig = plt.figure(figsize=(2.5, 4))
+    ax = fig.add_subplot(2, 1, 1)
+
+    ax.bar(dbins[1:], numpy.histogram(frst_dist, bins=dbins)[0], width=w, label="Dist.: Nearest structure")
+    ax.bar(dbins[1:], numpy.histogram(sec_dist, bins=dbins)[0], width=w, label="Dist.: Second nearest structure")
+    ymx = ax.get_ylim()[1] * 0.85
+    ax.plot([mesh_res, mesh_res], [0, ymx], color="black", label="Mesh resolution")
+    ax.set_ylabel("Synapse count")
+    ax.set_frame_on(False)
+    plt.legend()
+    return fig
 
 
 class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
@@ -86,7 +110,7 @@ class EMSynapseMappingTask(Task):
                                                                                db_client,
                                                                                cave_version)
         print("Mapping synapses onto morphology...")
-        mapped_synapses_df = map_afferents_to_spiny_morphology(spiny_morph, syns)
+        mapped_synapses_df, mesh_res = map_afferents_to_spiny_morphology(spiny_morph, syns, add_quality_info=True)
 
         pre_pt_root_to_sonata = syns["pre_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("pre_pt_root_id")
         post_pt_root_to_sonata = syns["post_pt_root_id"].drop_duplicates().reset_index(drop=True).reset_index().set_index("post_pt_root_id")
@@ -97,6 +121,8 @@ class EMSynapseMappingTask(Task):
 
         print("Writing the results...")
         # Write the results
+        # Mapping quality info
+        plot_mapping_stats(mapped_synapses_df, mesh_res).savefig(out_root / "mapping_stats.png")
         # Edges h5 file
         fn_edges_out = "synaptome-edges.h5"
         edge_population_name = self.config.initialize.edge_population_name
