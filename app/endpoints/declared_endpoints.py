@@ -18,6 +18,7 @@ from bluepyefe.reader import (  # , VUNWBReader
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from pydantic import BaseModel
 
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
@@ -260,37 +261,148 @@ def activate_test_endpoint(router: APIRouter) -> None:
 
 # List of all available NWB Reader classes to iterate over
 
-NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]  # , VUNWBReader]
+NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]
 
-test_protocols = ["APThreshold", "SAPThres1", "SAPThres2", "SAPThres3", "SAPTres1",
-                      "SAPTres2", "SAPTres3", "Step_150", "Step_200",
-                        "Step_250", "Step_150_hyp", "Step_200_hyp", "Step_250_hyp",
-                        "C1HP1sec", "C1_HP_1sec", "IRrest", "SDelta", "SIDRest",
-                        "SIDThres", "SIDTres", "SRac", "pulser", "A", "maria-STEP",
-                        "APDrop", "APResh", "C1_HP_0.5sec", "C1step_1sec",
-                        "C1step_ag", "C1step_highres", "HighResThResp",
-                        "IDRestTest", "LoOffset1", "LoOffset3", "Rin", "STesteCode",
-                        "SSponAPs", "SponAPs", "SpontAPs", "Test_eCode",
-                        "TesteCode", "step_1", "step_2", "step_3", "IV_Test",
-                        "SIV", "APWaveform", "SAPWaveform", "Delta", "FirePattern",
-                        "H10S8", "H20S8", "H40S8", "IDRest", "IDThres", "IDThresh",
-                        "IDrest", "IDthresh", "IV", "IV2", "IV_-120", "IV_-120_hyp",
-                        "IV_-140", "Rac", "RMP", "SetAmpl", "SetISI", "SetISITest",
-                        "TestAmpl", "TestRheo", "TestSpikeRec", "SpikeRec", "ADHPdepol",
-                        "ADHPhyperpol", "ADHPrest", "SSpikeRec", "SpikeRec_Ih",
-                        "SpikeRec_Kv1.1", "scope", "spuls", "RPip", "RSealClose",
-                        "RSealOpen", "CalOU01", "CalOU04", "ElecCal", "NoiseOU3",
-                        "NoisePP", "SNoisePP", "SNoiseSpiking", "OU10Hi01", "OU10Lo01",
-                        "OU10Me01", "SResetITC", "STrueNoise", "SubWhiteNoise",
-                        "Truenoise", "WhiteNoise", "ResetITC", "SponHold25", "SponHold3",
-                        "SponHold30", "SSponHold", "SponNoHold20", "SponNoHold30",
-                        "SSponNoHold", "Spontaneous", "hold_dep", "hold_hyp",
-                        "StartHold", "StartNoHold", "StartStandeCode", "VacuumPulses",
-                        "sAHP", "IRdepol", "IRhyperpol", "IDdepol", "IDhyperpol",
-                        "SsAHP", "HyperDePol", "DeHyperPol", "NegCheops", "NegCheops1",
-                        "NegCheops2", "NegCheops3", "NegCheops4", "NegCheops5",
-                        "PosCheops", "Rin_dep", "Rin_hyp", "SineSpec", "SSineSpec",
-                        "Pulse", "S2", "s2", "S30", "SIne20Hz", "A___.ibw"]
+TEST_PROTOCOLS = [
+    "APThreshold",
+    "SAPThres1",
+    "SAPThres2",
+    "SAPThres3",
+    "SAPTres1",
+    "SAPTres2",
+    "SAPTres3",
+    "Step_150",
+    "Step_200",
+    "Step_250",
+    "Step_150_hyp",
+    "Step_200_hyp",
+    "Step_250_hyp",
+    "C1HP1sec",
+    "C1_HP_1sec",
+    "IRrest",
+    "SDelta",
+    "SIDRest",
+    "SIDThres",
+    "SIDTres",
+    "SRac",
+    "pulser",
+    "A",
+    "maria-STEP",
+    "APDrop",
+    "APResh",
+    "C1_HP_0.5sec",
+    "C1step_1sec",
+    "C1step_ag",
+    "C1step_highres",
+    "HighResThResp",
+    "IDRestTest",
+    "LoOffset1",
+    "LoOffset3",
+    "Rin",
+    "STesteCode",
+    "SSponAPs",
+    "SponAPs",
+    "SpontAPs",
+    "Test_eCode",
+    "TesteCode",
+    "step_1",
+    "step_2",
+    "step_3",
+    "IV_Test",
+    "SIV",
+    "APWaveform",
+    "SAPWaveform",
+    "Delta",
+    "FirePattern",
+    "H10S8",
+    "H20S8",
+    "H40S8",
+    "IDRest",
+    "IDThres",
+    "IDThresh",
+    "IDrest",
+    "IDthresh",
+    "IV",
+    "IV2",
+    "IV_-120",
+    "IV_-120_hyp",
+    "IV_-140",
+    "Rac",
+    "RMP",
+    "SetAmpl",
+    "SetISI",
+    "SetISITest",
+    "TestAmpl",
+    "TestRheo",
+    "TestSpikeRec",
+    "SpikeRec",
+    "ADHPdepol",
+    "ADHPhyperpol",
+    "ADHPrest",
+    "SSpikeRec",
+    "SpikeRec_Ih",
+    "SpikeRec_Kv1.1",
+    "scope",
+    "spuls",
+    "RPip",
+    "RSealClose",
+    "RSealOpen",
+    "CalOU01",
+    "CalOU04",
+    "ElecCal",
+    "NoiseOU3",
+    "NoisePP",
+    "SNoisePP",
+    "SNoiseSpiking",
+    "OU10Hi01",
+    "OU10Lo01",
+    "OU10Me01",
+    "SResetITC",
+    "STrueNoise",
+    "SubWhiteNoise",
+    "Truenoise",
+    "WhiteNoise",
+    "ResetITC",
+    "SponHold25",
+    "SponHold3",
+    "SponHold30",
+    "SSponHold",
+    "SponNoHold20",
+    "SponNoHold30",
+    "SSponNoHold",
+    "Spontaneous",
+    "hold_dep",
+    "hold_hyp",
+    "StartHold",
+    "StartNoHold",
+    "StartStandeCode",
+    "VacuumPulses",
+    "sAHP",
+    "IRdepol",
+    "IRhyperpol",
+    "IDdepol",
+    "IDhyperpol",
+    "SsAHP",
+    "HyperDePol",
+    "DeHyperPol",
+    "NegCheops",
+    "NegCheops1",
+    "NegCheops2",
+    "NegCheops3",
+    "NegCheops4",
+    "NegCheops5",
+    "PosCheops",
+    "Rin_dep",
+    "Rin_hyp",
+    "SineSpec",
+    "SSineSpec",
+    "Pulse",
+    "S2",
+    "s2",
+    "S30",
+    "SIne20Hz",
+    "A___.ibw",
+]
 
 
 def validate_all_nwb_readers(nwb_file_path: str) -> None:
@@ -304,28 +416,28 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
     """
     for readerclass in NWB_READERS:
         try:
-            # 1. Initialize the reader with both file path AND target_protocols
-            reader = readerclass(nwb_file_path, test_protocols)
+            reader = readerclass(nwb_file_path, TEST_PROTOCOLS)
 
-            # 2. Attempt to read the data
             data = reader.read()
 
-            # 3. Check for success (data is not None)
             if data is not None:
                 return data
 
         except Exception as e:  # noqa: BLE001
             L.warning(
-                "Reader %s failed for file %s: %s",
-                readerclass.__name__,
-                nwb_file_path,
-                str(e)
+                "Reader %s failed for file %s: %s", readerclass.__name__, nwb_file_path, str(e)
             )
             continue
 
-    # Fixes TRY003 & EM101: Assigning string literal to a variable before raising.
     error_message = "All NWB readers failed."
     raise RuntimeError(error_message)
+
+
+class NWBValidationResponse(BaseModel):
+    """Schema for the NWB file validation success response."""
+
+    status: str
+    message: str
 
 
 def activate_validate_nwb_endpoint(router: APIRouter) -> None:
@@ -338,87 +450,62 @@ def activate_validate_nwb_endpoint(router: APIRouter) -> None:
     )
     def validate_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
-    ) -> dict:
+    ) -> NWBValidationResponse:
         """Synchronously processes the NWB file validation.
 
         It uses a TemporaryDirectory context manager to ensure all temporary
         files created during processing are automatically cleaned up.
         """
-        # Read the file content synchronously using the underlying file handle.
         try:
             content = file.file.read()
 
         except Exception as e:
-            # Handle potential reading errors
             L.error(f"Error reading uploaded file content: {e!s}")
-            # Fix E501: Break long line
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": ApiErrorCode.INTERNAL_SERVER_ERROR,
-                    "detail": "Failed to read file content"
-                },
+            raise ApiError(
+                message=f"Error reading uploaded file content: {e!s}",
+                error_code=ApiErrorCode.INTERNAL_SERVER_ERROR,
+                http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             ) from e
-
         if not content:
             _handle_empty_file(file)
 
         # File extension is needed for the NWB readers to recognize the file type
         file_extension = Path(file.filename).suffix.lower() if file.filename else ""
-        if file_extension not in {".nwb", ".swc", ".h5", ".asc"}:
-            # Fix E111/E117: Corrected indentation from 13 spaces to 8 spaces
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail={
-                    "code": ApiErrorCode.BAD_REQUEST,
-                    "detail": "Invalid file extension. Must be .nwb, .swc, .h5, or .asc",
-                },
+        if file_extension != ".nwb":
+            raise ApiError(
+                message="Invalid file extension. Must be .nwb",
+                error_code=ApiErrorCode.BAD_REQUEST,
+                http_status_code=HTTPStatus.BAD_REQUEST,
             )
 
-        # Use TemporaryDirectory for robust, automatic cleanup of the file path
-        # after validation, regardless of success or failure.
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_file_path = str(Path(temp_dir) / f"uploaded_file{file_extension}")
 
             L.info(f"Writing file content to temporary path: {temp_file_path}")
 
-            # 1. Write the content to the temporary file path
             try:
-                # Fix PTH123/FURB103: Use Path.write_bytes for cleaner file writing
                 Path(temp_file_path).write_bytes(content)
             except Exception as e:
                 L.error(f"Error writing file to disk: {e!s}")
-                # Fix E501: Break long line
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail={
-                        "code": ApiErrorCode.INTERNAL_SERVER_ERROR,
-                        "detail": "Failed to write file to disk"
-                    },
+                raise ApiError(
+                    message=f"Error writing file to disk: {e!s}",
+                    error_code=ApiErrorCode.INTERNAL_SERVER_ERROR,
+                    http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 ) from e
-
-            # 2. Run the synchronous validation function
             try:
-                # This function now runs synchronously and cleanup is handled
-                # automatically when exiting the 'with' block.
                 validate_all_nwb_readers(temp_file_path)
 
             except RuntimeError as e:
                 L.error(f"NWB validation failed: {e!s}")
-                # Raise an HTTPException on validation failure
-                raise HTTPException(
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    detail={
-                        "code": ApiErrorCode.BAD_REQUEST,
-                        "detail": f"NWB validation failed: {e!s}",
-                    },
+                raise ApiError(
+                    message=f"NWB validation failed: {e!s}",
+                    error_code=ApiErrorCode.BAD_REQUEST,
+                    http_status_code=HTTPStatus.BAD_REQUEST,
                 ) from e
-
-        # If the context manager exits and no exception was raised, validation succeeded.
-        return {
-            "status": "success",
-            "message": "NWB file validation successful.",
-        }
+        return NWBValidationResponse(
+            status="success",
+            message="NWB file validation successful.",
+        )
 
 
 def activate_circuit_endpoints(router: APIRouter) -> None:
