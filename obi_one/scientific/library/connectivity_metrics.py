@@ -211,18 +211,12 @@ def get_connectivity_metrics(
             pre_dict = pre_selection
         else:
             node_set_dict = {"node_set": pre_node_set}
-            if pre_selection is None:
-                pre_dict = node_set_dict
-            else:
-                pre_dict = pre_selection | node_set_dict
+            pre_dict = node_set_dict if pre_selection is None else pre_selection | node_set_dict
         if post_node_set is None:
             post_dict = post_selection
         else:
             node_set_dict = {"node_set": post_node_set}
-            if post_selection is None:
-                post_dict = node_set_dict
-            else:
-                post_dict = post_selection | node_set_dict
+            post_dict = node_set_dict if post_selection is None else post_selection | node_set_dict
         dist_props = None if max_distance is None else ["x", "y", "z"]
 
         # Compute connection probability
