@@ -2041,7 +2041,7 @@ requires-dist = [
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", specifier = ">=5.5.2" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-manipulator" },
+    { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
     { name = "entitysdk", specifier = ">=0.8.5" },
     { name = "fastapi" },
