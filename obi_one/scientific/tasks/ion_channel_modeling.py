@@ -21,6 +21,7 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 
 L = logging.getLogger(__name__)
 
@@ -70,9 +71,10 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EQUATIONS = "Equations"
-    GATEEXPONENTS = "Gates Exponents"
-    ADVANCED = "Advanced"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    # EQUATIONS = "Equations"
+    # GATEEXPONENTS = "Gates Exponents"
+    # ADVANCED = "Advanced"
 
 
 class IonChannelFittingScanConfig(ScanConfig):
@@ -86,51 +88,60 @@ class IonChannelFittingScanConfig(ScanConfig):
         json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
                 BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-                BlockGroup.ADVANCED,
-            ]
+                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                # BlockGroup.EQUATIONS,
+                # BlockGroup.GATEEXPONENTS,
+                # BlockGroup.ADVANCED,
+            ],
+            "default_block_reference_labels": {
+            },
         }
 
     class Initialize(Block):
         # traces
-        recordings: tuple[IonChannelRecordingFromID] = Field(
-            description="IDs of the traces of interest."
+        circuit: CircuitFromID | list[CircuitFromID] = Field(
+            description="IDs of the traces of interest.",
+            title="Ion channel recording"
         )
 
-        # mod file creation
-        suffix: str = Field(
-            title="Ion channel SUFFIX (ion channel name to use in the mod file)",
-            description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
-            min_length=1,
-        )
-        ion: Literal["k"] = Field(
+        ion: Literal["K", "Ca"] = Field(
             # we will only have potassium recordings first,
             # so it makes sense to have this default value here
             title="Ion",
-            default="k",
+            default="K",
             description=("Ion to use in the mod file."),
         )
-        temperature: int = Field(
+        temperature: int | list[int] = Field(
             title="Temperature",
             description=(
                 "Temperature of the model. "
                 "Should be consistent with the one at which the recordings were made. "
             ),
             units="C",
+            default=22,
             ge=-273,
         )
 
-    class GateExponents(Block):
         # mod file creation
-        m_power: int = Field(
+        suffix: str = Field(
+            title="Custom Ion channel Suffix",
+            description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
+            min_length=1,
+            default=" "
+        )
+
+       
+    class Equations(Block):
+
+        # mod file creation
+        m_power: int | list[int] = Field(
             title="m exponent in channel equation",
             default=1,
             ge=0,  # can be zero
             le=4,  # should be 4 or lower
             description=("Raise m to this power in the BREAKPOINT equation."),
         )
-        h_power: int = Field(
+        h_power: int | list[int] = Field(
             title="h exponent in channel equation",
             default=1,
             ge=0,  # can be zero
@@ -138,202 +149,252 @@ class IonChannelFittingScanConfig(ScanConfig):
             description=("Raise h to this power in the BREAKPOINT equation."),
         )
 
-    class StimulusVoltageExclusion(Block):
-        # trace loading customisation: voltage exclusion
-        act_exclude_voltages_above: float | None = Field(
-            title="Exclude activation voltages above",
-            default=None,
-            description=(
-                "Do not use any activation traces responses from input voltages "
-                "above this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-        act_exclude_voltages_below: float | None = Field(
-            title="Exclude activation voltages below",
-            default=None,
-            description=(
-                "Do not use any activation traces responses from input voltages "
-                "below this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-        inact_exclude_voltages_above: float | None = Field(
-            title="Exclude inactivation voltages above",
-            default=None,
-            description=(
-                "Do not use any inactivation traces responses from input voltages "
-                "above this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-        inact_exclude_voltages_below: float | None = Field(
-            title="Exclude inactivation voltages below",
-            default=None,
-            description=(
-                "Do not use any inactivation traces responses from input voltages "
-                "below this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
+        minf_eq: Literal["alpha_beta", "boltzmann", "custom"] = Field(
+            title="m_{inf} equation",
+            description="Equation to use for m_{inf}.",
+            default="alpha_beta",
+            group_order=0,
         )
 
-    class StimulusTimings(Block):
-        # trace loading customisation: stimulus timings
-        act_stim_start: NonNegativeFloat | None = Field(
-            title="Activation stimulus start time",
-            default=None,
-            description=(
-                "Activation stimulus start timing. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with act_stim_start_correction."
-            ),
-            units="ms",
-        )
-        act_stim_end: NonNegativeFloat | None = Field(
-            title="Activation stimulus end time",
-            default=None,
-            description=(
-                "Activation stimulus end timing. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with act_stim_end_correction."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_start: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus start time for IV computation",
-            default=None,
-            description=(
-                "Inactivation stimulus start timing for IV computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_iv_stim_start_correction."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_end: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus end time for IV computation",
-            default=None,
-            description=(
-                "Inactivation stimulus end timing for IV computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_iv_stim_end_correction."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_start: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus start time for time constant computation",
-            default=None,
-            description=(
-                "Inactivation stimulus start timing for time constant computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_tc_stim_start_correction."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_end: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus end time for time constant computation",
-            default=None,
-            description=(
-                "Inactivation stimulus end timing for time constant computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_tc_stim_end_correction."
-            ),
-            units="ms",
+        minf_eq: Literal["alpha_beta", "boltzmann", "custom"] = Field(
+            title="m_{inf} equation",
+            description="Equation to use for m_{inf}.",
+            default="alpha_beta",
         )
 
-        # trace loading customisation: stimulus timings corrections
-        act_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to activation stimulus start time taken from source file, "
-                "in ms."
-            ),
-            default=0,
-            description=(
-                "Correction to add to the timing taken from nwb file for activation stimulus start."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
+
+        mtau_eq: Literal["alpha_beta", "exponential", "custom"] = Field(
+            title=r"\tau_m equation",
+            description="Equation to use for \tau_m.",
+            default="alpha_beta",
         )
-        act_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to activation stimulus end time taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file for activation stimulus end."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
+
+        hinf_eq: Literal["alpha_beta", "boltzmann", "custom"] = Field(
+            title="h_{inf} equation",
+            description="Equation to use for h_{inf}.",
+            default="alpha_beta",
         )
-        inact_iv_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus start time "
-                "for IV computation taken from source file, in ms."
-            ),
-            default=5,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus start for IV computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
+
+        htau_eq: Literal["alpha_beta", "exponential", "custom"] = Field(
+            title=r"\tau_h equation",
+            description="Equation to use for \tau_h.",
+            default="alpha_beta",
         )
-        inact_iv_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus end time "
-                "for IV computation taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus end for IV computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus start time "
-                "for time constant computation taken from source file, in ms."
-            ),
-            default=0,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus start for time constant computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus end time "
-                "for time constant computation taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus end for time constant computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
-        )
+
+    equations: Equations
+
+
+    #     m_power: int = Field(
+    #         title="m exponent in channel equation",
+    #         default=1,
+    #         ge=0,  # can be zero
+    #         le=4,  # should be 4 or lower
+    #         description=("Raise m to this power in the BREAKPOINT equation."),
+    #     )
+    #     h_power: int = Field(
+    #         title="h exponent in channel equation",
+    #         default=1,
+    #         ge=0,  # can be zero
+    #         le=4,  # should be 4 or lower
+    #         description=("Raise h to this power in the BREAKPOINT equation."),
+    #     )
+
+    # class StimulusVoltageExclusion(Block):
+    #     # trace loading customisation: voltage exclusion
+    #     act_exclude_voltages_above: float | None = Field(
+    #         title="Exclude activation voltages above",
+    #         default=None,
+    #         description=(
+    #             "Do not use any activation traces responses from input voltages "
+    #             "above this value. Use 'None' not to exclude any trace."
+    #         ),
+    #         units="mV",
+    #     )
+    #     act_exclude_voltages_below: float | None = Field(
+    #         title="Exclude activation voltages below",
+    #         default=None,
+    #         description=(
+    #             "Do not use any activation traces responses from input voltages "
+    #             "below this value. Use 'None' not to exclude any trace."
+    #         ),
+    #         units="mV",
+    #     )
+    #     inact_exclude_voltages_above: float | None = Field(
+    #         title="Exclude inactivation voltages above",
+    #         default=None,
+    #         description=(
+    #             "Do not use any inactivation traces responses from input voltages "
+    #             "above this value. Use 'None' not to exclude any trace."
+    #         ),
+    #         units="mV",
+    #     )
+    #     inact_exclude_voltages_below: float | None = Field(
+    #         title="Exclude inactivation voltages below",
+    #         default=None,
+    #         description=(
+    #             "Do not use any inactivation traces responses from input voltages "
+    #             "below this value. Use 'None' not to exclude any trace."
+    #         ),
+    #         units="mV",
+    #     )
+
+    # class StimulusTimings(Block):
+    #     # trace loading customisation: stimulus timings
+    #     act_stim_start: NonNegativeFloat | None = Field(
+    #         title="Activation stimulus start time",
+    #         default=None,
+    #         description=(
+    #             "Activation stimulus start timing. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with act_stim_start_correction."
+    #         ),
+    #         units="ms",
+    #     )
+    #     act_stim_end: NonNegativeFloat | None = Field(
+    #         title="Activation stimulus end time",
+    #         default=None,
+    #         description=(
+    #             "Activation stimulus end timing. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with act_stim_end_correction."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_iv_stim_start: NonNegativeFloat | None = Field(
+    #         title="Inactivation stimulus start time for IV computation",
+    #         default=None,
+    #         description=(
+    #             "Inactivation stimulus start timing for IV computation. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with inact_iv_stim_start_correction."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_iv_stim_end: NonNegativeFloat | None = Field(
+    #         title="Inactivation stimulus end time for IV computation",
+    #         default=None,
+    #         description=(
+    #             "Inactivation stimulus end timing for IV computation. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with inact_iv_stim_end_correction."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_tc_stim_start: NonNegativeFloat | None = Field(
+    #         title="Inactivation stimulus start time for time constant computation",
+    #         default=None,
+    #         description=(
+    #             "Inactivation stimulus start timing for time constant computation. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with inact_tc_stim_start_correction."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_tc_stim_end: NonNegativeFloat | None = Field(
+    #         title="Inactivation stimulus end time for time constant computation",
+    #         default=None,
+    #         description=(
+    #             "Inactivation stimulus end timing for time constant computation. "
+    #             "If None, this value will be taken from nwb "
+    #             "and will be corrected with inact_tc_stim_end_correction."
+    #         ),
+    #         units="ms",
+    #     )
+
+    #     # trace loading customisation: stimulus timings corrections
+    #     act_stim_start_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to activation stimulus start time taken from source file, "
+    #             "in ms."
+    #         ),
+    #         default=0,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file for activation stimulus start."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Positive values are expected since we usually want to remove the response "
+    #             "right after the beginning of the stimulus, but negative values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
+    #     act_stim_end_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to activation stimulus end time taken from source file, in ms."
+    #         ),
+    #         default=-1,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file for activation stimulus end."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Negative values are expected since we usually want to remove the response "
+    #             "right before the end of the stimulus, but positive values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_iv_stim_start_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to inactivation stimulus start time "
+    #             "for IV computation taken from source file, in ms."
+    #         ),
+    #         default=5,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file "
+    #             "for inactivation stimulus start for IV computation."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Positive values are expected since we usually want to remove the response "
+    #             "right after the beginning of the stimulus, but negative values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_iv_stim_end_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to inactivation stimulus end time "
+    #             "for IV computation taken from source file, in ms."
+    #         ),
+    #         default=-1,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file "
+    #             "for inactivation stimulus end for IV computation."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Negative values are expected since we usually want to remove the response "
+    #             "right before the end of the stimulus, but positive values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_tc_stim_start_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to inactivation stimulus start time "
+    #             "for time constant computation taken from source file, in ms."
+    #         ),
+    #         default=0,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file "
+    #             "for inactivation stimulus start for time constant computation."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Positive values are expected since we usually want to remove the response "
+    #             "right after the beginning of the stimulus, but negative values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
+    #     inact_tc_stim_end_correction: float = Field(
+    #         title=(
+    #             "Correction to apply to inactivation stimulus end time "
+    #             "for time constant computation taken from source file, in ms."
+    #         ),
+    #         default=-1,
+    #         description=(
+    #             "Correction to add to the timing taken from nwb file "
+    #             "for inactivation stimulus end for time constant computation."
+    #             "This is mainly used to remove artefacts "
+    #             "that appear when stimulus is applied/removed."
+    #             "Negative values are expected since we usually want to remove the response "
+    #             "right before the end of the stimulus, but positive values are also accepted."
+    #         ),
+    #         units="ms",
+    #     )
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -349,53 +410,55 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    minf_eq: equations_module.MInfUnion = Field(
-        title="m_{inf} equation",
-        reference_type=equations_module.MInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=0,
-    )
-    mtau_eq: equations_module.MTauUnion = Field(
-        title=r"\tau_m equation",
-        reference_type=equations_module.MTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=1,
-    )
-    hinf_eq: equations_module.HInfUnion = Field(
-        title="h_{inf} equation",
-        reference_type=equations_module.HInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=2,
-    )
-    htau_eq: equations_module.HTauUnion = Field(
-        title=r"\tau_h equation",
-        reference_type=equations_module.HTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=3,
-    )
+    # minf_eq: dict[str, equations_module.MInfUnion] = Field(
+    #     title="m_{inf} equation",
+    #     reference_type=equations_module.MInfReference.__name__,
+    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+    #     description="Stimuli for the simulation.",
+    #     singular_name="Stimulus",
+    #     group_order=0,
+    # )
+    # mtau_eq: equations_module.MTauUnion = Field(
+    #     title=r"\tau_m equation",
+    #     reference_type=equations_module.MTauReference.__name__,
+    #     group=BlockGroup.EQUATIONS,
+    #     group_order=1,
+    # )
+    # hinf_eq: equations_module.HInfUnion = Field(
+    #     title="h_{inf} equation",
+    #     reference_type=equations_module.HInfReference.__name__,
+    #     group=BlockGroup.EQUATIONS,
+    #     group_order=2,
+    # )
+    # htau_eq: equations_module.HTauUnion = Field(
+    #     title=r"\tau_h equation",
+    #     reference_type=equations_module.HTauReference.__name__,
+    #     group=BlockGroup.EQUATIONS,
+    #     group_order=3,
+    # )
 
-    gate_exponents: GateExponents = Field(
-        title="m & h gate exponents",
-        description="Set the power of m and h gates used in HH formalism equations.",
-        group=BlockGroup.GATEEXPONENTS,
-        group_order=0,
-    )
+    # gate_exponents: GateExponents = Field(
+    #     title="m & h gate exponents",
+    #     description="Set the power of m and h gates used in HH formalism equations.",
+    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+    #     group_order=2,
+    # )
 
-    stimulus_voltage_exclusion: StimulusVoltageExclusion = Field(
-        title="Stimulus voltage exclusion",
-        description=(
-            "Set the maximum and minimum voltages to consider for activation and inactivation."
-        ),
-        group=BlockGroup.ADVANCED,
-        group_order=0,
-    )
+    # stimulus_voltage_exclusion: StimulusVoltageExclusion = Field(
+    #     title="Stimulus voltage exclusion",
+    #     description=(
+    #         "Set the maximum and minimum voltages to consider for activation and inactivation."
+    #     ),
+    #     group=BlockGroup.ADVANCED,
+    #     group_order=0,
+    # )
 
-    stimulus_timings: StimulusTimings = Field(
-        title="Stimulus timings",
-        description="Set the stimulus start and end timings for activation and inactivation.",
-        group=BlockGroup.ADVANCED,
-        group_order=1,
-    )
+    # stimulus_timings: StimulusTimings = Field(
+    #     title="Stimulus timings",
+    #     description="Set the stimulus start and end timings for activation and inactivation.",
+    #     group=BlockGroup.ADVANCED,
+    #     group_order=1,
+    # )
 
     def create_campaign_entity_with_config(
         self,
@@ -582,112 +645,114 @@ class IonChannelFittingTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
-        try:
-            # download traces asset and metadata given id.
-            # Get ljp (liquid junction potential) voltage corection from metadata
-            trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
-            # prepare data to feed
-            eq_names = {
-                "minf": self.config.minf_eq.equation_key,
-                "mtau": self.config.mtau_eq.equation_key,
-                "hinf": self.config.hinf_eq.equation_key,
-                "htau": self.config.htau_eq.equation_key,
-            }
-            voltage_exclusion = {
-                "activation": {
-                    "above": self.config.stimulus_voltage_exclusion.act_exclude_voltages_above,
-                    "below": self.config.stimulus_voltage_exclusion.act_exclude_voltages_below,
-                },
-                "inactivation": {
-                    "above": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_above,
-                    "below": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_below,
-                },
-            }
-            stim_timings = {
-                "activation": {
-                    "start": self.config.stimulus_timings.act_stim_start,
-                    "end": self.config.stimulus_timings.act_stim_end,
-                },
-                "inactivation_iv": {
-                    "start": self.config.stimulus_timings.inact_iv_stim_start,
-                    "end": self.config.stimulus_timings.inact_iv_stim_end,
-                },
-                "inactivation_tc": {
-                    "start": self.config.stimulus_timings.inact_tc_stim_start,
-                    "end": self.config.stimulus_timings.inact_tc_stim_end,
-                },
-            }
-            stim_timings_corrections = {
-                "activation": {
-                    "start": self.config.stimulus_timings.act_stim_start_correction,
-                    "end": self.config.stimulus_timings.act_stim_end_correction,
-                },
-                "inactivation_iv": {
-                    "start": self.config.stimulus_timings.inact_iv_stim_start_correction,
-                    "end": self.config.stimulus_timings.inact_iv_stim_end_correction,
-                },
-                "inactivation_tc": {
-                    "start": self.config.stimulus_timings.inact_tc_stim_start_correction,
-                    "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
-                },
-            }
+        pass
+        # try:
+        #     # download traces asset and metadata given id.
+        #     # Get ljp (liquid junction potential) voltage corection from metadata
+        #     trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
-            # run ion_channel_builder main function to get optimised parameters
-            eq_popt = extract_all_equations(
-                data_paths=trace_paths,
-                ljps=trace_ljps,
-                eq_names=eq_names,
-                voltage_exclusion=voltage_exclusion,
-                stim_timings=stim_timings,
-                stim_timings_corrections=stim_timings_corrections,
-                output_folder=self.config.coordinate_output_root,
-            )
+        #     # prepare data to feed
+        #     eq_names = {
+        #         "minf": self.config.minf_eq.equation_key,
+        #         "mtau": self.config.mtau_eq.equation_key,
+        #         "hinf": self.config.hinf_eq.equation_key,
+        #         "htau": self.config.htau_eq.equation_key,
+        #     }
+        #     voltage_exclusion = {
+        #         "activation": {
+        #             "above": self.config.stimulus_voltage_exclusion.act_exclude_voltages_above,
+        #             "below": self.config.stimulus_voltage_exclusion.act_exclude_voltages_below,
+        #         },
+        #         "inactivation": {
+        #             "above": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_above,
+        #             "below": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_below,
+        #         },
+        #     }
+        #     stim_timings = {
+        #         "activation": {
+        #             "start": self.config.stimulus_timings.act_stim_start,
+        #             "end": self.config.stimulus_timings.act_stim_end,
+        #         },
+        #         "inactivation_iv": {
+        #             "start": self.config.stimulus_timings.inact_iv_stim_start,
+        #             "end": self.config.stimulus_timings.inact_iv_stim_end,
+        #         },
+        #         "inactivation_tc": {
+        #             "start": self.config.stimulus_timings.inact_tc_stim_start,
+        #             "end": self.config.stimulus_timings.inact_tc_stim_end,
+        #         },
+        #     }
+        #     stim_timings_corrections = {
+        #         "activation": {
+        #             "start": self.config.stimulus_timings.act_stim_start_correction,
+        #             "end": self.config.stimulus_timings.act_stim_end_correction,
+        #         },
+        #         "inactivation_iv": {
+        #             "start": self.config.stimulus_timings.inact_iv_stim_start_correction,
+        #             "end": self.config.stimulus_timings.inact_iv_stim_end_correction,
+        #         },
+        #         "inactivation_tc": {
+        #             "start": self.config.stimulus_timings.inact_tc_stim_start_correction,
+        #             "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
+        #         },
+        #     }
 
-            # create new mod file
-            mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
-            mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = mechanisms_dir / f"{self.config.initialize.suffix}.mod"
-            write_vgate_output(
-                eq_names=eq_names,
-                eq_popt=eq_popt,
-                suffix=self.config.initialize.suffix,
-                ion=self.config.initialize.ion,
-                m_power=self.config.gate_exponents.m_power,
-                h_power=self.config.gate_exponents.h_power,
-                output_name=output_name,
-            )
+        #     # run ion_channel_builder main function to get optimised parameters
+        #     eq_popt = extract_all_equations(
+        #         data_paths=trace_paths,
+        #         ljps=trace_ljps,
+        #         eq_names=eq_names,
+        #         voltage_exclusion=voltage_exclusion,
+        #         stim_timings=stim_timings,
+        #         stim_timings_corrections=stim_timings_corrections,
+        #         output_folder=self.config.coordinate_output_root,
+        #     )
 
-            # compile output mod file
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
-                    "nrnivmodl",
-                    "-incflags",
-                    "-DDISABLE_REPORTINGLIB",
-                    str(mechanisms_dir),
-                ],
-                check=True,
-            )
+        #     # create new mod file
+        #     mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
+        #     mechanisms_dir.mkdir(parents=True, exist_ok=True)
+        #     output_name = mechanisms_dir / f"{self.config.initialize.suffix}.mod"
+        #     write_vgate_output(
+        #         eq_names=eq_names,
+        #         eq_popt=eq_popt,
+        #         suffix=self.config.initialize.suffix,
+        #         ion=self.config.initialize.ion,
+        #         m_power=self.config.gate_exponents.m_power,
+        #         h_power=self.config.gate_exponents.h_power,
+        #         output_name=output_name,
+        #     )
 
-            # run ion_channel_builder mod file runner to produce plots
-            figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.config.initialize.suffix,
-                # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current=f"i{self.config.initialize.ion}",
-                # no need to actually give temperature because model is not temperature-dependent
-                temperature=self.config.initialize.temperature,
-                mech_conductance_name=f"g{self.config.initialize.suffix}bar",
-                output_folder=self.config.coordinate_output_root,
-                savefig=True,
-                show=False,
-            )
+        #     # compile output mod file
+        #     subprocess.run(  # noqa: S603
+        #         [  # noqa: S607
+        #             "nrnivmodl",
+        #             "-incflags",
+        #             "-DDISABLE_REPORTINGLIB",
+        #             str(mechanisms_dir),
+        #         ],
+        #         check=True,
+        #     )
 
-            # register the mod file and figures to the platform
-            model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
-            )
+        #     # run ion_channel_builder mod file runner to produce plots
+        #     figure_paths_dict = run_ion_channel_model(
+        #         mech_suffix=self.config.initialize.suffix,
+        #         # current is defined like this in mod file, see ion_channel_builder.io.write_output
+        #         mech_current=f"i{self.config.initialize.ion}",
+        #         # no need to actually give temperature because model is not temperature-dependent
+        #         temperature=self.config.initialize.temperature,
+        #         mech_conductance_name=f"g{self.config.initialize.suffix}bar",
+        #         output_folder=self.config.coordinate_output_root,
+        #         savefig=True,
+        #         show=False,
+        #     )
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
-        else:
-            return model_id
+        #     # register the mod file and figures to the platform
+        #     model_id = self.save(
+        #         mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
+        #     )
+
+        # except Exception as e:
+        #     raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+        # else:
+        #     return model_id
