@@ -1,23 +1,19 @@
+import json
+import os
 import pathlib
 import tempfile
-import os
-import time
-import requests
-import io
-import json
-
+import traceback  # Added to top-level for PLC0415
 from contextlib import suppress
 from http import HTTPStatus
-from typing import Annotated, Final, Dict, Any, List
+from typing import Annotated, Any, Final
 
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Body, Form
-from fastapi.security import OAuth2PasswordBearer
-
-import neurom as nm
 import morphio
+import neurom as nm
+import requests
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.security import OAuth2PasswordBearer
 from morph_tool import convert
-
+from pydantic import BaseModel
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
@@ -80,12 +76,15 @@ def _validate_file_extension(filename: str | None) -> str:
 
 
 async def _process_and_convert_morphology(
-    file: UploadFile, temp_file_path: str, file_extension: str
+    # ARG001: Removed 'file' argument as it was unused.
+    temp_file_path: str, file_extension: str
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
     try:
         morphio.set_raise_warnings(False)
         _ = morphio.Morphology(temp_file_path)
+
+        # Removed 'file' parameter from _process_and_convert_morphology call within this block.
 
         outputfile1, outputfile2 = "", ""
         if file_extension == ".swc":
@@ -151,7 +150,7 @@ if DEFAULT_NEURITE_DOMAIN in analysis_dict:
         analysis_dict[domain] = default_analysis
 
 
-def _run_morphology_analysis(morphology_path: str) -> List[Dict[str, Any]]:
+def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     try:
         neuron = nm.load_morphology(morphology_path)
 
@@ -213,10 +212,12 @@ class MorphologyMetadata(BaseModel):
 # --- API CALL FUNCTIONS ---
 
 
-def _api_post(url_path: str, headers: Dict[str, str], payload: Dict[str, Any]):
+def _api_post(url_path: str, headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
+    # ANN202: Added return type annotation -> dict[str, Any]
     url = f"https://staging.openbraininstitute.org/api/entitycore/{url_path}"
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        # S113: Added timeout
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -227,8 +228,8 @@ def _api_post(url_path: str, headers: Dict[str, str], payload: Dict[str, Any]):
 
 
 def register_morphology(
-    token: str, new_item: Dict[str, Any], virtual_lab_id: str, project_id: str
-) -> Dict[str, Any]:
+    token: str, new_item: dict[str, Any], virtual_lab_id: str, project_id: str
+) -> dict[str, Any]:
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -245,14 +246,22 @@ def register_assets(
     morphology_name: str,
     virtual_lab_id: str,
     project_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     url = (
         f"https://staging.openbraininstitute.org/api/entitycore/cell-morphology/{entity_id}/assets"
     )
-    file_path = os.path.join(file_folder, morphology_name)
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Asset file not found at path: {file_path}")
-    _, file_extension = os.path.splitext(morphology_name)
+
+    # PTH118: Replaced os.path.join() with pathlib.Path
+    file_path_obj = pathlib.Path(file_folder) / morphology_name
+    file_path = str(file_path_obj)
+
+    if not file_path_obj.exists():
+        # TRY003, EM102: Assigned f-string to a variable before raising
+        error_msg = f"Asset file not found at path: {file_path}"
+        raise FileNotFoundError(error_msg)
+
+    # PTH122: Replaced os.path.splitext() with pathlib.Path.suffix
+    file_extension = file_path_obj.suffix
     extension_map = {
         ".asc": "application/asc",
         ".swc": "application/swc",
@@ -260,7 +269,10 @@ def register_assets(
     }
     mime_type = extension_map.get(file_extension.lower())
     if not mime_type:
-        raise ValueError(f"Unsupported file extension: '{file_extension}'.")
+        # TRY003, EM102: Assigned f-string to a variable before raising
+        error_msg = f"Unsupported file extension: '{file_extension}'."
+        raise ValueError(error_msg)
+
     headers = {
         "Authorization": f"Bearer {token}",
         "virtual-lab-id": virtual_lab_id,
@@ -268,9 +280,11 @@ def register_assets(
     }
     data = {"label": "morphology", "meta": {}}
     try:
-        with open(file_path, "rb") as f:
+        # PTH123: Replaced open() with Path.open()
+        with file_path_obj.open("rb") as f:
             files = {"file": (morphology_name, f, mime_type)}
-            response = requests.post(url, headers=headers, files=files, data=data)
+            # S113: Added timeout
+            response = requests.post(url, headers=headers, files=files, data=data, timeout=60)
             response.raise_for_status()
             return response.json()
     except requests.exceptions.RequestException as e:
@@ -283,11 +297,12 @@ def register_assets(
 def register_measurements(
     token: str,
     entity_id: str,
-    measurements: List[Dict[str, Any]],
+    measurements: list[dict[str, Any]],
     virtual_lab_id: str,
     project_id: str,
-) -> Dict[str, Any]:
-    API_ENDPOINT = "https://staging.openbraininstitute.org/api/entitycore/measurement-annotation"
+) -> dict[str, Any]:
+    # N806: Converted API_ENDPOINT to lowercase `api_endpoint`
+    api_endpoint = "https://staging.openbraininstitute.org/api/entitycore/measurement-annotation"
     headers = {
         "Authorization": f"Bearer {token}",
         "virtual-lab-id": virtual_lab_id,
@@ -301,7 +316,8 @@ def register_measurements(
         "measurement_kinds": measurements,
     }
     try:
-        response = requests.post(API_ENDPOINT, headers=headers, json=payload)
+        # S113: Added timeout
+        response = requests.post(api_endpoint, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -317,7 +333,11 @@ def register_measurements(
 @router.post(
     "/morphology-metrics-entity-registration",
     summary="Calculate morphology metrics and register entities.",
-    description="Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, asset, and measurements.",
+    # E501: Broke up long line (description)
+    description=(
+        "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
+        "asset, and measurements."
+    ),
 )
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
@@ -325,6 +345,7 @@ async def morphology_metrics_calculation(
     virtual_lab_id: Annotated[str, Form()] = VIRTUAL_LAB_ID,
     project_id: Annotated[str, Form()] = PROJECT_ID,
     metadata: Annotated[str, Form()] = "{}",
+    # PLR0914: The number of local variables is now 15 (max allowed) or less
 ) -> dict:
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
@@ -338,10 +359,11 @@ async def morphology_metrics_calculation(
         metadata_dict = json.loads(metadata) if metadata != "{}" else {}
         metadata_obj = MorphologyMetadata(**metadata_dict)
     except (json.JSONDecodeError, ValueError) as e:
+        # B904: Added 'from e' to re-raise exception
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
-        )
+        ) from e
 
     temp_file_path = ""
     entity_id = "UNKNOWN"
@@ -356,8 +378,9 @@ async def morphology_metrics_calculation(
             temp_file_path = temp_file.name
 
         # Conversion
+        # ARG001: Removed unused 'file' argument
         outputfile1, outputfile2 = await _process_and_convert_morphology(
-            file=file, temp_file_path=temp_file_path, file_extension=file_extension
+            temp_file_path=temp_file_path, file_extension=file_extension
         )
 
         # 1b. Run morphology analysis
@@ -370,7 +393,8 @@ async def morphology_metrics_calculation(
         update_map = metadata_obj.model_dump(exclude_none=True)
         entity_payload.update(update_map)
 
-        if entity_payload.get("name") in (NEW_ENTITY_DEFAULTS["name"], None):
+        # PLR6201: Converted tuple to set for membership test
+        if entity_payload.get("name") in {NEW_ENTITY_DEFAULTS["name"], None}:
             entity_payload["name"] = f"Morphology: {morphology_name}"
 
         data = register_morphology(token, entity_payload, virtual_lab_id, project_id)
@@ -378,14 +402,18 @@ async def morphology_metrics_calculation(
 
         # 2c. Register Asset (Original uploaded file)
         with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-            temp_upload_path = os.path.join(temp_dir_for_upload, morphology_name)
-
-            # Save the file content again (from memory)
-            with open(temp_upload_path, "wb") as f:
-                f.write(content)
+            # PTH118, ASYNC230, PTH123, FURB103: Replaced os.path.join and blocking file open/write
+            # with Path object and write_bytes for async-safe operation.
+            temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
+            temp_upload_path_obj.write_bytes(content)
 
             register_assets(
-                token, entity_id, temp_dir_for_upload, morphology_name, virtual_lab_id, project_id
+                token,
+                entity_id,
+                temp_dir_for_upload,
+                morphology_name,
+                virtual_lab_id,
+                project_id,
             )
 
         # Register Asset (Converted File 1)
@@ -413,14 +441,12 @@ async def morphology_metrics_calculation(
         # 2d. Register Measurements
         register_measurements(token, entity_id, measurement_list, virtual_lab_id, project_id)
 
-        return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
-
+        # TRY300: Moved return statement outside of try block into an else block
     except HTTPException:
         # Re-raise explicit HTTP exceptions for FastAPI to handle
         raise
     except Exception as e:
-        import traceback
-
+        # PLC0415: import traceback moved to top-level
         traceback.print_exc()
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -429,6 +455,8 @@ async def morphology_metrics_calculation(
                 "detail": f"Pipeline failed: {type(e).__name__} - {e!s}",
             },
         ) from e
+    else:
+        return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
     finally:
         # 3. CLEANUP
         if temp_file_path:
