@@ -1,8 +1,7 @@
 import json
-import os
 import pathlib
 import tempfile
-import traceback  # Added to top-level for PLC0415
+import traceback
 from contextlib import suppress
 from http import HTTPStatus
 from typing import Annotated, Any, Final
@@ -327,6 +326,21 @@ def register_measurements(
         ) from e
 
 
+# --- NEW HELPER FUNCTION TO REDUCE LOCAL VARIABLES IN MAIN ENDPOINT ---
+def _prepare_entity_payload(
+    metadata_obj: MorphologyMetadata, original_filename: str
+) -> dict[str, Any]:
+    """Prepares the entity payload for registration, reducing complexity in the main function."""
+    entity_payload = NEW_ENTITY_DEFAULTS.copy()
+    update_map = metadata_obj.model_dump(exclude_none=True)
+    entity_payload.update(update_map)
+
+    # PLR6201: Converted tuple to set for membership test
+    if entity_payload.get("name") in {NEW_ENTITY_DEFAULTS["name"], None}:
+        entity_payload["name"] = f"Morphology: {original_filename}"
+
+    return entity_payload
+
 # --- MAIN ENDPOINT ---
 
 
@@ -389,13 +403,8 @@ async def morphology_metrics_calculation(
         # --- 2. API REGISTRATION ---
 
         # 2a/b. Entity Registration
-        entity_payload = NEW_ENTITY_DEFAULTS.copy()
-        update_map = metadata_obj.model_dump(exclude_none=True)
-        entity_payload.update(update_map)
-
-        # PLR6201: Converted tuple to set for membership test
-        if entity_payload.get("name") in {NEW_ENTITY_DEFAULTS["name"], None}:
-            entity_payload["name"] = f"Morphology: {morphology_name}"
+        # Refactored logic into a helper function to reduce local variable count
+        entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
 
         data = register_morphology(token, entity_payload, virtual_lab_id, project_id)
         entity_id = data.get("id", "ID_NOT_FOUND")
