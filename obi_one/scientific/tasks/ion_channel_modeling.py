@@ -101,9 +101,9 @@ class IonChannelFittingScanConfig(ScanConfig):
         )
 
         # mod file creation
-        suffix: str = Field(
-            title="Ion channel SUFFIX (ion channel name to use in the mod file)",
-            description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
+        name: str = Field(
+            title="Ion channel name (ion channel name to use in the mod file)",
+            description=("Name to use as SUFFIX in the mod file. It will also be used for the mod file name."),
             min_length=1,
         )
         ion: Literal["k"] = Field(
@@ -128,7 +128,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         m_power: int = Field(
             title="m exponent in channel equation",
             default=1,
-            ge=0,  # can be zero
+            ge=1,  # can be 1 or higher
             le=4,  # should be 4 or lower
             description=("Raise m to this power in the BREAKPOINT equation."),
         )
@@ -352,7 +352,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     )
 
     minf_eq: equations_module.MInfUnion = Field(
-        title="m_{inf} equation",
+        title=r"m_{\infty} equation",
         reference_type=equations_module.MInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=0,
@@ -364,7 +364,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=1,
     )
     hinf_eq: equations_module.HInfUnion = Field(
-        title="h_{inf} equation",
+        title=r"h_{\infty} equation",
         reference_type=equations_module.HInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=2,
@@ -587,29 +587,29 @@ class IonChannelFittingTask(Task):
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
             ion_name=self.config.initialize.ion,
-            read=f"e{self.config.initialize.ion}",
-            write=f"i{self.config.initialize.ion}",
-            valence=None,  # should we put None or 1 here?
+            read=[f"e{self.config.initialize.ion}"],
+            write=[f"i{self.config.initialize.ion}"],
+            valence=1,  # putting 1 for K for now. TODO: fix this
             main_ion=True,
         )
         neuron_block = entitysdk.models.NeuronBlock(
-            global_=None,
+            global_=[],
             range=[
-                [
-                    {f"g{self.config.initialize.suffix}bar": "S/cm2"},
-                    {"g{self.config.initialize.suffix}": "S/cm2"},
-                    {"i{self.config.initialize.ion}": "mA/cm2"},
-                ]
+                {f"g{self.config.initialize.name}bar": "S/cm2"},
+                {f"g{self.config.initialize.name}": "S/cm2"},
+                {f"i{self.config.initialize.ion}": "mA/cm2"},
             ],
-            useion=useion,
-            nonspecific=None,
+            useion=[useion],
+            nonspecific=[],
         )
+        print("NeuronBlock data:", json.dumps(neuron_block.dict(by_alias=True), indent=2))
+
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
-                name=self.config.initialize.suffix,
-                nmodl_suffix=self.config.initialize.suffix,
+                name=self.config.initialize.name,
+                nmodl_suffix=self.config.initialize.name,
                 description=(
-                    f"Ion channel model of {self.config.initialize.suffix} "
+                    f"Ion channel model of {self.config.initialize.name} "
                     f"at {self.config.initialize.temperature} C."
                 ),
                 contributions=None,  # TBD
@@ -618,6 +618,8 @@ class IonChannelFittingTask(Task):
                 temperature_celsius=self.config.initialize.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
+                brain_region_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066", #default: "Basic cell groups and regions"
+                subject_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07", #default: "Generic Mus musculus"
             )
         )
 
@@ -657,10 +659,10 @@ class IonChannelFittingTask(Task):
 
             # prepare data to feed
             eq_names = {
-                "minf": self.config.minf_eq.equation_key,
-                "mtau": self.config.mtau_eq.equation_key,
-                "hinf": self.config.hinf_eq.equation_key,
-                "htau": self.config.htau_eq.equation_key,
+                "minf": self.config.minf_eq.__class__.equation_key,
+                "mtau": self.config.mtau_eq.__class__.equation_key,
+                "hinf": self.config.hinf_eq.__class__.equation_key,
+                "htau": self.config.htau_eq.__class__.equation_key,
             }
             voltage_exclusion = {
                 "activation": {
@@ -700,7 +702,6 @@ class IonChannelFittingTask(Task):
                     "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
                 },
             }
-
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
@@ -715,11 +716,12 @@ class IonChannelFittingTask(Task):
             # create new mod file
             mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = mechanisms_dir / f"{self.config.initialize.suffix}.mod"
+            output_name = mechanisms_dir / f"{self.config.initialize.name}.mod"
+            
             write_vgate_output(
                 eq_names=eq_names,
                 eq_popt=eq_popt,
-                suffix=self.config.initialize.suffix,
+                suffix=self.config.initialize.name,
                 ion=self.config.initialize.ion,
                 m_power=self.config.gate_exponents.m_power,
                 h_power=self.config.gate_exponents.h_power,
@@ -739,12 +741,12 @@ class IonChannelFittingTask(Task):
 
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.config.initialize.suffix,
+                mech_suffix=self.config.initialize.name,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current=f"i{self.config.initialize.ion}",
                 # no need to actually give temperature because model is not temperature-dependent
                 temperature=self.config.initialize.temperature,
-                mech_conductance_name=f"g{self.config.initialize.suffix}bar",
+                mech_conductance_name=f"g{self.config.initialize.name}bar",
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
