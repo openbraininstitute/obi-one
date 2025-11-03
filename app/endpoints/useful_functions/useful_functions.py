@@ -1,10 +1,31 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any
+
 import neurom as nm
 import numpy as np
 
+# Define constants for magic numbers and set literal checks
+MIN_MEASUREMENT_ITEM_ENTRIES = 2
+EMPTY_NAME_SET = {None, ""}
 
-def find_pref_labels_by_domain(value: Union[Dict, List], results: defaultdict[str, List[List[str]]]):
+
+def _update_entity_id_recursive(obj: dict | list, entity_id: str) -> None:
+    """Recursively update any 'entity_id' key to the given entity_id."""
+    if isinstance(obj, dict):
+        for key, val in obj.items():
+            if key == "entity_id":
+                obj[key] = entity_id
+            else:
+                _update_entity_id_recursive(val, entity_id)
+    elif isinstance(obj, list):
+        for item in obj:
+            _update_entity_id_recursive(item, entity_id)
+
+
+def find_pref_labels_by_domain(
+    value: dict | list,
+    results: defaultdict[str, list[list[str]]],
+) -> None:
     """Recursively search for pref_label and structural_domain in nested JSON."""
     if isinstance(value, dict):
         if "pref_label" in value and "structural_domain" in value:
@@ -23,7 +44,10 @@ def find_pref_labels_by_domain(value: Union[Dict, List], results: defaultdict[st
             find_pref_labels_by_domain(item, results)
 
 
-def create_analysis_dict(obj: Union[Dict, List], results: Optional[defaultdict[str, List[str]]] = None) -> defaultdict[str, List[str]]:
+def create_analysis_dict(
+    obj: dict | list,
+    results: defaultdict[str, list[str]] | None = None,
+) -> defaultdict[str, list[str]]:
     """Recursively collect pref_labels grouped by structural_domain."""
     if results is None:
         results = defaultdict(list)
@@ -43,7 +67,12 @@ def create_analysis_dict(obj: Union[Dict, List], results: Optional[defaultdict[s
     return results
 
 
-def _process_measurement(label: str, unit: str, neuron: nm.Neuron, neurite_type: Optional[int] = None) -> List[Any]:
+def _process_measurement(
+    label: str,
+    unit: str,
+    neuron: nm.Neuron,
+    neurite_type: int | None = None,
+) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
     nm_get_key = label
     if label.endswith("max_radial_distance"):
@@ -85,20 +114,22 @@ def _process_measurement(label: str, unit: str, neuron: nm.Neuron, neurite_type:
     return elements
 
 
-def build_results_dict(analysis_dict: Dict[str, List[List[str]]], neuron: nm.Neuron) -> Dict[str, List[List[Any]]]:
-    """
-    Analyzes neuron morphology using neurom and numpy based on the provided
+def build_results_dict(
+    analysis_dict: dict[str, list[list[str]]],
+    neuron: nm.Neuron,
+) -> dict[str, list[list[Any]]]:
+    """Analyzes neuron morphology using neurom and numpy based on the provided
     analysis_dict structure (which contains [label, unit] pairs).
     """
 
-    def _run_analysis(category_key: str, neurite_type: Optional[int] = None) -> List[List[Any]]:
+    def _run_analysis(category_key: str, neurite_type: int | None = None) -> list[list[Any]]:
         category_results = []
         for label, unit in analysis_dict.get(category_key, []):
             result = _process_measurement(label, unit, neuron, neurite_type=neurite_type)
             category_results.append(result)
         return category_results
 
-    results_dict: Dict[str, List[List[Any]]] = {}
+    results_dict: dict[str, list[list[Any]]] = {}
 
     results_dict["soma"] = _run_analysis("soma")
     results_dict["neuron_morphology"] = _run_analysis("neuron_morphology")
@@ -109,82 +140,104 @@ def build_results_dict(analysis_dict: Dict[str, List[List[str]]], neuron: nm.Neu
     return results_dict
 
 
-def update_measurement_items(measurement_items: List[Dict[str, Any]], entry_value: Union[float, int, List, Tuple]):
-    """
-    measurement_items: list of dicts from JSON (each dict has name, unit, value)
-    entry_value: either a scalar (number) OR a list-of-lists (aggregate stats)
-                 e.g. 4444.35  OR  [['minimum', 4444, 'μm'], ...]
-    """
-    if isinstance(entry_value, list) and entry_value and all(isinstance(x, list) for x in entry_value):
-        items_by_name = {item.get("name"): item for item in measurement_items if item.get("name")}
+def _update_aggregate_items(
+    measurement_items: list[dict[str, Any]],
+    entry_value: list,
+) -> None:
+    """Internal helper to update measurement_items with aggregated (list-of-lists) values."""
+    items_by_name = {item.get("name"): item for item in measurement_items if item.get("name")}
 
-        for sub_entry in entry_value:
-            if len(sub_entry) < 2:
-                continue
-            sub_name = sub_entry[0]
-            sub_val = sub_entry[1]
-            sub_unit = sub_entry[2] if len(sub_entry) > 2 else None
+    for sub_entry in entry_value:
+        if len(sub_entry) < MIN_MEASUREMENT_ITEM_ENTRIES:
+            continue
+        sub_name = sub_entry[0]
+        sub_val = sub_entry[1]
+        sub_unit = sub_entry[2] if len(sub_entry) > MIN_MEASUREMENT_ITEM_ENTRIES else None
 
-            if sub_name in items_by_name:
-                item = items_by_name[sub_name]
-                item["value"] = sub_val
-                if sub_unit is not None:
-                    item["unit"] = sub_unit
-            else:
-                matched = False
-                for item in measurement_items:
-                    if item.get("name") in (None, "", sub_name):
-                        item["value"] = sub_val
-                        if sub_unit is not None:
-                            item["unit"] = sub_unit
-                        matched = True
-                        break
-                if not matched:
-                    new_item: Dict[str, Union[str, float, int, None]] = {"name": sub_name, "value": sub_val}
-                    if sub_unit is not None:
-                        new_item["unit"] = sub_unit
-                    measurement_items.append(new_item)
-
-    else:
-        scalar_val = entry_value
-        scalar_unit = None
-
-        if isinstance(entry_value, (list, tuple)) and len(entry_value) >= 2 and not isinstance(entry_value[0], list):
-            scalar_val = entry_value[0]
-            scalar_unit = entry_value[1]
-
-        raw_item = next((item for item in measurement_items if item.get("name") == "raw"), None)
-        if raw_item is None and measurement_items:
-            raw_item = measurement_items[0]
-
-        if raw_item is not None:
-            raw_item["value"] = scalar_val
-            if scalar_unit is not None:
-                raw_item["unit"] = scalar_unit
+        if sub_name in items_by_name:
+            item = items_by_name[sub_name]
+            item["value"] = sub_val
+            if sub_unit is not None:
+                item["unit"] = sub_unit
         else:
-            new_item: Dict[str, Union[str, float, int, None]] = {"name": "raw", "value": scalar_val}
-            if scalar_unit is not None:
-                new_item["unit"] = scalar_unit
-            measurement_items.append(new_item)
+            matched = False
+            # Use set literal for checking item names
+            check_names = EMPTY_NAME_SET | {sub_name}
+            for item in measurement_items:
+                if item.get("name") in check_names:
+                    item["value"] = sub_val
+                    if sub_unit is not None:
+                        item["unit"] = sub_unit
+                    matched = True
+                    break
+            if not matched:
+                new_item: dict[
+                    str,
+                    str | float | int | None,
+                ] = {"name": sub_name, "value": sub_val}
+                if sub_unit is not None:
+                    new_item["unit"] = sub_unit
+                measurement_items.append(new_item)
 
 
-def fill_json(template: Dict[str, Any], values: Dict[str, Any], entity_id: str) -> Dict[str, Any]:
+def _update_scalar_items(
+    measurement_items: list[dict[str, Any]],
+    entry_value: float | list | tuple,
+) -> None:
+    """Internal helper to update measurement_items with a scalar value."""
+    scalar_val = entry_value
+    scalar_unit = None
+
+    if (
+        isinstance(entry_value, (list, tuple))
+        and len(entry_value) >= MIN_MEASUREMENT_ITEM_ENTRIES
+        and not isinstance(entry_value[0], list)
+    ):
+        scalar_val = entry_value[0]
+        scalar_unit = entry_value[1]
+
+    raw_item = next((item for item in measurement_items if item.get("name") == "raw"), None)
+    if raw_item is None and measurement_items:
+        raw_item = measurement_items[0]
+
+    if raw_item is not None:
+        raw_item["value"] = scalar_val
+        if scalar_unit is not None:
+            raw_item["unit"] = scalar_unit
+    else:
+        new_item: dict[str, str | float | int | None] = {"name": "raw", "value": scalar_val}
+        if scalar_unit is not None:
+            new_item["unit"] = scalar_unit
+        measurement_items.append(new_item)
+
+
+def update_measurement_items(
+    measurement_items: list[dict[str, Any]],
+    entry_value: float | list | tuple,
+) -> None:
+    """Measurement_items: list of dicts from JSON (each dict has name, unit, value).
+    Entry_value: either a scalar (number) OR a list-of-lists (aggregate stats),
+    e.g. 4444.35 OR [['minimum', 4444, 'μm'], ...].
     """
-    Traverse JSON template and fill measurement values.
+    if (
+        isinstance(entry_value, list)
+        and entry_value
+        and all(isinstance(x, list) for x in entry_value)
+    ):
+        _update_aggregate_items(measurement_items, entry_value)
+    else:
+        _update_scalar_items(measurement_items, entry_value)
+
+
+def fill_json(
+    template: dict[str, Any],
+    values: dict[str, Any],
+    entity_id: str,
+) -> dict[str, Any]:
+    """Traverse JSON template and fill measurement values.
     Updates any 'entity_id' key (at any depth) to the given entity_id.
     """
-    def _update_entity_id_recursive(obj: Union[Dict, List]):
-        if isinstance(obj, dict):
-            for key, val in obj.items():
-                if key == "entity_id":
-                    obj[key] = entity_id
-                else:
-                    _update_entity_id_recursive(val)
-        elif isinstance(obj, list):
-            for item in obj:
-                _update_entity_id_recursive(item)
-
-    _update_entity_id_recursive(template)
+    _update_entity_id_recursive(template, entity_id)
 
     data_list = template.get("data", [])
     for data_obj in data_list:
@@ -204,8 +257,16 @@ def fill_json(template: Dict[str, Any], values: Dict[str, Any], entity_id: str) 
                 if entry_label != label:
                     continue
                 payload = entry[1] if len(entry) > 1 else None
-                is_complex_list = isinstance(payload, list) and payload and isinstance(payload[0], list)
-                if payload is not None and not is_complex_list and len(entry) > 2:
+                is_complex_list = (
+                    isinstance(payload, list)
+                    and payload
+                    and isinstance(payload[0], list)
+                )
+                if (
+                    payload is not None
+                    and not is_complex_list
+                    and len(entry) > MIN_MEASUREMENT_ITEM_ENTRIES
+                ):
                     payload = (payload, entry[2])
                 if "measurement_items" not in measurement:
                     measurement["measurement_items"] = []
