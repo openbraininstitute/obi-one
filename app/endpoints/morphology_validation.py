@@ -29,8 +29,8 @@ def _handle_empty_file(file: UploadFile) -> None:
     )
 
 
-async def _process_and_convert_morphology(
-    file: UploadFile, temp_file_path: str, file_extension: str
+async def process_and_convert_morphology(
+    temp_file_path: str, file_extension: str
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
     try:
@@ -52,7 +52,6 @@ async def _process_and_convert_morphology(
         convert(temp_file_path, outputfile2)
 
     except Exception as e:
-        L.error(f"Morphio error loading file {file.filename}: {e!s}")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -138,8 +137,8 @@ async def test_neuron_file(
             temp_file.write(content)
             temp_file_path = temp_file.name
 
-        outputfile1, outputfile2 = await _process_and_convert_morphology(
-            file=file, temp_file_path=temp_file_path, file_extension=file_extension
+        outputfile1, outputfile2 = await process_and_convert_morphology(
+            temp_file_path=temp_file_path, file_extension=file_extension
         )
 
         return await _create_and_return_zip(outputfile1, outputfile2)
