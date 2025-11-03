@@ -47,12 +47,13 @@ def find_pref_labels_by_domain(
 
 def create_analysis_dict(
     obj: dict | list,
-    results: defaultdict[str, list[list[str]]] | None = None, # Changed list[str] to list[list[str]] for clarity
-) -> defaultdict[str, list[list[str]]]: # Changed list[str] to list[list[str]] for clarity
+    # NOTE: results now stores list of [label, unit]
+    # Changed list[str] to list[list[str]] for clarity
+    results: defaultdict[str, list[list[str]]] | None = None,
+) -> defaultdict[str, list[list[str]]]:  # Changed list[str] to list[list[str]] for clarity
     """Recursively collect pref_labels and units grouped by structural_domain."""
     if results is None:
-        # NOTE: results now stores list of [label, unit]
-        results = defaultdict(list) 
+        results = defaultdict(list)
 
     if isinstance(obj, dict):
         if "pref_label" in obj and "structural_domain" in obj:
@@ -84,7 +85,7 @@ def _process_measurement(
 ) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
     nm_get_key = label
-    
+
     # 1. Simplification logic: Correctly set nm_get_key to 'max_radial_distance'
     if label.endswith("max_radial_distance"):
         nm_get_key = "max_radial_distance"
@@ -93,10 +94,10 @@ def _process_measurement(
     if neurite_type is not None and "neurite" in label:
         data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
     else:
-        # Use nm_get_key here to support 'morphology_max_radial_distance' 
-        # (which has been simplified to 'max_radial_distance') and 'soma' metrics 
+        # Use nm_get_key here to support 'morphology_max_radial_distance'
+        # (which has been simplified to 'max_radial_distance') and 'soma' metrics
         # (where nm_get_key is the same as label).
-        data = nm.get(nm_get_key, neuron) # <--- THIS LINE IS THE FIX
+        data = nm.get(nm_get_key, neuron)  # <--- THIS LINE IS THE FIX
 
     elements = [label, data, unit]
 
