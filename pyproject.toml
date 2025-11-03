@@ -67,6 +67,7 @@ dependencies = [
     "bluecellulab>=2.6.71",
     # OBI NOTEBOOK
     "obi_notebook",
+    "morph_spines",
     # CAVEclient
     "caveclient>=7.11.0"
 ]
