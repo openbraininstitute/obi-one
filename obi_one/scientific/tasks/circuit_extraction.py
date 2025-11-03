@@ -63,7 +63,8 @@ class CircuitExtractionScanConfig(ScanConfig):
             " together with their connectivity.",
         )
 
-        virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
+        # > virtual_sources_to_ignore: tuple[str, ...] | list[tuple[str, ...]] = ()
+        # > Removed for the time being; may be added later if needed
 
     initialize: Initialize
     neuron_set: CircuitExtractionNeuronSetUnion
