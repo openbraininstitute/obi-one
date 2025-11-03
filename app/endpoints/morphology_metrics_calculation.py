@@ -19,17 +19,6 @@ import morphio
 from morph_tool import convert
 
 
-# Dummy logger definition, replace with actual app logger if available
-class MockLogger:
-    def error(self, msg):
-        pass
-
-    def info(self, msg):
-        pass
-
-
-L = MockLogger()
-
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 
@@ -113,7 +102,6 @@ async def _process_and_convert_morphology(
         convert(temp_file_path, outputfile2)
 
     except Exception as e:
-        L.error(f"Morphio error loading file {file.filename}: {e!s}")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
