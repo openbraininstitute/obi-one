@@ -50,16 +50,16 @@ class CircuitExtractionScanConfig(ScanConfig):
         run_validation: bool = False
         do_virtual: bool | list[bool] = Field(
             default=True,
-            name="Do virtual",
-            description="Enable virtual neurons that target the cells contained in the"
-            " specified neuron set to be split out and kept as virtual neurons together"
-            " with their connectivity.",
+            name="Include virtual populations",
+            description="Split out virtual neurons that target the cells contained in the"
+            " specified neuron set and kept them as virtual neurons together with their"
+            " connectivity.",
         )
         create_external: bool | list[bool] = Field(
             default=True,
-            name="Create external",
-            description="Enable external neurons that are outside the specified neuron set"
-            " but target the cells contained therein to be turned into new virtual neurons"
+            name="Create external population",
+            description="Turn neurons that are outside the specified neuron set but target"
+            " the cells contained therein into a new external population of virtual neurons"
             " together with their connectivity.",
         )
 
