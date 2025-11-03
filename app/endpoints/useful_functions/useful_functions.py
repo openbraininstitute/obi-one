@@ -274,9 +274,7 @@ def fill_json(
                     continue
                 payload = entry[1] if len(entry) > 1 else None
                 is_complex_list = (
-                    isinstance(payload, list)
-                    and payload
-                    and isinstance(payload[0], list)
+                    isinstance(payload, list) and payload and isinstance(payload[0], list)
                 )
                 if (
                     payload is not None
