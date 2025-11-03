@@ -3,6 +3,7 @@ from typing import Any
 
 import neurom as nm
 import numpy as np
+from neurom.core import Morphology
 
 # Define constants for magic numbers and set literal checks
 MIN_MEASUREMENT_ITEM_ENTRIES = 2
@@ -46,17 +47,25 @@ def find_pref_labels_by_domain(
 
 def create_analysis_dict(
     obj: dict | list,
-    results: defaultdict[str, list[str]] | None = None,
-) -> defaultdict[str, list[str]]:
-    """Recursively collect pref_labels grouped by structural_domain."""
+    results: defaultdict[str, list[list[str]]] | None = None, # Changed list[str] to list[list[str]] for clarity
+) -> defaultdict[str, list[list[str]]]: # Changed list[str] to list[list[str]] for clarity
+    """Recursively collect pref_labels and units grouped by structural_domain."""
     if results is None:
-        results = defaultdict(list)
+        # NOTE: results now stores list of [label, unit]
+        results = defaultdict(list) 
 
     if isinstance(obj, dict):
         if "pref_label" in obj and "structural_domain" in obj:
-            domain = obj["structural_domain"]
-            label = obj["pref_label"]
-            results[domain].append(label)
+            try:
+                domain = obj["structural_domain"]
+                label = obj["pref_label"]
+                # Extract the unit from the first item in measurement_items
+                unit = obj["measurement_items"][0]["unit"]
+                # Append a list [label, unit]
+                results[domain].append([label, unit])
+            except (KeyError, IndexError):
+                # Handle cases where measurement_items or unit might be missing
+                pass
         for value in obj.values():
             create_analysis_dict(value, results)
 
@@ -70,18 +79,24 @@ def create_analysis_dict(
 def _process_measurement(
     label: str,
     unit: str,
-    neuron: nm.Neuron,
+    neuron: Morphology,
     neurite_type: int | None = None,
 ) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
     nm_get_key = label
+    
+    # 1. Simplification logic: Correctly set nm_get_key to 'max_radial_distance'
     if label.endswith("max_radial_distance"):
         nm_get_key = "max_radial_distance"
 
+    # 2. Key change: Ensure the call uses the simplified 'nm_get_key' in both branches.
     if neurite_type is not None and "neurite" in label:
         data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
     else:
-        data = nm.get(label, neuron)
+        # Use nm_get_key here to support 'morphology_max_radial_distance' 
+        # (which has been simplified to 'max_radial_distance') and 'soma' metrics 
+        # (where nm_get_key is the same as label).
+        data = nm.get(nm_get_key, neuron) # <--- THIS LINE IS THE FIX
 
     elements = [label, data, unit]
 
@@ -116,7 +131,7 @@ def _process_measurement(
 
 def build_results_dict(
     analysis_dict: dict[str, list[list[str]]],
-    neuron: nm.Neuron,
+    neuron: Morphology,
 ) -> dict[str, list[list[Any]]]:
     """Analyzes neuron morphology using neurom and numpy based on the provided
     analysis_dict structure (which contains [label, unit] pairs).
