@@ -154,7 +154,7 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
         }
         compressed_path = self.compress_output()
-        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
         print("The following are the notices for the used data:")
         for notice in lst_notices:
             print(notice)
