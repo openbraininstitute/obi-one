@@ -8,12 +8,13 @@ from typing import ClassVar
 import entitysdk
 import morphio
 import neurom
-from neurom.core import MorphologyWithSpines
-from neurom.io.utils import load_morphology_with_spines
+
 from entitysdk.models import CellMorphology
 from entitysdk.models.entity import Entity
 from entitysdk._server_schemas import AssetLabel, ContentType
 from entitysdk.exception import EntitySDKError
+from morph_spines import load_morphology_with_spines
+from morph_spines import MorphologyWithSpines
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod

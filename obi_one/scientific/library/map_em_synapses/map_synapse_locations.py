@@ -107,7 +107,7 @@ def synapse_info_df(client, pt_root_id, resolutions, col_location="ctr_pt_positi
 def morph_to_segs_df(morph):
     segs = []
     sec_id_keys = []
-    for sec in morph.sections:
+    for sec in morph.morphology.sections:
         if len(sec.points) < 2:
             continue
         seg_start, seg_end = zip(*sec.segments)
@@ -122,11 +122,11 @@ def morph_to_segs_df(morph):
 
 def morph_to_spine_and_soma_df(m):
     all_spine_points = pandas.concat(
-            [pandas.DataFrame(m.spine_mesh_points(i), columns=["x", "y", "z"])
-            for i in range(m.spine_count)],
-            axis=0, keys=m.spine_table.index.to_numpy(), names=[_C_SP_INDEX]
+            [pandas.DataFrame(m.spines.spine_mesh_points(i), columns=["x", "y", "z"])
+            for i in range(m.spines.spine_count)],
+            axis=0, keys=m.spines.spine_table.index.to_numpy(), names=[_C_SP_INDEX]
         ).reset_index(0)
-    soma_points = pandas.DataFrame(m.soma_mesh_points, columns=["x", "y", "z"])
+    soma_points = pandas.DataFrame(m.soma.soma_mesh_points, columns=["x", "y", "z"])
     soma_points[_C_SP_INDEX] = -1
 
     spine_and_soma_points = pandas.concat([all_spine_points, soma_points], axis=0).reset_index(drop=True)
@@ -245,8 +245,8 @@ def edges_dataframe_for_soma_syns(syns, m, mpd, is_on_soma):
     c[_STR_SEC_ID] = 0
     c[_STR_SEG_ID] = 0
     c[_STR_SEG_OFF] = 0.0
-    c[_STR_SEC_OFF] = calc_section_offset(c, m)
-    for _col, _coord in zip(_C_CENTER, m.soma.center):
+    c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)
+    for _col, _coord in zip(_C_CENTER, m.morphology.soma.center):
         c[_col] = _coord
     c["distance"] = mpd.loc[is_on_soma, "distance"]
     c = rename_directed_dataframe_colums(c, prefix=_PF_AFF)
@@ -256,13 +256,13 @@ def edges_dataframe_for_shaft_syns(syns, m, mpd, is_on_shaft):
     b = pandas.concat([syns.loc[is_on_shaft, _C_P_LOCS],
                        syns.loc[is_on_shaft, _C_P_LOCS].rename(columns=dict(zip(_C_P_LOCS, _C_SURFACE))),
                        mpd.loc[is_on_shaft]], axis=1)
-    b = pandas.concat([b, calc_center_positions(b, m)], axis=1)
-    b[_STR_SEC_OFF] = calc_section_offset(b, m)
+    b = pandas.concat([b, calc_center_positions(b, m.morphology)], axis=1)
+    b[_STR_SEC_OFF] = calc_section_offset(b, m.morphology)
     b = rename_directed_dataframe_colums(b, _PF_AFF)
     return b
 
 def edges_dataframe_for_spine_syns(syns, m, mpd, is_on_spine):
-    a = m.spine_table.loc[mpd.loc[is_on_spine, _C_SP_INDEX]].copy()
+    a = m.spines.spine_table.loc[mpd.loc[is_on_spine, _C_SP_INDEX]].copy()
     a = a.drop(columns=['spine_orientation_vector_x', 'spine_orientation_vector_y',
                         'spine_orientation_vector_z', 'spine_rotation_x',
                         'spine_rotation_y', 'spine_rotation_z', 'spine_rotation_w'])

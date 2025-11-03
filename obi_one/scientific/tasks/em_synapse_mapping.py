@@ -22,7 +22,7 @@ from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, Circuit
 from entitysdk._server_schemas import CircuitBuildCategory, CircuitScale
 from entitysdk._server_schemas import AssetLabel, ContentType
 
-from neurom.io.utils import load_morphology_with_spines
+from morph_spines import load_morphology_with_spines
 
 from typing import ClassVar
 
@@ -132,7 +132,7 @@ class EMSynapseMappingTask(Task):
                     mapped_synapses_df, node_population_pre, node_population_post)
         
         # Nodes h5 file
-        coll_post.properties["morphology"] = f"morphology/{spiny_morph.name}"
+        coll_post.properties["morphology"] = f"morphology/{spiny_morph.morphology.name}"
         fn_nodes_out = "synaptome-nodes.h5"
         write_nodes(out_root / fn_nodes_out, node_population_pre, coll_pre, write_mode="w")
         write_nodes(out_root / fn_nodes_out, node_population_post, coll_post, write_mode="a")
@@ -154,7 +154,7 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_swc: os.path.join(out_root, fn_morphology_out_swc)
         }
         compressed_path = self.compress_output()
-        self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
+        # self.register_output(db_client, pt_root_id, mapped_synapses_df, syn_pre_post_df, source_dataset, file_paths, compressed_path)
         print("The following are the notices for the used data:")
         for notice in lst_notices:
             print(notice)
