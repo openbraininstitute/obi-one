@@ -116,10 +116,6 @@ async def _process_and_convert_morphology(
 TEMPLATE = {
     "data": [
         {
-            "id": "00a0c678-1bce-40fa-a28a-2bc44ff36f43",
-            "creation_date": "2024-07-24T12:43:55.989031Z",
-            "update_date": "2024-07-24T12:43:56.054059Z",
-            "entity_id": "e892fa95-c724-457a-8dc6-176f5d6cc5d9",
             "entity_type": "reconstruction_morphology",
             "measurement_kinds": [
                 {
