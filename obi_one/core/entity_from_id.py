@@ -34,4 +34,4 @@ class EntityFromID(OBIBaseModel, abc.ABC):
 
     def __str__(self) -> str:
         """Returns a string representation."""
-        return self.__class__.__name__ + self.id_str
+        return f"{self.__class__.__name__}_{self.id_str}"
