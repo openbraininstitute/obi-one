@@ -76,7 +76,8 @@ def _validate_file_extension(filename: str | None) -> str:
 
 async def _process_and_convert_morphology(
     # ARG001: Removed 'file' argument as it was unused.
-    temp_file_path: str, file_extension: str
+    temp_file_path: str,
+    file_extension: str,
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
     try:
@@ -340,6 +341,7 @@ def _prepare_entity_payload(
         entity_payload["name"] = f"Morphology: {original_filename}"
 
     return entity_payload
+
 
 # --- MAIN ENDPOINT ---
 
