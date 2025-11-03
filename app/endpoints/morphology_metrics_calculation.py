@@ -6,12 +6,10 @@ from contextlib import suppress
 from http import HTTPStatus
 from typing import Annotated, Any, Final
 
-import morphio
 import neurom as nm
 import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.security import OAuth2PasswordBearer
-from morph_tool import convert
 from pydantic import BaseModel
 
 import app.endpoints.useful_functions.useful_functions as uf
@@ -733,7 +731,6 @@ def register_measurements(
     virtual_lab_id: str,
     project_id: str,
 ) -> dict[str, Any]:
-    # N806: Converted API_ENDPOINT to lowercase `api_endpoint`
     api_endpoint = "https://staging.openbraininstitute.org/api/entitycore/measurement-annotation"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -749,19 +746,8 @@ def register_measurements(
         "role_id": ROLE_ID,
     }
     try:
-        # S113: Added timeout
         response = requests.post(api_endpoint, headers=headers, json=payload, timeout=30)
-        # --- NEW DEBUG CODE BLOCK ---
-        if response.status_code == 422:
-            error_detail = response.json() if response.content else response.text
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,  # Use 400 or 422 for client errors if possible
-                detail={
-                    "code": "EXTERNAL_API_VALIDATION_ERROR",
-                    "detail": f"API 422 Error: {error_detail}",
-                },
-            )
-        # --- END NEW DEBUG CODE BLOCK ---
+
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -771,7 +757,6 @@ def register_measurements(
         ) from e
 
 
-# --- NEW HELPER FUNCTION TO REDUCE LOCAL VARIABLES IN MAIN ENDPOINT ---
 def _prepare_entity_payload(
     metadata_obj: MorphologyMetadata, original_filename: str
 ) -> dict[str, Any]:
@@ -780,7 +765,6 @@ def _prepare_entity_payload(
     update_map = metadata_obj.model_dump(exclude_none=True)
     entity_payload.update(update_map)
 
-    # PLR6201: Converted tuple to set for membership test
     if entity_payload.get("name") in {NEW_ENTITY_DEFAULTS["name"], None}:
         entity_payload["name"] = f"Morphology: {original_filename}"
 
