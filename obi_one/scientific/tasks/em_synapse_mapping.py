@@ -2,6 +2,7 @@ import os
 import subprocess
 import json
 import numpy
+import shutil
 
 from obi_one.scientific.library.map_em_synapses import (
     map_afferents_to_spiny_morphology, write_edges, write_nodes,
@@ -21,6 +22,7 @@ from entitysdk import Client
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, Circuit
 from entitysdk._server_schemas import CircuitBuildCategory, CircuitScale
 from entitysdk._server_schemas import AssetLabel, ContentType
+from entitysdk.downloaders.memodel import download_memodel
 
 from morph_spines import load_morphology_with_spines
 
@@ -31,6 +33,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphology, CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 
@@ -64,7 +67,7 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     cave_token : str | None = None
 
     class Initialize(Block):
-        spiny_neuron : CellMorphologyFromID
+        spiny_neuron : CellMorphologyFromID | MEModelFromID
         edge_population_name : str = "synaptome_afferents"
         node_population_pre : str = "synaptome_afferent_neurons"
         node_population_post : str = "biophysical_neuron"
@@ -80,7 +83,18 @@ class EMSynapseMappingTask(Task):
     def execute(self, db_client : Client = None):
         if db_client is None:
             raise ValueError("Synapse lookup and mapping requires a working db_client!")
-        morph_entity = self.config.initialize.spiny_neuron.entity(db_client)
+        
+        use_me_model = isinstance(self.config.initialize.spiny_neuron, MEModelFromID)
+        if use_me_model:
+            me_model_entity = self.config.initialize.spiny_neuron.entity(db_client)
+            morph_entity = me_model_entity.morphology
+            memdl_from_id = self.config.initialize.spiny_neuron
+            id_str = str(morph_entity.id)
+            morph_from_id = CellMorphologyFromID(id_str=id_str)
+        else:
+            morph_entity = self.config.initialize.spiny_neuron.entity(db_client)
+            morph_from_id = self.config.initialize.spiny_neuron
+
         
         # Prepare output location
         out_root = self.config.coordinate_output_root
@@ -91,11 +105,33 @@ class EMSynapseMappingTask(Task):
         print("Placing morphologies...")
         fn_morphology_out_h5 = os.path.join("morphologies", morph_entity.name + ".h5")
         fn_morphology_out_swc = os.path.join("morphologies/morphology", morph_entity.name + ".swc")
-        self.config.initialize.spiny_neuron.write_spiny_neuron_h5(out_root / fn_morphology_out_h5,
+        morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5,
                                                                   db_client=db_client)
-        smooth_morph = self.config.initialize.spiny_neuron.neurom_morphology(db_client)
+        smooth_morph = morph_from_id.neurom_morphology(db_client)
         smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
         spiny_morph = load_morphology_with_spines(str(out_root / fn_morphology_out_h5))
+
+        phys_node_props = {}
+        if use_me_model:
+            print("Placing mechanisms and .hoc file...")
+            tmp_staging = out_root / "temp_staging"
+            memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)
+            shutil.move(memdl_paths.mechanisms_dir, out_root / "mechanisms")
+            os.makedirs(out_root, "hoc")
+            shutil.move(memdl_paths.hoc_path, out_root / "hoc")
+            shutil.rmtree(tmp_staging)
+            phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
+            phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
+            phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
+            if me_model_entity.calibration_result is not None:
+                phys_node_props["threshold_current"] = numpy.array([
+                    me_model_entity.calibration_result.threshold_current
+                ], dtype=numpy.float32)
+                phys_node_props["holding_current"] = numpy.array([
+                    me_model_entity.calibration_result.holding_current
+                ], dtype=numpy.float32)
+            
+
 
         print("Resolving skeleton provenance...")
         pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(db_client, morph_entity)
@@ -133,6 +169,9 @@ class EMSynapseMappingTask(Task):
         
         # Nodes h5 file
         coll_post.properties["morphology"] = f"morphology/{spiny_morph.morphology.name}"
+        if use_me_model:
+            for col, vals in phys_node_props.items():
+                coll_post.properties[col] = vals
         fn_nodes_out = "synaptome-nodes.h5"
         write_nodes(out_root / fn_nodes_out, node_population_pre, coll_pre, write_mode="w")
         write_nodes(out_root / fn_nodes_out, node_population_post, coll_post, write_mode="a")

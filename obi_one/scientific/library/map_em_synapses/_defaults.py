@@ -87,7 +87,7 @@ def sonata_config_for(fn_edges_out, fn_nodes_out, edge_population_name,
                 "alternate_morphologies": {
                 "h5v1": "$BASE_DIR/" + fn_morphology_out_h5
                 },
-                "biophysical_neuron_models_dir": "$BASE_DIR/emodels_hoc",
+                "biophysical_neuron_models_dir": "$BASE_DIR/hoc",
                 "morphologies_dir": "$BASE_DIR/morphologies",
                 "type": "biophysical"
             }
