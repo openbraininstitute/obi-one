@@ -607,9 +607,6 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 
 # --- CONFIGURATION ---
 
-# Entity Registration Data (Defaults)
-ROLE_ID = "78b53cbf-ad29-49fd-82e7-d0bc328fc581"
-MTYPE_CLASS_ID = "0791edc9-7ad4-4a94-a4a5-feab9b690d7e"
 
 NEW_ENTITY_DEFAULTS = {
     "authorized_public": False,
@@ -743,7 +740,6 @@ def register_measurements(
         "description": "Automated morphology metrics calculation.",
         "entity_type": "cell_morphology",
         "measurement_kinds": measurements,
-        "role_id": ROLE_ID,
     }
     try:
         response = requests.post(api_endpoint, headers=headers, json=payload, timeout=30)
