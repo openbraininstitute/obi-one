@@ -48,14 +48,14 @@ class CircuitExtractionScanConfig(ScanConfig):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Parent circuit to extract a sub-circuit from."
         )
-        do_virtual: bool | list[bool] = Field(
+        do_virtual: bool = Field(
             default=True,
             name="Include virtual populations",
             description="Split out virtual neurons that target the cells contained in the"
             " specified neuron set and kept them as virtual neurons together with their"
             " connectivity.",
         )
-        create_external: bool | list[bool] = Field(
+        create_external: bool = Field(
             default=True,
             name="Create external population",
             description="Turn neurons that are outside the specified neuron set but target"
