@@ -30,6 +30,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscrimi
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 
 L = logging.getLogger(__name__)
+_RUN_VALIDATION = False
 
 
 class CircuitExtractionScanConfig(ScanConfig):
@@ -47,7 +48,6 @@ class CircuitExtractionScanConfig(ScanConfig):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Parent circuit to extract a sub-circuit from."
         )
-        run_validation: bool = False
         do_virtual: bool | list[bool] = Field(
             default=True,
             name="Include virtual populations",
@@ -550,7 +550,7 @@ class CircuitExtractionTask(Task):
         self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
 
         # Run circuit validation
-        if self.config.initialize.run_validation:
+        if _RUN_VALIDATION:
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
