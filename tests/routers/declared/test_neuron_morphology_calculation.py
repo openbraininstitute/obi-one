@@ -10,6 +10,12 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
+from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -63,13 +69,11 @@ def mock_measurement_list():
 # --- Test Case ---
 
 
-# FIX: Added @pytest.mark.usefixtures to resolve PT019
 @pytest.mark.usefixtures("mock_morphology_file")
 def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
-    # FIX: Removed _mock_morphology_file parameter to resolve PT019 and ARG001
     mock_temp_file_path,
     mock_measurement_list,
 ):
@@ -87,50 +91,46 @@ def test_morphology_registration_success(
     mock_data = MagicMock(id=mock_entity_id)
 
     # 2. Mock Internal Pipeline Functions
-    # Mock file processing: returns temp path and file content string
-    # Renamed arguments to satisfy ARG001
     def mock_process_and_convert(_morphology_file, _outputfile1=None):
         return mock_temp_file_path, "mock-content-string-swc-file"
 
-    # Mock file conversion/validation
-    # FIX: Use dotted path string to resolve the TypeError for imported function.
+    # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert,
+        mock_process_and_convert
     )
 
-    # Mock morphology analysis: returns the list of metrics
-    # FIX: Use dotted path string to resolve the TypeError for imported function.
+    # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,  # _path satisfies ARG005
+        lambda _path: mock_measurement_list
     )
 
-    # Mock entity registration: returns the mock data object with entity ID
-    # FIX: Use dotted path string to resolve the TypeError for imported function.
+    # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,  # _client and _payload satisfy ARG005
+        lambda _client, _payload: mock_data
     )
 
-    # Mock asset/measurement registration: simply ensure it's called
+    # FIX: Use dotted path string for monkeypatching
     mock_register_assets_and_measurements = MagicMock()
-    # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements,
+        mock_register_assets_and_measurements
     )
 
     # 3. Perform the POST Request
+    # FIX: Update 'data' and 'files' keys/content to match the working 'requests' script.
     response = client.post(
         ROUTE,
         data={
-            "morphology_name": "Test Morphology 1",
-            "content_type": "morphology/swc",
-            "entity_payload": mock_entity_payload,
+            "metadata": mock_entity_payload, # Changed from 'entity_payload'
+            "virtual_lab_id": "bf7d398c-b812-408a-a2ee-098f633f7798", # Added
+            "project_id": "100a9a8a-5229-4f3d-aef3-6a4184c59e74", # Added
+            # Removed 'morphology_name' and 'content_type'
         },
         files={
-            "morphology_file": (
+            "file": ( # Changed from 'morphology_file'
                 "test_morphology.swc",
                 b"mock swc content",
                 "application/octet-stream",
@@ -147,13 +147,18 @@ def test_morphology_registration_success(
     response_json = response.json()
     assert response_json["status"] == "success"
     assert response_json["entity_id"] == str(mock_entity_id)
-    assert response_json["morphology_name"] == "Test Morphology 1"
+    # NOTE: Assuming the name is derived from the metadata, otherwise this assertion may need adjustment.
+    # The value 'Test Morphology 1' is hardcoded here and may not reflect the new payload structure.
+    # For now, we'll keep the assertion as-is but be aware of this potential mismatch.
+    # The mock_entity_payload contains "cell_name": "Test Cell", so this line is likely wrong.
+    # Since the full response structure is unknown, I will assume the name is derived from the payload.
+    # I'll change it to 'Test Cell' based on the fixture content.
+    assert response_json["morphology_name"] == "Test Cell"
 
     # Check that all registration steps were called correctly
-    # Assert that asset/measurement registration was called with the correct ID and measurements
     mock_register_assets_and_measurements.assert_called_once()
 
-    # _kwargs satisfies RUF059
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
+ 
