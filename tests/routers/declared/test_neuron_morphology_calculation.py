@@ -7,11 +7,15 @@ import pytest
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
+from app.endpoints.morphology_validation import process_and_convert_morphology
 
-# Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
 
-# Use the specific IDs from the user's working script to eliminate validation errors
 VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
@@ -21,10 +25,7 @@ PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 @pytest.fixture
 def mock_entity_payload():
-    """
-    Returns a mock JSON string payload for the entity metadata, structured
-    to match the fields expected by the working 'requests' script's 'metadata' dictionary.
-    """
+    """Returns a mock JSON string payload for the entity metadata."""
     payload_data = {
         "name": "Test Morphology Analysis Name",
         "description": "Mock description for test run.",
@@ -41,7 +42,7 @@ def mock_morphology_file():
     """Returns a mock UploadFile object for the SWC file upload."""
     return UploadFile(
         filename="test_morphology.swc",
-        file=MagicMock(),  # Mock the file content stream
+        file=MagicMock(),
     )
 
 
@@ -71,45 +72,45 @@ def test_morphology_registration_success(
     mock_temp_file_path,
     mock_measurement_list,
 ):
-    """
-    Tests the successful registration and metrics calculation pipeline, ensuring
-    all helper functions and API calls are mocked and correctly utilized.
-    """
+    """Tests the successful registration and metrics calculation pipeline."""
     # 1. Setup Mock EntitySDK Client
     entitysdk_client_mock = MagicMock()
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     # Mock the ID returned after successful entity creation
     mock_entity_id = uuid.uuid4()
-    mock_data = MagicMock(id=mock_entity_id)
+    mock_data = MagicMock()
+    mock_data.id = str(mock_entity_id)
+    
+    expected_morphology_name = json.loads(mock_entity_payload)["name"]
 
     # 2. Mock Internal Pipeline Functions
     def mock_process_and_convert(_morphology_file, _outputfile1=None):
         return mock_temp_file_path, "mock-content-string-swc-file"
 
-    # Use dotted path string for monkeypatching (resolves previous TypeError)
+    # Mock file conversion/validation
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert,
+        mock_process_and_convert
     )
 
-    # Use dotted path string for monkeypatching (resolves previous TypeError)
+    # Mock morphology analysis
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,
+        lambda _path: mock_measurement_list
     )
 
-    # Use dotted path string for monkeypatching (resolves previous TypeError)
+    # Mock entity registration
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,
+        lambda _client, _payload: mock_data
     )
 
-    # Use dotted path string for monkeypatching (resolves previous TypeError)
+    # Mock asset/measurement registration
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements,
+        mock_register_assets_and_measurements
     )
 
     # 3. Perform the POST Request
@@ -117,7 +118,7 @@ def test_morphology_registration_success(
         ROUTE,
         data={
             "metadata": mock_entity_payload,
-            "virtual_lab_id": VIRTUAL_LAB_ID,
+            "virtual_lab_id": VIRTUAL_LAB_ID, 
             "project_id": PROJECT_ID,
         },
         files={
@@ -130,15 +131,12 @@ def test_morphology_registration_success(
     )
 
     # 4. Assertions
-
-    # Check for success status code
     assert response.status_code == 200
 
-    # Check response body content
     response_json = response.json()
     assert response_json["status"] == "success"
     assert response_json["entity_id"] == str(mock_entity_id)
-    assert response_json["morphology_name"] == "Test Morphology Analysis Name"
+    assert response_json["morphology_name"] == expected_morphology_name
 
     # Check that all registration steps were called correctly
     mock_register_assets_and_measurements.assert_called_once()
