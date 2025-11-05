@@ -30,7 +30,6 @@ def mock_entity_payload():
         "description": "Mock description for test run.",
         "subject_id": str(uuid.uuid4()),
         "brain_region_id": str(uuid.uuid4()),
-        # FIX: Changed brain_location to be an array/list to match the working script and resolve 400 error.
         "brain_location": [100.0, 200.0, 300.0],
         "cell_morphology_protocol_id": str(uuid.uuid4()),
     }
