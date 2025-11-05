@@ -1,24 +1,44 @@
 import json
+import os
 import pathlib
 import tempfile
 import traceback
-from contextlib import suppress
+from contextlib import ExitStack, contextmanager, suppress
 from http import HTTPStatus
-from typing import Annotated, Any, Final
+from typing import Annotated, Any, Final, Optional, Type, TypeVar, Union
+from uuid import UUID
 
 import neurom as nm
 import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from starlette.requests import Request
 
 import app.endpoints.useful_functions.useful_functions as uf
-from app.dependencies.auth import user_verified
+from app.dependencies.auth import UserContextDep, user_verified
+from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
+from entitysdk import Client
+from entitysdk.models import (
+    BrainLocation,
+    BrainRegion,
+    CellMorphology,
+    CellMorphologyProtocol,
+    MeasurementAnnotation,
+    Subject,
+)
 
 
 class ApiErrorCode:
     BAD_REQUEST = "BAD_REQUEST"
+    ENTITYCORE_API_FAILURE = "ENTITYCORE_API_FAILURE"
+
+
+# Base class for TypeVar bounding
+class BaseEntity:
+    def __init__(self, id=None):
+        pass
 
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
@@ -28,14 +48,6 @@ DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
 TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
-
-# --- TOKEN ACCESS DEPENDENCY ---
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-
-
-def get_auth_token(token: str = Depends(oauth2_scheme)) -> str:
-    """Dependency that returns the raw token string from the Authorization header."""
-    return token
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -73,500 +85,426 @@ def _validate_file_extension(filename: str | None) -> str:
     return file_extension
 
 
-# the template is included with the code
+# --- FULL TEMPLATE WITH NULLIFIED VALUES ---
 TEMPLATE = {
     "data": [
         {
-            "entity_id": "e892fa95-c724-457a-8dc6-176f5d6cc5d9",
+            "entity_id": None,
             "entity_type": "reconstruction_morphology",
             "measurement_kinds": [
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "neurite_max_radial_distance",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_sections",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_bifurcations",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_leaves",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "total_length",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
                     "pref_label": "total_area",
                 },
                 {
                     "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "μm³", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
+                    "pref_label": "total_volume",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    "pref_label": "neurite_max_radial_distance",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                    "pref_label": "number_of_sections",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                    "pref_label": "number_of_bifurcations",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                    "pref_label": "number_of_leaves",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    "pref_label": "total_length",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
+                    "pref_label": "total_area",
+                },
+                {
+                    "structural_domain": "basal_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
                     "pref_label": "total_volume",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 154.49050903320312}
-                    ],
-                    "pref_label": "neurite_max_radial_distance",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 49.0}],
-                    "pref_label": "number_of_sections",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 24.0}],
-                    "pref_label": "number_of_bifurcations",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 25.0}],
-                    "pref_label": "number_of_leaves",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 574.7376134395599}
-                    ],
-                    "pref_label": "total_length",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm²", "value": 2083.9089844782807}
-                    ],
-                    "pref_label": "total_area",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm³", "value": 786.4245895828037}
-                    ],
-                    "pref_label": "total_volume",
-                },
-                {
-                    "structural_domain": "basal_dendrite",
-                    "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 1.3708171844482422},
-                        {"name": "maximum", "unit": "μm", "value": 65.93452453613281},
-                        {"name": "median", "unit": "μm", "value": 8.429391860961914},
-                        {"name": "mean", "unit": "μm", "value": 11.729339049786937},
-                        {"name": "standard_deviation", "unit": "μm", "value": 10.971337931832881},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_lengths",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 3.0071189403533936},
-                        {"name": "maximum", "unit": "μm", "value": 15.437870025634766},
-                        {"name": "median", "unit": "μm", "value": 7.821196556091309},
-                        {"name": "mean", "unit": "μm", "value": 9.077946109771728},
-                        {"name": "standard_deviation", "unit": "μm", "value": 4.232474823540596},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_term_lengths",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 1.3708171844482422},
-                        {"name": "maximum", "unit": "μm", "value": 65.93452453613281},
-                        {"name": "median", "unit": "μm", "value": 11.146228790283203},
-                        {"name": "mean", "unit": "μm", "value": 14.491206695636114},
-                        {"name": "standard_deviation", "unit": "μm", "value": 14.565197452483643},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_bif_lengths",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 0.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 7.0},
-                        {"name": "median", "unit": "dimensionless", "value": 4.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 4.326530612244898},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 1.7069815237817538,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_branch_orders",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 0.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 6.0},
-                        {"name": "median", "unit": "dimensionless", "value": 3.5},
-                        {"name": "mean", "unit": "dimensionless", "value": 3.4166666666666665},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 1.6051133570215186,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_bif_branch_orders",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 3.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 7.0},
-                        {"name": "median", "unit": "dimensionless", "value": 5.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 5.2},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 1.296148139681572,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_term_branch_orders",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 51.56536865234375},
-                        {"name": "maximum", "unit": "μm", "value": 173.5483956336975},
-                        {"name": "median", "unit": "μm", "value": 140.30963134765625},
-                        {"name": "mean", "unit": "μm", "value": 129.91002093042647},
-                        {"name": "standard_deviation", "unit": "μm", "value": 29.662002754802742},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_path_distances",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {
-                            "name": "minimum",
-                            "unit": "dimensionless",
-                            "value": -0.050027668476104736,
-                        },
-                        {
-                            "name": "maximum",
-                            "unit": "dimensionless",
-                            "value": 1.9141037460326885e-16,
-                        },
-                        {
-                            "name": "median",
-                            "unit": "dimensionless",
-                            "value": -3.652493749705474e-18,
-                        },
-                        {"name": "mean", "unit": "dimensionless", "value": -0.003127515373029262},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.009822788270307671,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_taper_rates",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "radian", "value": 0.47377522888783696},
-                        {"name": "maximum", "unit": "radian", "value": 1.6691038627945671},
-                        {"name": "median", "unit": "radian", "value": 1.0642240351058527},
-                        {"name": "mean", "unit": "radian", "value": 1.1049163425786215},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "radian",
-                            "value": 0.2644924566922347,
-                        },
+                        {"name": "minimum", "unit": "radian", "value": None},
+                        {"name": "maximum", "unit": "radian", "value": None},
+                        {"name": "median", "unit": "radian", "value": None},
+                        {"name": "mean", "unit": "radian", "value": None},
+                        {"name": "standard_deviation", "unit": "radian", "value": None},
                     ],
                     "pref_label": "local_bifurcation_angles",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "radian", "value": 0.34369608206776314},
-                        {"name": "maximum", "unit": "radian", "value": 2.9744974214113533},
-                        {"name": "median", "unit": "radian", "value": 0.83795681500925},
-                        {"name": "mean", "unit": "radian", "value": 0.9589040666082035},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "radian",
-                            "value": 0.5345811618618049,
-                        },
+                        {"name": "minimum", "unit": "radian", "value": None},
+                        {"name": "maximum", "unit": "radian", "value": None},
+                        {"name": "median", "unit": "radian", "value": None},
+                        {"name": "mean", "unit": "radian", "value": None},
+                        {"name": "standard_deviation", "unit": "radian", "value": None},
                     ],
                     "pref_label": "remote_bifurcation_angles",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 0.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 0.6875},
-                        {"name": "median", "unit": "dimensionless", "value": 0.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 0.191940756003256},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.24186326751364615,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "partition_asymmetry",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 0.000329341660395155},
-                        {"name": "maximum", "unit": "μm", "value": 0.47013431941007783},
-                        {"name": "median", "unit": "μm", "value": 0.0077665873629627945},
-                        {"name": "mean", "unit": "μm", "value": 0.05824312263454626},
-                        {"name": "standard_deviation", "unit": "μm", "value": 0.11913148623554351},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "partition_asymmetry_length",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 0.6121212244033813},
-                        {"name": "maximum", "unit": "dimensionless", "value": 1.0},
-                        {"name": "median", "unit": "dimensionless", "value": 1.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 0.9499309957027435},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.11314455157300414,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "sibling_ratios",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 2.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 4.868290130981099},
-                        {"name": "median", "unit": "dimensionless", "value": 2.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 2.3007714304487172},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.6733418175667351,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "diameter_power_relations",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 50.63172912597656},
-                        {"name": "maximum", "unit": "μm", "value": 154.49050903320312},
-                        {"name": "median", "unit": "μm", "value": 109.38362121582031},
-                        {"name": "mean", "unit": "μm", "value": 102.34537163559271},
-                        {"name": "standard_deviation", "unit": "μm", "value": 28.674482397181823},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_radial_distances",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 64.33403015136719},
-                        {"name": "maximum", "unit": "μm", "value": 154.49050903320312},
-                        {"name": "median", "unit": "μm", "value": 113.7708511352539},
-                        {"name": "mean", "unit": "μm", "value": 106.60736358642578},
-                        {"name": "standard_deviation", "unit": "μm", "value": 29.230186682232286},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_term_radial_distances",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 50.63172912597656},
-                        {"name": "maximum", "unit": "μm", "value": 139.6158905029297},
-                        {"name": "median", "unit": "μm", "value": 108.3280029296875},
-                        {"name": "mean", "unit": "μm", "value": 97.90579668680827},
-                        {"name": "standard_deviation", "unit": "μm", "value": 27.387516588667843},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "section_bif_radial_distances",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 98.88428831100464},
-                        {"name": "maximum", "unit": "μm", "value": 173.5483956336975},
-                        {"name": "median", "unit": "μm", "value": 148.5470039844513},
-                        {"name": "mean", "unit": "μm", "value": 138.80657278060914},
-                        {"name": "standard_deviation", "unit": "μm", "value": 27.747075702301814},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "terminal_path_lengths",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm³", "value": 0.7123960740046634},
-                        {"name": "maximum", "unit": "μm³", "value": 332.46868155897647},
-                        {"name": "median", "unit": "μm³", "value": 6.277054895129806},
-                        {"name": "mean", "unit": "μm³", "value": 16.04948142005722},
-                        {"name": "standard_deviation", "unit": "μm³", "value": 49.988002414361766},
+                        {"name": "minimum", "unit": "μm³", "value": None},
+                        {"name": "maximum", "unit": "μm³", "value": None},
+                        {"name": "median", "unit": "μm³", "value": None},
+                        {"name": "mean", "unit": "μm³", "value": None},
+                        {"name": "standard_deviation", "unit": "μm³", "value": None},
                     ],
                     "pref_label": "section_volumes",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm²", "value": 4.523149450881758},
-                        {"name": "maximum", "unit": "μm²", "value": 445.99350977741693},
-                        {"name": "median", "unit": "μm²", "value": 26.746534607544493},
-                        {"name": "mean", "unit": "μm²", "value": 42.52875478527103},
-                        {"name": "standard_deviation", "unit": "μm²", "value": 75.35081671776754},
+                        {"name": "minimum", "unit": "μm²", "value": None},
+                        {"name": "maximum", "unit": "μm²", "value": None},
+                        {"name": "median", "unit": "μm²", "value": None},
+                        {"name": "mean", "unit": "μm²", "value": None},
+                        {"name": "standard_deviation", "unit": "μm²", "value": None},
                     ],
                     "pref_label": "section_areas",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 1.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 1.3238543272018433},
-                        {"name": "median", "unit": "dimensionless", "value": 1.0280802249908447},
-                        {"name": "mean", "unit": "dimensionless", "value": 1.0482378906133223},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.06718531774708324,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_tortuosity",
                 },
                 {
                     "structural_domain": "basal_dendrite",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 1.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 4.0},
-                        {"name": "median", "unit": "dimensionless", "value": 1.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 1.7551020408163265},
-                        {
-                            "name": "standard_deviation",
-                            "unit": "dimensionless",
-                            "value": 0.9154147547757471,
-                        },
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "section_strahler_orders",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "neurite_max_radial_distance",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_sections",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_bifurcations",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_leaves",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "total_length",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
                     "pref_label": "total_area",
                 },
                 {
                     "structural_domain": "apical_dendrite",
-                    "measurement_items": [{"name": "raw", "unit": "μm³", "value": 0.0}],
+                    "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
                     "pref_label": "total_volume",
                 },
                 {
                     "structural_domain": "neuron_morphology",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 154.49050903320312}
-                    ],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "morphology_max_radial_distance",
                 },
                 {
                     "structural_domain": "neuron_morphology",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "dimensionless", "value": 49.0},
-                        {"name": "maximum", "unit": "dimensionless", "value": 49.0},
-                        {"name": "median", "unit": "dimensionless", "value": 49.0},
-                        {"name": "mean", "unit": "dimensionless", "value": 49.0},
-                        {"name": "standard_deviation", "unit": "dimensionless", "value": 0.0},
+                        {"name": "minimum", "unit": "dimensionless", "value": None},
+                        {"name": "maximum", "unit": "dimensionless", "value": None},
+                        {"name": "median", "unit": "dimensionless", "value": None},
+                        {"name": "mean", "unit": "dimensionless", "value": None},
+                        {"name": "standard_deviation", "unit": "dimensionless", "value": None},
                     ],
                     "pref_label": "number_of_sections_per_neurite",
                 },
                 {
                     "structural_domain": "neuron_morphology",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm", "value": 574.7376134395599},
-                        {"name": "maximum", "unit": "μm", "value": 574.7376134395599},
-                        {"name": "median", "unit": "μm", "value": 574.7376134395599},
-                        {"name": "mean", "unit": "μm", "value": 574.7376134395599},
-                        {"name": "standard_deviation", "unit": "μm", "value": 0.0},
+                        {"name": "minimum", "unit": "μm", "value": None},
+                        {"name": "maximum", "unit": "μm", "value": None},
+                        {"name": "median", "unit": "μm", "value": None},
+                        {"name": "mean", "unit": "μm", "value": None},
+                        {"name": "standard_deviation", "unit": "μm", "value": None},
                     ],
                     "pref_label": "total_length_per_neurite",
                 },
                 {
                     "structural_domain": "neuron_morphology",
                     "measurement_items": [
-                        {"name": "minimum", "unit": "μm²", "value": 2083.9089844782807},
-                        {"name": "maximum", "unit": "μm²", "value": 2083.9089844782807},
-                        {"name": "median", "unit": "μm²", "value": 2083.9089844782807},
-                        {"name": "mean", "unit": "μm²", "value": 2083.9089844782807},
-                        {"name": "standard_deviation", "unit": "μm²", "value": 0.0},
+                        {"name": "minimum", "unit": "μm²", "value": None},
+                        {"name": "maximum", "unit": "μm²", "value": None},
+                        {"name": "median", "unit": "μm²", "value": None},
+                        {"name": "mean", "unit": "μm²", "value": None},
+                        {"name": "standard_deviation", "unit": "μm²", "value": None},
                     ],
                     "pref_label": "total_area_per_neurite",
                 },
                 {
                     "structural_domain": "neuron_morphology",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 66.69000244140625}
-                    ],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "total_height",
                 },
                 {
                     "structural_domain": "neuron_morphology",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 155.34999084472656}
-                    ],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "total_width",
                 },
                 {
                     "structural_domain": "neuron_morphology",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": 4.75}],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "total_depth",
                 },
                 {
                     "structural_domain": "neuron_morphology",
-                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": 1.0}],
+                    "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
                     "pref_label": "number_of_neurites",
                 },
                 {
                     "structural_domain": "soma",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm²", "value": 1218.140871757005}
-                    ],
+                    "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
                     "pref_label": "soma_surface_area",
                 },
                 {
                     "structural_domain": "soma",
-                    "measurement_items": [
-                        {"name": "raw", "unit": "μm", "value": 9.845637133329614}
-                    ],
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "soma_radius",
                 },
             ],
@@ -615,13 +553,10 @@ NEW_ENTITY_DEFAULTS = {
     "description": "string",
     "location": {"x": 0, "y": 0, "z": 0},
     "legacy_id": ["string"],
-    "species_id": "b7ad4cca-4ac2-4095-9781-37fb68fe9ca1",
-    "strain_id": None,
     "brain_region_id": "72893207-1e8f-48f3-b17b-075b58b9fac5",
     "subject_id": "9edb44c6-33b5-403b-8ab6-0890cfb12d07",
     "cell_morphology_protocol_id": None,
 }
-
 
 # --- Pydantic Model for Metadata (Used in the request Body) ---
 class MorphologyMetadata(BaseModel):
@@ -634,60 +569,84 @@ class MorphologyMetadata(BaseModel):
     brain_region_id: str | None = None
     repair_pipeline_state: str | None = None
     cell_morphology_protocol_id: str | None = None
-
+    brain_location: list[float] | None = None
 
 # --- API CALL FUNCTIONS ---
 
-
-def _api_post(url_path: str, headers: dict[str, str], payload: dict[str, Any]) -> dict[str, Any]:
-    # ANN202: Added return type annotation -> dict[str, Any]
-    url = f"https://staging.openbraininstitute.org/api/entitycore/{url_path}"
-    try:
-        # S113: Added timeout
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": "CONNECTION_ERROR", "detail": f"Connection Error: {e}"},
-        ) from e
+T = TypeVar('T', bound=BaseEntity)
 
 
 def register_morphology(
-    token: str, new_item: dict[str, Any], virtual_lab_id: str, project_id: str
+    client: Client, new_item: dict[str, Any]
 ) -> dict[str, Any]:
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
-        "virtual-lab-id": virtual_lab_id,
-        "project-id": project_id,
-    }
-    return _api_post("cell-morphology", headers, new_item)
+    """
+    Registers a new CellMorphology entity. Safely retrieves related entities
+    and brain location from the input dict.
+    """
+
+    def _get_entity(key_suffix: str, entity_class: Type[T]) -> Optional[T]:
+        entity_id_key = f"{key_suffix}_id"
+        entity_id = new_item.get(entity_id_key)
+
+        if entity_id is None:
+            return None
+
+        try:
+            return client.search_entity(
+                entity_type=entity_class,
+                query={"id": entity_id}
+            ).one()
+        except Exception as e:
+            return None
+
+    brain_location_data = new_item.get("brain_location", [])
+    brain_location: Optional[BrainLocation] = None
+
+    if isinstance(brain_location_data, list) and len(brain_location_data) >= 3:
+        try:
+            brain_location = BrainLocation(
+                x=float(brain_location_data[0]),
+                y=float(brain_location_data[1]),
+                z=float(brain_location_data[2]),
+            )
+        except (TypeError, ValueError):
+            brain_location = None
+
+    subject = _get_entity("subject", Subject)
+    brain_region = _get_entity("brain_region", BrainRegion)
+    morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
+
+    name = new_item.get("name")
+    description = new_item.get("description")
+
+    morphology = CellMorphology(
+        cell_morphology_protocol=morphology_protocol,
+        name=name,
+        description=description,
+        subject=subject,
+        brain_region=brain_region,
+        location=brain_location,
+        legacy_id=None,
+        authorized_public=False,
+    )
+
+    registered = client.register_entity(entity=morphology)
+    return registered
 
 
 def register_assets(
-    token: str,
+    client: Client,
     entity_id: str,
     file_folder: str,
     morphology_name: str,
-    virtual_lab_id: str,
-    project_id: str,
 ) -> dict[str, Any]:
-    url = (
-        f"https://staging.openbraininstitute.org/api/entitycore/cell-morphology/{entity_id}/assets"
-    )
-
-    # PTH118: Replaced os.path.join() with pathlib.Path
     file_path_obj = pathlib.Path(file_folder) / morphology_name
     file_path = str(file_path_obj)
 
     if not file_path_obj.exists():
-        # TRY003, EM102: Assigned f-string to a variable before raising
         error_msg = f"Asset file not found at path: {file_path}"
         raise FileNotFoundError(error_msg)
 
-    # PTH122: Replaced os.path.splitext() with pathlib.Path.suffix
     file_extension = file_path_obj.suffix
     extension_map = {
         ".asc": "application/asc",
@@ -696,72 +655,55 @@ def register_assets(
     }
     mime_type = extension_map.get(file_extension.lower())
     if not mime_type:
-        # TRY003, EM102: Assigned f-string to a variable before raising
         error_msg = f"Unsupported file extension: '{file_extension}'."
         raise ValueError(error_msg)
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "virtual-lab-id": virtual_lab_id,
-        "project-id": project_id,
-    }
-    data = {"label": "morphology", "meta": {}}
     try:
-        # PTH123: Replaced open() with Path.open()
-        with file_path_obj.open("rb") as f:
-            files = {"file": (morphology_name, f, mime_type)}
-            # S113: Added timeout
-            response = requests.post(url, headers=headers, files=files, data=data, timeout=60)
-            response.raise_for_status()
-            return response.json()
+        asset1 = client.upload_file(
+        entity_id=entity_id,
+        entity_type=CellMorphology,
+        file_path=file_path,
+        file_content_type=mime_type,
+        asset_label="morphology",
+        )
+        return asset1
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": "CONNECTION_ERROR", "detail": f"Connection Error: {e}"},
+            detail={"code": ApiErrorCode.ENTITYCORE_API_FAILURE, "detail": f"Entity asset registration failed: {e}"},
         ) from e
 
 
 def register_measurements(
-    token: str,
+    client: Client,
     entity_id: str,
     measurements: list[dict[str, Any]],
-    virtual_lab_id: str,
-    project_id: str,
 ) -> dict[str, Any]:
-    api_endpoint = "https://staging.openbraininstitute.org/api/entitycore/measurement-annotation"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "virtual-lab-id": virtual_lab_id,
-        "project-id": project_id,
-    }
-    payload = {
-        "entity_id": entity_id,
-        "name": f"Morphometrics for {entity_id}",
-        "description": "Automated morphology metrics calculation.",
-        "entity_type": "cell_morphology",
-        "measurement_kinds": measurements,
-    }
     try:
-        response = requests.post(api_endpoint, headers=headers, json=payload, timeout=30)
+        measurement_annotation = MeasurementAnnotation(
+        entity_id=entity_id,
+        entity_type= "cell_morphology",
+        measurement_kinds= measurements,
+        )
 
-        response.raise_for_status()
-        return response.json()
+        registered = client.register_entity(entity=measurement_annotation)
+        return registered
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": "CONNECTION_ERROR", "detail": f"Connection Error: {e}"},
+            detail={"code": ApiErrorCode.ENTITYCORE_API_FAILURE, "detail": f"Entity measurement registration failed: {e}"},
         ) from e
 
 
 def _prepare_entity_payload(
     metadata_obj: MorphologyMetadata, original_filename: str
 ) -> dict[str, Any]:
-    """Prepares the entity payload for registration, reducing complexity in the main function."""
+    """Prepares the entity payload for registration."""
     entity_payload = NEW_ENTITY_DEFAULTS.copy()
     update_map = metadata_obj.model_dump(exclude_none=True)
     entity_payload.update(update_map)
 
-    if entity_payload.get("name") in {NEW_ENTITY_DEFAULTS["name"], None}:
+    if entity_payload.get("name") in {"test", None}:
         entity_payload["name"] = f"Morphology: {original_filename}"
 
     return entity_payload
@@ -773,7 +715,6 @@ def _prepare_entity_payload(
 @router.post(
     "/morphology-metrics-entity-registration",
     summary="Calculate morphology metrics and register entities.",
-    # E501: Broke up long line (description)
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
         "asset, and measurements."
@@ -781,12 +722,24 @@ def _prepare_entity_payload(
 )
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    token: Annotated[str, Depends(get_auth_token)],
+    # Non-default parameters (Form data)
     virtual_lab_id: Annotated[str, Form()],
     project_id: Annotated[str, Form()],
+    # Non-default parameters (Dependencies)
+    user_context: UserContextDep,
+    request: Request,
+    # Default parameter (Form data)
     metadata: Annotated[str, Form()] = "{}",
-    # PLR0914: The number of local variables is now 15 (max allowed) or less
 ) -> dict:
+    # Override the user_context with form data values
+    modified_context = user_context.model_copy(update={
+        "virtual_lab_id": UUID(virtual_lab_id),
+        "project_id": UUID(project_id),
+    })
+
+    # Get client with modified context
+    client = get_client(user_context=modified_context, request=request)
+
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
     content = await file.read()
@@ -799,89 +752,107 @@ async def morphology_metrics_calculation(
         metadata_dict = json.loads(metadata) if metadata != "{}" else {}
         metadata_obj = MorphologyMetadata(**metadata_dict)
     except (json.JSONDecodeError, ValueError) as e:
-        # B904: Added 'from e' to re-raise exception
+
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
         ) from e
 
-    temp_file_path = ""
     entity_id = "UNKNOWN"
+    
+    # Initialize these outside the try block but trust ExitStack for cleanup
+    # We don't need to track the paths explicitly outside the ExitStack now,
+    # but we initialize for scope visibility if needed elsewhere (though not here)
+    temp_file_path = ""
+    outputfile1 = ""
+    outputfile2 = ""
 
-    outputfile1, outputfile2 = "", ""
+
     try:
-        # --- 1. ANALYSIS ---
+        # Use ExitStack to manage the temporary file lifecycles
+        with ExitStack() as stack:
+            # 1. ANALYSIS
 
-        # 1a. Write the uploaded content to a temporary file for neurom analysis
-        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-            temp_file.write(content)
-            temp_file_path = temp_file.name
+            # 1a. Write the uploaded content to a temporary file for neurom analysis
+            temp_file_obj = stack.enter_context(tempfile.NamedTemporaryFile(delete=False, suffix=file_extension))
+            temp_file_path = temp_file_obj.name
+            temp_file_obj.write(content)
+            temp_file_obj.close() # Close the file handle before attempting to read/process
 
-        # Conversion
-        # ARG001: Removed unused 'file' argument
-        outputfile1, outputfile2 = await process_and_convert_morphology(
-            temp_file_path=temp_file_path, file_extension=file_extension
-        )
+            # Register the path for cleanup after the block
+            stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        # 1b. Run morphology analysis
-        measurement_list = _run_morphology_analysis(temp_file_path)
 
-        # --- 2. API REGISTRATION ---
-
-        # 2a/b. Entity Registration
-        # Refactored logic into a helper function to reduce local variable count
-        entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
-
-        data = register_morphology(token, entity_payload, virtual_lab_id, project_id)
-        entity_id = data.get("id", "ID_NOT_FOUND")
-
-        # 2c. Register Asset (Original uploaded file)
-        with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-            # PTH118, ASYNC230, PTH123, FURB103: Replaced os.path.join and blocking file open/write
-            # with Path object and write_bytes for async-safe operation.
-            temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
-            temp_upload_path_obj.write_bytes(content)
-
-            register_assets(
-                token,
-                entity_id,
-                temp_dir_for_upload,
-                morphology_name,
-                virtual_lab_id,
-                project_id,
+            # Conversion creates 1 or 2 new temporary files.
+            outputfile1, outputfile2 = await process_and_convert_morphology(
+                temp_file_path=temp_file_path, file_extension=file_extension
             )
 
-        # Register Asset (Converted File 1)
-        output1_path_obj = pathlib.Path(outputfile1)
-        register_assets(
-            token,
-            entity_id,
-            file_folder=str(output1_path_obj.parent),
-            morphology_name=output1_path_obj.name,
-            virtual_lab_id=virtual_lab_id,
-            project_id=project_id,
-        )
+            # Register converted files for cleanup only if they were created (non-empty string path)
+            if outputfile1:
+                stack.callback(pathlib.Path(outputfile1).unlink, missing_ok=True)
+            if outputfile2:
+                stack.callback(pathlib.Path(outputfile2).unlink, missing_ok=True)
 
-        # Register Asset (Converted File 2)
-        output2_path_obj = pathlib.Path(outputfile2)
-        register_assets(
-            token,
-            entity_id,
-            file_folder=str(output2_path_obj.parent),
-            morphology_name=output2_path_obj.name,
-            virtual_lab_id=virtual_lab_id,
-            project_id=project_id,
-        )
+            # 1b. Run morphology analysis
+            measurement_list = _run_morphology_analysis(temp_file_path)
 
-        # 2d. Register Measurements
-        register_measurements(token, entity_id, measurement_list, virtual_lab_id, project_id)
+            # 2. API REGISTRATION
 
-        # TRY300: Moved return statement outside of try block into an else block
+            # 2a/b. Entity Registration
+            entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
+
+            data = register_morphology(client, entity_payload)
+            entity_id = str(data.id)
+
+            # 2c. Register Assets (Original File)
+            # tempfile.TemporaryDirectory is itself a context manager, automatically cleaned up on exit
+            with tempfile.TemporaryDirectory() as temp_dir_for_upload:
+
+                temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
+                temp_upload_path_obj.write_bytes(content)
+
+                register_assets(
+                    client,
+                    entity_id,
+                    temp_dir_for_upload,
+                    morphology_name,
+                )
+
+            # Register Asset (Converted File 1)
+            output1_path_obj = pathlib.Path(outputfile1)
+            # Check if file was actually created before attempting to register
+            if outputfile1 and output1_path_obj.exists():
+                register_assets(
+                    client,
+                    entity_id,
+                    file_folder=str(output1_path_obj.parent),
+                    morphology_name=output1_path_obj.name,
+                )
+
+            # Register Asset (Converted File 2)
+            output2_path_obj = pathlib.Path(outputfile2)
+            # Check if file was actually created before attempting to register
+            if outputfile2 and output2_path_obj.exists():
+                register_assets(
+                    client,
+                    entity_id,
+                    file_folder=str(output2_path_obj.parent),
+                    morphology_name=output2_path_obj.name,
+                )
+
+            # 2d. Register Measurements
+            register_measurements(
+                client,
+                entity_id,
+                measurement_list,
+            )
+
     except HTTPException:
-        # Re-raise explicit HTTP exceptions for FastAPI to handle
+        # Re-raise explicit HTTP exceptions
         raise
     except Exception as e:
-        # PLC0415: import traceback moved to top-level
+        # Catch all other exceptions, print traceback, and raise a 500
         traceback.print_exc()
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -891,11 +862,5 @@ async def morphology_metrics_calculation(
             },
         ) from e
     else:
+        # Return success response
         return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
-    finally:
-        # 3. CLEANUP
-        if temp_file_path:
-            with suppress(OSError):
-                pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                pathlib.Path(outputfile1).unlink(missing_ok=True)
-                pathlib.Path(outputfile2).unlink(missing_ok=True)
