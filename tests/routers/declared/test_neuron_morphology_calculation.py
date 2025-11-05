@@ -10,12 +10,6 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -147,12 +141,6 @@ def test_morphology_registration_success(
     response_json = response.json()
     assert response_json["status"] == "success"
     assert response_json["entity_id"] == str(mock_entity_id)
-    # NOTE: Assuming the name is derived from the metadata, otherwise this assertion may need adjustment.
-    # The value 'Test Morphology 1' is hardcoded here and may not reflect the new payload structure.
-    # For now, we'll keep the assertion as-is but be aware of this potential mismatch.
-    # The mock_entity_payload contains "cell_name": "Test Cell", so this line is likely wrong.
-    # Since the full response structure is unknown, I will assume the name is derived from the payload.
-    # I'll change it to 'Test Cell' based on the fixture content.
     assert response_json["morphology_name"] == "Test Cell"
 
     # Check that all registration steps were called correctly
