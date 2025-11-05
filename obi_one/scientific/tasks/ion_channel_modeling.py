@@ -94,23 +94,21 @@ class IonChannelFittingScanConfig(ScanConfig):
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
-            title="Ion channel recording",
-            description="IDs of the traces of interest."
+            title="Ion channel recording", description="IDs of the traces of interest."
         )
 
-        ion_channel_name: Annotated[
-            str,
-            StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
-        ] = Field(
-            title="Ion channel name",
-            description=(
-                "The name you want to give to the generated ion channel model "
-                "(used as SUFFIX in the mod file). "
-                "Name must start with a letter or underscore, and can only contain "
-                "letters, numbers, and underscores."
-            ),
-            min_length=1,
-            default="DefaultIonChannelName"
+        ion_channel_name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")] = (
+            Field(
+                title="Ion channel name",
+                description=(
+                    "The name you want to give to the generated ion channel model "
+                    "(used as SUFFIX in the mod file). "
+                    "Name must start with a letter or underscore, and can only contain "
+                    "letters, numbers, and underscores."
+                ),
+                min_length=1,
+                default="DefaultIonChannelName",
+            )
         )
 
     class GateExponents(Block):
@@ -119,7 +117,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=1,
             ge=1,
             le=4,
-            description=("Exponent (p) of m in the channel equation: g = gbar * m^p * h^q")
+            description=("Exponent (p) of m in the channel equation: g = gbar * m^p * h^q"),
         )
         h_power: int = Field(
             title="h exponent in channel equation",
@@ -191,8 +189,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     gate_exponents: GateExponents = Field(
         title="m & h gate exponents",
         description=(
-            "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
-            "g = gbar * m^p * h^q"
+            "Set the power of m and h gates used in Hodgkin-Huxley formalism: g = gbar * m^p * h^q"
         ),
         group=BlockGroup.GATEEXPONENTS,
         group_order=0,
@@ -421,23 +418,20 @@ class IonChannelFittingTask(Task):
 
         # Default subject: "Generic Mus musculus"
         subject = db_client.get_entity(
-            entity_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07",
-            entity_type=entitysdk.models.Subject
+            entity_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07", entity_type=entitysdk.models.Subject
         )
 
         # Default brain_region: "Basic cell groups and regions"
         brain_region = db_client.get_entity(
             entity_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066",
-            entity_type=entitysdk.models.brain_region.BrainRegion
+            entity_type=entitysdk.models.brain_region.BrainRegion,
         )
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
                 name=self.config.initialize.ion_channel_name,
                 nmodl_suffix=self.config.initialize.ion_channel_name,
-                description=(
-                    f"Ion channel model of {self.config.initialize.ion_channel_name} "
-                ),
+                description=(f"Ion channel model of {self.config.initialize.ion_channel_name} "),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
