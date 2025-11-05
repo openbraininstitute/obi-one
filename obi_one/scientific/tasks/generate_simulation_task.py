@@ -246,7 +246,6 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.node_set, DEFAULT_NODE_SET_NAME
                 )
             elif not hasattr(self.config.initialize, "node_set"):
-                
                 _ = self._default_neuron_set_ref()
                 self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
 
