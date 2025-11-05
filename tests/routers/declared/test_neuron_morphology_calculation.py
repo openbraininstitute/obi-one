@@ -31,7 +31,9 @@ def mock_entity_payload():
         "subject_id": str(uuid.uuid4()),
         "brain_region_id": str(uuid.uuid4()),
         "brain_location": {"x": 100, "y": 200, "z": 300},
-        "cell_morphology_protocol_id": str(uuid.uuid4()),  # New required field based on working script
+        "cell_morphology_protocol_id": str(
+            uuid.uuid4()
+        ),  # New required field based on working script
     }
     return json.dumps(payload_data)
 
@@ -95,31 +97,29 @@ def test_morphology_registration_success(
     # FIX: Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert
+        mock_process_and_convert,
     )
 
     # FIX: Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list
+        lambda _path: mock_measurement_list,
     )
 
     # FIX: Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data
+        lambda _client, _payload: mock_data,
     )
 
     # FIX: Use dotted path string for monkeypatching (resolves previous TypeError)
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements
+        mock_register_assets_and_measurements,
     )
 
     # 3. Perform the POST Request
-    # FIX: Updated keys in 'data' and 'files' to match the working 'requests' script (resolves previous 422 error)
-    # The 'virtual_lab_id' and 'project_id' are set using mock UUIDs here.
     response = client.post(
         ROUTE,
         data={
