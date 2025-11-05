@@ -1,6 +1,6 @@
 import json
 import uuid
-from pathlib import Path  # Import Path for a safer way to mock paths
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +10,11 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
 from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
@@ -64,13 +69,13 @@ def mock_measurement_list():
 # --- Test Case ---
 
 
-# FIX: Add @pytest.mark.usefixtures to resolve PT019
+# FIX: Added @pytest.mark.usefixtures to resolve PT019
 @pytest.mark.usefixtures("mock_morphology_file")
 def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
-    # FIX: Removed _mock_morphology_file parameter to resolve PT019
+    # FIX: Removed _mock_morphology_file parameter to resolve PT019 and ARG001
     mock_temp_file_path,
     mock_measurement_list,
 ):
@@ -94,34 +99,32 @@ def test_morphology_registration_success(
         return mock_temp_file_path, "mock-content-string-swc-file"
 
     # Mock file conversion/validation
-    # NOTE: This one is already correct because 'process_and_convert_morphology' is the module
-    # or class you're setting an attribute on, if it were defined in a local test scope.
-    # Since you imported it directly, this is typically how you'd mock it if it were a
-    # function *within* the module being tested, but since it's an imported function
-    # being used by the code under test, we should mock it on the module it's defined in.
-    # HOWEVER, a simpler fix is to treat it like a simple attribute assignment here:
-    monkeypatch.setattr(process_and_convert_morphology, mock_process_and_convert)
+    # FIX: Use dotted path string to resolve the TypeError for imported function.
+    monkeypatch.setattr(
+        "app.endpoints.morphology_validation.process_and_convert_morphology",
+        mock_process_and_convert
+    )
 
     # Mock morphology analysis: returns the list of metrics
-    # FIX: Use the dotted import string to target the function in its module.
+    # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,
+        lambda _path: mock_measurement_list # _path satisfies ARG005
     )
 
     # Mock entity registration: returns the mock data object with entity ID
-    # FIX: Use the dotted import string to target the function in its module.
+    # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,
+        lambda _client, _payload: mock_data # _client and _payload satisfy ARG005
     )
 
     # Mock asset/measurement registration: simply ensure it's called
-    # FIX: Use the dotted import string to target the function in its module.
     mock_register_assets_and_measurements = MagicMock()
+    # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements,
+        mock_register_assets_and_measurements
     )
 
     # 3. Perform the POST Request
@@ -156,6 +159,7 @@ def test_morphology_registration_success(
     # Assert that asset/measurement registration was called with the correct ID and measurements
     mock_register_assets_and_measurements.assert_called_once()
 
+    # _kwargs satisfies RUF059
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
