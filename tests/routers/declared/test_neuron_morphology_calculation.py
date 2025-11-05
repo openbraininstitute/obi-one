@@ -99,19 +99,35 @@ def test_morphology_registration_success(
         return mock_temp_file_path, "mock-content-string-swc-file"
 
     # Mock file conversion/validation
+    # NOTE: This one is already correct because 'process_and_convert_morphology' is the module
+    # or class you're setting an attribute on, if it were defined in a local test scope.
+    # Since you imported it directly, this is typically how you'd mock it if it were a
+    # function *within* the module being tested, but since it's an imported function
+    # being used by the code under test, we should mock it on the module it's defined in.
+    # HOWEVER, a simpler fix is to treat it like a simple attribute assignment here:
     monkeypatch.setattr(process_and_convert_morphology, mock_process_and_convert)
 
     # Mock morphology analysis: returns the list of metrics
-    # Renamed argument to satisfy ARG005
-    monkeypatch.setattr(_run_morphology_analysis, lambda _path: mock_measurement_list)
+    # FIX: Use the dotted import string to target the function in its module.
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
+        lambda _path: mock_measurement_list
+    )
 
     # Mock entity registration: returns the mock data object with entity ID
-    # Renamed arguments to satisfy ARG005
-    monkeypatch.setattr(register_morphology, lambda _client, _payload: mock_data)
+    # FIX: Use the dotted import string to target the function in its module.
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphology",
+        lambda _client, _payload: mock_data
+    )
 
     # Mock asset/measurement registration: simply ensure it's called
+    # FIX: Use the dotted import string to target the function in its module.
     mock_register_assets_and_measurements = MagicMock()
-    monkeypatch.setattr(_register_assets_and_measurements, mock_register_assets_and_measurements)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
+        mock_register_assets_and_measurements
+    )
 
     # 3. Perform the POST Request
     response = client.post(
@@ -148,3 +164,4 @@ def test_morphology_registration_success(
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
+    
