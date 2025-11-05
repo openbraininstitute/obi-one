@@ -577,6 +577,7 @@ class MorphologyMetadata(BaseModel):
 
 # --- HELPER FUNCTIONS FOR MAIN ENDPOINT (to reduce variable count - PLR0914) ---
 
+
 def _setup_context_and_client(
     user_context: UserContextDep, virtual_lab_id: str, project_id: str, request: Request
 ) -> Client:
@@ -612,6 +613,7 @@ async def _parse_file_and_metadata(
         ) from e
 
     return morphology_name, file_extension, content, metadata_obj
+
 
 # --- API CALL FUNCTIONS ---
 
