@@ -224,26 +224,31 @@ class GenerateSimulationTask(Task):
 
         Infer default if needed. Assert biophysical.
         """
-        if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
-            if self.config.initialize.node_set is None:
-                L.info("initialize.node_set is None — setting default node set.")
-                self.config.initialize.node_set = self._default_neuron_set_ref()
+        if hasattr(self.config, "neuron_sets"):
+            if hasattr(self.config.initialize, "node_set"):
+                if self.config.initialize.node_set is None:
+                    L.info("initialize.node_set is None — setting default node set.")
+                    self.config.initialize.node_set = self._default_neuron_set_ref()
 
-            # Assert that simulation neuron set is biophysical
-            if isinstance(self.config.initialize.node_set, NeuronSetReference) and (
-                self.config.initialize.node_set.block.population_type(
-                    self._circuit, self._circuit.default_population_name
+                # Assert that simulation neuron set is biophysical
+                if isinstance(self.config.initialize.node_set, NeuronSetReference) and (
+                    self.config.initialize.node_set.block.population_type(
+                        self._circuit, self._circuit.default_population_name
+                    )
+                    != "biophysical"
+                ):
+                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
+                        '{self.config.initialize.node_set.name}' "
+                    "is not biophysical!"
+                    raise OBIONEError(msg)
+
+                self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
+                    self.config.initialize.node_set, DEFAULT_NODE_SET_NAME
                 )
-                != "biophysical"
-            ):
-                msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
-                    '{self.config.initialize.node_set.name}' "
-                "is not biophysical!"
-                raise OBIONEError(msg)
-
-            self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
-                self.config.initialize.node_set, DEFAULT_NODE_SET_NAME
-            )
+            elif not hasattr(self.config.initialize, "node_set"):
+                
+                _ = self._default_neuron_set_ref()
+                self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
 
         else:
             self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
