@@ -10,12 +10,6 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -32,12 +26,12 @@ def mock_entity_payload():
     """
     # FIX: Updated keys and structure to resolve the 400 Bad Request validation error.
     payload_data = {
-        "name": "Test Morphology Analysis Name", # Used for 'morphology_name' assertion
+        "name": "Test Morphology Analysis Name",  # Used for 'morphology_name' assertion
         "description": "Mock description for test run.",
         "subject_id": str(uuid.uuid4()),
         "brain_region_id": str(uuid.uuid4()),
         "brain_location": {"x": 100, "y": 200, "z": 300},
-        "cell_morphology_protocol_id": str(uuid.uuid4()), # New required field based on working script
+        "cell_morphology_protocol_id": str(uuid.uuid4()),  # New required field based on working script
     }
     return json.dumps(payload_data)
 
@@ -160,4 +154,3 @@ def test_morphology_registration_success(
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
-    
