@@ -32,7 +32,7 @@ from app.endpoints.morphology_validation import process_and_convert_morphology
 
 class ApiErrorCode:
     BAD_REQUEST = "BAD_REQUEST"
-    ENTITYCORE_API_FAILURE = "ENTITYCORE_API_FAILURE"
+    ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
 
 
 # Base class for TypeVar bounding
@@ -714,7 +714,7 @@ def register_assets(
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
-                "code": ApiErrorCode.ENTITYCORE_API_FAILURE,
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
                 "detail": f"Entity asset registration failed: {e}",
             },
         ) from e
@@ -739,7 +739,7 @@ def register_measurements(
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
-                "code": ApiErrorCode.ENTITYCORE_API_FAILURE,
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
                 "detail": f"Entity measurement registration failed: {e}",
             },
         ) from e
@@ -770,7 +770,7 @@ def _register_assets_and_measurements(
     outputfile1: str,
     outputfile2: str,
 ) -> None:
-    """Handles all asset and measurement registration calls to EntityCore."""
+    """Handles all asset and measurement registration calls to EntitySDK."""
     with tempfile.TemporaryDirectory() as temp_dir_for_upload:
         temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
         temp_upload_path_obj.write_bytes(content)
