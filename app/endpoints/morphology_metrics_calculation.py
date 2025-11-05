@@ -1,24 +1,14 @@
 import json
-import os
 import pathlib
 import tempfile
 import traceback
-from contextlib import ExitStack, contextmanager, suppress
+from contextlib import ExitStack
 from http import HTTPStatus
-from typing import Annotated, Any, Final, Optional, Type, TypeVar, Union
+from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
 
 import neurom as nm
 import requests
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
-from starlette.requests import Request
-
-import app.endpoints.useful_functions.useful_functions as uf
-from app.dependencies.auth import UserContextDep, user_verified
-from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_validation import process_and_convert_morphology
 from entitysdk import Client
 from entitysdk.models import (
     BrainLocation,
@@ -28,6 +18,14 @@ from entitysdk.models import (
     MeasurementAnnotation,
     Subject,
 )
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from starlette.requests import Request
+
+import app.endpoints.useful_functions.useful_functions as uf
+from app.dependencies.auth import UserContextDep, user_verified
+from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_validation import process_and_convert_morphology
 
 
 class ApiErrorCode:
@@ -37,7 +35,11 @@ class ApiErrorCode:
 
 # Base class for TypeVar bounding
 class BaseEntity:
-    def __init__(self, id=None):
+    def __init__(self, entity_id: Any | None = None) -> None:
+        """Initialize the base entity."""
+        # Renamed 'id' to 'entity_id' to avoid shadowing builtin 'id()' (A002)
+        # Added type hint for entity_id (ANN001) and return (ANN204)
+        # Added docstring (D107)
         pass
 
 
@@ -46,6 +48,9 @@ ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
 
 DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
 TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
+
+# PLR2004: Constant for the minimum number of brain location coordinates (x, y, z)
+BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -573,18 +578,56 @@ class MorphologyMetadata(BaseModel):
     brain_location: list[float] | None = None
 
 
+# --- HELPER FUNCTIONS FOR MAIN ENDPOINT (to reduce variable count - PLR0914) ---
+
+def _setup_context_and_client(
+    user_context: UserContextDep, virtual_lab_id: str, project_id: str, request: Request
+) -> Client:
+    """Prepares the user context and initializes the entity client."""
+    modified_context = user_context.model_copy(
+        update={
+            "virtual_lab_id": UUID(virtual_lab_id),
+            "project_id": UUID(project_id),
+        }
+    )
+    return get_client(user_context=modified_context, request=request)
+
+
+async def _parse_file_and_metadata(
+    file: UploadFile, metadata_str: str
+) -> tuple[str, bytes, MorphologyMetadata]:
+    """Reads file content and validates, and parses the metadata string."""
+    morphology_name = file.filename
+    file_extension = _validate_file_extension(morphology_name)
+    content = await file.read()
+
+    if not content:
+        _handle_empty_file(file)
+
+    # Parse metadata JSON string
+    try:
+        metadata_dict = json.loads(metadata_str) if metadata_str != "{}" else {}
+        metadata_obj = MorphologyMetadata(**metadata_dict)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
+        ) from e
+
+    return morphology_name, content, metadata_obj
+
+
 # --- API CALL FUNCTIONS ---
 
 T = TypeVar("T", bound=BaseEntity)
 
 
 def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, Any]:
-    """
-    Registers a new CellMorphology entity. Safely retrieves related entities
+    """Registers a new CellMorphology entity. Safely retrieves related entities
     and brain location from the input dict.
     """
 
-    def _get_entity(key_suffix: str, entity_class: Type[T]) -> Optional[T]:
+    def _get_entity(key_suffix: str, entity_class: type[T]) -> T | None:
         entity_id_key = f"{key_suffix}_id"
         entity_id = new_item.get(entity_id_key)
 
@@ -593,13 +636,18 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, A
 
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
-        except Exception as e:
+        except Exception:
+            # BLE001: Catching generic Exception here is intentional to quietly
+            # fail (return None) if a referenced entity ID cannot be fetched
             return None
 
     brain_location_data = new_item.get("brain_location", [])
-    brain_location: Optional[BrainLocation] = None
+    brain_location: BrainLocation | None = None
 
-    if isinstance(brain_location_data, list) and len(brain_location_data) >= 3:
+    if (
+        isinstance(brain_location_data, list)
+        and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS
+    ):  # PLR2004 fixed
         try:
             brain_location = BrainLocation(
                 x=float(brain_location_data[0]),
@@ -663,7 +711,6 @@ def register_assets(
             file_content_type=mime_type,
             asset_label="morphology",
         )
-        return asset1
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -672,6 +719,8 @@ def register_assets(
                 "detail": f"Entity asset registration failed: {e}",
             },
         ) from e
+    else:  # TRY300 Fix: move return to else block
+        return asset1
 
 
 def register_measurements(
@@ -687,7 +736,6 @@ def register_measurements(
         )
 
         registered = client.register_entity(entity=measurement_annotation)
-        return registered
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -696,6 +744,8 @@ def register_measurements(
                 "detail": f"Entity measurement registration failed: {e}",
             },
         ) from e
+    else:  # TRY300 Fix: move return to else block
+        return registered
 
 
 def _prepare_entity_payload(
@@ -734,39 +784,15 @@ async def morphology_metrics_calculation(
     # Default parameter (Form data)
     metadata: Annotated[str, Form()] = "{}",
 ) -> dict:
-    # Override the user_context with form data values
-    modified_context = user_context.model_copy(
-        update={
-            "virtual_lab_id": UUID(virtual_lab_id),
-            "project_id": UUID(project_id),
-        }
-    )
+    # PLR0914 Fix (part 1): Use helper for context/client setup
+    client = _setup_context_and_client(user_context, virtual_lab_id, project_id, request)
 
-    # Get client with modified context
-    client = get_client(user_context=modified_context, request=request)
-
-    morphology_name = file.filename
-    file_extension = _validate_file_extension(morphology_name)
-    content = await file.read()
-
-    if not content:
-        _handle_empty_file(file)
-
-    # Parse metadata JSON string
-    try:
-        metadata_dict = json.loads(metadata) if metadata != "{}" else {}
-        metadata_obj = MorphologyMetadata(**metadata_dict)
-    except (json.JSONDecodeError, ValueError) as e:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
-        ) from e
+    # PLR0914 Fix (part 2): Use helper for file/metadata parsing
+    morphology_name, content, metadata_obj = await _parse_file_and_metadata(file, metadata)
 
     entity_id = "UNKNOWN"
 
-    # Initialize these outside the try block but trust ExitStack for cleanup
-    # We don't need to track the paths explicitly outside the ExitStack now,
-    # but we initialize for scope visibility if needed elsewhere (though not here)
+    # Initialize these outside the try block for scope visibility, but trust ExitStack for cleanup
     temp_file_path = ""
     outputfile1 = ""
     outputfile2 = ""
@@ -810,7 +836,8 @@ async def morphology_metrics_calculation(
             entity_id = str(data.id)
 
             # 2c. Register Assets (Original File)
-            # tempfile.TemporaryDirectory is itself a context manager, automatically cleaned up on exit
+            # tempfile.TemporaryDirectory is itself a context manager,
+            # automatically cleaned up on exit (E501 Fix: Wrapped comment)
             with tempfile.TemporaryDirectory() as temp_dir_for_upload:
                 temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
                 temp_upload_path_obj.write_bytes(content)
@@ -867,3 +894,4 @@ async def morphology_metrics_calculation(
     else:
         # Return success response
         return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
+    
