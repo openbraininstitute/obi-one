@@ -7,12 +7,6 @@ import pytest
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 ROUTE = "/declared/morphology-metrics-entity-registration"
 
@@ -93,26 +87,26 @@ def test_morphology_registration_success(
     # Mock file conversion/validation
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert
+        mock_process_and_convert,
     )
 
     # Mock morphology analysis
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list
+        lambda _path: mock_measurement_list,
     )
 
     # Mock entity registration
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data
+        lambda _client, _payload: mock_data,
     )
 
     # Mock asset/measurement registration
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements
+        mock_register_assets_and_measurements,
     )
 
     # 3. Perform the POST Request
@@ -120,7 +114,7 @@ def test_morphology_registration_success(
         ROUTE,
         data={
             "metadata": mock_entity_payload,
-            "virtual_lab_id": VIRTUAL_LAB_ID, 
+            "virtual_lab_id": VIRTUAL_LAB_ID,
             "project_id": PROJECT_ID,
         },
         files={
