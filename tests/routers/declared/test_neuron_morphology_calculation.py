@@ -1,6 +1,7 @@
 import json
 import uuid
 from unittest.mock import MagicMock
+from pathlib import Path # Import Path for a safer way to mock paths
 
 import pytest
 from fastapi import UploadFile
@@ -48,9 +49,12 @@ def mock_morphology_file():
 
 @pytest.fixture
 def mock_temp_file_path():
-    """Returns a mock path object for the temporary SWC file."""
+    """
+    Returns a mock path object for the temporary SWC file.
+    Using pathlib.Path for better representation and avoiding S108 lint error.
+    """
     # We use a non-existent path as we only need to pass it to mocked functions
-    return "/tmp/mock_temp_file.swc"
+    return Path("/non/existent/mock_temp_file.swc")
 
 
 @pytest.fixture
@@ -69,7 +73,8 @@ def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
-    mock_morphology_file,
+    # Renamed to _mock_morphology_file to satisfy ARG001
+    _mock_morphology_file,
     mock_temp_file_path,
     mock_measurement_list,
 ):
@@ -88,17 +93,20 @@ def test_morphology_registration_success(
 
     # 2. Mock Internal Pipeline Functions
     # Mock file processing: returns temp path and file content string
-    def mock_process_and_convert(morphology_file, outputfile1=None):
+    # Renamed arguments to satisfy ARG001
+    def mock_process_and_convert(_morphology_file, _outputfile1=None):
         return mock_temp_file_path, "mock-content-string-swc-file"
 
     # Mock file conversion/validation
     monkeypatch.setattr(process_and_convert_morphology, mock_process_and_convert)
 
     # Mock morphology analysis: returns the list of metrics
-    monkeypatch.setattr(_run_morphology_analysis, lambda path: mock_measurement_list)
+    # Renamed argument to satisfy ARG005
+    monkeypatch.setattr(_run_morphology_analysis, lambda _path: mock_measurement_list)
 
     # Mock entity registration: returns the mock data object with entity ID
-    monkeypatch.setattr(register_morphology, lambda client, payload: mock_data)
+    # Renamed arguments to satisfy ARG005
+    monkeypatch.setattr(register_morphology, lambda _client, _payload: mock_data)
 
     # Mock asset/measurement registration: simply ensure it's called
     mock_register_assets_and_measurements = MagicMock()
@@ -135,6 +143,7 @@ def test_morphology_registration_success(
     # Check that all registration steps were called correctly
     # Assert that asset/measurement registration was called with the correct ID and measurements
     mock_register_assets_and_measurements.assert_called_once()
-    args, kwargs = mock_register_assets_and_measurements.call_args
-    assert args[1] == str(mock_entity_id)  # entity_id is the second positional arg
-    assert args[4] == mock_measurement_list  # measurement_list is the fifth positional arg
+
+    args, _kwargs = mock_register_assets_and_measurements.call_args
+    assert args[1] == str(mock_entity_id)
+    assert args[4] == mock_measurement_list
