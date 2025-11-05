@@ -10,11 +10,6 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
 from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
@@ -164,4 +159,3 @@ def test_morphology_registration_success(
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
-    
