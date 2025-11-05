@@ -106,14 +106,14 @@ def test_morphology_registration_success(
     # FIX: Use the dotted import string to target the function in its module.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list
+        lambda _path: mock_measurement_list,
     )
 
     # Mock entity registration: returns the mock data object with entity ID
     # FIX: Use the dotted import string to target the function in its module.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data
+        lambda _client, _payload: mock_data,
     )
 
     # Mock asset/measurement registration: simply ensure it's called
@@ -121,7 +121,7 @@ def test_morphology_registration_success(
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements
+        mock_register_assets_and_measurements,
     )
 
     # 3. Perform the POST Request
