@@ -7,6 +7,12 @@ import pytest
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
+from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -25,13 +31,13 @@ def mock_entity_payload():
     Returns a mock JSON string payload for the entity metadata, structured
     to match the fields expected by the working 'requests' script's 'metadata' dictionary.
     """
-    # Keys match the 'metadata' dict in the working script
     payload_data = {
         "name": "Test Morphology Analysis Name",
         "description": "Mock description for test run.",
         "subject_id": str(uuid.uuid4()),
         "brain_region_id": str(uuid.uuid4()),
-        "brain_location": {"x": 100, "y": 200, "z": 300},
+        # FIX: Changed brain_location to be an array/list to match the working script and resolve 400 error.
+        "brain_location": [100.0, 200.0, 300.0],
         "cell_morphology_protocol_id": str(uuid.uuid4()),
     }
     return json.dumps(payload_data)
@@ -48,10 +54,7 @@ def mock_morphology_file():
 
 @pytest.fixture
 def mock_temp_file_path():
-    """
-    Returns a mock path object for the temporary SWC file.
-    Using pathlib.Path for better representation and avoiding S108 lint error.
-    """
+    """Returns a mock path object for the temporary SWC file."""
     return Path("/non/existent/mock_temp_file.swc")
 
 
@@ -81,7 +84,6 @@ def test_morphology_registration_success(
     """
     # 1. Setup Mock EntitySDK Client
     entitysdk_client_mock = MagicMock()
-    # Mocking the client override for dependency injection
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
     # Mock the ID returned after successful entity creation
@@ -95,26 +97,26 @@ def test_morphology_registration_success(
     # Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert,
+        mock_process_and_convert
     )
 
     # Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,
+        lambda _path: mock_measurement_list
     )
 
     # Use dotted path string for monkeypatching (resolves previous TypeError)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,
+        lambda _client, _payload: mock_data
     )
 
     # Use dotted path string for monkeypatching (resolves previous TypeError)
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements,
+        mock_register_assets_and_measurements
     )
 
     # 3. Perform the POST Request
@@ -122,12 +124,11 @@ def test_morphology_registration_success(
         ROUTE,
         data={
             "metadata": mock_entity_payload,
-            "virtual_lab_id": VIRTUAL_LAB_ID,
+            "virtual_lab_id": VIRTUAL_LAB_ID, 
             "project_id": PROJECT_ID,
         },
         files={
             "file": (
-                # FIX: Use a specific filename structure that matches the user's scenario
                 "601506507_transformed.swc",
                 b"mock swc content",
                 "application/octet-stream",
@@ -144,7 +145,6 @@ def test_morphology_registration_success(
     response_json = response.json()
     assert response_json["status"] == "success"
     assert response_json["entity_id"] == str(mock_entity_id)
-    # Assertion changed to match the 'name' field in the new 'metadata' payload
     assert response_json["morphology_name"] == "Test Morphology Analysis Name"
 
     # Check that all registration steps were called correctly
