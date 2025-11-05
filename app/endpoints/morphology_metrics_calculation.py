@@ -10,7 +10,7 @@ from uuid import UUID
 import neurom as nm
 import requests
 from entitysdk import Client
-from entitysdk.exceptions import EntityNotFound
+from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
     BrainLocation,
     BrainRegion,
@@ -633,7 +633,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, A
 
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
-        except EntityNotFound:
+        except EntitySDKError:
             # Quietly fail if a referenced entity ID does not exist.
             return None
         except RequestException:
