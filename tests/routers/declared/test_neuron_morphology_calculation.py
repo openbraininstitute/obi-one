@@ -10,12 +10,6 @@ from fastapi import UploadFile
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -109,14 +103,14 @@ def test_morphology_registration_success(
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list # _path satisfies ARG005
+        lambda _path: mock_measurement_list  # _path satisfies ARG005
     )
 
     # Mock entity registration: returns the mock data object with entity ID
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data # _client and _payload satisfy ARG005
+        lambda _client, _payload: mock_data  # _client and _payload satisfy ARG005
     )
 
     # Mock asset/measurement registration: simply ensure it's called
