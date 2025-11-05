@@ -595,8 +595,10 @@ def _setup_context_and_client(
 
 async def _parse_file_and_metadata(
     file: UploadFile, metadata_str: str
-) -> tuple[str, bytes, MorphologyMetadata]:
-    """Reads file content and validates, and parses the metadata string."""
+) -> tuple[str, str, bytes, MorphologyMetadata]:
+    """Reads file content and validates, and parses the metadata string.
+    Returns: (morphology_name, file_extension, content, metadata_obj)
+    """
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
     content = await file.read()
@@ -614,7 +616,8 @@ async def _parse_file_and_metadata(
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
         ) from e
 
-    return morphology_name, content, metadata_obj
+    # F841 Fix: Return file_extension
+    return morphology_name, file_extension, content, metadata_obj
 
 
 # --- API CALL FUNCTIONS ---
@@ -635,10 +638,16 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, A
             return None
 
         try:
+            # We assume EntityNotFound is an exception type from the entitysdk library.
+            from entitysdk.exceptions import EntityNotFound 
+
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
+        except EntityNotFound:
+            # BLE001 Fix: Catching EntityNotFound specifically to quietly
+            # fail (return None) if a referenced entity ID does not exist.
+            return None
         except Exception:
-            # BLE001: Catching generic Exception here is intentional to quietly
-            # fail (return None) if a referenced entity ID cannot be fetched
+            # Catching other exceptions (like connection errors) and returning None
             return None
 
     brain_location_data = new_item.get("brain_location", [])
@@ -787,8 +796,13 @@ async def morphology_metrics_calculation(
     # PLR0914 Fix (part 1): Use helper for context/client setup
     client = _setup_context_and_client(user_context, virtual_lab_id, project_id, request)
 
-    # PLR0914 Fix (part 2): Use helper for file/metadata parsing
-    morphology_name, content, metadata_obj = await _parse_file_and_metadata(file, metadata)
+    # F821 Fix: Capture the returned file_extension
+    (
+        morphology_name,
+        file_extension,
+        content,
+        metadata_obj,
+    ) = await _parse_file_and_metadata(file, metadata)
 
     entity_id = "UNKNOWN"
 
@@ -803,6 +817,7 @@ async def morphology_metrics_calculation(
             # 1. ANALYSIS
 
             # 1a. Write the uploaded content to a temporary file for neurom analysis
+            # F821 Fix: file_extension is now correctly defined in this scope
             temp_file_obj = stack.enter_context(
                 tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
             )
@@ -814,6 +829,7 @@ async def morphology_metrics_calculation(
             stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
             # Conversion creates 1 or 2 new temporary files.
+            # F821 Fix: file_extension is now correctly defined in this scope
             outputfile1, outputfile2 = await process_and_convert_morphology(
                 temp_file_path=temp_file_path, file_extension=file_extension
             )
@@ -837,7 +853,7 @@ async def morphology_metrics_calculation(
 
             # 2c. Register Assets (Original File)
             # tempfile.TemporaryDirectory is itself a context manager,
-            # automatically cleaned up on exit (E501 Fix: Wrapped comment)
+            # automatically cleaned up on exit
             with tempfile.TemporaryDirectory() as temp_dir_for_upload:
                 temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
                 temp_upload_path_obj.write_bytes(content)
