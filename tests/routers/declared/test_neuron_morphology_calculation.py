@@ -7,12 +7,6 @@ import pytest
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    _register_assets_and_measurements,
-    _run_morphology_analysis,
-    register_morphology,
-)
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -128,7 +122,7 @@ def test_morphology_registration_success(
         ROUTE,
         data={
             "metadata": mock_entity_payload,
-            "virtual_lab_id": VIRTUAL_LAB_ID, 
+            "virtual_lab_id": VIRTUAL_LAB_ID,
             "project_id": PROJECT_ID,
         },
         files={
