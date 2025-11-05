@@ -558,6 +558,7 @@ NEW_ENTITY_DEFAULTS = {
     "cell_morphology_protocol_id": None,
 }
 
+
 # --- Pydantic Model for Metadata (Used in the request Body) ---
 class MorphologyMetadata(BaseModel):
     name: str | None = None
@@ -571,14 +572,13 @@ class MorphologyMetadata(BaseModel):
     cell_morphology_protocol_id: str | None = None
     brain_location: list[float] | None = None
 
+
 # --- API CALL FUNCTIONS ---
 
-T = TypeVar('T', bound=BaseEntity)
+T = TypeVar("T", bound=BaseEntity)
 
 
-def register_morphology(
-    client: Client, new_item: dict[str, Any]
-) -> dict[str, Any]:
+def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, Any]:
     """
     Registers a new CellMorphology entity. Safely retrieves related entities
     and brain location from the input dict.
@@ -592,10 +592,7 @@ def register_morphology(
             return None
 
         try:
-            return client.search_entity(
-                entity_type=entity_class,
-                query={"id": entity_id}
-            ).one()
+            return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
         except Exception as e:
             return None
 
@@ -660,17 +657,20 @@ def register_assets(
 
     try:
         asset1 = client.upload_file(
-        entity_id=entity_id,
-        entity_type=CellMorphology,
-        file_path=file_path,
-        file_content_type=mime_type,
-        asset_label="morphology",
+            entity_id=entity_id,
+            entity_type=CellMorphology,
+            file_path=file_path,
+            file_content_type=mime_type,
+            asset_label="morphology",
         )
         return asset1
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": ApiErrorCode.ENTITYCORE_API_FAILURE, "detail": f"Entity asset registration failed: {e}"},
+            detail={
+                "code": ApiErrorCode.ENTITYCORE_API_FAILURE,
+                "detail": f"Entity asset registration failed: {e}",
+            },
         ) from e
 
 
@@ -681,9 +681,9 @@ def register_measurements(
 ) -> dict[str, Any]:
     try:
         measurement_annotation = MeasurementAnnotation(
-        entity_id=entity_id,
-        entity_type= "cell_morphology",
-        measurement_kinds= measurements,
+            entity_id=entity_id,
+            entity_type="cell_morphology",
+            measurement_kinds=measurements,
         )
 
         registered = client.register_entity(entity=measurement_annotation)
@@ -691,7 +691,10 @@ def register_measurements(
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": ApiErrorCode.ENTITYCORE_API_FAILURE, "detail": f"Entity measurement registration failed: {e}"},
+            detail={
+                "code": ApiErrorCode.ENTITYCORE_API_FAILURE,
+                "detail": f"Entity measurement registration failed: {e}",
+            },
         ) from e
 
 
@@ -732,10 +735,12 @@ async def morphology_metrics_calculation(
     metadata: Annotated[str, Form()] = "{}",
 ) -> dict:
     # Override the user_context with form data values
-    modified_context = user_context.model_copy(update={
-        "virtual_lab_id": UUID(virtual_lab_id),
-        "project_id": UUID(project_id),
-    })
+    modified_context = user_context.model_copy(
+        update={
+            "virtual_lab_id": UUID(virtual_lab_id),
+            "project_id": UUID(project_id),
+        }
+    )
 
     # Get client with modified context
     client = get_client(user_context=modified_context, request=request)
@@ -752,14 +757,13 @@ async def morphology_metrics_calculation(
         metadata_dict = json.loads(metadata) if metadata != "{}" else {}
         metadata_obj = MorphologyMetadata(**metadata_dict)
     except (json.JSONDecodeError, ValueError) as e:
-
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
         ) from e
 
     entity_id = "UNKNOWN"
-    
+
     # Initialize these outside the try block but trust ExitStack for cleanup
     # We don't need to track the paths explicitly outside the ExitStack now,
     # but we initialize for scope visibility if needed elsewhere (though not here)
@@ -767,21 +771,21 @@ async def morphology_metrics_calculation(
     outputfile1 = ""
     outputfile2 = ""
 
-
     try:
         # Use ExitStack to manage the temporary file lifecycles
         with ExitStack() as stack:
             # 1. ANALYSIS
 
             # 1a. Write the uploaded content to a temporary file for neurom analysis
-            temp_file_obj = stack.enter_context(tempfile.NamedTemporaryFile(delete=False, suffix=file_extension))
+            temp_file_obj = stack.enter_context(
+                tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
+            )
             temp_file_path = temp_file_obj.name
             temp_file_obj.write(content)
-            temp_file_obj.close() # Close the file handle before attempting to read/process
+            temp_file_obj.close()  # Close the file handle before attempting to read/process
 
             # Register the path for cleanup after the block
             stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
-
 
             # Conversion creates 1 or 2 new temporary files.
             outputfile1, outputfile2 = await process_and_convert_morphology(
@@ -808,7 +812,6 @@ async def morphology_metrics_calculation(
             # 2c. Register Assets (Original File)
             # tempfile.TemporaryDirectory is itself a context manager, automatically cleaned up on exit
             with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-
                 temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
                 temp_upload_path_obj.write_bytes(content)
 
