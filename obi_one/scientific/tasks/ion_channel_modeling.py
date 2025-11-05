@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Annotated, Literal
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
+from entitysdk.types import SimulationExecutionStatus
 from fastapi import HTTPException
 from pydantic import Field, StringConstraints
 
@@ -112,7 +113,6 @@ class IonChannelFittingScanConfig(ScanConfig):
         )
 
 
-
     class GateExponents(Block):
         # mod file creation
         m_power: int = Field(
@@ -169,7 +169,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     )
 
     minf_eq: equations_module.MInfUnion = Field(
-        title=r"m_{infty} equation",
+        title=r"m_{\infty} equation",
         reference_type=equations_module.MInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=0,
@@ -181,7 +181,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=1,
     )
     hinf_eq: equations_module.HInfUnion = Field(
-        title=r"h_{infty} equation",
+        title=r"h_{\infty} equation",
         reference_type=equations_module.HInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=2,
@@ -617,23 +617,35 @@ class IonChannelFittingTask(Task):
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
-            ion_name=self.config.initialize.ion.lower(),
-            read=[f"e{self.config.initialize.ion.lower()}"],
-            write=[f"i{self.config.initialize.ion.lower()}"],
+            ion_name="k", # TODO: fix this
+            read=["ek"],
+            write=["ik"],
             valence=1,  # putting 1 for K for now. TODO: fix this
             main_ion=True,
         )
         neuron_block = entitysdk.models.NeuronBlock(
-            global_=[[{"celsius": "degree C"}]],
+            **{"global": [{"celsius": "degree C"}]},
             range=[
-                {f"g{self.config.initialize.ion_channel_name}bar": "S/cm2"},
-                {f"g{self.config.initialize.ion_channel_name}": "S/cm2"},
-                {f"i{self.config.initialize.ion.lower()}": "mA/cm2"},
+                {"gbar": "S/cm2"},
+                {"g": "S/cm2"},
+                {"ik": "mA/cm2"},
             ],
             useion=[useion],
             nonspecific=[],
         )
         print("NeuronBlock data:", json.dumps(neuron_block.dict(by_alias=True), indent=2))
+
+        # To fetch a Species by ID
+        subject = db_client.get_entity(
+            entity_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07",
+            entity_type=entitysdk.models.Subject
+        )
+        
+        # To fetch a BrainRegion by ID
+        brain_region = db_client.get_entity(
+            entity_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066",
+            entity_type=entitysdk.models.brain_region.BrainRegion
+        )
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
@@ -641,16 +653,15 @@ class IonChannelFittingTask(Task):
                 nmodl_suffix=self.config.initialize.ion_channel_name,
                 description=(
                     f"Ion channel model of {self.config.initialize.ion_channel_name} "
-                    f"at {self.config.initialize.temperature} C."
                 ),
                 contributions=None,  # TBD
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=self.config.initialize.temperature,
+                temperature_celsius=-1, # fix this
                 is_stochastic=False,
                 neuron_block=neuron_block,
-                brain_region_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066", #default: "Basic cell groups and regions"
-                subject_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07", #default: "Generic Mus musculus"
+                brain_region=brain_region,#"4642cddb-4fbe-4aae-bbf7-0946d6ada066", #default: "Basic cell groups and regions"
+                subject=subject,#"9edb44c6-33b5-403b-8ab6-0890cfb12d07", #default: "Generic Mus musculus"
             )
         )
 
@@ -659,7 +670,7 @@ class IonChannelFittingTask(Task):
             entity_type=entitysdk.models.IonChannelModel,
             file_path=mod_filepath,
             file_content_type=ContentType.application_mod,
-            asset_label="mod file",
+            asset_label="neuron_mechanisms",
         )
 
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
@@ -669,6 +680,7 @@ class IonChannelFittingTask(Task):
         db_client.register_entity(
             entitysdk.models.IonChannelModelingExecution(
                 start_time=datetime.now(UTC),
+                status=SimulationExecutionStatus.done,
                 used=[self.config.single_entity],
                 generated=[model],
             )
@@ -753,7 +765,7 @@ class IonChannelFittingTask(Task):
                 eq_names=eq_names,
                 eq_popt=eq_popt,
                 suffix=self.config.initialize.ion_channel_name,
-                ion=self.config.initialize.ion,
+                ion="k",
                 m_power=self.config.gate_exponents.m_power,
                 h_power=self.config.gate_exponents.h_power,
                 output_name=output_name,
@@ -774,9 +786,9 @@ class IonChannelFittingTask(Task):
             figure_paths_dict = run_ion_channel_model(
                 mech_suffix=self.config.initialize.ion_channel_name,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current=f"i{self.config.initialize.ion.lower()}",
+                mech_current=f"ik",
                 # no need to actually give temperature because model is not temperature-dependent
-                temperature=self.config.initialize.temperature,
+                temperature=-1,
                 mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
