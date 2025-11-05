@@ -97,26 +97,26 @@ def test_morphology_registration_success(
     # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert
+        mock_process_and_convert,
     )
 
     # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list
+        lambda _path: mock_measurement_list,
     )
 
     # FIX: Use dotted path string for monkeypatching
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data
+        lambda _client, _payload: mock_data,
     )
 
     # FIX: Use dotted path string for monkeypatching
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements
+        mock_register_assets_and_measurements,
     )
 
     # 3. Perform the POST Request
@@ -124,13 +124,13 @@ def test_morphology_registration_success(
     response = client.post(
         ROUTE,
         data={
-            "metadata": mock_entity_payload, # Changed from 'entity_payload'
-            "virtual_lab_id": "bf7d398c-b812-408a-a2ee-098f633f7798", # Added
-            "project_id": "100a9a8a-5229-4f3d-aef3-6a4184c59e74", # Added
+            "metadata": mock_entity_payload,  # Changed from 'entity_payload'
+            "virtual_lab_id": "bf7d398c-b812-408a-a2ee-098f633f7798",  # Added
+            "project_id": "100a9a8a-5229-4f3d-aef3-6a4184c59e74",  # Added
             # Removed 'morphology_name' and 'content_type'
         },
         files={
-            "file": ( # Changed from 'morphology_file'
+            "file": (  # Changed from 'morphology_file'
                 "test_morphology.swc",
                 b"mock swc content",
                 "application/octet-stream",
@@ -161,4 +161,3 @@ def test_morphology_registration_success(
     args, _kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
- 
