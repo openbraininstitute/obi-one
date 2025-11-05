@@ -10,8 +10,7 @@ from uuid import UUID
 import neurom as nm
 import requests
 from entitysdk import Client
-from entitysdk.exceptions import EntityNotFound 
-from requests.exceptions import RequestException
+from entitysdk.exceptions import EntityNotFound
 from entitysdk.models import (
     BrainLocation,
     BrainRegion,
@@ -22,6 +21,7 @@ from entitysdk.models import (
 )
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+from requests.exceptions import RequestException
 from starlette.requests import Request
 
 import app.endpoints.useful_functions.useful_functions as uf
@@ -37,9 +37,8 @@ class ApiErrorCode:
 
 # Base class for TypeVar bounding
 class BaseEntity:
-    def __init__(self, entity_id: Any | None = None) -> None: # ANN204, ANN001, A002 Fix: Renamed id, added type/return hints
-        """Initialize the base entity.""" # D107 Fix: Added docstring
-        pass
+    def __init__(self, entity_id: Any | None = None) -> None:
+        """Initialize the base entity."""
 
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
@@ -48,7 +47,6 @@ ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
 DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
 TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
 
-# PLR2004 Fix: Constant for the minimum number of brain location coordinates (x, y, z)
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -617,6 +615,7 @@ async def _parse_file_and_metadata(
 
 # --- API CALL FUNCTIONS ---
 
+
 T = TypeVar("T", bound=BaseEntity)
 
 
@@ -646,7 +645,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, A
 
     if (
         isinstance(brain_location_data, list)
-        and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS # PLR2004 Fix: Use constant
+        and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS  # PLR2004 Fix: Use constant
     ):
         try:
             brain_location = BrainLocation(
@@ -719,7 +718,7 @@ def register_assets(
                 "detail": f"Entity asset registration failed: {e}",
             },
         ) from e
-    else: # TRY300 Fix: move return to else block
+    else:
         return asset1
 
 
@@ -744,7 +743,7 @@ def register_measurements(
                 "detail": f"Entity measurement registration failed: {e}",
             },
         ) from e
-    else: # TRY300 Fix: move return to else block
+    else:
         return registered
 
 
@@ -772,10 +771,6 @@ def _register_assets_and_measurements(
     outputfile2: str,
 ) -> None:
     """Handles all asset and measurement registration calls to EntityCore."""
-
-    # 2c. Register Assets (Original File)
-    # tempfile.TemporaryDirectory is itself a context manager,
-    # automatically cleaned up on exit # E501 Fix: Wrapped long comment
     with tempfile.TemporaryDirectory() as temp_dir_for_upload:
         temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
         temp_upload_path_obj.write_bytes(content)
@@ -809,7 +804,7 @@ def _register_assets_and_measurements(
             morphology_name=output2_path_obj.name,
         )
 
-    # 2d. Register Measurements
+    # Register Measurements
     register_measurements(
         client,
         entity_id,
@@ -828,7 +823,7 @@ def _register_assets_and_measurements(
         "asset, and measurements."
     ),
 )
-async def morphology_metrics_calculation( # PLR0914 Fix: Reduced local variables by moving logic to helper
+async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     # Non-default parameters (Form data)
     virtual_lab_id: Annotated[str, Form()],
@@ -914,4 +909,3 @@ async def morphology_metrics_calculation( # PLR0914 Fix: Reduced local variables
     else:
         # Return success response
         return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
-    
