@@ -1,7 +1,7 @@
 import json
 import uuid
+from pathlib import Path  # Import Path for a safer way to mock paths
 from unittest.mock import MagicMock
-from pathlib import Path # Import Path for a safer way to mock paths
 
 import pytest
 from fastapi import UploadFile
@@ -68,13 +68,13 @@ def mock_measurement_list():
 
 # --- Test Case ---
 
-
+# FIX: Add @pytest.mark.usefixtures to resolve PT019
+@pytest.mark.usefixtures("mock_morphology_file")
 def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
-    # Renamed to _mock_morphology_file to satisfy ARG001
-    _mock_morphology_file,
+    # FIX: Removed _mock_morphology_file parameter to resolve PT019
     mock_temp_file_path,
     mock_measurement_list,
 ):
