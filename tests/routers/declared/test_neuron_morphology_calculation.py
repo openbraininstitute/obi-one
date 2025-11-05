@@ -3,15 +3,18 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-from entitysdk.models import CellMorphology
+from fastapi import UploadFile
 
 # Assuming the endpoint logic is contained or uses functions from a module named
 # morphology_metrics_calculation and morphology_validation. We will import and
 # mock functions from these expected locations.
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import register_morphology, _run_morphology_analysis, _register_assets_and_measurements
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
 from app.endpoints.morphology_validation import process_and_convert_morphology
-from fastapi import UploadFile
 
 # Define the route for the endpoint being tested
 ROUTE = "/declared/morphology-metrics-entity-registration"
@@ -19,16 +22,19 @@ ROUTE = "/declared/morphology-metrics-entity-registration"
 
 # --- Fixtures for Mock Data ---
 
+
 @pytest.fixture
 def mock_entity_payload():
     """Returns a mock JSON string payload for the CellMorphology entity."""
-    return json.dumps({
-        "cell_name": "Test Cell",
-        "protocol_name": "Reconstruction Protocol",
-        "subject_id": str(uuid.uuid4()),
-        "brain_region_id": str(uuid.uuid4()),
-        "brain_location": {"x": 100, "y": 200, "z": 300},
-    })
+    return json.dumps(
+        {
+            "cell_name": "Test Cell",
+            "protocol_name": "Reconstruction Protocol",
+            "subject_id": str(uuid.uuid4()),
+            "brain_region_id": str(uuid.uuid4()),
+            "brain_location": {"x": 100, "y": 200, "z": 300},
+        }
+    )
 
 
 @pytest.fixture
@@ -36,7 +42,7 @@ def mock_morphology_file():
     """Returns a mock UploadFile object for the SWC file upload."""
     return UploadFile(
         filename="test_morphology.swc",
-        file=MagicMock()  # Mock the file content stream
+        file=MagicMock(),  # Mock the file content stream
     )
 
 
@@ -58,13 +64,14 @@ def mock_measurement_list():
 
 # --- Test Case ---
 
+
 def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
     mock_morphology_file,
     mock_temp_file_path,
-    mock_measurement_list
+    mock_measurement_list,
 ):
     """
     Tests the successful registration and metrics calculation pipeline, ensuring
@@ -85,29 +92,17 @@ def test_morphology_registration_success(
         return mock_temp_file_path, "mock-content-string-swc-file"
 
     # Mock file conversion/validation
-    monkeypatch.setattr(
-        process_and_convert_morphology,
-        mock_process_and_convert
-    )
+    monkeypatch.setattr(process_and_convert_morphology, mock_process_and_convert)
 
     # Mock morphology analysis: returns the list of metrics
-    monkeypatch.setattr(
-        _run_morphology_analysis,
-        lambda path: mock_measurement_list
-    )
+    monkeypatch.setattr(_run_morphology_analysis, lambda path: mock_measurement_list)
 
     # Mock entity registration: returns the mock data object with entity ID
-    monkeypatch.setattr(
-        register_morphology,
-        lambda client, payload: mock_data
-    )
+    monkeypatch.setattr(register_morphology, lambda client, payload: mock_data)
 
     # Mock asset/measurement registration: simply ensure it's called
     mock_register_assets_and_measurements = MagicMock()
-    monkeypatch.setattr(
-        _register_assets_and_measurements,
-        mock_register_assets_and_measurements
-    )
+    monkeypatch.setattr(_register_assets_and_measurements, mock_register_assets_and_measurements)
 
     # 3. Perform the POST Request
     response = client.post(
@@ -118,8 +113,12 @@ def test_morphology_registration_success(
             "entity_payload": mock_entity_payload,
         },
         files={
-            "morphology_file": ("test_morphology.swc", b"mock swc content", "application/octet-stream")
-        }
+            "morphology_file": (
+                "test_morphology.swc",
+                b"mock swc content",
+                "application/octet-stream",
+            )
+        },
     )
 
     # 4. Assertions
@@ -139,5 +138,3 @@ def test_morphology_registration_success(
     args, kwargs = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)  # entity_id is the second positional arg
     assert args[4] == mock_measurement_list  # measurement_list is the fifth positional arg
-
-   
