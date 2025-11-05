@@ -7,6 +7,12 @@ import pytest
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _register_assets_and_measurements,
+    _run_morphology_analysis,
+    register_morphology,
+)
+from app.endpoints.morphology_validation import process_and_convert_morphology
 
 ROUTE = "/declared/morphology-metrics-entity-registration"
 
@@ -73,10 +79,12 @@ def test_morphology_registration_success(
 
     # Mock the ID returned after successful entity creation
     mock_entity_id = uuid.uuid4()
-    mock_data = MagicMock()
-    mock_data.id = str(mock_entity_id)
-
     expected_morphology_name = json.loads(mock_entity_payload)["name"]
+
+    # FIX: Create a nested mock structure to prevent 500 Internal Server Error
+    # This accounts for SDK responses often having a nested 'data' attribute.
+    mock_entity_data = MagicMock(id=str(mock_entity_id), name=expected_morphology_name)
+    mock_data = MagicMock(data=mock_entity_data)
 
     # 2. Mock Internal Pipeline Functions
     def mock_process_and_convert(_morphology_file, _outputfile1=None):
@@ -85,26 +93,26 @@ def test_morphology_registration_success(
     # Mock file conversion/validation
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert,
+        mock_process_and_convert
     )
 
     # Mock morphology analysis
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,
+        lambda _path: mock_measurement_list
     )
 
     # Mock entity registration
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,
+        lambda _client, _payload: mock_data
     )
 
     # Mock asset/measurement registration
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements,
+        mock_register_assets_and_measurements
     )
 
     # 3. Perform the POST Request
@@ -112,7 +120,7 @@ def test_morphology_registration_success(
         ROUTE,
         data={
             "metadata": mock_entity_payload,
-            "virtual_lab_id": VIRTUAL_LAB_ID,
+            "virtual_lab_id": VIRTUAL_LAB_ID, 
             "project_id": PROJECT_ID,
         },
         files={
