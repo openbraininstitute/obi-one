@@ -96,21 +96,21 @@ def test_morphology_registration_success(
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert
+        mock_process_and_convert,
     )
 
     # Mock morphology analysis: returns the list of metrics
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list  # _path satisfies ARG005
+        lambda _path: mock_measurement_list,  # _path satisfies ARG005
     )
 
     # Mock entity registration: returns the mock data object with entity ID
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data  # _client and _payload satisfy ARG005
+        lambda _client, _payload: mock_data,  # _client and _payload satisfy ARG005
     )
 
     # Mock asset/measurement registration: simply ensure it's called
@@ -118,7 +118,7 @@ def test_morphology_registration_success(
     # FIX: Use dotted path string to resolve the TypeError for imported function.
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
-        mock_register_assets_and_measurements
+        mock_register_assets_and_measurements,
     )
 
     # 3. Perform the POST Request
