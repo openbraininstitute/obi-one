@@ -10,6 +10,8 @@ from uuid import UUID
 import neurom as nm
 import requests
 from entitysdk import Client
+from entitysdk.exceptions import EntityNotFound # PLC0415 FIX: Moved to top-level
+from requests.exceptions import RequestException # BLE001 FIX: Added specific connection error catch
 from entitysdk.models import (
     BrainLocation,
     BrainRegion,
@@ -35,11 +37,7 @@ class ApiErrorCode:
 
 # Base class for TypeVar bounding
 class BaseEntity:
-    def __init__(self, entity_id: Any | None = None) -> None:
-        """Initialize the base entity."""
-        # Renamed 'id' to 'entity_id' to avoid shadowing builtin 'id()' (A002)
-        # Added type hint for entity_id (ANN001) and return (ANN204)
-        # Added docstring (D107)
+    def __init__(self, id=None):
         pass
 
 
@@ -48,9 +46,6 @@ ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
 
 DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
 TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
-
-# PLR2004: Constant for the minimum number of brain location coordinates (x, y, z)
-BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -596,9 +591,7 @@ def _setup_context_and_client(
 async def _parse_file_and_metadata(
     file: UploadFile, metadata_str: str
 ) -> tuple[str, str, bytes, MorphologyMetadata]:
-    """Reads file content and validates, and parses the metadata string.
-    Returns: (morphology_name, file_extension, content, metadata_obj)
-    """
+    """Reads file content, validates, and parses the metadata string.""" # D415 FIX: Added period
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
     content = await file.read()
@@ -616,9 +609,8 @@ async def _parse_file_and_metadata(
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
         ) from e
 
-    # F841 Fix: Return file_extension
+    # PLR0914 FIX: Return file_extension and other parsed data
     return morphology_name, file_extension, content, metadata_obj
-
 
 # --- API CALL FUNCTIONS ---
 
@@ -638,25 +630,18 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> dict[str, A
             return None
 
         try:
-            # We assume EntityNotFound is an exception type from the entitysdk library.
-            from entitysdk.exceptions import EntityNotFound 
-
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
         except EntityNotFound:
-            # BLE001 Fix: Catching EntityNotFound specifically to quietly
-            # fail (return None) if a referenced entity ID does not exist.
+            # Quietly fail if a referenced entity ID does not exist.
             return None
-        except Exception:
-            # Catching other exceptions (like connection errors) and returning None
+        except RequestException: # BLE001 FIX: Catching specific connection/API errors
+            # Quietly fail if a connection or API request error occurs.
             return None
 
     brain_location_data = new_item.get("brain_location", [])
     brain_location: BrainLocation | None = None
 
-    if (
-        isinstance(brain_location_data, list)
-        and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS
-    ):  # PLR2004 fixed
+    if isinstance(brain_location_data, list) and len(brain_location_data) >= 3:
         try:
             brain_location = BrainLocation(
                 x=float(brain_location_data[0]),
@@ -720,6 +705,7 @@ def register_assets(
             file_content_type=mime_type,
             asset_label="morphology",
         )
+        return asset1
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -728,8 +714,6 @@ def register_assets(
                 "detail": f"Entity asset registration failed: {e}",
             },
         ) from e
-    else:  # TRY300 Fix: move return to else block
-        return asset1
 
 
 def register_measurements(
@@ -745,6 +729,7 @@ def register_measurements(
         )
 
         registered = client.register_entity(entity=measurement_annotation)
+        return registered
     except requests.exceptions.RequestException as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -753,8 +738,6 @@ def register_measurements(
                 "detail": f"Entity measurement registration failed: {e}",
             },
         ) from e
-    else:  # TRY300 Fix: move return to else block
-        return registered
 
 
 def _prepare_entity_payload(
@@ -796,7 +779,7 @@ async def morphology_metrics_calculation(
     # PLR0914 Fix (part 1): Use helper for context/client setup
     client = _setup_context_and_client(user_context, virtual_lab_id, project_id, request)
 
-    # F821 Fix: Capture the returned file_extension
+    # PLR0914 Fix (part 2): Consolidate file reading and metadata parsing
     (
         morphology_name,
         file_extension,
@@ -806,7 +789,9 @@ async def morphology_metrics_calculation(
 
     entity_id = "UNKNOWN"
 
-    # Initialize these outside the try block for scope visibility, but trust ExitStack for cleanup
+    # Initialize these outside the try block but trust ExitStack for cleanup
+    # We don't need to track the paths explicitly outside the ExitStack now,
+    # but we initialize for scope visibility if needed elsewhere (though not here)
     temp_file_path = ""
     outputfile1 = ""
     outputfile2 = ""
@@ -817,7 +802,6 @@ async def morphology_metrics_calculation(
             # 1. ANALYSIS
 
             # 1a. Write the uploaded content to a temporary file for neurom analysis
-            # F821 Fix: file_extension is now correctly defined in this scope
             temp_file_obj = stack.enter_context(
                 tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
             )
@@ -829,7 +813,6 @@ async def morphology_metrics_calculation(
             stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
             # Conversion creates 1 or 2 new temporary files.
-            # F821 Fix: file_extension is now correctly defined in this scope
             outputfile1, outputfile2 = await process_and_convert_morphology(
                 temp_file_path=temp_file_path, file_extension=file_extension
             )
@@ -852,8 +835,7 @@ async def morphology_metrics_calculation(
             entity_id = str(data.id)
 
             # 2c. Register Assets (Original File)
-            # tempfile.TemporaryDirectory is itself a context manager,
-            # automatically cleaned up on exit
+            # tempfile.TemporaryDirectory is itself a context manager, automatically cleaned up on exit
             with tempfile.TemporaryDirectory() as temp_dir_for_upload:
                 temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
                 temp_upload_path_obj.write_bytes(content)
