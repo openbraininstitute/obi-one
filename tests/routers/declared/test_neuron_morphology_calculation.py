@@ -61,19 +61,22 @@ def mock_measurement_list():
 @pytest.fixture(autouse=True)
 def mock_template_and_analysis(monkeypatch):
     """Mock _get_template and _get_analysis_dict to return minimal data."""
+
     def mock_get_template():
         return {
-            "data": [{
-                "entity_id": None,
-                "entity_type": "reconstruction_morphology",
-                "measurement_kinds": [
-                    {
-                        "structural_domain": "soma",
-                        "pref_label": "test_metric",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}]
-                    }
-                ]
-            }],
+            "data": [
+                {
+                    "entity_id": None,
+                    "entity_type": "reconstruction_morphology",
+                    "measurement_kinds": [
+                        {
+                            "structural_domain": "soma",
+                            "pref_label": "test_metric",
+                            "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                        }
+                    ],
+                }
+            ],
             "pagination": {"page": 1, "page_size": 100, "total_items": 1},
             "facets": None,
         }
@@ -86,12 +89,10 @@ def mock_template_and_analysis(monkeypatch):
         }
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template",
-        mock_get_template
+        "app.endpoints.morphology_metrics_calculation._get_template", mock_get_template
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_analysis_dict",
-        mock_get_analysis_dict
+        "app.endpoints.morphology_metrics_calculation._get_analysis_dict", mock_get_analysis_dict
     )
 
 
