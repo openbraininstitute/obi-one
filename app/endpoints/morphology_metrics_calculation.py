@@ -234,7 +234,10 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 
     brain_location_data = new_item.get("brain_location", [])
     brain_location: BrainLocation | None = None
-    if isinstance(brain_location_data, list) and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS:
+    if (
+        isinstance(brain_location_data, list)
+        and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS
+    ):
         try:
             brain_location = BrainLocation(
                 x=float(brain_location_data[0]),
