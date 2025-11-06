@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
 
-# --- Delayed imports (top-level, but used lazily) ---
-import neurom as nm  # noqa: F401 (imported but not used directly)
+# --- Heavy third-party imports (top-level, used lazily) ---
+import neurom as nm  # noqa: F401  (used inside _run_morphology_analysis)
+
+# --- Standard & project imports ---
 import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
@@ -26,7 +28,7 @@ from pydantic import BaseModel
 from requests.exceptions import RequestException
 from starlette.requests import Request
 
-# --- Local imports (used inside functions) ---
+# --- Local project imports (used lazily inside functions) ---
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
@@ -89,6 +91,7 @@ def _validate_file_extension(filename: str | None) -> str:
 
 
 def _get_template() -> dict:
+    """Load and cache the JSON template."""
     if hasattr(_get_template, "cached"):
         return _get_template.cached
 
@@ -99,6 +102,7 @@ def _get_template() -> dict:
 
 
 def _build_analysis_dict() -> dict:
+    """Create the analysis dictionary on demand."""
     import app.endpoints.useful_functions.useful_functions as uf  # local import
 
     analysis_dict_base = uf.create_analysis_dict(_get_template())
@@ -113,6 +117,7 @@ def _build_analysis_dict() -> dict:
 
 
 def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
+    """Run NeuroM analysis and return filled measurement kinds."""
     import app.endpoints.useful_functions.useful_functions as uf  # local import
 
     try:
