@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import UploadFile
+from _pytest.monkeypatch import MonkeyPatch  # Import explicitly
 
 from app.dependencies.entitysdk import get_client
 
@@ -14,66 +15,71 @@ VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
-# === EARLY MONKEYPATCH: MOCK NEUROM + HEAVY IMPORTS ===
+# === EARLY MONKEYPATCH: SESSION-SCOPED, NO ARG ===
 @pytest.fixture(autouse=True, scope="session")
-def _early_patch_heavy_imports(monkeypatch):
+def _early_patch_heavy_imports():
     """
-    Fully mock:
-      - neurom (prevents NEURON/MPI loading)
+    Apply global mocks at import time:
+      - neurom (prevents NEURON/MPI)
       - template file
-      - analysis dict creation
-      - morphology processing
+      - analysis dict
+      - file processing
     """
-    # 1. Mock the template file read
-    fake_template = {
-        "data": [
-            {
-                "entity_id": None,
-                "entity_type": "reconstruction_morphology",
-                "measurement_kinds": [
-                    {
-                        "structural_domain": "soma",
-                        "pref_label": "mock_metric",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                    }
-                ],
-            }
-        ],
-        "pagination": {"page": 1, "page_size": 100, "total_items": 1},
-        "facets": None,
-    }
+    mp = MonkeyPatch()  # Create manually
 
-    def mock_read_text():
-        return json.dumps(fake_template)
-
-    monkeypatch.setattr(Path, "read_text", mock_read_text)
-
-    # 2. Mock analysis dict creation
-    def mock_create_analysis_dict(_template):
-        return {
-            "soma": {"mock_metric": lambda _: 42.0},
-            "basal_dendrite": {"mock_metric": lambda _: 10.0},
+    try:
+        # 1. Mock template file
+        fake_template = {
+            "data": [
+                {
+                    "entity_id": None,
+                    "entity_type": "reconstruction_morphology",
+                    "measurement_kinds": [
+                        {
+                            "structural_domain": "soma",
+                            "pref_label": "mock_metric",
+                            "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                        }
+                    ],
+                }
+            ],
+            "pagination": {"page": 1, "page_size": 100, "total_items": 1},
+            "facets": None,
         }
 
-    monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
-        mock_create_analysis_dict,
-    )
+        def mock_read_text():
+            return json.dumps(fake_template)
 
-    # 3. FULLY MOCK neurom (prevents NEURON/MPI import)
-    mock_neurom = MagicMock()
-    mock_neurom.load_morphology.return_value = MagicMock()
-    monkeypatch.setattr("neurom", mock_neurom)
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.nm", mock_neurom)
+        mp.setattr(Path, "read_text", mock_read_text)
 
-    # 4. Mock process_and_convert_morphology (avoids file I/O)
-    def mock_process_and_convert():
-        return "/mock/fake_output.swc", None
+        # 2. Mock analysis dict
+        def mock_create_analysis_dict(_template):
+            return {"soma": {"mock_metric": lambda _: 42.0}}
 
-    monkeypatch.setattr(
-        "app.endpoints.morphology_validation.process_and_convert_morphology",
-        mock_process_and_convert,
-    )
+        mp.setattr(
+            "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
+            mock_create_analysis_dict,
+        )
+
+        # 3. FULLY MOCK neurom
+        mock_neurom = MagicMock()
+        mock_neurom.load_morphology.return_value = MagicMock()
+        mp.setattr("neurom", mock_neurom)
+        mp.setattr("app.endpoints.morphology_metrics_calculation.nm", mock_neurom)
+
+        # 4. Mock file processing
+        def mock_process_and_convert():
+            return "/mock/fake.swc", None
+
+        mp.setattr(
+            "app.endpoints.morphology_validation.process_and_convert_morphology",
+            mock_process_and_convert,
+        )
+
+        yield  # Allow test session to run
+
+    finally:
+        mp.undo()  # Clean up after session
 
 
 # --- Fixtures ---
@@ -111,7 +117,7 @@ def mock_measurement_list():
 # --- Test ---
 def test_morphology_registration_success(
     client,
-    monkeypatch,
+    monkeypatch,  # function-scoped, safe to use here
     mock_entity_payload,
     mock_measurement_list,
     mock_morphology_file,
@@ -127,30 +133,29 @@ def test_morphology_registration_success(
     mock_registered_entity.id = str(mock_entity_id)
     mock_registered_entity.name = expected_morphology_name
 
-    # Mock analysis result
+    # Mock analysis
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
         lambda _: mock_measurement_list,
     )
 
-    # Mock entity registration
+    # Mock registration
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
         lambda _client, _payload: mock_registered_entity,
     )
 
-    # Mock asset/measurement registration
     mock_register_assets_and_measurements = MagicMock()
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
         mock_register_assets_and_measurements,
     )
 
-    # Configure file mock
+    # Setup file
     mock_morphology_file.filename = "601506507_transformed.swc"
     mock_morphology_file.file.read.return_value = b"mock swc content"
 
-    # Make request
+    # Request
     response = client.post(
         ROUTE,
         data={
@@ -161,7 +166,7 @@ def test_morphology_registration_success(
         files={"file": mock_morphology_file},
     )
 
-    # Assertions
+    # Assert
     assert response.status_code == 200
     resp_json = response.json()
     assert resp_json["status"] == "success"
