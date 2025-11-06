@@ -91,9 +91,6 @@ def _get_template() -> dict:
     if hasattr(_get_template, "cached"):
         return _get_template.cached
 
-    import json
-    from pathlib import Path
-
     template_path = Path(__file__).parent / "morphology_template.json"
     template = json.loads(template_path.read_text())
 
