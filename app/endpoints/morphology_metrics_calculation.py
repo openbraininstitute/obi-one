@@ -2,7 +2,7 @@ import json
 import pathlib
 import tempfile
 import traceback
-from contextlib import ExitStack
+from contextlib import ExitStack, suppress
 from http import HTTPStatus
 from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
@@ -94,18 +94,25 @@ TEMPLATE = {
             "entity_id": None,
             "entity_type": "reconstruction_morphology",
             "measurement_kinds": [
-                # ... (all your measurement_kinds entries) ...
-                # (Keeping your full list — unchanged)
-                {
-                    "structural_domain": "axon",
-                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                    "pref_label": "neurite_max_radial_distance",
-                },
-                # ... (rest of your ~200+ entries) ...
                 {
                     "structural_domain": "soma",
                     "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
                     "pref_label": "soma_radius",
+                },
+                {
+                    "structural_domain": "whole_neuron",
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    "pref_label": "total_length",
+                },
+                {
+                    "structural_domain": "apical_dendrite",
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    "pref_label": "neurite_mean_path_distance",
+                },
+                {
+                    "structural_domain": "axon",
+                    "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    "pref_label": "neurite_max_radial_distance",
                 },
             ],
         }
@@ -121,8 +128,9 @@ def _get_analysis_dict() -> dict:
     if hasattr(_get_analysis_dict, "cached"):
         return _get_analysis_dict.cached
 
-    _analysis_dict_base = uf.create_analysis_dict(TEMPLATE)
-    analysis_dict = dict(_analysis_dict_base)
+    # RUF052 fix: Renamed _analysis_dict_base to analysis_dict_base
+    analysis_dict_base = uf.create_analysis_dict(TEMPLATE)
+    analysis_dict = dict(analysis_dict_base)
 
     if DEFAULT_NEURITE_DOMAIN in analysis_dict:
         default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
@@ -238,14 +246,13 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         isinstance(brain_location_data, list)
         and len(brain_location_data) >= BRAIN_LOCATION_MIN_DIMENSIONS
     ):
-        try:
+        # SIM105 fix: Use contextlib.suppress
+        with suppress(TypeError, ValueError):
             brain_location = BrainLocation(
                 x=float(brain_location_data[0]),
                 y=float(brain_location_data[1]),
                 z=float(brain_location_data[2]),
             )
-        except (TypeError, ValueError):
-            pass
 
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
@@ -279,7 +286,9 @@ def register_assets(
     file_path = str(file_path_obj)
 
     if not file_path_obj.exists():
-        raise FileNotFoundError(f"Asset file not found at path: {file_path}")
+        # TRY003 and EM102 fix
+        error_msg = f"Asset file not found at path: {file_path}"
+        raise FileNotFoundError(error_msg)
 
     file_extension = file_path_obj.suffix
     extension_map = {
@@ -289,7 +298,9 @@ def register_assets(
     }
     mime_type = extension_map.get(file_extension.lower())
     if not mime_type:
-        raise ValueError(f"Unsupported file extension: '{file_extension}'.")
+        # TRY003 and EM102 fix
+        error_msg = f"Unsupported file extension: '{file_extension}'."
+        raise ValueError(error_msg)
 
     try:
         asset1 = client.upload_file(
@@ -379,7 +390,11 @@ def _register_assets_and_measurements(
 @router.post(
     "/morphology-metrics-entity-registration",
     summary="Calculate morphology metrics and register entities.",
-    description="Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, asset, and measurements.",
+    # E501 fix: Wrapped line to be under 100 characters
+    description=(
+        "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
+        "asset, and measurements."
+    ),
 )
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
