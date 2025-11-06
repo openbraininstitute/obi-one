@@ -12,7 +12,6 @@ from typing import Annotated, Any, ClassVar
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType, SimulationExecutionStatus
-from fastapi import HTTPException
 from pydantic import Field, StringConstraints
 
 from obi_one.core.block import Block
@@ -579,6 +578,7 @@ class IonChannelFittingTask(Task):
             )
 
         except Exception as e:
-            raise OBIONEError(f"{e}")
+            error_message = f"Ion channel modeling failed: {e}"
+            raise Exception(error_message) from e  # noqa: TRY002
         else:
             return model_id
