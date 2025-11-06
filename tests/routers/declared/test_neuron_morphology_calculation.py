@@ -4,8 +4,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi import UploadFile
 from _pytest.monkeypatch import MonkeyPatch  # Import explicitly
+from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
 
