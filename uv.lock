@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12.2, <3.13"
 
 [[package]]
@@ -267,6 +267,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/23/83/8bd46c08bc6fdaffeae56a3d200871d9866a190c563a7390e5990a2ac2d8/bluepyefe-2.3.52.tar.gz", hash = "sha256:0e287b9a4c16fa96a6a1575665ea7a152615cb573effa32c8739e49cc3a6f3be", size = 1031818, upload-time = "2025-10-03T08:53:30.707Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/03/17/f4cc66c29b443349ce19d37b8bdc9e5456ae786ba4aadc23ea1bce9cfa82/bluepyefe-2.3.52-py3-none-any.whl", hash = "sha256:2058fc3b4081a03d41375e14782b26852b08444381647de990d1f5d9cee5b210", size = 68081, upload-time = "2025-10-03T08:53:28.936Z" },
+]
+
+[[package]]
+name = "bluepyopt"
+version = "1.14.18"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "deap" },
+    { name = "efel" },
+    { name = "ipyparallel" },
+    { name = "jinja2" },
+    { name = "neuron" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pebble" },
+    { name = "pickleshare" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/71/92a18997597ba3ef57388e3ceaf53fb6ae352abce44c16ea2ce262f76907/bluepyopt-1.14.18.tar.gz", hash = "sha256:23d6239294d944c8f9d4ea298091bcf243d236735844e1bcba60535a0f520ca8", size = 29594826, upload-time = "2025-01-28T17:08:13.332Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/84/5b7908ff9a96c41dde2323ef8ba391dcbac9b325c41489249de64ca75999/bluepyopt-1.14.18-py3-none-any.whl", hash = "sha256:dbc2f33ebaefff31cb67260c1685efb1b0dd974c7f87082bd08c67c93e01893a", size = 21749987, upload-time = "2025-01-28T17:08:07.618Z" },
 ]
 
 [[package]]
@@ -721,6 +741,21 @@ wheels = [
 ]
 
 [[package]]
+name = "deap"
+version = "1.4.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c9/37/3a3d82ca07e9eb2d8cdc1979ff82add35f1b41988c984db53ae582959c13/deap-1.4.3.tar.gz", hash = "sha256:7c97088fb05835bdc255bec475cb0e778de2b43e44cbefbf2bcd655aeec865fd", size = 1072325, upload-time = "2025-05-04T12:26:15.237Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/11/04eb0940138f07a4241bb548e10671adc5ab5f27439fd505464f603c093d/deap-1.4.3-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:42dc370be0bf315c85da16afcea49eae4d1065a23c2ebee07831e5c635a6af0b", size = 111608, upload-time = "2025-05-04T12:26:26.337Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/e1/f55c181ae31595715b550e7b80d7b52ff81ac3aa4769d26625aaa1f10c30/deap-1.4.3-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3128ef0b394c9026be7bf532f1e4e2527581af7bba19dabc30e91a42bc480114", size = 135782, upload-time = "2025-05-04T12:29:51.143Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/34/cba79381bccf50a24294c6a74e397b1c0163f347cf0d402bce7e83484358/deap-1.4.3-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c34f5d132ac23f7554c3a71b6e9c0c402505c0e0b3bcacabd211ddc6283043b8", size = 135963, upload-time = "2025-05-04T12:31:08.026Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/61/eb6508d90c4b250ae9cfea91849e3d4415ceff459f85310b7365077218a1/deap-1.4.3-cp312-cp312-win_amd64.whl", hash = "sha256:e0bd83ad16ca8a467e9e9cbe814e2361f2bb80f6f10735e3c562945a924ff270", size = 109791, upload-time = "2025-05-04T12:28:27.654Z" },
+]
+
+[[package]]
 name = "debugpy"
 version = "1.8.17"
 source = { registry = "https://pypi.org/simple" }
@@ -1099,6 +1134,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a5/1d/d5ba6edbfe6fae4c3105bca3a9c889563cc752c7f2de45e333164c7f4846/ipykernel-6.31.0.tar.gz", hash = "sha256:2372ce8bc1ff4f34e58cafed3a0feb2194b91fc7cad0fc72e79e47b45ee9e8f6", size = 167493, upload-time = "2025-10-20T11:42:39.948Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/d8/502954a4ec0efcf264f99b65b41c3c54e65a647d9f0d6f62cd02227d242c/ipykernel-6.31.0-py3-none-any.whl", hash = "sha256:abe5386f6ced727a70e0eb0cf1da801fa7c5fa6ff82147747d5a0406cd8c94af", size = 117003, upload-time = "2025-10-20T11:42:37.502Z" },
+]
+
+[[package]]
+name = "ipyparallel"
+version = "9.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "decorator" },
+    { name = "ipykernel" },
+    { name = "ipython" },
+    { name = "jupyter-client" },
+    { name = "psutil" },
+    { name = "python-dateutil" },
+    { name = "pyzmq" },
+    { name = "tornado" },
+    { name = "tqdm" },
+    { name = "traitlets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/79/7d003597f33eba737b3050f4bf91757355e34baf92c6fbc590bbac81d2b9/ipyparallel-9.0.2.tar.gz", hash = "sha256:d992edd698a99d45f2d9059af1c9ae8f086d1aeedb3e80436029a2f28d069f83", size = 4407304, upload-time = "2025-10-09T20:45:29.897Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/60/03bcb17e62fefbdb5d0db8c4bfe6a00c5124a739eb8833d5d885f0c4c38e/ipyparallel-9.0.2-py3-none-any.whl", hash = "sha256:339cb837bdd1ed1c81deea066406954818107b359895b9654a2880560c7eff9f", size = 306788, upload-time = "2025-10-09T20:45:28.357Z" },
 ]
 
 [[package]]
@@ -1985,6 +2041,7 @@ dependencies = [
     { name = "bluecellulab" },
     { name = "blueetl" },
     { name = "bluepyefe" },
+    { name = "bluepyopt" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
     { name = "cachetools" },
@@ -1999,6 +2056,7 @@ dependencies = [
     { name = "morph-tool" },
     { name = "networkx" },
     { name = "neurom" },
+    { name = "neuron" },
     { name = "notebook" },
     { name = "obi-auth" },
     { name = "obi-notebook" },
@@ -2037,6 +2095,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.71" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.51" },
+    { name = "bluepyopt" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", specifier = ">=5.5.2" },
@@ -2052,6 +2111,7 @@ requires-dist = [
     { name = "morph-tool" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "neurom" },
+    { name = "neuron" },
     { name = "notebook" },
     { name = "obi-auth", specifier = ">=0.3.0" },
     { name = "obi-notebook" },
@@ -2149,6 +2209,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pebble"
+version = "5.1.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/aa/730e2b815fed3680629bb9c6c84c3480952fb9067939b7549c789b77a6bc/pebble-5.1.3.tar.gz", hash = "sha256:9fdf00dde4abb09907817114ad8cf822836b6d6cc8f43a3f0ec741be276086e7", size = 39027, upload-time = "2025-07-30T21:16:34.87Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/42/218f3d1490af0c5f781f1e54fc1e4a2ca163643807d57890d2a246bd626d/Pebble-5.1.3-py3-none-any.whl", hash = "sha256:8b28b1ede25de4b0d9249516d5fd794c330f8f03b692debe374619317ed0bdd7", size = 36868, upload-time = "2025-07-30T21:16:33.133Z" },
+]
+
+[[package]]
 name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2158,6 +2227,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523", size = 63772, upload-time = "2023-11-25T06:56:14.81Z" },
+]
+
+[[package]]
+name = "pickleshare"
+version = "0.7.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/b6/df3c1c9b616e9c0edbc4fbab6ddd09df9535849c64ba51fcb6531c32d4d8/pickleshare-0.7.5.tar.gz", hash = "sha256:87683d47965c1da65cdacaf31c8441d12b8044cdec9aca500cd78fc2c683afca", size = 6161, upload-time = "2018-09-25T19:17:37.249Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/41/220f49aaea88bc6fa6cba8d05ecf24676326156c23b991e80b3f2fc24c77/pickleshare-0.7.5-py2.py3-none-any.whl", hash = "sha256:9649af414d74d4df115d5d718f82acb59c9d418196b7b4290ed47a12ce62df56", size = 6877, upload-time = "2018-09-25T19:17:35.817Z" },
 ]
 
 [[package]]
