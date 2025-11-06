@@ -124,9 +124,7 @@ def test_morphology_registration_success(
             "virtual_lab_id": VIRTUAL_LAB_ID,
             "project_id": PROJECT_ID,
         },
-        files={
-            "file": mock_morphology_file
-        },
+        files={"file": mock_morphology_file},
     )
 
     # 4. Assertions
