@@ -116,14 +116,14 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=1,
             ge=1,
             le=4,
-            description=("Exponent (p) of m in the channel equation: g = gbar * m^p * h^q"),
+            description=("Exponent \(p\) of \(m\) in the channel equation: \(g = \\bar{g} \\cdot m^p \\cdot h^q"),
         )
         h_power: int = Field(
             title="h exponent in channel equation",
             default=1,
             ge=0,
             le=4,
-            description=("Exponent (q) of h in the channel equation: g = gbar * m^p * h^q"),
+            description=("Exponent \(q\) of \(h\) in the channel equation: \(g = \\bar{g} \\cdot m^p \\cdot h^q"),
         )
 
     initialize: Initialize = Field(
@@ -188,7 +188,8 @@ class IonChannelFittingScanConfig(ScanConfig):
     gate_exponents: GateExponents = Field(
         title="m & h gate exponents",
         description=(
-            "Set the power of m and h gates used in Hodgkin-Huxley formalism: g = gbar * m^p * h^q"
+            "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
         group=BlockGroup.GATEEXPONENTS,
         group_order=0,
