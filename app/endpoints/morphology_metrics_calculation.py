@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
 
+# --- Delayed imports (top-level, but used lazily) ---
+import neurom as nm  # noqa: F401 (imported but not used directly)
 import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
@@ -24,6 +26,7 @@ from pydantic import BaseModel
 from requests.exceptions import RequestException
 from starlette.requests import Request
 
+# --- Local imports (used inside functions) ---
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
@@ -34,7 +37,6 @@ class ApiErrorCode:
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
 
 
-# Base class for TypeVar bounding
 class BaseEntity:
     def __init__(self, entity_id: Any | None = None) -> None:
         """Initialize the base entity."""
@@ -87,20 +89,16 @@ def _validate_file_extension(filename: str | None) -> str:
 
 
 def _get_template() -> dict:
-    """Load the JSON template (cached)."""
     if hasattr(_get_template, "cached"):
         return _get_template.cached
 
     template_path = Path(__file__).parent / "morphology_template.json"
     template = json.loads(template_path.read_text())
-
     _get_template.cached = template
     return template
 
 
-# --- LAZY ANALYSIS DICT (built inside analysis) ---
 def _build_analysis_dict() -> dict:
-    """Create the analysis dictionary on-demand."""
     import app.endpoints.useful_functions.useful_functions as uf  # local import
 
     analysis_dict_base = uf.create_analysis_dict(_get_template())
@@ -114,10 +112,8 @@ def _build_analysis_dict() -> dict:
     return analysis_dict
 
 
-# --- MORPHOLOGY ANALYSIS ---
 def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
-    import neurom as nm  # delayed import
-    import app.endpoints.useful_functions.useful_functions as uf  # delayed import
+    import app.endpoints.useful_functions.useful_functions as uf  # local import
 
     try:
         neuron = nm.load_morphology(morphology_path)
@@ -135,7 +131,6 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
         ) from e
 
 
-# --- CONFIGURATION ---
 NEW_ENTITY_DEFAULTS = {
     "authorized_public": False,
     "license_id": None,
@@ -149,7 +144,6 @@ NEW_ENTITY_DEFAULTS = {
 }
 
 
-# --- Pydantic Model for Metadata ---
 class MorphologyMetadata(BaseModel):
     name: str | None = None
     description: str | None = None
@@ -163,7 +157,6 @@ class MorphologyMetadata(BaseModel):
     brain_location: list[float] | None = None
 
 
-# --- HELPER FUNCTIONS ---
 def _setup_context_and_client(
     user_context: UserContextDep, virtual_lab_id: str, project_id: str, request: Request
 ) -> Client:
@@ -198,7 +191,6 @@ async def _parse_file_and_metadata(
     return morphology_name, file_extension, content, metadata_obj
 
 
-# --- API CALL FUNCTIONS ---
 T = TypeVar("T", bound=BaseEntity)
 
 
@@ -356,7 +348,6 @@ def _register_assets_and_measurements(
     register_measurements(client, entity_id, measurement_list)
 
 
-# --- MAIN ENDPOINT ---
 @router.post(
     "/morphology-metrics-entity-registration",
     summary="Calculate morphology metrics and register entities.",

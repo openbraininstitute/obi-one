@@ -14,11 +14,9 @@ VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
-# === EARLY MONKEYPATCH TO PREVENT REAL TEMPLATE / and ANALYSIS DICT ===
+# === EARLY MONKEYPATCH ===
 @pytest.fixture(autouse=True, scope="session")
 def _early_patch_heavy_imports(monkeypatch):
-    """Patch Path.read_text and uf.create_analysis_dict BEFORE the module is imported."""
-    # 1. Fake template file
     fake_template = {
         "data": [
             {
@@ -37,12 +35,11 @@ def _early_patch_heavy_imports(monkeypatch):
         "facets": None,
     }
 
-    def mock_read_text(self):
+    def mock_read_text():
         return json.dumps(fake_template)
 
     monkeypatch.setattr(Path, "read_text", mock_read_text)
 
-    # 2. Fake analysis dict creation
     def mock_create_analysis_dict(_template):
         return {
             "soma": {
@@ -55,14 +52,12 @@ def _early_patch_heavy_imports(monkeypatch):
         mock_create_analysis_dict,
     )
 
-    # 3. Prevent neurom from loading anything
     mock_nm = MagicMock()
     monkeypatch.setattr("neurom.load_morphology", mock_nm.load_morphology)
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.nm", mock_nm)
 
-    # 4. Mock process_and_convert_morphology to avoid file I/O
-    def mock_process_and_convert(*args, **kwargs):
-        return "/tmp/fake_output.swc", None
+    def mock_process_and_convert():
+        return "/mock/path/fake_output.swc", None  # never exists
 
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
@@ -70,7 +65,7 @@ def _early_patch_heavy_imports(monkeypatch):
     )
 
 
-# --- Fixtures for Mock Data ---
+# --- Fixtures ---
 @pytest.fixture
 def mock_entity_payload():
     payload_data = {
@@ -102,7 +97,7 @@ def mock_measurement_list():
     ]
 
 
-# --- Test Case ---
+# --- Test ---
 def test_morphology_registration_success(
     client,
     monkeypatch,
@@ -110,8 +105,6 @@ def test_morphology_registration_success(
     mock_measurement_list,
     mock_morphology_file,
 ):
-    """Tests the successful registration and metrics calculation pipeline."""
-    # 1. Mock EntitySDK Client
     entitysdk_client_mock = MagicMock()
     monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
 
@@ -122,10 +115,9 @@ def test_morphology_registration_success(
     mock_registered_entity.id = str(mock_entity_id)
     mock_registered_entity.name = expected_morphology_name
 
-    # 2. Mock internal functions
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        lambda _path: mock_measurement_list,
+        lambda _: mock_measurement_list,
     )
 
     monkeypatch.setattr(
@@ -139,11 +131,9 @@ def test_morphology_registration_success(
         mock_register_assets_and_measurements,
     )
 
-    # 3. Configure UploadFile mock
     mock_morphology_file.filename = "601506507_transformed.swc"
     mock_morphology_file.file.read.return_value = b"mock swc content"
 
-    # 4. Perform request
     response = client.post(
         ROUTE,
         data={
@@ -154,7 +144,6 @@ def test_morphology_registration_success(
         files={"file": mock_morphology_file},
     )
 
-    # 5. Assertions
     assert response.status_code == 200
     resp_json = response.json()
     assert resp_json["status"] == "success"
@@ -165,4 +154,3 @@ def test_morphology_registration_success(
     args, _ = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
-    
