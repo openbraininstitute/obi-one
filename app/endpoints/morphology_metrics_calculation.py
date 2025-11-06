@@ -103,7 +103,7 @@ def _get_template() -> dict:
 
 def _build_analysis_dict() -> dict:
     """Create the analysis dictionary on demand."""
-    import app.endpoints.useful_functions.useful_functions as uf# noqa: PLC0415
+    import app.endpoints.useful_functions.useful_functions as uf  # noqa: PLC0415
 
     analysis_dict_base = uf.create_analysis_dict(_get_template())
     analysis_dict = dict(analysis_dict_base)
@@ -118,7 +118,7 @@ def _build_analysis_dict() -> dict:
 
 def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     """Run NeuroM analysis and return filled measurement kinds."""
-    import app.endpoints.useful_functions.useful_functions as uf# noqa: PLC0415
+    import app.endpoints.useful_functions.useful_functions as uf  # noqa: PLC0415
 
     try:
         neuron = nm.load_morphology(morphology_path)
