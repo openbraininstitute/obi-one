@@ -34,10 +34,13 @@ def mock_entity_payload():
 @pytest.fixture
 def mock_morphology_file():
     """Returns a mock UploadFile object for the SWC file upload."""
-    return UploadFile(
+    mock_file = MagicMock()
+    upload_file = UploadFile(
         filename="test_morphology.swc",
-        file=MagicMock(),
+        file=mock_file,
     )
+    # We'll override filename and file.read() in the test
+    return upload_file
 
 
 @pytest.fixture
@@ -58,13 +61,13 @@ def mock_measurement_list():
 # --- Test Case ---
 
 
-@pytest.mark.usefixtures("mock_morphology_file")
 def test_morphology_registration_success(
     client,
     monkeypatch,
     mock_entity_payload,
     mock_temp_file_path,
     mock_measurement_list,
+    mock_morphology_file,
 ):
     """Tests the successful registration and metrics calculation pipeline."""
     # 1. Setup Mock EntitySDK Client
@@ -75,14 +78,14 @@ def test_morphology_registration_success(
     mock_entity_id = uuid.uuid4()
     expected_morphology_name = json.loads(mock_entity_payload)["name"]
 
-    # FIX: Create a nested mock structure to prevent 500 Internal Server Error
-    # This accounts for SDK responses often having a nested 'data' attribute.
-    mock_entity_data = MagicMock(id=str(mock_entity_id), name=expected_morphology_name)
-    mock_data = MagicMock(data=mock_entity_data)
+    # --- FIX: Return mock with .id and .name directly (no nested .data) ---
+    mock_registered_entity = MagicMock()
+    mock_registered_entity.id = str(mock_entity_id)
+    mock_registered_entity.name = expected_morphology_name
 
     # 2. Mock Internal Pipeline Functions
-    def mock_process_and_convert(_morphology_file, _outputfile1=None):
-        return mock_temp_file_path, "mock-content-string-swc-file"
+    def mock_process_and_convert(_temp_file_path, _file_extension=None):
+        return str(mock_temp_file_path), None  # outputfile1, outputfile2
 
     # Mock file conversion/validation
     monkeypatch.setattr(
@@ -96,10 +99,10 @@ def test_morphology_registration_success(
         lambda _path: mock_measurement_list,
     )
 
-    # Mock entity registration
+    # Mock entity registration — return object with .id directly
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: mock_data,
+        lambda _client, _payload: mock_registered_entity,
     )
 
     # Mock asset/measurement registration
@@ -108,6 +111,10 @@ def test_morphology_registration_success(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
         mock_register_assets_and_measurements,
     )
+
+    # --- FIX: Configure mock UploadFile to behave correctly ---
+    mock_morphology_file.filename = "601506507_transformed.swc"
+    mock_morphology_file.file.read.return_value = b"mock swc content"  # Simulate file content
 
     # 3. Perform the POST Request
     response = client.post(
@@ -118,11 +125,7 @@ def test_morphology_registration_success(
             "project_id": PROJECT_ID,
         },
         files={
-            "file": (
-                "601506507_transformed.swc",
-                b"mock swc content",
-                "application/octet-stream",
-            )
+            "file": mock_morphology_file
         },
     )
 
