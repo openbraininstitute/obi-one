@@ -579,6 +579,6 @@ class IonChannelFittingTask(Task):
             )
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            raise OBIONEError(f"{e}")
         else:
             return model_id
