@@ -94,7 +94,7 @@ def _get_template() -> dict:
         return _get_template.cached
 
     # --- FULL TEMPLATE WITH NULLIFIED VALUES ---
-    TEMPLATE = {
+    template = {
         "data": [
             {
                 "entity_id": None,
@@ -107,17 +107,23 @@ def _get_template() -> dict:
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_sections",
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_bifurcations",
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_leaves",
                     },
                     {
@@ -142,17 +148,23 @@ def _get_template() -> dict:
                     },
                     {
                         "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_sections",
                     },
                     {
                         "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_bifurcations",
                     },
                     {
                         "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_leaves",
                     },
                     {
@@ -419,17 +431,23 @@ def _get_template() -> dict:
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_sections",
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_bifurcations",
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_leaves",
                     },
                     {
@@ -502,7 +520,9 @@ def _get_template() -> dict:
                     },
                     {
                         "structural_domain": "neuron_morphology",
-                        "measurement_items": [{"name": "raw", "unit": "dimensionless", "value": None}],
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": None}
+                        ],
                         "pref_label": "number_of_neurites",
                     },
                     {
@@ -521,7 +541,6 @@ def _get_template() -> dict:
         "pagination": {"page": 1, "page_size": 100, "total_items": 1},
         "facets": None,
     }
-
 
     _get_template.cached = template
     return template
