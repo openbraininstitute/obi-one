@@ -81,7 +81,7 @@ def mock_template_and_analysis(monkeypatch):
     def mock_get_analysis_dict():
         return {
             "soma": {
-                "test_metric": lambda neuron: 42.0
+                "test_metric": lambda _: 42.0  # Use _ to avoid ARG005
             }
         }
 
