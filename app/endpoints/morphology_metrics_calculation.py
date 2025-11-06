@@ -4,6 +4,7 @@ import tempfile
 import traceback
 from contextlib import ExitStack, suppress
 from http import HTTPStatus
+from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
 
