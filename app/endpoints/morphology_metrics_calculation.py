@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
 from uuid import UUID
 
-import neurom as nm
 import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
@@ -25,7 +24,6 @@ from pydantic import BaseModel
 from requests.exceptions import RequestException
 from starlette.requests import Request
 
-import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
@@ -89,6 +87,7 @@ def _validate_file_extension(filename: str | None) -> str:
 
 
 def _get_template() -> dict:
+    """Load the JSON template (cached)."""
     if hasattr(_get_template, "cached"):
         return _get_template.cached
 
@@ -99,11 +98,10 @@ def _get_template() -> dict:
     return template
 
 
-# --- LAZY ANALYSIS DICT ---
-def _get_analysis_dict() -> dict:
-    """Lazily initialize and cache the analysis dictionary."""
-    if hasattr(_get_analysis_dict, "cached"):
-        return _get_analysis_dict.cached
+# --- LAZY ANALYSIS DICT (built inside analysis) ---
+def _build_analysis_dict() -> dict:
+    """Create the analysis dictionary on-demand."""
+    import app.endpoints.useful_functions.useful_functions as uf  # local import
 
     analysis_dict_base = uf.create_analysis_dict(_get_template())
     analysis_dict = dict(analysis_dict_base)
@@ -113,15 +111,18 @@ def _get_analysis_dict() -> dict:
         for domain in TARGET_NEURITE_DOMAINS:
             analysis_dict[domain] = default_analysis
 
-    _get_analysis_dict.cached = analysis_dict
     return analysis_dict
 
 
 # --- MORPHOLOGY ANALYSIS ---
 def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
+    import neurom as nm  # delayed import
+    import app.endpoints.useful_functions.useful_functions as uf  # delayed import
+
     try:
         neuron = nm.load_morphology(morphology_path)
-        results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
+        analysis_dict = _build_analysis_dict()
+        results_dict = uf.build_results_dict(analysis_dict, neuron)
         filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
         return filled["data"][0]["measurement_kinds"]
     except Exception as e:
