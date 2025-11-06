@@ -39,7 +39,6 @@ def mock_morphology_file():
         filename="test_morphology.swc",
         file=mock_file,
     )
-    # We'll override filename and file.read() in the test
     return upload_file
 
 
@@ -56,6 +55,44 @@ def mock_measurement_list():
         {"name": "total_length", "value": 500.0, "unit": "um", "domain": "soma"},
         {"name": "n_sections", "value": 10, "unit": "count", "domain": "apical_dendrite"},
     ]
+
+
+# --- Auto-mock heavy template and analysis dict to prevent OOM ---
+@pytest.fixture(autouse=True)
+def mock_template_and_analysis(monkeypatch):
+    """Mock _get_template and _get_analysis_dict to return minimal data."""
+    def mock_get_template():
+        return {
+            "data": [{
+                "entity_id": None,
+                "entity_type": "reconstruction_morphology",
+                "measurement_kinds": [
+                    {
+                        "structural_domain": "soma",
+                        "pref_label": "test_metric",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}]
+                    }
+                ]
+            }],
+            "pagination": {"page": 1, "page_size": 100, "total_items": 1},
+            "facets": None,
+        }
+
+    def mock_get_analysis_dict():
+        return {
+            "soma": {
+                "test_metric": lambda neuron: 42.0
+            }
+        }
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template",
+        mock_get_template
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_analysis_dict",
+        mock_get_analysis_dict
+    )
 
 
 # --- Test Case ---
@@ -78,7 +115,7 @@ def test_morphology_registration_success(
     mock_entity_id = uuid.uuid4()
     expected_morphology_name = json.loads(mock_entity_payload)["name"]
 
-    # --- FIX: Return mock with .id and .name directly (no nested .data) ---
+    # Return mock with .id and .name directly
     mock_registered_entity = MagicMock()
     mock_registered_entity.id = str(mock_entity_id)
     mock_registered_entity.name = expected_morphology_name
@@ -87,19 +124,18 @@ def test_morphology_registration_success(
     def mock_process_and_convert(_temp_file_path, _file_extension=None):
         return str(mock_temp_file_path), None  # outputfile1, outputfile2
 
-    # Mock file conversion/validation
     monkeypatch.setattr(
         "app.endpoints.morphology_validation.process_and_convert_morphology",
         mock_process_and_convert,
     )
 
-    # Mock morphology analysis
+    # Mock analysis to return our fixture
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
         lambda _path: mock_measurement_list,
     )
 
-    # Mock entity registration — return object with .id directly
+    # Mock entity registration
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
         lambda _client, _payload: mock_registered_entity,
@@ -112,9 +148,9 @@ def test_morphology_registration_success(
         mock_register_assets_and_measurements,
     )
 
-    # --- FIX: Configure mock UploadFile to behave correctly ---
+    # --- Configure mock UploadFile ---
     mock_morphology_file.filename = "601506507_transformed.swc"
-    mock_morphology_file.file.read.return_value = b"mock swc content"  # Simulate file content
+    mock_morphology_file.file.read.return_value = b"mock swc content"
 
     # 3. Perform the POST Request
     response = client.post(
@@ -135,9 +171,8 @@ def test_morphology_registration_success(
     assert response_json["entity_id"] == str(mock_entity_id)
     assert response_json["morphology_name"] == expected_morphology_name
 
-    # Check that all registration steps were called correctly
+    # Check registration was called
     mock_register_assets_and_measurements.assert_called_once()
-
-    args, _kwargs = mock_register_assets_and_measurements.call_args
+    args, _ = mock_register_assets_and_measurements.call_args
     assert args[1] == str(mock_entity_id)
     assert args[4] == mock_measurement_list
