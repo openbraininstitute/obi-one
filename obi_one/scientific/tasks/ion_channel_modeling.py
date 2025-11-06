@@ -116,14 +116,20 @@ class IonChannelFittingScanConfig(ScanConfig):
             default=1,
             ge=1,
             le=4,
-            description=("Exponent \(p\) of \(m\) in the channel equation: \(g = \\bar{g} \\cdot m^p \\cdot h^q"),
+            description=(
+                r"Exponent \(p\) of \(m\) in the channel equation: "
+                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            ),
         )
         h_power: int = Field(
             title="h exponent in channel equation",
             default=1,
             ge=0,
             le=4,
-            description=("Exponent \(q\) of \(h\) in the channel equation: \(g = \\bar{g} \\cdot m^p \\cdot h^q"),
+            description=(
+                r"Exponent \(q\) of \(h\) in the channel equation: "
+                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            ),
         )
 
     initialize: Initialize = Field(
