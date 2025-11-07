@@ -72,7 +72,7 @@ router = APIRouter()
 
 
 @router.post("/declared/morphology-metrics-entity-registration")
-async def register_morphology_metrics(
+async def register_morphology(
     file: Annotated[UploadFile, File(...)],
     _client: Annotated[Client, Depends(get_client)],
     _user_ctx: Annotated[UserContextDep, Depends(user_verified)],
