@@ -2,10 +2,9 @@ import json
 import sys
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
@@ -16,73 +15,78 @@ VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
-# === EARLY MONKEYPATCH: SESSION-SCOPED, NO ARG ===
-@pytest.fixture(autouse=True, scope="session")
-def _early_patch_heavy_imports():
-    """
-    Apply global mocks at import time:
-      - neurom (prevents NEURON/MPI)
-      - template file
-      - analysis dict
-      - file processing
-    """
-    mp = MonkeyPatch()
+@pytest.fixture(autouse=True, scope="module")
+def mock_heavy_dependencies(monkeypatch_session):
+    """Mock heavy dependencies at module level before any imports."""
+    # Mock neurom module
+    mock_neurom = MagicMock()
+    mock_neurom.load_morphology.return_value = MagicMock()
+    sys.modules['neurom'] = mock_neurom
+    
+    yield
+    
+    # Cleanup
+    if 'neurom' in sys.modules:
+        del sys.modules['neurom']
 
-    try:
-        # 1. Mock neurom BEFORE it gets imported by the application code
-        mock_neurom = MagicMock()
-        mock_neurom.load_morphology.return_value = MagicMock()
-        sys.modules["neurom"] = mock_neurom
 
-        # 2. Mock template file
-        fake_template = {
-            "data": [
-                {
-                    "entity_id": None,
-                    "entity_type": "reconstruction_morphology",
-                    "measurement_kinds": [
-                        {
-                            "structural_domain": "soma",
-                            "pref_label": "mock_metric",
-                            "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        }
-                    ],
-                }
-            ],
-            "pagination": {"page": 1, "page_size": 100, "total_items": 1},
-            "facets": None,
-        }
+@pytest.fixture(autouse=True)
+def mock_template_and_functions(monkeypatch):
+    """Mock template file and analysis functions."""
+    fake_template = {
+        "data": [
+            {
+                "entity_id": None,
+                "entity_type": "reconstruction_morphology",
+                "measurement_kinds": [
+                    {
+                        "structural_domain": "soma",
+                        "pref_label": "mock_metric",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
+                    }
+                ],
+            }
+        ],
+        "pagination": {"page": 1, "page_size": 100, "total_items": 1},
+        "facets": None,
+    }
 
-        def mock_read_text(self):  # noqa: ARG001
+    # Mock Path.read_text
+    original_read_text = Path.read_text
+    
+    def mock_read_text(self, *args, **kwargs):  # noqa: ARG001
+        if "morphology_template.json" in str(self):
             return json.dumps(fake_template)
+        return original_read_text(self, *args, **kwargs)
+    
+    monkeypatch.setattr(Path, "read_text", mock_read_text)
 
-        mp.setattr(Path, "read_text", mock_read_text)
+    # Mock create_analysis_dict
+    def mock_create_analysis_dict(_template):  # noqa: ARG001
+        return {"soma": {"mock_metric": lambda _: 42.0}}
 
-        # 3. Mock analysis dict
-        def mock_create_analysis_dict(_template):
-            return {"soma": {"mock_metric": lambda _: 42.0}}
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
+        mock_create_analysis_dict,
+    )
 
-        mp.setattr(
-            "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
-            mock_create_analysis_dict,
-        )
+    # Mock file processing
+    async def mock_process_and_convert(temp_file_path, file_extension):  # noqa: ARG001
+        return "/mock/fake.swc", None
 
-        # 4. Mock file processing
-        async def mock_process_and_convert(temp_file_path, file_extension):  # noqa: ARG001
-            return "/mock/fake.swc", None
+    monkeypatch.setattr(
+        "app.endpoints.morphology_validation.process_and_convert_morphology",
+        mock_process_and_convert,
+    )
 
-        mp.setattr(
-            "app.endpoints.morphology_validation.process_and_convert_morphology",
-            mock_process_and_convert,
-        )
 
-        yield  # Allow test session to run
-
-    finally:
-        # Clean up sys.modules
-        if "neurom" in sys.modules:
-            del sys.modules["neurom"]
-        mp.undo()
+# Add session-scoped monkeypatch fixture
+@pytest.fixture(scope="module")
+def monkeypatch_session():
+    from _pytest.monkeypatch import MonkeyPatch
+    m = MonkeyPatch()
+    yield m
+    m.undo()
 
 
 # --- Fixtures ---
@@ -101,10 +105,13 @@ def mock_entity_payload():
 
 @pytest.fixture
 def mock_morphology_file():
-    mock_file = MagicMock()
+    # Create a simpler mock file object
+    mock_file_content = Mock()
+    mock_file_content.read = Mock(return_value=b"mock swc content")
+    
     upload_file = UploadFile(
-        filename="test_morphology.swc",
-        file=mock_file,
+        filename="601506507_transformed.swc",
+        file=mock_file_content,
     )
     return upload_file
 
@@ -127,7 +134,12 @@ def test_morphology_registration_success(
 ):
     # Mock EntitySDK client
     entitysdk_client_mock = MagicMock()
-    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: entitysdk_client_mock)
+    
+    # Override the dependency
+    def mock_get_client():
+        return entitysdk_client_mock
+    
+    client.app.dependency_overrides[get_client] = mock_get_client
 
     mock_entity_id = uuid.uuid4()
     expected_morphology_name = json.loads(mock_entity_payload)["name"]
@@ -154,10 +166,6 @@ def test_morphology_registration_success(
         mock_register_assets_and_measurements,
     )
 
-    # Setup file
-    mock_morphology_file.filename = "601506507_transformed.swc"
-    mock_morphology_file.file.read.return_value = b"mock swc content"
-
     # Request
     response = client.post(
         ROUTE,
@@ -169,11 +177,14 @@ def test_morphology_registration_success(
         files={
             "file": (
                 "601506507_transformed.swc",
-                mock_morphology_file.file,
-                "application/octet-stream",
+                b"mock swc content",
+                "application/octet-stream"
             )
         },
     )
+
+    # Cleanup dependency override
+    client.app.dependency_overrides.pop(get_client, None)
 
     # Assert
     assert response.status_code == 200
