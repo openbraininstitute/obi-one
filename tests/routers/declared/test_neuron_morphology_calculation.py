@@ -53,7 +53,7 @@ def _early_patch_heavy_imports():
             "facets": None,
         }
 
-        def mock_read_text(self):
+        def mock_read_text(self):  # noqa: ARG001
             return json.dumps(fake_template)
 
         mp.setattr(Path, "read_text", mock_read_text)
@@ -68,7 +68,7 @@ def _early_patch_heavy_imports():
         )
 
         # 4. Mock file processing
-        async def mock_process_and_convert(temp_file_path, file_extension):
+        async def mock_process_and_convert(temp_file_path, file_extension):  # noqa: ARG001
             return "/mock/fake.swc", None
 
         mp.setattr(
