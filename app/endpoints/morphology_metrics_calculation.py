@@ -1,17 +1,10 @@
 import json
-import pathlib
 import tempfile
 import traceback
-from contextlib import ExitStack, suppress
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated, Any, Final, TypeVar
-from uuid import UUID
+from typing import Annotated, Any, Final
 
-# --- Removed top-level neurom import ---
-# import neurom as nm
-
-# --- Standard & project imports ---
 import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
@@ -23,12 +16,11 @@ from entitysdk.models import (
     MeasurementAnnotation,
     Subject,
 )
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from requests.exceptions import RequestException
 from starlette.requests import Request
 
-# --- Local project imports (used lazily inside functions) ---
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
@@ -59,18 +51,18 @@ TARGET_NEURITE_DOMAINS: Final[list[str]] = [
 # --------------------------------------------------------------------------
 # Function that performs neurom-based analysis
 # --------------------------------------------------------------------------
-def _run_morphology_analysis(file_path: Path, output_dir: Path) -> dict[str, Any]:
+def _run_morphology_analysis(file_path: Path) -> dict[str, Any]:
     """
     Run morphological metrics extraction using neurom.
     Lazily imports neurom to avoid MPI/NEURON dependency issues in test environments.
     """
     try:
-        import neurom as nm  # Lazy import to prevent load errors in test/CI environments
-    except ImportError as e:
+        import neurom as nm  # noqa: PLC0415 - intentional lazy import
+    except ImportError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=f"Neurom library not available: {e}",
-        )
+            detail=f"Neurom library not available: {err}",
+        ) from err
 
     try:
         morph = nm.load_morphology(file_path)
@@ -79,28 +71,28 @@ def _run_morphology_analysis(file_path: Path, output_dir: Path) -> dict[str, Any
             "neurite_number": len(morph.neurites),
             "neurite_types": [n.type for n in morph.neurites],
         }
-        return results
-    except Exception as e:
+    except Exception as err:  # noqa: BLE001
         traceback.print_exc()
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail=f"Error during morphology analysis: {str(e)}",
-        )
+            detail=f"Error during morphology analysis: {err}",
+        ) from err
+
+    return results
 
 
 # --------------------------------------------------------------------------
-# Example endpoint definition (preserved)
+# FastAPI Router and Endpoint
 # --------------------------------------------------------------------------
 router = APIRouter()
 
 
 @router.post("/declared/morphology-metrics-entity-registration")
 async def register_morphology_metrics(
-    request: Request,
-    file: UploadFile = File(...),
-    client: Client = Depends(get_client),
-    user_ctx: UserContextDep = Depends(user_verified),
-):
+    file: Annotated[UploadFile, File(...)],
+    _client: Annotated[Client, Depends(get_client)],
+    _user_ctx: Annotated[UserContextDep, Depends(user_verified)],
+) -> dict[str, Any]:
     """Endpoint for registering morphology metrics."""
     suffix = Path(file.filename).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
@@ -114,11 +106,11 @@ async def register_morphology_metrics(
         tmp_path.write_bytes(await file.read())
 
         # Run neurom analysis (lazy import inside)
-        metrics = _run_morphology_analysis(tmp_path, Path(tmpdir))
+        metrics = _run_morphology_analysis(tmp_path)
 
-        # Example response payload
-        return {
-            "file_name": file.filename,
-            "metrics": metrics,
-            "status": "success",
-        }
+    # Example response payload
+    return {
+        "file_name": file.filename,
+        "metrics": metrics,
+        "status": "success",
+    }
