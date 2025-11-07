@@ -1,10 +1,11 @@
 import json
+import sys
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch  # Import explicitly
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
@@ -25,10 +26,15 @@ def _early_patch_heavy_imports():
       - analysis dict
       - file processing
     """
-    mp = MonkeyPatch()  # Create manually
+    mp = MonkeyPatch()
 
     try:
-        # 1. Mock template file
+        # 1. Mock neurom BEFORE it gets imported by the application code
+        mock_neurom = MagicMock()
+        mock_neurom.load_morphology.return_value = MagicMock()
+        sys.modules['neurom'] = mock_neurom
+
+        # 2. Mock template file
         fake_template = {
             "data": [
                 {
@@ -47,12 +53,12 @@ def _early_patch_heavy_imports():
             "facets": None,
         }
 
-        def mock_read_text():
+        def mock_read_text(self):
             return json.dumps(fake_template)
 
         mp.setattr(Path, "read_text", mock_read_text)
 
-        # 2. Mock analysis dict
+        # 3. Mock analysis dict
         def mock_create_analysis_dict(_template):
             return {"soma": {"mock_metric": lambda _: 42.0}}
 
@@ -61,14 +67,8 @@ def _early_patch_heavy_imports():
             mock_create_analysis_dict,
         )
 
-        # 3. FULLY MOCK neurom
-        mock_neurom = MagicMock()
-        mock_neurom.load_morphology.return_value = MagicMock()
-        mp.setattr("neurom", mock_neurom)
-        mp.setattr("app.endpoints.morphology_metrics_calculation.nm", mock_neurom)
-
         # 4. Mock file processing
-        def mock_process_and_convert():
+        async def mock_process_and_convert(temp_file_path, file_extension):
             return "/mock/fake.swc", None
 
         mp.setattr(
@@ -79,7 +79,10 @@ def _early_patch_heavy_imports():
         yield  # Allow test session to run
 
     finally:
-        mp.undo()  # Clean up after session
+        # Clean up sys.modules
+        if 'neurom' in sys.modules:
+            del sys.modules['neurom']
+        mp.undo()
 
 
 # --- Fixtures ---
@@ -117,7 +120,7 @@ def mock_measurement_list():
 # --- Test ---
 def test_morphology_registration_success(
     client,
-    monkeypatch,  # function-scoped, safe to use here
+    monkeypatch,
     mock_entity_payload,
     mock_measurement_list,
     mock_morphology_file,
@@ -163,7 +166,7 @@ def test_morphology_registration_success(
             "virtual_lab_id": VIRTUAL_LAB_ID,
             "project_id": PROJECT_ID,
         },
-        files={"file": mock_morphology_file},
+        files={"file": ("601506507_transformed.swc", mock_morphology_file.file, "application/octet-stream")},
     )
 
     # Assert
