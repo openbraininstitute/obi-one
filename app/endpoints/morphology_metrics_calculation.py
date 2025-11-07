@@ -1,29 +1,14 @@
-import json
 import tempfile
 import traceback
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final
 
-import requests
 from entitysdk import Client
-from entitysdk.exception import EntitySDKError
-from entitysdk.models import (
-    BrainLocation,
-    BrainRegion,
-    CellMorphology,
-    CellMorphologyProtocol,
-    MeasurementAnnotation,
-    Subject,
-)
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
-from requests.exceptions import RequestException
-from starlette.requests import Request
 
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_validation import process_and_convert_morphology
 
 
 class ApiErrorCode:
@@ -52,8 +37,7 @@ TARGET_NEURITE_DOMAINS: Final[list[str]] = [
 # Function that performs neurom-based analysis
 # --------------------------------------------------------------------------
 def _run_morphology_analysis(file_path: Path) -> dict[str, Any]:
-    """
-    Run morphological metrics extraction using neurom.
+    """Run morphological metrics extraction using neurom.
     Lazily imports neurom to avoid MPI/NEURON dependency issues in test environments.
     """
     try:
@@ -71,7 +55,7 @@ def _run_morphology_analysis(file_path: Path) -> dict[str, Any]:
             "neurite_number": len(morph.neurites),
             "neurite_types": [n.type for n in morph.neurites],
         }
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         traceback.print_exc()
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
