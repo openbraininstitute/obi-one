@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
@@ -15,8 +16,16 @@ VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
+# Add session-scoped monkeypatch fixture
+@pytest.fixture(scope="module")
+def monkeypatch_session():
+    m = MonkeyPatch()
+    yield m
+    m.undo()
+
+
 @pytest.fixture(autouse=True, scope="module")
-def mock_heavy_dependencies(monkeypatch_session):
+def mock_heavy_dependencies(monkeypatch_session):  # noqa: ARG001
     """Mock heavy dependencies at module level before any imports."""
     # Mock neurom module
     mock_neurom = MagicMock()
@@ -83,7 +92,6 @@ def mock_template_and_functions(monkeypatch):
 # Add session-scoped monkeypatch fixture
 @pytest.fixture(scope="module")
 def monkeypatch_session():
-    from _pytest.monkeypatch import MonkeyPatch
     m = MonkeyPatch()
     yield m
     m.undo()
@@ -104,19 +112,6 @@ def mock_entity_payload():
 
 
 @pytest.fixture
-def mock_morphology_file():
-    # Create a simpler mock file object
-    mock_file_content = Mock()
-    mock_file_content.read = Mock(return_value=b"mock swc content")
-    
-    upload_file = UploadFile(
-        filename="601506507_transformed.swc",
-        file=mock_file_content,
-    )
-    return upload_file
-
-
-@pytest.fixture
 def mock_measurement_list():
     return [
         {"name": "total_length", "value": 500.0, "unit": "um", "domain": "soma"},
@@ -130,7 +125,6 @@ def test_morphology_registration_success(
     monkeypatch,
     mock_entity_payload,
     mock_measurement_list,
-    mock_morphology_file,
 ):
     # Mock EntitySDK client
     entitysdk_client_mock = MagicMock()
