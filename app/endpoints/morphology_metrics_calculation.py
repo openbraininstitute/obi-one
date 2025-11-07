@@ -430,4 +430,3 @@ async def morphology_metrics_calculation(
         ) from e
     else:
         return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
- 
