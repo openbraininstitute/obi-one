@@ -89,14 +89,6 @@ def mock_template_and_functions(monkeypatch):
     )
 
 
-# Add session-scoped monkeypatch fixture
-@pytest.fixture(scope="module")
-def monkeypatch_session():
-    m = MonkeyPatch()
-    yield m
-    m.undo()
-
-
 # --- Fixtures ---
 @pytest.fixture
 def mock_entity_payload():
