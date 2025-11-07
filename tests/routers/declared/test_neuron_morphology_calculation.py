@@ -32,7 +32,7 @@ def _early_patch_heavy_imports():
         # 1. Mock neurom BEFORE it gets imported by the application code
         mock_neurom = MagicMock()
         mock_neurom.load_morphology.return_value = MagicMock()
-        sys.modules['neurom'] = mock_neurom
+        sys.modules["neurom"] = mock_neurom
 
         # 2. Mock template file
         fake_template = {
@@ -80,8 +80,8 @@ def _early_patch_heavy_imports():
 
     finally:
         # Clean up sys.modules
-        if 'neurom' in sys.modules:
-            del sys.modules['neurom']
+        if "neurom" in sys.modules:
+            del sys.modules["neurom"]
         mp.undo()
 
 
@@ -166,7 +166,13 @@ def test_morphology_registration_success(
             "virtual_lab_id": VIRTUAL_LAB_ID,
             "project_id": PROJECT_ID,
         },
-        files={"file": ("601506507_transformed.swc", mock_morphology_file.file, "application/octet-stream")},
+        files={
+            "file": (
+                "601506507_transformed.swc",
+                mock_morphology_file.file,
+                "application/octet-stream",
+            )
+        },
     )
 
     # Assert
