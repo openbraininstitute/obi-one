@@ -2,11 +2,10 @@ import json
 import sys
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from fastapi import UploadFile
 
 from app.dependencies.entitysdk import get_client
 
@@ -30,13 +29,13 @@ def mock_heavy_dependencies(monkeypatch_session):  # noqa: ARG001
     # Mock neurom module
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
-    sys.modules['neurom'] = mock_neurom
-    
+    sys.modules["neurom"] = mock_neurom
+
     yield
-    
+
     # Cleanup
-    if 'neurom' in sys.modules:
-        del sys.modules['neurom']
+    if "neurom" in sys.modules:
+        del sys.modules["neurom"]
 
 
 @pytest.fixture(autouse=True)
@@ -62,16 +61,16 @@ def mock_template_and_functions(monkeypatch):
 
     # Mock Path.read_text
     original_read_text = Path.read_text
-    
-    def mock_read_text(self, *args, **kwargs):  # noqa: ARG001
+
+    def mock_read_text(self, *args, **kwargs):
         if "morphology_template.json" in str(self):
             return json.dumps(fake_template)
         return original_read_text(self, *args, **kwargs)
-    
+
     monkeypatch.setattr(Path, "read_text", mock_read_text)
 
     # Mock create_analysis_dict
-    def mock_create_analysis_dict(_template):  # noqa: ARG001
+    def mock_create_analysis_dict(_template):
         return {"soma": {"mock_metric": lambda _: 42.0}}
 
     monkeypatch.setattr(
@@ -120,11 +119,11 @@ def test_morphology_registration_success(
 ):
     # Mock EntitySDK client
     entitysdk_client_mock = MagicMock()
-    
+
     # Override the dependency
     def mock_get_client():
         return entitysdk_client_mock
-    
+
     client.app.dependency_overrides[get_client] = mock_get_client
 
     mock_entity_id = uuid.uuid4()
@@ -161,11 +160,7 @@ def test_morphology_registration_success(
             "project_id": PROJECT_ID,
         },
         files={
-            "file": (
-                "601506507_transformed.swc",
-                b"mock swc content",
-                "application/octet-stream"
-            )
+            "file": ("601506507_transformed.swc", b"mock swc content", "application/octet-stream")
         },
     )
 
