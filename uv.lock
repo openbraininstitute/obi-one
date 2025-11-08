@@ -3197,7 +3197,7 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d6/8d/37d686f52dfbccc47b857751531ffdec262b0f35158dd3b306030dafdb83/traittypes-0.2.3.tar.gz", hash = "sha256:212feed38d566d772648768b78d3347c148ef23915b91c02078188e631316c86", size = 16003, upload-time = "2025-10-22T11:06:09.952Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/d1/8d5bd662703cc1764d986f6908a608777305946fa634d34c470cd4a1e729/traittypes-0.2.1-py2.py3-none-any.whl", hash = "sha256:1340af133810b6eee1a2eb2e988f862b0d12b6c2d16f282aaf3207b782134c2e", size = 8550, upload-time = "2018-06-16T07:33:59.594Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/c0/fdf9d3ee103ce66a55f0532835ad5e154226c5222423c6636ba049dc42fc/traittypes-0.2.3-py2.py3-none-any.whl", hash = "sha256:49016082ce740d6556d9bb4672ee2d899cd14f9365f17cbb79d5d96b47096d4e", size = 8130, upload-time = "2025-10-22T11:06:08.824Z" },
 ]
 
 [[package]]
