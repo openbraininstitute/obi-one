@@ -1,19 +1,21 @@
-import pandas
+import os
+
+import pandas  # NOQA: ICN001
 import voxcell
+from entitysdk import Client
+from voxcell import CellCollection
+
+from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 
 
-# def access_cave_client_table(client, table_name):
-#     tbl = client.materialize.query_table(table_name)
-#     counts = tbl["pt_root_id"].value_counts()
-#     tbl = tbl.set_index('pt_root_id').loc[counts.index[counts == 1]]
-#     return tbl
-
-def get_specified_tables(em_dataset, db_client, cave_version, specs):
+def get_specified_tables(
+    em_dataset: EMDataSetFromID, db_client: Client, cave_version: int, specs: dict
+) -> tuple[dict, list]:
     lst_tbls = []
     for _x in specs.values():
         if _x["table"] not in lst_tbls:
             lst_tbls.append(_x["table"])
-    
+
     dict_tpls = []
     lst_notices = []
     for tbl_name in lst_tbls:
@@ -22,21 +24,25 @@ def get_specified_tables(em_dataset, db_client, cave_version, specs):
         dict_tpls.append((tbl_name, data))
     return dict(dict_tpls), lst_notices
 
-def resolve_position_to_xyz(resolutions):
-    def func(lst_xyz):
+
+def resolve_position_to_xyz(resolutions: list):  # NOQA: ANN201
+    def func(lst_xyz: list) -> pandas.Series:
         if hasattr(lst_xyz, "__iter__"):
-            return pandas.Series(dict([
-                (_col, lst_xyz[_i] * resolutions[_col])
-                for _i, _col in enumerate(["x", "y", "z"])
-            ]))
-        return pandas.Series(dict([
-                (_col, -1)
-                for _i, _col in enumerate(["x", "y", "z"])
-            ]))
+            return pandas.Series(
+                {_col: lst_xyz[_i] * resolutions[_col] for _i, _col in enumerate(["x", "y", "z"])}
+            )
+        return pandas.Series({_col: -1 for _i, _col in enumerate(["x", "y", "z"])})
+
     return func
 
 
-def assemble_collection_from_specs(em_dataset, db_client, cave_version, specs, pt_root_mapping):
+def assemble_collection_from_specs(
+    em_dataset: EMDataSetFromID,
+    db_client: Client,
+    cave_version: int,
+    specs: dict,
+    pt_root_mapping: pandas.DataFrame,
+) -> voxcell.CellCollection:
     tables, lst_notices = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []
@@ -54,8 +60,11 @@ def assemble_collection_from_specs(em_dataset, db_client, cave_version, specs, p
     return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
-def write_nodes(fn_out, population_name, cell_collection, write_mode="w"):
-    cell_collection.population_name=population_name
+def write_nodes(
+    fn_out: os.PathLike,
+    population_name: str,
+    cell_collection: CellCollection,
+    write_mode: str = "w",
+) -> None:
+    cell_collection.population_name = population_name
     cell_collection.save_sonata(fn_out, mode=write_mode)
-
-
