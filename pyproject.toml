@@ -54,7 +54,7 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.3",
+    "entitysdk>=0.8.5",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
@@ -63,7 +63,7 @@ dependencies = [
     "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
-    "connectome-manipulator",
+    "connectome-manipulator>=1.0.4",
     "bluecellulab>=2.6.71",
     # OBI NOTEBOOK
     "obi_notebook",

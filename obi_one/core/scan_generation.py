@@ -212,7 +212,7 @@ class ScanGenerationTask(Task, abc.ABC):
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / "run_scan_config.json")
+        self.serialize(self.output_root / "obi_one_scan.json")
 
         # Create the campaign entity
         campaign = None
@@ -234,7 +234,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / "run_coordinate_instance.json"
+                single_coord_config.coordinate_output_root / "obi_one_coordinate.json"
             )
 
             # Create the single coordinate entity

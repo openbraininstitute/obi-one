@@ -62,7 +62,7 @@ def _setup_sim():
     )
     sim_conf.add(sync_input, name="SynchronousInputStimulus")
 
-    voltage_recording = obi.SomaVoltageRecording(
+    voltage_recording = obi.TimeWindowSomaVoltageRecording(
         neuron_set=sim_neuron_set.ref, start_time=0.0, end_time=sim_duration
     )
     sim_conf.add(voltage_recording, name="VoltageRecording")
@@ -179,7 +179,8 @@ def _check_generated_sonata_configs(tmp_path, scan):
             "name": "Mg",
             "source": "All",
             "target": "All",
-            "synapse_configure": f"%s.mg = {mg}",
+            "modoverride": "GluSynapse",
+            "synapse_configure": f"mg = {mg}",
         }
         use_dict = {
             "name": "ach_use",
@@ -194,7 +195,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
 
 
 def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
-    cfg_file = tmp_path / scan.output_root / "run_scan_config.json"
+    cfg_file = tmp_path / scan.output_root / "obi_one_scan.json"
     with cfg_file.open("r") as f:
         cfg = json.load(f)
 
@@ -240,7 +241,13 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "targeted_neuron_set": id10_ref,
         "timestamp_offset": 0.0,
     }
-    volt_dict = {"type": "SomaVoltageRecording", "neuron_set": id10_ref, "dt": 0.1}
+    volt_dict = {
+        "type": "TimeWindowSomaVoltageRecording",
+        "neuron_set": id10_ref,
+        "dt": 0.1,
+        "start_time": 0.0,
+        "end_time": 3000.0,
+    }
     id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
     id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
     id10_dict = {
@@ -309,7 +316,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
 
 def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
     for instance in scan.single_configs:
-        cfg_file = tmp_path / scan.output_root / str(instance.idx) / "run_coordinate_instance.json"
+        cfg_file = tmp_path / scan.output_root / str(instance.idx) / "obi_one_coordinate.json"
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
@@ -392,7 +399,13 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "PoissonInputStimulus": poisson_dict,
             "SynchronousInputStimulus": sync_dict,
         }
-        volt_dict = {"type": "SomaVoltageRecording", "neuron_set": id10_ref, "dt": 0.1}
+        volt_dict = {
+            "type": "TimeWindowSomaVoltageRecording",
+            "neuron_set": id10_ref,
+            "dt": 0.1,
+            "start_time": 0.0,
+            "end_time": 3000.0,
+        }
         assert cfg.pop("recordings") == {"VoltageRecording": volt_dict}
         id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
         id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
@@ -498,7 +511,7 @@ def test_simulation_campaign_generation(tmp_path):
         neuron_ids=obi.NamedTuple(name="IDNeuronSet3", elements=range(5))
     )
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.SomaVoltageRecording(
+        _ = obi.TimeWindowSomaVoltageRecording(
             neuron_set=sim_neuron_set2.ref,
             start_time=0.0,
             end_time=sim_conf.initialize.simulation_length,

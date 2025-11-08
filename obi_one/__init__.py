@@ -6,6 +6,7 @@ from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import (
     run_task_for_single_config,
+    run_task_for_single_config_asset,
     run_task_for_single_configs,
     run_tasks_for_generated_scan,
 )
@@ -81,6 +82,9 @@ __all__ = [
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
+    "MEModelWithSynapsesCircuitFromID",
+    "MEModelWithSynapsesCircuitSimulationScanConfig",
+    "MEModelWithSynapsesCircuitSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -165,6 +169,7 @@ __all__ = [
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
     "run_task_for_single_config",
+    "run_task_for_single_config_asset",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
     "write_circuit_node_set_file",
@@ -258,7 +263,10 @@ from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimest
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -305,6 +313,8 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulation_task import (
     GenerateSimulationTask,

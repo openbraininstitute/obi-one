@@ -59,7 +59,7 @@ class ExcitatoryNeurons(AbstractNeuronSet):
 
 
 class InhibitoryNeurons(AbstractNeuronSet):
-    """All inhibitory neurons."""
+    """All biophysical inhibitory neurons."""
 
     title: ClassVar[str] = "All Inhibitory Neurons"
 
