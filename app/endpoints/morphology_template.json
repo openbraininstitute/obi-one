@@ -1,447 +1,447 @@
 {
         "data": [
             {
-                "entity_id": None,
+                "entity_id": null,
                 "entity_type": "reconstruction_morphology",
                 "measurement_kinds": [
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "neurite_max_radial_distance",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "neurite_max_radial_distance"
                     },
                     {
                         "structural_domain": "axon",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_sections",
+                        "pref_label": "number_of_sections"
                     },
                     {
                         "structural_domain": "axon",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_bifurcations",
+                        "pref_label": "number_of_bifurcations"
                     },
                     {
                         "structural_domain": "axon",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_leaves",
+                        "pref_label": "number_of_leaves"
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_length",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_length"
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
-                        "pref_label": "total_area",
+                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": null}],
+                        "pref_label": "total_area"
                     },
                     {
                         "structural_domain": "axon",
-                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
-                        "pref_label": "total_volume",
+                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": null}],
+                        "pref_label": "total_volume"
                     },
                     {
                         "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "neurite_max_radial_distance",
-                    },
-                    {
-                        "structural_domain": "basal_dendrite",
-                        "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
-                        ],
-                        "pref_label": "number_of_sections",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "neurite_max_radial_distance"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_bifurcations",
+                        "pref_label": "number_of_sections"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_leaves",
-                    },
-                    {
-                        "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_length",
-                    },
-                    {
-                        "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
-                        "pref_label": "total_area",
-                    },
-                    {
-                        "structural_domain": "basal_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
-                        "pref_label": "total_volume",
+                        "pref_label": "number_of_bifurcations"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_lengths",
+                        "pref_label": "number_of_leaves"
+                    },
+                    {
+                        "structural_domain": "basal_dendrite",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_length"
+                    },
+                    {
+                        "structural_domain": "basal_dendrite",
+                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": null}],
+                        "pref_label": "total_area"
+                    },
+                    {
+                        "structural_domain": "basal_dendrite",
+                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": null}],
+                        "pref_label": "total_volume"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_term_lengths",
+                        "pref_label": "section_lengths"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_bif_lengths",
+                        "pref_label": "section_term_lengths"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_branch_orders",
+                        "pref_label": "section_bif_lengths"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_bif_branch_orders",
+                        "pref_label": "section_branch_orders"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_term_branch_orders",
+                        "pref_label": "section_bif_branch_orders"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_path_distances",
+                        "pref_label": "section_term_branch_orders"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_taper_rates",
+                        "pref_label": "section_path_distances"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "radian", "value": None},
-                            {"name": "maximum", "unit": "radian", "value": None},
-                            {"name": "median", "unit": "radian", "value": None},
-                            {"name": "mean", "unit": "radian", "value": None},
-                            {"name": "standard_deviation", "unit": "radian", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "local_bifurcation_angles",
+                        "pref_label": "section_taper_rates"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "radian", "value": None},
-                            {"name": "maximum", "unit": "radian", "value": None},
-                            {"name": "median", "unit": "radian", "value": None},
-                            {"name": "mean", "unit": "radian", "value": None},
-                            {"name": "standard_deviation", "unit": "radian", "value": None},
+                            {"name": "minimum", "unit": "radian", "value": null},
+                            {"name": "maximum", "unit": "radian", "value": null},
+                            {"name": "median", "unit": "radian", "value": null},
+                            {"name": "mean", "unit": "radian", "value": null},
+                            {"name": "standard_deviation", "unit": "radian", "value": null}
                         ],
-                        "pref_label": "remote_bifurcation_angles",
+                        "pref_label": "local_bifurcation_angles"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "radian", "value": null},
+                            {"name": "maximum", "unit": "radian", "value": null},
+                            {"name": "median", "unit": "radian", "value": null},
+                            {"name": "mean", "unit": "radian", "value": null},
+                            {"name": "standard_deviation", "unit": "radian", "value": null}
                         ],
-                        "pref_label": "partition_asymmetry",
+                        "pref_label": "remote_bifurcation_angles"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "partition_asymmetry_length",
+                        "pref_label": "partition_asymmetry"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "sibling_ratios",
+                        "pref_label": "partition_asymmetry_length"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "diameter_power_relations",
+                        "pref_label": "sibling_ratios"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_radial_distances",
+                        "pref_label": "diameter_power_relations"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_term_radial_distances",
+                        "pref_label": "section_radial_distances"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_bif_radial_distances",
+                        "pref_label": "section_term_radial_distances"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "terminal_path_lengths",
+                        "pref_label": "section_bif_radial_distances"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm³", "value": None},
-                            {"name": "maximum", "unit": "μm³", "value": None},
-                            {"name": "median", "unit": "μm³", "value": None},
-                            {"name": "mean", "unit": "μm³", "value": None},
-                            {"name": "standard_deviation", "unit": "μm³", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "section_volumes",
+                        "pref_label": "terminal_path_lengths"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm²", "value": None},
-                            {"name": "maximum", "unit": "μm²", "value": None},
-                            {"name": "median", "unit": "μm²", "value": None},
-                            {"name": "mean", "unit": "μm²", "value": None},
-                            {"name": "standard_deviation", "unit": "μm²", "value": None},
+                            {"name": "minimum", "unit": "μm³", "value": null},
+                            {"name": "maximum", "unit": "μm³", "value": null},
+                            {"name": "median", "unit": "μm³", "value": null},
+                            {"name": "mean", "unit": "μm³", "value": null},
+                            {"name": "standard_deviation", "unit": "μm³", "value": null}
                         ],
-                        "pref_label": "section_areas",
+                        "pref_label": "section_volumes"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "μm²", "value": null},
+                            {"name": "maximum", "unit": "μm²", "value": null},
+                            {"name": "median", "unit": "μm²", "value": null},
+                            {"name": "mean", "unit": "μm²", "value": null},
+                            {"name": "standard_deviation", "unit": "μm²", "value": null}
                         ],
-                        "pref_label": "section_tortuosity",
+                        "pref_label": "section_areas"
                     },
                     {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "section_strahler_orders",
+                        "pref_label": "section_tortuosity"
+                    },
+                    {
+                        "structural_domain": "basal_dendrite",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "section_strahler_orders"
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "neurite_max_radial_distance",
-                    },
-                    {
-                        "structural_domain": "apical_dendrite",
-                        "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
-                        ],
-                        "pref_label": "number_of_sections",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "neurite_max_radial_distance"
                     },
                     {
                         "structural_domain": "apical_dendrite",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_bifurcations",
+                        "pref_label": "number_of_sections"
                     },
                     {
                         "structural_domain": "apical_dendrite",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "raw", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "number_of_leaves",
+                        "pref_label": "number_of_bifurcations"
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_length",
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "number_of_leaves"
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
-                        "pref_label": "total_area",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_length"
                     },
                     {
                         "structural_domain": "apical_dendrite",
-                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": None}],
-                        "pref_label": "total_volume",
+                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": null}],
+                        "pref_label": "total_area"
+                    },
+                    {
+                        "structural_domain": "apical_dendrite",
+                        "measurement_items": [{"name": "raw", "unit": "μm³", "value": null}],
+                        "pref_label": "total_volume"
                     },
                     {
                         "structural_domain": "neuron_morphology",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "morphology_max_radial_distance",
-                    },
-                    {
-                        "structural_domain": "neuron_morphology",
-                        "measurement_items": [
-                            {"name": "minimum", "unit": "dimensionless", "value": None},
-                            {"name": "maximum", "unit": "dimensionless", "value": None},
-                            {"name": "median", "unit": "dimensionless", "value": None},
-                            {"name": "mean", "unit": "dimensionless", "value": None},
-                            {"name": "standard_deviation", "unit": "dimensionless", "value": None},
-                        ],
-                        "pref_label": "number_of_sections_per_neurite",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "morphology_max_radial_distance"
                     },
                     {
                         "structural_domain": "neuron_morphology",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm", "value": None},
-                            {"name": "maximum", "unit": "μm", "value": None},
-                            {"name": "median", "unit": "μm", "value": None},
-                            {"name": "mean", "unit": "μm", "value": None},
-                            {"name": "standard_deviation", "unit": "μm", "value": None},
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
                         ],
-                        "pref_label": "total_length_per_neurite",
+                        "pref_label": "number_of_sections_per_neurite"
                     },
                     {
                         "structural_domain": "neuron_morphology",
                         "measurement_items": [
-                            {"name": "minimum", "unit": "μm²", "value": None},
-                            {"name": "maximum", "unit": "μm²", "value": None},
-                            {"name": "median", "unit": "μm²", "value": None},
-                            {"name": "mean", "unit": "μm²", "value": None},
-                            {"name": "standard_deviation", "unit": "μm²", "value": None},
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
                         ],
-                        "pref_label": "total_area_per_neurite",
-                    },
-                    {
-                        "structural_domain": "neuron_morphology",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_height",
-                    },
-                    {
-                        "structural_domain": "neuron_morphology",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_width",
-                    },
-                    {
-                        "structural_domain": "neuron_morphology",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "total_depth",
+                        "pref_label": "total_length_per_neurite"
                     },
                     {
                         "structural_domain": "neuron_morphology",
                         "measurement_items": [
-                            {"name": "raw", "unit": "dimensionless", "value": None}
+                            {"name": "minimum", "unit": "μm²", "value": null},
+                            {"name": "maximum", "unit": "μm²", "value": null},
+                            {"name": "median", "unit": "μm²", "value": null},
+                            {"name": "mean", "unit": "μm²", "value": null},
+                            {"name": "standard_deviation", "unit": "μm²", "value": null}
                         ],
-                        "pref_label": "number_of_neurites",
+                        "pref_label": "total_area_per_neurite"
+                    },
+                    {
+                        "structural_domain": "neuron_morphology",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_height"
+                    },
+                    {
+                        "structural_domain": "neuron_morphology",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_width"
+                    },
+                    {
+                        "structural_domain": "neuron_morphology",
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "total_depth"
+                    },
+                    {
+                        "structural_domain": "neuron_morphology",
+                        "measurement_items": [
+                            {"name": "raw", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "number_of_neurites"
                     },
                     {
                         "structural_domain": "soma",
-                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": None}],
-                        "pref_label": "soma_surface_area",
+                        "measurement_items": [{"name": "raw", "unit": "μm²", "value": null}],
+                        "pref_label": "soma_surface_area"
                     },
                     {
                         "structural_domain": "soma",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": None}],
-                        "pref_label": "soma_radius",
-                    },
-                ],
+                        "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
+                        "pref_label": "soma_radius"
+                    }
+                ]
             }
         ],
         "pagination": {"page": 1, "page_size": 100, "total_items": 1},
-        "facets": None,
+        "facets": null
 } 
