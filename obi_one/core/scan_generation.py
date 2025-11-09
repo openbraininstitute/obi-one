@@ -248,6 +248,8 @@ class ScanGenerationTask(Task, abc.ABC):
             single_entities = [sc.single_entity for sc in self._single_configs]
             self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
 
+        return campaign
+
 
 class GridScanGenerationTask(ScanGenerationTask):
     """Description."""

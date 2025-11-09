@@ -226,7 +226,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.IonChannelModelingCampaign,
-            file_path=output_root / "run_scan_config.json",
+            file_path=output_root / "obi_one_scan.json",
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -304,7 +304,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.IonChannelModelingConfig,
-            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
             file_content_type="application/json",
             asset_label="ion_channel_modeling_generation_config",
         )

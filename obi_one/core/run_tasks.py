@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 
 import entitysdk
 
@@ -14,10 +15,10 @@ def run_task_for_single_config(
     *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
-) -> None:
+) -> Any:
     task_type = get_configs_task_type(single_config)
     task = task_type(config=single_config)
-    task.execute(db_client=db_client, entity_cache=entity_cache)
+    return task.execute(db_client=db_client, entity_cache=entity_cache)
 
 
 def run_task_for_single_configs(
@@ -25,9 +26,11 @@ def run_task_for_single_configs(
     *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
-) -> None:
-    for single_config in single_configs:
+) -> list[Any]:
+    return [
         run_task_for_single_config(single_config, db_client=db_client, entity_cache=entity_cache)
+        for single_config in single_configs
+    ]
 
 
 def run_tasks_for_generated_scan(
@@ -35,8 +38,8 @@ def run_tasks_for_generated_scan(
     *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
-) -> None:
-    run_task_for_single_configs(
+) -> Any:
+    return run_task_for_single_configs(
         scan_generation.single_configs, db_client=db_client, entity_cache=entity_cache
     )
 
