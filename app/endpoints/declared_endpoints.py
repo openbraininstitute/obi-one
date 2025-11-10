@@ -6,18 +6,11 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Literal
 
+import aiofiles
 import entitysdk.client
 import entitysdk.exception
-import morphio
-from bluepyefe.reader import (  # , VUNWBReader
-    AIBSNWBReader,
-    BBPNWBReader,
-    ScalaNWBReader,
-    TRTNWBReader,
-)
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
-from morph_tool import convert
 from pydantic import BaseModel
 
 from app.dependencies.entitysdk import get_client
@@ -45,6 +38,12 @@ from obi_one.scientific.library.morphology_metrics import (
     get_morphology_metrics,
 )
 
+# ————————————————————————————————————————————————————————
+# Constants
+# ————————————————————————————————————————————————————————
+MAX_UPLOAD_SIZE = 1_073_741_824  # 1 GB
+CHUNK_SIZE = 1024 * 1024  # 1 MB
+
 
 def _handle_empty_file(file: UploadFile) -> None:
     """Handle empty file upload by raising an appropriate HTTPException."""
@@ -58,22 +57,54 @@ def _handle_empty_file(file: UploadFile) -> None:
     )
 
 
+# ————————————————————————————————————————————————————————
+# Async Streaming Helper (Memory-Efficient, Non-Blocking)
+# ————————————————————————————————————————————————————————
+async def stream_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
+    """Stream UploadFile to disk in 1 MB chunks using async file.read().
+    No full file in memory. Fully non-blocking.
+    """
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_path = temp_file.name
+
+    try:
+        await file.seek(0)  # Reset pointer
+
+        async with aiofiles.open(temp_path, "wb") as f:
+            while True:
+                chunk = await file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                await f.write(chunk)
+
+    except Exception:
+        if pathlib.Path(temp_path).exists():
+            pathlib.Path(temp_path).unlink(missing_ok=True)
+        raise
+    else:
+        return temp_path  # Now safely in `else` block
+    finally:
+        # Cleanup only if something went wrong and file wasn't returned
+        pass  # Return happened in `else`, so no cleanup here
+
+
+# ————————————————————————————————————————————————————————
+# Morphology Metrics Endpoint
+# ————————————————————————————————————————————————————————
 def activate_morphology_endpoint(router: APIRouter) -> None:
     """Define neuron morphology metrics endpoint."""
 
     @router.get(
         "/neuron-morphology-metrics/{cell_morphology_id}",
         summary="Neuron morphology metrics",
-        description=("This calculates neuron morphology metrics for a given cell morphology."),
+        description="This calculates neuron morphology metrics for a given cell morphology.",
     )
     def neuron_morphology_metrics_endpoint(
         cell_morphology_id: str,
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
         requested_metrics: Annotated[
-            list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]
-            Query(
-                description="List of requested metrics",
-            ),
+            list[Literal[*MORPHOLOGY_METRICS]] | None,
+            Query(description="List of requested metrics"),
         ] = None,
     ) -> MorphologyMetricsOutput:
         L.info("get_morphology_metrics")
@@ -88,7 +119,7 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
                 status_code=HTTPStatus.NOT_FOUND,
                 detail={
                     "code": ApiErrorCode.NOT_FOUND,
-                    "detail": (f"Cell morphology {cell_morphology_id} not found."),
+                    "detail": f"Cell morphology {cell_morphology_id} not found.",
                 },
             ) from err
 
@@ -102,6 +133,9 @@ def activate_morphology_endpoint(router: APIRouter) -> None:
         )
 
 
+# ————————————————————————————————————————————————————————
+# Electrophysiology Endpoint
+# ————————————————————————————————————————————————————————
 def activate_ephys_endpoint(router: APIRouter) -> None:
     """Define electrophysiology recording metrics endpoint."""
 
@@ -132,24 +166,30 @@ def activate_ephys_endpoint(router: APIRouter) -> None:
         return ephys_metrics
 
 
+# ————————————————————————————————————————————————————————
+# Morphology File Processing Helpers
+# ————————————————————————————————————————————————————————
 async def _process_and_convert_morphology(
     file: UploadFile, temp_file_path: str, file_extension: str
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
+    import morphio  # noqa: PLC0415
+    from morph_tool import convert  # noqa: PLC0415
+
     try:
         morphio.set_raise_warnings(False)
         _ = morphio.Morphology(temp_file_path)
 
-        outputfile1, outputfile2 = "", ""
+        base = Path(temp_file_path).with_suffix("")
         if file_extension == ".swc":
-            outputfile1 = temp_file_path.replace(".swc", "_converted.h5")
-            outputfile2 = temp_file_path.replace(".swc", "_converted.asc")
+            outputfile1 = f"{base}_converted.h5"
+            outputfile2 = f"{base}_converted.asc"
         elif file_extension == ".h5":
-            outputfile1 = temp_file_path.replace(".h5", "_converted.swc")
-            outputfile2 = temp_file_path.replace(".h5", "_converted.asc")
+            outputfile1 = f"{base}_converted.swc"
+            outputfile2 = f"{base}_converted.asc"
         else:  # .asc
-            outputfile1 = temp_file_path.replace(".asc", "_converted.swc")
-            outputfile2 = temp_file_path.replace(".asc", "_converted.h5")
+            outputfile1 = f"{base}_converted.swc"
+            outputfile2 = f"{base}_converted.h5"
 
         convert(temp_file_path, outputfile1)
         convert(temp_file_path, outputfile2)
@@ -170,8 +210,8 @@ async def _process_and_convert_morphology(
 def _create_zip_file_sync(zip_path: str, file1: str, file2: str) -> None:
     """Synchronously create a zip file from two files."""
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as my_zip:
-        my_zip.write(file1, arcname=f"{pathlib.Path(file1).name}")
-        my_zip.write(file2, arcname=f"{pathlib.Path(file2).name}")
+        my_zip.write(file1, arcname=Path(file1).name)
+        my_zip.write(file2, arcname=Path(file2).name)
 
 
 async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResponse:
@@ -200,29 +240,9 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResp
         return FileResponse(path=zip_filename, filename=zip_filename, media_type="application/zip")
 
 
-async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
-    """Validates file extension and reads content."""
-    L.info(f"Received file upload: {file.filename}")
-    allowed_extensions = {".swc", ".h5", ".asc"}
-    file_extension = Path(file.filename).suffix.lower() if file.filename else ""
-    if not file.filename or file_extension not in allowed_extensions:
-        L.error(f"Invalid file extension: {file_extension}")
-        valid_extensions = ", ".join(allowed_extensions)
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Invalid file extension. Must be one of {valid_extensions}",
-            },
-        )
-
-    content = await file.read()
-    if not content:
-        _handle_empty_file(file)
-
-    return content, file_extension
-
-
+# ————————————————————————————————————————————————————————
+# Test Neuron File Endpoint (STREAMED)
+# ————————————————————————————————————————————————————————
 def activate_test_endpoint(router: APIRouter) -> None:
     """Define neuron file test endpoint."""
 
@@ -230,18 +250,30 @@ def activate_test_endpoint(router: APIRouter) -> None:
         "/test-neuron-file",
         summary="Validate morphology format and returns the conversion to other formats.",
         description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
+        response_class=FileResponse,
     )
     async def test_neuron_file(
+        request: Request,
         file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     ) -> FileResponse:
-        content, file_extension = await _validate_and_read_file(file)
+        # Enforce max size
+        if int(request.headers.get("content-length", 0)) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="File too large (>1GB)")
 
-        temp_file_path = ""
-        outputfile1, outputfile2 = "", ""
+        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
+        allowed = {".swc", ".h5", ".asc"}
+        if file_extension not in allowed:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid extension. Must be one of {', '.join(allowed)}"
+            )
+
+        temp_file_path = outputfile1 = outputfile2 = ""
+
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                temp_file.write(content)
-                temp_file_path = temp_file.name
+            temp_file_path = await stream_upload_to_tempfile(file, suffix=file_extension)
+
+            if Path(temp_file_path).stat().st_size == 0:
+                _handle_empty_file(file)
 
             outputfile1, outputfile2 = await _process_and_convert_morphology(
                 file=file, temp_file_path=temp_file_path, file_extension=file_extension
@@ -250,18 +282,13 @@ def activate_test_endpoint(router: APIRouter) -> None:
             return await _create_and_return_zip(outputfile1, outputfile2)
 
         finally:
-            if temp_file_path:
-                try:
-                    pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                    pathlib.Path(outputfile1).unlink(missing_ok=True)
-                    pathlib.Path(outputfile2).unlink(missing_ok=True)
-                except OSError as e:
-                    L.error(f"Error deleting temporary files: {e!s}")
+            for path in [temp_file_path, outputfile1, outputfile2]:
+                if path and Path(path).exists():
+                    try:
+                        Path(path).unlink()
+                    except OSError as e:
+                        L.warning(f"Failed to delete temp file {path}: {e}")
 
-
-# List of all available NWB Reader classes to iterate over
-
-NWB_READERS = [BBPNWBReader, ScalaNWBReader, AIBSNWBReader, TRTNWBReader]
 
 TEST_PROTOCOLS = [
     "APThreshold",
@@ -406,31 +433,33 @@ TEST_PROTOCOLS = [
 
 
 def validate_all_nwb_readers(nwb_file_path: str) -> None:
-    """Tests all registered NWB readers on the given file path.
-    Succeeds if at least one reader can successfully process the file.
-    Raises a RuntimeError if all readers fail.
-    :param nwb_file_path: The path to the NWB file.
-    :param target_protocols: The list of protocols required by the NWB readers.
-    :return: The extracted data object from the first successful reader.
-    :raises RuntimeError: If no reader is able to read the file.
-    """
-    for readerclass in NWB_READERS:
+    """Try all NWB readers. Succeed if at least one works."""
+    from bluepyefe.reader import (  # noqa: PLC0415
+        AIBSNWBReader,
+        BBPNWBReader,
+        ScalaNWBReader,
+        TRTNWBReader,
+    )
+
+    readers = [AIBSNWBReader, BBPNWBReader, ScalaNWBReader, TRTNWBReader]
+
+    all_failed = "All NWB readers failed."
+
+    for readerclass in readers:
         try:
             reader = readerclass(nwb_file_path, TEST_PROTOCOLS)
-
             data = reader.read()
-
             if data is not None:
-                return data
-
+                return
         except Exception as e:  # noqa: BLE001
             L.warning(
-                "Reader %s failed for file %s: %s", readerclass.__name__, nwb_file_path, str(e)
+                "Reader %s failed for file %s: %s",
+                readerclass.__name__,
+                nwb_file_path,
+                str(e),
             )
             continue
-
-    error_message = "All NWB readers failed."
-    raise RuntimeError(error_message)
+    raise RuntimeError(all_failed)
 
 
 class NWBValidationResponse(BaseModel):
@@ -440,74 +469,79 @@ class NWBValidationResponse(BaseModel):
     message: str
 
 
+# ————————————————————————————————————————————————————————
+# Validate NWB File Endpoint (STREAMED + SIZE LIMIT)
+# ————————————————————————————————————————————————————————
 def activate_validate_nwb_endpoint(router: APIRouter) -> None:
-    """Define neuron file test endpoint."""
+    """Define NWB file validation endpoint."""
 
     @router.post(
         "/validate-nwb-file",
-        summary="Validate new format.",
-        description="Tests a new file (.nwb) with basic validation.",
+        summary="Validate NWB file format.",
+        description="Validates an uploaded .nwb file using registered readers.",
     )
-    def validate_nwb_file(
-        file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
+    async def validate_nwb_file(
+        request: Request,
+        file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
     ) -> NWBValidationResponse:
-        """Synchronously processes the NWB file validation.
-
-        It uses a TemporaryDirectory context manager to ensure all temporary
-        files created during processing are automatically cleaned up.
-        """
-        try:
-            content = file.file.read()
-
-        except Exception as e:
-            L.error(f"Error reading uploaded file content: {e!s}")
-            raise ApiError(
-                message=f"Error reading uploaded file content: {e!s}",
-                error_code=ApiErrorCode.INTERNAL_SERVER_ERROR,
-                http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            ) from e
-        if not content:
-            _handle_empty_file(file)
-
-        # File extension is needed for the NWB readers to recognize the file type
-        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
-        if file_extension != ".nwb":
-            raise ApiError(
-                message="Invalid file extension. Must be .nwb",
-                error_code=ApiErrorCode.INVALID_REQUEST,
-                http_status_code=HTTPStatus.BAD_REQUEST,
+        # Enforce max size
+        if int(request.headers.get("content-length", 0)) > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail={"code": ApiErrorCode.INVALID_REQUEST, "detail": "File too large (>1GB)"},
             )
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_file_path = str(Path(temp_dir) / f"uploaded_file{file_extension}")
+        file_extension = Path(file.filename).suffix.lower() if file.filename else ""
+        if file_extension != ".nwb":
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.INVALID_REQUEST,
+                    "detail": "Invalid file extension. Must be .nwb",
+                },
+            )
 
-            L.info(f"Writing file content to temporary path: {temp_file_path}")
+        temp_file_path = ""
 
-            try:
-                Path(temp_file_path).write_bytes(content)
-            except Exception as e:
-                L.error(f"Error writing file to disk: {e!s}")
-                raise ApiError(
-                    message=f"Error writing file to disk: {e!s}",
-                    error_code=ApiErrorCode.INTERNAL_SERVER_ERROR,
-                    http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                ) from e
-            try:
-                validate_all_nwb_readers(temp_file_path)
+        try:
+            temp_file_path = await stream_upload_to_tempfile(file, suffix=".nwb")
 
-            except RuntimeError as e:
-                L.error(f"NWB validation failed: {e!s}")
-                raise ApiError(
-                    message=f"NWB validation failed: {e!s}",
-                    error_code=ApiErrorCode.INVALID_REQUEST,
-                    http_status_code=HTTPStatus.BAD_REQUEST,
-                ) from e
-        return NWBValidationResponse(
-            status="success",
-            message="NWB file validation successful.",
-        )
+            if Path(temp_file_path).stat().st_size == 0:
+                _handle_empty_file(file)
+
+            validate_all_nwb_readers(temp_file_path)
+
+            return NWBValidationResponse(
+                status="success",
+                message="NWB file validation successful.",
+            )
+
+        except RuntimeError as e:
+            L.error(f"NWB validation failed: {e!s}")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.INVALID_REQUEST,
+                    "detail": f"NWB validation failed: {e!s}",
+                },
+            ) from e
+        except OSError as e:
+            L.error(f"File system error during NWB validation: {e!s}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
+            ) from e
+        finally:
+            if temp_file_path and Path(temp_file_path).exists():
+                try:
+                    Path(temp_file_path).unlink()
+                except OSError as e:
+                    L.warning(f"Failed to delete temp NWB file: {e}")
 
 
+# ————————————————————————————————————————————————————————
+# Circuit Endpoints
+# ————————————————————————————————————————————————————————
 def activate_circuit_endpoints(router: APIRouter) -> None:
     """Define circuit-related endpoints."""
 
@@ -617,11 +651,6 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                 level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
                 level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
             )
-            mapped_circuit_properties = {}
-            mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
-                circuit_metrics.names_of_nodesets
-            )
-
         except entitysdk.exception.EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
@@ -630,9 +659,13 @@ def activate_circuit_endpoints(router: APIRouter) -> None:
                     "detail": f"Circuit {circuit_id} not found.",
                 },
             ) from err
-        return mapped_circuit_properties
+        else:  # TRY300
+            return {CircuitPropertyType.NODE_SET: circuit_metrics.names_of_nodesets}
 
 
+# ————————————————————————————————————————————————————————
+# Activate All Endpoints
+# ————————————————————————————————————————————————————————
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_morphology_endpoint(router)
