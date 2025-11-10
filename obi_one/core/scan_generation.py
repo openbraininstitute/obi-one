@@ -208,7 +208,7 @@ class ScanGenerationTask(Task, abc.ABC):
     def execute(
         self,
         db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.core.Identifiable:
+    ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
@@ -247,8 +247,6 @@ class ScanGenerationTask(Task, abc.ABC):
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
             self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
-
-        return campaign
 
 
 class GridScanGenerationTask(ScanGenerationTask):
