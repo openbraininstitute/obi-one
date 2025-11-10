@@ -2082,6 +2082,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.71" },
     { name = "blueetl" },
+    { name = "bluepyefe" },
     { name = "bluepyefe", specifier = ">=2.3.51" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
