@@ -796,3 +796,177 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         self.write_spike_file(
             gid_spike_map, spike_file_path / self._spike_file, source_node_population
         )
+
+
+class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
+    """Spike times drawn from an inhomogeneous Poisson process with sinusoidal rate.
+
+    The instantaneous rate is:
+        λ(t) = max(0, baseline_hz + amplitude_hz * sin(2π * freq_hz * t_s + phase_rad))
+
+    Sent from all neurons in the source neuron set to efferently connected
+    neurons in the target neuron set.
+    """
+
+    title: ClassVar[str] = "Sinusoidal Poisson Spikes (Efferent)"
+
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+
+    # --- timing ---
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration in milliseconds for how long input is activated.",
+        units="ms",
+    )
+
+    # --- sinusoidal rate params ---
+    baseline_hz: Annotated[
+        NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)
+    ] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
+        default=5.0,
+        title="Baseline rate",
+        description="Baseline (Hz) around which the sinusoid oscillates.",
+        units="Hz",
+    )
+
+    amplitude_hz: Annotated[
+        NonNegativeFloat, Field(ge=0.0)
+    ] | list[Annotated[NonNegativeFloat, Field(ge=0.0)]] = Field(
+        default=5.0,
+        title="Amplitude",
+        description="Sinusoid amplitude (Hz). Instantaneous rate is clipped at 0.",
+        units="Hz",
+    )
+
+    modulation_frequency_hz: Annotated[
+        NonNegativeFloat, Field(ge=0.0)
+    ] | list[Annotated[NonNegativeFloat, Field(ge=0.0)]] = Field(
+        default=1.0,
+        title="Modulation Frequency",
+        description="Frequency (Hz) of the sinusoidal modulation of the rate.",
+        units="Hz",
+    )
+
+    phase_rad: float | list[float] = Field(
+        default=0.0,
+        title="Phase",
+        description="Phase offset (radians) of the sinusoid.",
+        units="rad",
+    )
+
+    random_seed: int | list[int] = Field(
+        default=0,
+        title="Random Seed",
+        description="Seed for the random number generator to ensure reproducibility.",
+    )
+
+    # --- internal helpers ---
+    @staticmethod
+    def _lambda_t_ms(t_ms: float, baseline_hz: float, amplitude_hz: float,
+                     mod_freq_hz: float, phase_rad: float) -> float:
+        """Instantaneous rate λ(t) at time t in ms, returned in Hz."""
+        t_s = t_ms / 1000.0
+        lam = baseline_hz + amplitude_hz * np.sin(2.0 * np.pi * mod_freq_hz * t_s + phase_rad)
+        return max(0.0, lam)
+
+    def _draw_inhomogeneous_poisson_interval_ms(
+        self, rng, lam_max_hz: float
+    ) -> float:
+        """Draw a candidate inter-arrival time (ms) for a homogeneous process with rate lam_max."""
+        if lam_max_hz <= 0.0:
+            # No spikes possible at all at this moment
+            return np.inf
+        # Exponential with rate lam_max (in Hz) → seconds, then convert to ms
+        return rng.exponential(1.0 / lam_max_hz) * 1000.0
+
+    def generate_spikes(
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
+        self._simulation_length = simulation_length
+        rng = np.random.default_rng(self.random_seed)
+
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        # Normalize parameter lists (support scalar-or-list semantics like your original)
+        def as_list(val, n):
+            return val if isinstance(val, list) else [val] * n
+
+        n_epochs = len(timestamps_block.timestamps())
+        baseline_list = as_list(self.baseline_hz, n_epochs)
+        amplitude_list = as_list(self.amplitude_hz, n_epochs)
+        modfreq_list = as_list(self.modulation_frequency_hz, n_epochs)
+        phase_list = as_list(self.phase_rad, n_epochs)
+        duration_list = as_list(self.duration, n_epochs)
+
+        # Upper-bound on expected spikes to guard against pathological params
+        # Use the per-epoch maximum rate (baseline + amplitude, clipped >=0)
+        total_expected = 0.0
+        for dur_ms, b, a in zip(duration_list, baseline_list, amplitude_list):
+            lam_max = max(0.0, b + a)  # Hz
+            total_expected += (dur_ms / 1000.0) * lam_max * len(gids)
+        if total_expected > _MAX_POISSON_SPIKE_LIMIT:
+            raise OBIONEError(
+                f"Sinusoidal Poisson input exceeds maximum allowed number of spikes "
+                f"({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
+
+        gid_spike_map: dict[int, list[float]] = {}
+
+        # Iterate epochs (non-overlapping enforced, like the original)
+        for idx, t0 in enumerate(timestamps_block.timestamps()):
+            start_time = t0 + self.timestamp_offset
+            end_time = start_time + duration_list[idx]
+
+            if (
+                idx < n_epochs - 1
+                and not end_time < timestamps_block.timestamps()[idx + 1]
+            ):
+                raise ValueError("Stimulus time intervals overlap!")
+
+            b_hz = float(baseline_list[idx])
+            a_hz = float(amplitude_list[idx])
+            f_hz = float(modfreq_list[idx])
+            phi = float(phase_list[idx])
+
+            # Thinning with epoch-specific λ_max
+            lam_max_hz = max(0.0, b_hz + a_hz)
+
+            for gid in gids:
+                spikes = []
+                t = start_time
+                while t < end_time:
+                    # 1) Draw candidate from homogeneous process with λ_max
+                    dt_ms = self._draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)
+                    if not np.isfinite(dt_ms):
+                        break  # no spikes possible with current λ_max (i.e., λ_max==0)
+                    t_candidate = t + dt_ms
+                    if t_candidate >= end_time:
+                        break
+
+                    # 2) Accept with probability λ(t_candidate)/λ_max
+                    lam_tc = self._lambda_t_ms(t_candidate, b_hz, a_hz, f_hz, phi)
+                    if lam_max_hz > 0.0:
+                        accept_prob = lam_tc / lam_max_hz
+                        if rng.uniform() <= accept_prob:
+                            spikes.append(t_candidate)
+
+                    # 3) Move time forward regardless of accept/reject
+                    t = t_candidate
+
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] += spikes
+                else:
+                    gid_spike_map[gid] = spikes
+
+        self._spike_file = f"{self.block_name}_spikes.h5"
+        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)

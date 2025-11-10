@@ -146,6 +146,7 @@ __all__ = [
     "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
+    "SinusoidalPoissonSpikeStimulus",
     "SomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
@@ -257,6 +258,7 @@ from obi_one.scientific.blocks.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
+    SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
