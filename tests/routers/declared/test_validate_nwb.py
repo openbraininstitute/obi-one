@@ -35,7 +35,7 @@ class TestValidateNWBFile:
     @pytest.mark.asyncio
     async def test_validate_invalid_extension():
         """Test that invalid file extension raises HTTPException."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         file = UploadFile(
             filename="test.txt",
@@ -52,7 +52,7 @@ class TestValidateNWBFile:
     @pytest.mark.asyncio
     async def test_validate_empty_file():
         """Test that empty file raises HTTPException."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         file = UploadFile(
             filename="test.nwb",
@@ -69,7 +69,7 @@ class TestValidateNWBFile:
     @pytest.mark.asyncio
     async def test_validate_no_filename():
         """Test that file without filename raises HTTPException."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         file = UploadFile(
             filename="",
@@ -93,7 +93,7 @@ class TestValidateNWBFile:
         
         file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
         
-        result = await _process_nwb(file, "/tmp/test.nwb")
+        result = await _process_nwb(file, "test.nwb")
         
         assert result is None
         mock_subprocess.assert_called_once()
@@ -104,7 +104,7 @@ class TestValidateNWBFile:
     @patch("asyncio.create_subprocess_exec")
     async def test_process_nwb_validation_fails(mock_subprocess):
         """Test that validation failure raises HTTPException."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         mock_process = AsyncMock()
         mock_process.communicate.return_value = (b"", b"Validation error")
@@ -114,7 +114,7 @@ class TestValidateNWBFile:
         file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
         
         with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "/tmp/test.nwb")
+            await _process_nwb(file, "test.nwb")
         
         assert exc_info.value.status_code == 400
         assert "validation failed" in str(exc_info.value.detail).lower()
@@ -124,14 +124,14 @@ class TestValidateNWBFile:
     @patch("asyncio.create_subprocess_exec")
     async def test_process_nwb_tool_not_found(mock_subprocess):
         """Test that missing pynwb-validate tool raises HTTPException."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         mock_subprocess.side_effect = FileNotFoundError("pynwb-validate not found")
         
         file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
         
         with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "/tmp/test.nwb")
+            await _process_nwb(file, "test.nwb")
         
         assert exc_info.value.status_code == 500
         assert "validation tool" in str(exc_info.value.detail).lower()
@@ -141,14 +141,14 @@ class TestValidateNWBFile:
     @patch("asyncio.create_subprocess_exec")
     async def test_process_nwb_unexpected_error(mock_subprocess):
         """Test that unexpected errors are handled properly."""
-        from fastapi import HTTPException
+        from fastapi import HTTPException  # noqa: PLC0415
         
         mock_subprocess.side_effect = RuntimeError("Unexpected error")
         
         file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
         
         with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "/tmp/test.nwb")
+            await _process_nwb(file, "test.nwb")
         
         assert exc_info.value.status_code == 500
         assert "unexpected error" in str(exc_info.value.detail).lower()
@@ -160,7 +160,7 @@ class TestValidateNWBFile:
     @patch("app.endpoints.nwb_validation._process_nwb")
     @patch("app.endpoints.nwb_validation._validate_and_read_nwb_file")
     async def test_test_nwb_file_endpoint(
-        mock_validate, mock_process, mock_tempfile, mock_unlink
+        mock_validate, mock_process, mock_tempfile, _mock_unlink
     ):
         """Test the complete test_nwb_file endpoint."""
         # Mock validation
@@ -170,7 +170,7 @@ class TestValidateNWBFile:
         mock_temp = MagicMock()
         mock_temp.__enter__ = MagicMock(return_value=mock_temp)
         mock_temp.__exit__ = MagicMock(return_value=None)
-        mock_temp.name = "/tmp/test123.nwb"
+        mock_temp.name = "test123.nwb"
         mock_tempfile.return_value = mock_temp
         
         # Mock process (successful validation)
@@ -186,4 +186,4 @@ class TestValidateNWBFile:
         mock_validate.assert_called_once()
         mock_process.assert_called_once()
         mock_temp.write.assert_called_once_with(b"content")
-        
+    
