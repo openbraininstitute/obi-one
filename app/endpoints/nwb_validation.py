@@ -1,7 +1,7 @@
 import asyncio
 import pathlib
 import tempfile
-import zipfile # Needed for `_create_zip_file_sync` which is not directly used but imported in the original structure. Since you only asked for things *not* needed, I'll keep this one out in the final version as it's not used by the NWB endpoint, but I am keeping subprocess for the pynwb-validate command.
+import zipfile  # Needed for `_create_zip_file_sync` which is not directly used but imported in the original structure. Since you only asked for things *not* needed, I'll keep this one out in the final version as it's not used by the NWB endpoint, but I am keeping subprocess for the pynwb-validate command.
 import subprocess
 from http import HTTPStatus
 from typing import Annotated
@@ -9,7 +9,10 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from app.errors import ApiError, ApiErrorCode # ApiError and ApiErrorCode are needed for HTTPException detail.
+from app.errors import (
+    ApiError,
+    ApiErrorCode,
+)  # ApiError and ApiErrorCode are needed for HTTPException detail.
 from app.logger import L
 
 
@@ -25,18 +28,16 @@ def _handle_empty_file(file: UploadFile) -> None:
     )
 
 
-async def _process_nwb(
-    file: UploadFile, temp_file_path: str, file_extension: str
-)  -> None:
+async def _process_nwb(file: UploadFile, temp_file_path: str, file_extension: str) -> None:
     """Validate nwb file with pynwb."""
     try:
         command = ["pynwb-validate", temp_file_path]
         # Run the command
         result = subprocess.run(
-        command,
-        check=True,  # Raise an exception for non-zero return codes (i.e., errors)
-        capture_output=True, # Capture stdout and stderr
-        text=True # Decode stdout and stderr as text
+            command,
+            check=True,  # Raise an exception for non-zero return codes (i.e., errors)
+            capture_output=True,  # Capture stdout and stderr
+            text=True,  # Decode stdout and stderr as text
         )
     except Exception as e:
         L.error(f"Nwb error validating file {file.filename}: {e!s}")
@@ -105,7 +106,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             # However, since the function returns `None` implicitly and the `test-nwb-file` endpoint doesn't need to return a file,
             # I will assume `FileResponse` was an oversight in the original file and make the function return implicitly `None` on success.
             # For a FastAPI endpoint, returning `None` on success results in a 200 OK with no body.
-            return # Returning None for success (HTTP 200 OK)
+            return  # Returning None for success (HTTP 200 OK)
         finally:
             if temp_file_path:
                 try:
