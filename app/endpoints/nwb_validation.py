@@ -24,8 +24,9 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     )
 
 
-def _raise_validation_error(file: UploadFile, stderr: str, stdout: str,
-                             returncode: int) -> NoReturn:
+def _raise_validation_error(
+    file: UploadFile, stderr: str, stdout: str, returncode: int
+) -> NoReturn:
     """Raises an HTTPException for NWB validation failure."""
     error_output = stderr or stdout
     L.error(f"Nwb validation failed for file {file.filename}")
@@ -126,9 +127,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
-            await _process_nwb(
-                file=file, temp_file_path=temp_file_path
-            )
+            await _process_nwb(file=file, temp_file_path=temp_file_path)
             return
         finally:
             if temp_file_path:
