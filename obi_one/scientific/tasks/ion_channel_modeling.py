@@ -460,15 +460,15 @@ class IonChannelFittingTask(Task):
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
 
         # register the Activity
-        L.info("-- Register IonChannelModelingExecution Entity")
-        db_client.register_entity(
-            entitysdk.models.IonChannelModelingExecution(
-                start_time=datetime.now(UTC),
-                status=SimulationExecutionStatus.done,
-                used=[self.config.single_entity],
-                generated=[model],
-            )
-        )
+        # L.info("-- Register IonChannelModelingExecution Entity")
+        # db_client.register_entity(
+        #     entitysdk.models.IonChannelModelingExecution(
+        #         start_time=datetime.now(UTC),
+        #         status=SimulationExecutionStatus.done,
+        #         used=[self.config.single_entity],
+        #         generated=[model],
+        #     )
+        # )
 
         return model.id
 
