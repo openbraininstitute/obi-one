@@ -4,12 +4,13 @@ import tempfile
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.errors import (
-    ApiErrorCode,
-)
+from app.dependencies.auth import user_verified
+from app.errors import ApiErrorCode
 from app.logger import L
+
+router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
 def _handle_empty_file(file: UploadFile) -> NoReturn:
