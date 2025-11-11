@@ -1,219 +1,189 @@
-"""Unit tests for the validate_all_nwb_readers function."""
+"""Unit tests for NWB validation endpoint."""
 
-from unittest.mock import ANY, MagicMock, patch
+from io import BytesIO
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import UploadFile
 
 from app.endpoints.nwb_validation import (
-    validate_all_nwb_readers,
+    _process_nwb,
+    _validate_and_read_nwb_file,
+    test_nwb_file,
 )
 
-READER_MODULE = "bluepyefe.reader"
 
-
-class TestValidateAllNWBReaders:
-    """Test suite for validate_all_nwb_readers function."""
+class TestValidateNWBFile:
+    """Test suite for NWB validation endpoint functions."""
 
     @staticmethod
-    @patch(f"{READER_MODULE}.TRTNWBReader")
-    @patch(f"{READER_MODULE}.ScalaNWBReader")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_first_reader_succeeds(mock_aibs, mock_bbp, mock_scala, mock_trt):
-        """Test that function returns successfully when first reader works."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs_instance = MagicMock()
-        mock_aibs_instance.read.return_value = {"data": "some data"}
-        mock_aibs.return_value = mock_aibs_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once_with("/path/to/file.nwb", ANY)
-        mock_aibs_instance.read.assert_called_once()
-
-        mock_bbp.assert_not_called()
-        mock_scala.assert_not_called()
-        mock_trt.assert_not_called()
+    @pytest.mark.asyncio
+    async def test_validate_valid_nwb_file():
+        """Test that valid .nwb file passes validation."""
+        content = b"mock nwb content"
+        file = UploadFile(
+            filename="test.nwb",
+            file=BytesIO(content)
+        )
+        
+        result = await _validate_and_read_nwb_file(file)
+        
+        assert result[0] == content
+        assert result[1] == ".nwb"
 
     @staticmethod
-    @patch(f"{READER_MODULE}.TRTNWBReader")
-    @patch(f"{READER_MODULE}.ScalaNWBReader")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_second_reader_succeeds(mock_aibs, mock_bbp, mock_scala, mock_trt):
-        """Test that function tries second reader when first fails."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs.side_effect = Exception("AIBS reader failed")
-
-        mock_bbp.__name__ = "BBPNWBReader"
-        mock_bbp_instance = MagicMock()
-        mock_bbp_instance.read.return_value = {"data": "some data"}
-        mock_bbp.return_value = mock_bbp_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once()
-        mock_bbp.assert_called_once_with("/path/to/file.nwb", ANY)
-        mock_bbp_instance.read.assert_called_once()
-
-        mock_scala.assert_not_called()
-        mock_trt.assert_not_called()
+    @pytest.mark.asyncio
+    async def test_validate_invalid_extension():
+        """Test that invalid file extension raises HTTPException."""
+        from fastapi import HTTPException
+        
+        file = UploadFile(
+            filename="test.txt",
+            file=BytesIO(b"content")
+        )
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _validate_and_read_nwb_file(file)
+        
+        assert exc_info.value.status_code == 400
+        assert "Invalid file extension" in str(exc_info.value.detail)
 
     @staticmethod
-    @patch(f"{READER_MODULE}.TRTNWBReader")
-    @patch(f"{READER_MODULE}.ScalaNWBReader")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_last_reader_succeeds(mock_aibs, mock_bbp, mock_scala, mock_trt):
-        """Test that function tries all readers until the last one succeeds."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs.side_effect = Exception("AIBS failed")
-
-        mock_bbp.__name__ = "BBPNWBReader"
-        mock_bbp.side_effect = Exception("BBP failed")
-
-        mock_scala.__name__ = "ScalaNWBReader"
-        mock_scala.side_effect = Exception("Scala failed")
-
-        mock_trt.__name__ = "TRTNWBReader"
-        mock_trt_instance = MagicMock()
-        mock_trt_instance.read.return_value = {"data": "some data"}
-        mock_trt.return_value = mock_trt_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once()
-        mock_bbp.assert_called_once()
-        mock_scala.assert_called_once()
-        mock_trt.assert_called_once_with("/path/to/file.nwb", ANY)
-        mock_trt_instance.read.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_validate_empty_file():
+        """Test that empty file raises HTTPException."""
+        from fastapi import HTTPException
+        
+        file = UploadFile(
+            filename="test.nwb",
+            file=BytesIO(b"")
+        )
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _validate_and_read_nwb_file(file)
+        
+        assert exc_info.value.status_code == 400
+        assert "empty" in str(exc_info.value.detail).lower()
 
     @staticmethod
-    @patch(f"{READER_MODULE}.TRTNWBReader")
-    @patch(f"{READER_MODULE}.ScalaNWBReader")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_all_readers_fail(mock_aibs, mock_bbp, mock_scala, mock_trt):
-        """Test that RuntimeError is raised when all readers fail."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs.side_effect = Exception("AIBS failed")
-
-        mock_bbp.__name__ = "BBPNWBReader"
-        mock_bbp.side_effect = ValueError("BBP failed")
-
-        mock_scala.__name__ = "ScalaNWBReader"
-        mock_scala.side_effect = OSError("Scala failed")
-
-        mock_trt.__name__ = "TRTNWBReader"
-        mock_trt.side_effect = RuntimeError("TRT failed")
-
-        with pytest.raises(RuntimeError, match="All NWB readers failed"):
-            validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once()
-        mock_bbp.assert_called_once()
-        mock_scala.assert_called_once()
-        mock_trt.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_validate_no_filename():
+        """Test that file without filename raises HTTPException."""
+        from fastapi import HTTPException
+        
+        file = UploadFile(
+            filename="",
+            file=BytesIO(b"content")
+        )
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _validate_and_read_nwb_file(file)
+        
+        assert exc_info.value.status_code == 400
 
     @staticmethod
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_reader_returns_none(mock_aibs, mock_bbp):
-        """Test that function continues when reader.read() returns None."""
-        mock_aibs_instance = MagicMock()
-        mock_aibs_instance.read.return_value = None
-        mock_aibs.return_value = mock_aibs_instance
-
-        mock_bbp_instance = MagicMock()
-        mock_bbp_instance.read.return_value = {"data": "some data"}
-        mock_bbp.return_value = mock_bbp_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once()
-        mock_aibs_instance.read.assert_called_once()
-        mock_bbp.assert_called_once()
-        mock_bbp_instance.read.assert_called_once()
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_process_nwb_success(mock_subprocess):
+        """Test successful NWB processing with pynwb-validate."""
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"valid", b"")
+        mock_process.returncode = 0
+        mock_subprocess.return_value = mock_process
+        
+        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
+        
+        result = await _process_nwb(file, "/tmp/test.nwb")
+        
+        assert result is None
+        mock_subprocess.assert_called_once()
+        assert "pynwb-validate" in str(mock_subprocess.call_args)
 
     @staticmethod
-    @patch(f"{READER_MODULE}.TRTNWBReader")
-    @patch(f"{READER_MODULE}.ScalaNWBReader")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_all_readers_return_none(mock_aibs, mock_bbp, mock_scala, mock_trt):
-        """Test that RuntimeError is raised when all readers return None."""
-        for mock_reader in (mock_aibs, mock_bbp, mock_scala, mock_trt):
-            mock_instance = MagicMock()
-            mock_instance.read.return_value = None
-            mock_reader.return_value = mock_instance
-
-        with pytest.raises(RuntimeError, match="All NWB readers failed"):
-            validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_aibs.assert_called_once()
-        mock_bbp.assert_called_once()
-        mock_scala.assert_called_once()
-        mock_trt.assert_called_once()
-
-    @staticmethod
-    @patch("app.endpoints.declared_endpoints.L")
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_logging_on_reader_failure(mock_aibs, mock_bbp, mock_logger):
-        """Test that failures are logged before trying next reader."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs.side_effect = ValueError("AIBS parsing error")
-
-        mock_bbp.__name__ = "BBPNWBReader"
-        mock_bbp_instance = MagicMock()
-        mock_bbp_instance.read.return_value = {"data": "some data"}
-        mock_bbp.return_value = mock_bbp_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_logger.warning.assert_called_once()
-        # L.warning("Reader %s failed for file %s: %s", name, path, error)
-        call_args = mock_logger.warning.call_args[0]
-        assert "Reader" in call_args[0]
-        assert "failed" in call_args[0]
-        assert call_args[1] == "AIBSNWBReader"
-        assert call_args[2] == "/path/to/file.nwb"
-        assert "AIBS parsing error" in str(call_args[3])
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_process_nwb_validation_fails(mock_subprocess):
+        """Test that validation failure raises HTTPException."""
+        from fastapi import HTTPException
+        
+        mock_process = AsyncMock()
+        mock_process.communicate.return_value = (b"", b"Validation error")
+        mock_process.returncode = 1
+        mock_subprocess.return_value = mock_process
+        
+        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _process_nwb(file, "/tmp/test.nwb")
+        
+        assert exc_info.value.status_code == 400
+        assert "validation failed" in str(exc_info.value.detail).lower()
 
     @staticmethod
-    @patch(f"{READER_MODULE}.BBPNWBReader")
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_reader_instantiation_fails(mock_aibs, mock_bbp):
-        """Test that function continues when reader instantiation fails."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs.side_effect = Exception("Cannot instantiate AIBS reader")
-
-        mock_bbp.__name__ = "BBPNWBReader"
-        mock_bbp_instance = MagicMock()
-        mock_bbp_instance.read.return_value = {"data": "some data"}
-        mock_bbp.return_value = mock_bbp_instance
-
-        validate_all_nwb_readers("/path/to/file.nwb")
-
-        mock_bbp.assert_called_once()
-        mock_bbp_instance.read.assert_called_once()
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_process_nwb_tool_not_found(mock_subprocess):
+        """Test that missing pynwb-validate tool raises HTTPException."""
+        from fastapi import HTTPException
+        
+        mock_subprocess.side_effect = FileNotFoundError("pynwb-validate not found")
+        
+        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _process_nwb(file, "/tmp/test.nwb")
+        
+        assert exc_info.value.status_code == 500
+        assert "validation tool" in str(exc_info.value.detail).lower()
 
     @staticmethod
-    @patch(f"{READER_MODULE}.AIBSNWBReader")
-    def test_protocols_passed_to_readers(mock_aibs):
-        """Test that TEST_PROTOCOLS are passed to each reader."""
-        mock_aibs.__name__ = "AIBSNWBReader"
-        mock_aibs_instance = MagicMock()
-        mock_aibs_instance.read.return_value = {"data": "some data"}
-        mock_aibs.return_value = mock_aibs_instance
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_process_nwb_unexpected_error(mock_subprocess):
+        """Test that unexpected errors are handled properly."""
+        from fastapi import HTTPException
+        
+        mock_subprocess.side_effect = RuntimeError("Unexpected error")
+        
+        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await _process_nwb(file, "/tmp/test.nwb")
+        
+        assert exc_info.value.status_code == 500
+        assert "unexpected error" in str(exc_info.value.detail).lower()
 
-        file_path = "/path/to/file.nwb"
-        validate_all_nwb_readers(file_path)
-
-        assert mock_aibs.call_count == 1
-        call_args = mock_aibs.call_args[0]
-        assert call_args[0] == file_path
-        protocols = call_args[1]
-        assert isinstance(protocols, list)
-        assert len(protocols) > 0
-        assert "APThreshold" in protocols
+    @staticmethod
+    @pytest.mark.asyncio
+    @patch("pathlib.Path.unlink")
+    @patch("tempfile.NamedTemporaryFile")
+    @patch("app.endpoints.nwb_validation._process_nwb")
+    @patch("app.endpoints.nwb_validation._validate_and_read_nwb_file")
+    async def test_test_nwb_file_endpoint(
+        mock_validate, mock_process, mock_tempfile, mock_unlink
+    ):
+        """Test the complete test_nwb_file endpoint."""
+        # Mock validation
+        mock_validate.return_value = (b"content", ".nwb")
+        
+        # Mock tempfile
+        mock_temp = MagicMock()
+        mock_temp.__enter__ = MagicMock(return_value=mock_temp)
+        mock_temp.__exit__ = MagicMock(return_value=None)
+        mock_temp.name = "/tmp/test123.nwb"
+        mock_tempfile.return_value = mock_temp
+        
+        # Mock process (successful validation)
+        mock_process.return_value = None
+        
+        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
+        
+        # Note: This assumes test_nwb_file is accessible. If it's not exported,
+        # you may need to test via the router or make it accessible
+        result = await test_nwb_file(file)
+        
+        assert result is None
+        mock_validate.assert_called_once()
+        mock_process.assert_called_once()
+        mock_temp.write.assert_called_once_with(b"content")
+        
