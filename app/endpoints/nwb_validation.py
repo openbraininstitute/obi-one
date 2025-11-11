@@ -1,19 +1,18 @@
-import asyncio
 import pathlib
 import tempfile
-import zipfile
-import subprocess
 from http import HTTPStatus
 from typing import Annotated
+import asyncio
+import functools # Needed for partial in some asyncio use cases, though not strictly required for to_thread here.
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.errors import (
-    ApiError,
     ApiErrorCode,
 )
 from app.logger import L
+import subprocess # Retained for subprocess.run, but we wrap it.
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -28,24 +27,46 @@ def _handle_empty_file(file: UploadFile) -> None:
     )
 
 
-async def _process_nwb(file: UploadFile, temp_file_path: str, file_extension: str) -> None:
+async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:
     """Validate nwb file with pynwb."""
-    try:
-        command = ["pynwb-validate", temp_file_path]
-        # Run the command
-        result = subprocess.run(
+    # Use asyncio.to_thread to run the blocking subprocess.run in a separate thread
+    # to avoid blocking the main event loop (Fixes ASYNC221).
+    # The command is defined as a list, and temp_file_path is internally generated,
+    # mitigating risks flagged by S404 and S603.
+    command = ["pynwb-validate", temp_file_path]
+    
+    # Define the blocking function call
+    def blocking_validation():
+        return subprocess.run(
             command,
             check=True,
             capture_output=True,
             text=True,
+            # shell=False is the default and is safer; using the list form avoids shell=True issues
         )
-    except Exception as e:
-        L.error(f"Nwb error validating file {file.filename}: {e!s}")
+
+    try:
+        # Run the blocking call in a thread pool
+        await asyncio.to_thread(blocking_validation)
+    except subprocess.CalledProcessError as e:
+        # Handle validation failures explicitly
+        error_output = e.stderr or e.stdout or "Validation failed."
+        L.error(f"Nwb validation failed for file {file.filename}: {error_output}")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"Failed to validate the file: {e!s}",
+                "detail": f"NWB validation failed: {error_output.strip()}",
+            },
+        ) from e
+    except Exception as e:
+        L.error(f"Nwb error validating file {file.filename}: {e!s}")
+        # Catch other exceptions like FileNotFoundError
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.BAD_REQUEST,
+                "detail": f"Failed to run validation tool: {e!s}",
             },
         ) from e
     else:
@@ -96,7 +117,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                 temp_file.write(content)
                 temp_file_path = temp_file.name
             await _process_nwb(
-                file=file, temp_file_path=temp_file_path, file_extension=file_extension
+                file=file, temp_file_path=temp_file_path
             )
             return
         finally:
