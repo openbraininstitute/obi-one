@@ -208,7 +208,7 @@ class ScanGenerationTask(Task, abc.ABC):
     def execute(
         self,
         db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.core.Identifiable:
+    ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan

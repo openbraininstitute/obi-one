@@ -4,17 +4,18 @@ import json
 import logging
 import subprocess  # noqa: S404
 import uuid
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar
 
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from fastapi import HTTPException
-from pydantic import Field, NonNegativeFloat
+from pydantic import Field, StringConstraints
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
@@ -72,7 +73,6 @@ class BlockGroup(StrEnum):
     SETUP = "Setup"
     EQUATIONS = "Equations"
     GATEEXPONENTS = "Gates Exponents"
-    ADVANCED = "Advanced"
 
 
 class IonChannelFittingScanConfig(ScanConfig):
@@ -88,251 +88,48 @@ class IonChannelFittingScanConfig(ScanConfig):
                 BlockGroup.SETUP,
                 BlockGroup.EQUATIONS,
                 BlockGroup.GATEEXPONENTS,
-                BlockGroup.ADVANCED,
             ]
         }
 
     class Initialize(Block):
-        # traces
-        recordings: tuple[IonChannelRecordingFromID] = Field(
-            description="IDs of the traces of interest."
+        recordings: IonChannelRecordingFromID = Field(
+            title="Ion channel recording", description="IDs of the traces of interest."
         )
 
-        # mod file creation
-        suffix: str = Field(
-            title="Ion channel SUFFIX (ion channel name to use in the mod file)",
-            description=("SUFFIX to use in the mod file. Will also be used for the mod file name."),
-            min_length=1,
-        )
-        ion: Literal["k"] = Field(
-            # we will only have potassium recordings first,
-            # so it makes sense to have this default value here
-            title="Ion",
-            default="k",
-            description=("Ion to use in the mod file."),
-        )
-        temperature: int = Field(
-            title="Temperature",
-            description=(
-                "Temperature of the model. "
-                "Should be consistent with the one at which the recordings were made. "
-            ),
-            units="C",
-            ge=-273,
+        ion_channel_name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")] = (
+            Field(
+                title="Ion channel name",
+                description=(
+                    "The name you want to give to the generated ion channel model "
+                    "(used as SUFFIX in the mod file). "
+                    "Name must start with a letter or underscore, and can only contain "
+                    "letters, numbers, and underscores."
+                ),
+                min_length=1,
+                default="DefaultIonChannelName",
+            )
         )
 
     class GateExponents(Block):
-        # mod file creation
         m_power: int = Field(
             title="m exponent in channel equation",
             default=1,
-            ge=0,  # can be zero
-            le=4,  # should be 4 or lower
-            description=("Raise m to this power in the BREAKPOINT equation."),
+            ge=1,
+            le=4,
+            description=(
+                r"Exponent \(p\) of \(m\) in the channel equation: "
+                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            ),
         )
         h_power: int = Field(
             title="h exponent in channel equation",
             default=1,
-            ge=0,  # can be zero
-            le=4,  # should be 4 or lower
-            description=("Raise h to this power in the BREAKPOINT equation."),
-        )
-
-    class StimulusVoltageExclusion(Block):
-        # trace loading customisation: voltage exclusion
-        act_exclude_voltages_above: float | None = Field(
-            title="Exclude activation voltages above",
-            default=None,
+            ge=0,
+            le=4,
             description=(
-                "Do not use any activation traces responses from input voltages "
-                "above this value. Use 'None' not to exclude any trace."
+                r"Exponent \(q\) of \(h\) in the channel equation: "
+                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
             ),
-            units="mV",
-        )
-        act_exclude_voltages_below: float | None = Field(
-            title="Exclude activation voltages below",
-            default=None,
-            description=(
-                "Do not use any activation traces responses from input voltages "
-                "below this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-        inact_exclude_voltages_above: float | None = Field(
-            title="Exclude inactivation voltages above",
-            default=None,
-            description=(
-                "Do not use any inactivation traces responses from input voltages "
-                "above this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-        inact_exclude_voltages_below: float | None = Field(
-            title="Exclude inactivation voltages below",
-            default=None,
-            description=(
-                "Do not use any inactivation traces responses from input voltages "
-                "below this value. Use 'None' not to exclude any trace."
-            ),
-            units="mV",
-        )
-
-    class StimulusTimings(Block):
-        # trace loading customisation: stimulus timings
-        act_stim_start: NonNegativeFloat | None = Field(
-            title="Activation stimulus start time",
-            default=None,
-            description=(
-                "Activation stimulus start timing. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with act_stim_start_correction."
-            ),
-            units="ms",
-        )
-        act_stim_end: NonNegativeFloat | None = Field(
-            title="Activation stimulus end time",
-            default=None,
-            description=(
-                "Activation stimulus end timing. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with act_stim_end_correction."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_start: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus start time for IV computation",
-            default=None,
-            description=(
-                "Inactivation stimulus start timing for IV computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_iv_stim_start_correction."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_end: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus end time for IV computation",
-            default=None,
-            description=(
-                "Inactivation stimulus end timing for IV computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_iv_stim_end_correction."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_start: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus start time for time constant computation",
-            default=None,
-            description=(
-                "Inactivation stimulus start timing for time constant computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_tc_stim_start_correction."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_end: NonNegativeFloat | None = Field(
-            title="Inactivation stimulus end time for time constant computation",
-            default=None,
-            description=(
-                "Inactivation stimulus end timing for time constant computation. "
-                "If None, this value will be taken from nwb "
-                "and will be corrected with inact_tc_stim_end_correction."
-            ),
-            units="ms",
-        )
-
-        # trace loading customisation: stimulus timings corrections
-        act_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to activation stimulus start time taken from source file, "
-                "in ms."
-            ),
-            default=0,
-            description=(
-                "Correction to add to the timing taken from nwb file for activation stimulus start."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
-        )
-        act_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to activation stimulus end time taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file for activation stimulus end."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus start time "
-                "for IV computation taken from source file, in ms."
-            ),
-            default=5,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus start for IV computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_iv_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus end time "
-                "for IV computation taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus end for IV computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_start_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus start time "
-                "for time constant computation taken from source file, in ms."
-            ),
-            default=0,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus start for time constant computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Positive values are expected since we usually want to remove the response "
-                "right after the beginning of the stimulus, but negative values are also accepted."
-            ),
-            units="ms",
-        )
-        inact_tc_stim_end_correction: float = Field(
-            title=(
-                "Correction to apply to inactivation stimulus end time "
-                "for time constant computation taken from source file, in ms."
-            ),
-            default=-1,
-            description=(
-                "Correction to add to the timing taken from nwb file "
-                "for inactivation stimulus end for time constant computation."
-                "This is mainly used to remove artefacts "
-                "that appear when stimulus is applied/removed."
-                "Negative values are expected since we usually want to remove the response "
-                "right before the end of the stimulus, but positive values are also accepted."
-            ),
-            units="ms",
         )
 
     initialize: Initialize = Field(
@@ -350,51 +147,58 @@ class IonChannelFittingScanConfig(ScanConfig):
     )
 
     minf_eq: equations_module.MInfUnion = Field(
-        title="m_{inf} equation",
+        title=r"m_{\infty} equation",
         reference_type=equations_module.MInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=0,
+        description=(
+            r"Steady state activation parameter \( m_{\infty} \) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+        ),
     )
     mtau_eq: equations_module.MTauUnion = Field(
         title=r"\tau_m equation",
         reference_type=equations_module.MTauReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=1,
+        description=(
+            r"Activation time constant \(\tau_m\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+        ),
     )
     hinf_eq: equations_module.HInfUnion = Field(
-        title="h_{inf} equation",
+        title=r"h_{\infty} equation",
         reference_type=equations_module.HInfReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=2,
+        description=(
+            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
     )
     htau_eq: equations_module.HTauUnion = Field(
         title=r"\tau_h equation",
         reference_type=equations_module.HTauReference.__name__,
         group=BlockGroup.EQUATIONS,
         group_order=3,
+        description=(
+            r"Inactivation time constant \(\tau_h\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
     )
 
     gate_exponents: GateExponents = Field(
         title="m & h gate exponents",
-        description="Set the power of m and h gates used in HH formalism equations.",
+        description=(
+            "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
         group=BlockGroup.GATEEXPONENTS,
         group_order=0,
-    )
-
-    stimulus_voltage_exclusion: StimulusVoltageExclusion = Field(
-        title="Stimulus voltage exclusion",
-        description=(
-            "Set the maximum and minimum voltages to consider for activation and inactivation."
-        ),
-        group=BlockGroup.ADVANCED,
-        group_order=0,
-    )
-
-    stimulus_timings: StimulusTimings = Field(
-        title="Stimulus timings",
-        description="Set the stimulus start and end timings for activation and inactivation.",
-        group=BlockGroup.ADVANCED,
-        group_order=1,
     )
 
     def create_campaign_entity_with_config(
@@ -402,35 +206,108 @@ class IonChannelFittingScanConfig(ScanConfig):
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
-    ) -> None:
+    ) -> entitysdk.models.IonChannelModelingCampaign:
         """Initializes the ion channel modeling campaign in the database."""
-        # TODO: and implement related entities on entitysdk
+        L.info("1. Initializing ion channel modeling campaign in the database...")
+        if multiple_value_parameters_dictionary is None:
+            multiple_value_parameters_dictionary = {}
+
+        L.info("-- Register IonChannelModelingCampaign Entity")
+        self._campaign = db_client.register_entity(
+            entitysdk.models.IonChannelModelingCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                input_recording_ids=[self.initialize.recordings.id_str],
+                scan_parameters=multiple_value_parameters_dictionary,
+            )
+        )
+
+        L.info("-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.IonChannelModelingCampaign,
+            file_path=output_root / "obi_one_scan.json",
+            file_content_type="application/json",
+            asset_label="campaign_generation_config",
+        )
+
+        return self._campaign
 
     def create_campaign_generation_entity(
         self,
-        ion_channel_modelings: list,
+        ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],
         db_client: entitysdk.client.Client,
     ) -> None:
         """Register the activity generating the ion channel modeling tasks in the database."""
-        # TODO: also implement entitysdk related entities
+        L.info("3. Saving completed ion channel modeling campaign generation")
+
+        L.info("-- Register IonChannelModelingGeneration Entity")
+        db_client.register_entity(
+            entitysdk.models.IonChannelModelingConfigGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=ion_channel_modelings,
+            )
+        )
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: Any
+    _single_entity: entitysdk.models.IonChannelModelingConfig
 
     @property
-    def single_entity(self) -> Any:
+    def single_entity(self) -> entitysdk.models.IonChannelModelingConfig:
         return self._single_entity
 
     def create_single_entity_with_config(
         self,
-        campaign: Any,
+        campaign: entitysdk.models.IonChannelModelingCampaign,
         db_client: entitysdk.client.Client,
-    ) -> None:
+    ) -> entitysdk.models.IonChannelModelingConfig:
         """Saves the simulation to the database."""
-        # TODO: also add related entities in entitysdk
+        L.info(f"2.{self.idx} Saving ion channel modeling config {self.idx} to database...")
+
+        # For now, we only support a single recording
+        if not isinstance(self.initialize.recordings, IonChannelRecordingFromID):
+            msg = (
+                "IonChannelModeling currently only supports a single IonChannelRecordingFromID. "
+                f"Got {type(self.initialize.recordings).__name__}"
+            )
+            raise OBIONEError(msg)
+
+        # Convert single recording to a list for future compatibility
+        recordings = [self.initialize.recordings]
+
+        # This loop will be useful when we support multiple recordings
+        for recording in recordings:
+            if not isinstance(recording, IonChannelRecordingFromID):
+                msg = (
+                    "IonChannelModeling can only be saved to entitycore if all input recordings "
+                    "are IonChannelRecordingFromID"
+                )
+                raise OBIONEError(msg)
+
+        L.info("-- Register IonChannelModeling Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.IonChannelModelingConfig(
+                name=f"IonChannelModelingConfig {self.idx}",
+                description=f"IonChannelModelingConfig {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                # Convert single recording to list for future compatibility
+                input_recording_ids=[r.id_str for r in recordings],
+                ion_channel_modeling_campaign_id=campaign.id,
+            )
+        )
+
+        L.info("-- Upload ion_channel_modeling_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.IonChannelModelingConfig,
+            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_content_type="application/json",
+            asset_label="ion_channel_modeling_generation_config",
+        )
 
 
 class IonChannelFittingTask(Task):
@@ -442,7 +319,11 @@ class IonChannelFittingTask(Task):
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
-        for recording in self.config.initialize.recordings:
+
+        # Convert single recording to a list for future compatibility
+        recordings = [self.config.initialize.recordings]
+
+        for recording in recordings:
             trace_paths.append(
                 recording.download_asset(
                     dest_dir=self.config.coordinate_output_root, db_client=db_client
@@ -524,38 +405,47 @@ class IonChannelFittingTask(Task):
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
-            ion_name=self.config.initialize.ion,
-            read=f"e{self.config.initialize.ion}",
-            write=f"i{self.config.initialize.ion}",
-            valence=None,  # should we put None or 1 here?
+            ion_name="k",  # TODO: fix this
+            read=["ek"],
+            write=["ik"],
+            valence=1,  # putting 1 for K for now. TODO: fix this
             main_ion=True,
         )
         neuron_block = entitysdk.models.NeuronBlock(
-            global_=None,
+            **{"global": [{"celsius": "degree C"}]},
             range=[
-                [
-                    {f"g{self.config.initialize.suffix}bar": "S/cm2"},
-                    {"g{self.config.initialize.suffix}": "S/cm2"},
-                    {"i{self.config.initialize.ion}": "mA/cm2"},
-                ]
+                {"gbar": "S/cm2"},
+                {"g": "S/cm2"},
+                {"ik": "mA/cm2"},
             ],
-            useion=useion,
-            nonspecific=None,
+            useion=[useion],
+            nonspecific=[],
         )
+
+        # Default subject: "Generic Mus musculus"
+        subject = db_client.get_entity(
+            entity_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07", entity_type=entitysdk.models.Subject
+        )
+
+        # Default brain_region: "Basic cell groups and regions"
+        brain_region = db_client.get_entity(
+            entity_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066",
+            entity_type=entitysdk.models.brain_region.BrainRegion,
+        )
+
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
-                name=self.config.initialize.suffix,
-                nmodl_suffix=self.config.initialize.suffix,
-                description=(
-                    f"Ion channel model of {self.config.initialize.suffix} "
-                    f"at {self.config.initialize.temperature} C."
-                ),
-                contributions=None,  # TBD
+                name=self.config.initialize.ion_channel_name,
+                nmodl_suffix=self.config.initialize.ion_channel_name,
+                description=(f"Ion channel model of {self.config.initialize.ion_channel_name} "),
+                contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=self.config.initialize.temperature,
+                temperature_celsius=-1,  # TODO: fix this
                 is_stochastic=False,
                 neuron_block=neuron_block,
+                brain_region=brain_region,
+                subject=subject,
             )
         )
 
@@ -564,14 +454,10 @@ class IonChannelFittingTask(Task):
             entity_type=entitysdk.models.IonChannelModel,
             file_path=mod_filepath,
             file_content_type=ContentType.application_mod,
-            asset_label="mod file",
+            asset_label="neuron_mechanisms",
         )
 
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
-
-        # register the Activity
-        L.info("-- Register IonChannelExecution Entity")
-        # TODO: re-implement this when entitysdk is ready
 
         return model.id
 
@@ -589,50 +475,49 @@ class IonChannelFittingTask(Task):
 
             # prepare data to feed
             eq_names = {
-                "minf": self.config.minf_eq.equation_key,
-                "mtau": self.config.mtau_eq.equation_key,
-                "hinf": self.config.hinf_eq.equation_key,
-                "htau": self.config.htau_eq.equation_key,
+                "minf": self.config.minf_eq.__class__.equation_key,
+                "mtau": self.config.mtau_eq.__class__.equation_key,
+                "hinf": self.config.hinf_eq.__class__.equation_key,
+                "htau": self.config.htau_eq.__class__.equation_key,
             }
             voltage_exclusion = {
                 "activation": {
-                    "above": self.config.stimulus_voltage_exclusion.act_exclude_voltages_above,
-                    "below": self.config.stimulus_voltage_exclusion.act_exclude_voltages_below,
+                    "above": None,
+                    "below": None,
                 },
                 "inactivation": {
-                    "above": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_above,
-                    "below": self.config.stimulus_voltage_exclusion.inact_exclude_voltages_below,
+                    "above": None,
+                    "below": None,
                 },
             }
             stim_timings = {
                 "activation": {
-                    "start": self.config.stimulus_timings.act_stim_start,
-                    "end": self.config.stimulus_timings.act_stim_end,
+                    "start": None,
+                    "end": None,
                 },
                 "inactivation_iv": {
-                    "start": self.config.stimulus_timings.inact_iv_stim_start,
-                    "end": self.config.stimulus_timings.inact_iv_stim_end,
+                    "start": None,
+                    "end": None,
                 },
                 "inactivation_tc": {
-                    "start": self.config.stimulus_timings.inact_tc_stim_start,
-                    "end": self.config.stimulus_timings.inact_tc_stim_end,
+                    "start": None,
+                    "end": None,
                 },
             }
             stim_timings_corrections = {
                 "activation": {
-                    "start": self.config.stimulus_timings.act_stim_start_correction,
-                    "end": self.config.stimulus_timings.act_stim_end_correction,
+                    "start": 0.0,
+                    "end": -1.0,
                 },
                 "inactivation_iv": {
-                    "start": self.config.stimulus_timings.inact_iv_stim_start_correction,
-                    "end": self.config.stimulus_timings.inact_iv_stim_end_correction,
+                    "start": 5.0,
+                    "end": -1.0,
                 },
                 "inactivation_tc": {
-                    "start": self.config.stimulus_timings.inact_tc_stim_start_correction,
-                    "end": self.config.stimulus_timings.inact_tc_stim_end_correction,
+                    "start": 0.0,
+                    "end": -1.0,
                 },
             }
-
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
@@ -647,12 +532,13 @@ class IonChannelFittingTask(Task):
             # create new mod file
             mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = mechanisms_dir / f"{self.config.initialize.suffix}.mod"
+            output_name = mechanisms_dir / f"{self.config.initialize.ion_channel_name}.mod"
+
             write_vgate_output(
                 eq_names=eq_names,
                 eq_popt=eq_popt,
-                suffix=self.config.initialize.suffix,
-                ion=self.config.initialize.ion,
+                suffix=self.config.initialize.ion_channel_name,
+                ion="k",
                 m_power=self.config.gate_exponents.m_power,
                 h_power=self.config.gate_exponents.h_power,
                 output_name=output_name,
@@ -671,12 +557,12 @@ class IonChannelFittingTask(Task):
 
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.config.initialize.suffix,
+                mech_suffix=self.config.initialize.ion_channel_name,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current=f"i{self.config.initialize.ion}",
+                mech_current="ik",
                 # no need to actually give temperature because model is not temperature-dependent
-                temperature=self.config.initialize.temperature,
-                mech_conductance_name=f"g{self.config.initialize.suffix}bar",
+                temperature=-1,
+                mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
@@ -688,6 +574,7 @@ class IonChannelFittingTask(Task):
             )
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            error_message = f"Ion channel modeling failed: {e}"
+            raise Exception(error_message) from e  # noqa: TRY002
         else:
             return model_id
