@@ -160,7 +160,7 @@ class TestValidateNWBFile:
     @patch("app.endpoints.nwb_validation._process_nwb")
     @patch("app.endpoints.nwb_validation._validate_and_read_nwb_file")
     async def test_test_nwb_file_endpoint(
-        mock_validate, mock_process, mock_tempfile, _mock_unlink
+        mock_validate, mock_process, mock_tempfile
     ):
         """Test the complete test_nwb_file endpoint."""
         # Mock validation
@@ -186,4 +186,4 @@ class TestValidateNWBFile:
         mock_validate.assert_called_once()
         mock_process.assert_called_once()
         mock_temp.write.assert_called_once_with(b"content")
-    
+        
