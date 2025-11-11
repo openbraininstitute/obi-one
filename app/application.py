@@ -21,6 +21,7 @@ from app.endpoints import (
     ephys_metrics,
     morphology_metrics,
     morphology_validation,
+    nwb_validation,
     multi_values,
     scan_config,
 )
