@@ -4,7 +4,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-from app.endpoints.declared_endpoints import (
+from app.endpoints.nwb_validation import (
     validate_all_nwb_readers,
 )
 
