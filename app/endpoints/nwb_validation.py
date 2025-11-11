@@ -1,9 +1,8 @@
 import pathlib
 import tempfile
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, NoReturn
 import asyncio
-import functools # Needed for partial in some asyncio use cases, though not strictly required for to_thread here.
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -12,10 +11,9 @@ from app.errors import (
     ApiErrorCode,
 )
 from app.logger import L
-import subprocess # Retained for subprocess.run, but we wrap it.
 
 
-def _handle_empty_file(file: UploadFile) -> None:
+def _handle_empty_file(file: UploadFile) -> NoReturn: # Added NoReturn for clarity
     """Handle empty file upload by raising an appropriate HTTPException."""
     L.error(f"Empty file uploaded: {file.filename}")
     raise HTTPException(
@@ -28,45 +26,54 @@ def _handle_empty_file(file: UploadFile) -> None:
 
 
 async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:
-    """Validate nwb file with pynwb."""
-    # Use asyncio.to_thread to run the blocking subprocess.run in a separate thread
-    # to avoid blocking the main event loop (Fixes ASYNC221).
-    # The command is defined as a list, and temp_file_path is internally generated,
-    # mitigating risks flagged by S404 and S603.
-    command = ["pynwb-validate", temp_file_path]
+    """Validate nwb file with pynwb using asyncio subprocess."""
+    command_args = ["pynwb-validate", temp_file_path]
     
-    # Define the blocking function call
-    def blocking_validation():
-        return subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            # shell=False is the default and is safer; using the list form avoids shell=True issues
+    try:
+        # Run the command asynchronously. This uses the list of arguments, avoiding shell injection.
+        process = await asyncio.create_subprocess_exec(
+            command_args[0], 
+            *command_args[1:],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
 
-    try:
-        # Run the blocking call in a thread pool
-        await asyncio.to_thread(blocking_validation)
-    except subprocess.CalledProcessError as e:
-        # Handle validation failures explicitly
-        error_output = e.stderr or e.stdout or "Validation failed."
-        L.error(f"Nwb validation failed for file {file.filename}: {error_output}")
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"NWB validation failed: {error_output.strip()}",
-            },
-        ) from e
-    except Exception as e:
-        L.error(f"Nwb error validating file {file.filename}: {e!s}")
-        # Catch other exceptions like FileNotFoundError
+        # Wait for the process to complete
+        stdout_data, stderr_data = await process.communicate()
+        
+        # Decode output
+        stdout = stdout_data.decode().strip()
+        stderr = stderr_data.decode().strip()
+
+        # Check the return code
+        if process.returncode != 0:
+            error_output = stderr if stderr else stdout
+            L.error(f"Nwb validation failed for file {file.filename} (Exit code {process.returncode}): {error_output}")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": f"NWB validation failed: {error_output}",
+                },
+            )
+
+    except FileNotFoundError as e:
+        L.error(f"Validation tool not found: {e!s}")
+        # Catch exceptions if 'pynwb-validate' is not in the PATH
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"Failed to run validation tool: {e!s}",
+                "detail": f"Required validation tool 'pynwb-validate' not found.",
+            },
+        ) from e
+    except Exception as e:
+        L.error(f"Unexpected Nwb error validating file {file.filename}: {e!s}")
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.BAD_REQUEST,
+                "detail": f"An unexpected error occurred during validation: {e!s}",
             },
         ) from e
     else:
@@ -107,7 +114,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
     )
     async def test_nwb_file(
         file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
-    ) -> FileResponse:
+    ) -> None: # Changed return type from FileResponse to None since the function returns nothing on success
         content, file_extension = await _validate_and_read_nwb_file(file)
 
         temp_file_path = ""
