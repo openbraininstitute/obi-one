@@ -16,6 +16,7 @@ from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_POISSON_SPIKE_LIMIT,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
@@ -662,6 +663,10 @@ class SpikeStimulus(Stimulus):
                     gid_list.append(gid)
         spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=["t", "gid"])
         spike_df = spike_df.astype({"t": float, "gid": int})
+        # plt.figure()
+        # plt.scatter(spike_df["t"], spike_df["gid"], s=1)
+        # plt.savefig("/Users/james/Documents/obi/code/obi-one/obi_one/scientific/spike_raster.png")
+        # plt.close()
         spike_df_sorted = spike_df.sort_values(by=["t", "gid"])  # Sort by time
         with h5py.File(spike_file, "w") as f:
             pop = f.create_group(f"/spikes/{source_node_population}")
@@ -683,7 +688,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
@@ -802,7 +810,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
     """Spike times drawn from an inhomogeneous Poisson process with sinusoidal rate.
 
     The instantaneous rate is:
-        λ(t) = max(0, baseline_hz + amplitude_hz * sin(2π * freq_hz * t_s + phase_rad))
+        λ(t) = max(0, minimum_rate + maximum_rate * sin(2π * freq_hz * t_s + phase_rad))
 
     Sent from all neurons in the source neuron set to efferently connected
     neurons in the target neuron set.
@@ -814,36 +822,42 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
     _input_type: str = "spikes"
 
     # --- timing ---
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
-        description="Time duration in milliseconds for how long input is activated.",
+        description="Time duration of the stimulus in milliseconds.",
         units="ms",
     )
 
     # --- sinusoidal rate params ---
-    baseline_hz: Annotated[
-        NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)
-    ] | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]] = Field(
-        default=5.0,
-        title="Baseline rate",
-        description="Baseline (Hz) around which the sinusoid oscillates.",
+    minimum_rate: (
+        Annotated[NonNegativeFloat, Field(le=50.0)]
+        | list[Annotated[NonNegativeFloat, Field(le=50.0)]]
+    ) = Field(
+        default=0.0,
+        title="Minimum Rate",
+        description="Minimum rate of the stimulus in Hz.",
         units="Hz",
     )
 
-    amplitude_hz: Annotated[
-        NonNegativeFloat, Field(ge=0.0)
-    ] | list[Annotated[NonNegativeFloat, Field(ge=0.0)]] = Field(
-        default=5.0,
-        title="Amplitude",
-        description="Sinusoid amplitude (Hz). Instantaneous rate is clipped at 0.",
+    maximum_rate: (
+        Annotated[NonNegativeFloat, Field(le=50.0)]
+        | list[Annotated[NonNegativeFloat, Field(le=50.0)]]
+    ) = Field(
+        default=10.0,
+        title="Maximum Rate",
+        description="Maximum rate of the stimulus in Hz.",
         units="Hz",
     )
 
-    modulation_frequency_hz: Annotated[
-        NonNegativeFloat, Field(ge=0.0)
-    ] | list[Annotated[NonNegativeFloat, Field(ge=0.0)]] = Field(
-        default=1.0,
+    modulation_frequency_hz: (
+        Annotated[NonNegativeFloat, Field(le=100000.0)]
+        | list[Annotated[NonNegativeFloat, Field(le=100000.0)]]
+    ) = Field(
+        default=5.0,
         title="Modulation Frequency",
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
         units="Hz",
@@ -851,7 +865,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
     phase_rad: float | list[float] = Field(
         default=0.0,
-        title="Phase",
+        title="Phase Offset",
         description="Phase offset (radians) of the sinusoid.",
         units="rad",
     )
@@ -862,22 +876,42 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Seed for the random number generator to ensure reproducibility.",
     )
 
+    def amplitude_greater_equal_baseline(self):
+        """Check if amplitude is greater than or equal to baseline for all epochs."""
+        if isinstance(self.maximum_rate, list):
+            amplitude_list = self.maximum_rate
+        else:
+            amplitude_list = [self.maximum_rate]
+        if isinstance(self.minimum_rate, list):
+            baseline_list = self.minimum_rate
+        else:
+            baseline_list = [self.minimum_rate]
+
+        for a, b in zip(amplitude_list, baseline_list, strict=False):
+            if a < b:
+                msg = "Maximum rate must be greater than or equal to minimum rate."
+                raise ValueError(msg)
+
     # --- internal helpers ---
     @staticmethod
-    def _lambda_t_ms(t_ms: float, baseline_hz: float, amplitude_hz: float,
-                     mod_freq_hz: float, phase_rad: float) -> float:
+    def _lambda_t_ms(
+        t_ms: float, minimum_rate: float, maximum_rate: float, mod_freq_hz: float, phase_rad: float
+    ) -> float:
         """Instantaneous rate λ(t) at time t in ms, returned in Hz."""
         t_s = t_ms / 1000.0
-        lam = baseline_hz + amplitude_hz * np.sin(2.0 * np.pi * mod_freq_hz * t_s + phase_rad)
-        return max(0.0, lam)
+        lam = minimum_rate + ((maximum_rate - minimum_rate) / 2.0) * (
+            (np.sin(2.0 * np.pi * mod_freq_hz * t_s + phase_rad) + 1.0) / 2.0
+        )  # * 2.0
+        if lam < 0.0:
+            raise OBIONEError("Lambda(t) computed to be negative, which is invalid.")
+        return lam
 
-    def _draw_inhomogeneous_poisson_interval_ms(
-        self, rng, lam_max_hz: float
-    ) -> float:
+    def _draw_inhomogeneous_poisson_interval_ms(self, rng, lam_max_hz: float) -> float:
         """Draw a candidate inter-arrival time (ms) for a homogeneous process with rate lam_max."""
         if lam_max_hz <= 0.0:
+            raise ValueError("Lambda(t) computed to be negative, which is invalid.")
             # No spikes possible at all at this moment
-            return np.inf
+            # return np.inf
         # Exponential with rate lam_max (in Hz) → seconds, then convert to ms
         return rng.exponential(1.0 / lam_max_hz) * 1000.0
 
@@ -888,6 +922,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         simulation_length: NonNegativeFloat,
         source_node_population: str | None = None,
     ) -> None:
+        self.amplitude_greater_equal_baseline()
+
         self._simulation_length = simulation_length
         rng = np.random.default_rng(self.random_seed)
 
@@ -902,8 +938,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             return val if isinstance(val, list) else [val] * n
 
         n_epochs = len(timestamps_block.timestamps())
-        baseline_list = as_list(self.baseline_hz, n_epochs)
-        amplitude_list = as_list(self.amplitude_hz, n_epochs)
+        baseline_list = as_list(self.minimum_rate, n_epochs)
+        amplitude_list = as_list(self.maximum_rate, n_epochs)
         modfreq_list = as_list(self.modulation_frequency_hz, n_epochs)
         phase_list = as_list(self.phase_rad, n_epochs)
         duration_list = as_list(self.duration, n_epochs)
@@ -911,11 +947,11 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         # Upper-bound on expected spikes to guard against pathological params
         # Use the per-epoch maximum rate (baseline + amplitude, clipped >=0)
         total_expected = 0.0
-        for dur_ms, b, a in zip(duration_list, baseline_list, amplitude_list):
+        for dur_ms, b, a in zip(duration_list, baseline_list, amplitude_list, strict=False):
             lam_max = max(0.0, b + a)  # Hz
             total_expected += (dur_ms / 1000.0) * lam_max * len(gids)
         if total_expected > _MAX_POISSON_SPIKE_LIMIT:
-            raise OBIONEError(
+            raise ValueError(
                 f"Sinusoidal Poisson input exceeds maximum allowed number of spikes "
                 f"({_MAX_POISSON_SPIKE_LIMIT})!"
             )
@@ -927,10 +963,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             start_time = t0 + self.timestamp_offset
             end_time = start_time + duration_list[idx]
 
-            if (
-                idx < n_epochs - 1
-                and not end_time < timestamps_block.timestamps()[idx + 1]
-            ):
+            if idx < n_epochs - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
                 raise ValueError("Stimulus time intervals overlap!")
 
             b_hz = float(baseline_list[idx])
@@ -969,4 +1002,6 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
                     gid_spike_map[gid] = spikes
 
         self._spike_file = f"{self.block_name}_spikes.h5"
-        self.write_spike_file(gid_spike_map, spike_file_path / self._spike_file, source_node_population)
+        self.write_spike_file(
+            gid_spike_map, spike_file_path / self._spike_file, source_node_population
+        )

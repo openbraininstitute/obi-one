@@ -23,22 +23,37 @@ def grid_scan_parameters_count_endpoint(
     scan_config: ScanConfigsUnion,
 ) -> int:
     L.info("grid_scan_parameters_endpoint")
-    grid_scan = GridScanGenerationTask(
-        form=scan_config,
-        output_root="",
-        coordinate_directory_option="ZERO_INDEX",
-    )
 
-    n_grid_scan_coordinates = np.prod(
-        [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
-    )
-    if n_grid_scan_coordinates > MAX_N_COORDINATES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
-                maximum allowed {MAX_N_COORDINATES}.",
+    try:
+        grid_scan = GridScanGenerationTask(
+            form=scan_config,
+            output_root="",
+            coordinate_directory_option="ZERO_INDEX",
         )
 
-    n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
+        n_grid_scan_coordinates = np.prod(
+            [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
+        )
+        if n_grid_scan_coordinates > MAX_N_COORDINATES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
+                    maximum allowed {MAX_N_COORDINATES}.",
+            )
 
-    return n_grid_scan_coordinates
+        n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
+
+    except Exception as e:
+        error_msg = str(e)
+
+        if len(e.args) == 1:
+            error_msg = str(e.args[0])
+        elif len(e.args) > 1:
+            error_msg = str(e.args)
+
+        L.error(error_msg)
+
+        raise HTTPException(status_code=500, detail=error_msg) from e
+
+    else:
+        return n_grid_scan_coordinates
