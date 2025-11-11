@@ -27,6 +27,7 @@ from entitysdk.models import (
 )
 from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
+from pydantic import Field
 from voxcell import CellCollection
 
 from obi_one.core.base import OBIBaseModel
@@ -110,13 +111,37 @@ def assemble_publication_links(
 class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
-    cave_token: str | None = None
+    cave_token: str | None = Field(
+        default=None,
+        title="CAVEclient access token",
+        description="""Token to authenticate access to the EM dataset with.
+        If a token is stored in a secrets file, this does not need to be provided.
+        See: https://caveclient.readthedocs.io/en/latest/guide/authentication.html""",
+    )
 
     class Initialize(Block):
-        spiny_neuron: CellMorphologyFromID | MEModelFromID
-        edge_population_name: str = "synaptome_afferents"
-        node_population_pre: str = "synaptome_afferent_neurons"
-        node_population_post: str = "biophysical_neuron"
+        spiny_neuron: CellMorphologyFromID | MEModelFromID = Field(
+            title="EM skeletonized morphology",
+            description="""A neuron morphology with spines obtained from an electron-microscopy
+            datasets through the skeletonization task.""",
+        )
+        edge_population_name: str = Field(
+            title="Edge population name",
+            description="Name of the edge population to write the synapse information into",
+            default="synaptome_afferents",
+        )
+        node_population_pre: str = Field(
+            title="Presynaptic node population name",
+            description="""Name of the node population to write the information about the
+            innervating neurons into""",
+            default="synaptome_afferent_neurons",
+        )
+        node_population_post: str = Field(
+            title="Postsynaptic node population name",
+            description="""Name of the node population to write the information about the
+            synaptome neuron into""",
+            default="biophysical_neuron",
+        )
 
     initialize: Initialize
 
@@ -318,7 +343,7 @@ class EMSynapseMappingTask(Task):
     def resolve_provenance(
         db_client: Client, morph_entity: CellMorphology
     ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
-        pt_root_id = int(morph_entity.name.split("-")[-1])
+        pt_root_id = int(morph_entity.description.split()[-1][:-1])
         source_mesh_entity = db_client.search_entity(
             entity_type=EMCellMesh, query={"dense_reconstruction_cell_id": pt_root_id}
         ).first()
