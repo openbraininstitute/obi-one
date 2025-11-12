@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 import tempfile
 import traceback
@@ -208,7 +209,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         entity_id = new_item.get(entity_id_key)
         if entity_id is None:
             return None
-    
+
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
         except (EntitySDKError, RequestException):
@@ -302,9 +303,7 @@ def register_measurements(
 ) -> dict[str, Any]:
     try:
         measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id,
-            entity_type="cell_morphology",
-            measurement_kinds=measurements
+            entity_id=entity_id, entity_type="cell_morphology", measurement_kinds=measurements
         )
         registered = client.register_entity(entity=measurement_annotation)
     except requests.exceptions.RequestException as e:
@@ -357,9 +356,9 @@ def _register_assets_and_measurements(
         if output2_path_obj.exists():
             register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
 
-    registered=register_measurements(client, entity_id, measurement_list)
+    registered = register_measurements(client, entity_id, measurement_list)
     return registered
-  
+
 
 # --- MAIN ENDPOINT ---
 @router.post(
@@ -409,7 +408,7 @@ async def morphology_metrics_calculation(
 
             data = register_morphology(client, entity_payload)
             entity_id = str(data.id)
-            data2=_register_assets_and_measurements(
+            data2 = _register_assets_and_measurements(
                 client,
                 entity_id,
                 morphology_name,
@@ -431,4 +430,9 @@ async def morphology_metrics_calculation(
             },
         ) from e
     else:
-        return {"entity_id": entity_id, "measurement_entity_id": measurement_entity_id, "status": "success", "morphology_name": morphology_name}
+        return {
+            "entity_id": entity_id,
+            "measurement_entity_id": measurement_entity_id,
+            "status": "success",
+            "morphology_name": morphology_name,
+        }
