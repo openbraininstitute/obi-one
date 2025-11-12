@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12.2, <3.13"
 
 [[package]]
@@ -2051,6 +2051,7 @@ dependencies = [
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
+    { name = "pynwb" },
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
@@ -2081,6 +2082,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.71" },
     { name = "blueetl" },
+    { name = "bluepyefe" },
     { name = "bluepyefe", specifier = ">=2.3.51" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
@@ -2106,6 +2108,7 @@ requires-dist = [
     { name = "pydantic-core" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
+    { name = "pynwb" },
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
