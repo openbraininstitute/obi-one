@@ -158,7 +158,7 @@ def test_validate_nwb_file_empty(
             },
         )
 
-    # SIM117 Fix: Use a single `with` statement
+    # SIM117 Fix: Combine all context managers into a single `with` statement
     with (
         patch(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",
@@ -169,9 +169,9 @@ def test_validate_nwb_file_empty(
             side_effect=fake_handle_empty,
         ),
         patch("app.endpoints.nwb_validation.validate_all_nwb_readers") as mock_validate,
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            endpoint(empty_nwb_file, background_tasks)
+        endpoint(empty_nwb_file, background_tasks)
 
     assert exc.value.status_code == 400
     assert "empty" in exc.value.detail["detail"].lower()
@@ -253,8 +253,8 @@ def test_validate_nwb_file_cleanup_on_error(
 ):
     saved_path = tmp_path / "cleanup.nwb"
 
-    # FIX: Revert _suffix to suffix to fix TypeError, accepting the ARG001 lint warning here.
-    def fake_save(file: UploadFile, suffix: str) -> str:
+    # FIX: Revert _suffix to suffix to fix TypeError. Suppress ARG001.
+    def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
         content = file.file.read()
         saved_path.write_bytes(content)
         return str(saved_path)
@@ -341,8 +341,8 @@ def test_validate_nwb_file_background_cleanup(
 ):
     saved_path = tmp_path / "background.nwb"
 
-    # FIX: Revert _suffix to suffix to fix TypeError, accepting the ARG001 lint warning here.
-    def fake_save(file: UploadFile, suffix: str) -> str:
+    # FIX: Revert _suffix to suffix to fix TypeError. Suppress ARG001.
+    def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
         content = file.file.read()
         saved_path.write_bytes(content)
         return str(saved_path)

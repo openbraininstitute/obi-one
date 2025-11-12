@@ -214,10 +214,10 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     """Save UploadFile to a temporary file synchronously."""
     # N806 Fix: Renamed CHUNK_SIZE to chunk_size
     chunk_size = 1024 * 1024  # 1 MB
-    
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = temp_file.name
-        
+
         try:
             file.file.seek(0)  # Reset pointer
             while True:
@@ -295,7 +295,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                     pathlib.Path(temp_file_path).unlink()
                 except OSError as cleanup_error:
                     L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
-            
+
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={
@@ -311,7 +311,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                     pathlib.Path(temp_file_path).unlink()
                 except OSError as cleanup_error:
                     L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
-            
+
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
@@ -322,5 +322,6 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_test_nwb_endpoint(router)
     return router
+
 
 router = activate_declared_endpoints(router)
