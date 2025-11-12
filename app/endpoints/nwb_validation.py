@@ -168,6 +168,7 @@ def validate_all_nwb_readers(nwb_file_path: str) -> None:
         ScalaNWBReader,
         TRTNWBReader,
     )
+
     readers = [AIBSNWBReader, BBPNWBReader, ScalaNWBReader, TRTNWBReader]
 
     all_failed = "All NWB readers failed."
@@ -194,6 +195,7 @@ class NWBValidationResponse(BaseModel):
 
     status: str
     message: str
+
 
 # -------------------------------------------------------------------------------------------------
 
