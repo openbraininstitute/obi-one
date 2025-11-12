@@ -1,5 +1,4 @@
 import json
-import os
 import pathlib
 import tempfile
 import traceback
@@ -326,7 +325,7 @@ def _prepare_entity_payload(
     entity_payload.update(update_map)
 
     if entity_payload.get("name") in {"test", None}:
-        filename_root, _ = os.path.splitext(original_filename)
+        filename_root = pathlib.Path(original_filename).stem
         entity_payload["name"] = f"Morphology: {filename_root}"
 
     return entity_payload
