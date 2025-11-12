@@ -15,7 +15,6 @@ from app.endpoints.nwb_validation import (
     NWBValidationResponse,
     activate_test_nwb_endpoint,
 )
-
 from app.logger import L
 
 
