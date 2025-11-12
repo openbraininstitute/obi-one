@@ -14,6 +14,15 @@ from app.logger import L
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
+# Max file size: 50 MB
+MAX_FILE_SIZE = 50 * 1024 * 1024
+
+
+class FileTooLargeError(Exception):
+    """Raised when an uploaded file exceeds the maximum allowed size."""
+
+    pass
+
 
 # --- NWB Validation Protocols and Reader Function ---
 
@@ -161,7 +170,6 @@ TEST_PROTOCOLS = [
 
 def validate_all_nwb_readers(nwb_file_path: str) -> None:
     """Try all NWB readers. Succeed if at least one works."""
-    # PLC0415 Fix: Suppress error as requested, keeping the import here.
     from bluepyefe.reader import (  # noqa: PLC0415
         AIBSNWBReader,
         BBPNWBReader,
@@ -214,8 +222,8 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
 
 def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     """Save UploadFile to a temporary file synchronously."""
-    # N806 Fix: Renamed CHUNK_SIZE to chunk_size
     chunk_size = 1024 * 1024  # 1 MB
+    total_size = 0  # Track total size written
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = temp_file.name
@@ -227,12 +235,22 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
                 chunk = file.file.read(chunk_size)
                 if not chunk:
                     break
+                
+                chunk_len = len(chunk)
+                total_size += chunk_len
+
+                # Check size limit before writing
+                if total_size > MAX_FILE_SIZE:
+                    pathlib.Path(temp_path).unlink(missing_ok=True)  # Eager cleanup of partially written file
+                    raise FileTooLargeError(
+                        f"File size exceeds the limit of {MAX_FILE_SIZE / (1024 * 1024):.0f} MB"
+                    )
+
                 temp_file.write(chunk)
         except Exception:
             if pathlib.Path(temp_path).exists():
                 pathlib.Path(temp_path).unlink(missing_ok=True)
             raise
-        # TRY300 Fix: Moved return to else block
         else:
             return temp_path
 
@@ -287,6 +305,17 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
             return NWBValidationResponse(
                 status="success",
                 message="NWB file validation successful.",
+            )
+
+        except FileTooLargeError:
+            L.error(f"NWB upload failed: File too large (Max: 50MB)")
+            # Cleanup is handled inside _save_upload_to_tempfile
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": f"Uploaded file is too large. Max size: 50 MB.",
+                },
             )
 
         except RuntimeError as e:

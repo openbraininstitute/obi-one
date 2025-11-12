@@ -16,7 +16,6 @@ from app.endpoints.nwb_validation import (
     activate_test_nwb_endpoint,
 )
 
-# --- PLC0415 Fix: Move import to top-level ---
 from app.logger import L
 
 
@@ -138,7 +137,6 @@ def test_validate_nwb_file_empty(
 ):
     saved_path = None
 
-    # ARG001 Fix: Prefix unused 'file' argument with _
     def fake_save(_file: UploadFile, suffix: str) -> str:
         nonlocal saved_path
         path = tmp_path / f"empty{suffix}"
@@ -153,12 +151,12 @@ def test_validate_nwb_file_empty(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": "BAD_REQUEST",  # real code uses ApiErrorCode.BAD_REQUEST
+                "code": "BAD_REQUEST",
                 "detail": "Uploaded file is empty",
             },
         )
 
-    # SIM117 Fix: Combine all context managers into a single `with` statement
+    # Indentation corrected here
     with (
         patch(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",
@@ -346,7 +344,6 @@ def test_validate_nwb_file_background_cleanup(
 ):
     saved_path = tmp_path / "background.nwb"
 
-    # FIX: Revert _suffix to suffix to fix TypeError. Suppress ARG001.
     def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
         content = file.file.read()
         saved_path.write_bytes(content)
