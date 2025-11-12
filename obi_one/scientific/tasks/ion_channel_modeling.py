@@ -422,26 +422,28 @@ class IonChannelFittingTask(Task):
             nonspecific=[],
         )
 
-        # Default subject: "Generic Mus musculus"
-        subject = db_client.get_entity(
-            entity_id="9edb44c6-33b5-403b-8ab6-0890cfb12d07", entity_type=entitysdk.models.Subject
-        )
+        # Get recording entity to access metadata
+        recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
 
-        # Default brain_region: "Basic cell groups and regions"
-        brain_region = db_client.get_entity(
-            entity_id="4642cddb-4fbe-4aae-bbf7-0946d6ada066",
-            entity_type=entitysdk.models.brain_region.BrainRegion,
-        )
+        # Extract subject and brain_region from recording metadata
+        subject = recording_entity.subject
+        brain_region = recording_entity.brain_region
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(
-                name=self.config.initialize.ion_channel_name,
+                name=self.config.info.campaign_name,
                 nmodl_suffix=self.config.initialize.ion_channel_name,
-                description=(f"Ion channel model of {self.config.initialize.ion_channel_name} "),
+                description=(
+                    f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
+                    f"made using recording: {recording_entity.name} "
+                    f"for (temperature: {recording_entity.temperature}), "
+                    f"brain region: {brain_region.name}, "
+                    f"and subject: {subject.name}."
+                ),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=-1,  # TODO: fix this
+                temperature_celsius=recording_entity.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
                 brain_region=brain_region,
@@ -555,13 +557,15 @@ class IonChannelFittingTask(Task):
                 check=True,
             )
 
+            # Get recording entity to access temperature
+            recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
+
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
                 mech_suffix=self.config.initialize.ion_channel_name,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",
-                # no need to actually give temperature because model is not temperature-dependent
-                temperature=-1,
+                temperature=recording_entity.temperature,
                 mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
