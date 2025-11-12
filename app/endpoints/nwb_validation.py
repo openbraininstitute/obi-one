@@ -218,6 +218,15 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     )
 
 
+# New helper function to abstract the raise statement (TRY301 fix)
+def _handle_file_too_large(temp_path: str) -> NoReturn:
+    """Handles cleanup and raises FileTooLargeError when the file size limit is exceeded."""
+    pathlib.Path(temp_path).unlink(missing_ok=True)
+    max_mb = MAX_FILE_SIZE / (1024 * 1024)
+    msg = f"File size exceeds the limit of {max_mb:.0f} MB"
+    raise FileTooLargeError(msg)
+
+
 def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     """Save UploadFile to a temporary file synchronously."""
     chunk_size = 1024 * 1024  # 1 MB
@@ -239,10 +248,7 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
 
                 # Check size limit before writing
                 if total_size > MAX_FILE_SIZE:
-                    pathlib.Path(temp_path).unlink(missing_ok=True)  # noqa: E501
-                    max_mb = MAX_FILE_SIZE / (1024 * 1024)
-                    msg = f"File size exceeds the limit of {max_mb:.0f} MB"
-                    raise FileTooLargeError(msg)
+                    _handle_file_too_large(temp_path)
 
                 temp_file.write(chunk)
         except Exception:
@@ -263,7 +269,7 @@ def _cleanup_temp_file(temp_path: str) -> None:
             L.warning(f"Failed to delete temp NWB file: {e}")
 
 
-# Endpoint logic is now a standalone function (C901 fix)
+# Endpoint logic is now a standalone function
 def validate_nwb_file(
     file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
     background_tasks: BackgroundTasks,
@@ -343,7 +349,6 @@ def validate_nwb_file(
 
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
     """Define NWB file validation endpoint."""
-
     router.post(
         "/validate-nwb-file",
         summary="Validate NWB file format.",
