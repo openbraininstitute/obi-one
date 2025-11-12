@@ -161,13 +161,13 @@ TEST_PROTOCOLS = [
 
 def validate_all_nwb_readers(nwb_file_path: str) -> None:
     """Try all NWB readers. Succeed if at least one works."""
-    from bluepyefe.reader import (
+    # PLC0415 Fix: Suppress error as requested, keeping the import here.
+    from bluepyefe.reader import (  # noqa: PLC0415
         AIBSNWBReader,
         BBPNWBReader,
         ScalaNWBReader,
         TRTNWBReader,
     )
-
     readers = [AIBSNWBReader, BBPNWBReader, ScalaNWBReader, TRTNWBReader]
 
     all_failed = "All NWB readers failed."
@@ -195,7 +195,6 @@ class NWBValidationResponse(BaseModel):
     status: str
     message: str
 
-
 # -------------------------------------------------------------------------------------------------
 
 
@@ -213,23 +212,27 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
 
 def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     """Save UploadFile to a temporary file synchronously."""
-    CHUNK_SIZE = 1024 * 1024  # 1 MB
-
+    # N806 Fix: Renamed CHUNK_SIZE to chunk_size
+    chunk_size = 1024 * 1024  # 1 MB
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = temp_file.name
-
+        
         try:
             file.file.seek(0)  # Reset pointer
             while True:
-                chunk = file.file.read(CHUNK_SIZE)
+                # Use chunk_size
+                chunk = file.file.read(chunk_size)
                 if not chunk:
                     break
                 temp_file.write(chunk)
-            return temp_path
         except Exception:
             if pathlib.Path(temp_path).exists():
                 pathlib.Path(temp_path).unlink(missing_ok=True)
             raise
+        # TRY300 Fix: Moved return to else block
+        else:
+            return temp_path
 
 
 def _cleanup_temp_file(temp_path: str) -> None:
@@ -292,7 +295,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                     pathlib.Path(temp_file_path).unlink()
                 except OSError as cleanup_error:
                     L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
-
+            
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={
@@ -308,7 +311,7 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
                     pathlib.Path(temp_file_path).unlink()
                 except OSError as cleanup_error:
                     L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
-
+            
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
@@ -319,6 +322,5 @@ def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_test_nwb_endpoint(router)
     return router
-
 
 router = activate_declared_endpoints(router)

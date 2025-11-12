@@ -1,23 +1,23 @@
 """Integration tests for the NWB validation endpoint."""
 
+from collections.abc import Callable
+from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
-from typing import Callable
 from unittest.mock import MagicMock, patch
 
 import anyio
 import pytest
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
-from http import HTTPStatus
-
-# --- PLC0415 Fix: Move import to top-level ---
-from app.logger import L
 
 # Import AFTER patching
 from app.endpoints.nwb_validation import (
     NWBValidationResponse,
     activate_test_nwb_endpoint,
 )
+
+# --- PLC0415 Fix: Move import to top-level ---
+from app.logger import L
 
 
 # -----------------------------------------------------------------
@@ -209,15 +209,17 @@ def test_validate_nwb_file_reader_fails(
         saved_path = str(path)
         return saved_path
 
-    with patch(
-        "app.endpoints.nwb_validation._save_upload_to_tempfile",
-        side_effect=fake_save,
-    ), patch(
-        "app.endpoints.nwb_validation.validate_all_nwb_readers",
-        side_effect=RuntimeError("All NWB readers failed."),
+    with (
+        patch(
+            "app.endpoints.nwb_validation._save_upload_to_tempfile",
+            side_effect=fake_save,
+        ),
+        patch(
+            "app.endpoints.nwb_validation.validate_all_nwb_readers",
+            side_effect=RuntimeError("All NWB readers failed."),
+        ), pytest.raises(HTTPException) as exc
     ):
-        with pytest.raises(HTTPException) as exc:
-            endpoint(valid_nwb_file, background_tasks)
+        endpoint(valid_nwb_file, background_tasks)
 
     assert exc.value.status_code == 400
     assert "validation failed" in exc.value.detail["detail"].lower()
@@ -228,13 +230,14 @@ def test_validate_nwb_file_reader_fails(
 # -----------------------------------------------------------------
 # 4. SERVER ERROR → 500
 # -----------------------------------------------------------------
-def test_validate_nwb_file_os_error(endpoint, valid_nwb_file: UploadFile, background_tasks: BackgroundTasks):
+def test_validate_nwb_file_os_error(
+    endpoint, valid_nwb_file: UploadFile, background_tasks: BackgroundTasks
+):
     with patch(
         "app.endpoints.nwb_validation._save_upload_to_tempfile",
         side_effect=OSError("disk full"),
-    ):
-        with pytest.raises(HTTPException) as exc:
-            endpoint(valid_nwb_file, background_tasks)
+    ), pytest.raises(HTTPException) as exc:
+        endpoint(valid_nwb_file, background_tasks)
 
     assert exc.value.status_code == 500
 
@@ -256,15 +259,17 @@ def test_validate_nwb_file_cleanup_on_error(
         saved_path.write_bytes(content)
         return str(saved_path)
 
-    with patch(
-        "app.endpoints.nwb_validation._save_upload_to_tempfile",
-        side_effect=fake_save,
-    ), patch(
-        "app.endpoints.nwb_validation.validate_all_nwb_readers",
-        side_effect=RuntimeError("boom"),
+    with (
+        patch(
+            "app.endpoints.nwb_validation._save_upload_to_tempfile",
+            side_effect=fake_save,
+        ),
+        patch(
+            "app.endpoints.nwb_validation.validate_all_nwb_readers",
+            side_effect=RuntimeError("boom"),
+        ), pytest.raises(HTTPException)
     ):
-        with pytest.raises(HTTPException):
-            endpoint(valid_nwb_file, background_tasks)
+        endpoint(valid_nwb_file, background_tasks)
 
     assert not saved_path.exists()
 
@@ -309,7 +314,7 @@ def test_validate_nwb_file_real_reader_success(
         ),
         patch(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
-            return_value=None, # validate_all_nwb_readers will call the mocked readers
+            return_value=None,  # validate_all_nwb_readers will call the mocked readers
         ),
         patch("bluepyefe.reader.AIBSNWBReader", fake_reader),
         patch("bluepyefe.reader.BBPNWBReader", MagicMock()),
@@ -347,15 +352,19 @@ def test_validate_nwb_file_background_cleanup(
         if p.exists():
             p.unlink()
 
-    with patch(
-        "app.endpoints.nwb_validation._save_upload_to_tempfile",
-        side_effect=fake_save,
-    ), patch(
-        "app.endpoints.nwb_validation.validate_all_nwb_readers",
-        return_value=None,
-    ), patch(
-        "app.endpoints.nwb_validation._cleanup_temp_file",
-        side_effect=fake_cleanup,
+    with (
+        patch(
+            "app.endpoints.nwb_validation._save_upload_to_tempfile",
+            side_effect=fake_save,
+        ),
+        patch(
+            "app.endpoints.nwb_validation.validate_all_nwb_readers",
+            return_value=None,
+        ),
+        patch(
+            "app.endpoints.nwb_validation._cleanup_temp_file",
+            side_effect=fake_cleanup,
+        ),
     ):
         resp = endpoint(valid_nwb_file, background_tasks)
 
