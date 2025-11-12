@@ -1,16 +1,200 @@
-import asyncio
 import pathlib
 import tempfile
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
 from app.errors import ApiErrorCode
 from app.logger import L
 
+# --------------------------------------------
+
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
+
+
+# --- NWB Validation Protocols and Reader Function ---
+
+TEST_PROTOCOLS = [
+    "APThreshold",
+    "SAPThres1",
+    "SAPThres2",
+    "SAPThres3",
+    "SAPTres1",
+    "SAPTres2",
+    "SAPTres3",
+    "Step_150",
+    "Step_200",
+    "Step_250",
+    "Step_150_hyp",
+    "Step_200_hyp",
+    "Step_250_hyp",
+    "C1HP1sec",
+    "C1_HP_1sec",
+    "IRrest",
+    "SDelta",
+    "SIDRest",
+    "SIDThres",
+    "SIDTres",
+    "SRac",
+    "pulser",
+    "A",
+    "maria-STEP",
+    "APDrop",
+    "APResh",
+    "C1_HP_0.5sec",
+    "C1step_1sec",
+    "C1step_ag",
+    "C1step_highres",
+    "HighResThResp",
+    "IDRestTest",
+    "LoOffset1",
+    "LoOffset3",
+    "Rin",
+    "STesteCode",
+    "SSponAPs",
+    "SponAPs",
+    "SpontAPs",
+    "Test_eCode",
+    "TesteCode",
+    "step_1",
+    "step_2",
+    "step_3",
+    "IV_Test",
+    "SIV",
+    "APWaveform",
+    "SAPWaveform",
+    "Delta",
+    "FirePattern",
+    "H10S8",
+    "H20S8",
+    "H40S8",
+    "IDRest",
+    "IDThres",
+    "IDThresh",
+    "IDrest",
+    "IDthresh",
+    "IV",
+    "IV2",
+    "IV_-120",
+    "IV_-120_hyp",
+    "IV_-140",
+    "Rac",
+    "RMP",
+    "SetAmpl",
+    "SetISI",
+    "SetISITest",
+    "TestAmpl",
+    "TestRheo",
+    "TestSpikeRec",
+    "SpikeRec",
+    "ADHPdepol",
+    "ADHPhyperpol",
+    "ADHPrest",
+    "SSpikeRec",
+    "SpikeRec_Ih",
+    "SpikeRec_Kv1.1",
+    "scope",
+    "spuls",
+    "RPip",
+    "RSealClose",
+    "RSealOpen",
+    "CalOU01",
+    "CalOU04",
+    "ElecCal",
+    "NoiseOU3",
+    "NoisePP",
+    "SNoisePP",
+    "SNoiseSpiking",
+    "OU10Hi01",
+    "OU10Lo01",
+    "OU10Me01",
+    "SResetITC",
+    "STrueNoise",
+    "SubWhiteNoise",
+    "Truenoise",
+    "WhiteNoise",
+    "ResetITC",
+    "SponHold25",
+    "SponHold3",
+    "SponHold30",
+    "SSponHold",
+    "SponNoHold20",
+    "SponNoHold30",
+    "SSponNoHold",
+    "Spontaneous",
+    "hold_dep",
+    "hold_hyp",
+    "StartHold",
+    "StartNoHold",
+    "StartStandeCode",
+    "VacuumPulses",
+    "sAHP",
+    "IRdepol",
+    "IRhyperpol",
+    "IDdepol",
+    "IDhyperpol",
+    "SsAHP",
+    "HyperDePol",
+    "DeHyperPol",
+    "NegCheops",
+    "NegCheops1",
+    "NegCheops2",
+    "NegCheops3",
+    "NegCheops4",
+    "NegCheops5",
+    "PosCheops",
+    "Rin_dep",
+    "Rin_hyp",
+    "SineSpec",
+    "SSineSpec",
+    "Pulse",
+    "S2",
+    "s2",
+    "S30",
+    "SIne20Hz",
+    "A___.ibw",
+]
+
+
+def validate_all_nwb_readers(nwb_file_path: str) -> None:
+    """Try all NWB readers. Succeed if at least one works."""
+    from bluepyefe.reader import (
+        AIBSNWBReader,
+        BBPNWBReader,
+        ScalaNWBReader,
+        TRTNWBReader,
+    )
+    readers = [AIBSNWBReader, BBPNWBReader, ScalaNWBReader, TRTNWBReader]
+
+    all_failed = "All NWB readers failed."
+
+    for readerclass in readers:
+        try:
+            reader = readerclass(nwb_file_path, TEST_PROTOCOLS)
+            data = reader.read()
+            if data is not None:
+                return
+        except Exception as e:  # noqa: BLE001
+            L.warning(
+                "Reader %s failed for file %s: %s",
+                readerclass.__name__,
+                nwb_file_path,
+                str(e),
+            )
+            continue
+    raise RuntimeError(all_failed)
+
+
+class NWBValidationResponse(BaseModel):
+    """Schema for the NWB file validation success response."""
+
+    status: str
+    message: str
+
+# -------------------------------------------------------------------------------------------------
 
 
 def _handle_empty_file(file: UploadFile) -> NoReturn:
@@ -25,120 +209,113 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     )
 
 
-def _raise_validation_error(
-    file: UploadFile, stderr: str, stdout: str, returncode: int
-) -> NoReturn:
-    """Raises an HTTPException for NWB validation failure."""
-    error_output = stderr or stdout
-    L.error(f"Nwb validation failed for file {file.filename}")
-    L.error(f"Exit code {returncode}): {error_output}")
-    raise HTTPException(
-        status_code=HTTPStatus.BAD_REQUEST,
-        detail={
-            "code": ApiErrorCode.BAD_REQUEST,
-            "detail": f"NWB validation failed: {error_output}",
-        },
-    )
+def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
+    """Save UploadFile to a temporary file synchronously."""
+    CHUNK_SIZE = 1024 * 1024  # 1 MB
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_path = temp_file.name
+        
+        try:
+            file.file.seek(0)  # Reset pointer
+            while True:
+                chunk = file.file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                temp_file.write(chunk)
+            return temp_path
+        except Exception:
+            if pathlib.Path(temp_path).exists():
+                pathlib.Path(temp_path).unlink(missing_ok=True)
+            raise
 
 
-async def _process_nwb(file: UploadFile, temp_file_path: str) -> None:
-    """Validate nwb file with pynwb using asyncio subprocess."""
-    command_args = ["pynwb-validate", temp_file_path]
-
-    try:
-        process = await asyncio.create_subprocess_exec(
-            command_args[0],
-            *command_args[1:],
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        stdout_data, stderr_data = await process.communicate()
-
-        stdout = stdout_data.decode().strip()
-        stderr = stderr_data.decode().strip()
-
-        # Check the return code
-        if process.returncode != 0:
-            _raise_validation_error(file, stderr, stdout, process.returncode)
-
-    except FileNotFoundError as e:
-        L.error(f"Validation tool not found: {e!s}")
-        # Catch exceptions if 'pynwb-validate' is not in the PATH
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": "Required validation tool 'pynwb-validate' not found.",
-            },
-        ) from e
-    except Exception as e:
-        L.error(f"Unexpected Nwb error validating file {file.filename}: {e!s}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"An unexpected error occurred during validation: {e!s}",
-            },
-        ) from e
-    else:
-        return
-
-
-async def _validate_and_read_nwb_file(file: UploadFile) -> tuple[bytes, str]:
-    """Validates file extension and reads content."""
-    L.info(f"Received file upload: {file.filename}")
-    allowed_extensions = {".nwb"}
-    file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
-
-    if not file.filename or file_extension not in allowed_extensions:
-        L.error(f"Invalid file extension: {file_extension}")
-        valid_extensions = ", ".join(allowed_extensions)
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": f"Invalid file extension. Must be one of {valid_extensions}",
-            },
-        )
-
-    content = await file.read()
-    if not content:
-        _handle_empty_file(file)
-
-    return content, file_extension
+def _cleanup_temp_file(temp_path: str) -> None:
+    """Background task to clean up temporary file."""
+    if temp_path and pathlib.Path(temp_path).exists():
+        try:
+            pathlib.Path(temp_path).unlink()
+            L.debug(f"Cleaned up temp file: {temp_path}")
+        except OSError as e:
+            L.warning(f"Failed to delete temp NWB file: {e}")
 
 
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
-    """Define neuron file test endpoint."""
+    """Define NWB file validation endpoint."""
 
     @router.post(
-        "/test-nwb-file",
-        summary="Validate new format.",
-        description="Tests a new file (.nwb) with basic validation.",
+        "/validate-nwb-file",
+        summary="Validate NWB file format.",
+        description="Validates an uploaded .nwb file using registered readers.",
     )
-    async def test_nwb_file(
-        file: Annotated[UploadFile, File(description="Nwb file to upload (.swc, .h5, or .asc)")],
-    ) -> None:
-        content, file_extension = await _validate_and_read_nwb_file(file)
+    def validate_nwb_file(
+        file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
+        background_tasks: BackgroundTasks,
+    ) -> NWBValidationResponse:
+        file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
+        if file_extension != ".nwb":
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": "Invalid file extension. Must be .nwb",
+                },
+            )
 
         temp_file_path = ""
 
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-                temp_file.write(content)
-                temp_file_path = temp_file.name
-            await _process_nwb(file=file, temp_file_path=temp_file_path)
-            return
-        finally:
-            if temp_file_path:
+            # Save upload synchronously (still non-blocking for other requests)
+            temp_file_path = _save_upload_to_tempfile(file, suffix=".nwb")
+
+            if pathlib.Path(temp_file_path).stat().st_size == 0:
+                _handle_empty_file(file)
+
+            # Validate the file synchronously
+            validate_all_nwb_readers(temp_file_path)
+
+            # Schedule cleanup as a background task
+            background_tasks.add_task(_cleanup_temp_file, temp_file_path)
+
+            return NWBValidationResponse(
+                status="success",
+                message="NWB file validation successful.",
+            )
+
+        except RuntimeError as e:
+            L.error(f"NWB validation failed: {e!s}")
+            # Clean up immediately on error
+            if temp_file_path and pathlib.Path(temp_file_path).exists():
                 try:
-                    pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                except OSError as e:
-                    L.error(f"Error deleting temporary files: {e!s}")
+                    pathlib.Path(temp_file_path).unlink()
+                except OSError as cleanup_error:
+                    L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
+            
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": f"NWB validation failed: {e!s}",
+                },
+            ) from e
+        except OSError as e:
+            L.error(f"File system error during NWB validation: {e!s}")
+            # Clean up immediately on error
+            if temp_file_path and pathlib.Path(temp_file_path).exists():
+                try:
+                    pathlib.Path(temp_file_path).unlink()
+                except OSError as cleanup_error:
+                    L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
+            
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
+            ) from e
 
 
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_test_nwb_endpoint(router)
     return router
+
+router = activate_declared_endpoints(router)

@@ -1,189 +1,349 @@
-"""Unit tests for NWB validation endpoint."""
+"""Integration tests for the NWB validation endpoint."""
 
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from pathlib import Path
+from typing import Callable
+from unittest.mock import MagicMock, patch
 
+import anyio
 import pytest
-from fastapi import UploadFile
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
+from http import HTTPStatus
 
+# Import AFTER patching
 from app.endpoints.nwb_validation import (
-    _process_nwb,
-    _validate_and_read_nwb_file,
-    test_nwb_file,
+    NWBValidationResponse,
+    activate_test_nwb_endpoint,
 )
 
 
-class TestValidateNWBFile:
-    """Test suite for NWB validation endpoint functions."""
+# -----------------------------------------------------------------
+# GLOBAL FIXTURE: Patch ApiErrorCode BEFORE endpoint import
+# -----------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def patch_api_error_code():
+    mock_err = MagicMock()
+    mock_err.BAD_REQUEST = "BAD_REQUEST"
+    with patch("app.endpoints.nwb_validation.ApiErrorCode", mock_err):
+        yield
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_validate_valid_nwb_file():
-        """Test that valid .nwb file passes validation."""
-        content = b"mock nwb content"
-        file = UploadFile(
-            filename="test.nwb",
-            file=BytesIO(content)
-        )
-        
-        result = await _validate_and_read_nwb_file(file)
-        
-        assert result[0] == content
-        assert result[1] == ".nwb"
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_validate_invalid_extension():
-        """Test that invalid file extension raises HTTPException."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        file = UploadFile(
-            filename="test.txt",
-            file=BytesIO(b"content")
-        )
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _validate_and_read_nwb_file(file)
-        
-        assert exc_info.value.status_code == 400
-        assert "Invalid file extension" in str(exc_info.value.detail)
+# -----------------------------------------------------------------
+# Helper: the endpoint callable
+# -----------------------------------------------------------------
+@pytest.fixture
+def endpoint() -> Callable:
+    router = APIRouter()
+    activate_test_nwb_endpoint(router)
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_validate_empty_file():
-        """Test that empty file raises HTTPException."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        file = UploadFile(
-            filename="test.nwb",
-            file=BytesIO(b"")
-        )
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _validate_and_read_nwb_file(file)
-        
-        assert exc_info.value.status_code == 400
-        assert "empty" in str(exc_info.value.detail).lower()
+    route = None
+    for r in router.routes:
+        if getattr(r, "path", "").endswith("/validate-nwb-file") and "POST" in r.methods:
+            route = r
+            break
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_validate_no_filename():
-        """Test that file without filename raises HTTPException."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        file = UploadFile(
-            filename="",
-            file=BytesIO(b"content")
-        )
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _validate_and_read_nwb_file(file)
-        
-        assert exc_info.value.status_code == 400
+    if route is None:
+        raise AssertionError("NWB validation endpoint not registered")
+    return route.endpoint
 
-    @staticmethod
-    @pytest.mark.asyncio
-    @patch("asyncio.create_subprocess_exec")
-    async def test_process_nwb_success(mock_subprocess):
-        """Test successful NWB processing with pynwb-validate."""
-        mock_process = AsyncMock()
-        mock_process.communicate.return_value = (b"valid", b"")
-        mock_process.returncode = 0
-        mock_subprocess.return_value = mock_process
-        
-        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
-        
-        result = await _process_nwb(file, "test.nwb")
-        
-        assert result is None
-        mock_subprocess.assert_called_once()
-        assert "pynwb-validate" in str(mock_subprocess.call_args)
 
-    @staticmethod
-    @pytest.mark.asyncio
-    @patch("asyncio.create_subprocess_exec")
-    async def test_process_nwb_validation_fails(mock_subprocess):
-        """Test that validation failure raises HTTPException."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        mock_process = AsyncMock()
-        mock_process.communicate.return_value = (b"", b"Validation error")
-        mock_process.returncode = 1
-        mock_subprocess.return_value = mock_process
-        
-        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "test.nwb")
-        
-        assert exc_info.value.status_code == 400
-        assert "validation failed" in str(exc_info.value.detail).lower()
+@pytest.fixture
+def background_tasks() -> BackgroundTasks:
+    return BackgroundTasks()
 
-    @staticmethod
-    @pytest.mark.asyncio
-    @patch("asyncio.create_subprocess_exec")
-    async def test_process_nwb_tool_not_found(mock_subprocess):
-        """Test that missing pynwb-validate tool raises HTTPException."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        mock_subprocess.side_effect = FileNotFoundError("pynwb-validate not found")
-        
-        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "test.nwb")
-        
-        assert exc_info.value.status_code == 500
-        assert "validation tool" in str(exc_info.value.detail).lower()
 
-    @staticmethod
-    @pytest.mark.asyncio
-    @patch("asyncio.create_subprocess_exec")
-    async def test_process_nwb_unexpected_error(mock_subprocess):
-        """Test that unexpected errors are handled properly."""
-        from fastapi import HTTPException  # noqa: PLC0415
-        
-        mock_subprocess.side_effect = RuntimeError("Unexpected error")
-        
-        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await _process_nwb(file, "test.nwb")
-        
-        assert exc_info.value.status_code == 500
-        assert "unexpected error" in str(exc_info.value.detail).lower()
+# -----------------------------------------------------------------
+# Test files
+# -----------------------------------------------------------------
+@pytest.fixture
+def valid_nwb_file() -> UploadFile:
+    return UploadFile(filename="valid.nwb", file=BytesIO(b"mock-nwb-data"))
 
-    @staticmethod
-    @pytest.mark.asyncio
-    @patch("pathlib.Path.unlink")
-    @patch("tempfile.NamedTemporaryFile")
-    @patch("app.endpoints.nwb_validation._process_nwb")
-    @patch("app.endpoints.nwb_validation._validate_and_read_nwb_file")
-    async def test_test_nwb_file_endpoint(
-        mock_validate, mock_process, mock_tempfile
+
+@pytest.fixture
+def empty_nwb_file() -> UploadFile:
+    return UploadFile(filename="empty.nwb", file=BytesIO(b""))
+
+
+# -----------------------------------------------------------------
+# 1. SUCCESS
+# -----------------------------------------------------------------
+def test_validate_nwb_file_success(
+    endpoint,
+    valid_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = None
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        nonlocal saved_path
+        content = file.file.read()
+        path = tmp_path / f"saved{suffix}"
+        path.write_bytes(content)
+        saved_path = str(path)
+        return saved_path
+
+    def fake_cleanup(path: str) -> None:
+        p = Path(path)
+        if p.exists():
+            p.unlink()
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation.validate_all_nwb_readers",
+        return_value=None,
+    ), patch(
+        "app.endpoints.nwb_validation._cleanup_temp_file",
+        side_effect=fake_cleanup,
     ):
-        """Test the complete test_nwb_file endpoint."""
-        # Mock validation
-        mock_validate.return_value = (b"content", ".nwb")
-        
-        # Mock tempfile
-        mock_temp = MagicMock()
-        mock_temp.__enter__ = MagicMock(return_value=mock_temp)
-        mock_temp.__exit__ = MagicMock(return_value=None)
-        mock_temp.name = "test123.nwb"
-        mock_tempfile.return_value = mock_temp
-        
-        # Mock process (successful validation)
-        mock_process.return_value = None
-        
-        file = UploadFile(filename="test.nwb", file=BytesIO(b"content"))
-        
-        # Note: This assumes test_nwb_file is accessible. If it's not exported,
-        # you may need to test via the router or make it accessible
-        result = await test_nwb_file(file)
-        
-        assert result is None
-        mock_validate.assert_called_once()
-        mock_process.assert_called_once()
-        mock_temp.write.assert_called_once_with(b"content")
-        
+        resp: NWBValidationResponse = endpoint(valid_nwb_file, background_tasks)
+
+    assert resp.status == "success"
+    assert resp.message == "NWB file validation successful."
+
+    anyio.run(background_tasks)
+    assert not any(tmp_path.glob("saved*"))
+
+
+# -----------------------------------------------------------------
+# 2. CLIENT ERRORS (400)
+# -----------------------------------------------------------------
+def test_validate_nwb_file_invalid_extension(endpoint, background_tasks: BackgroundTasks):
+    file = UploadFile(filename="bad.txt", file=BytesIO(b"data"))
+
+    with pytest.raises(HTTPException) as exc:
+        endpoint(file, background_tasks)
+
+    assert exc.value.status_code == 400
+    assert "extension" in exc.value.detail["detail"].lower()
+
+
+def test_validate_nwb_file_empty(
+    endpoint,
+    empty_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = None
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        nonlocal saved_path
+        path = tmp_path / f"empty{suffix}"
+        path.write_bytes(b"")
+        saved_path = str(path)
+        return saved_path
+
+    def fake_handle_empty(upload_file: UploadFile) -> None:
+        from app.logger import L
+        L.error(f"Empty file uploaded: {upload_file.filename}")
+        if saved_path and Path(saved_path).exists():
+            Path(saved_path).unlink()
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": "BAD_REQUEST",  # real code uses ApiErrorCode.BAD_REQUEST
+                "detail": "Uploaded file is empty",
+            },
+        )
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation._handle_empty_file",
+        side_effect=fake_handle_empty,
+    ), patch(
+        "app.endpoints.nwb_validation.validate_all_nwb_readers"
+    ) as mock_validate:
+        with pytest.raises(HTTPException) as exc:
+            endpoint(empty_nwb_file, background_tasks)
+
+    assert exc.value.status_code == 400
+    assert "empty" in exc.value.detail["detail"].lower()
+    mock_validate.assert_not_called()
+    assert saved_path is not None
+    assert not Path(saved_path).exists()
+
+
+def test_validate_nwb_file_no_filename(endpoint, background_tasks: BackgroundTasks):
+    file = UploadFile(filename="", file=BytesIO(b"data"))
+
+    with pytest.raises(HTTPException) as exc:
+        endpoint(file, background_tasks)
+
+    assert exc.value.status_code == 400
+    assert "extension" in exc.value.detail["detail"].lower()
+
+
+# -----------------------------------------------------------------
+# 3. READER FAILS → 400
+# -----------------------------------------------------------------
+def test_validate_nwb_file_reader_fails(
+    endpoint,
+    valid_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = None
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        nonlocal saved_path
+        content = file.file.read()
+        path = tmp_path / f"fail{suffix}"
+        path.write_bytes(content)
+        saved_path = str(path)
+        return saved_path
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation.validate_all_nwb_readers",
+        side_effect=RuntimeError("All NWB readers failed."),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            endpoint(valid_nwb_file, background_tasks)
+
+    assert exc.value.status_code == 400
+    assert "validation failed" in exc.value.detail["detail"].lower()
+    assert saved_path is not None
+    assert not Path(saved_path).exists()
+
+
+# -----------------------------------------------------------------
+# 4. SERVER ERROR → 500
+# -----------------------------------------------------------------
+def test_validate_nwb_file_os_error(endpoint, valid_nwb_file: UploadFile, background_tasks: BackgroundTasks):
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=OSError("disk full"),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            endpoint(valid_nwb_file, background_tasks)
+
+    assert exc.value.status_code == 500
+
+
+# -----------------------------------------------------------------
+# 5. CLEAN-UP ON EXCEPTION
+# -----------------------------------------------------------------
+def test_validate_nwb_file_cleanup_on_error(
+    endpoint,
+    valid_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = tmp_path / "cleanup.nwb"
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        content = file.file.read()
+        saved_path.write_bytes(content)
+        return str(saved_path)
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation.validate_all_nwb_readers",
+        side_effect=RuntimeError("boom"),
+    ):
+        with pytest.raises(HTTPException):
+            endpoint(valid_nwb_file, background_tasks)
+
+    assert not saved_path.exists()
+
+
+# -----------------------------------------------------------------
+# 6. REAL READER (mocked import)
+# -----------------------------------------------------------------
+def test_validate_nwb_file_real_reader_success(
+    endpoint,
+    valid_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = None
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        nonlocal saved_path
+        content = file.file.read()
+        path = tmp_path / f"real{suffix}"
+        path.write_bytes(content)
+        saved_path = str(path)
+        return saved_path
+
+    fake_reader = MagicMock()
+    fake_reader_instance = MagicMock()
+    fake_reader_instance.read.return_value = {"mock": "data"}
+    fake_reader.return_value = fake_reader_instance
+
+    def fake_cleanup(path: str) -> None:
+        p = Path(path)
+        if p.exists():
+            p.unlink()
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation._cleanup_temp_file",
+        side_effect=fake_cleanup,
+    ), patch(
+        "bluepyefe.reader.AIBSNWBReader", fake_reader
+    ), patch(
+        "bluepyefe.reader.BBPNWBReader", MagicMock()
+    ), patch(
+        "bluepyefe.reader.ScalaNWBReader", MagicMock()
+    ), patch(
+        "bluepyefe.reader.TRTNWBReader", MagicMock()
+    ):
+        resp: NWBValidationResponse = endpoint(valid_nwb_file, background_tasks)
+
+    assert resp.status == "success"
+    assert resp.message == "NWB file validation successful."
+
+    anyio.run(background_tasks)
+    assert not any(tmp_path.glob("real*"))
+
+
+# -----------------------------------------------------------------
+# 7. BACKGROUND TASK CLEANUP
+# -----------------------------------------------------------------
+def test_validate_nwb_file_background_cleanup(
+    endpoint,
+    valid_nwb_file: UploadFile,
+    background_tasks: BackgroundTasks,
+    tmp_path: Path,
+):
+    saved_path = tmp_path / "background.nwb"
+
+    def fake_save(file: UploadFile, suffix: str) -> str:
+        content = file.file.read()
+        saved_path.write_bytes(content)
+        return str(saved_path)
+
+    def fake_cleanup(path: str) -> None:
+        p = Path(path)
+        if p.exists():
+            p.unlink()
+
+    with patch(
+        "app.endpoints.nwb_validation._save_upload_to_tempfile",
+        side_effect=fake_save,
+    ), patch(
+        "app.endpoints.nwb_validation.validate_all_nwb_readers",
+        return_value=None,
+    ), patch(
+        "app.endpoints.nwb_validation._cleanup_temp_file",
+        side_effect=fake_cleanup,
+    ):
+        resp = endpoint(valid_nwb_file, background_tasks)
+
+        assert saved_path.exists()
+        anyio.run(background_tasks)
+        assert not saved_path.exists()
+
+    assert resp.status == "success"
