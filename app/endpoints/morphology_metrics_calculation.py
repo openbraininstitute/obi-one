@@ -17,6 +17,7 @@ from entitysdk.models import (
     BrainRegion,
     CellMorphology,
     CellMorphologyProtocol,
+    License,
     MeasurementAnnotation,
     Subject,
 )
@@ -136,7 +137,7 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 
 # --- CONFIGURATION ---
 NEW_ENTITY_DEFAULTS = {
-    "authorized_public": False,
+    "authorized_public": True,
     "license_id": None,
     "name": "test",
     "description": "string",
@@ -207,6 +208,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         entity_id = new_item.get(entity_id_key)
         if entity_id is None:
             return None
+    
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
         except (EntitySDKError, RequestException):
@@ -229,18 +231,20 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     brain_region = _get_entity("brain_region", BrainRegion)
     morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
 
+    license = _get_entity("license", License)
     name = new_item.get("name")
     description = new_item.get("description")
-
+    authorized_public = new_item.get("authorized_public")
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol,
         name=name,
         description=description,
         subject=subject,
+        license=license,
         brain_region=brain_region,
         location=brain_location,
         legacy_id=None,
-        authorized_public=False,
+        authorized_public=authorized_public,
     )
 
     registered = client.register_entity(entity=morphology)
@@ -300,7 +304,7 @@ def register_measurements(
         measurement_annotation = MeasurementAnnotation(
             entity_id=entity_id,
             entity_type="cell_morphology",
-            measurement_kinds=measurements,
+            measurement_kinds=measurements
         )
         registered = client.register_entity(entity=measurement_annotation)
     except requests.exceptions.RequestException as e:
@@ -323,7 +327,8 @@ def _prepare_entity_payload(
     entity_payload.update(update_map)
 
     if entity_payload.get("name") in {"test", None}:
-        entity_payload["name"] = f"Morphology: {original_filename}"
+        filename_root, _ = os.path.splitext(original_filename)
+        entity_payload["name"] = f"Morphology: {filename_root}"
 
     return entity_payload
 
@@ -336,7 +341,7 @@ def _register_assets_and_measurements(
     measurement_list: list[dict[str, Any]],
     outputfile1: str,
     outputfile2: str,
-) -> None:
+) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as temp_dir_for_upload:
         temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
         temp_upload_path_obj.write_bytes(content)
@@ -352,8 +357,9 @@ def _register_assets_and_measurements(
         if output2_path_obj.exists():
             register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
 
-    register_measurements(client, entity_id, measurement_list)
-
+    registered=register_measurements(client, entity_id, measurement_list)
+    return registered
+  
 
 # --- MAIN ENDPOINT ---
 @router.post(
@@ -380,10 +386,8 @@ async def morphology_metrics_calculation(
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
-
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
-
     try:
         with ExitStack() as stack:
             temp_file_obj = stack.enter_context(
@@ -401,13 +405,11 @@ async def morphology_metrics_calculation(
                 stack.callback(pathlib.Path(outputfile1).unlink, missing_ok=True)
             if outputfile2:
                 stack.callback(pathlib.Path(outputfile2).unlink, missing_ok=True)
-
             measurement_list = _run_morphology_analysis(temp_file_path)
 
             data = register_morphology(client, entity_payload)
             entity_id = str(data.id)
-
-            _register_assets_and_measurements(
+            data2=_register_assets_and_measurements(
                 client,
                 entity_id,
                 morphology_name,
@@ -416,7 +418,7 @@ async def morphology_metrics_calculation(
                 outputfile1,
                 outputfile2,
             )
-
+            measurement_entity_id = str(data2.id)
     except HTTPException:
         raise
     except Exception as e:
@@ -429,4 +431,4 @@ async def morphology_metrics_calculation(
             },
         ) from e
     else:
-        return {"entity_id": entity_id, "status": "success", "morphology_name": morphology_name}
+        return {"entity_id": entity_id, "measurement_entity_id": measurement_entity_id, "status": "success", "morphology_name": morphology_name}
