@@ -217,7 +217,8 @@ def test_validate_nwb_file_reader_fails(
         patch(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
             side_effect=RuntimeError("All NWB readers failed."),
-        ), pytest.raises(HTTPException) as exc
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
         endpoint(valid_nwb_file, background_tasks)
 
@@ -233,10 +234,13 @@ def test_validate_nwb_file_reader_fails(
 def test_validate_nwb_file_os_error(
     endpoint, valid_nwb_file: UploadFile, background_tasks: BackgroundTasks
 ):
-    with patch(
-        "app.endpoints.nwb_validation._save_upload_to_tempfile",
-        side_effect=OSError("disk full"),
-    ), pytest.raises(HTTPException) as exc:
+    with (
+        patch(
+            "app.endpoints.nwb_validation._save_upload_to_tempfile",
+            side_effect=OSError("disk full"),
+        ),
+        pytest.raises(HTTPException) as exc,
+    ):
         endpoint(valid_nwb_file, background_tasks)
 
     assert exc.value.status_code == 500
@@ -267,7 +271,8 @@ def test_validate_nwb_file_cleanup_on_error(
         patch(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
             side_effect=RuntimeError("boom"),
-        ), pytest.raises(HTTPException)
+        ),
+        pytest.raises(HTTPException),
     ):
         endpoint(valid_nwb_file, background_tasks)
 
