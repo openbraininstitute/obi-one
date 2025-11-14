@@ -54,7 +54,7 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.5",
+    "entitysdk>=0.8.7",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
@@ -67,6 +67,9 @@ dependencies = [
     "bluecellulab>=2.6.71",
     # OBI NOTEBOOK
     "obi_notebook",
+    "morph_spines",
+    # CAVEclient
+    "caveclient>=7.11.0"
 ]
 
 [project.optional-dependencies]

@@ -1,13 +1,17 @@
 import io
 import logging
+import os
 from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
 import morphio
 import neurom
+from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
+from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology
 from entitysdk.models.entity import Entity
+from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
@@ -61,6 +65,39 @@ class CellMorphologyFromID(EntityFromID):
                 io.StringIO(self.swc_file_content(db_client)), reader="swc"
             )
         return self._neurom_morphology
+
+    def write_spiny_neuron_h5(
+        self, path_to: Path | str, db_client: entitysdk.client.Client = None
+    ) -> None:
+        entity = self.entity(db_client=db_client)
+        for asset in entity.assets:
+            if (asset.label == AssetLabel.morphology_with_spines) and (
+                asset.content_type == ContentType.application_x_hdf5
+            ):
+                db_client.download_file(
+                    entity_id=entity.id,
+                    entity_type=self.entitysdk_class,
+                    asset_id=asset.id,
+                    output_path=str(path_to),
+                )
+                return
+        err_str = "Entity does not have a spiny morphology asset!"
+        raise EntitySDKError(err_str)
+
+    def spiny_morphology(
+        self, db_client: entitysdk.client.Client | None = None, path: os.PathLike | None = None
+    ) -> MorphologyWithSpines:
+        entity = self.entity(db_client=db_client)
+        if path is None:
+            path = Path.cwd()
+        if not isinstance(path, Path):
+            path = Path(path)
+        if Path(path).is_dir():
+            path = path / (entity.name + ".h5")  # NOQA: PLR6104
+
+        self.write_spiny_neuron_h5(path, db_client)
+        spiny_morph = load_morphology_with_spines(str(path))
+        return spiny_morph
 
     def morphio_morphology(self, db_client: entitysdk.client.Client = None) -> morphio.Morphology:
         """Getter for the morphio_morphology property.
