@@ -70,6 +70,37 @@ class CircuitExtractionScanConfig(ScanConfig):
         description="Information about the circuit extraction campaign.",
     )
 
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: entitysdk.client.Client = None,
+    ) -> entitysdk.models.SimulationCampaign:
+        """Initializes the circuit extraction campaign in the database."""
+        L.info("1. Initializing circuit extraction campaign in the database...")
+        if multiple_value_parameters_dictionary is None:
+            multiple_value_parameters_dictionary = {}
+
+        L.info("-- Register CircuitExtractionCampaign Entity")
+        self._campaign = db_client.register_entity(
+            entitysdk.models.CircuitExtractionCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                scan_parameters=multiple_value_parameters_dictionary,
+            )
+        )
+
+        L.info("-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.CircuitExtractionCampaign,
+            file_path=output_root / "obi_one_scan.json",
+            file_content_type="application/json",
+            asset_label="campaign_generation_config",
+        )
+
+        return self._campaign
+
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
