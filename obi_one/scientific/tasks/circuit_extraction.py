@@ -580,18 +580,18 @@ class CircuitExtractionTask(Task):
     def _update_execution_activity(
         db_client: Client = None,
         execution_entity: models.CircuitExtractionExecution | None = None,
-        circuit_entity: models.Circuit | None = None,
+        circuit_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
         """Updates a CircuitExtractionExecution activity after task completion."""
         # TODO: To be moved to service or task manager
-        if db_client and execution_entity and circuit_entity:
+        if db_client and execution_entity and circuit_id:
             done_entity = db_client.update_entity(
                 entity_id=execution_entity.id,
                 entity_type=models.CircuitExtractionExecution,
                 attrs_or_entity={
                     "end_time": datetime.now(UTC),
                     "status": types.CircuitExtractionExecutionStatus.done,
-                    "generated": [circuit_entity],
+                    "generated_ids": [circuit_id],
                 },
             )
             L.info("CircuitExtractionExecution activity DONE")
@@ -681,11 +681,12 @@ class CircuitExtractionTask(Task):
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. assets and linked entities
-        new_circuit_entity = None
+        new_circuit_id = None
         if db_client and self._circuit_entity:
             new_circuit_entity = self._create_circuit_entity(
                 db_client=db_client, circuit_path=new_circuit_path
             )
+            new_circuit_id = str(new_circuit_entity.id)
 
             # Register circuit folder asset
             self._add_circuit_folder_asset(
@@ -738,10 +739,10 @@ class CircuitExtractionTask(Task):
         self._update_execution_activity(
             db_client=db_client,
             execution_entity=execution_activity,
-            circuit_entity=new_circuit_entity,
+            circuit_id=new_circuit_id,
         )
 
         # Clean-up
         self._cleanup_temp_dir()
 
-        return str(new_circuit_entity.id) if new_circuit_entity else None
+        return new_circuit_id
