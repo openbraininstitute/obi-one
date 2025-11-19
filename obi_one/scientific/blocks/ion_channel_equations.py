@@ -75,7 +75,7 @@ class BellFitMTau(IonChannelEquation):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "latex_equation": r"\frac{1.}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+            "latex_equation": r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
         }
 
 
