@@ -31,8 +31,10 @@ router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depend
 
 def create_endpoint_for_scan_config(
     model: type[ScanConfig],
+    *,
     processing_method: str,
     data_postprocessing_method: str,
+    execute_single_config_task: bool = True,
 ) -> None:
     """Create a FastAPI endpoint for generating grid scans based on an OBI ScanConfig model."""
     # model_name: model in lowercase with underscores between words and "Forms" removed (i.e.
@@ -66,7 +68,8 @@ def create_endpoint_for_scan_config(
                 )
                 grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
-                run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
+                if execute_single_config_task:
+                    run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
         except Exception as e:
             error_msg = str(e)
@@ -91,20 +94,21 @@ def create_endpoint_for_scan_config(
 
 def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
-    for form, processing_method, data_postprocessing_method in [
-        (CircuitSimulationScanConfig, "generate", ""),
-        (MEModelSimulationScanConfig, "generate", ""),
-        (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", ""),
-        (SimulationsForm, "generate", "save"),
-        (MorphologyMetricsScanConfig, "run", ""),
-        (ContributeMorphologyScanConfig, "generate", ""),
-        (ContributeSubjectScanConfig, "generate", ""),
-        (IonChannelFittingScanConfig, "generate", ""),
+    for form, processing_method, data_postprocessing_method, execute_single_config_task in [
+        (CircuitSimulationScanConfig, "generate", "", True),
+        (MEModelSimulationScanConfig, "generate", "", True),
+        (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
+        (SimulationsForm, "generate", "save", True),
+        (MorphologyMetricsScanConfig, "run", "", True),
+        (ContributeMorphologyScanConfig, "generate", "", True),
+        (ContributeSubjectScanConfig, "generate", "", True),
+        (IonChannelFittingScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
             processing_method=processing_method,
             data_postprocessing_method=data_postprocessing_method,
+            execute_single_config_task=execute_single_config_task,
         )
 
     return router
