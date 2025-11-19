@@ -13,6 +13,7 @@ import numpy as np
 import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
+from datetime import UTC, datetime
 from entitysdk import Client, models, types
 from pydantic import Field, PrivateAttr
 
@@ -106,9 +107,9 @@ class CircuitExtractionScanConfig(ScanConfig):
     ) -> None:
         L.info("3. Saving completed simulation campaign generation")
 
-        L.info("-- Register CircuitExtractionGeneration Entity")
+        L.info("-- Register CircuitExtractionConfigGeneration Entity")
         db_client.register_entity(
-            models.CircuitExtractionGeneration(
+            models.CircuitExtractionConfigGeneration(
                 start_time=datetime.now(UTC),
                 used=[self._campaign],
                 generated=circuit_extraction_configs,
@@ -389,7 +390,6 @@ class CircuitExtractionTask(Task):
                 publication=publ.publication,
                 scientific_artifact=registered_circuit,
                 publication_type=publ.publication_type,
-                authorized_public=False,
             )
             registered_publ_link = db_client.register_entity(publ_link_model)
             publications_list.append(registered_publ_link)
@@ -555,12 +555,51 @@ class CircuitExtractionTask(Task):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
+    def _create_execution_activity(self, db_client: Client = None) -> models.CircuitExtractionExecution | None:
+        """Create and register a CircuitExtractionExecution activity upon task launch."""
+        # TODO: To be moved to service or task manager
+        if db_client:
+            execution_model = models.CircuitExtractionExecution(
+                start_time=datetime.now(UTC),
+                used=[self.config.single_entity],
+                status=types.CircuitExtractionExecutionStatus.created,
+                authorized_public=False
+            )
+            execution_entity = db_client.register_entity(execution_model)
+            L.info("CircuitExtractionExecution activity CREATED")
+        else:
+            execution_entity = None
+        return execution_entity
+
+    def _update_execution_activity(self, db_client: Client = None, execution_entity: models.CircuitExtractionExecution | None, circuit_entity: models.Circuit | None) -> models.CircuitExtractionExecution | None:
+        """Updates a CircuitExtractionExecution activity after task completion."""
+        # TODO: To be moved to service or task manager
+        if db_client and execution_entity and circuit_entity:
+            done_entity = db_client.update_entity(
+                entity_id=execution_entity.id,
+                entity_type=models.CircuitExtractionExecution,
+                attrs_or_entity={
+                    "end_time": datetime.now(UTC),
+                    "status": types.CircuitExtractionExecutionStatus.done,
+                    "generated": [circuit_entity],
+                },
+            )
+            L.info("CircuitExtractionExecution activity DONE")
+        else:
+            done_entity = None
+        return done_entity
+
     def execute(
         self,
         *,
         db_client: Client = None,
         entity_cache: bool = False,
     ) -> str | None:  # Returns the ID of the extracted circuit
+
+        # Create execution activity
+        # TODO: To be moved to service or task manager
+        execution_activity = self._create_execution_activity(db_client=db_client)
+
         # Resolve parent circuit (local path or staging from ID)
         self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
@@ -633,12 +672,11 @@ class CircuitExtractionTask(Task):
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. assets and linked entities
-        new_circuit_id = None
+        new_circuit_entity = None
         if db_client and self._circuit_entity:
             new_circuit_entity = self._create_circuit_entity(
                 db_client=db_client, circuit_path=new_circuit_path
             )
-            new_circuit_id = str(new_circuit_entity.id)
 
             # Register circuit folder asset
             self._add_circuit_folder_asset(
@@ -683,10 +721,14 @@ class CircuitExtractionTask(Task):
 
             # Publication links
             self._add_publications(db_client=db_client, registered_circuit=new_circuit_entity)
-
+            
             L.info("Registration DONE")
+
+        # Update execution activity
+        # TODO: To be moved to service or task manager
+        self._update_execution_activity(db_client=db_client, execution_entity=execution_activity, circuit_entity=new_circuit_entity)
 
         # Clean-up
         self._cleanup_temp_dir()
 
-        return new_circuit_id
+        return str(new_circuit_entity.id) if new_circuit_entity else None
