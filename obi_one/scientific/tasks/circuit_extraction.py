@@ -74,8 +74,8 @@ class CircuitExtractionScanConfig(ScanConfig):
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.SimulationCampaign:
+        db_client: Client = None,
+    ) -> models.SimulationCampaign:
         """Initializes the circuit extraction campaign in the database."""
         L.info("1. Initializing circuit extraction campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -83,7 +83,7 @@ class CircuitExtractionScanConfig(ScanConfig):
 
         L.info("-- Register CircuitExtractionCampaign Entity")
         self._campaign = db_client.register_entity(
-            entitysdk.models.CircuitExtractionCampaign(
+            models.CircuitExtractionCampaign(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 scan_parameters=multiple_value_parameters_dictionary,
@@ -93,7 +93,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         L.info("-- Upload campaign_generation_config")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
-            entity_type=entitysdk.models.CircuitExtractionCampaign,
+            entity_type=models.CircuitExtractionCampaign,
             file_path=output_root / "obi_one_scan.json",
             file_content_type="application/json",
             asset_label="campaign_generation_config",
@@ -108,6 +108,38 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     The output circuit will contain all morphologies, hoc files, and mod files
     that are required to simulate the extracted circuit.
     """
+    @property
+    def single_entity(self) -> models.CircuitExtractionConfig:
+        return self._single_entity
+
+    def create_single_entity_with_config(
+        self, campaign: models.CircuitExtractionCampaign, db_client: Client
+    ) -> models.CircuitExtractionConfig:
+        """Saves the simulation to the database."""
+        L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
+
+        if not isinstance(self.initialize.circuit, CircuitFromID):
+            msg = "Circuit extraction can only be saved to entitycore if circuit is CircuitFromID"
+            raise OBIONEError(msg)
+
+        L.info("-- Register CircuitExtractionConfig Entity")
+        self._single_entity = db_client.register_entity(
+            models.CircuitExtractionConfig(
+                name=f"Circuit extraction {self.idx}",
+                description=f"Circuit extraction {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                circuit_id=self.initialize.circuit.id_str,
+            )
+        )
+
+        L.info("-- Upload simulation_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=models.CircuitExtractionConfig,
+            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_content_type="application/json",
+            asset_label="circuit_extraction_config",
+        )
 
 
 class CircuitExtractionTask(Task):
