@@ -18,6 +18,7 @@ class IonChannelEquation(Block, ABC):
 
 
 class SigFitMInf(IonChannelEquation):
+    equation_key: ClassVar[str] = "sig_fit_minf"
     title: ClassVar[str] = r"Sigmoid equation for m_{\infty}"
 
     class Config:
@@ -27,31 +28,34 @@ class SigFitMInf(IonChannelEquation):
 
 
 class SigFitMTau(IonChannelEquation):
+    equation_key: ClassVar[str] = "sig_fit_mtau"
     title: ClassVar[str] = r"Sigmoid equation combination for \tau_m"
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "latex_equation": (
-                "\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \\cdot "
-                "\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
-                "( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \\cdot "
-                " \frac{A_2}{ 1. + e^{ \frac{v - {v_2}}{k_2} } } "
+                r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
+                r"\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
+                r"( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
+                r" \frac{A_2}{ 1. + e^{ \frac{v - v_2}{k_2} } } "
             ),
         }
 
 
 class ThermoFitMTau(IonChannelEquation):
+    equation_key: ClassVar[str] = "thermo_fit_mtau"
     title: ClassVar[str] = r"Double exponential denominator equation for \tau_m"
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "latex_equation": (
-                "\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
+                r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
             )
         }
 
 
 class ThermoFitMTauV2(IonChannelEquation):
+    equation_key: ClassVar[str] = "thermo_fit_mtau_v2"
     title: ClassVar[str] = (
         r"Double exponential denominator equation with slope constraint for \tau_m"
     )
@@ -59,13 +63,14 @@ class ThermoFitMTauV2(IonChannelEquation):
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "latex_equation": (
-                "\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \\delta } }"
-                " + e^{ \frac{v - v_2}{k / (1 - \\delta)} } }"
+                r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } }"
+                r" + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
             ),
         }
 
 
 class BellFitMTau(IonChannelEquation):
+    equation_key: ClassVar[str] = "bellfit_mtau"
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
     class Config:
@@ -75,6 +80,7 @@ class BellFitMTau(IonChannelEquation):
 
 
 class SigFitHInf(IonChannelEquation):
+    equation_key: ClassVar[str] = "sig_fit_hinf"
     title: ClassVar[str] = r"Sigmoid equation for h_{\infty}"
 
     class Config:
@@ -84,6 +90,7 @@ class SigFitHInf(IonChannelEquation):
 
 
 class SigFitHTau(IonChannelEquation):
+    equation_key: ClassVar[str] = "sig_fit_htau"
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
     class Config:

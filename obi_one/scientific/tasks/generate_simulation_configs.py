@@ -224,7 +224,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SimulationCampaign,
-            file_path=output_root / "run_scan_config.json",
+            file_path=output_root / "obi_one_scan.json",
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -367,6 +367,10 @@ class SimulationSingleConfigMixin(abc.ABC):
     def single_entity(self) -> entitysdk.models.Simulation:
         return self._single_entity
 
+    def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
+
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
     ) -> entitysdk.models.Simulation:
@@ -398,7 +402,7 @@ class SimulationSingleConfigMixin(abc.ABC):
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
+            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
             file_content_type="application/json",
             asset_label="simulation_generation_config",
         )

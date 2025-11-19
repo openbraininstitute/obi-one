@@ -195,7 +195,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
 
 
 def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
-    cfg_file = tmp_path / scan.output_root / "run_scan_config.json"
+    cfg_file = tmp_path / scan.output_root / "obi_one_scan.json"
     with cfg_file.open("r") as f:
         cfg = json.load(f)
 
@@ -316,7 +316,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
 
 def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
     for instance in scan.single_configs:
-        cfg_file = tmp_path / scan.output_root / str(instance.idx) / "run_coordinate_instance.json"
+        cfg_file = tmp_path / scan.output_root / str(instance.idx) / "obi_one_coordinate.json"
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 

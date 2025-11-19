@@ -390,6 +390,28 @@ wheels = [
 ]
 
 [[package]]
+name = "caveclient"
+version = "8.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "cachetools" },
+    { name = "ipython" },
+    { name = "jsonschema" },
+    { name = "networkx" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+    { name = "requests" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/9b/752887622cb7575208424f1876abcd215e03795bb5fc9bb8a2f2bf1702e0/caveclient-8.0.0.tar.gz", hash = "sha256:83996df1b4aa6a2c456ef8601514c224c559369a311d72a019a124b7ac6cda2b", size = 3297475, upload-time = "2025-11-02T18:33:13.522Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/0b/ecff6a59b21526ef106af2389a78b7c24496ec004d5be0670adc54671e96/caveclient-8.0.0-py3-none-any.whl", hash = "sha256:7cbe5eabcd07e65ea9b31bc9966fa0bcef37ae55e79409ba5b14b785f637a55c", size = 91014, upload-time = "2025-11-02T18:33:11.514Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.10.5"
 source = { registry = "https://pypi.org/simple" }
@@ -818,14 +840,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.8.5"
+version = "0.8.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1d/1c/fe0642a15a728628c2df793be76c441ab560a3a437ae2be144bc13a858da/entitysdk-0.8.5.tar.gz", hash = "sha256:44ed0bc3e6cf442ad898e549faef2422281fdbbc1a3e416e667dfe03ed95451d", size = 1448889, upload-time = "2025-10-28T14:20:26.064Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/65/4cc1a894037886bb01a4b17f2f54cd7e49c8d22394c82d99e3a41a0fc4a3/entitysdk-0.8.7.tar.gz", hash = "sha256:684f5bc45d9cbcd3b4378df8232b40b839716b68245dab64e401cf6ea27bf52b", size = 1452089, upload-time = "2025-10-29T16:34:24.841Z" }
 
 [[package]]
 name = "executing"
@@ -948,6 +970,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/0d/6660d55f7373b2ff8152401a83e02084956da23ae58cddbfb0b330978fe9/greenlet-3.2.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3b3812d8d0c9579967815af437d96623f45c0f2ae5f04e366de62a12d83a8fb0", size = 607586, upload-time = "2025-08-07T13:18:28.544Z" },
     { url = "https://files.pythonhosted.org/packages/8e/1a/c953fdedd22d81ee4629afbb38d2f9d71e37d23caace44775a3a969147d4/greenlet-3.2.4-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:abbf57b5a870d30c4675928c37278493044d7c14378350b3aa5d484fa65575f0", size = 1123281, upload-time = "2025-08-07T13:42:39.858Z" },
     { url = "https://files.pythonhosted.org/packages/3f/c7/12381b18e21aef2c6bd3a636da1088b888b97b7a0362fac2e4de92405f97/greenlet-3.2.4-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:20fb936b4652b6e307b8f347665e2c615540d4b42b3b4c8a321d8286da7e520f", size = 1151142, upload-time = "2025-08-07T13:18:22.981Z" },
+    { url = "https://files.pythonhosted.org/packages/27/45/80935968b53cfd3f33cf99ea5f08227f2646e044568c9b1555b58ffd61c2/greenlet-3.2.4-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:ee7a6ec486883397d70eec05059353b8e83eca9168b9f3f9a361971e77e0bcd0", size = 1564846, upload-time = "2025-11-04T12:42:15.191Z" },
+    { url = "https://files.pythonhosted.org/packages/69/02/b7c30e5e04752cb4db6202a3858b149c0710e5453b71a3b2aec5d78a1aab/greenlet-3.2.4-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:326d234cbf337c9c3def0676412eb7040a35a768efc92504b947b3e9cfc7543d", size = 1633814, upload-time = "2025-11-04T12:42:17.175Z" },
     { url = "https://files.pythonhosted.org/packages/e9/08/b0814846b79399e585f974bbeebf5580fbe59e258ea7be64d9dfb253c84f/greenlet-3.2.4-cp312-cp312-win_amd64.whl", hash = "sha256:a7d4e128405eea3814a12cc2605e0e6aedb4035bf32697f72deca74de4105e02", size = 299899, upload-time = "2025-08-07T13:38:53.448Z" },
 ]
 
@@ -1649,6 +1673,25 @@ wheels = [
 ]
 
 [[package]]
+name = "morph-spines"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "h5py" },
+    { name = "morphio" },
+    { name = "neurom" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "tables" },
+    { name = "trimesh" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/6c/126c1c1a1692f500b2c885ffaa30dd66e65ba30abe494cf501199785c16e/morph_spines-0.2.2.tar.gz", hash = "sha256:f3bf2c853ab1af961868b494431ce57c1ae3526f01fb192c8f9b5075af42c6d6", size = 869353, upload-time = "2025-11-03T14:41:20.629Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/ce/46996d398b909aa5807ed8320331d2984f8167a87b41f905dd83ce497fe4/morph_spines-0.2.2-py3-none-any.whl", hash = "sha256:4c3805910776fdb7e7d2671f1ad1bc94371c724428ac2fba7d537d015cca786b", size = 11096, upload-time = "2025-11-03T14:41:19.117Z" },
+]
+
+[[package]]
 name = "morph-tool"
 version = "2.11.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1988,6 +2031,7 @@ dependencies = [
     { name = "bluepysnap" },
     { name = "brainbuilder" },
     { name = "cachetools" },
+    { name = "caveclient" },
     { name = "connectome-manipulator" },
     { name = "connectome-utilities" },
     { name = "entitysdk" },
@@ -1996,6 +2040,7 @@ dependencies = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "networkx" },
     { name = "neurom" },
@@ -2040,15 +2085,17 @@ requires-dist = [
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", specifier = ">=5.5.2" },
+    { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-manipulator" },
+    { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk", specifier = ">=0.8.5" },
+    { name = "entitysdk", specifier = ">=0.8.7" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab", specifier = ">=4.4.8" },
+    { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "neurom" },
@@ -3151,6 +3198,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d6/8d/37d686f52dfbccc47b857751531ffdec262b0f35158dd3b306030dafdb83/traittypes-0.2.3.tar.gz", hash = "sha256:212feed38d566d772648768b78d3347c148ef23915b91c02078188e631316c86", size = 16003, upload-time = "2025-10-22T11:06:09.952Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/c0/fdf9d3ee103ce66a55f0532835ad5e154226c5222423c6636ba049dc42fc/traittypes-0.2.3-py2.py3-none-any.whl", hash = "sha256:49016082ce740d6556d9bb4672ee2d899cd14f9365f17cbb79d5d96b47096d4e", size = 8130, upload-time = "2025-10-22T11:06:08.824Z" },
+]
+
+[[package]]
+name = "trimesh"
+version = "4.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/f1/110f6ed138a4a2ea77da2b5bc47d04ef80b7ccc41c2bdf3af6542520bd77/trimesh-4.9.0.tar.gz", hash = "sha256:ad907a223867f614ef1598d85a4c978845f39365cb7ccc93fa5800901fba3ef9", size = 832474, upload-time = "2025-10-22T17:42:25.809Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/73/719ce8e11262d1fd42d0d24a98cee862c05d5f40b7869ad463c0912ea5d4/trimesh-4.9.0-py3-none-any.whl", hash = "sha256:934265a1de4b472bee21094c4e88d0a7522054b9911adb06e9b8062bb8757178", size = 736524, upload-time = "2025-10-22T17:42:23.436Z" },
 ]
 
 [[package]]
