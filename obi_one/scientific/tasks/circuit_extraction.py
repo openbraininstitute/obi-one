@@ -560,7 +560,7 @@ class CircuitExtractionTask(Task):
         *,
         db_client: Client = None,
         entity_cache: bool = False,
-    ) -> None:
+    ) -> str | None:  # Returns the ID of the extracted circuit
         # Resolve parent circuit (local path or staging from ID)
         self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
@@ -633,10 +633,12 @@ class CircuitExtractionTask(Task):
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. assets and linked entities
+        new_circuit_id = None
         if db_client and self._circuit_entity:
             new_circuit_entity = self._create_circuit_entity(
                 db_client=db_client, circuit_path=new_circuit_path
             )
+            new_circuit_id = str(new_circuit_entity.id)
 
             # Register circuit folder asset
             self._add_circuit_folder_asset(
@@ -686,3 +688,5 @@ class CircuitExtractionTask(Task):
 
         # Clean-up
         self._cleanup_temp_dir()
+
+        return new_circuit_id
