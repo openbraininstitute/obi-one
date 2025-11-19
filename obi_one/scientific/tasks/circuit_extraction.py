@@ -101,6 +101,20 @@ class CircuitExtractionScanConfig(ScanConfig):
 
         return self._campaign
 
+    def create_campaign_generation_entity(
+        self, circuit_extraction_configs: list[models.CircuitExtractionConfig], db_client: Client
+    ) -> None:
+        L.info("3. Saving completed simulation campaign generation")
+
+        L.info("-- Register CircuitExtractionGeneration Entity")
+        db_client.register_entity(
+            models.CircuitExtractionGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=circuit_extraction_configs,
+            )
+        )
+
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
