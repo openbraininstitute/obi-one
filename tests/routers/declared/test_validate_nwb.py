@@ -241,7 +241,7 @@ def test_validate_nwb_file_reader_fails(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     response_json = response.json()
-    # FIX: Use helper function to retrieve code and detail
+
     assert get_error_code(response_json) == ApiErrorCode.INVALID_REQUEST
     assert "NWB validation failed: All NWB readers failed." in get_error_detail(response_json)
     assert saved_path is not None
@@ -263,7 +263,7 @@ def test_validate_nwb_file_os_error(client: TestClient, valid_nwb_upload: dict):
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     response_json = response.json()
-    # FIX: Use helper function to retrieve code and detail
+
     assert get_error_code(response_json) == "INTERNAL_ERROR"
     assert os_error_message in get_error_detail(response_json)
 
