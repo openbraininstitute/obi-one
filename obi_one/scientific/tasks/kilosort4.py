@@ -6,6 +6,17 @@ from pydantic import Field
 
 from typing import ClassVar
 
+class SpikeSortingPreprocessing(Block):
+    
+
+
+
+class SpikeSortingScanConfig(ScanConfig):
+
+
+
+
+
 class Kilosort4ScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
@@ -72,6 +83,14 @@ class Kilosort4ScanConfig(ScanConfig):
                             ends at the end of the recording.",
         )
 
+
+    class SpikeSortingPreprocessing(Block):
+
+        denoising: Literal['cmr', 'destripe'] | list[Literal['cmr', 'destripe']] = Field(
+            default='cmr',
+            name="Denoising method",
+            description="Denoising method to apply to the data.",
+        )
 
     initialize: Initialize
 
