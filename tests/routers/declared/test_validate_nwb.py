@@ -155,7 +155,6 @@ def test_validate_nwb_file_empty(
             },
         )
 
-    # Indentation corrected here
     with (
         patch(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",

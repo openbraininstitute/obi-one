@@ -212,7 +212,7 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
         detail={
-            "code": ApiErrorCode.BAD_REQUEST,
+            "code": ApiErrorCode.INVALID_REQUEST,
             "detail": "Uploaded file is empty",
         },
     )
@@ -221,7 +221,7 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
 # New helper function to abstract the raise statement (TRY301 fix)
 def _handle_file_too_large(temp_path: str) -> NoReturn:
     """Handles cleanup and raises FileTooLargeError when the file size limit is exceeded."""
-    pathlib.Path(temp_path).unlink(missing_ok=True)
+    # REDUNDANT UNLINK REMOVED - Cleanup is handled in the 'except' block of _save_upload_to_tempfile.
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
     msg = f"File size exceeds the limit of {max_mb:.0f} MB"
     raise FileTooLargeError(msg)
@@ -252,6 +252,7 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
 
                 temp_file.write(chunk)
         except Exception:
+            # Cleanup for any exception during reading/writing
             if pathlib.Path(temp_path).exists():
                 pathlib.Path(temp_path).unlink(missing_ok=True)
             raise
@@ -260,7 +261,7 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
 
 
 def _cleanup_temp_file(temp_path: str) -> None:
-    """Background task to clean up temporary file."""
+    """Background task or immediate cleanup utility to clean up temporary file."""
     if temp_path and pathlib.Path(temp_path).exists():
         try:
             pathlib.Path(temp_path).unlink()
@@ -269,7 +270,6 @@ def _cleanup_temp_file(temp_path: str) -> None:
             L.warning(f"Failed to delete temp NWB file: {e}")
 
 
-# Endpoint logic is now a standalone function
 def validate_nwb_file(
     file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
     background_tasks: BackgroundTasks,
@@ -280,15 +280,29 @@ def validate_nwb_file(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Invalid file extension. Must be .nwb",
             },
         )
 
+    # --- FAIL-FAST FILE SIZE CHECK ---
+    # Check if file size is available and exceeds the maximum limit (150 MB)
+    max_mb = MAX_FILE_SIZE / (1024 * 1024)
+    if file.size is not None and file.size > MAX_FILE_SIZE:
+        L.error(f"NWB upload failed: File too large (Max: {max_mb:.0f} MB) based on file.size.")
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
+            },
+        )
+    # ---------------------------------
+
     temp_file_path = ""
 
     try:
-        # Save upload synchronously (still non-blocking for other requests)
+        # Save upload synchronously
         temp_file_path = _save_upload_to_tempfile(file, suffix=".nwb")
 
         if pathlib.Path(temp_file_path).stat().st_size == 0:
@@ -306,40 +320,33 @@ def validate_nwb_file(
         )
 
     except FileTooLargeError:
-        L.error("NWB upload failed: File too large (Max: 50MB)")
+        max_mb = MAX_FILE_SIZE / (1024 * 1024)
+        L.error(f"NWB upload failed: File too large (Max: {max_mb:.0f} MB)")
         # Cleanup is handled inside _save_upload_to_tempfile
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": "Uploaded file is too large. Max size: 50 MB.",
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
             },
         ) from None
 
     except RuntimeError as e:
         L.error(f"NWB validation failed: {e!s}")
-        # Clean up immediately on error
-        if temp_file_path and pathlib.Path(temp_file_path).exists():
-            try:
-                pathlib.Path(temp_file_path).unlink()
-            except OSError as cleanup_error:
-                L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
+        # Clean up immediately on error - calling helper
+        _cleanup_temp_file(temp_file_path)
 
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"NWB validation failed: {e!s}",
             },
         ) from e
     except OSError as e:
         L.error(f"File system error during NWB validation: {e!s}")
-        # Clean up immediately on error
-        if temp_file_path and pathlib.Path(temp_file_path).exists():
-            try:
-                pathlib.Path(temp_file_path).unlink()
-            except OSError as cleanup_error:
-                L.warning(f"Failed to delete temp NWB file: {cleanup_error}")
+        # Clean up immediately on error - calling helper
+        _cleanup_temp_file(temp_file_path)
 
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
