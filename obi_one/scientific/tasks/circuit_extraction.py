@@ -377,28 +377,6 @@ class CircuitExtractionTask(Task):
         L.info(f"{len(contributions_list)} contributions registered")
         return contributions_list
 
-    def _add_publications(self, db_client: Client, registered_circuit: models.Circuit) -> list:
-        """Add circuit publications (from the parent circuit)."""
-        # Get parent publications
-        parent = self._circuit_entity  # Parent circuit entity
-        parent_publications = db_client.search_entity(
-            entity_type=models.ScientificArtifactPublicationLink,
-            query={"scientific_artifact__id": parent.id},
-        ).all()
-
-        # Register same publications for extracted circuit
-        publications_list = []
-        for publ in parent_publications:
-            publ_link_model = models.ScientificArtifactPublicationLink(
-                publication=publ.publication,
-                scientific_artifact=registered_circuit,
-                publication_type=publ.publication_type,
-            )
-            registered_publ_link = db_client.register_entity(publ_link_model)
-            publications_list.append(registered_publ_link)
-        L.info(f"{len(publications_list)} publications registered")
-        return publications_list
-
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
         return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
@@ -726,11 +704,10 @@ class CircuitExtractionTask(Task):
             # self._add_derivation_link(db_client=db_client,
             # registered_circuit=new_circuit_entity)
 
-            # Contribution links
-            self._add_contributions(db_client=db_client, registered_circuit=new_circuit_entity)
-
-            # Publication links
-            self._add_publications(db_client=db_client, registered_circuit=new_circuit_entity)
+            # TODO: Contribution links
+            # --> Contributors to be still defined (don't copy parent circuit's ones)
+            # self._add_contributions(db_client=db_client,
+            # registered_circuit=new_circuit_entity)
 
             L.info("Registration DONE")
 
