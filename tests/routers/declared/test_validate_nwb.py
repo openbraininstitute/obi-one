@@ -176,7 +176,7 @@ def test_validate_nwb_file_empty(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
-        # Patch _handle_empty_file
+
         patch("app.endpoints.nwb_validation._handle_empty_file", side_effect=fake_handle_empty),
         patch("app.endpoints.nwb_validation.validate_all_nwb_readers", mock_validate),
     ):
