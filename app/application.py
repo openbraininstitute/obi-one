@@ -22,6 +22,7 @@ from app.endpoints import (
     morphology_metrics,
     morphology_validation,
     multi_values,
+    nwb_validation,
     scan_config,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
@@ -141,5 +142,6 @@ app.include_router(ephys_metrics.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)
 app.include_router(multi_values.router)
+app.include_router(nwb_validation.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
