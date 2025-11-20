@@ -218,10 +218,9 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     )
 
 
-# New helper function to abstract the raise statement (TRY301 fix)
-def _handle_file_too_large(temp_path: str) -> NoReturn:
-    """Handles cleanup and raises FileTooLargeError when the file size limit is exceeded."""
-    # REDUNDANT UNLINK REMOVED - Cleanup is handled in the 'except' block of _save_upload_to_tempfile.
+# Helper function to abstract the raise statement
+def _handle_file_too_large() -> NoReturn:
+    """Handles cleanup and raises error when file size limit exceeded."""
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
     msg = f"File size exceeds the limit of {max_mb:.0f} MB"
     raise FileTooLargeError(msg)
@@ -248,7 +247,7 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
 
                 # Check size limit before writing
                 if total_size > MAX_FILE_SIZE:
-                    _handle_file_too_large(temp_path)
+                    _handle_file_too_large()
 
                 temp_file.write(chunk)
         except Exception:

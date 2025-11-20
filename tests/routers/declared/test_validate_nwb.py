@@ -1,96 +1,103 @@
 """Integration tests for the NWB validation endpoint."""
 
-from collections.abc import Callable
 from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import anyio
 import pytest
-from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.testclient import TestClient
+
+from app.dependencies.auth import user_verified
 
 # Import AFTER patching
 from app.endpoints.nwb_validation import (
-    NWBValidationResponse,
-    activate_test_nwb_endpoint,
+    router as nwb_router,  # Import the router directly
 )
+
+# Import ApiErrorCode directly for use in test logic
+from app.errors import ApiErrorCode
 from app.logger import L
 
-
 # -----------------------------------------------------------------
-# GLOBAL FIXTURE: Patch ApiErrorCode BEFORE endpoint import
+# CONSTANTS
 # -----------------------------------------------------------------
-@pytest.fixture(autouse=True)
-def patch_api_error_code():
-    mock_err = MagicMock()
-    mock_err.BAD_REQUEST = "BAD_REQUEST"
-    with patch("app.endpoints.nwb_validation.ApiErrorCode", mock_err):
-        yield
+ROUTE = "/declared/validate-nwb-file"
 
 
-# -----------------------------------------------------------------
-# Helper: the endpoint callable
-# -----------------------------------------------------------------
-@pytest.fixture
-def endpoint() -> Callable:
-    router = APIRouter()
-    activate_test_nwb_endpoint(router)
-
-    route = None
-    for r in router.routes:
-        if getattr(r, "path", "").endswith("/validate-nwb-file") and "POST" in r.methods:
-            route = r
-            break
-
-    if route is None:
-        # EM101 Fix: Assign string literal to a variable
-        error_msg = "NWB validation endpoint not registered"
-        raise AssertionError(error_msg)
-    return route.endpoint
+# Helper to safely retrieve the 'code' from the response, handling nested 'detail' wrapping
+def get_error_code(response_json: dict) -> str:
+    """Safely retrieves the error code from a TestClient response."""
+    if isinstance(response_json.get("detail"), dict):
+        return response_json["detail"].get("code")
+    # Otherwise, assume 'code' is at the root
+    return response_json.get("code")
 
 
-@pytest.fixture
-def background_tasks() -> BackgroundTasks:
-    return BackgroundTasks()
+# Helper to safely retrieve the 'detail' message
+def get_error_detail(response_json: dict) -> str:
+    """Safely retrieves the error detail message from a TestClient response."""
+    if isinstance(response_json.get("detail"), dict):
+        return response_json["detail"].get("detail")
+    # The default FastAPI 500 error structure has the detail at the root
+    return response_json.get("detail")
 
 
 # -----------------------------------------------------------------
-# Test files
+# GLOBAL FIXTURE: TestClient and Dependency Overrides
 # -----------------------------------------------------------------
 @pytest.fixture
-def valid_nwb_file() -> UploadFile:
-    return UploadFile(filename="valid.nwb", file=BytesIO(b"mock-nwb-data"))
+def client():
+    """Fixture to provide a TestClient instance."""
+    app = FastAPI()
+    app.include_router(nwb_router)
+
+    # Mock the required dependency
+    def mock_user_verified():
+        return True
+
+    # Override the dependency for testing
+    app.dependency_overrides[user_verified] = mock_user_verified
+
+    return TestClient(app)
+
+
+# -----------------------------------------------------------------
+# Test files (Refactored for TestClient 'files' argument)
+# -----------------------------------------------------------------
+@pytest.fixture
+def valid_nwb_upload() -> dict:
+    return {"file": ("valid.nwb", BytesIO(b"mock-nwb-data"), "application/octet-stream")}
 
 
 @pytest.fixture
-def empty_nwb_file() -> UploadFile:
-    return UploadFile(filename="empty.nwb", file=BytesIO(b""))
+def empty_nwb_upload() -> dict:
+    return {"file": ("empty.nwb", BytesIO(b""), "application/octet-stream")}
 
 
 # -----------------------------------------------------------------
 # 1. SUCCESS
 # -----------------------------------------------------------------
 def test_validate_nwb_file_success(
-    endpoint,
-    valid_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    valid_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = None
 
     def fake_save(_file: UploadFile, suffix: str) -> str:
         nonlocal saved_path
+        # Content read simulation
+        _file.file.seek(0)
         content = _file.file.read()
         path = tmp_path / f"saved{suffix}"
         path.write_bytes(content)
         saved_path = str(path)
         return saved_path
 
-    def fake_cleanup(path: str) -> None:
-        p = Path(path)
-        if p.exists():
-            p.unlink()
+    # Mock cleanup to track execution
+    mock_cleanup = MagicMock()
 
     with (
         patch(
@@ -103,35 +110,41 @@ def test_validate_nwb_file_success(
         ),
         patch(
             "app.endpoints.nwb_validation._cleanup_temp_file",
-            side_effect=fake_cleanup,
+            side_effect=mock_cleanup,
         ),
     ):
-        resp: NWBValidationResponse = endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
-    assert resp.status == "success"
-    assert resp.message == "NWB file validation successful."
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        "status": "success",
+        "message": "NWB file validation successful.",
+    }
 
-    anyio.run(background_tasks)
-    assert not any(tmp_path.glob("saved*"))
+    # Verify cleanup was scheduled (called as a background task)
+    mock_cleanup.assert_called_once_with(saved_path)
+
+    assert Path(saved_path).exists()
 
 
 # -----------------------------------------------------------------
 # 2. CLIENT ERRORS (400)
 # -----------------------------------------------------------------
-def test_validate_nwb_file_invalid_extension(endpoint, background_tasks: BackgroundTasks):
-    file = UploadFile(filename="bad.txt", file=BytesIO(b"data"))
+def test_validate_nwb_file_invalid_extension(client: TestClient):
+    invalid_file = {"file": ("bad.txt", BytesIO(b"data"), "text/plain")}
 
-    with pytest.raises(HTTPException) as exc:
-        endpoint(file, background_tasks)
+    response = client.post(ROUTE, files=invalid_file)
 
-    assert exc.value.status_code == 400
-    assert "extension" in exc.value.detail["detail"].lower()
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    response_json = response.json()
+
+    assert get_error_code(response_json) == ApiErrorCode.INVALID_REQUEST
+    assert get_error_detail(response_json) == "Invalid file extension. Must be .nwb"
 
 
 def test_validate_nwb_file_empty(
-    endpoint,
-    empty_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    empty_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = None
@@ -146,53 +159,62 @@ def test_validate_nwb_file_empty(
     def fake_handle_empty(upload_file: UploadFile) -> None:
         L.error(f"Empty file uploaded: {upload_file.filename}")
         if saved_path and Path(saved_path).exists():
+            # Explicit cleanup
             Path(saved_path).unlink()
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": "BAD_REQUEST",
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Uploaded file is empty",
             },
         )
+
+    mock_validate = MagicMock()
 
     with (
         patch(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
-        patch(
-            "app.endpoints.nwb_validation._handle_empty_file",
-            side_effect=fake_handle_empty,
-        ),
-        patch("app.endpoints.nwb_validation.validate_all_nwb_readers") as mock_validate,
-        pytest.raises(HTTPException) as exc,
+        # Patch _handle_empty_file
+        patch("app.endpoints.nwb_validation._handle_empty_file", side_effect=fake_handle_empty),
+        patch("app.endpoints.nwb_validation.validate_all_nwb_readers", mock_validate),
     ):
-        endpoint(empty_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=empty_nwb_upload)
 
-    assert exc.value.status_code == 400
-    assert "empty" in exc.value.detail["detail"].lower()
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    response_json = response.json()
+
+    assert get_error_code(response_json) == ApiErrorCode.INVALID_REQUEST
+    assert get_error_detail(response_json) == "Uploaded file is empty"
+
     mock_validate.assert_not_called()
     assert saved_path is not None
+    # Assert cleanup happened
     assert not Path(saved_path).exists()
 
 
-def test_validate_nwb_file_no_filename(endpoint, background_tasks: BackgroundTasks):
-    file = UploadFile(filename="", file=BytesIO(b"data"))
+def test_validate_nwb_file_no_filename(client: TestClient):
+    file_data = {"file": ("", BytesIO(b"data"), "application/octet-stream")}
 
-    with pytest.raises(HTTPException) as exc:
-        endpoint(file, background_tasks)
+    response = client.post(ROUTE, files=file_data)
 
-    assert exc.value.status_code == 400
-    assert "extension" in exc.value.detail["detail"].lower()
+    # Assert 422 (Unprocessable Entity)
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+    # Check for the standard 422 error structure
+    assert "detail" in response.json()
+    assert isinstance(response.json()["detail"], list)
+    assert response.json()["detail"][0]["type"] == "value_error"
+    assert len(response.json()["detail"][0]["loc"]) > 0
 
 
 # -----------------------------------------------------------------
 # 3. READER FAILS → 400
 # -----------------------------------------------------------------
 def test_validate_nwb_file_reader_fails(
-    endpoint,
-    valid_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    valid_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = None
@@ -214,12 +236,14 @@ def test_validate_nwb_file_reader_fails(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
             side_effect=RuntimeError("All NWB readers failed."),
         ),
-        pytest.raises(HTTPException) as exc,
     ):
-        endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
-    assert exc.value.status_code == 400
-    assert "validation failed" in exc.value.detail["detail"].lower()
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    response_json = response.json()
+    # FIX: Use helper function to retrieve code and detail
+    assert get_error_code(response_json) == ApiErrorCode.INVALID_REQUEST
+    assert "NWB validation failed: All NWB readers failed." in get_error_detail(response_json)
     assert saved_path is not None
     assert not Path(saved_path).exists()
 
@@ -227,34 +251,35 @@ def test_validate_nwb_file_reader_fails(
 # -----------------------------------------------------------------
 # 4. SERVER ERROR → 500
 # -----------------------------------------------------------------
-def test_validate_nwb_file_os_error(
-    endpoint, valid_nwb_file: UploadFile, background_tasks: BackgroundTasks
-):
+def test_validate_nwb_file_os_error(client: TestClient, valid_nwb_upload: dict):
+    os_error_message = "disk full"
     with (
         patch(
             "app.endpoints.nwb_validation._save_upload_to_tempfile",
-            side_effect=OSError("disk full"),
+            side_effect=OSError(os_error_message),
         ),
-        pytest.raises(HTTPException) as exc,
     ):
-        endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
-    assert exc.value.status_code == 500
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    response_json = response.json()
+    # FIX: Use helper function to retrieve code and detail
+    assert get_error_code(response_json) == "INTERNAL_ERROR"
+    assert os_error_message in get_error_detail(response_json)
 
 
 # -----------------------------------------------------------------
 # 5. CLEAN-UP ON EXCEPTION
 # -----------------------------------------------------------------
 def test_validate_nwb_file_cleanup_on_error(
-    endpoint,
-    valid_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    valid_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = tmp_path / "cleanup.nwb"
 
-    # FIX: Revert _suffix to suffix to fix TypeError. Suppress ARG001.
     def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
+        file.file.seek(0)
         content = file.file.read()
         saved_path.write_bytes(content)
         return str(saved_path)
@@ -268,10 +293,10 @@ def test_validate_nwb_file_cleanup_on_error(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
             side_effect=RuntimeError("boom"),
         ),
-        pytest.raises(HTTPException),
     ):
-        endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
+    assert response.status_code == HTTPStatus.BAD_REQUEST
     assert not saved_path.exists()
 
 
@@ -279,15 +304,15 @@ def test_validate_nwb_file_cleanup_on_error(
 # 6. REAL READER (mocked import)
 # -----------------------------------------------------------------
 def test_validate_nwb_file_real_reader_success(
-    endpoint,
-    valid_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    valid_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = None
 
     def fake_save(_file: UploadFile, suffix: str) -> str:
         nonlocal saved_path
+        _file.file.seek(0)
         content = _file.file.read()
         path = tmp_path / f"real{suffix}"
         path.write_bytes(content)
@@ -299,10 +324,7 @@ def test_validate_nwb_file_real_reader_success(
     fake_reader_instance.read.return_value = {"mock": "data"}
     fake_reader.return_value = fake_reader_instance
 
-    def fake_cleanup(path: str) -> None:
-        p = Path(path)
-        if p.exists():
-            p.unlink()
+    mock_cleanup = MagicMock()
 
     with (
         patch(
@@ -311,46 +333,43 @@ def test_validate_nwb_file_real_reader_success(
         ),
         patch(
             "app.endpoints.nwb_validation._cleanup_temp_file",
-            side_effect=fake_cleanup,
+            side_effect=mock_cleanup,
         ),
         patch(
             "app.endpoints.nwb_validation.validate_all_nwb_readers",
-            return_value=None,  # validate_all_nwb_readers will call the mocked readers
+            return_value=None,
         ),
         patch("bluepyefe.reader.AIBSNWBReader", fake_reader),
         patch("bluepyefe.reader.BBPNWBReader", MagicMock()),
         patch("bluepyefe.reader.ScalaNWBReader", MagicMock()),
         patch("bluepyefe.reader.TRTNWBReader", MagicMock()),
     ):
-        resp: NWBValidationResponse = endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
-    assert resp.status == "success"
-    assert resp.message == "NWB file validation successful."
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["status"] == "success"
 
-    anyio.run(background_tasks)
-    assert not any(tmp_path.glob("real*"))
+    mock_cleanup.assert_called_once_with(saved_path)
+    assert Path(saved_path).exists()
 
 
 # -----------------------------------------------------------------
 # 7. BACKGROUND TASK CLEANUP
 # -----------------------------------------------------------------
 def test_validate_nwb_file_background_cleanup(
-    endpoint,
-    valid_nwb_file: UploadFile,
-    background_tasks: BackgroundTasks,
+    client: TestClient,
+    valid_nwb_upload: dict,
     tmp_path: Path,
 ):
     saved_path = tmp_path / "background.nwb"
 
     def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
+        file.file.seek(0)
         content = file.file.read()
         saved_path.write_bytes(content)
         return str(saved_path)
 
-    def fake_cleanup(path: str) -> None:
-        p = Path(path)
-        if p.exists():
-            p.unlink()
+    mock_cleanup = MagicMock()
 
     with (
         patch(
@@ -363,13 +382,16 @@ def test_validate_nwb_file_background_cleanup(
         ),
         patch(
             "app.endpoints.nwb_validation._cleanup_temp_file",
-            side_effect=fake_cleanup,
+            side_effect=mock_cleanup,
         ),
     ):
-        resp = endpoint(valid_nwb_file, background_tasks)
+        response = client.post(ROUTE, files=valid_nwb_upload)
 
-        assert saved_path.exists()
-        anyio.run(background_tasks)
-        assert not saved_path.exists()
+    # Assert success and that the file was created
+    assert response.status_code == HTTPStatus.OK
+    assert saved_path.exists()
 
-    assert resp.status == "success"
+    # Assert background task was scheduled
+    mock_cleanup.assert_called_once_with(str(saved_path))
+
+    assert saved_path.exists()
