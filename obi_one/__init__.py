@@ -56,6 +56,8 @@ __all__ = [
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
+    "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExtracellularLocations",
@@ -151,6 +153,8 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapseParameterizationSingleConfig",
+    "SynapseParameterizationTask",
     "SynapseSetUnion",
     "SynapticMgManipulation",
     "Task",
@@ -300,6 +304,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
+from obi_one.scientific.tasks.em_synapse_mapping import (
+    EMSynapseMappingSingleConfig,
+    EMSynapseMappingTask
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -345,6 +353,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
+)
+from obi_one.scientific.tasks.synapse_parameterization import (
+    SynapseParameterizationSingleConfig,
+    SynapseParameterizationTask,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
