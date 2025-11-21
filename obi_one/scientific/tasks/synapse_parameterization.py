@@ -1,8 +1,8 @@
 import logging
+from typing import ClassVar
 
 from entitysdk import Client
 from pydantic import Field
-from typing import ClassVar
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
@@ -15,17 +15,25 @@ L = logging.getLogger(__name__)
 
 class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
     name: ClassVar[str] = "Synapse parameterization"
-    description: ClassVar[str] = "Generates a physiological parameterization of an anatomical synaptome or replaces an existing paramterization."
+    description: ClassVar[str] = (
+        "Generates a physiological parameterization of an anatomical synaptome or replaces an"
+        " existing paramterization."
+    )
 
     class Initialize(Block):
         synaptome: CircuitFromID = Field(
-            title="Synaptome", description="Synaptome (i.e., circuit of scale single) to (re-)parameterize."
+            title="Synaptome",
+            description="Synaptome (i.e., circuit of scale single) to (re-)parameterize.",
         )
         pathway_param_dict: dict = Field(
-            title="Pathway parameters", description="Synapse physiology distribution parameters for all pathways in the ConnPropsModel format of Connectome-Manipulator."
+            title="Pathway parameters",
+            description="Synapse physiology distribution parameters for all pathways in the"
+            " ConnPropsModel format of Connectome-Manipulator.",
         )  # TODO: This may be replaced by dedicated entities
         overwrite_if_exists: bool = Field(
-            title="Overwrite", description="Overwrite if a parameterization exists already.", default=False
+            title="Overwrite",
+            description="Overwrite if a parameterization exists already.",
+            default=False,
         )
 
     initialize: Initialize
