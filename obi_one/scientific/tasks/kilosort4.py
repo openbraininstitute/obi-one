@@ -731,26 +731,3 @@ class KS4SpikeSortingTask(Task):
                 "delete_recording_dat": True
             }
         },
-
-
-
-
-
-# class SpikeSortingScanConfig(ScanConfig):
-
-
-
-
-
-# class Kilosort4ScanConfig(ScanConfig):
-#     """ScanConfig for extracting sub-circuits from larger circuits."""
-
-#     single_coord_class_title: ClassVar[str] = "Kilosort4SingleConfig"
-#     title: ClassVar[str] = "Kilosort4"
-#     description: ClassVar[str] = (
-#         "Kilosort4"
-#     )
-
-#     class Initialize(Block):
-
-
