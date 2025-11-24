@@ -292,7 +292,7 @@ def edges_dataframe_for_soma_syns(
                     _C_P_LOCS[0]: _C_SURFACE[0],
                     _C_P_LOCS[1]: _C_SURFACE[1],
                     _C_P_LOCS[2]: _C_SURFACE[2],
-                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT
+                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT,
                 }
             ),
             syns.loc[mapped_syn_idx, _C_P_LOCS],
@@ -324,7 +324,7 @@ def edges_dataframe_for_shaft_syns(
                     _C_P_LOCS[0]: _C_SURFACE[0],
                     _C_P_LOCS[1]: _C_SURFACE[1],
                     _C_P_LOCS[2]: _C_SURFACE[2],
-                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT
+                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT,
                 }
             ),
             mpd.loc[is_on_shaft],
