@@ -22,6 +22,8 @@ _C_ROTATION = ["spine_rotation_x", "spine_rotation_y", "spine_rotation_z", "spin
 _C_TRANSLATION = ["afferent_surface_x", "afferent_surface_y", "afferent_surface_z"]
 _C_CENTER = ["center_x", "center_y", "center_z"]
 _C_SURFACE = ["surface_x", "surface_y", "surface_z"]
+_C_CAVE_ID_IN = "id"
+_C_CAVE_ID_OUT = "cave_id"
 
 # Columns of morphology dataframes
 _STR_SEC_ID = "section_id"
@@ -285,11 +287,12 @@ def edges_dataframe_for_soma_syns(
     mapped_syn_idx = syns.index[is_on_soma]
     c = pandas.concat(
         [
-            syns.loc[mapped_syn_idx, _C_P_LOCS].rename(
+            syns.loc[mapped_syn_idx, [_C_CAVE_ID_IN, *_C_P_LOCS]].rename(
                 columns={
                     _C_P_LOCS[0]: _C_SURFACE[0],
                     _C_P_LOCS[1]: _C_SURFACE[1],
                     _C_P_LOCS[2]: _C_SURFACE[2],
+                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT
                 }
             ),
             syns.loc[mapped_syn_idx, _C_P_LOCS],
@@ -316,8 +319,13 @@ def edges_dataframe_for_shaft_syns(
     b = pandas.concat(
         [
             syns.loc[is_on_shaft, _C_P_LOCS],
-            syns.loc[is_on_shaft, _C_P_LOCS].rename(
-                columns=dict(zip(_C_P_LOCS, _C_SURFACE, strict=False))
+            syns.loc[is_on_shaft, [_C_CAVE_ID_IN, *_C_P_LOCS]].rename(
+                columns={
+                    _C_P_LOCS[0]: _C_SURFACE[0],
+                    _C_P_LOCS[1]: _C_SURFACE[1],
+                    _C_P_LOCS[2]: _C_SURFACE[2],
+                    _C_CAVE_ID_IN: _C_CAVE_ID_OUT
+                }
             ),
             mpd.loc[is_on_shaft],
         ],
@@ -355,6 +363,7 @@ def edges_dataframe_for_spine_syns(
         a[_PF_AFF + _col] = syns.loc[
             is_on_spine, _col
         ].to_numpy()  # Could also be a pandas.concat after reset_index()
+    a[_C_CAVE_ID_OUT] = syns.loc[is_on_spine, _C_CAVE_ID_IN].to_numpy()
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()
     return a
 
