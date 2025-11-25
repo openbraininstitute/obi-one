@@ -76,7 +76,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: Client = None,
-    ) -> models.SimulationCampaign:
+    ) -> models.CircuitExtractionCampaign:
         """Initializes the circuit extraction campaign in the database."""
         L.info("1. Initializing circuit extraction campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -105,7 +105,7 @@ class CircuitExtractionScanConfig(ScanConfig):
     def create_campaign_generation_entity(
         self, circuit_extraction_configs: list[models.CircuitExtractionConfig], db_client: Client
     ) -> None:
-        L.info("3. Saving completed simulation campaign generation")
+        L.info("3. Saving completed circuit extraction campaign generation")
 
         L.info("-- Register CircuitExtractionConfigGeneration Entity")
         db_client.register_entity(
@@ -133,7 +133,7 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
         campaign: models.CircuitExtractionCampaign,  # noqa: ARG002
         db_client: Client,
     ) -> models.CircuitExtractionConfig:
-        """Saves the simulation to the database."""
+        """Saves the circuit extraction config to the database."""
         L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
 
         if not isinstance(self.initialize.circuit, CircuitFromID):
@@ -150,7 +150,7 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
             )
         )
 
-        L.info("-- Upload simulation_generation_config")
+        L.info("-- Upload circuit_extraction_config")
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=models.CircuitExtractionConfig,
@@ -692,9 +692,9 @@ class CircuitExtractionTask(Task):
             # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
             # registered_circuit=new_circuit_entity)
 
-            # TODO: Circuit figure for simulation designer
+            # TODO: Circuit figure for campaign designer UI
             # https://github.com/openbraininstitute/obi-one/issues/442
-            # --> Requires generating a new simulation designer figure
+            # --> Requires generating a new campaign designer figure
             # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
             # registered_circuit=new_circuit_entity)
 
