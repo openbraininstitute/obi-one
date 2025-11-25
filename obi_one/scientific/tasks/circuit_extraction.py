@@ -45,6 +45,8 @@ class CircuitExtractionScanConfig(ScanConfig):
         " to simulate the extracted circuit."
     )
 
+    _campaign: models.CircuitExtractionCampaign = None
+
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Parent circuit to extract a sub-circuit from."
