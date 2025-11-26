@@ -1,8 +1,11 @@
 import logging
+import shutil
+from pathlib import Path
 from typing import ClassVar
 
 import bluepysnap as snap
 import h5py
+import numpy as np
 import pandas as pd
 from connectome_manipulator.model_building import model_types
 from entitysdk import Client, models
@@ -40,6 +43,12 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             description="Synapse physiology distribution parameters for all pathways in the"
             " ConnPropsModel format of Connectome-Manipulator.",
         )  # TODO: This may be replaced by dedicated entities
+        random_seed: int = Field(
+            default=1,
+            title="Random seed",
+            description="Seed for drawing random values from physiological parameter"
+            " distributions.",
+        )
         overwrite_if_exists: bool = Field(
             title="Overwrite",
             description="Overwrite if a parameterization exists already.",
@@ -54,6 +63,36 @@ class SynapseParameterizationTask(Task):
     _synaptome: MEModelWithSynapsesCircuit | None = PrivateAttr(default=None)
     _synaptome_entity: models.Circuit | None = PrivateAttr(default=None)
     _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
+
+    def _stage_synaptome(self, *, db_client: Client, entity_cache: bool) -> Path:
+        self._synaptome_entity = self.config.initialize.synaptome.entity(db_client=db_client)
+        root_dir = self.config.scan_output_root.resolve()
+        output_dir = self.config.coordinate_output_root.resolve()
+
+        if entity_cache:
+            # Use a cache directory at the campaign root --> Won't be deleted after extraction!
+            L.info("Using entity cache")
+            stage_dir = (
+                root_dir / "entity_cache" / "sonata_circuit" / str(self._synaptome_entity.id)
+            )
+        else:
+            # Stage circuit directly in output directory --> Modify in-place!
+            stage_dir = output_dir
+
+        synaptome = self.config.initialize.synaptome.stage_circuit(
+            db_client=db_client, dest_dir=stage_dir, entity_cache=entity_cache
+        )
+
+        if output_dir != stage_dir:
+            # Copy staged circuit into output directory
+            shutil.copytree(stage_dir, output_dir, dirs_exist_ok=False)
+            synaptome = MEModelWithSynapsesCircuit(
+                name=synaptome.name, path=str(output_dir / "circuit_config.json")
+            )
+
+        self._synaptome = synaptome
+
+        return output_dir
 
     def _wrap_get_model_output(
         self, cls_src: pd.Series, cls_tgt: pd.Series, row: pd.Series
@@ -74,14 +113,14 @@ class SynapseParameterizationTask(Task):
         if pathway_property not in edge.source.property_names:
             msg = (
                 f"Pathway property '{pathway_property}' not found in source nodes:"
-                " Skipping edge population '{edge.name}'!"
+                f" Skipping edge population '{edge.name}'!"
             )
             L.warning(msg)
             return
         if pathway_property not in edge.target.property_names:
             msg = (
                 f"Pathway property '{pathway_property}' not found in target nodes:"
-                " Skipping edge population '{edge.name}'!"
+                f" Skipping edge population '{edge.name}'!"
             )
             L.warning(msg)
             return
@@ -112,7 +151,7 @@ class SynapseParameterizationTask(Task):
                 if col in edge_grp["0"]:
                     msg = (
                         f"Synapse property '{col}' already exists in edge population"
-                        " '{edge.name}': "
+                        f" '{edge.name}': "
                     )
                     if self.config.initialize.overwrite_if_exists:
                         msg += "Re-parameterizing synapses."
@@ -130,11 +169,7 @@ class SynapseParameterizationTask(Task):
             raise ValueError(msg)
 
         # Stage synaptome
-        self._synaptome_entity = self.config.initialize.synaptome.entity(db_client=db_client)
-        output_dir = self.config.coordinate_output_root.resolve()
-        self._synaptome = self.config.initialize.synaptome.stage_circuit(
-            db_client=db_client, dest_dir=output_dir, entity_cache=entity_cache
-        )
+        output_dir = self._stage_synaptome(db_client=db_client, entity_cache=entity_cache)
 
         # Check parameters
         circ = self._synaptome.sonata_circuit
@@ -163,6 +198,10 @@ class SynapseParameterizationTask(Task):
         model_str = str(self._pathway_model)
         model_str = model_str.replace("M-types:", f"'{pathway_property}' pathways:")
         L.info(model_str)
+
+        # Set random seed
+        np.random.seed(self.config.initialize.random_seed)  # noqa: NPY002
+        # TODO: Fix legacy np.random in connectome-manipulator code
 
         # Run parameterization
         edge_pop_names = circ.edges.population_names
