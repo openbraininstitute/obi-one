@@ -25,7 +25,12 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE, _NEURON_PAIR_SIZE
+from obi_one.scientific.library.constants import (
+    _COORDINATE_CONFIG_FILENAME,
+    _MAX_SMALL_MICROCIRCUIT_SIZE,
+    _NEURON_PAIR_SIZE,
+    _SCAN_CONFIG_FILENAME,
+)
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
@@ -97,7 +102,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=models.CircuitExtractionCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -156,7 +161,7 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=models.CircuitExtractionConfig,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
             asset_label="circuit_extraction_config",
         )
