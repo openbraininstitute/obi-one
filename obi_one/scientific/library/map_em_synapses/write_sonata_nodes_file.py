@@ -57,11 +57,11 @@ def assemble_collection_from_specs(
     out_df = pandas.concat(out_cols, axis=1)
     out_df = out_df.reset_index().rename(columns={"pre_pt_root_id": "pt_root_id"})
     out_df.index = pandas.Index(range(1, len(out_df) + 1))
-    
+
     for col in out_df.columns:
         if isinstance(out_df[col].dtype, pandas.BooleanDtype):
             out_df[col] = out_df[col].astype(str)
-    
+
     return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
