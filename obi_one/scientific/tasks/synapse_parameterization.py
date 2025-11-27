@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from connectome_manipulator.model_building import model_types
-from entitysdk import Client, models
+from entitysdk import Client, models, types
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
@@ -169,6 +169,17 @@ class SynapseParameterizationTask(Task):
                 else:
                     edge_grp["0"].create_dataset(col, data=new_values)
 
+    def _register_derivation(
+        self, db_client: Client, registered_synaptome: models.Circuit
+    ) -> models.Derivation:
+        derivation_model = models.Derivation(
+            used=self._synaptome_entity,
+            generated=registered_synaptome,
+            derivation_type=types.DerivationType.circuit_rewiring,
+        )
+        registered_derivation = db_client.register_entity(derivation_model)
+        return registered_derivation
+
     def execute(self, *, db_client: Client = None, entity_cache: bool = False) -> None:
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
@@ -225,7 +236,7 @@ class SynapseParameterizationTask(Task):
         }
         compressed_path = compress_output(output_dir)
 
-        register_synaptome(
+        registered_synaptome = register_synaptome(
             db_client=db_client,
             name=synaptome_name_with_physiology(self._synaptome_entity.name),
             description=synaptome_description_with_physiology(self._synaptome_entity.description),
@@ -237,3 +248,6 @@ class SynapseParameterizationTask(Task):
             file_paths=file_paths,
             compressed_path=compressed_path,
         )
+
+        # Register derivation link
+        self._register_derivation(db_client=db_client, registered_synaptome=registered_synaptome)

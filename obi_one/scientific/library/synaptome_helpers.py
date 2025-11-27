@@ -89,7 +89,7 @@ def register_synaptome(
     lst_notices: list[str],
     file_paths: dict[str, Path],
     compressed_path: Path,
-) -> None:
+) -> Circuit:
     license = em_dataset.license
 
     circ_entity = Circuit(
@@ -134,3 +134,4 @@ def register_synaptome(
         )
         db_client.register_entity(new_link)
     L.info(f"Output registered as: {existing_circuit.id}")
+    return existing_circuit
