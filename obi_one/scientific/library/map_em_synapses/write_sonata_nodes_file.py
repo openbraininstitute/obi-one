@@ -59,7 +59,7 @@ def assemble_collection_from_specs(
     out_df.index = pandas.Index(range(1, len(out_df) + 1))
 
     for col in out_df.columns:
-        if isinstance(out_df[col].dtype, pandas.BooleanDtype):
+        if out_df[col].dtype in ("bool", "boolean"):  # NOQA: PLR6201
             out_df[col] = out_df[col].astype(str)
 
     return voxcell.CellCollection.from_dataframe(out_df), lst_notices
