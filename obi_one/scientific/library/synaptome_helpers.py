@@ -67,13 +67,17 @@ def synaptome_description(
     return description
 
 
-def synaptome_description_with_physiology(description: str) -> str:
+def synaptome_description_with_physiology(description: str, physiol_parameters: list[str]) -> str:
     """Split description at first sentence and mention physiology."""
     for sep in [".\n", ". ", "."]:
         parts = description.split(sep)
         if len(parts) > 1:
             break
-    new_parts = [parts[0] + ", with physiological parameterization of the synapses", *parts[1:]]
+    new_parts = [
+        parts[0] + ", with physiological parameterization"
+        f" ({', '.join(physiol_parameters)}) of the synapses",
+        *parts[1:],
+    ]
     description = sep.join(new_parts)
     return description
 
