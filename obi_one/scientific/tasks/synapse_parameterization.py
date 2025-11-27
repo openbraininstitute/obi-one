@@ -17,6 +17,12 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
+from obi_one.scientific.library.synaptome_helpers import (
+    compress_output,
+    register_synaptome,
+    synaptome_name_with_physiology,
+    synaptome_name_with_physiology,
+)
 
 L = logging.getLogger(__name__)
 
@@ -210,4 +216,20 @@ class SynapseParameterizationTask(Task):
             edge = circ.edges[edge_pop]
             self._parameterize_edge_file(edge)
 
-        # TODO: Register (re-)parameterized synaptome
+        # Register (re-)parameterized synaptome
+        L.info("Registering the output...")
+        file_paths = {str(path.relative_to(output_dir)): path for path in output_dir.rglob("*") if path.is_file()}
+        compressed_path = compress_output(output_dir)
+
+        register_synaptome(
+            db_client=db_client,
+            name=synaptome_name_with_physiology(self._synaptome_entity.name),
+            description=synaptome_description_with_physiology(self._synaptome_entity.description),
+            number_synapses=self._synaptome_entity.number_synapses,
+            number_connections=self._synaptome_entity.number_connections,
+            source_dataset=self._synaptome_entity,
+            em_dataset=self._synaptome_entity,
+            lst_notices=lst_notices,
+            file_paths=file_paths,
+            compressed_path=compressed_path,
+        )
