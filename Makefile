@@ -34,8 +34,8 @@ compile-deps:  ## Create or update the lock file, without upgrading the version 
 upgrade-deps:  ## Create or update the lock file, using the latest version of the dependencies
 	uv lock --upgrade
 
-check-deps:  ## Check that the dependencies in the existing lock file are valid
-	uv lock --locked
+check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version
+	uv lock --locked --upgrade-package entitysdk
 
 format:  ## Run formatters
 	uv run -m ruff format $(FILE)
