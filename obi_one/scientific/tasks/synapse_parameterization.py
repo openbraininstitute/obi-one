@@ -239,7 +239,9 @@ class SynapseParameterizationTask(Task):
         registered_synaptome = register_synaptome(
             db_client=db_client,
             name=synaptome_name_with_physiology(self._synaptome_entity.name),
-            description=synaptome_description_with_physiology(self._synaptome_entity.description),
+            description=synaptome_description_with_physiology(
+                self._synaptome_entity.description, self._pathway_model.prop_names
+            ),
             number_synapses=self._synaptome_entity.number_synapses,
             number_connections=self._synaptome_entity.number_connections,
             source_dataset=self._synaptome_entity,
