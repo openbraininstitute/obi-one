@@ -1,29 +1,17 @@
 import json
 import logging
-import os
 import shutil
-import subprocess  # NOQA: S404
 from pathlib import Path
 from typing import ClassVar
 
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
 from entitysdk import Client
-from entitysdk._server_schemas import (
-    AssetLabel,  # NOQA: PLC2701
-    CircuitBuildCategory,  # NOQA: PLC2701
-    CircuitScale,  # NOQA: PLC2701
-    ContentType,  # NOQA: PLC2701
-    PublicationType,  # NOQA: PLC2701
-)
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import (
     CellMorphology,
-    Circuit,
     EMCellMesh,
     EMDenseReconstructionDataset,
-    Publication,
-    ScientificArtifactPublicationLink,
 )
 from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
@@ -52,6 +40,12 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     assemble_collection_from_specs,
+)
+from obi_one.scientific.library.synaptome_helpers import (
+    compress_output,
+    register_synaptome,
+    synaptome_description,
+    synaptome_name,
 )
 
 L = logging.getLogger(__name__)
@@ -90,22 +84,6 @@ def plot_mapping_stats(
     ax.set_frame_on(False)
     plt.legend()
     return fig
-
-
-def assemble_publication_links(
-    db_client: Client,
-    em_dataset: EMDenseReconstructionDataset,
-    lst_notices: list[str],  # NOQA: ARG001
-) -> list[Publication]:
-    src_links = db_client.search_entity(
-        entity_type=ScientificArtifactPublicationLink,
-        query={"scientific_artifact__id": em_dataset.id},
-    ).all()
-    src_pubs = [
-        _x.publication for _x in src_links if _x.publication_type != PublicationType.application
-    ]
-    # TODO: Parse DOIs out of the lst_notices. Create publications for them.
-    return src_pubs
 
 
 class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
@@ -292,18 +270,19 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_h5: str(out_root / fn_morphology_out_h5),
             fn_morphology_out_swc: str(out_root / fn_morphology_out_swc),
         }
-        compressed_path = self.compress_output()
+        compressed_path = compress_output(self.config.coordinate_output_root)
 
-        self.register_output(
-            db_client,
-            pt_root_id,
-            mapped_synapses_df,
-            syn_pre_post_df,
-            source_dataset,
-            em_dataset.entity(db_client),
-            lst_notices,
-            file_paths,
-            compressed_path,
+        register_synaptome(
+            db_client=db_client,
+            name=synaptome_name(pt_root_id),
+            description=synaptome_description(pt_root_id, source_dataset, lst_notices),
+            number_synapses=len(mapped_synapses_df),
+            number_connections=len(syn_pre_post_df["pre_node_id"].drop_duplicates()),
+            source_dataset=source_dataset,
+            em_dataset=em_dataset.entity(db_client),
+            lst_notices=lst_notices,
+            file_paths=file_paths,
+            compressed_path=compressed_path,
         )
 
     @staticmethod
@@ -352,74 +331,3 @@ class EMSynapseMappingTask(Task):
             entity_type=EMDenseReconstructionDataset,
         )
         return pt_root_id, source_mesh_entity, source_dataset
-
-    def compress_output(self) -> os.PathLike:
-        out_root = self.config.coordinate_output_root
-        Path(out_root / "sonata.tar").write_bytes(
-            subprocess.check_output(["tar", "-c", str(out_root)])  # NOQA: S607, S603
-        )
-        subprocess.check_call(["gzip", "-1", str(out_root / "sonata.tar")])  # NOQA: S607, S603
-        return str(out_root / "sonata.tar.gz")
-
-    @staticmethod
-    def register_output(
-        db_client: Client,
-        pt_root_id: int,
-        mapped_synapses_df: pandas.DataFrame,
-        syn_pre_post_df: pandas.DataFrame,
-        source_dataset: EMCellMesh,
-        em_dataset: EMDenseReconstructionDataset,
-        lst_notices: list[str],
-        file_paths: dict[os.PathLike, os.PathLike],
-        compressed_path: os.PathLike,
-    ) -> None:
-        license = em_dataset.license
-        description = f"""Morphology skeleton with isolated spines and afferent synapses
-        (Synaptome) of the neuron with pt_root_id {pt_root_id}
-        in dataset {source_dataset.name}.\n"""
-        description += "Used tables with the following notice texts:\n"
-        for notice in lst_notices:
-            description += str(notice) + "\n"
-
-        circ_entity = Circuit(
-            name=f"Afferent-synaptome-{pt_root_id}",
-            description=description,
-            number_neurons=1,
-            number_synapses=len(mapped_synapses_df),
-            number_connections=len(syn_pre_post_df["pre_node_id"].drop_duplicates()),
-            scale=CircuitScale.single,
-            build_category=CircuitBuildCategory.em_reconstruction,
-            subject=source_dataset.subject,
-            has_morphologies=True,
-            has_electrical_cell_models=False,
-            has_spines=True,
-            brain_region=source_dataset.brain_region,
-            experiment_date=source_dataset.experiment_date,
-            license=license,
-        )
-        existing_circuit = db_client.register_entity(circ_entity)
-
-        db_client.upload_directory(
-            entity_id=existing_circuit.id,
-            entity_type=Circuit,
-            name="sonata_synaptome",
-            paths=file_paths,
-            label=AssetLabel.sonata_circuit,
-        )
-
-        db_client.upload_file(
-            entity_id=existing_circuit.id,
-            entity_type=Circuit,
-            file_path=compressed_path,
-            file_content_type=ContentType.application_gzip,
-            asset_label=AssetLabel.compressed_sonata_circuit,
-        )
-
-        for publication in assemble_publication_links(db_client, em_dataset, lst_notices):
-            new_link = ScientificArtifactPublicationLink(
-                scientific_artifact=existing_circuit,
-                publication=publication,
-                publication_type=PublicationType.component_source,
-            )
-            db_client.register_entity(new_link)
-        L.info(f"Output registered as: {existing_circuit.id}")
