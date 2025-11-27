@@ -264,11 +264,11 @@ class EMSynapseMappingTask(Task):
         # Register entity, if possible
         L.info("Registering the output...")
         file_paths = {
-            "circuit_config.json": str(out_root / "circuit_config.json"),
-            fn_nodes_out: str(out_root / fn_nodes_out),
-            fn_edges_out: str(out_root / fn_edges_out),
-            fn_morphology_out_h5: str(out_root / fn_morphology_out_h5),
-            fn_morphology_out_swc: str(out_root / fn_morphology_out_swc),
+            "circuit_config.json": out_root / "circuit_config.json",
+            fn_nodes_out: out_root / fn_nodes_out,
+            fn_edges_out: out_root / fn_edges_out,
+            fn_morphology_out_h5: out_root / fn_morphology_out_h5,
+            fn_morphology_out_swc: out_root / fn_morphology_out_swc,
         }
         compressed_path = compress_output(self.config.coordinate_output_root)
 

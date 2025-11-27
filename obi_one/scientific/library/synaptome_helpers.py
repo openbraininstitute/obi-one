@@ -1,5 +1,4 @@
 import logging
-import os
 import tarfile
 from pathlib import Path
 
@@ -69,9 +68,13 @@ def synaptome_description(
 
 
 def synaptome_description_with_physiology(description: str) -> str:
-    parts = description.split(".\n")
+    """Split description at first sentence and mention physiology."""
+    for sep in [".\n", ". ", "."]:
+        parts = description.split(sep)
+        if len(parts) > 1:
+            break
     new_parts = [parts[0] + ", with physiological parameterization of the synapses", *parts[1:]]
-    description = ".\n".join(new_parts)
+    description = sep.join(new_parts)
     return description
 
 
@@ -84,8 +87,8 @@ def register_synaptome(
     source_dataset: ScientificArtifact,
     em_dataset: ScientificArtifact,
     lst_notices: list[str],
-    file_paths: dict[os.PathLike, os.PathLike],
-    compressed_path: os.PathLike,
+    file_paths: dict[str, Path],
+    compressed_path: Path,
 ) -> None:
     license = em_dataset.license
 
