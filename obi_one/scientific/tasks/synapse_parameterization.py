@@ -20,7 +20,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 from obi_one.scientific.library.synaptome_helpers import (
     compress_output,
     register_synaptome,
-    synaptome_name_with_physiology,
+    synaptome_description_with_physiology,
     synaptome_name_with_physiology,
 )
 
@@ -218,7 +218,11 @@ class SynapseParameterizationTask(Task):
 
         # Register (re-)parameterized synaptome
         L.info("Registering the output...")
-        file_paths = {str(path.relative_to(output_dir)): path for path in output_dir.rglob("*") if path.is_file()}
+        file_paths = {
+            str(path.relative_to(output_dir)): path
+            for path in output_dir.rglob("*")
+            if path.is_file()
+        }
         compressed_path = compress_output(output_dir)
 
         register_synaptome(
@@ -229,7 +233,7 @@ class SynapseParameterizationTask(Task):
             number_connections=self._synaptome_entity.number_connections,
             source_dataset=self._synaptome_entity,
             em_dataset=self._synaptome_entity,
-            lst_notices=lst_notices,
+            lst_notices=[],
             file_paths=file_paths,
             compressed_path=compressed_path,
         )
