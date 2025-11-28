@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from entitysdk.client import Client
+from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -165,9 +166,19 @@ def names_from_node_sets_file(
     circuit_id: str,
     asset_id: str,
 ) -> list:
-    remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
-    with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn, Path.open(fn) as fid:
-        contents = json.load(fid)
+    if "node_sets_file" in config_dict:
+        try:
+            remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
+            with (
+                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+                Path.open(fn) as fid,
+            ):
+                contents = json.load(fid)
+        except EntitySDKError:
+            # Error downloading the node sets file from directory asset
+            contents = {}
+    else:
+        contents = {}
     return list(contents.keys())
 
 
@@ -489,7 +500,9 @@ def get_circuit_metrics(  # noqa: PLR0914
         # Read the file and load JSON
         content = Path(temp_file_path).read_text(encoding="utf-8")
         config_dict = json.loads(content)
-        manifest = {k: str(Path(temp_dir) / Path(v)) for k, v in config_dict["manifest"].items()}
+        manifest = {
+            k: str(Path(temp_dir) / Path(v)) for k, v in config_dict.get("manifest", {}).items()
+        }
 
     dict_props = properties_from_config(config_dict)
     nodesets = names_from_node_sets_file(

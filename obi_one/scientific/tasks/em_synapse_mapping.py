@@ -103,6 +103,13 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
             description="""A neuron morphology with spines obtained from an electron-microscopy
             datasets through the skeletonization task.""",
         )
+        pt_root_id: int | None = Field(
+            title="Neuron identifier within the EM dense reconstruction dataset.",
+            description="""Neurons in an EM dataset are uniquely identified by a number,
+            often called 'pt_root_id'. Please provide that identifier.
+            Otherwise, it will be guessed from the neuron entities name and description.""",
+            default=None,
+        )
         edge_population_name: str = Field(
             title="Edge population name",
             description="Name of the edge population to write the synapse information into",
@@ -318,11 +325,12 @@ class EMSynapseMappingTask(Task):
 
         return syns, coll_pre, coll_post, [syns_notice, *nodes_notice]
 
-    @staticmethod
     def resolve_provenance(
-        db_client: Client, morph_entity: CellMorphology
+        self, db_client: Client, morph_entity: CellMorphology
     ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
-        pt_root_id = int(morph_entity.description.split()[-1][:-1])
+        pt_root_id = self.config.initialize.pt_root_id
+        if pt_root_id is None:
+            pt_root_id = int(morph_entity.description.split()[-1][:-1])
         source_mesh_entity = db_client.search_entity(
             entity_type=EMCellMesh, query={"dense_reconstruction_cell_id": pt_root_id}
         ).first()
