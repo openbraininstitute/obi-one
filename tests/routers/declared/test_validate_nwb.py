@@ -176,8 +176,14 @@ def test_validate_nwb_file_empty(
             "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
-        patch("app.endpoints.validate_electrophysiology_protocol_nwb_file._handle_empty_file", side_effect=fake_handle_empty),
-        patch("app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers", mock_validate),
+        patch(
+            "app.endpoints.validate_electrophysiology_protocol_nwb_file._handle_empty_file",
+            side_effect=fake_handle_empty,
+        ),
+        patch(
+            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            mock_validate,
+        ),
     ):
         response = client.post(ROUTE, files=empty_nwb_upload)
 
