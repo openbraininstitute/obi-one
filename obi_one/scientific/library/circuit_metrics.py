@@ -489,7 +489,9 @@ def get_circuit_metrics(  # noqa: PLR0914
         # Read the file and load JSON
         content = Path(temp_file_path).read_text(encoding="utf-8")
         config_dict = json.loads(content)
-        manifest = {k: str(Path(temp_dir) / Path(v)) for k, v in config_dict["manifest"].items()}
+        manifest = {
+            k: str(Path(temp_dir) / Path(v)) for k, v in config_dict.get("manifest", {}).items()
+        }
 
     dict_props = properties_from_config(config_dict)
     nodesets = names_from_node_sets_file(
