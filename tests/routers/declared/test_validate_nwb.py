@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.dependencies.auth import user_verified
 
 # Import AFTER patching
-from app.endpoints.nwb_validation import (
+from app.endpoints.validate_electrophysiology_protocol_nwb import (
     router as nwb_router,  # Import the router directly
 )
 
