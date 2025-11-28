@@ -53,11 +53,11 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
-    "EMSynapseMappingSingleConfig",
-    "EMSynapseMappingTask",
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExtracellularLocations",
@@ -306,7 +306,7 @@ from obi_one.scientific.tasks.contribute import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping import (
     EMSynapseMappingSingleConfig,
-    EMSynapseMappingTask
+    EMSynapseMappingTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
