@@ -53,9 +53,6 @@ dependencies = [
     "aiofiles",
     "neurom",
     "morph-tool",
-    # VALIDATION
-    "pynwb",
-    "bluepyefe",
     # ENTITYSDK
     "entitysdk>=0.8.7",
     "obi-auth>=0.3.0",
