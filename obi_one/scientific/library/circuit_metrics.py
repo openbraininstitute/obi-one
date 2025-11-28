@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 import pandas as pd
 from entitysdk.client import Client
+from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -166,12 +167,16 @@ def names_from_node_sets_file(
     asset_id: str,
 ) -> list:
     if "node_sets_file" in config_dict:
-        remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
-        with (
-            TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
-            Path.open(fn) as fid,
-        ):
-            contents = json.load(fid)
+        try:
+            remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
+            with (
+                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+                Path.open(fn) as fid,
+            ):
+                contents = json.load(fid)
+        except EntitySDKError:
+            # Error downloading the node sets file from directory asset
+            contents = {}
     else:
         contents = {}
     return list(contents.keys())
