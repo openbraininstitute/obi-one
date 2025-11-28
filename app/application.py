@@ -22,8 +22,8 @@ from app.endpoints import (
     morphology_metrics,
     morphology_validation,
     multi_values,
-    validate_electrophysiology_protocol_nwb,
     scan_config,
+    validate_electrophysiology_protocol_nwb,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
