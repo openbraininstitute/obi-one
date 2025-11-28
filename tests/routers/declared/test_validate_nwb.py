@@ -101,15 +101,15 @@ def test_validate_nwb_file_success(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             return_value=None,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._cleanup_temp_file",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._cleanup_temp_file",
             side_effect=mock_cleanup,
         ),
     ):
@@ -173,15 +173,15 @@ def test_validate_nwb_file_empty(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._handle_empty_file",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._handle_empty_file",
             side_effect=fake_handle_empty,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             mock_validate,
         ),
     ):
@@ -234,11 +234,11 @@ def test_validate_nwb_file_reader_fails(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             side_effect=RuntimeError("All NWB readers failed."),
         ),
     ):
@@ -260,7 +260,7 @@ def test_validate_nwb_file_os_error(client: TestClient, valid_nwb_upload: dict):
     os_error_message = "disk full"
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=OSError(os_error_message),
         ),
     ):
@@ -291,11 +291,11 @@ def test_validate_nwb_file_cleanup_on_error(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             side_effect=RuntimeError("boom"),
         ),
     ):
@@ -333,15 +333,15 @@ def test_validate_nwb_file_real_reader_success(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._cleanup_temp_file",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._cleanup_temp_file",
             side_effect=mock_cleanup,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             return_value=None,
         ),
         patch("bluepyefe.reader.AIBSNWBReader", fake_reader),
@@ -378,15 +378,15 @@ def test_validate_nwb_file_background_cleanup(
 
     with (
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._save_upload_to_tempfile",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._save_upload_to_tempfile",
             side_effect=fake_save,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file.validate_all_nwb_readers",
+            "app.endpoints.validate_electrophysiology_protocol_nwb.validate_all_nwb_readers",
             return_value=None,
         ),
         patch(
-            "app.endpoints.validate_electrophysiology_protocol_nwb_file._cleanup_temp_file",
+            "app.endpoints.validate_electrophysiology_protocol_nwb._cleanup_temp_file",
             side_effect=mock_cleanup,
         ),
     ):
