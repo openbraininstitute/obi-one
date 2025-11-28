@@ -165,9 +165,15 @@ def names_from_node_sets_file(
     circuit_id: str,
     asset_id: str,
 ) -> list:
-    remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
-    with TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn, Path.open(fn) as fid:
-        contents = json.load(fid)
+    if "node_sets_file" in config_dict:
+        remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
+        with (
+            TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+            Path.open(fn) as fid,
+        ):
+            contents = json.load(fid)
+    else:
+        contents = {}
     return list(contents.keys())
 
 
