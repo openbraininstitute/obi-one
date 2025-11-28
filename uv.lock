@@ -838,6 +838,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/97/e8/37d9708a4b39f4c923eb43d174fc3325bf11ba6dba6f0f9f523ffe0f4d5f/efel-5.7.20-cp312-cp312-win_amd64.whl", hash = "sha256:80507ab9984fb77d2c68e45c084e67aa0b042603e7a84c56896308329bebf44c", size = 237699, upload-time = "2025-10-21T12:55:04.552Z" },
 ]
 
+
 [[package]]
 name = "entitysdk"
 version = "0.10.3"
