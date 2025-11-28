@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
@@ -39,6 +40,13 @@ L = logging.getLogger(__name__)
 _RUN_VALIDATION = False
 
 
+class BlockGroup(StrEnum):
+    """Block Groups."""
+
+    SETUP = "Setup"
+    EXTRACTION_TARGET = "Extraction Target"
+
+
 class CircuitExtractionScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
@@ -51,6 +59,14 @@ class CircuitExtractionScanConfig(ScanConfig):
     )
 
     _campaign: models.CircuitExtractionCampaign = None
+
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "block_block_group_order": [
+                BlockGroup.SETUP,
+                BlockGroup.EXTRACTION_TARGET,
+            ]
+        }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
@@ -71,11 +87,23 @@ class CircuitExtractionScanConfig(ScanConfig):
             " together with their connectivity.",
         )
 
-    initialize: Initialize
-    neuron_set: CircuitExtractionNeuronSetUnion
     info: Info = Field(
         title="Info",
         description="Information about the circuit extraction campaign.",
+        group=BlockGroup.SETUP,
+        group_order=0,
+    )
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the circuit extraction campaign.",
+        group=BlockGroup.SETUP,
+        group_order=1,
+    )
+    neuron_set: CircuitExtractionNeuronSetUnion = Field(
+        title="Neuron Set",
+        description="Set of neurons to be extracted from the parent circuit.",
+        group=BlockGroup.EXTRACTION_TARGET,
+        group_order=0,
     )
 
     def create_campaign_entity_with_config(
