@@ -10,6 +10,7 @@ from uuid import UUID
 
 import neurom as nm
 import requests
+import entitysdk
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -164,18 +165,6 @@ class MorphologyMetadata(BaseModel):
 
 
 # --- HELPER FUNCTIONS ---
-def _setup_context_and_client(
-    user_context: UserContextDep, virtual_lab_id: str, project_id: str, request: Request
-) -> Client:
-    modified_context = user_context.model_copy(
-        update={
-            "virtual_lab_id": UUID(virtual_lab_id),
-            "project_id": UUID(project_id),
-        }
-    )
-    return get_client(user_context=modified_context, request=request)
-
-
 async def _parse_file_and_metadata(
     file: UploadFile, metadata_str: str
 ) -> tuple[str, str, bytes, MorphologyMetadata]:
@@ -368,16 +357,14 @@ def _register_assets_and_measurements(
         "asset, and measurements."
     ),
 )
+
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    virtual_lab_id: Annotated[str, Form()],
-    project_id: Annotated[str, Form()],
+    client: Annotated[entitysdk.client.Client, Depends(get_client)],
     user_context: UserContextDep,
     request: Request,
     metadata: Annotated[str, Form()] = "{}",
 ) -> dict:
-    client = _setup_context_and_client(user_context, virtual_lab_id, project_id, request)
-
     (
         morphology_name,
         file_extension,
