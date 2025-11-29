@@ -51,9 +51,7 @@ dependencies = [
     "blueetl",
     # NEUROM
     "aiofiles",
-    "bluepyopt",    # The Blue Brain Python Optimisation Library
     "neurom",
-    "neuron",       # The NEURON simulator Python package    
     "morph-tool",
     # ENTITYSDK
     "entitysdk>=0.8.7",
