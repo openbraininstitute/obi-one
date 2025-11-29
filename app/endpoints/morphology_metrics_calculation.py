@@ -6,11 +6,10 @@ from contextlib import ExitStack, suppress
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
-from uuid import UUID
 
+import entitysdk
 import neurom as nm
 import requests
-import entitysdk
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -25,10 +24,9 @@ from entitysdk.models import (
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from requests.exceptions import RequestException
-from starlette.requests import Request
 
 import app.endpoints.useful_functions.useful_functions as uf
-from app.dependencies.auth import UserContextDep, user_verified
+from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_validation import process_and_convert_morphology
 
@@ -357,12 +355,9 @@ def _register_assets_and_measurements(
         "asset, and measurements."
     ),
 )
-
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    user_context: UserContextDep,
-    request: Request,
     metadata: Annotated[str, Form()] = "{}",
 ) -> dict:
     (
