@@ -70,12 +70,12 @@ class ThermoFitMTauV2(IonChannelEquation):
 
 
 class BellFitMTau(IonChannelEquation):
-    equation_key: ClassVar[str] = "bellfit_mtau"
+    equation_key: ClassVar[str] = "bell_fit_mtau"
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "latex_equation": r"\frac{1.}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+            "latex_equation": r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
         }
 
 
