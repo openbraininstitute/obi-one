@@ -53,7 +53,7 @@ class CircuitExtractionScanConfig(ScanConfig):
     single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
-        "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output"
+        "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"
         " circuit will contain all morphologies, hoc files, and mod files that are required"
         " to simulate the extracted circuit."
     )
@@ -74,17 +74,17 @@ class CircuitExtractionScanConfig(ScanConfig):
         )
         do_virtual: bool = Field(
             default=True,
-            name="Include virtual populations",
-            description="Split out virtual neurons that target the cells contained in the"
-            " specified neuron set and kept them as virtual neurons together with their"
-            " connectivity.",
+            title="Include Virtual Populations",
+            description="Include virtual neurons which target the cells contained in the specified"
+            " neuron set (together with their connectivity onto the specified neuron set) in the"
+            " extracted sub-circuit.",
         )
         create_external: bool = Field(
             default=True,
-            name="Create external population",
-            description="Turn neurons that are outside the specified neuron set but target"
-            " the cells contained therein into a new external population of virtual neurons"
-            " together with their connectivity.",
+            title="Create External Population",
+            description="Convert (non-virtual) neurons which are outside of the specified neuron"
+            " set, but which target the cells contained therein, into a new external population"
+            " of virtual neurons (together with their connectivity onto the specified neuron set).",
         )
 
     info: Info = Field(
@@ -101,7 +101,8 @@ class CircuitExtractionScanConfig(ScanConfig):
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
         title="Neuron Set",
-        description="Set of neurons to be extracted from the parent circuit.",
+        description="Set of neurons to be extracted from the parent circuit, including their"
+        " connectivity.",
         group=BlockGroup.EXTRACTION_TARGET,
         group_order=0,
     )
