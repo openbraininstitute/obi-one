@@ -4,32 +4,32 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.stimulus import (
-    ConstantCurrentClampSomaticStimulus,
+    ConstantCurrentClampStimulus,
     FullySynchronousSpikeStimulus,
-    HyperpolarizingCurrentClampSomaticStimulus,
-    LinearCurrentClampSomaticStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampStimulus,
+    LinearCurrentClampStimulus,
+    MultiPulseCurrentClampStimulus,
+    NormallyDistributedCurrentClampStimulus,
     PoissonSpikeStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampStimulus,
+    RelativeLinearCurrentClampStimulus,
+    RelativeNormallyDistributedCurrentClampStimulus,
+    SinusoidalCurrentClampStimulus,
     SinusoidalPoissonSpikeStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampStimulus,
 )
 
 StimulusUnion = Annotated[
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
+    ConstantCurrentClampStimulus
+    | HyperpolarizingCurrentClampStimulus
+    | LinearCurrentClampStimulus
+    | MultiPulseCurrentClampStimulus
+    | NormallyDistributedCurrentClampStimulus
+    | RelativeNormallyDistributedCurrentClampStimulus
+    | RelativeConstantCurrentClampStimulus
+    | RelativeLinearCurrentClampStimulus
+    | SinusoidalCurrentClampStimulus
+    | SubthresholdCurrentClampStimulus
     | PoissonSpikeStimulus
     | FullySynchronousSpikeStimulus
     | SinusoidalPoissonSpikeStimulus,
@@ -37,16 +37,16 @@ StimulusUnion = Annotated[
 ]
 
 MEModelStimulusUnion = Annotated[
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus,
+    ConstantCurrentClampStimulus
+    | HyperpolarizingCurrentClampStimulus
+    | LinearCurrentClampStimulus
+    | MultiPulseCurrentClampStimulus
+    | NormallyDistributedCurrentClampStimulus
+    | RelativeNormallyDistributedCurrentClampStimulus
+    | RelativeConstantCurrentClampStimulus
+    | RelativeLinearCurrentClampStimulus
+    | SinusoidalCurrentClampStimulus
+    | SubthresholdCurrentClampStimulus,
     Discriminator("type"),
 ]
 
