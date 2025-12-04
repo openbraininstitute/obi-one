@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Optional
 
 import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
@@ -121,8 +121,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         group_order=1,
     )
 
-    compartment_sets: dict[str, CompartmentSetUnion] = Field(
-        default_factory=dict,
+    compartment_sets: Optional[dict[str, CompartmentSetUnion]] = Field(
+        default_factory=None,
         title="Compartment Sets",
         reference_type=CompartmentSetReference.__name__,
         description="SONATA-style compartment_sets blocks.",
