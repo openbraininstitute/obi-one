@@ -2,13 +2,13 @@ from typing import Annotated
 
 from pydantic import Field
 
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
-)
 from obi_one.scientific.unions.unions_compartment_sets import (
     CompartmentSetReference,
     resolve_compartment_set_ref_to_name,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
 )
 
 
@@ -49,11 +49,19 @@ class Targeting:
         if self.compartment_set:
             name = resolve_compartment_set_ref_to_name(self.compartment_set, default=None)
             if name is None:
-                return {"node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, getattr(self, "_default_node_set", "All"))}
+                return {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, getattr(self, "_default_node_set", "All")
+                    )
+                }
 
             entry = {"compartment_set": name}
             if self.compartment_population:
                 entry["population"] = self.compartment_population
             return entry
 
-        return {"node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, getattr(self, "_default_node_set", "All"))}
+        return {
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                self.neuron_set, getattr(self, "_default_node_set", "All")
+            )
+        }

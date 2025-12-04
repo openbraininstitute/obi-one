@@ -1,11 +1,9 @@
-from typing import Any, ClassVar
-from typing_extensions import Annotated
+from typing import Annotated, Any, ClassVar
 
 from pydantic import Field
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.compartment_sets import CompartmentSet
-
 
 CompartmentSetUnion = Annotated[
     CompartmentSet,

@@ -43,6 +43,7 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
+    "CompartmentLocation",
     "CompartmentSet",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -204,6 +205,7 @@ from obi_one.scientific.blocks.afferent_synapses import (
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
+from obi_one.scientific.blocks.compartment_sets import CompartmentLocation, CompartmentSet
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -361,7 +363,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetUnion,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.blocks.compartment_sets import CompartmentSet, CompartmentLocation
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
@@ -380,12 +381,15 @@ class GridScan(GridScanGenerationTask):
 class CoupledScan(CoupledScanGenerationTask):
     pass
 
+
 ConstantCurrentClampSomaticStimulus = ConstantCurrentClampStimulus
 RelativeConstantCurrentClampSomaticStimulus = RelativeConstantCurrentClampStimulus
 LinearCurrentClampSomaticStimulus = LinearCurrentClampStimulus
 RelativeLinearCurrentClampSomaticStimulus = RelativeLinearCurrentClampStimulus
 NormallyDistributedCurrentClampSomaticStimulus = NormallyDistributedCurrentClampStimulus
-RelativeNormallyDistributedCurrentClampSomaticStimulus = RelativeNormallyDistributedCurrentClampStimulus
+RelativeNormallyDistributedCurrentClampSomaticStimulus = (
+    RelativeNormallyDistributedCurrentClampStimulus
+)
 MultiPulseCurrentClampSomaticStimulus = MultiPulseCurrentClampStimulus
 SinusoidalCurrentClampSomaticStimulus = SinusoidalCurrentClampStimulus
 SubthresholdCurrentClampSomaticStimulus = SubthresholdCurrentClampStimulus

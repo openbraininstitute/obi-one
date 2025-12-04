@@ -306,7 +306,11 @@ class GenerateSimulationTask(Task):
             compartment_sets_dict: dict = {}
             for _cs_key, _cs_block in self.config.compartment_sets.items():
                 if _cs_key != _cs_block.block_name:
-                    msg = "Compartment set name mismatch! Using sim_conf.add(compartment_set, name=compartment_set_name) should ensure this."
+                    msg = (
+                        "Compartment set name mismatch! "
+                        "Using sim_conf.add(compartment_set, name=compartment_set_name) "
+                        "should ensure this."
+                    )
                     raise OBIONEError(msg)
                 compartment_sets_dict.update(_cs_block.to_sonata_dict())
 

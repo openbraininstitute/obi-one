@@ -1,16 +1,17 @@
+from __future__ import annotations
+
+from operator import itemgetter
 from typing import Any
+
 from pydantic import BaseModel, Field
+
 from obi_one.core.block import Block
+
 
 class CompartmentLocation(BaseModel):
     node_id: int = Field(ge=0)
     section_id: int = Field(ge=0)
     offset: float = Field(ge=0.0, le=1.0)
-
-from typing import Any
-from pydantic import BaseModel, Field
-
-from obi_one.core.block import Block
 
 
 class CompartmentSet(Block):
@@ -29,13 +30,12 @@ class CompartmentSet(Block):
 
     def to_sonata_dict(self) -> dict[str, Any]:
         """Return SONATA-compliant { block_name : {...} } structure."""
-
         triplets = [
             [int(node_id), int(section_id), float(offset)]
             for (node_id, section_id, offset) in self.compartment_entries
         ]
 
-        triplets.sort(key=lambda t: (t[0], t[1], t[2]))
+        triplets.sort(key=itemgetter(0, 1, 2))
 
         deduped: list[list[float | int]] = []
         last: list[float | int] | None = None

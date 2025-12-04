@@ -13,7 +13,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.blocks.compartment_sets import CompartmentSet
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,

@@ -20,13 +20,13 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
-)
 from obi_one.scientific.unions.unions_compartment_sets import (
     CompartmentSetReference,
     resolve_compartment_set_ref_to_name,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -57,27 +57,27 @@ class Stimulus(Block, ABC):
     _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
     neuron_set: (
-            Annotated[
-                NeuronSetReference,
-                Field(
-                    title="Neuron Set",
-                    description="Neuron set to which the stimulus is applied.",
-                    supports_virtual=False,
-                ),
-            ]
-            | None
-        ) = None
+        Annotated[
+            NeuronSetReference,
+            Field(
+                title="Neuron Set",
+                description="Neuron set to which the stimulus is applied.",
+                supports_virtual=False,
+            ),
+        ]
+        | None
+    ) = None
     compartment_set: (
         Annotated[
-                CompartmentSetReference,
-                Field(
-                    title="Compartment Set",
-                    description="Compartment set to which the stimulus is applied.",
-                    supports_virtual=False,
-                ),
-            ]
-            | None
-        ) = None
+            CompartmentSetReference,
+            Field(
+                title="Compartment Set",
+                description="Compartment set to which the stimulus is applied.",
+                supports_virtual=False,
+            ),
+        ]
+        | None
+    ) = None
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
