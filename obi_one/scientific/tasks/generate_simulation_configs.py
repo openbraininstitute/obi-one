@@ -13,6 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.blocks.compartment_sets import CompartmentSet
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -25,6 +26,10 @@ from obi_one.scientific.library.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
+from obi_one.scientific.unions.unions_compartment_sets import (
+    CompartmentSetReference,
+    CompartmentSetUnion,
+)
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -115,6 +120,16 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         singular_name="Recording",
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=1,
+    )
+
+    compartment_sets: dict[str, CompartmentSetUnion] = Field(
+        default_factory=dict,
+        title="Compartment Sets",
+        reference_type=CompartmentSetReference.__name__,
+        description="SONATA-style compartment_sets blocks.",
+        singular_name="Compartment Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=2,
     )
 
     class Initialize(Block):
