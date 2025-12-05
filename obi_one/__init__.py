@@ -43,10 +43,12 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
+    "CompartmentLocation",
+    "CompartmentSet",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
-    "ConstantCurrentClampSomaticStimulus",
+    "ConstantCurrentClampStimulus",
     "ContributeMorphologyScanConfig",
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
@@ -68,7 +70,7 @@ __all__ = [
     "GenerateSimulationTask",
     "GridScan",
     "GridScanGenerationTask",
-    "HyperpolarizingCurrentClampSomaticStimulus",
+    "HyperpolarizingCurrentClampStimulus",
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
@@ -76,7 +78,7 @@ __all__ = [
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
-    "LinearCurrentClampSomaticStimulus",
+    "LinearCurrentClampStimulus",
     "LoadAssetMethod",
     "MEModelCircuit",
     "MEModelFromID",
@@ -98,7 +100,7 @@ __all__ = [
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
-    "MultiPulseCurrentClampSomaticStimulus",
+    "MultiPulseCurrentClampStimulus",
     "NamedPath",
     "NamedTuple",
     "NeuronPropertyFilter",
@@ -107,7 +109,7 @@ __all__ = [
     "NeuronSetUnion",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
-    "NormallyDistributedCurrentClampSomaticStimulus",
+    "NormallyDistributedCurrentClampStimulus",
     "OBIBaseModel",
     "OBIONEError",
     "PairMotifNeuronSet",
@@ -129,9 +131,9 @@ __all__ = [
     "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
-    "RelativeConstantCurrentClampSomaticStimulus",
-    "RelativeLinearCurrentClampSomaticStimulus",
-    "RelativeNormallyDistributedCurrentClampSomaticStimulus",
+    "RelativeConstantCurrentClampStimulus",
+    "RelativeLinearCurrentClampStimulus",
+    "RelativeNormallyDistributedCurrentClampStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
     "ScanConfig",
     "ScanConfig",
@@ -145,12 +147,12 @@ __all__ = [
     "SingleConfigMixin",
     "SingleConfigMixin",
     "SingleTimestamp",
-    "SinusoidalCurrentClampSomaticStimulus",
+    "SinusoidalCurrentClampStimulus",
     "SinusoidalPoissonSpikeStimulus",
     "SomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
-    "SubthresholdCurrentClampSomaticStimulus",
+    "SubthresholdCurrentClampStimulus",
     "SynapseSetUnion",
     "SynapticMgManipulation",
     "Task",
@@ -203,6 +205,7 @@ from obi_one.scientific.blocks.afferent_synapses import (
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
+from obi_one.scientific.blocks.compartment_sets import CompartmentLocation, CompartmentSet
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -247,19 +250,19 @@ from obi_one.scientific.blocks.recording import (
     TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.blocks.stimulus import (
-    ConstantCurrentClampSomaticStimulus,
+    ConstantCurrentClampStimulus,
     FullySynchronousSpikeStimulus,
-    HyperpolarizingCurrentClampSomaticStimulus,
-    LinearCurrentClampSomaticStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampStimulus,
+    LinearCurrentClampStimulus,
+    MultiPulseCurrentClampStimulus,
+    NormallyDistributedCurrentClampStimulus,
     PoissonSpikeStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampStimulus,
+    RelativeLinearCurrentClampStimulus,
+    RelativeNormallyDistributedCurrentClampStimulus,
+    SinusoidalCurrentClampStimulus,
     SinusoidalPoissonSpikeStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampStimulus,
 )
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.from_id.cell_morphology_from_id import (
@@ -377,3 +380,17 @@ class GridScan(GridScanGenerationTask):
 
 class CoupledScan(CoupledScanGenerationTask):
     pass
+
+
+ConstantCurrentClampSomaticStimulus = ConstantCurrentClampStimulus
+RelativeConstantCurrentClampSomaticStimulus = RelativeConstantCurrentClampStimulus
+LinearCurrentClampSomaticStimulus = LinearCurrentClampStimulus
+RelativeLinearCurrentClampSomaticStimulus = RelativeLinearCurrentClampStimulus
+NormallyDistributedCurrentClampSomaticStimulus = NormallyDistributedCurrentClampStimulus
+RelativeNormallyDistributedCurrentClampSomaticStimulus = (
+    RelativeNormallyDistributedCurrentClampStimulus
+)
+MultiPulseCurrentClampSomaticStimulus = MultiPulseCurrentClampStimulus
+SinusoidalCurrentClampSomaticStimulus = SinusoidalCurrentClampStimulus
+SubthresholdCurrentClampSomaticStimulus = SubthresholdCurrentClampStimulus
+HyperpolarizingCurrentClampSomaticStimulus = HyperpolarizingCurrentClampStimulus

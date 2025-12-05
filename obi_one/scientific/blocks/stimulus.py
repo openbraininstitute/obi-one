@@ -20,6 +20,10 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
+from obi_one.scientific.unions.unions_compartment_sets import (
+    CompartmentSetReference,
+    resolve_compartment_set_ref_to_name,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -57,7 +61,7 @@ class Stimulus(Block, ABC):
         pass
 
 
-class SomaticStimulus(Stimulus, ABC):
+class CompartmentTargetedStimulus(Stimulus, ABC):
     neuron_set: (
         Annotated[
             NeuronSetReference,
@@ -69,9 +73,19 @@ class SomaticStimulus(Stimulus, ABC):
         ]
         | None
     ) = None
+    compartment_set: (
+        Annotated[
+            CompartmentSetReference,
+            Field(
+                title="Compartment Set",
+                description="Compartment set to which the stimulus is applied.",
+                supports_virtual=False,
+            ),
+        ]
+        | None
+    ) = None
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
-
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
@@ -114,11 +128,36 @@ class SomaticStimulus(Stimulus, ABC):
 
         return self._generate_config()
 
+    def _target_entry(self) -> dict:
+        comp_set_name = resolve_compartment_set_ref_to_name(self.compartment_set)
+        if comp_set_name is not None:
+            entry = {"compartment_set": comp_set_name}
+            return entry
 
-class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
+        node_set_name = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+        if node_set_name:
+            return {"node_set": node_set_name}
+
+        if getattr(self, "_default_node_set", None):
+            return {"node_set": self._default_node_set}
+
+        return {}
+
+    @model_validator(mode="after")
+    def _only_one_target(self) -> Self:
+        if self.neuron_set is not None and self.compartment_set is not None:
+            msg = (
+                "Stimulus cannot have both 'neuron_set' and 'compartment_set' set; "
+                "please choose one."
+            )
+            raise ValueError(msg)
+        return self
+
+
+class ConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Constant Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -141,9 +180,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -152,10 +189,10 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Constant Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -179,9 +216,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current,
@@ -190,10 +225,10 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class LinearCurrentClampSomaticStimulus(SomaticStimulus):
+class LinearCurrentClampStimulus(CompartmentTargetedStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Linear Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -224,9 +259,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
@@ -236,12 +269,12 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeLinearCurrentClampStimulus(CompartmentTargetedStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Linear Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -284,10 +317,10 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class NormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -317,9 +350,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean": self.mean_amplitude,
@@ -329,12 +360,12 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeNormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Relative)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -365,9 +396,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean_percent": self.mean_percentage_of_threshold_current,
@@ -377,12 +406,12 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
+class MultiPulseCurrentClampStimulus(CompartmentTargetedStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
 
-    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Multi Pulse Current Clamp (Absolute)"
 
     _module: str = "pulse"
     _input_type: str = "current_clamp"
@@ -424,9 +453,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -437,10 +464,10 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
+class SinusoidalCurrentClampStimulus(CompartmentTargetedStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
-    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -481,9 +508,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.maximum_amplitude,
@@ -494,10 +519,10 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+class SubthresholdCurrentClampStimulus(CompartmentTargetedStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
-    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
@@ -523,9 +548,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_less": self.percentage_below_threshold,
@@ -534,13 +557,13 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
+class HyperpolarizingCurrentClampStimulus(CompartmentTargetedStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
     """
 
-    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
+    title: ClassVar[str] = "Hyperpolarizing Current Clamp"
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -556,9 +579,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                **self._target_entry(),
                 "module": self._module,
                 "input_type": self._input_type,
                 "represents_physical_electrode": self._represents_physical_electrode,
@@ -1001,3 +1022,66 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         self.write_spike_file(
             gid_spike_map, spike_file_path / self._spike_file, source_node_population
         )
+
+
+# --- Deprecated aliases for backward compatibility -------------------------
+class ConstantCurrentClampSomaticStimulus(ConstantCurrentClampStimulus):
+    """Deprecated alias for ConstantCurrentClampStimulus (backward compatible)."""
+
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
+
+
+class RelativeConstantCurrentClampSomaticStimulus(RelativeConstantCurrentClampStimulus):
+    """Deprecated alias for RelativeConstantCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+
+
+class LinearCurrentClampSomaticStimulus(LinearCurrentClampStimulus):
+    """Deprecated alias for LinearCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
+
+
+class RelativeLinearCurrentClampSomaticStimulus(RelativeLinearCurrentClampStimulus):
+    """Deprecated alias for RelativeLinearCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
+
+
+class NormallyDistributedCurrentClampSomaticStimulus(NormallyDistributedCurrentClampStimulus):
+    """Deprecated alias for NormallyDistributedCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+
+
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(
+    RelativeNormallyDistributedCurrentClampStimulus
+):
+    """Deprecated alias for RelativeNormallyDistributedCurrentClampSomaticStimulus."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+
+
+class MultiPulseCurrentClampSomaticStimulus(MultiPulseCurrentClampStimulus):
+    """Deprecated alias for MultiPulseCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
+
+
+class SinusoidalCurrentClampSomaticStimulus(SinusoidalCurrentClampStimulus):
+    """Deprecated alias for SinusoidalCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
+
+
+class SubthresholdCurrentClampSomaticStimulus(SubthresholdCurrentClampStimulus):
+    """Deprecated alias for SubthresholdCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
+
+
+class HyperpolarizingCurrentClampSomaticStimulus(HyperpolarizingCurrentClampStimulus):
+    """Deprecated alias for HyperpolarizingCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
