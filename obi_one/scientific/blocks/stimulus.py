@@ -149,6 +149,15 @@ class CompartmentTargetedStimulus(Stimulus, ABC):
 
         return {}
 
+    @model_validator(mode="after")
+    def _only_one_target(self) -> Self:
+        if self.neuron_set is not None and self.compartment_set is not None:
+            raise ValueError(
+                "Stimulus cannot have both 'neuron_set' and 'compartment_set' set; "
+                "please choose one."
+            )
+        return self
+
 
 class ConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a fixed absolute amplitude."""
