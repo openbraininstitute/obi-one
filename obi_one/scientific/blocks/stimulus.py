@@ -129,10 +129,6 @@ class CompartmentTargetedStimulus(Stimulus, ABC):
         return self._generate_config()
 
     def _target_entry(self) -> dict:
-        """Emit SONATA-style target entry.
-
-        Prioritise `compartment_set` if provided, otherwise fall back to `node_set`.
-        """
         comp_set_name = resolve_compartment_set_ref_to_name(self.compartment_set)
         if comp_set_name is not None:
             entry = {"compartment_set": comp_set_name}
