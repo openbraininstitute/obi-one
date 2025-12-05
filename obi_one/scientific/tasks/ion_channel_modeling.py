@@ -217,7 +217,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             entitysdk.models.IonChannelModelingCampaign(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
-                input_recording_ids=[self.initialize.recordings.id_str],
+                input_recordings=[self.initialize.recordings.entity(db_client=db_client)],
                 scan_parameters=multiple_value_parameters_dictionary,
             )
         )
@@ -294,8 +294,6 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
                 name=f"IonChannelModelingConfig {self.idx}",
                 description=f"IonChannelModelingConfig {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                # Convert single recording to list for future compatibility
-                input_recording_ids=[r.id_str for r in recordings],
                 ion_channel_modeling_campaign_id=campaign.id,
             )
         )
