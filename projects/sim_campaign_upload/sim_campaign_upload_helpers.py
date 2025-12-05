@@ -24,6 +24,13 @@ _global_refs = {
 }
 
 
+def reset_next_ref_counters() -> None:
+    """Reset the global counters for reference names."""
+    for v in _global_refs.values():
+        if "counter" in v:
+            v["counter"] = 0
+
+
 def get_next_ref_name(block_dict_name: dict) -> str:
     """Returns the next valid reference name for a given block dict."""
     if block_dict_name not in _global_refs:
@@ -239,6 +246,8 @@ def generate_obi_config(
     coordinate_idx: int | None = None,
 ) -> dict:
     """Generates the full obi-one scan or single coordinate config dict."""
+    reset_next_ref_counters()
+
     if coordinate_idx is None:
         # Scan config
         cfg_type = "CircuitSimulationScanConfig"
