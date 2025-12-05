@@ -141,6 +141,8 @@ def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
     rec_dict = {}
     neuron_set_dict = {}
     for cfg_dict in sim_config_dicts:
+        if "reports" not in cfg_dict:
+            return {}, {}
         for v in cfg_dict["reports"].values():
             if v["type"] != "compartment":
                 msg = "Only compartment reports supported!"
@@ -182,6 +184,8 @@ def get_spike_replays(sim_config_dicts: list, circuit_entity: models.Circuit) ->
     timestamps_dict = {}
     neuron_set_dict = {}
     for cfg_dict in sim_config_dicts:
+        if "inputs" not in cfg_dict:
+            return {}, {}, {}
         for v in cfg_dict["inputs"].values():
             if not (v["module"] == "synapse_replay" and v["input_type"] == "spikes"):
                 continue
