@@ -160,9 +160,15 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     that are required to simulate the extracted circuit.
     """
 
+    _single_entity: models.CircuitExtractionConfig = None
+
     @property
     def single_entity(self) -> models.CircuitExtractionConfig:
         return self._single_entity
+
+    def set_single_entity(self, entity: models.CircuitExtractionConfig) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
 
     def create_single_entity_with_config(
         self,
@@ -194,6 +200,8 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
             file_content_type="application/json",
             asset_label="circuit_extraction_config",
         )
+
+        return self._single_entity
 
 
 class CircuitExtractionTask(Task):
