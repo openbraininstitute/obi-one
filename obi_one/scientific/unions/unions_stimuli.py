@@ -4,31 +4,31 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.stimulus import (
-    # New unified stimulus classes
-    ConstantCurrentClampStimulus,
-    HyperpolarizingCurrentClampStimulus,
-    LinearCurrentClampStimulus,
-    MultiPulseCurrentClampStimulus,
-    NormallyDistributedCurrentClampStimulus,
-    PoissonSpikeStimulus,
-    RelativeConstantCurrentClampStimulus,
-    RelativeLinearCurrentClampStimulus,
-    RelativeNormallyDistributedCurrentClampStimulus,
-    SinusoidalCurrentClampStimulus,
-    SinusoidalPoissonSpikeStimulus,
-    SubthresholdCurrentClampStimulus,
-    FullySynchronousSpikeStimulus,
     # Deprecated somatic aliases (backward compatibility)
     ConstantCurrentClampSomaticStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    LinearCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
+    # New unified stimulus classes
+    ConstantCurrentClampStimulus,
+    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampStimulus,
+    LinearCurrentClampSomaticStimulus,
+    LinearCurrentClampStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampStimulus,
+    PoissonSpikeStimulus,
+    RelativeConstantCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampStimulus,
+    RelativeLinearCurrentClampSomaticStimulus,
+    RelativeLinearCurrentClampStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampStimulus,
+    SinusoidalPoissonSpikeStimulus,
+    SubthresholdCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampStimulus,
 )
 
 # Full stimulus union, including spike stimuli and deprecated somatic aliases

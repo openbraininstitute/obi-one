@@ -308,7 +308,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         },
         "initialize": init_dict,
         "info": info_dict,
-        'compartment_sets': {},
+        "compartment_sets": {},
     }
     assert cfg.pop("form") == form_dict
     assert cfg.pop("coordinate_directory_option") == "ZERO_INDEX"

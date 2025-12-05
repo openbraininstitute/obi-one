@@ -61,9 +61,7 @@ class Stimulus(Block, ABC):
         pass
 
 
-
 class CompartmentTargetedStimulus(Stimulus, ABC):
-
     neuron_set: (
         Annotated[
             NeuronSetReference,
@@ -152,10 +150,11 @@ class CompartmentTargetedStimulus(Stimulus, ABC):
     @model_validator(mode="after")
     def _only_one_target(self) -> Self:
         if self.neuron_set is not None and self.compartment_set is not None:
-            raise ValueError(
+            msg = (
                 "Stimulus cannot have both 'neuron_set' and 'compartment_set' set; "
                 "please choose one."
             )
+            raise ValueError(msg)
         return self
 
 
@@ -1027,6 +1026,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         self.write_spike_file(
             gid_spike_map, spike_file_path / self._spike_file, source_node_population
         )
+
 
 # --- Deprecated aliases for backward compatibility -------------------------
 class ConstantCurrentClampSomaticStimulus(ConstantCurrentClampStimulus):

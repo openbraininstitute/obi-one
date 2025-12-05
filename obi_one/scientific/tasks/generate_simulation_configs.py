@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Optional
+from typing import Annotated, ClassVar, Literal
 
 import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
