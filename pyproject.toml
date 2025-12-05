@@ -64,7 +64,7 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
-    "bluecellulab>=2.6.71",
+    "bluecellulab>=2.6.75",
     # OBI NOTEBOOK
     "obi_notebook",
     "morph_spines",
