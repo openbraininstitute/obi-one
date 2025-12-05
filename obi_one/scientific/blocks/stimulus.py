@@ -56,6 +56,14 @@ class Stimulus(Block, ABC):
     _default_node_set: str = PrivateAttr(default="All")
     _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
+    @abstractmethod
+    def _generate_config(self) -> dict:
+        pass
+
+
+
+class CompartmentTargetedStimulus(Stimulus, ABC):
+
     neuron_set: (
         Annotated[
             NeuronSetReference,
@@ -132,7 +140,7 @@ class Stimulus(Block, ABC):
             entry = {"compartment_set": comp_set_name}
             return entry
 
-        node_set_name = resolve_neuron_set_ref_to_node_set(self.neuron_set)
+        node_set_name = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
         if node_set_name:
             return {"node_set": node_set_name}
 
@@ -141,12 +149,8 @@ class Stimulus(Block, ABC):
 
         return {}
 
-    @abstractmethod
-    def _generate_config(self) -> dict:
-        pass
 
-
-class ConstantCurrentClampStimulus(Stimulus):
+class ConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
     title: ClassVar[str] = "Constant Current Clamp (Absolute)"
@@ -181,7 +185,7 @@ class ConstantCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class RelativeConstantCurrentClampStimulus(Stimulus):
+class RelativeConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Constant Current Clamp (Relative)"
@@ -217,7 +221,7 @@ class RelativeConstantCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class LinearCurrentClampStimulus(Stimulus):
+class LinearCurrentClampStimulus(CompartmentTargetedStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
     title: ClassVar[str] = "Linear Current Clamp (Absolute)"
@@ -261,7 +265,7 @@ class LinearCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class RelativeLinearCurrentClampStimulus(Stimulus):
+class RelativeLinearCurrentClampStimulus(CompartmentTargetedStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
@@ -309,7 +313,7 @@ class RelativeLinearCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class NormallyDistributedCurrentClampStimulus(Stimulus):
+class NormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
     title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
@@ -352,7 +356,7 @@ class NormallyDistributedCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class RelativeNormallyDistributedCurrentClampStimulus(Stimulus):
+class RelativeNormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
@@ -398,7 +402,7 @@ class RelativeNormallyDistributedCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class MultiPulseCurrentClampStimulus(Stimulus):
+class MultiPulseCurrentClampStimulus(CompartmentTargetedStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
@@ -456,7 +460,7 @@ class MultiPulseCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class SinusoidalCurrentClampStimulus(Stimulus):
+class SinusoidalCurrentClampStimulus(CompartmentTargetedStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
@@ -511,7 +515,7 @@ class SinusoidalCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class SubthresholdCurrentClampStimulus(Stimulus):
+class SubthresholdCurrentClampStimulus(CompartmentTargetedStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
     title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
@@ -549,7 +553,7 @@ class SubthresholdCurrentClampStimulus(Stimulus):
         return sonata_config
 
 
-class HyperpolarizingCurrentClampStimulus(Stimulus):
+class HyperpolarizingCurrentClampStimulus(CompartmentTargetedStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
@@ -1014,3 +1018,65 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         self.write_spike_file(
             gid_spike_map, spike_file_path / self._spike_file, source_node_population
         )
+
+# --- Deprecated aliases for backward compatibility -------------------------
+class ConstantCurrentClampSomaticStimulus(ConstantCurrentClampStimulus):
+    """Deprecated alias for ConstantCurrentClampStimulus (backward compatible)."""
+
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
+
+
+class RelativeConstantCurrentClampSomaticStimulus(RelativeConstantCurrentClampStimulus):
+    """Deprecated alias for RelativeConstantCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+
+
+class LinearCurrentClampSomaticStimulus(LinearCurrentClampStimulus):
+    """Deprecated alias for LinearCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
+
+
+class RelativeLinearCurrentClampSomaticStimulus(RelativeLinearCurrentClampStimulus):
+    """Deprecated alias for RelativeLinearCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
+
+
+class NormallyDistributedCurrentClampSomaticStimulus(NormallyDistributedCurrentClampStimulus):
+    """Deprecated alias for NormallyDistributedCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+
+
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(
+    RelativeNormallyDistributedCurrentClampStimulus
+):
+    """Deprecated alias for RelativeNormallyDistributedCurrentClampSomaticStimulus."""
+
+    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+
+
+class MultiPulseCurrentClampSomaticStimulus(MultiPulseCurrentClampStimulus):
+    """Deprecated alias for MultiPulseCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
+
+
+class SinusoidalCurrentClampSomaticStimulus(SinusoidalCurrentClampStimulus):
+    """Deprecated alias for SinusoidalCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
+
+
+class SubthresholdCurrentClampSomaticStimulus(SubthresholdCurrentClampStimulus):
+    """Deprecated alias for SubthresholdCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
+
+
+class HyperpolarizingCurrentClampSomaticStimulus(HyperpolarizingCurrentClampStimulus):
+    """Deprecated alias for HyperpolarizingCurrentClampStimulus."""
+
+    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"

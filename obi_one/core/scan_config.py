@@ -48,8 +48,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         return cls.model_construct()
 
     def validated_config(self) -> "ScanConfig":
-        data = self.model_dump(exclude_none=True)
-        return self.__class__.model_validate(data)
+        return self.__class__.model_validate(self.model_dump())
 
     @property
     def block_mapping(self) -> dict:

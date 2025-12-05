@@ -121,8 +121,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         group_order=1,
     )
 
-    compartment_sets: Optional[dict[str, CompartmentSetUnion]] = Field(
-        default_factory=None,
+    compartment_sets: dict[str, CompartmentSetUnion] = Field(
+        default_factory=dict,
         title="Compartment Sets",
         reference_type=CompartmentSetReference.__name__,
         description="SONATA-style compartment_sets blocks.",

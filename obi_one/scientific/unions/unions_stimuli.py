@@ -4,8 +4,8 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.stimulus import (
+    # New unified stimulus classes
     ConstantCurrentClampStimulus,
-    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampStimulus,
     LinearCurrentClampStimulus,
     MultiPulseCurrentClampStimulus,
@@ -17,8 +17,21 @@ from obi_one.scientific.blocks.stimulus import (
     SinusoidalCurrentClampStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampStimulus,
+    FullySynchronousSpikeStimulus,
+    # Deprecated somatic aliases (backward compatibility)
+    ConstantCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampSomaticStimulus,
+    LinearCurrentClampSomaticStimulus,
+    RelativeLinearCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampSomaticStimulus,
 )
 
+# Full stimulus union, including spike stimuli and deprecated somatic aliases
 StimulusUnion = Annotated[
     ConstantCurrentClampStimulus
     | HyperpolarizingCurrentClampStimulus
@@ -32,7 +45,18 @@ StimulusUnion = Annotated[
     | SubthresholdCurrentClampStimulus
     | PoissonSpikeStimulus
     | FullySynchronousSpikeStimulus
-    | SinusoidalPoissonSpikeStimulus,
+    | SinusoidalPoissonSpikeStimulus
+    # --- deprecated somatic names for backward compat ---
+    | ConstantCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus,
     Discriminator("type"),
 ]
 
@@ -46,7 +70,18 @@ MEModelStimulusUnion = Annotated[
     | RelativeConstantCurrentClampStimulus
     | RelativeLinearCurrentClampStimulus
     | SinusoidalCurrentClampStimulus
-    | SubthresholdCurrentClampStimulus,
+    | SubthresholdCurrentClampStimulus
+    # --- deprecated somatic names for backward compat ---
+    | ConstantCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus,
     Discriminator("type"),
 ]
 
