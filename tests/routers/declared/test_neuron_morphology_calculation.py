@@ -9,7 +9,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from app.dependencies.entitysdk import get_client
 
-ROUTE = "/declared/morphology-metrics-entity-registration"
+ROUTE = "/declared/register-morphology-with-calculated-metrics"
 
 VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
 PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"

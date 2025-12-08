@@ -324,21 +324,21 @@ def _register_assets_and_measurements(
     morphology_name: str,
     content: bytes,
     measurement_list: list[dict[str, Any]],
-    outputfile1: str,
-    outputfile2: str,
+    converted_morphology_file1: str,
+    converted_morphology_file2: str,
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as temp_dir_for_upload:
         temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
         temp_upload_path_obj.write_bytes(content)
         register_assets(client, entity_id, temp_dir_for_upload, morphology_name)
 
-    if outputfile1:
-        output1_path_obj = pathlib.Path(outputfile1)
+    if converted_morphology_file1:
+        output1_path_obj = pathlib.Path(converted_morphology_file1)
         if output1_path_obj.exists():
             register_assets(client, entity_id, str(output1_path_obj.parent), output1_path_obj.name)
 
-    if outputfile2:
-        output2_path_obj = pathlib.Path(outputfile2)
+    if converted_morphology_file2:
+        output2_path_obj = pathlib.Path(converted_morphology_file2)
         if output2_path_obj.exists():
             register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
 
@@ -348,7 +348,7 @@ def _register_assets_and_measurements(
 
 # --- MAIN ENDPOINT ---
 @router.post(
-    "/morphology-metrics-entity-registration",
+    "/register-morphology-with-calculated-metrics",
     summary="Calculate morphology metrics and register entities.",
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
@@ -378,13 +378,16 @@ async def morphology_metrics_calculation(
             temp_file_obj.close()
             stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-            outputfile1, outputfile2 = await process_and_convert_morphology(
+            (
+                converted_morphology_file1,
+                converted_morphology_file2,
+            ) = await process_and_convert_morphology(
                 temp_file_path=temp_file_path, file_extension=file_extension
             )
-            if outputfile1:
-                stack.callback(pathlib.Path(outputfile1).unlink, missing_ok=True)
-            if outputfile2:
-                stack.callback(pathlib.Path(outputfile2).unlink, missing_ok=True)
+            if converted_morphology_file1:
+                stack.callback(pathlib.Path(converted_morphology_file1).unlink, missing_ok=True)
+            if converted_morphology_file2:
+                stack.callback(pathlib.Path(converted_morphology_file2).unlink, missing_ok=True)
             measurement_list = _run_morphology_analysis(temp_file_path)
 
             data = register_morphology(client, entity_payload)
@@ -395,8 +398,8 @@ async def morphology_metrics_calculation(
                 morphology_name,
                 content,
                 measurement_list,
-                outputfile1,
-                outputfile2,
+                converted_morphology_file1,
+                converted_morphology_file2,
             )
             measurement_entity_id = str(data2.id)
     except HTTPException:
