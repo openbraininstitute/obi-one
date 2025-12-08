@@ -1,3 +1,4 @@
 *.asc linguist-detectable=false
 *.hoc linguist-detectable=false
-*.mod linguist-detectable=false
+*.mod linguist-detectable=falseuv.lock text eol=lf
+uv.lock text eol=lf
