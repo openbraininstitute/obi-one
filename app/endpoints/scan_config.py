@@ -57,6 +57,7 @@ def create_endpoint_for_scan_config(
         L.info(db_client)
 
         campaign = None
+        grid_scan = None
         try:
             with tempfile.TemporaryDirectory() as tdir:
                 grid_scan = GridScanGenerationTask(
@@ -71,6 +72,8 @@ def create_endpoint_for_scan_config(
                 if execute_single_config_task:
                     run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
+                
+
         except Exception as e:
             error_msg = str(e)
 
@@ -81,7 +84,18 @@ def create_endpoint_for_scan_config(
 
             L.error(error_msg)
 
-            raise HTTPException(status_code=500, detail=error_msg) from e
+            if isinstance(form, (CircuitSimulationScanConfig, 
+                                 MEModelSimulationScanConfig, 
+                                 MEModelWithSynapsesCircuitSimulationScanConfig, 
+                                 SimulationsForm)):
+                if (grid_scan is not None) and (grid_scan.form.campaign is not None):
+                    L.info(
+                        f"Grid scan generation failed, but campaign {grid_scan.form.campaign.id} \
+                            of type {type(grid_scan.form.campaign)} was created. Let's delete it and associated entities / assets."
+                    )   
+                    # db_client.delete_entity(entity_id=grid_scan.form.campaign.id, entity_type=type(grid_scan.form.campaign))
+
+                raise HTTPException(status_code=500, detail=error_msg) from e
 
         else:
             L.info("Grid scan generated successfully")
