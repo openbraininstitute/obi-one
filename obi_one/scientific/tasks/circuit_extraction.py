@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
@@ -39,18 +40,33 @@ L = logging.getLogger(__name__)
 _RUN_VALIDATION = False
 
 
+class BlockGroup(StrEnum):
+    """Block Groups."""
+
+    SETUP = "Setup"
+    EXTRACTION_TARGET = "Extraction Target"
+
+
 class CircuitExtractionScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
     single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
-        "Extracts a sub-circuit of a SONATA circuit as defined by a node set. The output"
+        "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"
         " circuit will contain all morphologies, hoc files, and mod files that are required"
         " to simulate the extracted circuit."
     )
 
     _campaign: models.CircuitExtractionCampaign = None
+
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "block_block_group_order": [
+                BlockGroup.SETUP,
+                BlockGroup.EXTRACTION_TARGET,
+            ]
+        }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
@@ -58,24 +74,37 @@ class CircuitExtractionScanConfig(ScanConfig):
         )
         do_virtual: bool = Field(
             default=True,
-            name="Include virtual populations",
-            description="Split out virtual neurons that target the cells contained in the"
-            " specified neuron set and kept them as virtual neurons together with their"
-            " connectivity.",
+            title="Include Virtual Populations",
+            description="Include virtual neurons which target the cells contained in the specified"
+            " neuron set (together with their connectivity onto the specified neuron set) in the"
+            " extracted sub-circuit.",
         )
         create_external: bool = Field(
             default=True,
-            name="Create external population",
-            description="Turn neurons that are outside the specified neuron set but target"
-            " the cells contained therein into a new external population of virtual neurons"
-            " together with their connectivity.",
+            title="Create External Population",
+            description="Convert (non-virtual) neurons which are outside of the specified neuron"
+            " set, but which target the cells contained therein, into a new external population"
+            " of virtual neurons (together with their connectivity onto the specified neuron set).",
         )
 
-    initialize: Initialize
-    neuron_set: CircuitExtractionNeuronSetUnion
     info: Info = Field(
         title="Info",
         description="Information about the circuit extraction campaign.",
+        group=BlockGroup.SETUP,
+        group_order=0,
+    )
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the circuit extraction campaign.",
+        group=BlockGroup.SETUP,
+        group_order=1,
+    )
+    neuron_set: CircuitExtractionNeuronSetUnion = Field(
+        title="Neuron Set",
+        description="Set of neurons to be extracted from the parent circuit, including their"
+        " connectivity.",
+        group=BlockGroup.EXTRACTION_TARGET,
+        group_order=0,
     )
 
     def create_campaign_entity_with_config(
@@ -131,9 +160,15 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     that are required to simulate the extracted circuit.
     """
 
+    _single_entity: models.CircuitExtractionConfig = None
+
     @property
     def single_entity(self) -> models.CircuitExtractionConfig:
         return self._single_entity
+
+    def set_single_entity(self, entity: models.CircuitExtractionConfig) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
 
     def create_single_entity_with_config(
         self,
@@ -165,6 +200,8 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
             file_content_type="application/json",
             asset_label="circuit_extraction_config",
         )
+
+        return self._single_entity
 
 
 class CircuitExtractionTask(Task):
