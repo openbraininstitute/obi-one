@@ -136,14 +136,21 @@ def add_to_dict(key: str, value: dict, cfg_dict: dict) -> None:
         cfg_dict[key] = value
 
 
+def add_new_ref_to_map(name_key_map: dict, name: str, block_dict_name: str) -> None:
+    """Adds a new name mapping reference, if not yet existing."""
+    if name not in name_key_map:
+        name_key_map[name] = get_next_ref_name(block_dict_name)
+
+
 def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
     """Extracts soma recordings."""
     rec_dict = {}
     neuron_set_dict = {}
+    name_key_map = {}
     for cfg_dict in sim_config_dicts:
         if "reports" not in cfg_dict:
             return {}, {}
-        for v in cfg_dict["reports"].values():
+        for k, v in cfg_dict["reports"].items():
             if v["type"] != "compartment":
                 msg = "Only compartment reports supported!"
                 raise ValueError(msg)
@@ -152,17 +159,18 @@ def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
                 raise ValueError(msg)
 
             node_set = v["cells"]
-            rec_name = get_next_ref_name("recordings")  # k[0].upper() + k[1:]
-            neuron_set, ref = get_neuron_set_ref(
-                node_set, get_next_ref_name("neuron_sets")
-            )  # f"{rec_name} recording neuron set"
+            rec_name = k[0].upper() + k[1:]
+            add_new_ref_to_map(name_key_map, rec_name, "recordings")
+            nset_name = f"{rec_name} recording neuron set"
+            add_new_ref_to_map(name_key_map, nset_name, "neuron_sets")
+            neuron_set, ref = get_neuron_set_ref(node_set, name_key_map[nset_name])
             rec = obi.TimeWindowSomaVoltageRecording(
                 neuron_set=ref,
                 dt=v["dt"],
                 start_time=v["start_time"],
                 end_time=v["end_time"],
             )
-            add_to_dict(rec_name, rec.model_dump(), rec_dict)
+            add_to_dict(name_key_map[rec_name], rec.model_dump(), rec_dict)
             add_to_dict(ref.block_name, neuron_set.model_dump(), neuron_set_dict)
     return rec_dict, neuron_set_dict
 
@@ -183,35 +191,34 @@ def get_spike_replays(sim_config_dicts: list, circuit_entity: models.Circuit) ->
     replay_dict = {}
     timestamps_dict = {}
     neuron_set_dict = {}
+    name_key_map = {}
     for cfg_dict in sim_config_dicts:
         if "inputs" not in cfg_dict:
             return {}, {}, {}
-        for v in cfg_dict["inputs"].values():
+        for k, v in cfg_dict["inputs"].items():
             if not (v["module"] == "synapse_replay" and v["input_type"] == "spikes"):
                 continue
+            src_nset_name = v["source"]
+            add_new_ref_to_map(name_key_map, src_nset_name, "neuron_sets")
             if "nbS1" in circuit_entity.name and "VPM" in v["source"].upper():
-                src, src_ref = get_neuron_set_ref(
-                    obi.nbS1VPMInputs(), get_next_ref_name("neuron_sets")
-                )  # v["source"]
+                src, src_ref = get_neuron_set_ref(obi.nbS1VPMInputs(), name_key_map[src_nset_name])
             elif "nbS1" in circuit_entity.name and "POM" in v["source"].upper():
-                src, src_ref = get_neuron_set_ref(
-                    obi.nbS1POmInputs(), get_next_ref_name("neuron_sets")
-                )  # v["source"]
+                src, src_ref = get_neuron_set_ref(obi.nbS1POmInputs(), name_key_map[src_nset_name])
             else:
                 msg = "Circuit or projection source not yet implemented!"
                 raise NotImplementedError(msg)
-            tgt, tgt_ref = get_neuron_set_ref(
-                v["node_set"], get_next_ref_name("neuron_sets")
-            )  # f"{k} target"
-            ts, ts_ref = get_single_timestamp_ref(
-                v["delay"], get_next_ref_name("timestamps")
-            )  # f"{k} onset"
+            tgt_nset_name = f"{k} target"
+            add_new_ref_to_map(name_key_map, tgt_nset_name, "neuron_sets")
+            tgt, tgt_ref = get_neuron_set_ref(v["node_set"], name_key_map[tgt_nset_name])
+            ts_name = f"{k} onset"
+            add_new_ref_to_map(name_key_map, ts_name, "timestamps")
+            ts, ts_ref = get_single_timestamp_ref(v["delay"], name_key_map[ts_name])
 
             replay = obi.scientific.blocks.stimulus.SpikeStimulus(
                 source_neuron_set=src_ref, targeted_neuron_set=tgt_ref, timestamps=ts_ref
             )
-            replay_name = get_next_ref_name("stimuli")  # k
-            add_to_dict(replay_name, replay.model_dump(), replay_dict)
+            add_new_ref_to_map(name_key_map, k, "stimuli")
+            add_to_dict(name_key_map[k], replay.model_dump(), replay_dict)
             add_to_dict(ts_ref.block_name, ts.model_dump(), timestamps_dict)
             add_to_dict(src_ref.block_name, src.model_dump(), neuron_set_dict)
             add_to_dict(tgt_ref.block_name, tgt.model_dump(), neuron_set_dict)
