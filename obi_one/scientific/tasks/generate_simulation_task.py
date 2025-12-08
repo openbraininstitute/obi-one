@@ -19,6 +19,7 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
+    write_circuit_compartment_set_file,
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
@@ -296,6 +297,31 @@ class GenerateSimulationTask(Task):
             overwrite_if_exists=False,
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
+
+        # 4. If the config contains compartment_sets, collect them and write a
+        # compartment_sets.json file next to the node sets so stimuli referencing
+        # named compartment sets will resolve correctly.
+        compartment_sets = getattr(self.config, "compartment_sets", None)
+        if compartment_sets:
+            compartment_sets_dict: dict = {}
+            for _cs_key, _cs_block in self.config.compartment_sets.items():
+                if _cs_key != _cs_block.block_name:
+                    msg = (
+                        "Compartment set name mismatch! "
+                        "Using sim_conf.add(compartment_set, name=compartment_set_name) "
+                        "should ensure this."
+                    )
+                    raise OBIONEError(msg)
+                compartment_sets_dict.update(_cs_block.to_sonata_dict())
+
+            write_circuit_compartment_set_file(
+                sonata_circuit,
+                self.config.coordinate_output_root,
+                compartment_sets=compartment_sets_dict,
+                file_name="compartment_sets.json",
+                overwrite_if_exists=False,
+            )
+            self._sonata_config["compartment_sets_file"] = "compartment_sets.json"
 
     def _write_simulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
