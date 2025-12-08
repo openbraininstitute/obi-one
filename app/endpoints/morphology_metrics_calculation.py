@@ -378,7 +378,10 @@ async def morphology_metrics_calculation(
             temp_file_obj.close()
             stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-            converted_morphology_file1, converted_morphology_file2 = await process_and_convert_morphology(
+            (
+                converted_morphology_file1,
+                converted_morphology_file2,
+            ) = await process_and_convert_morphology(
                 temp_file_path=temp_file_path, file_extension=file_extension
             )
             if converted_morphology_file1:
