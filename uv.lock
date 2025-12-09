@@ -2068,6 +2068,7 @@ audit = [
 ]
 dev = [
     { name = "coverage" },
+    { name = "jsonschema" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2117,6 +2118,7 @@ provides-extras = ["connectivity"]
 audit = [{ name = "pip-audit", specifier = ">=2.9.0" }]
 dev = [
     { name = "coverage", extras = ["toml"] },
+    { name = "jsonschema", specifier = ">=4.25.1" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },

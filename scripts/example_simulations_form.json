@@ -1,0 +1,228 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "CircuitSimulationScanConfig",
+      "title": "Type"
+    },
+    "timestamps": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SingleTimestamp"
+          },
+          {
+            "$ref": "#/components/schemas/RegularTimestamps"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "RegularTimestamps": "#/components/schemas/RegularTimestamps",
+            "SingleTimestamp": "#/components/schemas/SingleTimestamp"
+          }
+        }
+      },
+      "type": "object",
+      "title": "Timestamps",
+      "description": "Timestamps for the simulation.",
+      "group": "Setup",
+      "group_order": 0,
+      "reference_type": "TimestampsReference",
+      "singular_name": "Timestamps"
+    },
+    "recordings": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SomaVoltageRecording"
+          },
+          {
+            "$ref": "#/components/schemas/TimeWindowSomaVoltageRecording"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "SomaVoltageRecording": "#/components/schemas/SomaVoltageRecording",
+            "TimeWindowSomaVoltageRecording": "#/components/schemas/TimeWindowSomaVoltageRecording"
+          }
+        }
+      },
+      "type": "object",
+      "title": "Recordings",
+      "description": "Recordings for the simulation.",
+      "group": "Stimuli & Recordings",
+      "group_order": 1,
+      "reference_type": "RecordingReference",
+      "singular_name": "Recording"
+    },
+    "info": {
+      "$ref": "#/components/schemas/Info",
+      "description": "Information about the simulation campaign.",
+      "group": "Setup",
+      "group_order": 0
+    },
+    "neuron_sets": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/IDNeuronSet"
+          },
+          {
+            "$ref": "#/components/schemas/AllNeurons"
+          },
+          {
+            "$ref": "#/components/schemas/ExcitatoryNeurons"
+          },
+          {
+            "$ref": "#/components/schemas/InhibitoryNeurons"
+          },
+          {
+            "$ref": "#/components/schemas/PredefinedNeuronSet"
+          },
+          {
+            "$ref": "#/components/schemas/nbS1VPMInputs"
+          },
+          {
+            "$ref": "#/components/schemas/nbS1POmInputs"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "AllNeurons": "#/components/schemas/AllNeurons",
+            "ExcitatoryNeurons": "#/components/schemas/ExcitatoryNeurons",
+            "IDNeuronSet": "#/components/schemas/IDNeuronSet",
+            "InhibitoryNeurons": "#/components/schemas/InhibitoryNeurons",
+            "PredefinedNeuronSet": "#/components/schemas/PredefinedNeuronSet",
+            "nbS1POmInputs": "#/components/schemas/nbS1POmInputs",
+            "nbS1VPMInputs": "#/components/schemas/nbS1VPMInputs"
+          }
+        }
+      },
+      "type": "object",
+      "title": "Neuron Sets",
+      "description": "Neuron sets for the simulation.",
+      "group": "Circuit Components",
+      "group_order": 0,
+      "reference_type": "NeuronSetReference",
+      "singular_name": "Neuron Set"
+    },
+    "synaptic_manipulations": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SynapticMgManipulation"
+          },
+          {
+            "$ref": "#/components/schemas/ScaleAcetylcholineUSESynapticManipulation"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "ScaleAcetylcholineUSESynapticManipulation": "#/components/schemas/ScaleAcetylcholineUSESynapticManipulation",
+            "SynapticMgManipulation": "#/components/schemas/SynapticMgManipulation"
+          }
+        }
+      },
+      "type": "object",
+      "title": "Synaptic Manipulations",
+      "description": "Synaptic manipulations for the simulation.",
+      "group": "Circuit Components",
+      "group_order": 1,
+      "reference_type": "SynapticManipulationsReference",
+      "singular_name": "Synaptic Manipulation"
+    },
+    "initialize": {
+      "$ref": "#/components/schemas/obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize",
+      "title": "Initialization",
+      "description": "Parameters for initializing the simulation.",
+      "group": "Setup",
+      "group_order": 1
+    },
+    "stimuli": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ConstantCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/HyperpolarizingCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/LinearCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/MultiPulseCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/NormallyDistributedCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/RelativeNormallyDistributedCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/RelativeConstantCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/RelativeLinearCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/SinusoidalCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/SubthresholdCurrentClampSomaticStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/PoissonSpikeStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/FullySynchronousSpikeStimulus"
+          },
+          {
+            "$ref": "#/components/schemas/SinusoidalPoissonSpikeStimulus"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "ConstantCurrentClampSomaticStimulus": "#/components/schemas/ConstantCurrentClampSomaticStimulus",
+            "FullySynchronousSpikeStimulus": "#/components/schemas/FullySynchronousSpikeStimulus",
+            "HyperpolarizingCurrentClampSomaticStimulus": "#/components/schemas/HyperpolarizingCurrentClampSomaticStimulus",
+            "LinearCurrentClampSomaticStimulus": "#/components/schemas/LinearCurrentClampSomaticStimulus",
+            "MultiPulseCurrentClampSomaticStimulus": "#/components/schemas/MultiPulseCurrentClampSomaticStimulus",
+            "NormallyDistributedCurrentClampSomaticStimulus": "#/components/schemas/NormallyDistributedCurrentClampSomaticStimulus",
+            "PoissonSpikeStimulus": "#/components/schemas/PoissonSpikeStimulus",
+            "RelativeConstantCurrentClampSomaticStimulus": "#/components/schemas/RelativeConstantCurrentClampSomaticStimulus",
+            "RelativeLinearCurrentClampSomaticStimulus": "#/components/schemas/RelativeLinearCurrentClampSomaticStimulus",
+            "RelativeNormallyDistributedCurrentClampSomaticStimulus": "#/components/schemas/RelativeNormallyDistributedCurrentClampSomaticStimulus",
+            "SinusoidalCurrentClampSomaticStimulus": "#/components/schemas/SinusoidalCurrentClampSomaticStimulus",
+            "SinusoidalPoissonSpikeStimulus": "#/components/schemas/SinusoidalPoissonSpikeStimulus",
+            "SubthresholdCurrentClampSomaticStimulus": "#/components/schemas/SubthresholdCurrentClampSomaticStimulus"
+          }
+        }
+      },
+      "type": "object",
+      "title": "Stimuli",
+      "description": "Stimuli for the simulation.",
+      "group": "Stimuli & Recordings",
+      "group_order": 0,
+      "reference_type": "StimulusReference",
+      "singular_name": "Stimulus"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["type", "info", "initialize"],
+  "title": "CircuitSimulationScanConfig",
+  "description": "CircuitSimulationScanConfig.",
+  "group_order": [
+    "Setup",
+    "Stimuli & Recordings",
+    "Circuit Components",
+    "Events",
+    "Circuit Manipulations"
+  ]
+}

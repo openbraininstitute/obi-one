@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CircuitSimulationScanConfig Meta-Schema",
+  "description": "Validates the structure of the CircuitSimulationScanConfig schema definition.",
+  "type": "object",
+  "required": [
+    "title",
+    "description",
+    "group_order",
+    "additionalProperties",
+    "type",
+    "properties",
+    "required"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The title of the form."
+    },
+    "description": {
+      "type": "string",
+      "description": "The description of the form."
+    },
+    "group_order": {
+      "type": "array",
+      "description": "Defines the order of UI groups.",
+      "items": {
+        "type": "string"
+      }
+    },
+
+    "additionalProperties": {
+      "const": false,
+      "description": "Must be false."
+    },
+
+    "type": { "const": "object" },
+    "required": {
+      "type": "array",
+      "description": "List of required properties.",
+      "items": {
+        "type": "string"
+      }
+    },
+
+    "properties": true
+  },
+
+  "additionalProperties": false
+}
