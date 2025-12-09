@@ -54,7 +54,7 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    # `make compile-deps` updates only ENTITYSDK.
+    # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
     # Add an upper bound only if automatic upgrades must be prevented.
     "entitysdk",

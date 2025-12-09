@@ -2089,7 +2089,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk", specifier = ">=0.8.7" },
+    { name = "entitysdk" },
     { name = "fastapi" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipykernel" },
