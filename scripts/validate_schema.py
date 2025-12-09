@@ -37,6 +37,7 @@ def resolve_ref(openapi_schema: dict, ref: str) -> dict:
 
 def validate_all_properties_required(schema: dict) -> None:
     """Validates that all properties in a form schema are required."""
+    print("Validating All Properties Required...")
     defined_props = set(schema.get("properties", {}).keys())
     required_props = set(schema.get("required", []))
 
@@ -70,12 +71,63 @@ def validate_referential_integrity(schema: dict, openapi_schema: dict) -> None:
             for ref in prop_def["additionalProperties"]["oneOf"]:
                 refs_to_check.add(ref["$ref"])
 
-        print(refs_to_check)
         for ref in refs_to_check:
             resolve_ref(openapi_schema, ref)
 
 
-def extract_and_print_schema() -> None:
+def validate_schema_groups(schema):
+    """Validates that:
+    1. The root 'group_order' list matches exactly the groups used in 'properties'.
+    2. Within each group, the 'group_order' integers are unique.
+    """
+
+    print("Validating group name consistency...")
+    defined_groups = set(schema.get("group_order", []))
+    properties = schema.get("properties", {})
+    used_groups = set()
+
+    group_contents = {}
+
+    for prop_name, prop_data in properties.items():
+        g_name = prop_data.get("group")
+        g_order = prop_data.get("group_order")
+
+        if g_name:
+            used_groups.add(g_name)
+
+            if g_name not in group_contents:
+                group_contents[g_name] = []
+            group_contents[g_name].append((g_order, prop_name))
+
+    # Are there groups defined in root but not used?
+    extra_in_root = defined_groups - used_groups
+    # Are there groups used in properties but missing from root?
+    missing_in_root = used_groups - defined_groups
+
+    if extra_in_root or missing_in_root:
+        if extra_in_root:
+            msg = f"Groups in root 'group_order' but NOT used in properties: {extra_in_root}"
+            raise ValueError(msg)
+        if missing_in_root:
+            msg = f"Groups used in properties but NOT in root 'group_order': {missing_in_root}"
+            raise ValueError(msg)
+
+    # --- Check unique group_order within groups ---
+    print("Checking Order Uniqueness...")
+
+    for groups in group_contents.values():
+        orders = [group[0] for group in groups]
+
+        if len(orders) != len(set(orders)):
+            seen = {}
+            for order, name in groups:
+                if order in seen:
+                    msg = f"Conflict: '{name}' and '{seen[order]}' both have group_order: {order}"
+                    raise ValueError(msg)
+                seen[order] = name
+
+
+def validate_schema() -> None:
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
@@ -105,7 +157,8 @@ def extract_and_print_schema() -> None:
         validate(instance=schema, schema=meta_schema)
         validate_all_properties_required(schema)
         validate_referential_integrity(schema, openapi_schema)
+        validate_schema_groups(schema)
 
 
 if __name__ == "__main__":
-    extract_and_print_schema()
+    validate_schema()

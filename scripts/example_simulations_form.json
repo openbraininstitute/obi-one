@@ -22,7 +22,7 @@
       "type": "object",
       "title": "Timestamps",
       "description": "Timestamps for the simulation.",
-      "group": "Setup",
+      "group": "Events",
       "group_order": 0,
       "singular_name": "Timestamps"
     },
@@ -224,11 +224,5 @@
   ],
   "title": "CircuitSimulationScanConfig",
   "description": "CircuitSimulationScanConfig.",
-  "group_order": [
-    "Setup",
-    "Stimuli & Recordings",
-    "Circuit Components",
-    "Events",
-    "Circuit Manipulations"
-  ]
+  "group_order": ["Setup", "Stimuli & Recordings", "Circuit Components", "Events"]
 }
