@@ -1,11 +1,7 @@
 {
   "properties": {
-    "type": {
-      "type": "string",
-      "const": "CircuitSimulationScanConfig",
-      "title": "Type"
-    },
     "timestamps": {
+      "ui_element": "block_dictionary",
       "additionalProperties": {
         "oneOf": [
           {
@@ -28,10 +24,10 @@
       "description": "Timestamps for the simulation.",
       "group": "Setup",
       "group_order": 0,
-      "reference_type": "TimestampsReference",
       "singular_name": "Timestamps"
     },
     "recordings": {
+      "ui_element": "block_dictionary",
       "additionalProperties": {
         "oneOf": [
           {
@@ -54,16 +50,18 @@
       "description": "Recordings for the simulation.",
       "group": "Stimuli & Recordings",
       "group_order": 1,
-      "reference_type": "RecordingReference",
       "singular_name": "Recording"
     },
     "info": {
       "$ref": "#/components/schemas/Info",
+      "title": "Information",
       "description": "Information about the simulation campaign.",
       "group": "Setup",
-      "group_order": 0
+      "group_order": 0,
+      "ui_element": "root_block"
     },
     "neuron_sets": {
+      "ui_element": "block_dictionary",
       "additionalProperties": {
         "oneOf": [
           {
@@ -106,10 +104,10 @@
       "description": "Neuron sets for the simulation.",
       "group": "Circuit Components",
       "group_order": 0,
-      "reference_type": "NeuronSetReference",
       "singular_name": "Neuron Set"
     },
     "synaptic_manipulations": {
+      "ui_element": "block_dictionary",
       "additionalProperties": {
         "oneOf": [
           {
@@ -132,7 +130,6 @@
       "description": "Synaptic manipulations for the simulation.",
       "group": "Circuit Components",
       "group_order": 1,
-      "reference_type": "SynapticManipulationsReference",
       "singular_name": "Synaptic Manipulation"
     },
     "initialize": {
@@ -140,9 +137,11 @@
       "title": "Initialization",
       "description": "Parameters for initializing the simulation.",
       "group": "Setup",
-      "group_order": 1
+      "group_order": 1,
+      "ui_element": "root_block"
     },
     "stimuli": {
+      "ui_element": "block_dictionary",
       "additionalProperties": {
         "oneOf": [
           {
@@ -209,13 +208,20 @@
       "description": "Stimuli for the simulation.",
       "group": "Stimuli & Recordings",
       "group_order": 0,
-      "reference_type": "StimulusReference",
       "singular_name": "Stimulus"
     }
   },
   "additionalProperties": false,
   "type": "object",
-  "required": ["type", "info", "initialize"],
+  "required": [
+    "info",
+    "initialize",
+    "timestamps",
+    "recordings",
+    "neuron_sets",
+    "synaptic_manipulations",
+    "stimuli"
+  ],
   "title": "CircuitSimulationScanConfig",
   "description": "CircuitSimulationScanConfig.",
   "group_order": [

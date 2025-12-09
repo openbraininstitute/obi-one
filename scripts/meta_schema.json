@@ -43,7 +43,110 @@
       }
     },
 
-    "properties": true
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "title": "root_block",
+            "description": "Represents the schema for a root_block",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "$ref",
+              "title",
+              "description",
+              "group",
+              "group_order",
+              "ui_element"
+            ],
+            "properties": {
+              "$ref": {
+                "type": "string",
+                "pattern": "^#/"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "group": {
+                "type": "string"
+              },
+              "group_order": {
+                "type": "integer"
+              },
+              "ui_element": {
+                "const": "root_block"
+              }
+            }
+          },
+          {
+            "title": "block_dictionary",
+            "description": "Represents the schema for a block_dictionary",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "additionalProperties",
+              "title",
+              "description",
+              "group",
+              "group_order",
+              "singular_name",
+              "ui_element"
+            ],
+            "properties": {
+              "type": {
+                "const": "object"
+              },
+              "title": {
+                "type": "string"
+              },
+              "ui_element": {
+                "const": "block_dictionary"
+              },
+              "description": {
+                "type": "string"
+              },
+              "group": {
+                "type": "string"
+              },
+              "group_order": {
+                "type": "integer"
+              },
+              "singular_name": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "required": ["oneOf"],
+                "properties": {
+                  "oneOf": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": ["$ref"],
+                      "properties": {
+                        "$ref": {
+                          "type": "string",
+                          "pattern": "^#/"
+                        }
+                      }
+                    }
+                  },
+                  "discriminator": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
   },
 
   "additionalProperties": false
