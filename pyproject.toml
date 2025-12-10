@@ -54,7 +54,10 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.10.1",
+    # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
+    # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
+    # Add an upper bound only if automatic upgrades must be prevented.
+    "entitysdk",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",

@@ -207,6 +207,16 @@ def get_connectivity_metrics(
         c = circuit.sonata_circuit
 
         # Check inputs
+        if not pre_selection:
+            pre_selection = None
+        if not post_selection:
+            post_selection = None
+
+        if not pre_node_set:
+            pre_node_set = None
+        if not post_node_set:
+            post_node_set = None
+
         if pre_node_set is None:
             pre_dict = pre_selection
         else:
@@ -218,6 +228,9 @@ def get_connectivity_metrics(
             node_set_dict = {"node_set": post_node_set}
             post_dict = node_set_dict if post_selection is None else post_selection | node_set_dict
         dist_props = None if max_distance is None else ["x", "y", "z"]
+
+        if not group_by:
+            group_by = None
 
         # Compute connection probability
         conn_dict = connectivity.compute(
