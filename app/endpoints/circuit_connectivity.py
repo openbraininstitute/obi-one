@@ -18,7 +18,7 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 @router.post(
-    "/connectivity-metrics/{circuit_id}",
+    "/connectivity-metrics",
     summary="Connectivity metrics",
     description=(
         "This calculates connectivity metrics, such as connection probabilities and"
