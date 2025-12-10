@@ -250,13 +250,15 @@
               "description",
               "ui_element",
               "nullable",
-              "oneOf"
+              "oneOf",
+              "reference_type"
             ],
             "additionalProperties": false,
             "properties": {
               "title": { "type": "string" },
               "description": { "type": "string" },
               "ui_element": { "enum": ["reference", null] },
+              "reference_type": { "type": "string" },
               "default_label": { "type": "string" },
               "nullable": { "type": "boolean" },
               "oneOf": {
@@ -266,11 +268,48 @@
                 "items": [
                   {
                     "type": "object",
-                    "required": ["$ref"],
-                    "additionalProperties": false,
+                    "required": [
+                      "type",
+                      "properties",
+                      "additionalProperties",
+                      "required"
+                    ],
                     "properties": {
-                      "$ref": {
-                        "enum": ["#/components/schemas/NeuronSetReference"]
+                      "type": {
+                        "const": "object"
+                      },
+                      "additionalProperties": {
+                        "const": false
+                      },
+                      "required": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "allOf": [
+                          { "contains": { "const": "block_name" } },
+                          { "contains": { "const": "block_dict_name" } }
+                        ],
+                        "minItems": 2
+                      },
+                      "properties": {
+                        "type": "object",
+                        "required": ["block_dict_name", "block_name"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "block_dict_name": {
+                            "type": "object",
+                            "required": ["type"],
+                            "properties": {
+                              "type": { "const": "string" }
+                            }
+                          },
+                          "block_name": {
+                            "type": "object",
+                            "required": ["type"],
+                            "properties": {
+                              "type": { "const": "string" }
+                            }
+                          }
+                        }
                       }
                     }
                   },
@@ -283,6 +322,51 @@
                     }
                   }
                 ]
+              }
+            }
+          },
+
+          {
+            "title": "Metaschema for Example Integer Array",
+            "type": "object",
+            "required": [
+              "type",
+              "items",
+              "ui_element",
+              "title",
+              "default",
+              "description"
+            ],
+            "properties": {
+              "type": {
+                "const": "array"
+              },
+              "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "const": "integer"
+                  },
+                  "minimum": {
+                    "type": "integer"
+                  },
+                  "maximum": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "ui_element": {
+                "const": "integer_array"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "default": {
+                "const": []
               }
             }
           }

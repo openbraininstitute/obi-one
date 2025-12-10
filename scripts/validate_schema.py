@@ -51,7 +51,7 @@ def validate_all_properties_required(schema: dict) -> None:
     raise ValueError(msg)
 
 
-def validate_schema_groups(schema):
+def validate_schema_groups(schema: dict) -> None:
     """Validates that:
     1. The root 'group_order' list matches exactly the groups used in 'properties'.
     2. Within each group, the 'group_order' integers are unique.
@@ -102,6 +102,13 @@ def validate_schema_groups(schema):
                 seen[order] = name
 
 
+def validate_hidden_refs_not_required(schema: dict) -> None:
+    for key, param_schema in schema["properties"].items():
+        if param_schema["ui_element"] is None and key in schema["required"]:
+            msg = f"The hidden reference {key} is marked as required in the schema but shouldn't be \n\n In {schema}"
+            raise ValueError(msg)
+
+
 def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
     """Validates block schemas."""
     print("Validating Block Schemas...")
@@ -116,6 +123,7 @@ def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
         if "$ref" in block_schema:
             schema = resolve_ref(openapi_schema, block_schema["$ref"])
             validate(schema, block_meta_schema)
+            validate_hidden_refs_not_required(schema)
 
         # block_dictionary case
         else:
