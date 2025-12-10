@@ -368,7 +368,27 @@
               "default": {
                 "const": []
               }
-            }
+            },
+            "additionalProperties": false
+          },
+
+          {
+            "title": "Metaschema for custom fields",
+            "description": "Custom elements identified by key on the frontend",
+            "type": "object",
+            "required": ["title", "description", "ui_element"],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "ui_element": {
+                "const": "custom"
+              }
+            },
+            "additionalProperties": true
           }
         ]
       },

@@ -231,6 +231,17 @@
             "description": "Example description",
             "default": [],
             "ui_element": "integer_array"
+          },
+          "example_custom_field": {
+            "anyOf": [
+              { "type": "string", "minLength": 1 },
+              { "items": { "type": "string", "minLength": 1 }, "type": "array" }
+            ],
+            "minLength": 1,
+            "title": "Node Set",
+            "entity_property_type": "Circuit.NodeSet",
+            "description": "Node set to simulate.",
+            "ui_element": "custom"
           }
         },
         "additionalProperties": false,
