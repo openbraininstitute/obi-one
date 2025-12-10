@@ -147,13 +147,14 @@ def validate_schema() -> None:
 
         schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
 
-        if schema_ref != "#/components/schemas/CircuitSimulationScanConfig":
-            continue
-
+        # Example valid schema for testing
         with Path.open(current_dir / "example_simulations_form.json") as f:
-            example_simulations_form_schema = json.load(f)
+            example_schema = json.load(f)
 
-        schema = resolve_ref(example_simulations_form_schema, schema_ref)
+        # change this to example_schema to test with a valid schema
+        openapi_schema_to_validate = openapi_schema
+
+        schema = resolve_ref(openapi_schema_to_validate, schema_ref)
 
         with Path.open(current_dir / "meta_schema.json") as f:
             meta_schema = json.load(f)
@@ -162,7 +163,7 @@ def validate_schema() -> None:
         validate(instance=schema, schema=meta_schema)
         validate_all_properties_required(schema)
         validate_schema_groups(schema)
-        validate_block_schemas(schema, example_simulations_form_schema)
+        validate_block_schemas(schema, openapi_schema_to_validate)
 
 
 if __name__ == "__main__":
