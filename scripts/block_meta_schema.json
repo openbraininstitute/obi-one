@@ -7,11 +7,15 @@
     "additionalProperties",
     "required",
     "title",
-    "type"
+    "type",
+    "description"
   ],
   "additionalProperties": false,
   "properties": {
     "title": {
+      "type": "string"
+    },
+    "description": {
       "type": "string"
     },
     "type": {

@@ -117,6 +117,12 @@ def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
             schema = resolve_ref(openapi_schema, block_schema["$ref"])
             validate(schema, block_meta_schema)
 
+        # block_dictionary case
+        else:
+            for ref in block_schema["additionalProperties"]["oneOf"]:
+                schema = resolve_ref(openapi_schema, ref["$ref"])
+                validate(schema, block_meta_schema)
+
 
 def validate_schema() -> None:
     openapi_schema = get_openapi(

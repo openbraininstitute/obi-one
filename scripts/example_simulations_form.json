@@ -349,6 +349,83 @@
         "type": "object",
         "required": ["type", "circuit"],
         "title": "Initialize"
+      },
+      "SingleTimestamp": {
+        "properties": {
+          "start_time": {
+            "oneOf": [
+              { "type": "number", "minimum": 0.0 },
+              {
+                "items": { "type": "number", "minimum": 0.0 },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Start Time",
+            "description": "Sart time of the timestamps in milliseconds (ms).",
+            "default": 0.0,
+            "units": "ms",
+            "ui_element": "parameter_sweep"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["type"],
+        "title": "Single Timestamp",
+        "description": "A single timestamp at a specified time."
+      },
+      "RegularTimestamps": {
+        "properties": {
+          "start_time": {
+            "oneOf": [
+              { "type": "number", "minimum": 0.0 },
+              {
+                "items": { "type": "number", "minimum": 0.0 },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Start Time",
+            "description": "Sart time of the timestamps in milliseconds (ms).",
+            "default": 0.0,
+            "units": "ms",
+            "ui_element": "parameter_sweep"
+          },
+          "interval": {
+            "oneOf": [
+              { "type": "number", "minimum": 0.0 },
+              {
+                "items": { "type": "number", "minimum": 0.0 },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Interval",
+            "description": "Interval between timestamps in milliseconds (ms).",
+            "default": 10.0,
+            "units": "ms",
+            "ui_element": "parameter_sweep"
+          },
+          "number_of_repetitions": {
+            "oneOf": [
+              { "type": "integer", "minimum": 0.0 },
+              {
+                "items": { "type": "integer", "minimum": 0.0 },
+                "type": "array",
+                "minItems": 1
+              }
+            ],
+            "title": "Number Of Repetitions",
+            "description": "Number of timestamps to generate.",
+            "default": 10,
+            "ui_element": "parameter_sweep"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["type"],
+        "title": "Regular Timestamps",
+        "description": "A series of timestamps at regular intervals."
       }
     }
   }
