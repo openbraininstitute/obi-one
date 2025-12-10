@@ -1,11 +1,9 @@
-from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
-from obi_one.core.exception import OBIONEError
 
 
 class EMCellMeshFromID(EntityFromID):

@@ -1,50 +1,25 @@
 import abc
 import logging
-from datetime import UTC, datetime
-from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
 import entitysdk
+import httpx
+import json
+from uuid import UUID
+from urllib.parse import urlparse
+import os
+import time
 from pydantic import Field, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-
-import logging
-from pathlib import Path
-from typing import ClassVar
-
-import entitysdk
-from pydantic import PrivateAttr
-
-from obi_one.core.block import Block
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
-
-from obi_one.scientific.tasks.generate_simulation_configs import (
-    CircuitSimulationSingleConfig,
-    MEModelSimulationSingleConfig,
-    MEModelWithSynapsesCircuitSimulationSingleConfig,
-)
-
-import httpx
-import os
-import time 
-import json 
-import pathlib
-from uuid import UUID
-from urllib.parse import urlparse
-from IPython.display import display, HTML
-from obi_auth import get_token
-from obi_notebook import get_projects, get_entities
-from entitysdk.client import Client
-from entitysdk.models import CellMorphology
-from entitysdk.models.asset import AssetLabel
-
 
 L = logging.getLogger(__name__)
 
@@ -52,23 +27,29 @@ L = logging.getLogger(__name__)
 class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
 
-    single_coord_class_name: ClassVar[str]
+    single_coord_class_name: ClassVar[str] = "SkeletonizationSingleConfig"
     name: ClassVar[str] = "Skeletonization Campaign"
     description: ClassVar[str] = "Skeletonization campaign"
 
     # _campaign: entitysdk.models.SimulationCampaign = None
 
     class Initialize(Block):
-        cell_mesh: EMCellMeshFromID
+        cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID]
 
-        neuron_voxel_size: Annotated[PositiveFloat, Field(ge=0.001, le=1.0)] | list[Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]] = Field(
+        neuron_voxel_size: (
+            Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]
+            | list[Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]]
+        ) = Field(
             default=0.1,
             title="Neuron Voxel Size",
             description="Neuron reconstruction resolution in micrometers.",
             units="μm",
         )
 
-        spines_voxel_size: Annotated[PositiveFloat, Field(ge=0.001, le=0.1)] | list[Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]] = Field(
+        spines_voxel_size: (
+            Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]
+            | list[Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]]
+        ) = Field(
             default=0.05,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
@@ -78,9 +59,8 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         segment_spines: bool = Field(
             default=True,
             title="Segment Spines",
-            description="Segment dendritic spines from the neuron morphology."
+            description="Segment dendritic spines from the neuron morphology.",
         )
-        
 
     info: Info = Field(
         title="Info",
@@ -89,12 +69,19 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         # group_order=0,
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.SimulationCampaign:
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the skeletonization.",
+        # group=BlockGroup.SETUP_BLOCK_GROUP,
+        # group_order=1,
+    )
+
+    # def create_campaign_entity_with_config(
+    #     self,
+    #     output_root: Path,
+    #     multiple_value_parameters_dictionary: dict | None = None,
+    #     db_client: entitysdk.client.Client = None,
+    # ) -> entitysdk.models.SimulationCampaign:
         # """Initializes the simulation campaign in the database."""
         # L.info("1. Initializing simulation campaign in the database...")
         # if multiple_value_parameters_dictionary is None:
@@ -131,12 +118,12 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         #     asset_label="campaign_generation_config",
         # )
 
-        return self._campaign
+        # return self._campaign
 
-    def create_campaign_generation_entity(
-        self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
-    ) -> None:
-        L.info("3. Saving completed simulation campaign generation")
+    # def create_campaign_generation_entity(
+    #     self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
+    # ) -> None:
+    #     L.info("3. Saving completed simulation campaign generation")
 
         # L.info("-- Register SimulationGeneration Entity")
         # db_client.register_entity(
@@ -148,10 +135,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         # )
 
 
-
-class SkeletonizationSingleConfig(
-    SkeletonizationScanConfig, SingleConfigMixin
-):
+class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
     _single_entity: entitysdk.models.Simulation
 
     @property
@@ -163,7 +147,6 @@ class SkeletonizationSingleConfig(
     ) -> entitysdk.models.Simulation:
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
-
 
         # L.info("-- Register Simulation Entity")
         # self._single_entity = db_client.register_entity(
@@ -186,15 +169,8 @@ class SkeletonizationSingleConfig(
         # )
 
 
-
-
-
-class GenerateSimulationTask(Task):
-    config: (
-        CircuitSimulationSingleConfig
-        | MEModelSimulationSingleConfig
-        | MEModelWithSynapsesCircuitSimulationSingleConfig
-    )
+class SkeletonizationTask(Task):
+    config: SkeletonizationSingleConfig
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -204,83 +180,90 @@ class GenerateSimulationTask(Task):
     _entity_cache: bool = PrivateAttr(default=False)
 
 
-    def _setup_input_task_params(self):
-        input_params = {
-            "name": mesh_id,
-            "description": f"Reconstructed morphology and extracted spines of neuron {input_entity.dense_reconstruction_cell_id}."
+
+    def _setup_input_task_params(self, db_client: entitysdk.client.Client):
+        self._input_params = {
+            "name": self.config.initialize.cell_mesh.id_str,
+            "description": f"Reconstructed morphology and extracted spines of neuron {self.config.initialize.cell_mesh.entity(db_client).dense_reconstruction_cell_id}.",
         }
 
+        self._skeletonization_params = {
+            "em_cell_mesh_id": self.config.initialize.cell_mesh.id_str,
+            "neuron_voxel_size": self.config.initialize.neuron_voxel_size,
+            "spines_voxel_size": self.config.initialize.spines_voxel_size,
+            "segment_spines": self.config.initialize.segment_spines,
+        }
 
-    # def _setup_clients(
-    #     self, db_client: entitysdk.client.Client
-    # ) -> None:
+    def _setup_clients(
+        self, db_client: entitysdk.client.Client
+    ) -> None:
+
+        # Initialize the client and search for EMCellMesh entities
         
-    #     # Initialize the client and search for EMCellMesh entities
-    #     client = Client(environment=environment, token_manager=token, project_context=project_context)
-    #     entitycore_api_url = urlparse(client.api_url)
-    #     platform_base_url = f"{entitycore_api_url.scheme}://{entitycore_api_url.netloc}"
-    #     mesh_api_base_url = f"{platform_base_url}/api/small-scale-simulator/mesh/skeletonization"
+        entitycore_api_url = urlparse(db_client.api_url)
+        platform_base_url = f"{entitycore_api_url.scheme}://{entitycore_api_url.netloc}"
+        self._mesh_api_base_url = f"{platform_base_url}/api/small-scale-simulator/mesh/skeletonization"
 
-    #     http_client = httpx.Client()
+        self._http_client = httpx.Client()
 
-        # token = os.getenv("OBI_AUTHENTICATION_TOKEN")
-        # project_context = db_client.project_context
+        token = os.getenv("OBI_AUTHENTICATION_TOKEN")
+        project_context = db_client.project_context
 
-    #     mesh_api_headers = httpx.Headers({
-    #         "Authorization": f"Bearer {token}",
-    #         "virtual-lab-id": str(project_context.virtual_lab_id),
-    #         "project-id": str(project_context.project_id)
-    #     })
+        self._mesh_api_headers = httpx.Headers({
+            "Authorization": f"Bearer {token}",
+            "virtual-lab-id": str(project_context.virtual_lab_id),
+            "project-id": str(project_context.project_id)
+        })
 
-    # def _submit_skeletonization_task(
-    #     self, db_client: entitysdk.client.Client
-    # ) -> UUID:
+    def _submit_skeletonization_task(self) -> UUID:
+
+        start_res = self._http_client.post(
+        f"{self._mesh_api_base_url}/run",
+            params=self._skeletonization_params,
+            headers=self._mesh_api_headers,
+            json=self._input_params
+        )
+
+        job_id = None
+        if start_res.is_success:
+            job_id = start_res.json().get("id")
+        else:
+            print(start_res.text)
+            raise RuntimeError("Failed to submit mesh skeletonization task")
         
-    #     start_res = http_client.post(
-    #     f"{mesh_api_base_url}/run",
-    #         params=skeletonization_params,
-    #         headers=mesh_api_headers,
-    #         json=input_params
-    #     )
+        return UUID(job_id)
 
-    #     job_id = None
-    #     if start_res.is_success:
-    #         job_id = start_res.json().get("id")
-    #     else:
-    #         print(start_res.text)
-    #         raise RuntimeError("Failed to submit mesh skeletonization task")
+    def _wait_for_skeletonization_task_completion(
+        self, job_id: UUID
+    ) -> UUID:
+        output_morphology_id = None
+        prev_status = None
 
-    # def _wait_for_skeletonization_task_completion(
-    #     self, db_client: entitysdk.client.Client, job_id: UUID
-    # ) -> UUID:
-    #     output_morphology_id = None
-    #     prev_status = None
+        while True:
+            status_res = self._http_client.get(
+                f"{self._mesh_api_base_url}/jobs/{job_id}",
+                headers=self._mesh_api_headers
+            )
 
-    #     while True:
-    #     status_res = http_client.get(
-    #         f"{mesh_api_base_url}/jobs/{job_id}",
-    #         headers=mesh_api_headers
-    #     )
+            if not status_res.is_success:
+                print(status_res.text)
+                raise RuntimeError("Failed to get job status")
 
-    #     if not status_res.is_success:
-    #         print(status_res.text)
-    #         raise RuntimeError("Failed to get job status")
+            job = status_res.json()
+            status = job.get('status')
 
-    #     job = status_res.json()
-    #     status = job.get('status')
+            if status != prev_status:
+                print(f"{time.strftime("%H:%M:%S", time.localtime())}  Status: {status}")
+                prev_status = status
 
-    #     if status != prev_status:
-    #         print(f"{time.strftime("%H:%M:%S", time.localtime())}  Status: {status}")
-    #         prev_status = status
+            if status == 'finished':
+                output_morphology_id = UUID(job.get('output').get('morphology').get('id'))
+                break
+            elif status == 'failed':
+                print(json.dumps(job, indent=2))
+                raise RuntimeError("Skeletonization failed")
 
-    #     if status == 'finished':
-    #         output_morphology_id = UUID(job.get('output').get('morphology').get('id'))
-    #         break
-    #     elif status == 'failed':
-    #         print(json.dumps(job, indent=2))
-    #         raise RuntimeError("Skeletonization failed")
-
-    #     time.sleep(15)
+            time.sleep(15)
 
     # def _get_new_morphology(db_client: entitysdk.client.Client, morphology_id: UUID) -> CellMorphology:
     #     cell_morphology = db_client.get_entity(output_morphology_id, entity_type=CellMorphology)
@@ -289,24 +272,24 @@ class GenerateSimulationTask(Task):
     #     # Download the file
     #     db_client.download_assets(cell_morphology,selection={"label": AssetLabel.morphology_with_spines}, output_path=pathlib.Path(os.getcwd())).one()
 
-
-
-
     def execute(
         self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
     ) -> None:
         
-        
-        # self._setup_input_task_params(db_client)
+        self._setup_input_task_params(db_client)
 
-        # self._setup_clients(db_client)
+        self._setup_clients(db_client)
 
-        # job_id = self._submit_skeletonization_task(db_client)
+        job_id = self._submit_skeletonization_task()
 
-        # output_morphology_id = self._wait_for_skeletonization_task_completion(
-        #     db_client, job_id
-        # )
+        output_morphology_id = self._wait_for_skeletonization_task_completion(
+            job_id
+        )
+
+        print(output_morphology_id)
 
         # L.info(f"Skeletonization completed. Output Morphology ID: {output_morphology_id}")
 
         # self._get_new_morphology(db_client, output_morphology_id)
+
+        # print(print)
