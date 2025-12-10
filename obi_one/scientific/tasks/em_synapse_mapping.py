@@ -27,6 +27,8 @@ from entitysdk.models import (
 )
 from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
+from neurom.core import Morphology as NeuromMorphology
+from neurom.view import plot_morph
 from pydantic import Field
 from voxcell import CellCollection
 
@@ -35,7 +37,7 @@ from obi_one.core.block import Block
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one.scientific.from_id.em_dataset_from_id import _C_P_LOCS, EMDataSetFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.map_em_synapses import (
     map_afferents_to_spiny_morphology,
@@ -46,6 +48,7 @@ from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
     sonata_config_for,
 )
+from obi_one.scientific.library.map_em_synapses.map_synapse_locations import _PF_AFF
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
     _STR_POST_NODE,
     _STR_PRE_NODE,
@@ -55,6 +58,18 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
 )
 
 L = logging.getLogger(__name__)
+
+
+def create_visualization_plot(m: NeuromMorphology, syns: pandas.DataFrame) -> plt.Figure:
+    cols_syn_locs = [_PF_AFF + _col for _col in _C_P_LOCS]
+    fig = plt.figure(figsize=(4, 5))
+    ax = fig.gca()
+
+    ax.scatter(
+        syns[cols_syn_locs[0]], syns[cols_syn_locs[1]], s=2, marker="v", color="black", alpha=0.5
+    )
+    plot_morph(m, ax=ax)
+    return fig
 
 
 def plot_mapping_stats(
@@ -254,7 +269,14 @@ class EMSynapseMappingTask(Task):
         L.info("Writing the results...")
         # Write the results
         # Mapping quality info
-        plot_mapping_stats(mapped_synapses_df, mesh_res).savefig(out_root / "mapping_stats.png")
+        list_of_plots = []
+        plot_mapping_stats(mapped_synapses_df, mesh_res).savefig(out_root / "mapping_stats.webp")
+        create_visualization_plot(spiny_morph.morphology, mapped_synapses_df).savefig(
+            out_root / "synaptome_visualization.webp"
+        )
+        list_of_plots.append(
+            (str(out_root / "synaptome_visualization.webp"), AssetLabel.circuit_visualization)
+        )
         # Edges h5 file
         fn_edges_out = "synaptome-edges.h5"
         edge_population_name = self.config.initialize.edge_population_name
@@ -311,6 +333,7 @@ class EMSynapseMappingTask(Task):
             lst_notices,
             file_paths,
             compressed_path,
+            list_of_plots,
         )
 
     @staticmethod
@@ -380,14 +403,15 @@ class EMSynapseMappingTask(Task):
         lst_notices: list[str],
         file_paths: dict[os.PathLike, os.PathLike],
         compressed_path: os.PathLike,
+        list_of_plots: list[tuple],
     ) -> None:
         license = em_dataset.license
         description = f"""Morphology skeleton with isolated spines and afferent synapses
         (Synaptome) of the neuron with pt_root_id {pt_root_id}
         in dataset {source_dataset.name}.\n"""
-        description += "Used tables with the following notice texts:\n"
+        notice_text = "Used tables with the following notice texts:\n"
         for notice in lst_notices:
-            description += str(notice) + "\n"
+            notice_text += str(notice) + "\n"
 
         circ_entity = Circuit(
             name=f"Afferent-synaptome-{pt_root_id}",
@@ -404,6 +428,7 @@ class EMSynapseMappingTask(Task):
             brain_region=source_dataset.brain_region,
             experiment_date=source_dataset.experiment_date,
             license=license,
+            notice_text=notice_text,
         )
         existing_circuit = db_client.register_entity(circ_entity)
 
@@ -422,6 +447,15 @@ class EMSynapseMappingTask(Task):
             file_content_type=ContentType.application_gzip,
             asset_label=AssetLabel.compressed_sonata_circuit,
         )
+
+        for plot_filename, plot_asset_label in list_of_plots:
+            db_client.upload_file(
+                entity_id=existing_circuit.id,
+                entity_type=Circuit,
+                file_path=plot_filename,
+                file_content_type=ContentType.image_webp,
+                asset_label=plot_asset_label,
+            )
 
         for publication in assemble_publication_links(db_client, em_dataset, lst_notices):
             new_link = ScientificArtifactPublicationLink(
