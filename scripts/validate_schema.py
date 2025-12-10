@@ -132,6 +132,9 @@ def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
                 validate(schema, block_meta_schema)
 
 
+TEST_MODE = False
+
+
 def validate_schema() -> None:
     openapi_schema = get_openapi(
         title=app.title,
@@ -145,14 +148,18 @@ def validate_schema() -> None:
         if not path.startswith("/generated"):
             continue
 
-        schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
-
         # Example valid schema for testing
         with Path.open(current_dir / "example_simulations_form.json") as f:
             example_schema = json.load(f)
 
         # change this to example_schema to test with a valid schema
-        openapi_schema_to_validate = openapi_schema
+        openapi_schema_to_validate = example_schema if TEST_MODE else openapi_schema
+
+        schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+
+        # In test_mode only validate CircuitSimulationScanConfig
+        if TEST_MODE and schema_ref != "#/components/schemas/CircuitSimulationScanConfig":
+            continue
 
         schema = resolve_ref(openapi_schema_to_validate, schema_ref)
 
