@@ -259,22 +259,39 @@
       "obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize": {
         "properties": {
           "circuit": {
-            "type": "object",
-            "required": ["id", "entity_type"],
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
+            "anyOf": [
+              {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/Circuit" },
+                  { "$ref": "#/components/schemas/CircuitFromID" }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "Circuit": "#/components/schemas/Circuit",
+                    "CircuitFromID": "#/components/schemas/CircuitFromID"
+                  }
+                }
               },
-              "entity_type": {
-                "type": "string",
-                "minLength": 1
+              {
+                "items": {
+                  "oneOf": [
+                    { "$ref": "#/components/schemas/Circuit" },
+                    { "$ref": "#/components/schemas/CircuitFromID" }
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "Circuit": "#/components/schemas/Circuit",
+                      "CircuitFromID": "#/components/schemas/CircuitFromID"
+                    }
+                  }
+                },
+                "type": "array"
               }
-            },
+            ],
             "title": "Circuit",
-            "description": "Circuit to simulate.",
-            "ui_element": "model_identifier"
+            "description": "Circuit to simulate."
           },
           "simulation_length": {
             "oneOf": [
@@ -297,49 +314,42 @@
           },
           "extracellular_calcium_concentration": {
             "oneOf": [
-              { "type": "number", "minimum": 0.0 },
               {
                 "items": { "type": "number", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
+                "type": "array"
+              },
+              { "type": "number", "minimum": 0.0 }
             ],
             "title": "Extracellular Calcium Concentration",
             "description": "Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
             "default": 1.1,
-            "units": "mM",
-            "ui_element": "parameter_sweep"
+            "units": "mM"
           },
           "v_init": {
             "oneOf": [
-              { "type": "number" },
-              { "items": { "type": "number" }, "type": "array", "minItems": 1 }
+              { "items": { "type": "number" }, "type": "array" },
+              { "type": "number" }
             ],
             "title": "Initial Voltage",
             "description": "Initial membrane potential in millivolts (mV).",
             "default": -80.0,
-            "units": "mV",
-            "ui_element": "parameter_sweep"
+            "units": "mV"
           },
           "random_seed": {
             "oneOf": [
-              { "type": "integer" },
-              { "items": { "type": "integer" }, "type": "array", "minItems": 1 }
+              { "items": { "type": "integer" }, "type": "array" },
+              { "type": "integer" }
             ],
             "title": "Random Seed",
             "description": "Random seed for the simulation.",
-            "default": 1,
-            "ui_element": "parameter_sweep"
+            "default": 1
           },
           "node_set": {
-            "title": "Neuron Set",
-            "description": "Neuron set to simulate.",
-            "ui_element": "reference",
-            "default_label": "All Biophyisical Neurons",
-            "nullable": true,
             "oneOf": [
               {
-                "$ref": "#/components/schemas/NeuronSetReference"
+                "$ref": "#/components/schemas/NeuronSetReference",
+                "title": "Neuron Set",
+                "description": "Neuron set to simulate."
               },
               { "type": "null" }
             ]

@@ -51,36 +51,11 @@ def validate_all_properties_required(schema: dict) -> None:
     raise ValueError(msg)
 
 
-def validate_referential_integrity(schema: dict, openapi_schema: dict) -> None:
-    """Checks all $ref pointers within the given schema properties
-    (including Pattern A, Pattern B oneOf, and Discriminator mappings)
-    to ensure they point to existing locations in the openapi_schema.
-    """
-    print("Validating Referential Integrity...")
-    properties = schema.get("properties", {})
-
-    for prop_def in properties.values():
-        refs_to_check = set()
-
-        # root_block case
-        if "$ref" in prop_def:
-            refs_to_check.add(prop_def["$ref"])
-
-        # block_dictionary
-        elif "additionalProperties" in prop_def:
-            for ref in prop_def["additionalProperties"]["oneOf"]:
-                refs_to_check.add(ref["$ref"])
-
-        for ref in refs_to_check:
-            resolve_ref(openapi_schema, ref)
-
-
 def validate_schema_groups(schema):
     """Validates that:
     1. The root 'group_order' list matches exactly the groups used in 'properties'.
     2. Within each group, the 'group_order' integers are unique.
     """
-
     print("Validating group name consistency...")
     defined_groups = set(schema.get("group_order", []))
     properties = schema.get("properties", {})
@@ -127,6 +102,22 @@ def validate_schema_groups(schema):
                 seen[order] = name
 
 
+def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
+    """Validates block schemas."""
+    print("Validating Block Schemas...")
+    with Path.open(current_dir / "block_meta_schema.json") as f:
+        block_meta_schema = json.load(f)
+
+    properties = schema.get("properties", {})
+
+    for key, block_schema in properties.items():
+        print("Validating root element:", key)
+        # root_block case
+        if "$ref" in block_schema:
+            schema = resolve_ref(openapi_schema, block_schema["$ref"])
+            validate(schema, block_meta_schema)
+
+
 def validate_schema() -> None:
     openapi_schema = get_openapi(
         title=app.title,
@@ -145,10 +136,10 @@ def validate_schema() -> None:
         if schema_ref != "#/components/schemas/CircuitSimulationScanConfig":
             continue
 
-        ## schema = resolve_ref(openapi_schema, schema_ref)
-
         with Path.open(current_dir / "example_simulations_form.json") as f:
-            schema = json.load(f)
+            example_simulations_form_schema = json.load(f)
+
+        schema = resolve_ref(example_simulations_form_schema, schema_ref)
 
         with Path.open(current_dir / "meta_schema.json") as f:
             meta_schema = json.load(f)
@@ -156,8 +147,8 @@ def validate_schema() -> None:
         print("Validating schema at path:", path)
         validate(instance=schema, schema=meta_schema)
         validate_all_properties_required(schema)
-        validate_referential_integrity(schema, openapi_schema)
         validate_schema_groups(schema)
+        validate_block_schemas(schema, example_simulations_form_schema)
 
 
 if __name__ == "__main__":

@@ -40,7 +40,8 @@
       "description": "List of required properties.",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
 
     "properties": {

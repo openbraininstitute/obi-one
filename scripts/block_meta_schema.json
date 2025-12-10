@@ -1,0 +1,290 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schema to validate block schemas",
+  "type": "object",
+  "required": [
+    "properties",
+    "additionalProperties",
+    "required",
+    "title",
+    "type"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "const": "object"
+    },
+    "additionalProperties": {
+      "const": false
+    },
+    "required": {
+      "type": "array",
+      "description": "List of required properties.",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "oneOf": [
+          {
+            "title": "Input",
+            "type": "object",
+            "required": [
+              "type",
+              "minLength",
+              "title",
+              "description",
+              "ui_element"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "ui_element": {
+                "const": "input"
+              },
+              "type": {
+                "const": "string"
+              },
+              "minLength": {
+                "const": 1
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+
+          {
+            "title": "Number parameter sweep",
+            "type": "object",
+            "required": [
+              "oneOf",
+              "title",
+              "description",
+              "default",
+              "ui_element"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "default": { "type": "number" },
+              "units": { "type": "string" },
+              "oneOf": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "object",
+                    "description": "Validates the single number option",
+                    "required": ["type"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "number" },
+                      "maximum": { "type": "number" },
+                      "minimum": { "type": "number" }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "description": "Validates the array of numbers option",
+                    "required": ["type", "minItems", "items"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "array" },
+                      "minItems": { "const": 1 },
+                      "items": {
+                        "type": "object",
+                        "required": ["type"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": { "const": "number" },
+                          "maximum": { "type": "number" },
+                          "minimum": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "ui_element": {
+                "const": "parameter_sweep"
+              }
+            }
+          },
+          {
+            "title": "Integer parameter_sweep",
+            "type": "object",
+            "required": [
+              "oneOf",
+              "title",
+              "description",
+              "default",
+              "ui_element"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "default": { "type": "number" },
+              "units": { "type": "string" },
+              "oneOf": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "object",
+                    "description": "Validates the single number option",
+                    "required": ["type"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "integer" },
+                      "maximum": { "type": "integer" },
+                      "minimum": { "type": "integer" }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "description": "Validates the array of numbers option",
+                    "required": ["type", "minItems", "items"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "array" },
+                      "minItems": { "const": 1 },
+                      "items": {
+                        "type": "object",
+                        "required": ["type"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": { "const": "integer" },
+                          "maximum": { "type": "integer" },
+                          "minimum": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "ui_element": {
+                "const": "parameter_sweep"
+              }
+            }
+          },
+
+          {
+            "title": "Model identifier",
+            "type": "object",
+            "required": [
+              "type",
+              "required",
+              "additionalProperties",
+              "properties",
+              "title",
+              "description",
+              "ui_element"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "ui_element": { "const": "model_identifier" },
+              "type": { "const": "object" },
+              "additionalProperties": { "const": false },
+              "required": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["id", "entity_type"]
+                }
+              },
+              "properties": {
+                "type": "object",
+                "required": ["id", "entity_type"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "object",
+                    "required": ["type", "format"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "string" },
+                      "format": { "const": "uuid" }
+                    }
+                  },
+                  "entity_type": {
+                    "type": "object",
+                    "required": ["type", "minLength"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "string" },
+                      "minLength": { "const": 1 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+
+          {
+            "title": "Reference",
+            "type": "object",
+            "required": [
+              "title",
+              "description",
+              "ui_element",
+              "nullable",
+              "oneOf"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "ui_element": { "enum": ["reference", null] },
+              "default_label": { "type": "string" },
+              "nullable": { "type": "boolean" },
+              "oneOf": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": [
+                  {
+                    "type": "object",
+                    "required": ["$ref"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "$ref": {
+                        "enum": ["#/components/schemas/NeuronSetReference"]
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["type"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": { "const": "null" }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "minProperties": 1
+    }
+  }
+}
