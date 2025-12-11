@@ -72,7 +72,58 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     EQUATIONS = "Equations"
-    GATEEXPONENTS = "Gates Exponents"
+    MODEL = "Model"
+
+
+class HodgkinHuxleyIonChannelModel(Block):
+
+    m_power: int = Field(
+            title="m exponent in channel equation",
+            default=1,
+            ge=1,
+            le=4,
+            description=(
+                r"Exponent \(p\) of \(m\) in the channel equation: "
+                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            ),
+    )
+    h_power: int = Field(
+        title="h exponent in channel equation",
+        default=1,
+        ge=0,
+        le=4,
+        description=(
+            r"Exponent \(q\) of \(h\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
+    )
+
+    minf_eq: Literal["sig_fit_minf", "1"] = Field(
+            title="m_{inf} equation",
+            description="Equation to use for m_{inf}.",
+            default="sig_fit_minf",
+        )
+
+
+    mtau_eq: Literal["sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau", "1"] = Field(
+        title=r"\tau_m equation",
+        description="Equation to use for \tau_m.",
+        default="sig_fit_mtau",
+    )
+
+    hinf_eq: Literal["sig_fit_hinf", "1"] = Field(
+        title="h_{inf} equation",
+        description="Equation to use for h_{inf}.",
+        default="sig_fit_hinf",
+    )
+
+    htau_eq: Literal["sig_fit_htau", "1"] = Field(
+        title=r"\tau_h equation",
+        description="Equation to use for \tau_h.",
+        default="sig_fit_htau",
+    )
+
+    
 
 
 class IonChannelFittingScanConfig(ScanConfig):
@@ -110,27 +161,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             )
         )
 
-    class GateExponents(Block):
-        m_power: int = Field(
-            title="m exponent in channel equation",
-            default=1,
-            ge=1,
-            le=4,
-            description=(
-                r"Exponent \(p\) of \(m\) in the channel equation: "
-                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-            ),
-        )
-        h_power: int = Field(
-            title="h exponent in channel equation",
-            default=1,
-            ge=0,
-            le=4,
-            description=(
-                r"Exponent \(q\) of \(h\) in the channel equation: "
-                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-            ),
-        )
+        
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -146,60 +177,13 @@ class IonChannelFittingScanConfig(ScanConfig):
         group_order=0,
     )
 
-    minf_eq: equations_module.MInfUnion = Field(
-        title=r"m_{\infty} equation",
-        reference_type=equations_module.MInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
+    model_type: HodgkinHuxleyIonChannelModel = Field(
+        title="Model",
+        description="Hodgkin-Huxley type ion channel model to fit.",
+        group=BlockGroup.MODEL,
         group_order=0,
-        description=(
-            r"Steady state activation parameter \( m_{\infty} \) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
-        ),
-    )
-    mtau_eq: equations_module.MTauUnion = Field(
-        title=r"\tau_m equation",
-        reference_type=equations_module.MTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=1,
-        description=(
-            r"Activation time constant \(\tau_m\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
-        ),
-    )
-    hinf_eq: equations_module.HInfUnion = Field(
-        title=r"h_{\infty} equation",
-        reference_type=equations_module.HInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=2,
-        description=(
-            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
-        ),
-    )
-    htau_eq: equations_module.HTauUnion = Field(
-        title=r"\tau_h equation",
-        reference_type=equations_module.HTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=3,
-        description=(
-            r"Inactivation time constant \(\tau_h\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
-        ),
     )
 
-    gate_exponents: GateExponents = Field(
-        title="m & h gate exponents",
-        description=(
-            "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-        ),
-        group=BlockGroup.GATEEXPONENTS,
-        group_order=0,
-    )
 
     def create_campaign_entity_with_config(
         self,
@@ -475,10 +459,10 @@ class IonChannelFittingTask(Task):
 
             # prepare data to feed
             eq_names = {
-                "minf": self.config.minf_eq.__class__.equation_key,
-                "mtau": self.config.mtau_eq.__class__.equation_key,
-                "hinf": self.config.hinf_eq.__class__.equation_key,
-                "htau": self.config.htau_eq.__class__.equation_key,
+                "minf": self.config.model_type.minf_eq,
+                "mtau": self.config.model_type.mtau_eq,
+                "hinf": self.config.model_type.hinf_eq,
+                "htau": self.config.model_type.htau_eq,
             }
             voltage_exclusion = {
                 "activation": {
@@ -539,8 +523,8 @@ class IonChannelFittingTask(Task):
                 eq_popt=eq_popt,
                 suffix=self.config.initialize.ion_channel_name,
                 ion="k",
-                m_power=self.config.gate_exponents.m_power,
-                h_power=self.config.gate_exponents.h_power,
+                m_power=self.config.model_type.m_power,
+                h_power=self.config.model_type.h_power,
                 output_name=output_name,
             )
 
