@@ -20,6 +20,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.core.exception import OBIONEError
 
 L = logging.getLogger(__name__)
 
@@ -34,7 +35,9 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     # _campaign: entitysdk.models.SimulationCampaign = None
 
     class Initialize(Block):
-        cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID]
+        cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
+            title="EM Cell Mesh", description="EM cell mesh to use for skeletonization."
+        )
 
         neuron_voxel_size: (
             Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]
@@ -76,49 +79,50 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         # group_order=1,
     )
 
-    # def create_campaign_entity_with_config(
-    #     self,
-    #     output_root: Path,
-    #     multiple_value_parameters_dictionary: dict | None = None,
-    #     db_client: entitysdk.client.Client = None,
-    # ) -> entitysdk.models.SimulationCampaign:
-        # """Initializes the simulation campaign in the database."""
-        # L.info("1. Initializing simulation campaign in the database...")
-        # if multiple_value_parameters_dictionary is None:
-        #     multiple_value_parameters_dictionary = {}
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: entitysdk.client.Client = None,
+    ) -> entitysdk.models.SkeletonizationCampaign:
+        """Initializes the simulation campaign in the database."""
+        L.info("1. Initializing simulation campaign in the database...")
 
-        # L.info("-- Register SimulationCampaign Entity")
-        # if isinstance(
-        #     self.initialize.circuit,
-        #     (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
-        # ):
-        #     entity_id = self.initialize.circuit.id_str
-        # elif isinstance(self.initialize.circuit, list):
-        #     if len(self.initialize.circuit) != 1:
-        #         msg = "Only single circuit/MEModel currently supported for \
-        #             simulation campaign database persistence."
-        #         raise OBIONEError(msg)
-        #     entity_id = self.initialize.circuit[0].id_str
+        if multiple_value_parameters_dictionary is None:
+            multiple_value_parameters_dictionary = {}
 
-        # self._campaign = db_client.register_entity(
-        #     entitysdk.models.SimulationCampaign(
-        #         name=self.info.campaign_name,
-        #         description=self.info.campaign_description,
-        #         entity_id=entity_id,
-        #         scan_parameters=multiple_value_parameters_dictionary,
-        #     )
-        # )
+        L.info("-- Register SimulationCampaign Entity")
+        if isinstance(
+            self.initialize.cell_mesh, EMCellMeshFromID,
+        ):
+            input_meshes = [self.initialize.cell_mesh.entity(db_client)]
 
-        # L.info("-- Upload campaign_generation_config")
-        # _ = db_client.upload_file(
-        #     entity_id=self._campaign.id,
-        #     entity_type=entitysdk.models.SimulationCampaign,
-        #     file_path=output_root / "run_scan_config.json",
-        #     file_content_type="application/json",
-        #     asset_label="campaign_generation_config",
-        # )
+        elif isinstance(self.initialize.cell_mesh, list):
+            if len(self.initialize.cell_mesh) > 0:
+                input_meshes = [mesh.entity(db_client) for mesh in self.initialize.cell_mesh]
+            else:
+                msg = "No cell meshes provided for skeletonization campaign!"
+                raise OBIONEError(msg)
 
-        # return self._campaign
+        self._campaign = db_client.register_entity(
+            entitysdk.models.SkeletonizationCampaign(
+                name=self.info.campaign_name,
+                description=self.info.campaign_description,
+                input_meshes=input_meshes,
+                scan_parameters=multiple_value_parameters_dictionary,
+            )
+        )
+
+        L.info("-- Upload campaign_generation_config")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=entitysdk.models.SkeletonizationCampaign,
+            file_path=output_root / "obi_one_scan.json",
+            file_content_type="application/json",
+            asset_label="campaign_generation_config",
+        )
+
+        return self._campaign
 
     # def create_campaign_generation_entity(
     #     self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
