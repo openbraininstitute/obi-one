@@ -82,9 +82,10 @@ def create_endpoint_for_scan_config(
             elif len(e.args) > 1:
                 error_msg = str(e.args)
 
+            L.info("Grid scan generation failed")
             L.error(error_msg)
 
-            if isinstance(form, (CircuitSimulationScanConfig, 
+            if isinstance(grid_scan.form, (CircuitSimulationScanConfig, 
                                  MEModelSimulationScanConfig, 
                                  MEModelWithSynapsesCircuitSimulationScanConfig, 
                                  SimulationsForm)):
@@ -93,7 +94,44 @@ def create_endpoint_for_scan_config(
                         f"Grid scan generation failed, but campaign {grid_scan.form.campaign.id} \
                             of type {type(grid_scan.form.campaign)} was created. Let's delete it and associated entities / assets."
                     )   
+                    L.info("\n\n\nStarting cleanup of created entities...\n\n\n")
+
+                    # DELETE THE CAMPAIGN (SAME AS GENERATION ACTIIVTY - USED)
                     # db_client.delete_entity(entity_id=grid_scan.form.campaign.id, entity_type=type(grid_scan.form.campaign))
+
+                    campaign_entity = db_client.get_entity(entity_id=grid_scan.form.campaign.id, entity_type=type(grid_scan.form.campaign))
+
+                    L.info(campaign_entity.assets)
+
+                    for idx, asset in enumerate(campaign_entity.assets):
+                        L.info(f"Deleting asset {idx}.")
+                        
+                        db_client.delete_asset(
+                            entity_id=grid_scan.form.campaign.id, 
+                            entity_type=type(grid_scan.form.campaign), 
+                            asset_id=asset.id,
+                            hard=True)
+                        
+                        L.info(f"Deleted asset {idx}.")
+
+                    # db_client.delete_entity(entity_id=grid_scan.form.campaign.id, entity_type=type(grid_scan.form.campaign))
+
+                    # db_client.delete_entity(entity_id=grid_scan.form.campaign.id, 
+                    #                         entity_type=entitysdk.models.SimulationCampaign)
+
+                    if grid_scan.form.generation_activity is not None:
+
+                        # L.info(grid_scan.form.generation_activity.used)
+                        # L.info(grid_scan.form.generation_activity.generated)
+
+                        # DELETE EACH SIMULATION
+                        for simulation in grid_scan.form.generation_activity.generated:
+                            L.info(f"Deleting simulation {simulation.id} of type {type(simulation)}")
+                            db_client.delete_entity(entity_id=simulation.id, entity_type=type(simulation))
+
+                        
+                        # # DELETE THE GENERATION ACTIVITY
+                        # db_client.delete_entity(entity_id=grid_scan.form.campaign.id, entity_type=type(grid_scan.form.generation_activity))
 
                 raise HTTPException(status_code=500, detail=error_msg) from e
 

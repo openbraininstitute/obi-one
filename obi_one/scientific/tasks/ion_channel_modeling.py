@@ -242,7 +242,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         L.info("3. Saving completed ion channel modeling campaign generation")
 
         L.info("-- Register IonChannelModelingGeneration Entity")
-        db_client.register_entity(
+        self._generation_activity = db_client.register_entity(
             entitysdk.models.IonChannelModelingConfigGeneration(
                 start_time=datetime.now(UTC),
                 used=[self._campaign],

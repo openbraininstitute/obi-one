@@ -33,6 +33,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     _block_mapping: dict = None
 
     _campaign: None = None
+    _generation_activity: None = None
 
     @property
     def campaign(
@@ -41,6 +42,12 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         entitysdk.models.SimulationCampaign | None
     ):  # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
         return self._campaign
+    
+    @property
+    def generation_activity(self) -> (
+        entitysdk.models.SimulationGeneration | entitysdk.models.IonChannelModelingConfigGeneration | None
+    ):
+        return self._generation_activity
 
     @classmethod
     def empty_config(cls) -> "ScanConfig":

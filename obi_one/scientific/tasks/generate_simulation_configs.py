@@ -237,7 +237,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         L.info("3. Saving completed simulation campaign generation")
 
         L.info("-- Register SimulationGeneration Entity")
-        db_client.register_entity(
+        self._generation_activity = db_client.register_entity(
             entitysdk.models.SimulationGeneration(
                 start_time=datetime.now(UTC),
                 used=[self._campaign],

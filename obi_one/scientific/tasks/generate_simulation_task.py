@@ -237,9 +237,8 @@ class GenerateSimulationTask(Task):
                     )
                     != "biophysical"
                 ):
-                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
-                        '{self.config.initialize.node_set.name}' "
-                    "is not biophysical!"
+                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): "\
+                        f"{self.config.initialize.node_set.block_name} is not biophysical!"
                     raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
