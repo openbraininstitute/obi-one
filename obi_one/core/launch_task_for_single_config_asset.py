@@ -14,8 +14,10 @@ from obi_one.core.run_tasks import run_task_for_single_config_asset
 L = logging.getLogger(__name__)
 
 
-def set_activity_executor(activity_id: str, job_id: str) -> None:
-    if activity_id is None:
+def set_activity_executor(db_client: Client, activity_id: str, job_id: str) -> None:
+    if not db_client:
+        return
+    if not activity_id:
         L.warning("Executor cannot be set since no execution activity provided!")
         return
     # TODO: Implement executor update!
@@ -23,8 +25,10 @@ def set_activity_executor(activity_id: str, job_id: str) -> None:
     raise NotImplementedError(msg)
     
 
-def update_activity_status(activity_id: str, status: str) -> None:
-    if activity_id is None:
+def update_activity_status(db_client: Client, activity_id: str, status: str) -> None:
+    if not db_client:
+        return
+    if not activity_id:
         L.warning("Status update not possible since no execution activity provided!")
         return
     # TODO: Implement status update!
@@ -56,9 +60,7 @@ def main() -> int:
     job_id = os.getenv("JOB_ID")
     persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
-
-    set_activity_executor(activity_id, job_id)
-    update_activity_status(activity_id, "running")
+    db_client = None
 
     try:
         parser = argparse.ArgumentParser(
@@ -90,7 +92,6 @@ def main() -> int:
 
     except ValueError as e:
         L.error(f"Argument parsing error: {e}")
-        update_activity_status(activity_id, "error")
         return 1
 
     try:
@@ -118,6 +119,10 @@ def main() -> int:
         db_client = Client(environment=deployment, project_context=project_context, token_manager=token_manager)
         # TODO: Use local asset store
 
+        # Update activity
+        set_activity_executor(db_client, activity_id, job_id)
+        update_activity_status(db_client, activity_id, "running")
+
         # Run actual task
         # TODO: Add activity_id to task
         run_task_for_single_config_asset(
@@ -130,11 +135,11 @@ def main() -> int:
         )
     except OBIONEError as e:
         L.error(f"Error launching task for single configuration asset: {e}")
-        update_activity_status(activity_id, "error")
+        update_activity_status(db_client, activity_id, "error")
         return 1
 
     # Task completed without error
-    update_activity_status(activity_id, "done")
+    update_activity_status(db_client, activity_id, "done")
 
     return 0
 
