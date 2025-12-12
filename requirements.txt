@@ -122,7 +122,7 @@ numpy==2.3.4
 numpy-quaternion==2024.0.12
 obi-auth==0.4.1
 obi-notebook==0.3
--e file:///Users/pokorny/JupyterLab/git/obi-one
+obi-one==2025.11.6
 packaging==25.0
 pandas==2.3.3
 pandocfilters==1.5.1
