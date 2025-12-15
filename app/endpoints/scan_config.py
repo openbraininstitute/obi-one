@@ -109,8 +109,7 @@ def create_endpoint_for_scan_config(
                         db_client.delete_asset(
                             entity_id=grid_scan.form.campaign.id, 
                             entity_type=type(grid_scan.form.campaign), 
-                            asset_id=asset.id,
-                            hard=True)
+                            asset_id=asset.id)
                         
                         L.info(f"Deleted asset {idx}.")
 
@@ -126,8 +125,24 @@ def create_endpoint_for_scan_config(
 
                         # DELETE EACH SIMULATION
                         for simulation in grid_scan.form.generation_activity.generated:
+                            
+                            simulation = db_client.get_entity(entity_id=simulation.id, entity_type=entitysdk.models.Simulation)
+
+                            for idx, asset in enumerate(simulation.assets):
+                                L.info(f"Deleting asset {idx}.")
+                                
+                                db_client.delete_asset(
+                                    entity_id=simulation.id, 
+                                    entity_type=entitysdk.models.Simulation, 
+                                    asset_id=asset.id,
+                                    hard=True,
+                                    admin=True)
+                                
+                            simulation = db_client.get_entity(entity_id=simulation.id, entity_type=entitysdk.models.Simulation)
+                            L.info(simulation.assets)
+
                             L.info(f"Deleting simulation {simulation.id} of type {type(simulation)}")
-                            db_client.delete_entity(entity_id=simulation.id, entity_type=type(simulation))
+                            db_client.delete_entity(entity_id=simulation.id, entity_type=entitysdk.models.Simulation)
 
                         
                         # # DELETE THE GENERATION ACTIVITY
