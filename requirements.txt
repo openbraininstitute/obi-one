@@ -122,7 +122,7 @@ numpy==2.3.4
 numpy-quaternion==2024.0.12
 obi-auth==0.5.0
 obi-notebook==0.3
-obi-one==2025.11.5
+obi-one @ git+https://github.com/openbraininstitute/obi-one@circuit_extraction_task_manager
 packaging==25.0
 pandas==2.3.3
 pandocfilters==1.5.1
