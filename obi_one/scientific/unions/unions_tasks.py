@@ -10,6 +10,7 @@ from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTa
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulation_task import GenerateSimulationTask
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingTask
+from obi_one.scientific.tasks.ion_channel_modeling_beta import IonChannelFittingBetaTask
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationTask
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTask
@@ -24,6 +25,7 @@ TasksUnion = Annotated[
     | ElectrophysiologyMetricsTask
     | FolderCompressionTask
     | IonChannelFittingTask
+    | IonChannelFittingBetaTask
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask

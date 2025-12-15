@@ -76,6 +76,9 @@ __all__ = [
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
+    "IonChannelFittingBetaScanConfig",
+    "IonChannelFittingBetaSingleConfig",
+    "IonChannelFittingBetaTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
     "MEModelCircuit",
@@ -325,6 +328,11 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
+)
+from obi_one.scientific.tasks.ion_channel_modeling_beta import (
+    IonChannelFittingBetaScanConfig,
+    IonChannelFittingBetaSingleConfig,
+    IonChannelFittingBetaTask,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationScanConfig,

@@ -126,19 +126,18 @@ class HodgkinHuxleyIonChannelModel(Block):
     
 
 
-class IonChannelFittingScanConfig(ScanConfig):
+class IonChannelFittingBetaScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelFittingSingleConfig"
-    name: ClassVar[str] = "IonChannelFittingScanConfig"
+    single_coord_class_name: ClassVar[str] = "IonChannelFittingBetaSingleConfig"
+    name: ClassVar[str] = "IonChannelFittingBetaScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
             "block_block_group_order": [
                 BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
+                BlockGroup.MODEL,
             ]
         }
 
@@ -235,7 +234,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         )
 
 
-class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
+class IonChannelFittingBetaSingleConfig(IonChannelFittingBetaScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
     _single_entity: entitysdk.models.IonChannelModelingConfig
@@ -292,8 +291,8 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         )
 
 
-class IonChannelFittingTask(Task):
-    config: IonChannelFittingSingleConfig
+class IonChannelFittingBetaTask(Task):
+    config: IonChannelFittingBetaSingleConfig
 
     def download_input(
         self, db_client: entitysdk.client.Client = None

@@ -34,6 +34,10 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
+from obi_one.scientific.tasks.ion_channel_modeling_beta import (
+    IonChannelFittingBetaSingleConfig,
+    IonChannelFittingBetaTask,
+)
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
@@ -63,6 +67,7 @@ _config_tasks_map = {
     ElectrophysiologyMetricsSingleConfig: ElectrophysiologyMetricsTask,
     FolderCompressionSingleConfig: FolderCompressionTask,
     IonChannelFittingSingleConfig: IonChannelFittingTask,
+    IonChannelFittingBetaSingleConfig: IonChannelFittingBetaTask,
     MorphologyContainerizationSingleConfig: MorphologyContainerizationTask,
     MorphologyDecontainerizationSingleConfig: MorphologyDecontainerizationTask,
     MorphologyMetricsSingleConfig: MorphologyMetricsTask,
