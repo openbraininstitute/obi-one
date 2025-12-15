@@ -110,11 +110,27 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         units="Hz",
     )
 
-    phase: float | list[float] = Field(
+    phase_degrees: float | list[float] = Field(
         default=0.0,
-        description="Phase of the cosinusoid, in radians.",
+        description="Phase of the cosinusoid, in degrees.",
         title="Phase",
-        units="Radians",
+        units="°",
+    )
+
+    ramp_up_time: (NonNegativeFloat | list[NonNegativeFloat]) = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps up from zero to full amplitude, \
+            in milliseconds (ms).",
+        title="Ramp Up Time",
+        units="ms",
+    )
+
+    ramp_down_time: (NonNegativeFloat | list[NonNegativeFloat]) = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps down from full amplitude to zero, \
+            in milliseconds (ms).",
+        title="Ramp Down Time",
+        units="ms",
     )
 
     def _generate_config(self) -> dict:
@@ -128,16 +144,17 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
                 "module": self._module,
                 "input_type": self._input_type,
-                "E_x": self.E_x,
-                "E_y": self.E_y,
-                "E_z": self.E_z,
-                "frequency": self.frequency,
-                "phase": self.phase,
+                "ramp_up_time": self.ramp_up_time,
+                "ramp_down_time": self.ramp_down_time,
+                "fields": [{
+                    "E_x": self.E_x,
+                    "E_y": self.E_y,
+                    "E_z": self.E_z,
+                    "frequency": self.frequency,
+                    "phase": np.deg2rad(self.phase_degrees),
+                }],
             }
         return sonata_config
 
