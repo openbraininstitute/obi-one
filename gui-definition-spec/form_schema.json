@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "Form"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["type"],
+  "title": "The title of the form",
+  "description": "Description of the form",
+  "group_order": ["Group 1", "Group 2"],
+  "ui_enabled": true
+}

@@ -86,6 +86,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
             "block_block_group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -93,29 +94,29 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.EVENTS_GROUP,
                 BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             ],
-            "default_block_reference_labels": {
-                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            },
+            # "default_block_reference_labels": {
+            #     NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            #     TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            # },
         }
 
-    timestamps: dict[str, TimestampsUnion] = Field(
-        default_factory=dict,
-        title="Timestamps",
-        reference_type=TimestampsReference.__name__,
-        description="Timestamps for the simulation.",
-        singular_name="Timestamps",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
-    )
-    recordings: dict[str, RecordingUnion] = Field(
-        default_factory=dict,
-        reference_type=RecordingReference.__name__,
-        description="Recordings for the simulation.",
-        singular_name="Recording",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-        group_order=1,
-    )
+    # timestamps: dict[str, TimestampsUnion] = Field(
+    #     default_factory=dict,
+    #     title="Timestamps",
+    #     reference_type=TimestampsReference.__name__,
+    #     description="Timestamps for the simulation.",
+    #     singular_name="Timestamps",
+    #     group=BlockGroup.SETUP_BLOCK_GROUP,
+    #     group_order=0,
+    # )
+    # recordings: dict[str, RecordingUnion] = Field(
+    #     default_factory=dict,
+    #     reference_type=RecordingReference.__name__,
+    #     description="Recordings for the simulation.",
+    #     singular_name="Recording",
+    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+    #     group_order=1,
+    # )
 
     class Initialize(Block):
         circuit: None
@@ -185,6 +186,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         description="Information about the simulation campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=0,
+        
     )
 
     def create_campaign_entity_with_config(
@@ -253,17 +255,17 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(SimulationScanConfig.Initialize):
-        circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model", description="ME Model to simulate."
-        )
+    # class Initialize(SimulationScanConfig.Initialize):
+    #     circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
+    #         title="ME Model", description="ME Model to simulate."
+    #     )
 
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
-    )
+    # initialize: Initialize = Field(
+    #     title="Initialization",
+    #     description="Parameters for initializing the simulation.",
+    #     group=BlockGroup.SETUP_BLOCK_GROUP,
+    #     group_order=1,
+    # )
 
     stimuli: dict[str, MEModelStimulusUnion] = Field(
         default_factory=dict,
@@ -283,50 +285,50 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
-        reference_type=NeuronSetReference.__name__,
-        description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=0,
-    )
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
-        default_factory=dict,
-        reference_type=SynapticManipulationsReference.__name__,
-        description="Synaptic manipulations for the simulation.",
-        singular_name="Synaptic Manipulation",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=1,
-    )
+    # neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    #     default_factory=dict,
+    #     reference_type=NeuronSetReference.__name__,
+    #     description="Neuron sets for the simulation.",
+    #     singular_name="Neuron Set",
+    #     group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+    #     group_order=0,
+    # )
+    # synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+    #     default_factory=dict,
+    #     reference_type=SynapticManipulationsReference.__name__,
+    #     description="Synaptic manipulations for the simulation.",
+    #     singular_name="Synaptic Manipulation",
+    #     group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+    #     group_order=1,
+    # )
 
-    class Initialize(SimulationScanConfig.Initialize):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Circuit to simulate."
-        )
-        node_set: (
-            Annotated[
-                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-            ]
-            | None
-        ) = None
+    # class Initialize(SimulationScanConfig.Initialize):
+    #     circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+    #         title="Circuit", description="Circuit to simulate."
+    #     )
+    #     node_set: (
+    #         Annotated[
+    #             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+    #         ]
+    #         | None
+    #     ) = None
 
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
-    )
+    # initialize: Initialize = Field(
+    #     title="Initialization",
+    #     description="Parameters for initializing the simulation.",
+    #     group=BlockGroup.SETUP_BLOCK_GROUP,
+    #     group_order=1,
+    # )
 
-    stimuli: dict[str, StimulusUnion] = Field(
-        default_factory=dict,
-        title="Stimuli",
-        reference_type=StimulusReference.__name__,
-        description="Stimuli for the simulation.",
-        singular_name="Stimulus",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-        group_order=0,
-    )
+    # stimuli: dict[str, StimulusUnion] = Field(
+    #     default_factory=dict,
+    #     title="Stimuli",
+    #     reference_type=StimulusReference.__name__,
+    #     description="Stimuli for the simulation.",
+    #     singular_name="Stimulus",
+    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+    #     group_order=0,
+    # )
 
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
@@ -345,17 +347,17 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         group_order=0,
     )
 
-    class Initialize(SimulationScanConfig.Initialize):
-        circuit: (
-            MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
-        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+    # class Initialize(SimulationScanConfig.Initialize):
+    #     circuit: (
+    #         MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
+    #     ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
 
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
-    )
+    # initialize: Initialize = Field(
+    #     title="Initialization",
+    #     description="Parameters for initializing the simulation.",
+    #     group=BlockGroup.SETUP_BLOCK_GROUP,
+    #     group_order=1,
+    # )
 
 
 class SimulationSingleConfigMixin(abc.ABC):
