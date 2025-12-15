@@ -246,7 +246,7 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.blocks.stimulus import (
+from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
