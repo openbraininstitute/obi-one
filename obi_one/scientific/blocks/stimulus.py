@@ -62,8 +62,18 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     title: ClassVar[str] = "Uniform Electric Field"
 
-    _module: str = "electric_field"
-    _input_type: str = "uniform_field"
+    _module: str = "spatially_uniform_e_field"
+    _input_type: str = "extracellular_stimulation"
+
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration in milliseconds for how long input is activated.",
+        units="ms",
+    )
 
     E_x: float | list[float] = Field(
         default=0.1,
@@ -77,13 +87,13 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
         title="Peak amplitude in y-direction.",
         units="V/m",
-    )       
+    )
 
     E_z: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
         title="Peak amplitude in z-direction.",
-        units="V/m", 
+        units="V/m",
     )
 
     frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -102,57 +112,34 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     phase: float | list[float] = Field(
         default=0.0,
-        description="Phase of the cosinusoid, in degrees.",
+        description="Phase of the cosinusoid, in radians.",
         title="Phase",
         units="Radians",
     )
 
-    # field_magnitude: float | list[float] = Field(
-    #     default=0.1,
-    #     description="The magnitude of the electric field to apply. Given in mV/um.",
-    #     title="Field Magnitude",
-    #     units="mV/um",
-    # )
-    # field_direction_theta: (
-    #     Annotated[NonNegativeFloat, Field(ge=0.0, le=180.0)]
-    #     | list[Annotated[NonNegativeFloat, Field(ge=0.0, le=180.0)]]
-    # ) = Field(
-    #     default=90.0,
-    #     description="The polar angle (in degrees) of the electric field direction.",
-    #     title="Field Direction Theta",
-    #     units="degrees",
-    # )
-    # field_direction_phi: (
-    #     Annotated[NonNegativeFloat, Field(ge=0.0, le=360.0)]
-    #     | list[Annotated[NonNegativeFloat, Field(ge=0.0, le=360.0)]]
-    # ) = Field(
-    #     default=0.0,
-    #     description="The azimuthal angle (in degrees) of the electric field direction.",
-    #     title="Field Direction Phi",
-    #     units="degrees",
-    # )
+    def _generate_config(self) -> dict:
+        sonata_config = {}
 
-    # def _generate_config(self) -> dict:
-    #     sonata_config = {}
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
 
-    #     timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-    #         self.timestamps, self._default_timestamps
-    #     )
-
-    #     for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-    #         sonata_config[self.block_name + "_" + str(t_ind)] = {
-    #             "delay": timestamp + self.timestamp_offset,
-    #             "duration": _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    #             "node_set": resolve_neuron_set_ref_to_node_set(
-    #                 self.neuron_set, self._default_node_set
-    #             ),
-    #             "module": self._module,
-    #             "input_type": self._input_type,
-    #             "field_magnitude": self.field_magnitude,
-    #             "field_direction_theta": self.field_direction_theta,
-    #             "field_direction_phi": self.field_direction_phi,
-    #         }
-    #     return sonata_config
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
+            sonata_config[self.block_name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
+                "module": self._module,
+                "input_type": self._input_type,
+                "E_x": self.E_x,
+                "E_y": self.E_y,
+                "E_z": self.E_z,
+                "frequency": self.frequency,
+                "phase": self.phase,
+            }
+        return sonata_config
 
 
 class SomaticStimulus(Stimulus, ABC):
