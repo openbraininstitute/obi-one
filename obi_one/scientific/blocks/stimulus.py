@@ -57,6 +57,104 @@ class Stimulus(Block, ABC):
         pass
 
 
+class SpatiallyUniformElectricFieldStimulus(Stimulus):
+    """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
+
+    title: ClassVar[str] = "Uniform Electric Field"
+
+    _module: str = "electric_field"
+    _input_type: str = "uniform_field"
+
+    E_x: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
+        title="Peak amplitude in x-direction.",
+        units="V/m",
+    )
+
+    E_y: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
+        title="Peak amplitude in y-direction.",
+        units="V/m",
+    )       
+
+    E_z: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
+        title="Peak amplitude in z-direction.",
+        units="V/m", 
+    )
+
+    frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
+            assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] \
+            is applied, unless ramp_up_time or ramp_down_time is specified, in which case the \
+            field will increase/decrease linearly with time during the ramp periods, and will \
+            be constant during the remaider of the stimulation period. Note that the signal \
+            will be generated with the same time step as the simulation itself. Note that \
+            frequency should therefore be less than the Nyquist frequency of the simulation \
+            (i.e., 1/(2*dt))",
+        title="Frequency",
+        units="Hz",
+    )
+
+    phase: float | list[float] = Field(
+        default=0.0,
+        description="Phase of the cosinusoid, in degrees.",
+        title="Phase",
+        units="Radians",
+    )
+
+    # field_magnitude: float | list[float] = Field(
+    #     default=0.1,
+    #     description="The magnitude of the electric field to apply. Given in mV/um.",
+    #     title="Field Magnitude",
+    #     units="mV/um",
+    # )
+    # field_direction_theta: (
+    #     Annotated[NonNegativeFloat, Field(ge=0.0, le=180.0)]
+    #     | list[Annotated[NonNegativeFloat, Field(ge=0.0, le=180.0)]]
+    # ) = Field(
+    #     default=90.0,
+    #     description="The polar angle (in degrees) of the electric field direction.",
+    #     title="Field Direction Theta",
+    #     units="degrees",
+    # )
+    # field_direction_phi: (
+    #     Annotated[NonNegativeFloat, Field(ge=0.0, le=360.0)]
+    #     | list[Annotated[NonNegativeFloat, Field(ge=0.0, le=360.0)]]
+    # ) = Field(
+    #     default=0.0,
+    #     description="The azimuthal angle (in degrees) of the electric field direction.",
+    #     title="Field Direction Phi",
+    #     units="degrees",
+    # )
+
+    # def _generate_config(self) -> dict:
+    #     sonata_config = {}
+
+    #     timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+    #         self.timestamps, self._default_timestamps
+    #     )
+
+    #     for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
+    #         sonata_config[self.block_name + "_" + str(t_ind)] = {
+    #             "delay": timestamp + self.timestamp_offset,
+    #             "duration": _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    #             "node_set": resolve_neuron_set_ref_to_node_set(
+    #                 self.neuron_set, self._default_node_set
+    #             ),
+    #             "module": self._module,
+    #             "input_type": self._input_type,
+    #             "field_magnitude": self.field_magnitude,
+    #             "field_direction_theta": self.field_direction_theta,
+    #             "field_direction_phi": self.field_direction_phi,
+    #         }
+    #     return sonata_config
+
+
 class SomaticStimulus(Stimulus, ABC):
     neuron_set: (
         Annotated[
