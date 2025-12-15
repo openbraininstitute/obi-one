@@ -6,6 +6,7 @@ from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import (
     run_task_for_single_config,
+    run_task_for_single_config_asset,
     run_task_for_single_configs,
     run_tasks_for_generated_scan,
 )
@@ -59,21 +60,31 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatRange",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GenerateSimulationTask",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntRange",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "MEModelCircuit",
+    "MEModelFromID",
+    "MEModelSimulationScanConfig",
+    "MEModelSimulationSingleConfig",
+    "MEModelWithSynapsesCircuitFromID",
+    "MEModelWithSynapsesCircuitSimulationScanConfig",
+    "MEModelWithSynapsesCircuitSimulationSingleConfig",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -94,15 +105,20 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "NonNegativeFloatRange",
+    "NonNegativeIntRange",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
+    "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
+    "PositiveFloatRange",
+    "PositiveIntRange",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -130,6 +146,7 @@ __all__ = [
     "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
+    "SinusoidalPoissonSpikeStimulus",
     "SomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
@@ -145,6 +162,7 @@ __all__ = [
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "XYZExtracellularLocations",
+    "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
@@ -152,11 +170,21 @@ __all__ = [
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
     "run_task_for_single_config",
+    "run_task_for_single_config_asset",
     "run_task_for_single_configs",
     "run_tasks_for_generated_scan",
+    "write_circuit_node_set_file",
 ]
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.parametric_multi_values import (
+    FloatRange,
+    IntRange,
+    NonNegativeFloatRange,
+    NonNegativeIntRange,
+    PositiveFloatRange,
+    PositiveIntRange,
+)
 from obi_one.core.scan_generation import (
     CoupledScanGenerationTask,
     GridScanGenerationTask,
@@ -179,31 +207,39 @@ from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
 )
-from obi_one.scientific.blocks.morphology_locations import (
+from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
-from obi_one.scientific.blocks.neuron_sets import (
-    AllNeurons,
-    CombinedNeuronSet,
-    ExcitatoryNeurons,
-    IDNeuronSet,
-    InhibitoryNeurons,
-    NeuronPropertyFilter,
-    NeuronSet,
-    PairMotifNeuronSet,
-    PredefinedNeuronSet,
-    PropertyNeuronSet,
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
+from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter, PropertyNeuronSet
+from obi_one.scientific.blocks.neuron_sets.simplex import (
     SimplexMembershipBasedNeuronSet,
     SimplexNeuronSet,
-    VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
+)
+from obi_one.scientific.blocks.neuron_sets.volumetric import (
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
 )
 from obi_one.scientific.blocks.recording import (
     Recording,
@@ -222,16 +258,26 @@ from obi_one.scientific.blocks.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
+    SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import (
+    CircuitFromID,
+    MEModelWithSynapsesCircuitFromID,
+)
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
+)
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
+    write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -264,6 +310,17 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationScanConfig,
+    CircuitSimulationSingleConfig,
+    MEModelSimulationScanConfig,
+    MEModelSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulation_task import (
+    GenerateSimulationTask,
+)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
@@ -288,10 +345,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
-)
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationScanConfig,
-    CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type

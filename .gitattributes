@@ -1,0 +1,3 @@
+*.asc linguist-detectable=false
+*.hoc linguist-detectable=false
+*.mod linguist-detectable=false

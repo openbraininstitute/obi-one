@@ -15,6 +15,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
@@ -208,11 +209,11 @@ class ScanGenerationTask(Task, abc.ABC):
     def execute(
         self,
         db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.core.Identifiable:
+    ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / "run_scan_config.json")
+        self.serialize(self.output_root / _SCAN_CONFIG_FILENAME)
 
         # Create the campaign entity
         campaign = None
@@ -234,7 +235,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / "run_coordinate_instance.json"
+                single_coord_config.coordinate_output_root / _COORDINATE_CONFIG_FILENAME
             )
 
             # Create the single coordinate entity
@@ -256,6 +257,7 @@ class GridScanGenerationTask(ScanGenerationTask):
         """Description."""
         single_values_by_multi_value = []
         multi_value_parameters = self.multiple_value_parameters()
+
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 single_values = [

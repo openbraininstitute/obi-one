@@ -4,12 +4,13 @@ from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
+from obi_one.core.parametric_multi_values import ParametericMultiValue
 
 if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
 
 
-class Block(OBIBaseModel):
+class Block(OBIBaseModel, extra="forbid"):
     """Defines a component of a ScanConfig.
 
     Parameters can be of type | list[type]
@@ -25,7 +26,7 @@ class Block(OBIBaseModel):
         super().__init_subclass__(**kwargs)
 
         # Use the subclass-provided title, or fall back to the class name
-        cls.model_config = {"title": cls.title or cls.__name__}
+        cls.model_config.update({"title": cls.title or cls.__name__})
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
@@ -66,24 +67,34 @@ class Block(OBIBaseModel):
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
-            if isinstance(value, list):  # and len(value) > 1:
+            if isinstance(value, ParametericMultiValue):
+                multi_values = list(value)
+
+            elif isinstance(value, list):
                 multi_values = value
-                if block_key:
-                    self._multiple_value_parameters.append(
-                        MultiValueScanParam(
-                            location_list=[category_name, block_key, key], values=multi_values
-                        )
+
+            else:
+                continue
+
+            if block_key:
+                self._multiple_value_parameters.append(
+                    MultiValueScanParam(
+                        location_list=[category_name, block_key, key], values=multi_values
                     )
-                else:
-                    self._multiple_value_parameters.append(
-                        MultiValueScanParam(location_list=[category_name, key], values=multi_values)
-                    )
+                )
+            else:
+                self._multiple_value_parameters.append(
+                    MultiValueScanParam(location_list=[category_name, key], values=multi_values)
+                )
 
         return self._multiple_value_parameters
 
-    def enforce_no_lists(self) -> None:
+    def enforce_no_multi_param(self) -> None:
         """Raise a TypeError if any attribute is a list."""
         for key, value in self.__dict__.items():
             if isinstance(value, list):
                 msg = f"Attribute '{key}' must not be a list."
+                raise TypeError(msg)
+            if isinstance(value, ParametericMultiValue):
+                msg = f"Attribute '{key}' must not be a ParametericMultiValue."
                 raise TypeError(msg)

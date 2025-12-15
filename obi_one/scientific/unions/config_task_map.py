@@ -22,6 +22,14 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitSimulationSingleConfig,
+    MEModelSimulationSingleConfig,
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulation_task import (
+    GenerateSimulationTask,
+)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
@@ -42,16 +50,13 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
-from obi_one.scientific.tasks.simulations import (
-    CircuitSimulationSingleConfig,
-    GenerateSimulationTask,
-)
 from obi_one.scientific.unions.aliases import Simulation
 
 _config_tasks_map = {
     Simulation: GenerateSimulationTask,
     CircuitSimulationSingleConfig: GenerateSimulationTask,
     CircuitExtractionSingleConfig: CircuitExtractionTask,
+    MEModelSimulationSingleConfig: GenerateSimulationTask,
     ContributeMorphologySingleConfig: ContributeMorphologyTask,
     BasicConnectivityPlotsSingleConfig: BasicConnectivityPlotsTask,
     ConnectivityMatrixExtractionSingleConfig: ConnectivityMatrixExtractionTask,
@@ -62,6 +67,7 @@ _config_tasks_map = {
     MorphologyDecontainerizationSingleConfig: MorphologyDecontainerizationTask,
     MorphologyMetricsSingleConfig: MorphologyMetricsTask,
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
+    MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
 }
 
 

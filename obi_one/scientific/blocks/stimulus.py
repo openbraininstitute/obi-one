@@ -1,18 +1,33 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 import h5py
 import numpy as np
 import pandas as pd
-from pydantic import Field, NonNegativeFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.constants import _MIN_NON_NEGATIVE_FLOAT_VALUE, _MIN_TIME_STEP_MILLISECONDS
 from obi_one.core.exception import OBIONEError
+from obi_one.core.parametric_multi_values import FloatRange
+from obi_one.scientific.blocks.timestamps import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.library.constants import (
+    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    _MAX_POISSON_SPIKE_LIMIT,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    _MIN_NON_NEGATIVE_FLOAT_VALUE,
+    _MIN_TIME_STEP_MILLISECONDS,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    resolve_timestamps_ref_to_timestamps_block,
+)
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI
@@ -24,17 +39,18 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
     units="ms",
 )
 
-_MAX_POISSON_SPIKE_LIMIT = 5000000
-
 
 class Stimulus(Block, ABC):
-    timestamps: Annotated[
-        TimestampsReference,
-        Field(title="Timestamps", description="Timestamps at which the stimulus is applied."),
-    ]
+    timestamps: (
+        Annotated[
+            TimestampsReference,
+            Field(title="Timestamps", description="Timestamps at which the stimulus is applied."),
+        ]
+        | None
+    ) = None
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:  # noqa: ARG002
-        return self._generate_config()
+    _default_node_set: str = PrivateAttr(default="All")
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -42,19 +58,22 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: Annotated[
-        NeuronSetReference,
-        Field(
-            title="Neuron Set",
-            description="Neuron set to which the stimulus is applied.",
-            supports_virtual=False,
-        ),
-    ]
+    neuron_set: (
+        Annotated[
+            NeuronSetReference,
+            Field(
+                title="Neuron Set",
+                description="Neuron set to which the stimulus is applied.",
+                supports_virtual=False,
+            ),
+        ]
+        | None
+    ) = None
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=1.0,
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         units="ms",
@@ -72,8 +91,21 @@ class SomaticStimulus(Stimulus, ABC):
     but produce a membrane current, which is included in the \
     calculation of the extracellular signal."""
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        if self.neuron_set.block.population_type(circuit, population) != "biophysical":
+    def config(
+        self,
+        circuit: Circuit,
+        population: str | None = None,
+        default_node_set: str = "All",
+        default_timestamps: TimestampsReference = None,
+    ) -> dict:
+        self._default_node_set = default_node_set
+        if default_timestamps is None:
+            default_timestamps = SingleTimestamp(start_time=0.0)
+        self._default_timestamps = default_timestamps
+
+        if (self.neuron_set is not None) and (
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
                 f"'{self.block_name}' should be biophysical!"
@@ -91,7 +123,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
-    amplitude: float | list[float] = Field(
+    amplitude: float | list[float] | FloatRange = Field(
         default=0.1,
         description="The injected current. Given in nanoamps.",
         title="Amplitude",
@@ -101,11 +133,17 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -133,11 +171,17 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current,
@@ -172,11 +216,17 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude_start,
@@ -214,11 +264,17 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_start": self.percentage_of_threshold_current_start,
@@ -253,11 +309,17 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean": self.mean_amplitude,
@@ -295,11 +357,17 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "mean_percent": self.mean_percentage_of_threshold_current,
@@ -330,7 +398,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
-        default=1.0,
+        default=_DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         units="ms",
@@ -348,11 +416,17 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.amplitude,
@@ -399,11 +473,17 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "amp_start": self.maximum_amplitude,
@@ -435,11 +515,17 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "percent_less": self.percentage_below_threshold,
@@ -462,11 +548,17 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
     def _generate_config(self) -> dict:
         sonata_config = {}
 
-        for t_ind, timestamp in enumerate(self.timestamps.block.timestamps()):
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
                 "delay": timestamp + self.timestamp_offset,
                 "duration": self.duration,
-                "node_set": self.neuron_set.block.block_name,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
                 "module": self._module,
                 "input_type": self._input_type,
                 "represents_physical_electrode": self._represents_physical_electrode,
@@ -479,22 +571,38 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)
-    ]
-    targeted_neuron_set: Annotated[
-        NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)
-    ]
+    source_neuron_set: (
+        (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
+        | None
+    ) = None
+    targeted_neuron_set: (
+        Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
+        | None
+    ) = None
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
-    def config(self, circuit: Circuit, population: str | None = None) -> dict:
-        if self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical":
+    def config(
+        self,
+        circuit: Circuit,
+        population: str | None = None,
+        default_node_set: str = "All",
+        default_timestamps: TimestampsReference = None,
+    ) -> dict:
+        self._default_node_set = default_node_set
+
+        if (self.targeted_neuron_set is not None) and (
+            self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical"
+        ):
             msg = (
                 f"Target Neuron Set '{self.targeted_neuron_set.block.block_name}' for "
                 f"{self.__class__.__name__}: '{self.block_name}' should be biophysical!"
             )
             raise OBIONEError(msg)
+
+        if default_timestamps is None:
+            default_timestamps = SingleTimestamp(start_time=0.0)
+        self._default_timestamps = default_timestamps
 
         return self._generate_config()
 
@@ -510,7 +618,9 @@ class SpikeStimulus(Stimulus):
         sonata_config[self.block_name] = {
             "delay": 0.0,  # If present, the simulation filters out those times before the delay
             "duration": self._simulation_length,
-            "node_set": self.targeted_neuron_set.block.block_name,
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                self.targeted_neuron_set, self._default_node_set
+            ),
             "module": self._module,
             "input_type": self._input_type,
             "spike_file": str(self._spike_file),  # os.path.relpath #
@@ -553,6 +663,12 @@ class SpikeStimulus(Stimulus):
                     gid_list.append(gid)
         spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=["t", "gid"])
         spike_df = spike_df.astype({"t": float, "gid": int})
+        """
+        # plt.figure()
+        # plt.scatter(spike_df["t"], spike_df["gid"], s=1)
+        # plt.savefig("/Users/james/Documents/obi/code/obi-one/obi_one/scientific/spike_raster.png")
+        # plt.close()
+        """
         spike_df_sorted = spike_df.sort_values(by=["t", "gid"])  # Sort by time
         with h5py.File(spike_file, "w") as f:
             pop = f.create_group(f"/spikes/{source_node_population}")
@@ -574,8 +690,11 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=1000.0,
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         units="ms",
@@ -607,10 +726,12 @@ class PoissonSpikeStimulus(SpikeStimulus):
         rng = np.random.default_rng(self.random_seed)
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block.get_population(source_node_population)
-        timestamps = self.timestamps.block.timestamps()
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
 
         if (
-            self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps)
+            self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps_block.timestamps())
             > _MAX_POISSON_SPIKE_LIMIT
         ):
             msg = (
@@ -620,10 +741,13 @@ class PoissonSpikeStimulus(SpikeStimulus):
             raise OBIONEError(msg)
 
         gid_spike_map = {}
-        for timestamp_idx, timestamp_t in enumerate(timestamps):
+        for timestamp_idx, timestamp_t in enumerate(timestamps_block.timestamps()):
             start_time = timestamp_t + self.timestamp_offset
             end_time = start_time + self.duration
-            if timestamp_idx < len(timestamps) - 1 and not end_time < timestamps[timestamp_idx + 1]:
+            if (
+                timestamp_idx < len(timestamps_block.timestamps()) - 1
+                and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
+            ):
                 msg = "Stimulus time intervals overlap!"
                 raise ValueError(msg)
             for gid in gids:
@@ -646,9 +770,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
 
 class FullySynchronousSpikeStimulus(SpikeStimulus):
-    """Spikes sent at the same time from all neurons in the source neuron set.
+    """Spikes sent at the same time.
 
-    to efferently connected neurons in the target neuron set.
+    Sent from all neurons in the source neuron set to efferently connected
+    neurons in the target neuron set.
     """
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
@@ -667,14 +792,211 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
         gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
         source_node_population = self.source_neuron_set.block.get_population(source_node_population)
         gid_spike_map = {}
-        timestamps = self.timestamps.block.timestamps()
-        for start_time in timestamps:
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for start_time in timestamps_block.timestamps():
             spike = [start_time + self.timestamp_offset]
             for gid in gids:
                 if gid in gid_spike_map:
                     gid_spike_map[gid] += spike
                 else:
                     gid_spike_map[gid] = spike
+        self._spike_file = f"{self.block_name}_spikes.h5"
+        self.write_spike_file(
+            gid_spike_map, spike_file_path / self._spike_file, source_node_population
+        )
+
+
+def _draw_inhomogeneous_poisson_interval_ms(rng: np.random.Generator, lam_max_hz: float) -> float:
+    """Draw a candidate inter-arrival time (ms) for a homogeneous process with rate lam_max."""
+    if lam_max_hz <= 0.0:
+        msg = "Maximum lambda must be positive to draw inter-arrival times."
+        raise ValueError(msg)
+    # Exponential with rate lam_max (in Hz) → seconds, then convert to ms
+    return rng.exponential(1.0 / lam_max_hz) * 1000.0
+
+
+class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
+    """Spike times drawn from an inhomogeneous Poisson process with sinusoidal rate.
+
+    Sinusoid defined by a minimum and maximum rate.
+
+    Sent from all neurons in the source neuron set to efferently connected
+    neurons in the target neuron set.
+    """
+
+    title: ClassVar[str] = "Sinusoidal Poisson Spikes (Efferent)"
+
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+
+    # --- timing ---
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration of the stimulus in milliseconds.",
+        units="ms",
+    )
+
+    # --- sinusoidal rate params ---
+    minimum_rate: (
+        Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]
+        | list[Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]]
+    ) = Field(
+        default=0.00001,
+        title="Minimum Rate",
+        description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
+        units="Hz",
+    )
+
+    maximum_rate: (
+        Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]
+        | list[Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]]
+    ) = Field(
+        default=10.0,
+        title="Maximum Rate",
+        description="Maximum rate of the stimulus in Hz. Must be greater than or equal to "
+        "Minimum Rate.",
+        units="Hz",
+    )
+
+    modulation_frequency_hz: (
+        Annotated[PositiveFloat, Field(ge=0.00001, le=100000.0)]
+        | list[Annotated[PositiveFloat, Field(ge=0.00001, le=100000.0)]]
+    ) = Field(
+        default=5.0,
+        title="Modulation Frequency",
+        description="Frequency (Hz) of the sinusoidal modulation of the rate.",
+        units="Hz",
+    )
+
+    phase_degrees: float | list[float] = Field(
+        default=0.0,
+        title="Phase Offset",
+        description="Phase offset (degrees) of the sinusoid.",
+        units="°",
+    )
+
+    random_seed: int | list[int] = Field(
+        default=0,
+        title="Random Seed",
+        description="Seed for the random number generator to ensure reproducibility.",
+    )
+
+    @model_validator(mode="after")
+    def amplitude_greater_equal_baseline(self) -> Self:
+        """Check if amplitude is greater than or equal to baseline for all epochs."""
+        if isinstance(self.maximum_rate, list):
+            amplitude_list = self.maximum_rate
+        else:
+            amplitude_list = [self.maximum_rate]
+        if isinstance(self.minimum_rate, list):
+            baseline_list = self.minimum_rate
+        else:
+            baseline_list = [self.minimum_rate]
+
+        for min_r in baseline_list:
+            for max_r in amplitude_list:
+                if max_r < min_r:
+                    msg = "Maximum rate must be greater than or equal to minimum rate."
+                    raise ValueError(msg)
+
+        return self
+
+    # --- internal helpers ---
+    @staticmethod
+    def _lambda_t_ms(
+        t_ms: float, minimum_rate: float, maximum_rate: float, mod_freq_hz: float, phase_rad: float
+    ) -> float:
+        """Instantaneous rate λ(t) at time t in ms, returned in Hz."""
+        t_s = t_ms / 1000.0
+        lam = minimum_rate + (maximum_rate - minimum_rate) * (
+            (np.sin(2.0 * np.pi * mod_freq_hz * t_s + phase_rad) + 1.0) / 2.0
+        )
+
+        return max(0.0, lam)
+
+    def generate_spikes(  # noqa: C901, PLR0914
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
+        self._simulation_length = simulation_length
+        rng = np.random.default_rng(self.random_seed)
+
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        n_timestamps = len(timestamps_block.timestamps())
+
+        # Upper-bound on expected spikes to guard against pathological params
+        # Use the per-epoch maximum rate (baseline + amplitude, clipped >=0)
+        total_expected = 0.0
+        total_expected += (self.duration * n_timestamps / 1000.0) * self.maximum_rate * len(gids)
+        if total_expected > _MAX_POISSON_SPIKE_LIMIT:
+            msg = (
+                f"Sinusoidal Poisson input exceeds maximum allowed number of spikes "
+                f"({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
+            raise ValueError(msg)
+
+        gid_spike_map: dict[int, list[float]] = {}
+
+        # Iterate epochs (non-overlapping enforced, like the original)
+        for idx, t0 in enumerate(timestamps_block.timestamps()):
+            start_time = t0 + self.timestamp_offset
+            end_time = start_time + self.duration
+
+            if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
+                msg = "Stimulus time intervals overlap!"
+                raise ValueError(msg)
+
+            # Thinning with epoch-specific λ_max
+            lam_max_hz = self.maximum_rate
+
+            for gid in gids:
+                spikes = []
+                t = start_time
+                while t < end_time:
+                    # 1) Draw candidate from homogeneous process with λ_max
+                    dt_ms = _draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)
+                    if not np.isfinite(dt_ms):
+                        break  # no spikes possible with current λ_max (i.e., λ_max==0)
+                    t_candidate = t + dt_ms
+                    if t_candidate >= end_time:
+                        break
+
+                    # 2) Accept with probability λ(t_candidate)/λ_max
+                    lam_tc = self._lambda_t_ms(
+                        t_candidate,
+                        self.minimum_rate,
+                        self.maximum_rate,
+                        self.modulation_frequency_hz,
+                        np.deg2rad(self.phase_degrees),
+                    )
+                    if lam_max_hz > 0.0:
+                        accept_prob = lam_tc / lam_max_hz
+                        if rng.uniform() <= accept_prob:
+                            spikes.append(t_candidate)
+
+                    # 3) Move time forward regardless of accept/reject
+                    t = t_candidate
+
+                if gid in gid_spike_map:
+                    gid_spike_map[gid] += spikes
+                else:
+                    gid_spike_map[gid] = spikes
+
         self._spike_file = f"{self.block_name}_spikes.h5"
         self.write_spike_file(
             gid_spike_map, spike_file_path / self._spike_file, source_node_population

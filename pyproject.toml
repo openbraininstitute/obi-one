@@ -30,6 +30,7 @@ dependencies = [
     # PYDANTIC
     "pydantic>=2.10.6",
     "pydantic-settings>=2.8.1",
+    "pydantic-core",
     # CIRCUIT EXTRACTION
     "brainbuilder>=0.20.2",
     # MORPHOLOGY CONTAINERIZATION
@@ -53,7 +54,10 @@ dependencies = [
     "neurom",
     "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.8.1",
+    # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
+    # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
+    # Add an upper bound only if automatic upgrades must be prevented.
+    "entitysdk",
     "obi-auth>=0.3.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
@@ -62,9 +66,13 @@ dependencies = [
     "bluepyefe>=2.3.51",
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
-    "bluecellulab>=2.6.62",
+    "connectome-manipulator>=1.0.4",
+    "bluecellulab>=2.6.71",
     # OBI NOTEBOOK
     "obi_notebook",
+    "morph_spines",
+    # CAVEclient
+    "caveclient>=7.11.0"
 ]
 
 [project.optional-dependencies]
@@ -162,7 +170,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets.py" = [
+"obi_one/scientific/blocks/neuron_sets/pair.py" = [
     "SLF001"
 ]
 

@@ -15,6 +15,7 @@ from obi_one.scientific.blocks.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
+    SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 
@@ -30,7 +31,22 @@ StimulusUnion = Annotated[
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
     | PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus,
+    | FullySynchronousSpikeStimulus
+    | SinusoidalPoissonSpikeStimulus,
+    Discriminator("type"),
+]
+
+MEModelStimulusUnion = Annotated[
+    ConstantCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus,
     Discriminator("type"),
 ]
 

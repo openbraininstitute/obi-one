@@ -29,13 +29,13 @@ install:  ## Create a virtual environment
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
 
 compile-deps:  ## Create or update the lock file, without upgrading the version of the dependencies
-	uv lock
+	uv lock --upgrade-package entitysdk
 
 upgrade-deps:  ## Create or update the lock file, using the latest version of the dependencies
 	uv lock --upgrade
 
-check-deps:  ## Check that the dependencies in the existing lock file are valid
-	uv lock --locked
+check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version
+	uv lock --locked --upgrade-package entitysdk
 
 format:  ## Run formatters
 	uv run -m ruff format $(FILE)

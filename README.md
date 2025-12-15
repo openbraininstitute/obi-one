@@ -68,4 +68,3 @@ make run-local
 
 # Acknowledgements
 Copyright © 2025 Open Brain Institute
-
