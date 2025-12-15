@@ -7,7 +7,7 @@
 Forms intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only forms complying with the specification can be integrated into the UI.
 
 The form is considered valid if the form schema is valid and the schemas of all its root elements and block elements are valid.
-All root elements and block elements must have a valid `ui_element`. *See below for details*.
+All root elements and block elements must have a valid `ui_element`. _See below for details_.
 
 **If a form requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and a UI design.**
 
@@ -26,6 +26,8 @@ Reference schema: [form_schema.json](form_schema.json)
 
 All _root elements_ and _block elements_ must include a `ui_element` string (or `null` if hidden) that maps the property to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar. _More details below_
 
+All ui_elements must contain a `title` and a `description`.
+
 Valid `ui_element` values are:
 
 All elements:
@@ -33,10 +35,12 @@ All elements:
 - `null`
 
 Root elements:
+
 - `root_block`
 - `block_dictionary`
 
 Block elements:
+
 - `input`
 
 ## Hidden elements
@@ -51,8 +55,6 @@ They should contain a `group` string that points to a string in its parent form'
 
 They should contain a `group_order` integer (unique within the form).
 
-They should contain a `title` and a `description`.
-
 ## root_block
 
 ui_element: `root_block`
@@ -62,6 +64,20 @@ Root blocks are blocks defined at the root level of a form.
 They should contain `properties` in its schema which are _block_elements_.
 
 Reference schema: [root_block_schema.json](root_block_schema.json)
+
+### Example Pydantic implementation
+
+```py
+# Inside its form's class.
+
+info: Info = Field(
+        ui_element="root_block",
+        title="Title",
+        description="Description",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=0,
+    )
+```
 
 ## block_dictionary
 
@@ -99,3 +115,27 @@ neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
 
 Block elements are properties of blocks, they (as _root elements_) must have a `ui_element` property.
 The parents of block elements must be blocks, never forms.
+
+They should contain a `title` and a `description`.
+
+## input
+
+ui_element: `input`
+
+Represents a simple input field.
+
+The type should be `string`, they should have a minLength
+
+Reference schema: [input.json](input.json)
+
+### Example Pydantic implementation
+
+```py
+# Inside its blocks' class.
+
+field: str = Field(ui_element="input", min_length=1, title="title" description="description")
+```
+
+### UI design
+
+<img src="input.png" alt="description" width="300" />
