@@ -575,7 +575,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         _input_type: str = "current"
 
         time_constant: PositiveFloat | list[PositiveFloat] = Field(
-            default=5.0,
+            default=2.7,
             title="Tau",
             description="The time constant of the Ornstein-Uhlenbeck process.",
             units="ms",
@@ -638,7 +638,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         _input_type: str = "conductance"
 
         time_constant: PositiveFloat | list[PositiveFloat] = Field(
-            default=5.0,
+            default=2.7,
             title="Tau",
             description="The time constant of the Ornstein-Uhlenbeck process.",
             units="ms",
@@ -709,7 +709,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         _input_type: str = "current"
 
         time_constant: PositiveFloat | list[PositiveFloat] = Field(
-            default=5.0,
+            default=2.7,
             title="Tau",
             description="The time constant of the Ornstein-Uhlenbeck process.",
             units="ms",
@@ -773,7 +773,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         _input_type: str = "conductance"
 
         time_constant: PositiveFloat | list[PositiveFloat] = Field(
-            default=5.0,
+            default=2.7,
             title="Tau",
             description="The time constant of the Ornstein-Uhlenbeck process.",
             units="ms",
