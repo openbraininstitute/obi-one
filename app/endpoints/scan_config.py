@@ -11,6 +11,7 @@ from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
@@ -103,6 +104,7 @@ def activate_scan_config_endpoints() -> None:
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (CircuitExtractionScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
