@@ -57,19 +57,30 @@ class Circuit(OBIBaseModel):
         return list(self.sonata_circuit.node_sets.content.keys())
 
     @staticmethod
-    def get_node_population_names(c: snap.Circuit, *, incl_virtual: bool = True) -> list:
+    def get_node_population_names(
+        c: snap.Circuit, *, incl_virtual: bool = True, incl_point_neuron: bool = True
+    ) -> list:
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
             popul_names = [_pop for _pop in popul_names if c.nodes[_pop].type != "virtual"]
+        if not incl_point_neuron:
+            popul_names = [_pop for _pop in popul_names if c.nodes[_pop].type != "point_neuron"]
         return popul_names
 
     @staticmethod
     def _default_population_name(c: snap.Circuit) -> str:
         """Returns the default node population name of a SONATA circuit c."""
-        popul_names = Circuit.get_node_population_names(c, incl_virtual=False)
+        popul_names = Circuit.get_node_population_names(
+            c, incl_virtual=False, incl_point_neuron=False
+        )
         if len(popul_names) == 0:
-            return None  # No nodes
+            # Include point neurons
+            popul_names = Circuit.get_node_population_names(
+                c, incl_virtual=False, incl_point_neuron=True
+            )
+        if len(popul_names) == 0:
+            return None  # No biophysical/point neurons
         if len(popul_names) != 1:
             msg = "Default node population unknown!"
             raise ValueError(msg)
@@ -81,19 +92,35 @@ class Circuit(OBIBaseModel):
         return self._default_population_name(self.sonata_circuit)
 
     @staticmethod
-    def get_edge_population_names(c: snap.Circuit, *, incl_virtual: bool = True) -> list:
+    def get_edge_population_names(
+        c: snap.Circuit, *, incl_virtual: bool = True, incl_point_neuron: bool = True
+    ) -> list:
         """Returns edge population names."""
         popul_names = c.edges.population_names
         if not incl_virtual:
             popul_names = [_pop for _pop in popul_names if c.edges[_pop].source.type != "virtual"]
+        if not incl_point_neuron:
+            popul_names = [
+                _pop
+                for _pop in popul_names
+                if c.edges[_pop].source.type != "point_neuron"
+                and c.edges[_pop].target.type != "point_neuron"
+            ]
         return popul_names
 
     @staticmethod
     def _default_edge_population_name(c: snap.Circuit) -> str:
         """Returns the default edge population name of a SONATA circuit c."""
-        popul_names = Circuit.get_edge_population_names(c, incl_virtual=False)
+        popul_names = Circuit.get_edge_population_names(
+            c, incl_virtual=False, incl_point_neuron=False
+        )
         if len(popul_names) == 0:
-            return None  # No edges
+            # Include point neuron sources
+            popul_names = Circuit.get_edge_population_names(
+                c, incl_virtual=False, incl_point_neuron=True
+            )
+        if len(popul_names) == 0:
+            return None  # No biophysical/point neuron edges
         if len(popul_names) != 1:
             msg = "Default edge population unknown!"
             raise ValueError(msg)
