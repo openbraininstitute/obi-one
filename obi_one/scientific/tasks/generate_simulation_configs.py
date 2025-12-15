@@ -100,23 +100,23 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             # },
         }
 
-    # timestamps: dict[str, TimestampsUnion] = Field(
-    #     default_factory=dict,
-    #     title="Timestamps",
-    #     reference_type=TimestampsReference.__name__,
-    #     description="Timestamps for the simulation.",
-    #     singular_name="Timestamps",
-    #     group=BlockGroup.SETUP_BLOCK_GROUP,
-    #     group_order=0,
-    # )
-    # recordings: dict[str, RecordingUnion] = Field(
-    #     default_factory=dict,
-    #     reference_type=RecordingReference.__name__,
-    #     description="Recordings for the simulation.",
-    #     singular_name="Recording",
-    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-    #     group_order=1,
-    # )
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        reference_type=TimestampsReference.__name__,
+        description="Timestamps for the simulation.",
+        singular_name="Timestamps",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=0,
+    )
+    recordings: dict[str, RecordingUnion] = Field(
+        default_factory=dict,
+        reference_type=RecordingReference.__name__,
+        description="Recordings for the simulation.",
+        singular_name="Recording",
+        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+        group_order=1,
+    )
 
     class Initialize(Block):
         circuit: None
@@ -294,26 +294,26 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         ui_element="block_dictionary",
     )
 
-    # synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
-    #     default_factory=dict,
-    #     reference_type=SynapticManipulationsReference.__name__,
-    #     description="Synaptic manipulations for the simulation.",
-    #     singular_name="Synaptic Manipulation",
-    #     group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-    #     group_order=1,
-    # )
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        default_factory=dict,
+        reference_type=SynapticManipulationsReference.__name__,
+        description="Synaptic manipulations for the simulation.",
+        singular_name="Synaptic Manipulation",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=1,
+    )
 
     class Initialize(SimulationScanConfig.Initialize):
         pass
-        # circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-        #     title="Circuit", description="Circuit to simulate."
-        # )
-        # node_set: (
-        #     Annotated[
-        #         NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-        #     ]
-        #     | None
-        # ) = None
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+            title="Circuit", description="Circuit to simulate."
+        )
+        node_set: (
+            Annotated[
+                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+            ]
+            | None
+        ) = None
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -329,15 +329,15 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         group_order=0,
     )
 
-    # stimuli: dict[str, StimulusUnion] = Field(
-    #     default_factory=dict,
-    #     title="Stimuli",
-    #     reference_type=StimulusReference.__name__,
-    #     description="Stimuli for the simulation.",
-    #     singular_name="Stimulus",
-    #     group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-    #     group_order=0,
-    # )
+    stimuli: dict[str, StimulusUnion] = Field(
+        default_factory=dict,
+        title="Stimuli",
+        reference_type=StimulusReference.__name__,
+        description="Stimuli for the simulation.",
+        singular_name="Stimulus",
+        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+        group_order=0,
+    )
 
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
@@ -356,17 +356,17 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         group_order=0,
     )
 
-    # class Initialize(SimulationScanConfig.Initialize):
-    #     circuit: (
-    #         MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
-    #     ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: (
+            MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
+        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
 
-    # initialize: Initialize = Field(
-    #     title="Initialization",
-    #     description="Parameters for initializing the simulation.",
-    #     group=BlockGroup.SETUP_BLOCK_GROUP,
-    #     group_order=1,
-    # )
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
 
 
 class SimulationSingleConfigMixin(abc.ABC):
