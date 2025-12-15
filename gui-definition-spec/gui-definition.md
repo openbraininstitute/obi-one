@@ -8,109 +8,78 @@ Forms intended for the UI require the `ui_enabled` (boolean) property. Setting t
 
 ### group_order
 
-The `group_order` property must be an array of strings determining the order of groups.
-All values must reference valid entries in `root_element`s.
+The `group_order` property must be an array of strings determining the order of groups. All values must be present in at least one properties'
+`group`.
 
-### Important considerations
+### Constraints
 
-All properties of a form must be _root elements_. (See below)
-The `group` integer of every root element in the form must be unique.
+All properties of a form must be _root elements_. (See below).
 
 Reference schema: [form_schema.json](form_schema.json)
 
 ## ui_element
 
-All _root elements_ and _block elements_ must include a `ui_element` string that maps the form data to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
+All _root elements_ and _block elements_ must include a `ui_element` string that maps the form data to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar. _More details below_
 
-_More details below_
+## Hidden elements
+Setting an elements `ui_element` property to `null` will hide id from the UI. __They must not be required__  (i.e have a `default`).
+
 
 ## Root elements
 
 _root elements_ are the properties of forms they can be either _root blocks_ or _block dictionaries_ .
+
+They should contain a `group` string that points to a string in its parent form's `group_order` array.
+
+They should contain a `group_order` integer (unique within the form).
+
+They should contain a `title` and a `description`.
 
 ## root_block
 
 ui_element: `root_block`
 
 Root blocks are blocks defined at the root level of a form.
-They should contain `properties` in it's schema which are _block_elements_.
-They should contain a `group` string that points to a string in it's parent form's `group_order` array.
-Thay should contain a `group_order` integer (unique within the form).
 
+- They should contain `properties` in its schema which are _block_elements_.
+- They should contain a `group` string that points to a string in its parent form's `group_order` array.
+- They should contain a `group_order` integer (unique within the form).
 
+Reference schema: [root_block_schema.json](root_block_schema.json)
 
-Each key in the root schema definition has a form subschema.
+## block_dictionary
 
-_Root forms_, render a form. For example `initialize`.
+ui_element: `block_dictionary`
 
-_Block forms_, render selection cards with _block types_ to create a new _block_. E.g `neuron_sets`
+- They should contain no `properties`
+- They should contain `additionalProperties` with a single `oneOf` array with block schemas.
+- They should contain a `singular_name`.
+- They should contain a `reference_type`.
 
-# Groups and parent blocks
+Reference schema: [block_dictionary.json](block_dictionary.json)
 
-```json
-group_order: [ "Setup", "Stimuli & Recordings", "Circuit Components", ]
+### Example Pydantic implementation
+
+```py
+# Inside its form's class.
+
+neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        ui_element="block_dictionary",
+        default_factory=dict,
+        reference_type=NeuronSetReference.__name__,
+        description="Neuron sets for the simulation.",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+    )
+
 ```
 
-The schema for each of the parent blocks should contain both the group to which it belongs and the order within the group:
+### UI design
 
-```json
-initialize: {
-    "group": "Setup",
-    "group_order": 1
-}
-```
+<img src="block_dictionary.png" alt="description" width="300" />
 
-### Root forms
+## Block elements
 
-Root forms should this spec.
-
-    type: 'object' 🔴 Always literally 'object'.
-    title: string
-    description: string
-    group: string
-    group_order: number
-    additionalProperties: false 🔴 Always false
-    properties: object # A JSONschema object defining the fields of the form, see below for spec.
-    required: string array: # Required properties
-
-### Block forms
-
-Block forms should follow this spec.
-
-    type: 'object' 🔴 Always object
-    title: string
-    description: string
-    group: string
-    group_order: number
-
-    additionalProperties: object, 🟡 Block forms should always contain an additionalProperties object with a single field, "oneOf". See below for spec.
-    reference_type: string
-    singular_name: string
-
-🟡 Block forms should not contain "properties" or "required" fields.
-
-#### additionalProperties spec for block forms
-
-The additionalProperties field is used to define the spec that renderes the block type selection. (e.g the list of "ID Neuron Set", "All Neurons", etc.)
-
-It should be an object following this spec:
-
-    oneOf: An array of objects defining each of the different block types, see below.
-
-Block forms' "additionalProperties" object should only contain "oneOf" and no other fields.
-
-##### oneOf spec for block forms
-
-Each block type in the oneOf array should follow this spec:
-
-    type: "object"
-    title: string
-    description: string
-    properties: Object with the fields of the form, see below for spec.
-    required: Required fields array
-    additionalProperties: false
-    ​​​​​​​​​​
-
-## Form fields (parameters)
-
-Form fields (either for block forms or root forms) should follow this spec.
+Block elements are properties of blocks, they (as _root elements_) must have a `ui_element` property.
+The parents of block elements must be blocks, never forms.

@@ -186,7 +186,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         description="Information about the simulation campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=0,
-        
     )
 
     def create_campaign_entity_with_config(
@@ -285,14 +284,16 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    # neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-    #     default_factory=dict,
-    #     reference_type=NeuronSetReference.__name__,
-    #     description="Neuron sets for the simulation.",
-    #     singular_name="Neuron Set",
-    #     group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-    #     group_order=0,
-    # )
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        default_factory=dict,
+        reference_type=NeuronSetReference.__name__,
+        description="Neuron sets for the simulation.",
+        singular_name="Neuron Set",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=0,
+        ui_element="block_dictionary",
+    )
+
     # synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
     #     default_factory=dict,
     #     reference_type=SynapticManipulationsReference.__name__,
@@ -302,23 +303,31 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     #     group_order=1,
     # )
 
-    # class Initialize(SimulationScanConfig.Initialize):
-    #     circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-    #         title="Circuit", description="Circuit to simulate."
-    #     )
-    #     node_set: (
-    #         Annotated[
-    #             NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-    #         ]
-    #         | None
-    #     ) = None
+    class Initialize(SimulationScanConfig.Initialize):
+        pass
+        # circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+        #     title="Circuit", description="Circuit to simulate."
+        # )
+        # node_set: (
+        #     Annotated[
+        #         NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
+        #     ]
+        #     | None
+        # ) = None
 
-    # initialize: Initialize = Field(
-    #     title="Initialization",
-    #     description="Parameters for initializing the simulation.",
-    #     group=BlockGroup.SETUP_BLOCK_GROUP,
-    #     group_order=1,
-    # )
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
+
+    info: Info = Field(
+        title="Infoasfsf",
+        description="Information about the simulation campaign.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=0,
+    )
 
     # stimuli: dict[str, StimulusUnion] = Field(
     #     default_factory=dict,

@@ -1,0 +1,16 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "Block"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["type"],
+  "title": "Title of the Block",
+  "description": "description of the block",
+  "group": "Group 1",
+  "group_order": 0,
+  "ui_element": "root_block"
+}
