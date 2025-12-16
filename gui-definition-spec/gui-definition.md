@@ -13,18 +13,17 @@ All root elements and block elements must have a valid `ui_element`. _See below 
 
 ### group_order
 
-The `group_order` property must be an array of strings determining the order of groups. All values must be present in at least one properties'
-`group`.
+The `group_order` property must be an array of strings determining the order of groups. All values must be present in at least one root element's `group`.
 
 ### Constraints
 
 All properties of a form must be _root elements_. (See below).
 
-Reference schema: [](reference_schemas/form.json)
+Reference schema: [form](reference_schemas/form.json)
 
 ## ui_element
 
-All _root elements_ and _block elements_ must include a `ui_element` string (or `null` if hidden) that maps the property to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar. _More details below_
+All _root elements_ and _block elements_ must include a `ui_element` string (or `null` if hidden) that maps the property to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
 
 All ui_elements must contain a `title` and a `description`.
 
@@ -42,6 +41,11 @@ Root elements:
 Block elements:
 
 - `input`
+- `model_identifier`
+- `paramete_sweep`
+- `int_parameter_sweep`
+- `reference`
+- `predefined_neuronset`
 
 ## Hidden elements
 
@@ -55,6 +59,8 @@ They should contain a `group` string that points to a string in its parent form'
 
 They should contain a `group_order` integer (unique within the form).
 
+They should contain a `title` and a `description`.
+
 ## root_block
 
 ui_element: `root_block`
@@ -63,14 +69,19 @@ Root blocks are blocks defined at the root level of a form.
 
 They should contain `properties` in its schema which are _block_elements_.
 
-Reference schema: [](reference_schemas/root_block_schema.json)
+Reference schema: [root_block](reference_schemas/root_block_schema.json)
 
 ### Example Pydantic implementation
 
 ```py
-# Inside its form's class.
 
-info: Info = Field(
+class Info(Block):
+    campaign_name: str = Field(min_length=1, description="Name of the campaign.")
+    campaign_description: str = Field(min_length=1, description="Description of the campaign.")
+
+class Form:
+
+    info: Info = Field(
         ui_element="root_block",
         title="Title",
         description="Description",
@@ -88,14 +99,13 @@ ui_element: `block_dictionary`
 - They should contain a `singular_name`.
 - They should contain a `reference_type`.
 
-Reference schema: [](reference_schemas/block_dictionary.json)
+Reference schema: [block_dictionary](reference_schemas/block_dictionary.json)
 
 ### Example Pydantic implementation
 
 ```py
-# Inside its form's class.
-
-neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+class Form:
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         ui_element="block_dictionary",
         default_factory=dict,
         reference_type=NeuronSetReference.__name__,
@@ -124,9 +134,9 @@ ui_element: `input`
 
 Represents a simple input field.
 
-The type should be `string`, they should have a `minLength`.
+The type should be `string`.
 
-Reference schema: [](reference_schemas/input.json)
+Reference schema: [input](reference_schemas/input.json)
 
 ### Example Pydantic implementation
 
@@ -146,7 +156,7 @@ ui_element: `model_identifier`
 Should have a `type` property with a `const` value. (e.g `CircuitFromId`).
 Should have an `id_str` property which accepts a string.
 
-Reference schema [](reference_schemas/model_identifier.json)
+Reference schema [model_identifier](reference_schemas/model_identifier.json)
 
 ### Example Pydantic implementation
 
@@ -176,7 +186,7 @@ ui_element: `parameter_sweep`
 
 - Optional `units` string field.
 
-Reference schema [](reference_schemas/parameter_sweep.json)
+Reference schema [parameter_sweep](reference_schemas/parameter_sweep.json)
 
 ### Example Pydantic implementation
 
@@ -206,7 +216,7 @@ ui_element: `int_parameter_sweep`
 
 - Same as `parameter_sweep` but with `int` types in the `anyOf` array.
 
-Reference schema [](reference_schemas/int_parameter_sweep.json)
+Reference schema [int_parameter_sweep](reference_schemas/int_parameter_sweep.json)
 
 ### Example Pydantic implementation
 
@@ -231,7 +241,7 @@ ui_element: `reference`
   - Second element should be `null`.
   - **Order matters: null should always come last**
 
-Reference schema [](reference_schemas/reference.json)
+Reference schema [reference](reference_schemas/reference.json)
 
 ### Example Pydantic implementation
 
@@ -261,14 +271,16 @@ ui_element: `predefined_neuronset`
 - Should have an `entity_type` property which is a string (not a field of type string, i.e. a "non-validating" property)
 - Should have a `property` property ("non-validating" string).
 
-Reference schema [](reference_schemas/predefined_neuronset.json)
+Reference schema [predefined_neuronset](reference_schemas/predefined_neuronset.json)
 
 ### Example Pydantic implementation
 
+
+
+```py
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
-```py
 class Block:
     node_set: Annotated[
         NodeSetType,
@@ -295,7 +307,7 @@ ui_element: `neuron_ids`
 
 This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new forms.
 
-Reference schema [](reference_schemas/neuron_ids.json)
+Reference schema [neuron_ids](reference_schemas/neuron_ids.json)
 
 Current pydantic implementation (`ui_element` added) for reference:
 
