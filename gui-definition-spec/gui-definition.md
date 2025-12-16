@@ -224,3 +224,82 @@ class Block:
         )
 
 ```
+
+## Reference
+
+ui_element: `reference`
+
+- Should have an `anyOf` property.
+  - First element should be an `object` with string fields `block_name` and `block_dict_name`.
+  - First element should have a `type` property with a `const` value. (e.g `NeuronSetReference`).
+  - Second element should be `null`.
+  - **Order matters: null should always come last**
+
+Reference schema [reference.json](reference.json)
+
+### Example Pydantic implementation
+
+_Note: Placing `None` inside `Annotated` ensures the title and description on the parameter and not the inner reference object_
+
+```py
+class Block:
+    node_set: Annotated[
+            NeuronSetReference | None,
+            Field(
+                ui_element="reference",
+                title="Neuron Set",
+                description="Neuron set to simulate.",
+            ),
+        ] = None
+```
+
+### UI design
+
+<img src="reference.png"  width="300" />
+
+### Predefined neuron set
+
+ui_element: `predefined_neuronset`
+
+- Should accept as inputs either a single `string` or an `string array`.
+- Should have an `entity_type` property which is a string (not a field of type string, i.e. a "non-validating" property)
+- Should have a `property` property ("non-validating" string).
+
+Reference schema [predefined_neuronset.json](predefined_neuronset.json)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    node_set: Annotated[
+        NodeSetType,
+        Field(
+            ui_element="predefined_neuronset",
+            min_length=1,
+            entity_type="circuit",
+            property="NodeSet",
+            title="predefined neuronset",
+            description="the description"
+        ),
+    ]
+```
+
+## Legacy elements
+
+# Neuron ids
+
+ui_element: `neuron_ids`
+
+This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new forms.
+
+Reference schema [neuron_ids.json](neuron_ids.json)
+
+Current pydantic implementation for reference:
+
+```py
+class Block:
+    neuron_ids: (
+        NamedTuple | Annotated[list[NamedTuple], Field(ui_element="neuron_ids", min_length=1, description="description")]
+    )
+
+```

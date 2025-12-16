@@ -1,0 +1,31 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "block_dict_name": {
+          "type": "string",
+          "title": "Block Dict Name",
+          "default": ""
+        },
+        "block_name": {
+          "type": "string",
+          "title": "Block Name"
+        },
+        "type": {
+          "type": "string",
+          "const": "NeuronSetReference",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["block_name", "type"]
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "title": "Neuron Set",
+  "description": "Neuron set to simulate.",
+  "ui_element": "reference"
+}

@@ -14,5 +14,7 @@
   "additionalProperties": false,
   "type": "object",
   "required": ["id_str", "type"],
-  "title": "CircuitFromID"
+  "title": "CircuitFromID",
+  "description": "Model identifier by circuit ID.",
+  "ui_element": "model_identifier"
 }
