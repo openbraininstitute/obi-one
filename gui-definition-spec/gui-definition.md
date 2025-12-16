@@ -20,7 +20,7 @@ The `group_order` property must be an array of strings determining the order of 
 
 All properties of a form must be _root elements_. (See below).
 
-Reference schema: [form_schema.json](form_schema.json)
+Reference schema: [](reference_schemas/form.json)
 
 ## ui_element
 
@@ -63,7 +63,7 @@ Root blocks are blocks defined at the root level of a form.
 
 They should contain `properties` in its schema which are _block_elements_.
 
-Reference schema: [root_block_schema.json](root_block_schema.json)
+Reference schema: [](reference_schemas/root_block_schema.json)
 
 ### Example Pydantic implementation
 
@@ -88,7 +88,7 @@ ui_element: `block_dictionary`
 - They should contain a `singular_name`.
 - They should contain a `reference_type`.
 
-Reference schema: [block_dictionary.json](block_dictionary.json)
+Reference schema: [](reference_schemas/block_dictionary.json)
 
 ### Example Pydantic implementation
 
@@ -109,7 +109,7 @@ neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
 
 ### UI design
 
-<img src="block_dictionary.png" alt="description" width="300" />
+<img src="designs/block_dictionary.png" alt="description" width="300" />
 
 ## Block elements
 
@@ -126,7 +126,7 @@ Represents a simple input field.
 
 The type should be `string`, they should have a `minLength`.
 
-Reference schema: [input.json](input.json)
+Reference schema: [](reference_schemas/input.json)
 
 ### Example Pydantic implementation
 
@@ -137,7 +137,7 @@ class Block:
 
 ### UI design
 
-<img src="input.png" alt="description" width="300" />
+<img src="designs/input.png" alt="description" width="300" />
 
 ## Model identifier
 
@@ -146,7 +146,7 @@ ui_element: `model_identifier`
 Should have a `type` property with a `const` value. (e.g `CircuitFromId`).
 Should have an `id_str` property which accepts a string.
 
-Reference schema [model_identifier.json](model_identifier.json)
+Reference schema [](reference_schemas/model_identifier.json)
 
 ### Example Pydantic implementation
 
@@ -164,7 +164,7 @@ class Block:
 
 ### UI design
 
-<img src="model_identifier.png"  width="300" />
+<img src="designs/model_identifier.png"  width="300" />
 
 ## Parameter sweep
 
@@ -176,7 +176,7 @@ ui_element: `parameter_sweep`
 
 - Optional `units` string field.
 
-Reference schema [parameter_sweep.json](parameter_sweep.json)
+Reference schema [](reference_schemas/parameter_sweep.json)
 
 ### Example Pydantic implementation
 
@@ -198,7 +198,7 @@ class Block:
 
 ### UI design
 
-<img src="parameter_sweep.png"  width="300" />
+<img src="designs/parameter_sweep.png"  width="300" />
 
 ## Integer parameter sweep
 
@@ -206,7 +206,7 @@ ui_element: `int_parameter_sweep`
 
 - Same as `parameter_sweep` but with `int` types in the `anyOf` array.
 
-Reference schema [int_parameter_sweep.json](int_parameter_sweep.json)
+Reference schema [](reference_schemas/int_parameter_sweep.json)
 
 ### Example Pydantic implementation
 
@@ -231,7 +231,7 @@ ui_element: `reference`
   - Second element should be `null`.
   - **Order matters: null should always come last**
 
-Reference schema [reference.json](reference.json)
+Reference schema [](reference_schemas/reference.json)
 
 ### Example Pydantic implementation
 
@@ -251,7 +251,7 @@ class Block:
 
 ### UI design
 
-<img src="reference.png"  width="300" />
+<img src="designs/reference.png"  width="300" />
 
 ### Predefined neuron set
 
@@ -261,7 +261,7 @@ ui_element: `predefined_neuronset`
 - Should have an `entity_type` property which is a string (not a field of type string, i.e. a "non-validating" property)
 - Should have a `property` property ("non-validating" string).
 
-Reference schema [predefined_neuronset.json](predefined_neuronset.json)
+Reference schema [](reference_schemas/predefined_neuronset.json)
 
 ### Example Pydantic implementation
 
@@ -285,7 +285,7 @@ class Block:
 
 ### UI design
 
-<img src="predefined_neuronset.png"  width="300" />
+<img src="designs/predefined_neuronset.png"  width="300" />
 
 ## Legacy elements
 
@@ -295,9 +295,9 @@ ui_element: `neuron_ids`
 
 This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new forms.
 
-Reference schema [neuron_ids.json](neuron_ids.json)
+Reference schema [](reference_schemas/neuron_ids.json)
 
-Current pydantic implementation for reference:
+Current pydantic implementation (`ui_element` added) for reference:
 
 ```py
 class Block:
