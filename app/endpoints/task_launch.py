@@ -15,8 +15,13 @@ from app.logger import L
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
+"""Path to the obi-one repository"""
 OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
+
+"""Path to launch script within the repository. Must contain code.py and requirements.txt."""
 OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
+
+"""Commit hash of the code version to use."""
 OBI_ONE_COMMIT_SHA = "11bad06f5433eb13f47aa086c79048ca043e9a04"
 
 
