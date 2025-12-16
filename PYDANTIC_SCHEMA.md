@@ -190,13 +190,21 @@ neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
             title="Timestamps",
             reference_type=TimestampsReference.__name__,
             description="Timestamps for the simulation.",
+
+            
             singular_name="Timestamps",
-            group=BlockGroup.SETUP_BLOCK_GROUP,
-            group_order=0,
+
+            # Specify which block group the dictionary belongs to
+            group=BlockGroup.SETUP_BLOCK_GROUP, 
+
+            # Specify the position of the element within the block group
+            group_order=0, 
         )
 ```
 
 # ScanConfig - ℹ️ <del>block_</del>block_group_order
+
+# Specigy the order in which BlockGroups should appear
 
 ```
 class Config:
