@@ -263,7 +263,7 @@ class Block:
 
 <img src="designs/reference.png"  width="300" />
 
-### Predefined neuron set
+## Predefined neuron set
 
 ui_element: `predefined_neuronset`
 
@@ -301,7 +301,7 @@ class Block:
 
 ## Legacy elements
 
-### Neuron ids
+## Neuron ids
 
 ui_element: `neuron_ids`
 
