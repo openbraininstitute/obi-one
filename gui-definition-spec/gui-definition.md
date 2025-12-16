@@ -124,16 +124,15 @@ ui_element: `input`
 
 Represents a simple input field.
 
-The type should be `string`, they should have a minLength
+The type should be `string`, they should have a `minLength`.
 
 Reference schema: [input.json](input.json)
 
 ### Example Pydantic implementation
 
 ```py
-# Inside its blocks' class.
-
-field: str = Field(ui_element="input", min_length=1, title="title" description="description")
+class Block:
+    field: str = Field(ui_element="input", min_length=1, title="title" description="description")
 ```
 
 ### UI design
@@ -157,7 +156,6 @@ class CircuitFromId(OBIBaseModel):
     id_str: str = Field(description="ID of the entity in string format.")
 
 
-# Inside its blocks' class.
 class Block:
     circuit: CircuitFromID = Field(
             title="Circuit", description="Circuit to simulate.", ui_element="model_identifier"
@@ -173,10 +171,8 @@ class Block:
 ui_element: `parameter_sweep`
 
 - Should have an `anyOf` property.
-
-  - First element should be an array of `number`.
-  - Second element a `number`.
-  - Optional `minimum` and `maximum` and `default` in both cases.
+- Should accept either a `number` or `number array`.
+- Optional `minimum` and `maximum` and `default` in both cases.
 
 - Optional `units` string field.
 
@@ -269,6 +265,9 @@ Reference schema [predefined_neuronset.json](predefined_neuronset.json)
 
 ### Example Pydantic implementation
 
+CircuitNode = Annotated[str, Field(min_length=1)]
+NodeSetType = CircuitNode | list[CircuitNode]
+
 ```py
 class Block:
     node_set: Annotated[
@@ -284,9 +283,13 @@ class Block:
     ]
 ```
 
+### UI design
+
+<img src="predefined_neuronset.png"  width="300" />
+
 ## Legacy elements
 
-# Neuron ids
+### Neuron ids
 
 ui_element: `neuron_ids`
 
