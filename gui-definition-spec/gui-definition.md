@@ -42,7 +42,7 @@ Block elements:
 
 - `input`
 - `model_identifier`
-- `paramete_sweep`
+- `parameter_sweep`
 - `int_parameter_sweep`
 - `reference`
 - `predefined_neuronset`
