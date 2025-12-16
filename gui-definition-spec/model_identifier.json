@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "id_str": {
+      "type": "string",
+      "title": "Id Str",
+      "description": "ID of the entity in string format."
+    },
+    "type": {
+      "type": "string",
+      "const": "CircuitFromID",
+      "title": "Type"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["id_str", "type"],
+  "title": "CircuitFromID"
+}

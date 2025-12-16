@@ -118,7 +118,7 @@ The parents of block elements must be blocks, never forms.
 
 They should contain a `title` and a `description`.
 
-## input
+## Input
 
 ui_element: `input`
 
@@ -139,3 +139,88 @@ field: str = Field(ui_element="input", min_length=1, title="title" description="
 ### UI design
 
 <img src="input.png" alt="description" width="300" />
+
+## Model identifier
+
+ui_element: `model_identifier`
+
+Should have a `type` property with a `const` value. (e.g `CircuitFromId`).
+Should have an `id_str` property which accepts a string.
+
+Reference schema [model_identifier.json](model_identifier.json)
+
+### Example Pydantic implementation
+
+```py
+
+class CircuitFromId(OBIBaseModel):
+    id_str: str = Field(description="ID of the entity in string format.")
+
+
+# Inside its blocks' class.
+class Block:
+    circuit: CircuitFromID = Field(
+            title="Circuit", description="Circuit to simulate.", ui_element="model_identifier"
+        )
+```
+
+### UI design
+
+<img src="model_identifier.png"  width="300" />
+
+## Parameter sweep
+
+ui_element: `parameter_sweep`
+
+- Should have an `anyOf` property.
+
+  - First element should be an array of `number`.
+  - Second element a `number`.
+  - Optional `minimum` and `maximum` and `default` in both cases.
+
+- Optional `units` string field.
+
+Reference schema [parameter_sweep.json](parameter_sweep.json)
+
+### Example Pydantic implementation
+
+```py
+
+class Block:
+
+    extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
+            ui_element="parameter_sweep",
+            default=1.1,
+            title="Extracellular Calcium Concentration",
+            description=(
+                "Extracellular calcium concentration",
+            ),
+            units="mM",
+        )
+
+```
+
+### UI design
+
+<img src="parameter_sweep.png"  width="300" />
+
+## Integer parameter sweep
+
+ui_element: `int_parameter_sweep`
+
+- Same as `parameter_sweep` but with `int` types in the `anyOf` array.
+
+Reference schema [int_parameter_sweep.json](int_parameter_sweep.json)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    random_seed: list[int] | int = Field(
+            ui_element="int_parameter_sweep",
+            default=1,
+            title="Random seed"
+            description="Random seed for the simulation."
+        )
+
+```
