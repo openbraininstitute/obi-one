@@ -334,7 +334,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
-        title="Neuron Sets",
+        default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
