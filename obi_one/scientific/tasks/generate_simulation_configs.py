@@ -20,9 +20,11 @@ from obi_one.scientific.from_id.circuit_from_id import (
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
+    _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -224,7 +226,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SimulationCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -402,7 +404,7 @@ class SimulationSingleConfigMixin(abc.ABC):
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
             asset_label="simulation_generation_config",
         )
