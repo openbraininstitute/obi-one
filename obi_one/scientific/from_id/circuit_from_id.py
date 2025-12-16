@@ -36,7 +36,7 @@ class CircuitFromID(EntityFromID):
                     )
 
                 circuit = Circuit(
-                    name=dest_dir.name,
+                    name=str(self),
                     path=str(dest_dir / "circuit_config.json"),
                 )
                 return circuit

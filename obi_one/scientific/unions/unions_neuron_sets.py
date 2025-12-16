@@ -57,6 +57,20 @@ SimulationNeuronSetUnion = Annotated[
 ]
 
 
+CircuitExtractionNeuronSetUnion = Annotated[
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | PredefinedNeuronSet
+    # | CombinedNeuronSet  # To be added later
+    # | PropertyNeuronSet  # To be added later
+    # | VolumetricCountNeuronSet  # To be added later
+    # | VolumetricRadiusNeuronSet  # To be added later
+    | IDNeuronSet,
+    Discriminator("type"),
+]
+
+
 MEModelWithSynapsesNeuronSetUnion = Annotated[
     nbS1VPMInputs | nbS1POmInputs,
     Discriminator("type"),
