@@ -86,7 +86,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "ui_enabled": True,
             "block_block_group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -94,10 +93,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.EVENTS_GROUP,
                 BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             ],
-            # "default_block_reference_labels": {
-            #     NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            #     TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            # },
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            },
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
@@ -254,17 +253,17 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    # class Initialize(SimulationScanConfig.Initialize):
-    #     circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-    #         title="ME Model", description="ME Model to simulate."
-    #     )
+    class Initialize(SimulationScanConfig.Initialize):
+        circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
+            title="ME Model", description="ME Model to simulate."
+        )
 
-    # initialize: Initialize = Field(
-    #     title="Initialization",
-    #     description="Parameters for initializing the simulation.",
-    #     group=BlockGroup.SETUP_BLOCK_GROUP,
-    #     group_order=1,
-    # )
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
+    )
 
     stimuli: dict[str, MEModelStimulusUnion] = Field(
         default_factory=dict,
@@ -291,9 +290,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         singular_name="Neuron Set",
         group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
         group_order=0,
-        ui_element="block_dictionary",
     )
-
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
         default_factory=dict,
         reference_type=SynapticManipulationsReference.__name__,
@@ -304,7 +301,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
     class Initialize(SimulationScanConfig.Initialize):
-        pass
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit", description="Circuit to simulate."
         )
@@ -320,13 +316,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
-    )
-
-    info: Info = Field(
-        title="Infoasfsf",
-        description="Information about the simulation campaign.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
     )
 
     stimuli: dict[str, StimulusUnion] = Field(
