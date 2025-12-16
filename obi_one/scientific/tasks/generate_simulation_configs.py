@@ -102,7 +102,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
-
         title="Timestamps",
         reference_type=TimestampsReference.__name__,
         description="Timestamps for the simulation.",
