@@ -158,6 +158,15 @@ def validate_type(schema: Cut, ref: str) -> None:
         raise ValueError(msg)
 
 
+def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
+    if schema.get("ui_element") not in {"root_block", "block_dictionary"}:
+        msg = (
+            f"Validation error at {form_ref} {element}: 'ui_element' must be 'root_block' or"
+            f"'block_dictionary'. Got: {schema.get('ui_element')}"
+        )
+        raise ValueError(msg)
+
+
 def validate_form(form: Cut, ref: str):
     ## TODO Remove
 
@@ -180,7 +189,7 @@ def validate_form(form: Cut, ref: str):
         if root_element == "type":
             continue
 
-        print(root_element)
+        validate_root_element(root_element_schema, root_element, ref)
 
 
 def validate_schema() -> None:
