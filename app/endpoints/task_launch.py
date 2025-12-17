@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from enum import StrEnum
 from http import HTTPStatus
 from pathlib import Path
@@ -6,7 +7,8 @@ from typing import Annotated
 
 import entitysdk
 import httpx
-from entitysdk.types import ContentType
+from entitysdk.models.execution import Execution
+from entitysdk.types import ContentType, ExecutorType
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
@@ -32,6 +34,87 @@ class TaskConfigType(StrEnum):
     CIRCUIT_EXTRACTION = entitysdk.models.CircuitExtractionConfig.__name__
 
 
+def _get_config_asset(
+    db_client: entitysdk.Client, entity_type: TaskConfigType, entity_id: str
+) -> str:
+    """Determines the asset ID of the JSON config asset."""
+    entity_type_resolved = getattr(entitysdk.models, entity_type)
+    entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type_resolved)
+    config_assets = [
+        _asset
+        for _asset in entity.assets
+        if "_config" in _asset.label and _asset.content_type == ContentType.application_json
+    ]
+    if len(config_assets) != 1:
+        msg = (
+            f"Config asset for entity '{entity.id}' could not be determined "
+            f"({len(config_assets)} found)!"
+        )
+        raise ValueError(msg)
+    config_asset_id = str(config_assets[0].id)
+    return config_asset_id
+
+
+def _get_execution_activity_type(config_entity_type: str) -> str:
+    """Determines the execution activity for a given config entity type."""
+    type_key = config_entity_type.replace("Config", "")
+    all_models = [
+        _name
+        for _name in dir(entitysdk.models)
+        if hasattr(getattr(entitysdk.models, _name), "__base__")
+    ]
+    exec_models = [
+        _name for _name in all_models if getattr(entitysdk.models, _name).__base__ == Execution
+    ]
+    exec_model = [_name for _name in exec_models if type_key in _name]
+    if len(exec_model) != 1:
+        msg = (
+            f"Execution activity for '{config_entity_type}' could not be determined "
+            f"({len(exec_model)} found)!"
+        )
+        raise ValueError(msg)
+    return exec_model[0]
+
+
+def _create_execution_activity(
+    db_client: entitysdk.Client,
+    activity_type: str,
+    config_entity_type: TaskConfigType,
+    config_entity_id: str,
+) -> str:
+    """Creates and registers an execution activity of the given type."""
+    config_entity_type_resolved = getattr(entitysdk.models, config_entity_type)
+    config_entity = db_client.get_entity(
+        entity_type=config_entity_type_resolved, entity_id=config_entity_id
+    )
+
+    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    activity_model = activity_type_resolved(
+        start_time=datetime.now(UTC),
+        used=[config_entity],
+        status="pending",
+        authorized_public=False,
+    )
+    execution_activity = db_client.register_entity(activity_model)
+    L.info(f"Execution activity of type '{activity_type}' created (ID {execution_activity.id})")
+    activity_id = str(execution_activity.id)
+    return activity_id
+
+
+def _update_execution_activity(
+    db_client: entitysdk.Client, activity_type: str, activity_id: str, job_id: str
+) -> None:
+    """Updates the execution activity by adding a job as executor."""
+    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    exec_dict = {
+        "executor": ExecutorType.single_node_job,
+        "execution_id": job_id,
+    }
+    db_client.update_entity(
+        entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=exec_dict
+    )
+
+
 def _submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
@@ -47,8 +130,8 @@ def _submit_task_job(
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
     # Create activity
-    # TODO
-    activity_id = None
+    activity_type = _get_execution_activity_type(entity_type)
+    activity_id = _create_execution_activity(db_client, activity_type, activity_type, entity_id)
 
     # Command line arguments
     entity_cache = True
@@ -92,31 +175,9 @@ def _submit_task_job(
     L.info(f"Job submitted (ID {job_id})")
 
     # Add job as executor to activity
-    # TODO
-    activity_id = job_id  # For now, return job ID
+    _update_execution_activity(db_client, activity_type, activity_id, job_id)
 
     return activity_id
-
-
-def _get_config_asset(
-    db_client: entitysdk.Client, entity_type: TaskConfigType, entity_id: str
-) -> str:
-    """Determines the asset ID of the JSON config asset."""
-    entity_type_resolved = getattr(entitysdk.models, entity_type)
-    entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type_resolved)
-    config_assets = [
-        _asset
-        for _asset in entity.assets
-        if "_config" in _asset.label and _asset.content_type == ContentType.application_json
-    ]
-    if len(config_assets) != 1:
-        msg = (
-            f"Config asset for entity '{entity.id}' could not be determined "
-            f"({len(config_assets)} found)!"
-        )
-        raise ValueError(msg)
-    config_asset_id = str(config_assets[0].id)
-    return config_asset_id
 
 
 @router.get(
