@@ -6,6 +6,7 @@ from typing import Annotated
 
 import entitysdk
 import httpx
+from entitysdk.types import ContentType
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
@@ -28,7 +29,7 @@ OBI_ONE_COMMIT_SHA = "11bad06f5433eb13f47aa086c79048ca043e9a04"
 class TaskConfigType(StrEnum):
     """List of entitycore config types supported for job submission."""
 
-    CIRCUIT_EXTRACTION = "CircuitExtractionConfig"
+    CIRCUIT_EXTRACTION = entitysdk.models.CircuitExtractionConfig.__name__
 
 
 def _submit_task_job(
@@ -97,6 +98,27 @@ def _submit_task_job(
     return activity_id
 
 
+def _get_config_asset(
+    db_client: entitysdk.Client, entity_type: TaskConfigType, entity_id: str
+) -> str:
+    """Determines the asset ID of the JSON config asset."""
+    entity_type_resolved = getattr(entitysdk.models, entity_type)
+    entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type_resolved)
+    config_assets = [
+        _asset
+        for _asset in entity.assets
+        if "_config" in _asset.label and _asset.content_type == ContentType.application_json
+    ]
+    if len(config_assets) != 1:
+        msg = (
+            f"Config asset for entity '{entity.id}' could not be determined "
+            f"({len(config_assets)} found)!"
+        )
+        raise ValueError(msg)
+    config_asset_id = str(config_assets[0].id)
+    return config_asset_id
+
+
 @router.get(
     "/task-launch",
     summary="Task launch",
@@ -108,11 +130,13 @@ def _submit_task_job(
 def task_launch_endpoint(
     entity_type: TaskConfigType,
     entity_id: str,
-    config_asset_id: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
     ls_client: Annotated[httpx.Client, Depends(get_ls_client)],
 ) -> str | None:
     activity_id = None
+
+    # Determine config asset
+    config_asset_id = _get_config_asset(db_client, entity_type, entity_id)
 
     # Launch task
     activity_id = _submit_task_job(db_client, ls_client, entity_type, entity_id, config_asset_id)
