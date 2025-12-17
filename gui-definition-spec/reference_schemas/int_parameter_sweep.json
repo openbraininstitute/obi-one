@@ -1,0 +1,17 @@
+{
+  "anyOf": [
+    {
+      "items": {
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    {
+      "type": "integer"
+    }
+  ],
+  "title": "Random Seed",
+  "description": "Random seed for the simulation.",
+  "default": 1,
+  "ui_element": "int_parameter_sweep"
+}

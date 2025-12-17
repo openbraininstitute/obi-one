@@ -1,0 +1,13 @@
+{
+  "additionalProperties": {
+    "oneOf": [],
+    "type": "object",
+    "title": "Block dictionary title",
+    "description": "Block dictionary description",
+    "group": "Group 2",
+    "group_order": 0,
+    "reference_type": "Reference Type",
+    "singular_name": "singular name",
+    "ui_element": "block_dictionary"
+  }
+}
