@@ -17,6 +17,7 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -117,7 +118,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SkeletonizationCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -128,6 +129,8 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     #     self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
     # ) -> None:
     #     L.info("3. Saving completed simulation campaign generation")
+
+        # USE SkeletonizationConfigGeneration
 
         # L.info("-- Register SimulationGeneration Entity")
         # db_client.register_entity(
@@ -140,37 +143,43 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
 
 class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
-    _single_entity: entitysdk.models.Simulation
+    _single_entity: entitysdk.models.SkeletonizationConfig
 
     @property
-    def single_entity(self) -> entitysdk.models.Simulation:
+    def single_entity(self) -> entitysdk.models.SkeletonizationConfig:
         return self._single_entity
+    
+    def set_single_entity(self, entity: entitysdk.models.SkeletonizationConfig) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
 
     def create_single_entity_with_config(
-        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
-    ) -> entitysdk.models.Simulation:
-        """Saves the simulation to the database."""
-        L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
+        self, campaign: entitysdk.models.SkeletonizationCampaign, db_client: entitysdk.client.Client
+    ) -> entitysdk.models.SkeletonizationConfig:
+        """Saves the SkeletonizationConfig to the database."""
+        L.info(f"2.{self.idx} Saving SkeletonizationConfig {self.idx} to database...")
 
-        # L.info("-- Register Simulation Entity")
-        # self._single_entity = db_client.register_entity(
-        #     entitysdk.models.Simulation(
-        #         name=f"Simulation {self.idx}",
-        #         description=f"Simulation {self.idx}",
-        #         scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-        #         entity_id=self.initialize.circuit.id_str,
-        #         simulation_campaign_id=campaign.id,
-        #     )
-        # )
+        L.info("-- Register SkeletonizationConfig Entity")
+        self._single_entity = db_client.register_entity(
+            entitysdk.models.SkeletonizationConfig(
+                name=f"SkeletonizationConfig {self.idx}",
+                description=f"SkeletonizationConfig {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                skeletonization_campaign_id=campaign.id,
+                em_cell_mesh_id=self.initialize.cell_mesh.id_str,
 
-        # L.info("-- Upload simulation_generation_config")
-        # _ = db_client.upload_file(
-        #     entity_id=self.single_entity.id,
-        #     entity_type=entitysdk.models.Simulation,
-        #     file_path=Path(self.coordinate_output_root, "run_coordinate_instance.json"),
-        #     file_content_type="application/json",
-        #     asset_label="simulation_generation_config",
-        # )
+
+            )
+        )
+
+        L.info("-- Upload skeltonization_config asset")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=entitysdk.models.SkeletonizationConfig,
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            file_content_type="application/json",
+            asset_label="skeltonization_config",
+        )
 
 
 class SkeletonizationTask(Task):
