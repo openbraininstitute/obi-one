@@ -92,7 +92,7 @@ def _create_execution_activity(
     activity_model = activity_type_resolved(
         start_time=datetime.now(UTC),
         used=[config_entity],
-        status="pending",
+        status="created",
         authorized_public=False,
     )
     execution_activity = db_client.register_entity(activity_model)
@@ -101,7 +101,7 @@ def _create_execution_activity(
     return activity_id
 
 
-def _update_execution_activity(
+def _update_execution_activity_executor(
     db_client: entitysdk.Client, activity_type: str, activity_id: str, job_id: str
 ) -> None:
     """Updates the execution activity by adding a job as executor."""
@@ -112,6 +112,17 @@ def _update_execution_activity(
     }
     db_client.update_entity(
         entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=exec_dict
+    )
+
+
+def _update_execution_activity_status(
+    db_client: entitysdk.Client, activity_type: str, activity_id: str, status: str
+) -> None:
+    """Updates the execution activity by setting a new status."""
+    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    status_dict = {"status": status}
+    db_client.update_entity(
+        entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=status_dict
     )
 
 
@@ -129,9 +140,10 @@ def _submit_task_job(
     project_id = str(db_client.project_context.project_id)
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
-    # Create activity
+    # Create activity and set to pending for launching the job
     activity_type = _get_execution_activity_type(entity_type)
     activity_id = _create_execution_activity(db_client, activity_type, activity_type, entity_id)
+    _update_execution_activity_status(db_client, activity_type, activity_id, "pending")
 
     # Command line arguments
     entity_cache = True
@@ -144,9 +156,9 @@ def _submit_task_job(
         f"--scan_output_root {output_root}",
         f"--virtual_lab_id {virtual_lab_id}",
         f"--project_id {project_id}",
+        f"--activity_type {activity_type}",
+        f"--activity_id {activity_id}",
     ]
-    if activity_id:
-        cmd_args.append(f"--activity_id {activity_id}")
 
     # Job specification
     time_limit = (
@@ -168,6 +180,7 @@ def _submit_task_job(
     # Submit job
     response = ls_client.post(url="/job", json=job_data)
     if response.status_code != HTTPStatus.OK:
+        _update_execution_activity_status(db_client, activity_type, activity_id, "error")
         msg = f"Job submission failed!\n{json.loads(response.text)}"
         raise RuntimeError(msg)
     response_body = response.json()
@@ -175,7 +188,7 @@ def _submit_task_job(
     L.info(f"Job submitted (ID {job_id})")
 
     # Add job as executor to activity
-    _update_execution_activity(db_client, activity_type, activity_id, job_id)
+    _update_execution_activity_executor(db_client, activity_type, activity_id, job_id)
 
     return activity_id
 
