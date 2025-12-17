@@ -4,7 +4,9 @@ import sys
 import os
 from fastapi.openapi.utils import get_openapi
 from jsonschema import validate
+from typing import Any
 
+from scalpl import Cut
 
 current_dir = Path(__file__).resolve().parent
 parent_dir = current_dir.parent
@@ -132,7 +134,53 @@ def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
                 validate(schema, block_meta_schema)
 
 
-TEST_MODE = False
+def validate_string(schema: Cut, prop: str, ref: str) -> None:
+    value = schema.get(prop)
+
+    if type(value) is not str:
+        msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
+        raise ValueError(msg)
+
+
+def validate_array(schema: Cut, prop: str, array_type: type, ref: str) -> None:
+    value = schema.get(prop, [])
+    for item in value:  # type:ignore reportOptionalIterable
+        if type(item) is not array_type:
+            msg = f"Validation error at {ref}: Array items must be of type {array_type}. Got: {type(item)}"
+            raise ValueError(msg)
+
+
+def validate_type(schema: Cut, ref: str) -> None:
+    type_ = schema.get("properties.type.const")
+
+    if type(type_) is not str:
+        msg = f"Validation error at {ref}: 'properties.type.const' must be a string. Got: {type(type_)}"
+        raise ValueError(msg)
+
+
+def validate_form(form: Cut, ref: str):
+    ## TODO Remove
+
+    if ref != "#/components/schemas/CircuitSimulationScanConfig":
+        return
+
+    if not form.get("ui_enabled", True):
+        print(f"Form {ref} is disabled, skipping validation.")
+        return
+
+    print(f"Validating form {ref} ...")
+
+    validate_string(form, "title", ref)
+    validate_string(form, "description", ref)
+    validate_array(form, "group_order", str, ref)
+    validate_array(form, "required", str, ref)
+    validate_type(form, ref)
+
+    for root_element, root_element_schema in form.get("properties", {}).items():
+        if root_element == "type":
+            continue
+
+        print(root_element)
 
 
 def validate_schema() -> None:
@@ -147,30 +195,12 @@ def validate_schema() -> None:
     for path, value in openapi_schema["paths"].items():
         if not path.startswith("/generated"):
             continue
-
-        # Example valid schema for testing
-        with Path.open(current_dir / "example_simulations_form.json") as f:
-            example_schema = json.load(f)
-
-        # change this to example_schema to test with a valid schema
-        openapi_schema_to_validate = example_schema if TEST_MODE else openapi_schema
-
         schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
 
-        # In test_mode only validate CircuitSimulationScanConfig
-        if TEST_MODE and schema_ref != "#/components/schemas/CircuitSimulationScanConfig":
-            continue
+        schema = resolve_ref(openapi_schema, schema_ref)
 
-        schema = resolve_ref(openapi_schema_to_validate, schema_ref)
-
-        with Path.open(current_dir / "meta_schema.json") as f:
-            meta_schema = json.load(f)
-
-        print("Validating schema at path:", path)
-        validate(instance=schema, schema=meta_schema)
-        validate_all_properties_required(schema)
-        validate_schema_groups(schema)
-        validate_block_schemas(schema, openapi_schema_to_validate)
+        proxy = Cut(schema)
+        validate_form(proxy, schema_ref)
 
 
 if __name__ == "__main__":

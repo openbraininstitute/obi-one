@@ -2075,6 +2075,7 @@ dev = [
     { name = "pytest-freezer" },
     { name = "pytest-httpx" },
     { name = "ruff" },
+    { name = "scalpl" },
 ]
 
 [package.metadata]
@@ -2125,6 +2126,7 @@ dev = [
     { name = "pytest-freezer", specifier = ">=0.4.9" },
     { name = "pytest-httpx", specifier = ">=0.35.0" },
     { name = "ruff", specifier = "<=0.12.7" },
+    { name = "scalpl", specifier = ">=0.4.2" },
 ]
 
 [[package]]
@@ -2892,6 +2894,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/77/ab/aca2e756ad7b09b3d662a41773f3edcbd262872a4fc81f920dc1ffa44541/ruff-0.12.7-py3-none-win32.whl", hash = "sha256:c928f1b2ec59fb77dfdf70e0419408898b63998789cc98197e15f560b9e77f77", size = 11756687, upload-time = "2025-07-29T22:32:29.381Z" },
     { url = "https://files.pythonhosted.org/packages/b4/71/26d45a5042bc71db22ddd8252ca9d01e9ca454f230e2996bb04f16d72799/ruff-0.12.7-py3-none-win_amd64.whl", hash = "sha256:9c18f3d707ee9edf89da76131956aba1270c6348bfee8f6c647de841eac7194f", size = 12912365, upload-time = "2025-07-29T22:32:31.517Z" },
     { url = "https://files.pythonhosted.org/packages/4c/9b/0b8aa09817b63e78d94b4977f18b1fcaead3165a5ee49251c5d5c245bb2d/ruff-0.12.7-py3-none-win_arm64.whl", hash = "sha256:dfce05101dbd11833a0776716d5d1578641b7fddb537fe7fa956ab85d1769b69", size = 11982083, upload-time = "2025-07-29T22:32:33.881Z" },
+]
+
+[[package]]
+name = "scalpl"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/83/477ac6623a5c97eff60ee27666f144ca0f1c0627e6f58b095e43c72829f4/scalpl-0.4.2.tar.gz", hash = "sha256:8773a1c91e051a4baa255acf1804fe331fae6a36501c99519415511456b8a745", size = 8878, upload-time = "2021-04-11T10:12:32.141Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/9a/c0f48ff733cd14e1a742409d829e308900059723fb1f00dc98f0f4012ed2/scalpl-0.4.2-py3-none-any.whl", hash = "sha256:3a7a963b9b3639108722008cc2b5a42ae576b48c74fcd0f17baf7b1c9792ab7b", size = 6813, upload-time = "2021-04-11T10:12:28.823Z" },
 ]
 
 [[package]]

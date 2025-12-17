@@ -93,6 +93,7 @@ dev = [
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
     "ruff<=0.12.7",
+    "scalpl>=0.4.2",
 ]
 
 [build-system]
