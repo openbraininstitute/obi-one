@@ -4,12 +4,12 @@
 
 ### ui_enabled
 
-Forms intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only forms complying with the specification can be integrated into the UI.
+Scan configs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
 
 The config is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
 All root elements and block elements must have a valid `ui_element`. _See below for details_.
 
-**If a form requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema a UI design, and validation scripts for the schema**
+**If a config requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and corresponding validation scripts, and a UI design**
 
 ### group_order
 
@@ -17,9 +17,9 @@ The `group_order` property must be an array of strings determining the order of 
 
 ### Constraints
 
-All properties of a form must be _root elements_. (See below).
+All properties of a scan config must be _root elements_. (See below).
 
-Reference schema: [form](reference_schemas/form.json)
+Reference schema: [scan_config](reference_schemas/scan_config.json)
 
 ## ui_element
 
@@ -54,11 +54,11 @@ class Block:
 
 ## Root elements
 
-_root elements_ are the properties of forms they can be either _root blocks_ or _block dictionaries_ .
+_root elements_ are the properties of scan configs they can be either _root blocks_ or _block dictionaries_ .
 
-They should contain a `group` string that points to a string in its parent form's `group_order` array.
+They should contain a `group` string that points to a string in its parent config's `group_order` array.
 
-They should contain a `group_order` integer (unique within the form).
+They should contain a `group_order` integer (unique within the group).
 
 They should contain a `title` and a `description`.
 
@@ -66,7 +66,7 @@ They should contain a `title` and a `description`.
 
 ui_element: `root_block`
 
-Root blocks are blocks defined at the root level of a form.
+Root blocks are blocks defined at the root level of a scan config.
 
 They should contain `properties` in its schema which are _block_elements_.
 
@@ -80,7 +80,7 @@ class Info(Block):
     campaign_name: str = Field(min_length=1, description="Name of the campaign.")
     campaign_description: str = Field(min_length=1, description="Description of the campaign.")
 
-class Form:
+class Config:
 
     info: Info = Field(
         ui_element="root_block",
@@ -105,7 +105,7 @@ Reference schema: [block_dictionary](reference_schemas/block_dictionary.json)
 ### Example Pydantic implementation
 
 ```py
-class Form:
+class Config:
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         ui_element="block_dictionary",
         default_factory=dict,
@@ -124,8 +124,8 @@ class Form:
 
 ## Block elements
 
-Block elements are properties of blocks, they (as _root elements_) must have a `ui_element` property.
-The parents of block elements must be blocks, never forms.
+Block elements are properties of blocks, they must have a `ui_element` property.
+The parents of block elements must be blocks, never scan configs
 
 They should contain a `title` and a `description`.
 
@@ -304,7 +304,7 @@ class Block:
 
 ui_element: `neuron_ids`
 
-This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new forms.
+This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new configs.
 
 Reference schema [neuron_ids](reference_schemas/neuron_ids.json)
 
