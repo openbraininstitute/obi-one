@@ -8,7 +8,6 @@ from entitysdk import Client, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
-from obi_one.core.exception import OBIONEError
 from obi_one.core.run_tasks import run_task_for_single_config_asset
 
 L = logging.getLogger(__name__)
@@ -127,7 +126,8 @@ def main() -> int:
             entity_cache=args.entity_cache,
             activity_id=args.activity_id,
         )
-    except OBIONEError as e:
+    except Exception as e:  # noqa: BLE001
+        # Catch any error that may occur to make sure that error status is correctly set
         L.error(f"Error launching task for single configuration asset: {e}")
         update_activity_status(db_client, args.activity_type, args.activity_id, "error")
         return 1
