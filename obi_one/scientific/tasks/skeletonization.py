@@ -173,12 +173,15 @@ class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
         )
 
         L.info("-- Upload skeltonization_config asset")
+        L.info(Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME))
+        L.info(self.single_entity)
+        L.info(self.single_entity.id)
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.SkeletonizationConfig,
             file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
-            asset_label="skeltonization_config",
+            asset_label="skeletonization_config",
         )
 
 
