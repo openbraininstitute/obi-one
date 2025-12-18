@@ -88,7 +88,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
+            "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
@@ -101,16 +101,18 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             },
         }
 
-    timestamps: dict[str, TimestampsUnion] = Field(
+    timestamps: dict[str, TimestampsUnion] = Field(  # type:ignore[]
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Timestamps",
         reference_type=TimestampsReference.__name__,
         description="Timestamps for the simulation.",
         singular_name="Timestamps",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group=BlockGroup.EVENTS_GROUP,
         group_order=0,
     )
-    recordings: dict[str, RecordingUnion] = Field(
+    recordings: dict[str, RecordingUnion] = Field(  # type:ignore[]
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=RecordingReference.__name__,
         description="Recordings for the simulation.",
@@ -140,13 +142,15 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 ],
                 Field(min_length=1),
             ]
-        ) = Field(
+        ) = Field(  # type:ignore[]
+            ui_element="float_parameter_sweep",
             default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             units="ms",
         )
-        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
+        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(  # type:ignore[]
+            ui_element="float_parameter_sweep",
             default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
@@ -157,14 +161,18 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             ),
             units="mM",
         )
-        v_init: list[float] | float = Field(
+        v_init: list[float] | float = Field(  # type:ignore[]
+            ui_element="float_parameter_sweep",
             default=-80.0,
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             units="mV",
         )
-        random_seed: list[int] | int = Field(
-            default=1, description="Random seed for the simulation."
+        random_seed: list[int] | int = Field(  # type:ignore[]
+            ui_element="integer_parameter_sweep",
+            default=1,
+            title="Random Seed",
+            description="Random seed for the simulation.",
         )
 
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
@@ -182,7 +190,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
 
-    info: Info = Field(
+    info: Info = Field(  # type: ignore[]
+        ui_element="root_block",
         title="Info",
         description="Information about the simulation campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -285,7 +294,8 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(  # type:ignore[]
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
@@ -293,7 +303,8 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
         group_order=0,
     )
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(  # type:ignore[]
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=SynapticManipulationsReference.__name__,
         description="Synaptic manipulations for the simulation.",
@@ -303,24 +314,30 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
     class Initialize(SimulationScanConfig.Initialize):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Circuit to simulate."
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(  # type:ignore[]
+            ui_element="model_identifier",
+            title="Circuit",
+            description="Circuit to simulate.",
+            primary_entity_parameter="initialize.circuit",
         )
-        node_set: (
-            Annotated[
-                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-            ]
-            | None
-        ) = None
+        node_set: NeuronSetReference | None = Field(  # type:ignore[]
+            ui_element="reference",
+            default=None,
+            title="Neuron Set",
+            description="Neuron set to simulate.",
+            reference_type=NeuronSetReference.__name__,
+        )
 
-    initialize: Initialize = Field(
+    initialize: Initialize = Field(  # type:ignore[]
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
     )
 
-    stimuli: dict[str, StimulusUnion] = Field(
+    stimuli: dict[str, StimulusUnion] = Field(  # type:ignore[]
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Stimuli",
         reference_type=StimulusReference.__name__,
@@ -329,6 +346,9 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=0,
     )
+
+    class Config(SimulationScanConfig.Config):
+        json_schema_extra: ClassVar[dict] = {"ui_enabled": True}
 
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
