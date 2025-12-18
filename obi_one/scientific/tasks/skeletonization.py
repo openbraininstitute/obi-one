@@ -10,6 +10,7 @@ from uuid import UUID
 from urllib.parse import urlparse
 import os
 import time
+from datetime import UTC, datetime
 from pydantic import Field, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
@@ -125,21 +126,19 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
         return self._campaign
 
-    # def create_campaign_generation_entity(
-    #     self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
-    # ) -> None:
-    #     L.info("3. Saving completed simulation campaign generation")
+    def create_campaign_generation_entity(
+        self, skeletonization_configs: list[entitysdk.models.SkeletonizationConfig], db_client: entitysdk.client.Client
+    ) -> None:
+        L.info("3. Saving completed simulation campaign generation")
 
-        # USE SkeletonizationConfigGeneration
-
-        # L.info("-- Register SimulationGeneration Entity")
-        # db_client.register_entity(
-        #     entitysdk.models.SimulationGeneration(
-        #         start_time=datetime.now(UTC),
-        #         used=[self._campaign],
-        #         generated=simulations,
-        #     )
-        # )
+        L.info("-- Register SimulationGeneration Entity")
+        db_client.register_entity(
+            entitysdk.models.SkeletonizationConfigGeneration(
+                start_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=skeletonization_configs,
+            )
+        )
 
 
 class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
