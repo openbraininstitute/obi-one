@@ -195,7 +195,7 @@ ui_element: `float_parameter_sweep`
 
 - Optional `units` string field.
 
-Reference schema [parameter_sweep](reference_schemas/parameter_sweep.json)
+Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep.json)
 
 ### Example Pydantic implementation
 
@@ -217,7 +217,7 @@ class Block:
 
 ### UI design
 
-<img src="designs/parameter_sweep.png"  width="300" />
+<img src="designs/float_parameter_sweep.png"  width="300" />
 
 ## Integer parameter sweep
 
