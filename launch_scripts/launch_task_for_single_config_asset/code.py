@@ -118,7 +118,6 @@ def main() -> int:
         update_activity_status(db_client, args.activity_type, args.activity_id, "running")
 
         # Run actual task
-        # TODO: Add activity_id to task
         run_task_for_single_config_asset(
             entity_type=entity_type,
             entity_id=args.entity_id,
@@ -126,6 +125,7 @@ def main() -> int:
             scan_output_root=args.scan_output_root,
             db_client=db_client,
             entity_cache=args.entity_cache,
+            activity_id=args.activity_id,
         )
     except OBIONEError as e:
         L.error(f"Error launching task for single configuration asset: {e}")
