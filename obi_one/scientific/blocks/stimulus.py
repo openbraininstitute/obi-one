@@ -571,6 +571,14 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
+
+    node_set: NeuronSetReference | None = Field(
+        default=None,
+        ui_element="reference",
+        title="Neuron Set",
+        description="Neuron set to simulate.",
+    )
+
     source_neuron_set: (
         (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
         | None

@@ -129,7 +129,7 @@ The parents of block elements must be blocks, never scan configs
 
 They should contain a `title` and a `description`.
 
-## Input
+## String input
 
 ui_element: `string_input`
 
@@ -137,18 +137,18 @@ Represents a simple input field.
 
 The type should be `string`.
 
-Reference schema: [input](reference_schemas/input.json)
+Reference schema: [string_input](reference_schemas/string_input.json)
 
 ### Example Pydantic implementation
 
 ```py
 class Block:
-    field: str = Field(ui_element="input", min_length=1, title="title" description="description")
+    field: str = Field(ui_element="string_input", min_length=1, title="title" description="description")
 ```
 
 ### UI design
 
-<img src="designs/input.png" alt="description" width="300" />
+<img src="designs/string_input.png" alt="description" width="300" />
 
 ## Model identifier
 
