@@ -583,13 +583,12 @@ class CircuitExtractionTask(Task):
     def _create_execution_activity(
         self, db_client: Client = None
     ) -> models.CircuitExtractionExecution | None:
-        """Create and register a CircuitExtractionExecution activity upon task launch."""
-        # TODO: To be moved to service or task manager
+        """Create and register a new CircuitExtractionExecution activity."""
         if db_client:
             execution_model = models.CircuitExtractionExecution(
                 start_time=datetime.now(UTC),
                 used=[self.config.single_entity],
-                status=types.CircuitExtractionExecutionStatus.created,
+                status=types.CircuitExtractionExecutionStatus.running,
                 authorized_public=False,
             )
             execution_entity = db_client.register_entity(execution_model)
@@ -598,39 +597,71 @@ class CircuitExtractionTask(Task):
             execution_entity = None
         return execution_entity
 
+    def _get_execution_activity(
+        self,
+        db_client: Client = None,
+        activity_id: str | None = None,
+    ) -> models.CircuitExtractionExecution | None:
+        """Returns the CircuitExtractionExecution activity.
+
+        If an external activity ID is provided, returns the corresponding activity.
+        Otherwise, creates a new activity internally.
+        """
+        is_external = False
+        if db_client:
+            if activity_id:
+                execution_entity = db_client.search_entity(
+                    entity_type=models.CircuitExtractionExecution, entity_id=activity_id
+                )
+                is_external = True  # Activity status managed externally
+            else:
+                execution_entity = self._create_execution_activity(db_client=db_client)
+        else:
+            execution_entity = None
+        return execution_entity, is_external
+
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
         execution_entity: models.CircuitExtractionExecution | None = None,
         circuit_id: str | None = None,
+        *,
+        is_external: bool = False,
     ) -> models.CircuitExtractionExecution | None:
-        """Updates a CircuitExtractionExecution activity after task completion."""
-        # TODO: To be moved to service or task manager
+        """Updates a CircuitExtractionExecution activity after task completion.
+
+        For activities created externally, only the generated circuit ID will be registered.
+        When created internally, also the status and end time will be updated.
+        """
         if db_client and execution_entity and circuit_id:
-            done_entity = db_client.update_entity(
-                entity_id=execution_entity.id,
-                entity_type=models.CircuitExtractionExecution,
-                attrs_or_entity={
+            upd_dict = {"generated_ids": [circuit_id]}
+            if not is_external:
+                # Update status and end time
+                upd_dict |= {
                     "end_time": datetime.now(UTC),
                     "status": types.CircuitExtractionExecutionStatus.done,
-                    "generated_ids": [circuit_id],
-                },
+                }
+            upd_entity = db_client.update_entity(
+                entity_id=execution_entity.id,
+                entity_type=models.CircuitExtractionExecution,
+                attrs_or_entity=upd_dict,
             )
-            L.info("CircuitExtractionExecution activity DONE")
+            L.info("CircuitExtractionExecution activity UPDATED")
         else:
-            done_entity = None
-        return done_entity
+            upd_entity = None
+        return upd_entity
 
     def execute(
         self,
         *,
         db_client: Client = None,
         entity_cache: bool = False,
-        activity_id: str | None = None,  # noqa: ARG002
+        activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        # Create execution activity
-        # TODO: To be moved to service or task manager
-        execution_activity = self._create_execution_activity(db_client=db_client)
+        # Get execution activity (creates a new one, if not provided externally)
+        execution_activity, is_external_activity = self._get_execution_activity(
+            db_client=db_client, activity_id=activity_id
+        )
 
         # Resolve parent circuit (local path or staging from ID)
         self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
@@ -757,11 +788,11 @@ class CircuitExtractionTask(Task):
             L.info("Registration DONE")
 
         # Update execution activity
-        # TODO: To be moved to service or task manager
         self._update_execution_activity(
             db_client=db_client,
             execution_entity=execution_activity,
             circuit_id=new_circuit_id,
+            is_external=is_external_activity,
         )
 
         # Clean-up
