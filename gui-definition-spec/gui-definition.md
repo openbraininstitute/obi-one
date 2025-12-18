@@ -36,10 +36,10 @@ Block elements:
 
 - `string_input`
 - `model_identifier`
-- `parameter_sweep`
+- `float_parameter_sweep`
 - `int_parameter_sweep`
 - `reference`
-- `predefined_neuronset`
+- `entity_property_dropdown`
 
 ## Hidden elements
 
@@ -272,15 +272,15 @@ class Block:
 
 <img src="designs/reference.png"  width="300" />
 
-## Predefined neuron set
+## Entity property dropdown
 
-ui_element: `predefined_neuronset`
+ui_element: `entity_property_dropdown`
 
 - Should accept as inputs either a single `string` or an `string array`.
 - Should have an `entity_type` property which is a string (not a field of type string, i.e. a "non-validating" property)
 - Should have a `property` property ("non-validating" string).
 
-Reference schema [predefined_neuronset](reference_schemas/predefined_neuronset.json)
+Reference schema [entity_property_dropdown](reference_schemas/entity_property_dropdown.json)
 
 ### Example Pydantic implementation
 
@@ -292,7 +292,7 @@ class Block:
     node_set: Annotated[
         NodeSetType,
         Field(
-            ui_element="predefined_neuronset",
+            ui_element="entity_property_dropdown",
             min_length=1,
             entity_type="circuit",
             property="NodeSet",
@@ -304,7 +304,7 @@ class Block:
 
 ### UI design
 
-<img src="designs/predefined_neuronset.png"  width="300" />
+<img src="designs/entity_property_dropdown.png"  width="300" />
 
 ## Legacy elements
 
