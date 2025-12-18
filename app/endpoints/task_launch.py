@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -26,6 +27,9 @@ OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
 
 """Commit hash of the code version to use."""
 OBI_ONE_COMMIT_SHA = "b4a4cb0a2f125c1b94dc2a9be1f285ce393dbd86"
+
+"""Time interval in seconds to check job status."""
+POLLING_INTERVAL = 5
 
 
 class TaskConfigType(StrEnum):
@@ -190,7 +194,37 @@ def _submit_task_job(
     # Add job as executor to activity
     _update_execution_activity_executor(db_client, activity_type, activity_id, job_id)
 
-    return activity_id, job_id
+    return activity_id, activity_type, job_id
+
+
+async def _set_final_activity_status(
+    db_client: entitysdk.Client,
+    ls_client: httpx.Client,
+    activity_type: str,
+    activity_id: str,
+    job_id: str,
+) -> None:
+    """Waits until the job is completed (done or error) and sets the final activity status."""
+    while True:
+        # Check job status
+        response = ls_client.get(url=f"/job/{job_id}")
+        if response.status_code != HTTPStatus.OK:
+            msg = "Job status could not be determined!"
+            raise ValueError(msg)
+        response_body = response.json()
+        job_status = response_body.get("status")
+
+        if job_status == "done":
+            # Set activity status to done
+            # Note: Should have been set already by launch script!
+            _update_execution_activity_status(db_client, activity_type, activity_id, "done")
+            return
+        if job_status == "error":
+            # Set activity status to error
+            _update_execution_activity_status(db_client, activity_type, activity_id, "error")
+            return
+        # Wait and repeat
+        await asyncio.sleep(POLLING_INTERVAL)
 
 
 @router.get(
@@ -201,7 +235,7 @@ def _submit_task_job(
         "The type of task is determined based on the config entity provided."
     ),
 )
-def task_launch_endpoint(
+async def task_launch_endpoint(
     entity_type: TaskConfigType,
     entity_id: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
@@ -213,6 +247,11 @@ def task_launch_endpoint(
     config_asset_id = _get_config_asset(db_client, entity_type, entity_id)
 
     # Launch task
-    activity_id, job_id = _submit_task_job(db_client, ls_client, entity_type, entity_id, config_asset_id)
+    activity_id, activity_type, job_id = _submit_task_job(
+        db_client, ls_client, entity_type, entity_id, config_asset_id
+    )
+
+    # Wait for job completion and set final activity status
+    await _set_final_activity_status(db_client, ls_client, activity_type, activity_id, job_id)
 
     return activity_id
