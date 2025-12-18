@@ -1,5 +1,4 @@
 import asyncio
-import numpy as np
 import pathlib
 import tempfile
 import zipfile
@@ -7,6 +6,7 @@ from http import HTTPStatus
 from typing import Annotated
 
 import morphio
+import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
@@ -121,9 +121,8 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
     return content, file_extension
 
 
-async def _validate_soma_diameter(file_path, threshold=100.0):
-    """
-    Returns True if the soma diameter is within the threshold.
+async def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
+    """Returns True if the soma diameter is within the threshold.
     Returns False if it exceeds the threshold or if no soma exists.
     """
     try:
@@ -138,8 +137,8 @@ async def _validate_soma_diameter(file_path, threshold=100.0):
         # Check if the largest diameter point exceeds the limit
         return np.max(diameters) <= threshold
 
-    except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
+    except (morphio.MorphioError, OSError, ValueError) as e:
+        L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
 
 
