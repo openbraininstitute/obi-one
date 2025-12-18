@@ -42,6 +42,7 @@ class MorphologyMetricsTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,  # noqa: ARG002
+        activity_id: str | None = None,  # noqa: ARG002
     ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")

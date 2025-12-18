@@ -626,6 +626,7 @@ class CircuitExtractionTask(Task):
         *,
         db_client: Client = None,
         entity_cache: bool = False,
+        activity_id: str | None = None,  # noqa: ARG002
     ) -> str | None:  # Returns the ID of the extracted circuit
         # Create execution activity
         # TODO: To be moved to service or task manager

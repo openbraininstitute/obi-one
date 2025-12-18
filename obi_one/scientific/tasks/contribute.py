@@ -210,7 +210,11 @@ class ContributeMorphologyTask(Task):
     config: ContributeMorphologySingleConfig
 
     def execute(
-        self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,
+        entity_cache: bool = False,
+        activity_id: str | None = None,
     ) -> None:
         pass
 
@@ -236,5 +240,11 @@ class ContributeSubjectSingleConfig(ContributeMorphologyScanConfig, SingleConfig
 class ContributeSubjectTask(Task):
     config: ContributeSubjectSingleConfig
 
-    def execute(self, *, db_client: entitysdk.client.Client = None) -> None:
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,
+        entity_cache: bool = False,
+        activity_id: str | None = None,
+    ) -> None:
         pass
