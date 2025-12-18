@@ -185,7 +185,7 @@ class Block:
 
 <img src="designs/model_identifier.png"  width="300" />
 
-## Parameter sweep
+## Flaot parameter sweep
 
 ui_element: `float_parameter_sweep`
 
