@@ -142,7 +142,7 @@ def _submit_task_job(
 
     # Create activity and set to pending for launching the job
     activity_type = _get_execution_activity_type(entity_type)
-    activity_id = _create_execution_activity(db_client, activity_type, activity_type, entity_id)
+    activity_id = _create_execution_activity(db_client, activity_type, entity_type, entity_id)
     _update_execution_activity_status(db_client, activity_type, activity_id, "pending")
 
     # Command line arguments
