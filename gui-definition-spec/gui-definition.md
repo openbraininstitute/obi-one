@@ -187,7 +187,7 @@ class Block:
 
 ## Parameter sweep
 
-ui_element: `parameter_sweep`
+ui_element: `float_parameter_sweep`
 
 - Should have an `anyOf` property.
 - Should accept either a `number` or `number array`.
