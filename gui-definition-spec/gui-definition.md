@@ -156,9 +156,7 @@ ui_element: `model_identifier`
 
 - Should have an `anyOf` property.
 
-- Frontend ignores the first item in the `anyOf`.
-- Second item in the `anyOf` should have a `type` property with a `const` value. (e.g `CircuitFromId`).
-- Second item in the `anyOf` should have an `id_str` property which accepts a string.
+- Should accept as input an object including a `id_str` string field.
 - Should have a non-validating string field `primary_entity_parameter` specifying where in the config is `model_identifier` defined. (e.g. `initialize.circuit`)
 - It follows from the above that this ui element can only be used in _root_blocks_, never in blocks within _block_dictionaries_.
 
