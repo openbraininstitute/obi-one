@@ -154,8 +154,13 @@ class Block:
 
 ui_element: `model_identifier`
 
-Should have a `type` property with a `const` value. (e.g `CircuitFromId`).
-Should have an `id_str` property which accepts a string.
+- Should have an `anyOf` property.
+
+- Frontend ignores the first item in the `anyOf`.
+- Second item in the `anyOf` should have a `type` property with a `const` value. (e.g `CircuitFromId`).
+- Second item in the `anyOf` should have an `id_str` property which accepts a string.
+- Should have a non-validating string field `primary_entity_parameter` specifying where in the config is `model_identifier` defined. (e.g. `initialize.circuit`)
+- It follows from the above that this ui element can only be used in _root_blocks_, never in blocks within _block_dictionaries_.
 
 Reference schema [model_identifier](reference_schemas/model_identifier.json)
 
@@ -163,13 +168,16 @@ Reference schema [model_identifier](reference_schemas/model_identifier.json)
 
 ```py
 
+class Circuit:
+    pass
+
 class CircuitFromId(OBIBaseModel):
     id_str: str = Field(description="ID of the entity in string format.")
 
 
 class Block:
-    circuit: CircuitFromID = Field(
-            title="Circuit", description="Circuit to simulate.", ui_element="model_identifier"
+    circuit: Circuit | CircuitFromId = Field(
+            title="Circuit", description="Circuit to simulate.", ui_element="model_identifier", primary_entity_parameter="initialize.circuit"
         )
 ```
 
