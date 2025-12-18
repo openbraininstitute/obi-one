@@ -183,7 +183,7 @@ class Block:
 
 <img src="designs/model_identifier.png"  width="300" />
 
-## Flaot parameter sweep
+## Float parameter sweep
 
 ui_element: `float_parameter_sweep`
 
@@ -242,28 +242,17 @@ class Block:
 
 ui_element: `reference`
 
-- Should have an `anyOf` property.
-  - First element should be an `object` with string fields `block_name` and `block_dict_name`.
-  - First element should have a `type` property with a `const` value. (e.g `NeuronSetReference`).
-  - Second element should be `null`.
-  - **Order matters: null should always come last**
+- Should accept as input an `object` with `string` fields `block_name` and `block_dict_name`.
+- Second element should be `null`.
+- Should have a string (non-validating) `reference_type`, which is consitent with the type of the reference.
 
 Reference schema [reference](reference_schemas/reference.json)
 
 ### Example Pydantic implementation
 
-_Note: Placing `None` inside `Annotated` ensures the title and description on the parameter and not the inner reference object_
-
 ```py
 class Block:
-    node_set: Annotated[
-            NeuronSetReference | None,
-            Field(
-                ui_element="reference",
-                title="Neuron Set",
-                description="Neuron set to simulate.",
-            ),
-        ] = None
+    node_set: NeuronSetReference | None = Field(default=None, ui_element="reference", title="Neuron Set", description="Neuron set to simulate.", reference_type="NeuronSetReference")
 ```
 
 ### UI design
