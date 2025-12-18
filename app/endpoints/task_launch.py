@@ -25,7 +25,7 @@ OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
 
 """Commit hash of the code version to use."""
-OBI_ONE_COMMIT_SHA = "11bad06f5433eb13f47aa086c79048ca043e9a04"
+OBI_ONE_COMMIT_SHA = "745d9726837566a754af40c5c9b499d96e9e035f"
 
 
 class TaskConfigType(StrEnum):
