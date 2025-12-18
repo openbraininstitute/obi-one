@@ -17,5 +17,5 @@
   "description": "the description",
   "entity_type": "circuit",
   "property": "NodeSet",
-  "ui_element": "predefined_neuronset"
+  "ui_element": "entity_property_dropdown"
 }

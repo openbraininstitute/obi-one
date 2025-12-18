@@ -2,7 +2,7 @@
   "properties": {
     "type": {
       "type": "string",
-      "const": "Form"
+      "const": "Config"
     }
   },
   "additionalProperties": false,

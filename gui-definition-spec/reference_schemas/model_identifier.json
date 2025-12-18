@@ -1,20 +1,75 @@
 {
-  "properties": {
-    "id_str": {
-      "type": "string",
-      "title": "Id Str",
-      "description": "ID of the entity in string format."
+  "anyOf": [
+    {
+      "oneOf": [
+        {
+          "$ref": "#/components/schemas/Circuit"
+        },
+        {
+          "properties": {
+            "id_str": {
+              "type": "string",
+              "title": "Id Str",
+              "description": "ID of the entity in string format."
+            },
+            "type": {
+              "type": "string",
+              "const": "CircuitFromID",
+              "title": "Type"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["id_str", "type"],
+          "title": "CircuitFromID"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "Circuit": "#/components/schemas/Circuit",
+          "CircuitFromID": "#/components/schemas/CircuitFromID"
+        }
+      }
     },
-    "type": {
-      "type": "string",
-      "const": "CircuitFromID",
-      "title": "Type"
+    {
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Circuit"
+          },
+          {
+            "properties": {
+              "id_str": {
+                "type": "string",
+                "title": "Id Str",
+                "description": "ID of the entity in string format."
+              },
+              "type": {
+                "type": "string",
+                "const": "CircuitFromID",
+                "title": "Type"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": ["id_str", "type"],
+            "title": "CircuitFromID"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "Circuit": "#/components/schemas/Circuit",
+            "CircuitFromID": "#/components/schemas/CircuitFromID"
+          }
+        }
+      },
+      "type": "array"
     }
-  },
-  "additionalProperties": false,
-  "type": "object",
-  "required": ["id_str", "type"],
-  "title": "CircuitFromID",
-  "description": "Model identifier by circuit ID.",
-  "ui_element": "model_identifier"
+  ],
+  "title": "Circuit",
+  "description": "Circuit to simulate.",
+  "ui_element": "model_identifier",
+  "primary_entity_parameter": "initialize.circuit"
 }
