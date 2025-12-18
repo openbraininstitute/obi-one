@@ -190,7 +190,7 @@ def _submit_task_job(
     # Add job as executor to activity
     _update_execution_activity_executor(db_client, activity_type, activity_id, job_id)
 
-    return activity_id
+    return activity_id, job_id
 
 
 @router.get(
@@ -213,6 +213,6 @@ def task_launch_endpoint(
     config_asset_id = _get_config_asset(db_client, entity_type, entity_id)
 
     # Launch task
-    activity_id = _submit_task_job(db_client, ls_client, entity_type, entity_id, config_asset_id)
+    activity_id, job_id = _submit_task_job(db_client, ls_client, entity_type, entity_id, config_asset_id)
 
     return activity_id
