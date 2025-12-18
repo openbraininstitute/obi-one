@@ -610,7 +610,7 @@ class CircuitExtractionTask(Task):
         is_external = False
         if db_client:
             if activity_id:
-                execution_entity = db_client.search_entity(
+                execution_entity = db_client.get_entity(
                     entity_type=models.CircuitExtractionExecution, entity_id=activity_id
                 )
                 is_external = True  # Activity status managed externally
