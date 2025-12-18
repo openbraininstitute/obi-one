@@ -1,4 +1,5 @@
 import asyncio
+import numpy as np
 import pathlib
 import tempfile
 import zipfile
@@ -120,6 +121,28 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
     return content, file_extension
 
 
+async def _validate_soma_diameter(file_path, threshold=100.0):
+    """
+    Returns True if the soma diameter is within the threshold.
+    Returns False if it exceeds the threshold or if no soma exists.
+    """
+    try:
+        # Load morphology with the Immutable API
+        m = morphio.Morphology(file_path)
+        diameters = m.soma.diameters
+
+        # Return False if no soma points are present
+        if len(diameters) == 0:
+            return False
+
+        # Check if the largest diameter point exceeds the limit
+        return np.max(diameters) <= threshold
+
+    except Exception as e:
+        print(f"Error reading file {file_path}: {e}")
+        return False
+
+
 @router.post(
     "/test-neuron-file",
     summary="Validate morphology format and returns the conversion to other formats.",
@@ -133,10 +156,23 @@ async def test_neuron_file(
     temp_file_path = ""
     outputfile1, outputfile2 = "", ""
     try:
+        # 2. Save the bytes to a temporary file first
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file.write(content)
             temp_file_path = temp_file.name
 
+        # 3. NOW pass the filename (temp_file_path) to the diameter validator
+        if not await _validate_soma_diameter(temp_file_path):
+            L.error(f"Unrealistic soma diameter detected in {file.filename}")
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": "Unrealistic soma diameter detected.",
+                },
+            )
+
+        # 4. Proceed with conversion
         outputfile1, outputfile2 = await process_and_convert_morphology(
             temp_file_path=temp_file_path, file_extension=file_extension
         )
