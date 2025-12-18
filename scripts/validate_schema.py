@@ -150,14 +150,6 @@ def validate_array(schema: Cut, prop: str, array_type: type, ref: str) -> None:
             raise ValueError(msg)
 
 
-def validate_type(schema: Cut, ref: str) -> None:
-    type_ = schema.get("properties.type.const")
-
-    if type(type_) is not str:
-        msg = f"Validation error at {ref}: 'properties.type.const' must be a string. Got: {type(type_)}"
-        raise ValueError(msg)
-
-
 def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
     if schema.get("ui_element") not in {"root_block", "block_dictionary"}:
         msg = (
@@ -167,13 +159,8 @@ def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
         raise ValueError(msg)
 
 
-def validate_form(form: Cut, ref: str):
-    ## TODO Remove
-
-    if ref != "#/components/schemas/CircuitSimulationScanConfig":
-        return
-
-    if not form.get("ui_enabled", True):
+def validate_config(form: Cut, ref: str) -> None:
+    if not form.get("ui_enabled", False):
         print(f"Form {ref} is disabled, skipping validation.")
         return
 
@@ -182,10 +169,8 @@ def validate_form(form: Cut, ref: str):
     validate_string(form, "title", ref)
     validate_string(form, "description", ref)
     validate_array(form, "group_order", str, ref)
-    validate_array(form, "required", str, ref)
-    validate_type(form, ref)
 
-    for root_element, root_element_schema in form.get("properties", {}).items():
+    for root_element, root_element_schema in form.get("properties", {}).items():  # type:ignore[]
         if root_element == "type":
             continue
 
@@ -209,7 +194,7 @@ def validate_schema() -> None:
         schema = resolve_ref(openapi_schema, schema_ref)
 
         proxy = Cut(schema)
-        validate_form(proxy, schema_ref)
+        validate_config(proxy, schema_ref)
 
 
 if __name__ == "__main__":

@@ -286,6 +286,9 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group_order=0,
     )
 
+    class Config(SimulationScanConfig.Config):
+        json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
+
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
     """CircuitSimulationScanConfig."""
@@ -378,6 +381,9 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
     )
+
+    class Config(SimulationScanConfig.Config):
+        json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
 
 
 class SimulationSingleConfigMixin(abc.ABC):
