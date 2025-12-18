@@ -294,7 +294,7 @@ class Block:
             min_length=1,
             entity_type="circuit",
             property="NodeSet",
-            title="predefined neuronset",
+            title="entity property dropdown",
             description="the description"
         ),
     ]
