@@ -4,7 +4,7 @@ import os
 import sys
 from functools import partial
 
-from entitysdk import Client, ProjectContext, models
+from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
@@ -52,6 +52,7 @@ def main() -> int:
     """
     persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
+    local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
     db_client = None
 
     try:
@@ -97,7 +98,7 @@ def main() -> int:
         # Get entity type
         entity_type = getattr(models, args.entity_type)
 
-        # Get DB client
+        # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
             partial(
                 get_token,
@@ -110,8 +111,11 @@ def main() -> int:
             project_id=args.project_id, virtual_lab_id=args.virtual_lab_id, environment=deployment
         )
         db_client = Client(
-            environment=deployment, project_context=project_context, token_manager=token_manager
-        )  # TODO: Use local asset store
+            environment=deployment,
+            project_context=project_context,
+            token_manager=token_manager,
+            local_store=LocalAssetStore(prefix=local_store_prefix),
+        )
 
         # Update activity status
         update_activity_status(db_client, args.activity_type, args.activity_id, "running")
