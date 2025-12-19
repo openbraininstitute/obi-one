@@ -245,7 +245,7 @@ Reference schema [int_parameter_sweep](reference_schemas/int_parameter_sweep.jso
 
 ```py
 class Block:
-    random_seed: list[int] | int = Field(
+    random_seed: int | list[int] = Field(
             ui_element="int_parameter_sweep",
             default=1,
             title="Random seed"
