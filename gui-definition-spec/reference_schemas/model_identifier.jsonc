@@ -5,6 +5,7 @@
         {
           "$ref": "#/components/schemas/Circuit"
         },
+        // This must be present.
         {
           "properties": {
             "id_str": {

@@ -7,25 +7,27 @@
 Scan configs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
 
 The config is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
-All root elements and block elements must have a valid `ui_element`. _See below for details_.
+All root elements and block elements must have a valid `ui_element`. [See below for details](#valid-ui_elements).
 
 **If a config requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and corresponding validation scripts, and a UI design**
-
-### group_order
-
-The `group_order` property must be an array of strings determining the order of groups. All values must be present in at least one root element's `group`.
 
 ### Constraints
 
 All properties of a scan config must be _root elements_. (See below).
 
-Reference schema: [scan_config](reference_schemas/scan_config.json)
+They should contain `group_order` property which must be an array of strings determining the order of groups of root elements. All values in `group_order` must be present in at least one root element's `group` string.
+
+Optionally, they should contain a `default_block_element_labels` dictionary, specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
+
+Reference schema: [scan_config](reference_schemas/scan_config.jsonc)
 
 ## ui_element
 
-All _root elements_ and _block elements_ must include a `ui_element` string that maps the property to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two components require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
+All _root elements_ and _block elements_ must include a `ui_element` string that maps the property to a specific UI component. Each `ui_element` identifier corresponds to a strict reference schema. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
 
 All ui_elements must contain a `title` and a `description`.
+
+### Valid `ui_element`s
 
 Root elements:
 
@@ -43,13 +45,17 @@ Block elements:
 
 ## Hidden elements
 
-Setting the property `ui_hidden` to `true` will hide it from the UI. Such a property should have a `default`.
+Setting the property `ui_hidden` to `true` will hide it from the UI. All hidden elements must have a `default`.
 
 ### Example
 
 ```py
 class Block:
-    field: str = Field(default_value="hidden input", ui_hidden=True,  ui_element="string_input", min_length=1, title="title" description="description")
+    field: str = Field(default="hidden input",  # Default must be present if ui_hidden==True
+                        ui_hidden=True,
+                        ui_element="string_input",
+                        title="title",
+                        description="description")
 ```
 
 ## Root elements
@@ -70,15 +76,17 @@ Root blocks are blocks defined at the root level of a scan config.
 
 They should contain `properties` in its schema which are _block_elements_.
 
-Reference schema: [root_block](reference_schemas/root_block_schema.json)
+Reference schema: [root_block](reference_schemas/root_block_schema.jsonc)
 
 ### Example Pydantic implementation
 
 ```py
 
 class Info(Block):
-    campaign_name: str = Field(min_length=1, description="Name of the campaign.")
-    campaign_description: str = Field(min_length=1, description="Description of the campaign.")
+    campaign_name: str = Field(
+        ui_element="string_input",
+        title="campaign name",
+        description="Name of the campaign.")
 
 class Config:
 
@@ -86,8 +94,8 @@ class Config:
         ui_element="root_block",
         title="Title",
         description="Description",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
+        group="Group 1", # Must be present in its parent's config `group_order` array,
+        group_order=0, # Unique within the group.
     )
 ```
 
@@ -100,27 +108,31 @@ ui_element: `block_dictionary`
 - They should contain a `singular_name`.
 - They should contain a `reference_type`.
 
-Reference schema: [block_dictionary](reference_schemas/block_dictionary.json)
+Reference schema: [block_dictionary](reference_schemas/block_dictionary.jsonc)
 
 ### Example Pydantic implementation
 
 ```py
 class Config:
+
+    ## SimulationNeuronSetUnion is a union of blocks (i.e. classes with block_elements)
+
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         ui_element="block_dictionary",
         default_factory=dict,
-        reference_type=NeuronSetReference.__name__,
+        reference_type="NeuronSetReference",
+        title="Neuron sets",
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=0,
+        group="Group 1", # Must exit in parent config's `group_order` array
+        group_order=0, # Unique within the group
     )
 
 ```
 
 ### UI design
 
-<img src="designs/block_dictionary.png" alt="description" width="300" />
+<img src="designs/block_dictionary.png"  width="300" />
 
 ## Block elements
 
@@ -143,24 +155,25 @@ Reference schema: [string_input](reference_schemas/string_input.json)
 
 ```py
 class Block:
-    field: str = Field(ui_element="string_input", min_length=1, title="title" description="description")
+    field: str = Field(ui_element="string_input",
+                      min_length=1,
+                      title="title",
+                      description="description")
 ```
 
 ### UI design
 
-<img src="designs/string_input.png" alt="description" width="300" />
+<img src="designs/string_input.png" width="300" />
 
 ## Model identifier
 
 ui_element: `model_identifier`
 
-- Should have an `anyOf` property.
-
-- Should accept as input an object including a `id_str` string field.
+- Should accept as input an object including an `id_str` string field.
 - Should have a non-validating string field `primary_entity_parameter` specifying where in the config is `model_identifier` defined. (e.g. `initialize.circuit`)
 - It follows from the above that this ui element can only be used in _root_blocks_, never in blocks within _block_dictionaries_.
 
-Reference schema [model_identifier](reference_schemas/model_identifier.json)
+Reference schema [model_identifier](reference_schemas/model_identifier.jsonc)
 
 ### Example Pydantic implementation
 
@@ -169,13 +182,16 @@ Reference schema [model_identifier](reference_schemas/model_identifier.json)
 class Circuit:
     pass
 
+# Required
 class CircuitFromId(OBIBaseModel):
     id_str: str = Field(description="ID of the entity in string format.")
 
 
 class Block:
-    circuit: Circuit | CircuitFromId = Field(
-            title="Circuit", description="Circuit to simulate.", ui_element="model_identifier", primary_entity_parameter="initialize.circuit"
+    circuit: Circuit | CircuitFromId = Field( # Other elements in the union other than `CircuitFromId` not required.
+            ui_element="model_identifier",
+            primary_entity_parameter="initialize.circuit",
+            title="Circuit", description="Circuit to simulate."
         )
 ```
 
@@ -188,12 +204,12 @@ class Block:
 ui_element: `float_parameter_sweep`
 
 - Should have an `anyOf` property.
-- Should accept either a `number` or `number array`.
+- Should accept a `number` and `number array`.
+- _The single `number` value must come first_.
 - Optional `minimum` and `maximum` and `default` in both cases.
+- Optional `units` string.
 
-- Optional `units` string field.
-
-Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep.json)
+Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep.jsonc)
 
 ### Example Pydantic implementation
 
@@ -201,8 +217,8 @@ Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep
 
 class Block:
 
-    extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
-            ui_element="parameter_sweep",
+    extracellular_calcium_concentration:  NonNegativeFloat | list[NonNegativeFloat] = Field( # The single value must come first in the union
+            ui_element="float_parameter_sweep",
             default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
@@ -245,6 +261,9 @@ ui_element: `reference`
 - Should accept as input an `object` with `string` fields `block_name` and `block_dict_name`.
 - Second element should be `null`.
 - Should have a string (non-validating) `reference_type`, which is consitent with the type of the reference.
+- They should have a `default` set to `null`.
+
+_References are hidden from the ui if either the `ui_hidden` property is `True` or their `reference_type` is missing in its configuration's `default_block_reference_labels` [See](#constraints)_.
 
 Reference schema [reference](reference_schemas/reference.json)
 
@@ -252,7 +271,11 @@ Reference schema [reference](reference_schemas/reference.json)
 
 ```py
 class Block:
-    node_set: NeuronSetReference | None = Field(default=None, ui_element="reference", title="Neuron Set", description="Neuron set to simulate.", reference_type="NeuronSetReference")
+    node_set: NeuronSetReference | None = Field(default=None, #Must be present
+                                                ui_element="reference",
+                                                title="Neuron Set",
+                                                description="Neuron set to simulate.",
+                                                reference_type="NeuronSetReference")
 ```
 
 ### UI design
@@ -263,24 +286,23 @@ class Block:
 
 ui_element: `entity_property_dropdown`
 
-- Should accept as inputs either a single `string` or an `string array`.
-- Should have an `entity_type` property which is a string (not a field of type string, i.e. a "non-validating" property)
-- Should have a `property` property ("non-validating" string).
+- Should accept a single `string` as input.
+- Should have an `entity_type` non-validating string.
+- Should have a `property` non-validating string.
 
 Reference schema [entity_property_dropdown](reference_schemas/entity_property_dropdown.json)
 
 ### Example Pydantic implementation
 
 ```py
-CircuitNode = Annotated[str, Field(min_length=1)]
-NodeSetType = CircuitNode | list[CircuitNode]
+CircuitNode = Annotated[str, Field(min_length=1)] # Required in the schema
+NodeSetType = CircuitNode | list[CircuitNode] # list[] not required
 
 class Block:
     node_set: Annotated[
         NodeSetType,
         Field(
             ui_element="entity_property_dropdown",
-            min_length=1,
             entity_type="circuit",
             property="NodeSet",
             title="entity property dropdown",
@@ -307,8 +329,6 @@ Current pydantic implementation (`ui_element` added) for reference:
 
 ```py
 class Block:
-    neuron_ids: (
-        NamedTuple | Annotated[list[NamedTuple], Field(ui_element="neuron_ids", min_length=1, description="description")]
-    )
+    neuron_ids: NamedTuple | list[NamedTuple] = Field(ui_element="neuron_ids", min_length=1, title="neuron ids", description="description")
 
 ```
