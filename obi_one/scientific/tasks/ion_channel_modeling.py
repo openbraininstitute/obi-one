@@ -467,6 +467,7 @@ class IonChannelFittingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,  # noqa: ARG002
+        activity_id: str | None = None,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
