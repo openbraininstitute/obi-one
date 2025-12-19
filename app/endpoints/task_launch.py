@@ -26,7 +26,7 @@ OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
 
 """Commit hash of the code version to use."""
-OBI_ONE_COMMIT_SHA = "b4a4cb0a2f125c1b94dc2a9be1f285ce393dbd86"
+OBI_ONE_COMMIT_SHA = "e8b3d74a82e530ec7553a82023cb0ba0694d1143"
 
 """Time interval in seconds to check job status."""
 POLLING_INTERVAL = 5
