@@ -4,12 +4,15 @@
       "type": "string",
       "const": "Config"
     }
+
+    // Root elements defined here
   },
   "additionalProperties": false,
   "type": "object",
   "required": ["type"],
   "title": "The title of the form",
   "description": "Description of the form",
-  "group_order": ["Group 1", "Group 2"],
-  "ui_enabled": true
+  "group_order": ["Group 1", "Group 2"], // All groups must be used in at least one root element.
+  "ui_enabled": true,
+  "default_block_reference_labels": { "Reference_1": "Label_1" }
 }

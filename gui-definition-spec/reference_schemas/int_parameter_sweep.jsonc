@@ -1,13 +1,14 @@
 {
   "anyOf": [
+    // Single value must come before the array
+    {
+      "type": "integer"
+    },
     {
       "items": {
         "type": "integer"
       },
       "type": "array"
-    },
-    {
-      "type": "integer"
     }
   ],
   "title": "Random Seed",

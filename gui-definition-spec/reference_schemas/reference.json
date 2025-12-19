@@ -27,5 +27,6 @@
   ],
   "title": "Neuron Set",
   "description": "Neuron set to simulate.",
-  "ui_element": "reference"
+  "ui_element": "reference",
+  "reference_type": "NeuronSetReference"
 }

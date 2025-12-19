@@ -12,7 +12,6 @@
       "type": "array"
     }
   ],
-  "minLength": 1,
   "title": "predefined neuronset",
   "description": "the description",
   "entity_type": "circuit",
