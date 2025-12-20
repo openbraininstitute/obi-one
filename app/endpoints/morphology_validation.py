@@ -49,8 +49,8 @@ async def process_and_convert_morphology(
             outputfile1 = temp_file_path.replace(".asc", "_converted.swc")
             outputfile2 = temp_file_path.replace(".asc", "_converted.h5")
 
-        convert(temp_file_path, outputfile1)
-        convert(temp_file_path, outputfile2)
+        convert(temp_file_path, outputfile1, single_point_soma=True)
+        convert(temp_file_path, outputfile2, single_point_soma=True)
 
     except Exception as e:
         raise HTTPException(
