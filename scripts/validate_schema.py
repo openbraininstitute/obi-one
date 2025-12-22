@@ -159,6 +159,18 @@ def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
         raise ValueError(msg)
 
 
+def validate_type(schema: Cut, form_ref: str) -> None:
+    if schema.get("type.default"):
+        msg = f"Validation error at {form_ref}: Root schema 'type' must have a 'default'"
+        raise ValueError(msg)
+
+
+def validate_dict(schema: Cut, element: str, form_ref: str) -> None:
+    if type(schema.get(element, {})) is not dict:
+        msg = f"Validation error at {form_ref}: {element} must be a dictionary"
+        raise ValueError(msg)
+
+
 def validate_config(form: Cut, ref: str) -> None:
     if not form.get("ui_enabled", False):
         print(f"Form {ref} is disabled, skipping validation.")
@@ -169,9 +181,11 @@ def validate_config(form: Cut, ref: str) -> None:
     validate_string(form, "title", ref)
     validate_string(form, "description", ref)
     validate_array(form, "group_order", str, ref)
+    validate_dict(form, "default_block_reference_labels", ref)
 
     for root_element, root_element_schema in form.get("properties", {}).items():  # type:ignore[]
         if root_element == "type":
+            validate_type(root_element_schema, ref)
             continue
 
         validate_root_element(root_element_schema, root_element, ref)

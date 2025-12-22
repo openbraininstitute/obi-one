@@ -88,6 +88,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -270,6 +271,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         )
 
     initialize: Initialize = Field(
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -277,6 +279,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     )
 
     stimuli: dict[str, MEModelStimulusUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Stimuli",
         reference_type=StimulusReference.__name__,
@@ -285,9 +288,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=0,
     )
-
-    class Config(SimulationScanConfig.Config):
-        json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
@@ -350,9 +350,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         group_order=0,
     )
 
-    class Config(SimulationScanConfig.Config):
-        json_schema_extra: ClassVar[dict] = {"ui_enabled": True}
-
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
@@ -362,6 +359,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
@@ -376,14 +374,12 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
 
     initialize: Initialize = Field(
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
         group_order=1,
     )
-
-    class Config(SimulationScanConfig.Config):
-        json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
 
 
 class SimulationSingleConfigMixin(abc.ABC):
