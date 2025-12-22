@@ -5,7 +5,9 @@ import os
 from fastapi.openapi.utils import get_openapi
 from jsonschema import validate
 from typing import Any
+from collections import defaultdict
 
+import jsonschema
 from scalpl import Cut
 
 current_dir = Path(__file__).resolve().parent
@@ -134,7 +136,7 @@ def validate_block_schemas(schema: dict, openapi_schema: dict) -> None:
                 validate(schema, block_meta_schema)
 
 
-def validate_string(schema: Cut, prop: str, ref: str) -> None:
+def validate_string(schema: dict, prop: str, ref: str) -> None:
     value = schema.get(prop)
 
     if type(value) is not str:
@@ -142,15 +144,20 @@ def validate_string(schema: Cut, prop: str, ref: str) -> None:
         raise ValueError(msg)
 
 
-def validate_array(schema: Cut, prop: str, array_type: type, ref: str) -> None:
+def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:
     value = schema.get(prop, [])
     for item in value:  # type:ignore reportOptionalIterable
         if type(item) is not array_type:
-            msg = f"Validation error at {ref}: Array items must be of type {array_type}. Got: {type(item)}"
+            msg = (
+                f"Validation error at {ref}: Array items must be of type {array_type}."
+                f"Got: {type(item)}"
+            )
             raise ValueError(msg)
 
+    return value
 
-def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
+
+def validate_root_element(schema: dict, element: str, form_ref: str) -> None:
     if schema.get("ui_element") not in {"root_block", "block_dictionary"}:
         msg = (
             f"Validation error at {form_ref} {element}: 'ui_element' must be 'root_block' or"
@@ -159,20 +166,77 @@ def validate_root_element(schema: Cut, element: str, form_ref: str) -> None:
         raise ValueError(msg)
 
 
-def validate_type(schema: Cut, form_ref: str) -> None:
-    if schema.get("type.default"):
-        msg = f"Validation error at {form_ref}: Root schema 'type' must have a 'default'"
+def validate_type(schema: dict, form_ref: str) -> None:
+    if not isinstance(schema, dict):
+        msg = f"Validation error at {form_ref}: 'type' schema must be a dictionary"
+        raise TypeError(msg)
+
+    if not schema.get("default"):
+        msg = f"Validation error at {form_ref}: 'type' must have a default"
         raise ValueError(msg)
 
 
-def validate_dict(schema: Cut, element: str, form_ref: str) -> None:
+def validate_dict(schema: dict, element: str, form_ref: str) -> None:
     if type(schema.get(element, {})) is not dict:
         msg = f"Validation error at {form_ref}: {element} must be a dictionary"
         raise ValueError(msg)
 
 
-def validate_config(form: Cut, ref: str) -> None:
-    if not form.get("ui_enabled", False):
+def validate_group_order(schema: dict, form_ref: str) -> None:
+    groups: list[str] = validate_array(schema, "group_order", str, form_ref)
+
+    used_groups: dict[str, list[int]] = defaultdict(list)
+
+    for root_element, root_element_schema in schema.get("properties", {}).items():  # type:ignore[]
+        if root_element == "type":
+            continue
+
+        group = root_element_schema.get("group")
+        group_order = root_element_schema.get("group_order")
+        if not group:
+            msg = f"Validation error at {form_ref}: {root_element} must have a group"
+            raise ValueError(msg)
+
+        if group_order is None:
+            msg = f"Validation error at {form_ref}: {root_element} must have a group_order"
+            raise ValueError(msg)
+
+        if not isinstance(group_order, int):
+            msg = f"Validation error at {form_ref}: {root_element} group_order must be an integer"
+            raise TypeError(msg)
+
+        if not isinstance(group, str):
+            msg = f"Validation error at {form_ref}: {root_element} group must be a string"
+            raise TypeError(msg)
+
+        if group not in groups:
+            msg = (
+                f"Validation error at {form_ref}: {root_element} has group '{group}'"
+                "not in root group_order"
+            )
+            raise ValueError(msg)
+
+        used_groups[group].append(group_order)
+
+    if extra_groups := (set(groups) - set(used_groups.keys())):
+        msg = (
+            f"Validation error at {form_ref}: group_order contains groups not used in properties"
+            f" {extra_groups}"
+        )
+
+        raise ValueError(msg)
+
+    for used_group, used_group_orders in used_groups.items():
+        if len(used_group_orders) != len(set(used_group_orders)):
+            msg = (
+                f"Validation error at {form_ref}: group '{used_group}' has duplicate group_order"
+                f" values: {used_group_orders}"
+            )
+            raise ValueError(msg)
+
+
+def validate_config(form: dict, ref: str) -> None:
+    if not form.get("ui_enabled"):
         print(f"Form {ref} is disabled, skipping validation.")
         return
 
@@ -180,8 +244,8 @@ def validate_config(form: Cut, ref: str) -> None:
 
     validate_string(form, "title", ref)
     validate_string(form, "description", ref)
-    validate_array(form, "group_order", str, ref)
     validate_dict(form, "default_block_reference_labels", ref)
+    validate_group_order(form, ref)
 
     for root_element, root_element_schema in form.get("properties", {}).items():  # type:ignore[]
         if root_element == "type":
@@ -203,12 +267,11 @@ def validate_schema() -> None:
     for path, value in openapi_schema["paths"].items():
         if not path.startswith("/generated"):
             continue
+
         schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
 
         schema = resolve_ref(openapi_schema, schema_ref)
-
-        proxy = Cut(schema)
-        validate_config(proxy, schema_ref)
+        validate_config(schema, schema_ref)
 
 
 if __name__ == "__main__":

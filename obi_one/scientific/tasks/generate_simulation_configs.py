@@ -94,7 +94,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
-                BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             ],
             "default_block_reference_labels": {
                 NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
@@ -288,6 +287,20 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=0,
     )
+
+    class Config(SimulationScanConfig.Config):
+        json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
+            "group_order": [
+                BlockGroup.SETUP_BLOCK_GROUP,
+                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                BlockGroup.EVENTS_GROUP,
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            },
+        }
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
