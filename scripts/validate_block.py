@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 VALID_UI_ELEMENTS = [
     "string_input",
     "model_identifier",
@@ -5,7 +8,48 @@ VALID_UI_ELEMENTS = [
     "int_parameter_sweep",
     "reference",
     "entity_property_dropdown",
+    "neuron_ids",
 ]
+
+from fastapi.openapi.utils import get_openapi
+
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir))
+
+from app.application import app  # noqa: E402
+from app.logger import L  # noqa: E402
+
+
+openapi_schema = get_openapi(
+    title=app.title,
+    version=app.version,
+    openapi_version=app.openapi_version,
+    description=app.description,
+    routes=app.routes,
+)
+
+
+def resolve_ref(openapi_schema: dict, ref: str) -> dict:
+    """Resolves a JSON Reference (e.g., '#/components/schemas/Item')
+    within the openapi_schema.
+    """
+    if not ref.startswith("#/"):
+        msg = f"Only local references (starting with #/) are supported. Got: {ref}"
+        raise ValueError(msg)
+
+    # Split the path, skipping the first element which is '#'
+    path_parts = ref.split("/")[1:]
+
+    current_node = openapi_schema
+
+    for part in path_parts:
+        current_node = current_node.get(part)
+        if current_node is None:
+            msg = f"Reference '{ref}' could not be resolved. Part '{part}' missing."
+            raise KeyError(msg)
+
+    return current_node
 
 
 def validate_hidden_refs_not_required(schema: dict, ref: str) -> None:
@@ -39,6 +83,9 @@ def validate_type(schema: dict, ref: str) -> None:
 def validate_block(schema: dict, ref: str) -> None:
     validate_hidden_refs_not_required(schema, ref)
 
+    validate_string(schema, "title", ref)
+    validate_string(schema, "description", ref)
+
     for key, param_schema in schema.get("properties", {}).items():
         if param_schema.get("ui_hidden"):
             continue
@@ -52,9 +99,5 @@ def validate_block(schema: dict, ref: str) -> None:
                 f"Validation error at {ref}: {key} has invalid ui_element:"
                 f" {param_schema.get('ui_element')}"
             )
-
-            from pprint import pprint
-
-            pprint(schema)
 
             raise ValueError(msg)

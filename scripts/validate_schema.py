@@ -3,12 +3,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from fastapi.openapi.utils import get_openapi
+
 from validate_block import (
     validate_hidden_refs_not_required,
     validate_block,
     validate_string,
     validate_type,
+    openapi_schema,
+    resolve_ref
 )
 
 
@@ -18,36 +20,6 @@ sys.path.append(str(parent_dir))
 
 from app.application import app  # noqa: E402
 from app.logger import L  # noqa: E402
-
-openapi_schema = get_openapi(
-    title=app.title,
-    version=app.version,
-    openapi_version=app.openapi_version,
-    description=app.description,
-    routes=app.routes,
-)
-
-
-def resolve_ref(openapi_schema: dict, ref: str) -> dict:
-    """Resolves a JSON Reference (e.g., '#/components/schemas/Item')
-    within the openapi_schema.
-    """
-    if not ref.startswith("#/"):
-        msg = f"Only local references (starting with #/) are supported. Got: {ref}"
-        raise ValueError(msg)
-
-    # Split the path, skipping the first element which is '#'
-    path_parts = ref.split("/")[1:]
-
-    current_node = openapi_schema
-
-    for part in path_parts:
-        current_node = current_node.get(part)
-        if current_node is None:
-            msg = f"Reference '{ref}' could not be resolved. Part '{part}' missing."
-            raise KeyError(msg)
-
-    return current_node
 
 
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:
@@ -147,6 +119,14 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
             "in additionalProperties"
         )
         raise ValueError(msg)
+
+    for block_schema in schema.get("additionalProperties", {}).get("oneOf", []):
+        ref = block_schema.get("$ref")
+
+        if ref:
+            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}
+
+        validate_block(block_schema, ref)
 
 
 def validate_root_block(schema: dict, key: str, ref: str) -> None:

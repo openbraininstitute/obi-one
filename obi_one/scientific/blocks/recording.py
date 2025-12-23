@@ -15,12 +15,13 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 
 
 class Recording(Block, ABC):
-    neuron_set: (
-        Annotated[
-            NeuronSetReference, Field(title="Neuron Set", description="Neuron set to record from.")
-        ]
-        | None
-    ) = None
+    neuron_set: NeuronSetReference | None = Field(
+        ui_element="reference",
+        reference_type=NeuronSetReference.__name__,
+        default=None,
+        title="Neuron Set",
+        description="Neuron set to record from.",
+    )
 
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
@@ -30,6 +31,7 @@ class Recording(Block, ABC):
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
         | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
     ) = Field(
+        ui_element="float_parameter_sweep",
         default=0.1,
         title="Timestep",
         description="Interval between recording time steps in milliseconds (ms).",
@@ -107,11 +109,21 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
 
     start_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
-        Field(default=0.0, description="Recording start time in milliseconds (ms).", units="ms"),
+        Field(
+            ui_element="float_parameter_sweep",
+            default=0.0,
+            description="Recording start time in milliseconds (ms).",
+            units="ms",
+        ),
     ]
     end_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
-        Field(default=100.0, description="Recording end time in milliseconds (ms).", units="ms"),
+        Field(
+            ui_element="float_parameter_sweep",
+            default=100.0,
+            description="Recording end time in milliseconds (ms).",
+            units="ms",
+        ),
     ]
 
     @model_validator(mode="after")

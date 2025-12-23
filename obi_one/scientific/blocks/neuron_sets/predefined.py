@@ -5,7 +5,7 @@ from pydantic import Field
 
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType, EntityType
 
 L = logging.getLogger("obi-one")
 
@@ -19,7 +19,15 @@ class PredefinedNeuronSet(AbstractNeuronSet):
     title: ClassVar[str] = "Predefined Neuron Set"
 
     node_set: Annotated[
-        NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
+        NodeSetType,
+        Field(
+            ui_element="entity_property_dropdown",
+            entity_type=EntityType.CIRCUIT,
+            property=CircuitPropertyType.NODE_SET,
+            title="Node Set",
+            description="Name of the node set to use.",
+            min_length=1,
+        ),
     ]
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:

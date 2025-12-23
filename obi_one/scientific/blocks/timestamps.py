@@ -10,7 +10,10 @@ class Timestamps(Block, ABC):
     start_time: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
         Field(
-            default=0.0, description="Sart time of the timestamps in milliseconds (ms).", units="ms"
+            ui_element="float_parameter_sweep",
+            default=0.0,
+            description="Sart time of the timestamps in milliseconds (ms).",
+            units="ms",
         ),
     ]
 
@@ -39,6 +42,7 @@ class RegularTimestamps(Timestamps):
     interval: Annotated[
         NonNegativeFloat | list[NonNegativeFloat],
         Field(
+            ui_element="float_parameter_sweep",
             default=10.0,
             description="Interval between timestamps in milliseconds (ms).",
             units="ms",
@@ -47,7 +51,11 @@ class RegularTimestamps(Timestamps):
 
     number_of_repetitions: Annotated[
         NonNegativeInt | list[NonNegativeInt],
-        Field(default=10, description="Number of timestamps to generate."),
+        Field(
+            ui_element="int_parameter_sweep",
+            default=10,
+            description="Number of timestamps to generate.",
+        ),
     ]
 
     def _resolve_timestamps(self) -> list[float]:
