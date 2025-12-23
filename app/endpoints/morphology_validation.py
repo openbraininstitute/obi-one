@@ -149,7 +149,7 @@ async def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> b
 )
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028
+    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028, FBT002
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
