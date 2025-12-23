@@ -121,7 +121,7 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
     return content, file_extension
 
 
-async def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
+def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
     """Returns True if the soma diameter is within the threshold.
     Returns False if it exceeds the threshold or if no soma exists.
     """
@@ -160,7 +160,7 @@ async def test_neuron_file(
             temp_file.write(content)
             temp_file_path = temp_file.name
 
-        if not await _validate_soma_diameter(temp_file_path):
+        if not _validate_soma_diameter(temp_file_path):
             L.error(f"Unrealistic soma diameter detected in {file.filename}")
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
