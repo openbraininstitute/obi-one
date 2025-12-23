@@ -31,7 +31,7 @@ def _handle_empty_file(file: UploadFile) -> None:
 
 
 async def process_and_convert_morphology(
-    temp_file_path: str, file_extension: str, single_point_soma: bool = False
+    temp_file_path: str, file_extension: str, *, single_point_soma: bool = False
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
     try:
@@ -149,19 +149,17 @@ async def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> b
 )
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
+    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
     temp_file_path = ""
     outputfile1, outputfile2 = "", ""
     try:
-        # 2. Save the bytes to a temporary file first
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file.write(content)
             temp_file_path = temp_file.name
 
-        # 3. NOW pass the filename (temp_file_path) to the diameter validator
         if not await _validate_soma_diameter(temp_file_path):
             L.error(f"Unrealistic soma diameter detected in {file.filename}")
             raise HTTPException(
@@ -172,7 +170,6 @@ async def test_neuron_file(
                 },
             )
 
-        # 4. Proceed with conversion
         outputfile1, outputfile2 = await process_and_convert_morphology(
             temp_file_path=temp_file_path,
             file_extension=file_extension,
