@@ -7,7 +7,7 @@ from typing import Annotated
 
 import morphio
 import numpy as np
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 
@@ -31,7 +31,7 @@ def _handle_empty_file(file: UploadFile) -> None:
 
 
 async def process_and_convert_morphology(
-    temp_file_path: str, file_extension: str
+    temp_file_path: str, file_extension: str, single_point_soma: bool = False
 ) -> tuple[str, str]:
     """Process and convert a neuron morphology file."""
     try:
@@ -49,8 +49,8 @@ async def process_and_convert_morphology(
             outputfile1 = temp_file_path.replace(".asc", "_converted.swc")
             outputfile2 = temp_file_path.replace(".asc", "_converted.h5")
 
-        convert(temp_file_path, outputfile1, single_point_soma=True)
-        convert(temp_file_path, outputfile2, single_point_soma=True)
+        convert(temp_file_path, outputfile1, single_point_soma=single_point_soma)
+        convert(temp_file_path, outputfile2, single_point_soma=single_point_soma)
 
     except Exception as e:
         raise HTTPException(
@@ -149,6 +149,7 @@ async def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> b
 )
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
+    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
@@ -173,7 +174,9 @@ async def test_neuron_file(
 
         # 4. Proceed with conversion
         outputfile1, outputfile2 = await process_and_convert_morphology(
-            temp_file_path=temp_file_path, file_extension=file_extension
+            temp_file_path=temp_file_path,
+            file_extension=file_extension,
+            single_point_soma=single_point_soma,
         )
 
         return await _create_and_return_zip(outputfile1, outputfile2)
