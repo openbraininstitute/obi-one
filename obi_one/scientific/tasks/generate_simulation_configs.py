@@ -169,7 +169,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             units="mV",
         )
         random_seed: list[int] | int = Field(  # type:ignore[]
-            ui_element="integer_parameter_sweep",
+            ui_element="int_parameter_sweep",
             default=1,
             title="Random Seed",
             description="Random seed for the simulation.",
@@ -266,7 +266,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model", description="ME Model to simulate."
+            ui_element="model_identifier", title="ME Model", description="ME Model to simulate."
         )
 
     initialize: Initialize = Field(
@@ -384,7 +384,11 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     class Initialize(SimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
-        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+        ) = Field(
+            ui_element="model_identifier",
+            title="MEModel With Synapses",
+            description="MEModel with synapses to simulate.",
+        )
 
     initialize: Initialize = Field(
         ui_element="root_block",

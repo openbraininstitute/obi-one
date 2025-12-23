@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi.openapi.utils import get_openapi
+from validate_block import (
+    validate_hidden_refs_not_required,
+    validate_block,
+    validate_string,
+    validate_type,
+)
 
 
 current_dir = Path(__file__).resolve().parent
@@ -44,24 +50,6 @@ def resolve_ref(openapi_schema: dict, ref: str) -> dict:
     return current_node
 
 
-def validate_hidden_refs_not_required(schema: dict, ref: str) -> None:
-    for key, param_schema in schema["properties"].items():
-        if param_schema.get("ui_hidden") and key in schema.get("required", []):
-            msg = (
-                f"The hidden reference {key} is marked as required in the schema"
-                f" but shouldn't be\n\n In {ref}"
-            )
-            raise ValueError(msg)
-
-
-def validate_string(schema: dict, prop: str, ref: str) -> None:
-    value = schema.get(prop)
-
-    if type(value) is not str:
-        msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
-        raise ValueError(msg)
-
-
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:
     value = schema.get(prop, [])
     for item in value:  # type:ignore reportOptionalIterable
@@ -75,32 +63,22 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
     return value
 
 
-def validate_root_element(schema: dict, element: str, form_ref: str) -> None:
+def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
     if schema.get("ui_element") not in {"root_block", "block_dictionary"}:
         msg = (
-            f"Validation error at {form_ref} {element}: 'ui_element' must be 'root_block' or"
+            f"Validation error at {config_ref} {element}: 'ui_element' must be 'root_block' or"
             f"'block_dictionary'. Got: {schema.get('ui_element')}"
         )
         raise ValueError(msg)
 
-    validate_string(schema, "title", f"{element} in {form_ref}")
-    validate_string(schema, "description", f"{element} in {form_ref}")
+    validate_string(schema, "title", f"{element} in {config_ref}")
+    validate_string(schema, "description", f"{element} in {config_ref}")
 
     if schema["ui_element"] == "block_dictionary":
-        validate_block_dictionary(schema, element, form_ref)
+        validate_block_dictionary(schema, element, config_ref)
 
     if schema["ui_element"] == "root_block":
-        validate_root_block(schema, element, form_ref)
-
-
-def validate_type(schema: dict, form_ref: str) -> None:
-    if not isinstance(schema, dict):
-        msg = f"Validation error at {form_ref}: 'type' schema must be a dictionary"
-        raise TypeError(msg)
-
-    if not schema.get("default"):
-        msg = f"Validation error at {form_ref}: 'type' must have a default"
-        raise ValueError(msg)
+        validate_root_block(schema, element, ref)
 
 
 def validate_dict(schema: dict, element: str, form_ref: str) -> None:
@@ -171,37 +149,41 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
         raise ValueError(msg)
 
 
-def validate_root_block(schema: dict, key: str, config_ref: str) -> None:
+def validate_root_block(schema: dict, key: str, ref: str) -> None:
     if not isinstance(schema.get("properties"), dict):
-        msg = f"Validation error at {config_ref}: root_block {key} must have 'properties'"
+        msg = f"Validation error at {ref}: root_block {key} must have 'properties'"
         raise TypeError(msg)
 
+    validate_block(schema, ref)
 
-def validate_config(form: dict, ref: str) -> None:
+
+def validate_config(form: dict, config_ref: str) -> None:
     if not form.get("ui_enabled"):
-        L.info(f"Form {ref} is disabled, skipping validation.")
+        L.info(f"Form {config_ref} is disabled, skipping validation.")
         return
 
-    L.info(f"Validating form {ref} ...")
+    L.info(f"Validating form {config_ref} ...")
 
-    validate_string(form, "title", ref)
-    validate_string(form, "description", ref)
-    validate_dict(form, "default_block_reference_labels", ref)
-    validate_group_order(form, ref)
-    validate_hidden_refs_not_required(form, ref)
+    validate_string(form, "title", config_ref)
+    validate_string(form, "description", config_ref)
+    validate_dict(form, "default_block_reference_labels", config_ref)
+    validate_group_order(form, config_ref)
+    validate_hidden_refs_not_required(form, config_ref)
 
     for root_element, root_element_schema in form.get("properties", {}).items():  # type:ignore[]
         if root_element == "type":
-            validate_type(root_element_schema, ref)
+            validate_type(root_element_schema, config_ref)
             continue
 
-        if root_element_schema.get("$ref"):
+        ref = root_element_schema.get("$ref")
+
+        if ref:
             root_element_schema = {  # noqa: PLW2901
                 **root_element_schema,
-                **resolve_ref(openapi_schema, root_element_schema["$ref"]),
+                **resolve_ref(openapi_schema, ref),
             }
 
-        validate_root_element(root_element_schema, root_element, ref)
+        validate_root_element(root_element_schema, root_element, ref, config_ref)
 
 
 def validate_schema() -> None:
