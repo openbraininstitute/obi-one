@@ -1,7 +1,6 @@
-import sys
 from collections import defaultdict
-from pathlib import Path
 from typing import Any
+from app.logger import L
 
 
 from validate_block import (
@@ -10,16 +9,8 @@ from validate_block import (
     validate_string,
     validate_type,
     openapi_schema,
-    resolve_ref
+    resolve_ref,
 )
-
-
-current_dir = Path(__file__).resolve().parent
-parent_dir = current_dir.parent
-sys.path.append(str(parent_dir))
-
-from app.application import app  # noqa: E402
-from app.logger import L  # noqa: E402
 
 
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:

@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from jsonschema import validate, ValidationError
 
 VALID_UI_ELEMENTS = [
     "string_input",
@@ -80,6 +81,72 @@ def validate_type(schema: dict, ref: str) -> None:
         raise ValueError(msg)
 
 
+def validate_string_param(schema: dict, param: str, ref: str) -> None:
+    try:
+        validate("a", schema)
+
+    except ValidationError:
+        msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
+        raise ValidationError(msg) from None
+
+
+def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+    try:
+        validate(1.0, schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed"
+            "to validate an float"
+        )
+        raise ValidationError(msg) from None
+
+    try:
+        validate([1.0], schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed"
+            "to validate an float array"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
+    try:
+        validate(1, schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: int_parameter_sweep param {param} failedto validate an int"
+        )
+        raise ValidationError(msg) from None
+
+    try:
+        validate([1], schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: int_parameter_sweep param {param} failed"
+            "to validate an int array"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
+    validate_string(schema, "entity_type", f"{param} at {ref}")
+    validate_string(schema, "property", f"{param} at {ref}")
+
+    try:
+        validate_string_param(schema, param, ref)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: entity_property_dropdown param {param} failed"
+            "to validate a string"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_block(schema: dict, ref: str) -> None:
     validate_hidden_refs_not_required(schema, ref)
 
@@ -94,10 +161,22 @@ def validate_block(schema: dict, ref: str) -> None:
             validate_type(param_schema, ref)
             continue
 
-        if param_schema.get("ui_element") not in VALID_UI_ELEMENTS:
+        if (ui_element := param_schema.get("ui_element")) not in VALID_UI_ELEMENTS:
             msg = (
                 f"Validation error at {ref}: {key} has invalid ui_element:"
                 f" {param_schema.get('ui_element')}"
             )
 
             raise ValueError(msg)
+
+        if ui_element == "string_input":
+            validate_string_param(param_schema, key, ref)
+
+        if ui_element == "float_parameter_sweep":
+            validate_float_param_sweep(param_schema, key, ref)
+
+        if ui_element == "int_parameter_sweep":
+            validate_int_param_sweep(param_schema, key, ref)
+
+        if ui_element == "entity_property_dropdown":
+            validate_entity_property_dropdown(param_schema, key, ref)
