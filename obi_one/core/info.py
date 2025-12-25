@@ -1,4 +1,3 @@
-from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.block import Block

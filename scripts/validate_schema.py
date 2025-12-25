@@ -1,16 +1,24 @@
+import logging
+import sys
 from collections import defaultdict
+from pathlib import Path
 from typing import Any
-from app.logger import L
-
 
 from validate_block import (
-    validate_hidden_refs_not_required,
-    validate_block,
-    validate_string,
-    validate_type,
     openapi_schema,
     resolve_ref,
+    validate_block,
+    validate_hidden_refs_not_required,
+    validate_string,
+    validate_type,
 )
+
+L = logging.getLogger()
+
+
+current_dir = Path(__file__).resolve().parent
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir))
 
 
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:
@@ -111,11 +119,11 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
         )
         raise ValueError(msg)
 
-    for block_schema in schema.get("additionalProperties", {}).get("oneOf", []):
+    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
         ref = block_schema.get("$ref")
 
         if ref:
-            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}
+            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
         validate_block(block_schema, ref)
 

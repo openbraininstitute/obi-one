@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
-from jsonschema import validate, ValidationError
+
+from fastapi.openapi.utils import get_openapi
+from jsonschema import ValidationError, validate
 
 VALID_UI_ELEMENTS = [
     "string_input",
@@ -12,15 +14,12 @@ VALID_UI_ELEMENTS = [
     "neuron_ids",
 ]
 
-from fastapi.openapi.utils import get_openapi
 
 current_dir = Path(__file__).resolve().parent
 parent_dir = current_dir.parent
 sys.path.append(str(parent_dir))
 
 from app.application import app  # noqa: E402
-from app.logger import L  # noqa: E402
-
 
 openapi_schema = get_openapi(
     title=app.title,
