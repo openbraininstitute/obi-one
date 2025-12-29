@@ -149,7 +149,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             description="Simulation length in milliseconds (ms).",
             units="ms",
         )
-        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(  # type:ignore[]
+        extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(  # type:ignore[]
             ui_element="float_parameter_sweep",
             default=1.1,
             title="Extracellular Calcium Concentration",
@@ -161,14 +161,14 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             ),
             units="mM",
         )
-        v_init: list[float] | float = Field(  # type:ignore[]
+        v_init: float | list[float] = Field(  # type:ignore[]
             ui_element="float_parameter_sweep",
             default=-80.0,
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             units="mV",
         )
-        random_seed: list[int] | int = Field(  # type:ignore[]
+        random_seed: int | list[int] = Field(  # type:ignore[]
             ui_element="int_parameter_sweep",
             default=1,
             title="Random Seed",

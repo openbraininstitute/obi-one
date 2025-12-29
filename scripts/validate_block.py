@@ -149,18 +149,42 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         raise ValidationError(msg) from None
 
 
-def validate_block_elements(ui_element: str, schema: dict, ref: str) -> None:
-    match ui_element:
+def validate_reference(schema: dict, param: str, ref: str) -> None:
+    if (refref := schema.get("anyOf", [{}])[0].get("$ref")) is None:
+        ref_schema = resolve_ref(openapi_schema, refref)
+        msg = (
+            f"Validation error at {ref}: ref param {param} should"
+            "be a union with an 'reference class' as first element"
+        )
+
+        from pprint import pprint
+
+        pprint(ref_schema)
+        raise ValidationError(msg) from None
+
+    validate_string(schema, "reference_type", f"{param} at {ref}")
+
+
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:
+    match ui_element := schema.get("ui_element"):
         case "string_input":
-            validate_string_param(schema, ui_element, ref)
+            validate_string_param(schema, param, ref)
         case "float_parameter_sweep":
-            validate_float_param_sweep(schema, ui_element, ref)
+            validate_float_param_sweep(schema, param, ref)
         case "int_parameter_sweep":
-            validate_int_param_sweep(schema, ui_element, ref)
+            validate_int_param_sweep(schema, param, ref)
         case "entity_property_dropdown":
-            validate_entity_property_dropdown(schema, ui_element, ref)
+            validate_entity_property_dropdown(schema, param, ref)
+        case "reference":
+            validate_reference(schema, param, ref)
+        case "neuron_ids":
+            pass
+        case "model_identifier":
+            pass
         case _:
-            msg = f"Validation error at {ref}: {ui_element} is not a valid ui_element"
+            msg = (
+                f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"
+            )
             raise ValueError(msg)
 
 
@@ -170,12 +194,12 @@ def validate_block(schema: dict, ref: str) -> None:
     validate_string(schema, "title", ref)
     validate_string(schema, "description", ref)
 
-    for key, param_schema in schema.get("properties", {}).items():
+    for param, param_schema in schema.get("properties", {}).items():
         if param_schema.get("ui_hidden"):
             continue
 
-        if key == "type":
+        if param == "type":
             validate_type(param_schema, ref)
             continue
 
-        validate_block_elements(param_schema.get("ui_element"), param_schema, ref)
+        validate_block_elements(param, param_schema, ref)
