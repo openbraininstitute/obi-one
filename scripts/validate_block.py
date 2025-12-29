@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from fastapi.openapi.utils import get_openapi
-from jsonschema import ValidationError, validate
+from jsonschema import Draft7Validator, RefResolver, validate, ValidationError, RefResolutionError
 
 
 current_dir = Path(__file__).resolve().parent
@@ -21,25 +21,9 @@ openapi_schema = get_openapi(
 
 
 def resolve_ref(openapi_schema: dict, ref: str) -> dict:
-    """Resolves a JSON Reference (e.g., '#/components/schemas/Item')
-    within the openapi_schema.
-    """
-    if not ref.startswith("#/"):
-        msg = f"Only local references (starting with #/) are supported. Got: {ref}"
-        raise ValueError(msg)
-
-    # Split the path, skipping the first element which is '#'
-    path_parts = ref.split("/")[1:]
-
-    current_node = openapi_schema
-
-    for part in path_parts:
-        current_node = current_node.get(part)
-        if current_node is None:
-            msg = f"Reference '{ref}' could not be resolved. Part '{part}' missing."
-            raise KeyError(msg)
-
-    return current_node
+    resolver = RefResolver.from_schema(openapi_schema)
+    _, resolved_node = resolver.resolve(ref)
+    return resolved_node
 
 
 def validate_hidden_refs_not_required(schema: dict, ref: str) -> None:
@@ -150,33 +134,24 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    schema_union = schema.get("anyOf", [])
-
-    try:
-        refref = schema_union[0]["$ref"]
-    except (IndexError, KeyError):
-        msg = (
-            f"Validation error at {ref}: reference param {param} should "
-            "be a union with an 'reference class' as first element"
-        )
-
-        raise ValidationError(msg) from None
-
-    if len(schema_union) != 2 or schema_union[1].get("type") != "null":  # noqa: PLR2004
-        msg = (
-            f"Validation error at {ref}: reference param {param} should "
-            "be a union with a 'null' as second element"
-        )
-        raise ValidationError(msg) from None
-
     validate_string(schema, "reference_type", f"{param} at {ref}")
 
     reference_type = schema.get("reference_type")
+
+    schema_union = schema.get("anyOf", [])
+
+    if len(schema_union) != 2 or (refref := schema_union[0].get("$ref")) is None:  # noqa: PLR2004
+        msg = (
+            f"Validation error at {ref}: 'reference' param {param} should "
+            "be a union with a 'BlockReference' as first element"
+        )
+        raise ValidationError(msg) from None
+
     ref_schema = resolve_ref(openapi_schema, refref)
 
     if (
         ref_type := ref_schema.get("properties", [{}]).get("type", {}).get("default")
-    ) != schema.get("reference_type"):
+    ) != reference_type:
         msg = (
             f"Validation error at {ref}: reference param {param} should "
             "contain a default type consistent with 'reference_type': "
@@ -184,14 +159,42 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+
     validated_ref = {"block_name": "test", "block_dict_name": "test"}
     try:
-        validate(validated_ref, ref_schema)
+        validator.validate(validated_ref, schema)
 
     except ValidationError:
         msg = (
             f"Validation error at {refref}: 'reference' param {param} failed to validate a "
             f"reference object {validated_ref}"
+        )
+        raise ValidationError(msg) from None
+
+    try:
+        validator.validate(None, schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            "'null' value"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+
+    neuron_ids = {"name": "", "elements": [1]}
+    try:
+        validator.validate(neuron_ids)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'neuron_ids' param {param} failed to validate a "
+            f"neuron_ids object {neuron_ids}"
         )
         raise ValidationError(msg) from None
 
@@ -209,7 +212,7 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
         case "reference":
             validate_reference(schema, param, ref)
         case "neuron_ids":
-            pass
+            validate_neuron_ids(schema, param, ref)
         case "model_identifier":
             pass
         case _:
