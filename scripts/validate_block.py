@@ -82,7 +82,7 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     if schema.get("anyOf", [{}])[0].get("type") != "number":
         msg = (
-            f"Validation error at {ref}: float_parameter_sweep param {param} should"
+            f"Validation error at {ref}: float_parameter_sweep param {param} should "
             "be a union with a 'number' as first element"
         )
         raise ValidationError(msg) from None
@@ -92,7 +92,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: float_parameter_sweep param {param} failed"
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed "
             "to validate an float"
         )
         raise ValidationError(msg) from None
@@ -102,7 +102,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: float_parameter_sweep param {param} failed"
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed "
             "to validate an float array"
         )
         raise ValidationError(msg) from None
@@ -111,7 +111,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
     if schema.get("anyOf", [{}])[0].get("type") != "integer":
         msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} should"
+            f"Validation error at {ref}: int_parameter_sweep param {param} should "
             "be a union with an 'int' as first element"
         )
         raise ValidationError(msg) from None
@@ -150,19 +150,50 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    if (refref := schema.get("anyOf", [{}])[0].get("$ref")) is None:
-        ref_schema = resolve_ref(openapi_schema, refref)
+    schema_union = schema.get("anyOf", [])
+
+    try:
+        refref = schema_union[0]["$ref"]
+    except (IndexError, KeyError):
         msg = (
-            f"Validation error at {ref}: ref param {param} should"
+            f"Validation error at {ref}: reference param {param} should "
             "be a union with an 'reference class' as first element"
         )
 
-        from pprint import pprint
+        raise ValidationError(msg) from None
 
-        pprint(ref_schema)
+    if len(schema_union) != 2 or schema_union[1].get("type") != "null":  # noqa: PLR2004
+        msg = (
+            f"Validation error at {ref}: reference param {param} should "
+            "be a union with a 'null' as second element"
+        )
         raise ValidationError(msg) from None
 
     validate_string(schema, "reference_type", f"{param} at {ref}")
+
+    reference_type = schema.get("reference_type")
+    ref_schema = resolve_ref(openapi_schema, refref)
+
+    if (
+        ref_type := ref_schema.get("properties", [{}]).get("type", {}).get("default")
+    ) != schema.get("reference_type"):
+        msg = (
+            f"Validation error at {ref}: reference param {param} should "
+            "contain a default type consistent with 'reference_type': "
+            f"Expected {reference_type}, got {ref_type}"
+        )
+        raise ValidationError(msg) from None
+
+    validated_ref = {"block_name": "test", "block_dict_name": "test"}
+    try:
+        validate(validated_ref, ref_schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"reference object {validated_ref}"
+        )
+        raise ValidationError(msg) from None
 
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:
