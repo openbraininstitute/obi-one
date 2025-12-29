@@ -1,308 +1,285 @@
 {
-  "components": {
-    "schemas": {
-      "CircuitSimulationScanConfig": {
-        "properties": {
-          "timestamps": {
-            "ui_element": "block_dictionary",
-            "additionalProperties": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/SingleTimestamp"
-                },
-                {
-                  "$ref": "#/components/schemas/RegularTimestamps"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "RegularTimestamps": "#/components/schemas/RegularTimestamps",
-                  "SingleTimestamp": "#/components/schemas/SingleTimestamp"
-                }
-              }
-            },
-            "type": "object",
-            "title": "Timestamps",
-            "description": "Timestamps for the simulation.",
-            "group": "Events",
-            "group_order": 0,
-            "singular_name": "Timestamps"
-          },
-          "info": {
-            "$ref": "#/components/schemas/Info",
-            "title": "Information",
-            "description": "Information about the simulation campaign.",
-            "group": "Setup",
-            "group_order": 0,
-            "ui_element": "root_block"
-          },
-
-          "initialize": {
-            "$ref": "#/components/schemas/obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize",
-            "title": "Initialization",
-            "description": "Parameters for initializing the simulation.",
-            "group": "Setup",
-            "group_order": 1,
-            "ui_element": "root_block"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": ["info", "initialize", "timestamps"],
-        "title": "CircuitSimulationScanConfig",
-        "description": "CircuitSimulationScanConfig.",
-        "group_order": ["Setup", "Events"]
-      },
-      "Info": {
-        "properties": {
-          "campaign_name": {
-            "ui_element": "input",
-            "type": "string",
-            "minLength": 1,
-            "title": "Campaign Name",
-            "description": "Name of the campaign."
-          },
-          "campaign_description": {
-            "ui_element": "input",
-            "type": "string",
-            "minLength": 1,
-            "title": "Campaign Description",
-            "description": "Description of the campaign."
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": ["type", "campaign_name", "campaign_description"],
-        "title": "Info",
-        "description": "Information about the simulation campaign."
-      },
-      "obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize": {
-        "properties": {
-          "circuit": {
-            "type": "object",
-            "required": ["id", "entity_type"],
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "entity_type": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "title": "Circuit",
-            "description": "Circuit to simulate.",
-            "ui_element": "model_identifier"
-          },
-          "simulation_length": {
-            "oneOf": [
-              { "type": "number", "maximum": 5000.0, "minimum": 1.0 },
-              {
-                "items": {
-                  "type": "number",
-                  "maximum": 5000.0,
-                  "minimum": 1.0
-                },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Duration",
-            "description": "Simulation length in milliseconds (ms).",
-            "default": 1000.0,
-            "units": "ms",
-            "ui_element": "parameter_sweep"
-          },
-          "extracellular_calcium_concentration": {
-            "oneOf": [
-              { "type": "number", "minimum": 0.0 },
-              {
-                "items": { "type": "number", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Extracellular Calcium Concentration",
-            "description": "Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
-            "default": 1.1,
-            "units": "mM",
-            "ui_element": "parameter_sweep"
-          },
-          "v_init": {
-            "oneOf": [
-              { "type": "number" },
-              { "items": { "type": "number" }, "type": "array", "minItems": 1 }
-            ],
-            "title": "Initial Voltage",
-            "description": "Initial membrane potential in millivolts (mV).",
-            "default": -80.0,
-            "units": "mV",
-            "ui_element": "parameter_sweep"
-          },
-          "random_seed": {
-            "oneOf": [
-              { "type": "integer" },
-              { "items": { "type": "integer" }, "type": "array", "minItems": 1 }
-            ],
-            "title": "Random Seed",
-            "description": "Random seed for the simulation.",
-            "default": 1,
-            "ui_element": "parameter_sweep"
-          },
-          "node_set": {
-            "title": "Neuron Set",
-            "description": "Neuron set to simulate.",
-            "ui_element": "reference",
-            "reference_type": "NeuronSetReference",
-            "default_label": "All Biophyisical Neurons",
-            "nullable": true,
-            "oneOf": [
-              {
-                "type": "object",
-                "additionalProperties": false,
-                "required": ["block_name", "block_dict_name"],
+    "components": {
+        "schemas": {
+            "CircuitSimulationScanConfig": {
                 "properties": {
-                  "block_name": {
-                    "type": "string"
-                  },
-                  "block_dict_name": {
-                    "type": "string"
-                  }
-                }
-              },
-              { "type": "null" }
-            ]
-          },
-          "example_hidden_ref": {
-            "title": "Neuron Set",
-            "description": "Neuron set to simulate.",
-            "ui_element": null,
-            "reference_type": "",
-            "default_label": "",
-            "nullable": true,
-            "oneOf": [
-              {
-                "type": "object",
+                    "timestamps": {
+                        "ui_element": "block_dictionary",
+                        "additionalProperties": {
+                            "oneOf": [
+                                {"$ref": "#/components/schemas/SingleTimestamp"},
+                                {"$ref": "#/components/schemas/RegularTimestamps"},
+                            ],
+                            "discriminator": {
+                                "propertyName": "type",
+                                "mapping": {
+                                    "RegularTimestamps": "#/components/schemas/RegularTimestamps",
+                                    "SingleTimestamp": "#/components/schemas/SingleTimestamp",
+                                },
+                            },
+                        },
+                        "type": "object",
+                        "title": "Timestamps",
+                        "description": "Timestamps for the simulation.",
+                        "group": "Events",
+                        "group_order": 0,
+                        "singular_name": "Timestamps",
+                    },
+                    "info": {
+                        "$ref": "#/components/schemas/Info",
+                        "title": "Information",
+                        "description": "Information about the simulation campaign.",
+                        "group": "Setup",
+                        "group_order": 0,
+                        "ui_element": "root_block",
+                    },
+                    "initialize": {
+                        "$ref": "#/components/schemas/obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize",
+                        "title": "Initialization",
+                        "description": "Parameters for initializing the simulation.",
+                        "group": "Setup",
+                        "group_order": 1,
+                        "ui_element": "root_block",
+                    },
+                },
                 "additionalProperties": false,
-                "required": ["block_name", "block_dict_name"],
+                "type": "object",
+                "required": ["info", "initialize", "timestamps"],
+                "title": "CircuitSimulationScanConfig",
+                "description": "CircuitSimulationScanConfig.",
+                "group_order": ["Setup", "Events"],
+            },
+            "Info": {
                 "properties": {
-                  "block_name": {
-                    "type": "string"
-                  },
-                  "block_dict_name": {
-                    "type": "string"
-                  }
-                }
-              },
-              { "type": "null" }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": ["circuit"],
-        "title": "Initialize",
-        "description": "Parameters for initializing the simulation."
-      },
-      "SingleTimestamp": {
-        "properties": {
-          "start_time": {
-            "oneOf": [
-              { "type": "number", "minimum": 0.0 },
-              {
-                "items": { "type": "number", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Start Time",
-            "description": "Sart time of the timestamps in milliseconds (ms).",
-            "default": 0.0,
-            "units": "ms",
-            "ui_element": "parameter_sweep"
-          },
-          "example_integer_array": {
-            "type": "array",
-            "items": { "type": "integer", "minimum": 0.0 },
-            "title": "Example number array",
-            "description": "Example description",
-            "default": [],
-            "ui_element": "integer_array"
-          },
-          "example_custom_field": {
-            "anyOf": [
-              { "type": "string", "minLength": 1 },
-              { "items": { "type": "string", "minLength": 1 }, "type": "array" }
-            ],
-            "minLength": 1,
-            "title": "Node Set",
-            "entity_property_type": "Circuit.NodeSet",
-            "description": "Node set to simulate.",
-            "ui_element": "custom"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [],
-        "title": "Single Timestamp",
-        "description": "A single timestamp at a specified time."
-      },
-      "RegularTimestamps": {
-        "properties": {
-          "start_time": {
-            "oneOf": [
-              { "type": "number", "minimum": 0.0 },
-              {
-                "items": { "type": "number", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Start Time",
-            "description": "Sart time of the timestamps in milliseconds (ms).",
-            "default": 0.0,
-            "units": "ms",
-            "ui_element": "parameter_sweep"
-          },
-          "interval": {
-            "oneOf": [
-              { "type": "number", "minimum": 0.0 },
-              {
-                "items": { "type": "number", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Interval",
-            "description": "Interval between timestamps in milliseconds (ms).",
-            "default": 10.0,
-            "units": "ms",
-            "ui_element": "parameter_sweep"
-          },
-          "number_of_repetitions": {
-            "oneOf": [
-              { "type": "integer", "minimum": 0.0 },
-              {
-                "items": { "type": "integer", "minimum": 0.0 },
-                "type": "array",
-                "minItems": 1
-              }
-            ],
-            "title": "Number Of Repetitions",
-            "description": "Number of timestamps to generate.",
-            "default": 10,
-            "ui_element": "parameter_sweep"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [],
-        "title": "Regular Timestamps",
-        "description": "A series of timestamps at regular intervals."
-      }
+                    "campaign_name": {
+                        "ui_element": "input",
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Campaign Name",
+                        "description": "Name of the campaign.",
+                    },
+                    "campaign_description": {
+                        "ui_element": "input",
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Campaign Description",
+                        "description": "Description of the campaign.",
+                    },
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["type", "campaign_name", "campaign_description"],
+                "title": "Info",
+                "description": "Information about the simulation campaign.",
+            },
+            "obi_one__scientific__tasks__generate_simulation_configs__CircuitSimulationScanConfig__Initialize": {
+                "properties": {
+                    "circuit": {
+                        "type": "object",
+                        "required": ["id", "entity_type"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {"type": "string", "format": "uuid"},
+                            "entity_type": {"type": "string", "minLength": 1},
+                        },
+                        "title": "Circuit",
+                        "description": "Circuit to simulate.",
+                        "ui_element": "model_identifier",
+                    },
+                    "simulation_length": {
+                        "oneOf": [
+                            {"type": "number", "maximum": 5000.0, "minimum": 1.0},
+                            {
+                                "items": {"type": "number", "maximum": 5000.0, "minimum": 1.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Duration",
+                        "description": "Simulation length in milliseconds (ms).",
+                        "default": 1000.0,
+                        "units": "ms",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "extracellular_calcium_concentration": {
+                        "oneOf": [
+                            {"type": "number", "minimum": 0.0},
+                            {
+                                "items": {"type": "number", "minimum": 0.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Extracellular Calcium Concentration",
+                        "description": "Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
+                        "default": 1.1,
+                        "units": "mM",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "v_init": {
+                        "oneOf": [
+                            {"type": "number"},
+                            {"items": {"type": "number"}, "type": "array", "minItems": 1},
+                        ],
+                        "title": "Initial Voltage",
+                        "description": "Initial membrane potential in millivolts (mV).",
+                        "default": -80.0,
+                        "units": "mV",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "random_seed": {
+                        "oneOf": [
+                            {"type": "integer"},
+                            {"items": {"type": "integer"}, "type": "array", "minItems": 1},
+                        ],
+                        "title": "Random Seed",
+                        "description": "Random seed for the simulation.",
+                        "default": 1,
+                        "ui_element": "parameter_sweep",
+                    },
+                    "node_set": {
+                        "title": "Neuron Set",
+                        "description": "Neuron set to simulate.",
+                        "ui_element": "reference",
+                        "reference_type": "NeuronSetReference",
+                        "default_label": "All Biophyisical Neurons",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["block_name", "block_dict_name"],
+                                "properties": {
+                                    "block_name": {"type": "string"},
+                                    "block_dict_name": {"type": "string"},
+                                },
+                            },
+                            {"type": "null"},
+                        ],
+                    },
+                    "example_hidden_ref": {
+                        "title": "Neuron Set",
+                        "description": "Neuron set to simulate.",
+                        "ui_element": null,
+                        "reference_type": "",
+                        "default_label": "",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["block_name", "block_dict_name"],
+                                "properties": {
+                                    "block_name": {"type": "string"},
+                                    "block_dict_name": {"type": "string"},
+                                },
+                            },
+                            {"type": "null"},
+                        ],
+                    },
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": ["circuit"],
+                "title": "Initialize",
+                "description": "Parameters for initializing the simulation.",
+            },
+            "SingleTimestamp": {
+                "properties": {
+                    "start_time": {
+                        "oneOf": [
+                            {"type": "number", "minimum": 0.0},
+                            {
+                                "items": {"type": "number", "minimum": 0.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Start Time",
+                        "description": "Sart time of the timestamps in milliseconds (ms).",
+                        "default": 0.0,
+                        "units": "ms",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "example_integer_array": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 0.0},
+                        "title": "Example number array",
+                        "description": "Example description",
+                        "default": [],
+                        "ui_element": "integer_array",
+                    },
+                    "example_custom_field": {
+                        "anyOf": [
+                            {"type": "string", "minLength": 1},
+                            {"items": {"type": "string", "minLength": 1}, "type": "array"},
+                        ],
+                        "minLength": 1,
+                        "title": "Node Set",
+                        "entity_property_type": "Circuit.NodeSet",
+                        "description": "Node set to simulate.",
+                        "ui_element": "custom",
+                    },
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [],
+                "title": "Single Timestamp",
+                "description": "A single timestamp at a specified time.",
+            },
+            "RegularTimestamps": {
+                "properties": {
+                    "start_time": {
+                        "oneOf": [
+                            {"type": "number", "minimum": 0.0},
+                            {
+                                "items": {"type": "number", "minimum": 0.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Start Time",
+                        "description": "Sart time of the timestamps in milliseconds (ms).",
+                        "default": 0.0,
+                        "units": "ms",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "interval": {
+                        "oneOf": [
+                            {"type": "number", "minimum": 0.0},
+                            {
+                                "items": {"type": "number", "minimum": 0.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Interval",
+                        "description": "Interval between timestamps in milliseconds (ms).",
+                        "default": 10.0,
+                        "units": "ms",
+                        "ui_element": "parameter_sweep",
+                    },
+                    "number_of_repetitions": {
+                        "oneOf": [
+                            {"type": "integer", "minimum": 0.0},
+                            {
+                                "items": {"type": "integer", "minimum": 0.0},
+                                "type": "array",
+                                "minItems": 1,
+                            },
+                        ],
+                        "title": "Number Of Repetitions",
+                        "description": "Number of timestamps to generate.",
+                        "default": 10,
+                        "ui_element": "parameter_sweep",
+                    },
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [],
+                "title": "Regular Timestamps",
+                "description": "A series of timestamps at regular intervals.",
+            },
+        }
     }
-  }
 }

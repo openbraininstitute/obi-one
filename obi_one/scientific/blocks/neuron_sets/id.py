@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field
 
