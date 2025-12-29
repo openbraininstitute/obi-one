@@ -199,6 +199,22 @@ def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+
+    obj = {"id_str": "model_id"}
+
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'model_identtifier' param {param} failed to validate a "
+            f"a 'model identifier' object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:
     match ui_element := schema.get("ui_element"):
         case "string_input":
@@ -214,7 +230,7 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
         case "neuron_ids":
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
-            pass
+            validate_model_identifier(schema, param, ref)
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"
