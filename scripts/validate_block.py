@@ -4,16 +4,6 @@ from pathlib import Path
 from fastapi.openapi.utils import get_openapi
 from jsonschema import ValidationError, validate
 
-VALID_UI_ELEMENTS = [
-    "string_input",
-    "model_identifier",
-    "float_parameter_sweep",
-    "int_parameter_sweep",
-    "reference",
-    "entity_property_dropdown",
-    "neuron_ids",
-]
-
 
 current_dir = Path(__file__).resolve().parent
 parent_dir = current_dir.parent
@@ -90,6 +80,13 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+    if schema.get("anyOf", [{}])[0].get("type") != "number":
+        msg = (
+            f"Validation error at {ref}: float_parameter_sweep param {param} should"
+            "be a union with a 'number' as first element"
+        )
+        raise ValidationError(msg) from None
+
     try:
         validate(1.0, schema)
 
@@ -112,6 +109,12 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
+    if schema.get("anyOf", [{}])[0].get("type") != "integer":
+        msg = (
+            f"Validation error at {ref}: int_parameter_sweep param {param} should"
+            "be a union with an 'int' as first element"
+        )
+        raise ValidationError(msg) from None
     try:
         validate(1, schema)
 
@@ -146,6 +149,21 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         raise ValidationError(msg) from None
 
 
+def validate_block_elements(ui_element: str, schema: dict, ref: str) -> None:
+    match ui_element:
+        case "string_input":
+            validate_string_param(schema, ui_element, ref)
+        case "float_parameter_sweep":
+            validate_float_param_sweep(schema, ui_element, ref)
+        case "int_parameter_sweep":
+            validate_int_param_sweep(schema, ui_element, ref)
+        case "entity_property_dropdown":
+            validate_entity_property_dropdown(schema, ui_element, ref)
+        case _:
+            msg = f"Validation error at {ref}: {ui_element} is not a valid ui_element"
+            raise ValueError(msg)
+
+
 def validate_block(schema: dict, ref: str) -> None:
     validate_hidden_refs_not_required(schema, ref)
 
@@ -160,22 +178,4 @@ def validate_block(schema: dict, ref: str) -> None:
             validate_type(param_schema, ref)
             continue
 
-        if (ui_element := param_schema.get("ui_element")) not in VALID_UI_ELEMENTS:
-            msg = (
-                f"Validation error at {ref}: {key} has invalid ui_element:"
-                f" {param_schema.get('ui_element')}"
-            )
-
-            raise ValueError(msg)
-
-        if ui_element == "string_input":
-            validate_string_param(param_schema, key, ref)
-
-        if ui_element == "float_parameter_sweep":
-            validate_float_param_sweep(param_schema, key, ref)
-
-        if ui_element == "int_parameter_sweep":
-            validate_int_param_sweep(param_schema, key, ref)
-
-        if ui_element == "entity_property_dropdown":
-            validate_entity_property_dropdown(param_schema, key, ref)
+        validate_block_elements(param_schema.get("ui_element"), param_schema, ref)
