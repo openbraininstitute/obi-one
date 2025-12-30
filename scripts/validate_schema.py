@@ -1,7 +1,5 @@
 import logging
-import sys
 from collections import defaultdict
-from pathlib import Path
 from typing import Any
 
 from validate_block import (
@@ -14,11 +12,6 @@ from validate_block import (
 )
 
 L = logging.getLogger()
-
-
-current_dir = Path(__file__).resolve().parent
-parent_dir = current_dir.parent
-sys.path.append(str(parent_dir))
 
 
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:

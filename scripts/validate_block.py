@@ -1,14 +1,7 @@
-import sys
-from pathlib import Path
-
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
-current_dir = Path(__file__).resolve().parent
-parent_dir = current_dir.parent
-sys.path.append(str(parent_dir))
-
-from app.application import app  # noqa: E402
+from app.application import app
 
 openapi_schema = get_openapi(
     title=app.title,
