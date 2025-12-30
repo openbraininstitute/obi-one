@@ -164,9 +164,6 @@ def validate_schema() -> None:
 
         schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
 
-        if schema_ref == "#/components/schemas/SimulationsForm":
-            continue
-
         schema = resolve_ref(openapi_schema, schema_ref)
         validate_config(schema, schema_ref)
 
