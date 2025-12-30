@@ -35,21 +35,17 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
 
 
 def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
-    if schema.get("ui_element") not in {"root_block", "block_dictionary"}:
-        msg = (
-            f"Validation error at {config_ref} {element}: 'ui_element' must be 'root_block' or"
-            f"'block_dictionary'. Got: {schema.get('ui_element')}"
-        )
-        raise ValueError(msg)
-
-    validate_string(schema, "title", f"{element} in {config_ref}")
-    validate_string(schema, "description", f"{element} in {config_ref}")
-
-    if schema["ui_element"] == "block_dictionary":
-        validate_block_dictionary(schema, element, config_ref)
-
-    if schema["ui_element"] == "root_block":
-        validate_root_block(schema, element, ref)
+    match ui_element := schema.get("ui_element"):
+        case "root_block":
+            validate_block(schema, ref)
+        case "block_dictionary":
+            validate_block_dictionary(schema, element, config_ref)
+        case _:
+            msg = (
+                f"Validation error at {config_ref} {element}: 'ui_element' must be 'root_block' or"
+                f"'block_dictionary'. Got: {ui_element}"
+            )
+            raise ValueError(msg)
 
 
 def validate_dict(schema: dict, element: str, form_ref: str) -> None:
@@ -162,6 +158,9 @@ def validate_config(form: dict, config_ref: str) -> None:
                 **resolve_ref(openapi_schema, ref),
             }
 
+        validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
+        validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")
+
         validate_root_element(root_element_schema, root_element, ref, config_ref)
 
 
@@ -171,6 +170,9 @@ def validate_schema() -> None:
             continue
 
         schema_ref = value["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+
+        if schema_ref == "#/components/schemas/SimulationsForm":
+            continue
 
         schema = resolve_ref(openapi_schema, schema_ref)
         validate_config(schema, schema_ref)

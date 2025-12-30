@@ -1,10 +1,10 @@
 name: Run tests
 
 on:
-    pull_request:
-    push:
-      branches:
-        - main
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   tests:
@@ -29,6 +29,10 @@ jobs:
         run: make lint
       - name: Run tests
         run: make test-docker
+      - name: Validate Schema
+        run: uv run python scripts/validate_schema.py
+        env:
+          PYTHONPATH: .
       - name: Run pip-audit
         run: make pip-audit
       - name: Upload pip-audit output

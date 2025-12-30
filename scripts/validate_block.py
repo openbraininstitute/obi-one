@@ -251,4 +251,6 @@ def validate_block(schema: dict, ref: str) -> None:
             validate_type(param_schema, ref)
             continue
 
+        validate_string(param_schema, "title", f"{param} at {ref}")
+        validate_string(param_schema, "description", f"{param} at {ref}")
         validate_block_elements(param, param_schema, ref)
