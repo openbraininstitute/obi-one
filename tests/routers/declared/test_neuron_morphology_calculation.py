@@ -218,6 +218,14 @@ def test_morphology_registration_success(
         mock_register_assets_and_measurements,
     )
 
+    async def mock_process_and_convert(*_args, **_kwargs):
+        return "/tmp/f1.h5", "/tmp/f2.asc"
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.process_and_convert_morphology",
+        mock_process_and_convert,
+    )
+
     # Request
     response = client.post(
         ROUTE,
