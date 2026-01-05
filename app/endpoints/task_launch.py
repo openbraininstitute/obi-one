@@ -12,6 +12,7 @@ from entitysdk.models.execution import Execution
 from entitysdk.types import ContentType, ExecutorType
 from fastapi import APIRouter, Depends
 
+from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client as get_db_client
 from app.dependencies.launchsystem import get_client as get_ls_client
@@ -168,12 +169,15 @@ def _submit_task_job(
     time_limit = (
         "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
     )
+    release_tag = settings.APP_VERSION.split("-")[0]
     job_data = {
         "resources": {"cores": 1, "memory": 2, "timelimit": time_limit},
         "code": {
             "type": "python_repository",
             "location": OBI_ONE_REPO,
+            # TODO: Use "ref" instead of "commit" once https://github.com/openbraininstitute/launch-system/pull/71 is deployed
             "commit": OBI_ONE_COMMIT_SHA,
+            # > "ref": f"tag:{release_tag}",
             "path": str(Path(OBI_ONE_LAUNCH_PATH) / "code.py"),
             "dependencies": str(Path(OBI_ONE_LAUNCH_PATH) / "requirements.txt"),
         },
