@@ -175,9 +175,10 @@ def _submit_task_job(
         "code": {
             "type": "python_repository",
             "location": OBI_ONE_REPO,
-            # TODO: Use "ref" instead of "commit" once https://github.com/openbraininstitute/launch-system/pull/71 is deployed
+            # TODO: Use "ref" instead of "commit" once https://github.com/openbraininstitute/
+            #       launch-system/pull/71 is deployed
             "commit": OBI_ONE_COMMIT_SHA,
-            # > "ref": f"tag:{release_tag}",
+            "ref": f"tag:{release_tag}",
             "path": str(Path(OBI_ONE_LAUNCH_PATH) / "code.py"),
             "dependencies": str(Path(OBI_ONE_LAUNCH_PATH) / "requirements.txt"),
         },
