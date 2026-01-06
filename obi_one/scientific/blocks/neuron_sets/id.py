@@ -1,5 +1,5 @@
 import logging
-from typing import ClassVar
+from typing import ClassVar, Annotated
 
 from pydantic import Field
 
@@ -15,7 +15,7 @@ class IDNeuronSet(AbstractNeuronSet):
 
     title: ClassVar[str] = "ID Neuron Set"
 
-    neuron_ids: NamedTuple | list[NamedTuple] = Field(
+    neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
         ui_element="neuron_ids",
         title="ID Neuronset",
         description="List of neuron IDs to include in the neuron set.",
