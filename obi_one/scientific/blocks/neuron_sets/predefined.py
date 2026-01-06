@@ -18,17 +18,14 @@ class PredefinedNeuronSet(AbstractNeuronSet):
 
     title: ClassVar[str] = "Predefined Neuron Set"
 
-    node_set: Annotated[
-        NodeSetType,
-        Field(
-            ui_element="entity_property_dropdown",
-            entity_type=EntityType.CIRCUIT,
-            property=CircuitPropertyType.NODE_SET,
-            title="Node Set",
-            description="Name of the node set to use.",
-            min_length=1,
-        ),
-    ]
+    node_set: NodeSetType = Field(
+        ui_element="entity_property_dropdown",
+        entity_type=EntityType.CIRCUIT,
+        property=CircuitPropertyType.NODE_SET,
+        title="Node Set",
+        description="Name of the node set to use.",
+        min_length=1,
+    )
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:

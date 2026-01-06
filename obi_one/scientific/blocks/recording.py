@@ -107,24 +107,19 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
 
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
-    start_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat],
-        Field(
-            ui_element="float_parameter_sweep",
-            default=0.0,
-            description="Recording start time in milliseconds (ms).",
-            units="ms",
-        ),
-    ]
-    end_time: Annotated[
-        NonNegativeFloat | list[NonNegativeFloat],
-        Field(
-            ui_element="float_parameter_sweep",
-            default=100.0,
-            description="Recording end time in milliseconds (ms).",
-            units="ms",
-        ),
-    ]
+    start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        default=0.0,
+        description="Recording start time in milliseconds (ms).",
+        units="ms",
+    )
+
+    end_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        default=100.0,
+        description="Recording end time in milliseconds (ms).",
+        units="ms",
+    )
 
     @model_validator(mode="after")
     def check_start_end_time(self) -> Self:
