@@ -72,5 +72,4 @@
   "title": "Circuit",
   "description": "Circuit to simulate.",
   "ui_element": "model_identifier",
-  "primary_entity_parameter": "initialize.circuit"
 }

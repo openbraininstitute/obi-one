@@ -170,8 +170,6 @@ class Block:
 ui_element: `model_identifier`
 
 - Should accept as input an object including an `id_str` string field.
-- Should have a non-validating string field `primary_entity_parameter` specifying where in the config is `model_identifier` defined. (e.g. `initialize.circuit`)
-- It follows from the above that this ui element can only be used in _root_blocks_, never in blocks within _block_dictionaries_.
 
 Reference schema [model_identifier](reference_schemas/model_identifier.jsonc)
 
@@ -190,7 +188,6 @@ class CircuitFromId(OBIBaseModel):
 class Block:
     circuit: Circuit | CircuitFromId = Field( # Other elements in the union other than `CircuitFromId` not required.
             ui_element="model_identifier",
-            primary_entity_parameter="initialize.circuit",
             title="Circuit", description="Circuit to simulate."
         )
 ```

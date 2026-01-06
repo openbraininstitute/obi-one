@@ -334,7 +334,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             ui_element="model_identifier",
             title="Circuit",
             description="Circuit to simulate.",
-            primary_entity_parameter="initialize.circuit",
         )
         node_set: NeuronSetReference | None = Field(  # type:ignore[]
             ui_element="reference",
