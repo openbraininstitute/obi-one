@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt
 
