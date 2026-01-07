@@ -172,6 +172,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "sd_percent": self.standard_deviation_percentage_of_threshold,
+                "reversal": self.reversal_potential,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
