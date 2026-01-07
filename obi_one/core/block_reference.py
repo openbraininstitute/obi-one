@@ -24,24 +24,6 @@ class BlockReference(OBIBaseModel, abc.ABC):
         """Returns the union type of allowed block types."""
         return get_args(cls.allowed_block_types)[0]
 
-    class Config:
-        @staticmethod
-        def json_schema_extra(schema: dict, model: "BlockReference") -> None:
-            # Dynamically get allowed_block_types from subclass
-            allowed_types = model.allowed_block_types_union()
-            if isinstance(allowed_types, tuple):
-                schema["allowed_block_types"] = [t.__name__ for t in allowed_types]
-            elif hasattr(allowed_types, "__name__"):
-                schema["allowed_block_types"] = [allowed_types.__name__]
-            else:
-                # Handle UnionType or other types without __name__
-                schema["allowed_block_types"] = [
-                    t.__name__
-                    for t in get_args(model.allowed_block_types)
-                    if hasattr(t, "__name__")
-                ]
-            schema["is_block_reference"] = True
-
     @property
     def block(self) -> Block:
         """Returns the block associated with this reference."""

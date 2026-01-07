@@ -24,6 +24,7 @@ class OBIBaseModel(BaseModel):
         """Dynamically set the `type` field to the class name."""
         super().__init_subclass__(**kwargs)
         cls.__annotations__["type"] = Literal[cls.__qualname__]
+        cls.type = cls.__qualname__
 
     def __str__(self) -> str:
         """Return a string representation of the OBIBaseModel object."""

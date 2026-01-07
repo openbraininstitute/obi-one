@@ -54,6 +54,7 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
     )
 
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
         default=0.7050728631217412,
         title="Scale U_SE (ACh)",
         description="Scale the U_SE (ACh) parameter of the Tsodyks-Markram synaptic model.",
@@ -76,6 +77,7 @@ class SynapticMgManipulation(GlobalSynapticManipulation):
     title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
         default=2.4,
         title="Extracellular Magnesium Concentration",
         description="Extracellular magnesium concentration in millimoles (mM).",
