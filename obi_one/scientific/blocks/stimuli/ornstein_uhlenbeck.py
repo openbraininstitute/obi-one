@@ -1,11 +1,8 @@
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.scientific.blocks.stimuli.stimulus import SomaticStimulus
-from obi_one.scientific.library.constants import (
-    _MIN_TIME_STEP_MILLISECONDS,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )

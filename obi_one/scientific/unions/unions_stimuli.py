@@ -3,6 +3,12 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
@@ -17,12 +23,6 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
-)
-from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
-    OrnsteinUhlenbeckCurrentSomaticStimulus,
-    OrnsteinUhlenbeckConductanceSomaticStimulus,
-    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
-    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
 
 _INJECTION_STIMULI = (
@@ -43,9 +43,7 @@ _INJECTION_STIMULI = (
 )
 
 _SPIKE_STIMULI = (
-    PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-    | SinusoidalPoissonSpikeStimulus
+    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
 )
 
 StimulusUnion = Annotated[
