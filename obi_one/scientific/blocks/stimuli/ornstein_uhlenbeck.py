@@ -20,7 +20,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Absolute)"
 
     _module: str = "ornstein_uhlenbeck"
-    _input_type: str = "current"
+    _input_type: str = "current_clamp"
 
     time_constant: PositiveFloat | list[PositiveFloat] = Field(
         default=2.7,
@@ -43,16 +43,6 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         units="nA",
     )
 
-    dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-    ) = Field(
-        default=0.025,
-        description="Timestep of generated signal in milliseconds (ms).",
-        title="Timestep",
-        units="ms",
-    )
-
     def _generate_config(self) -> dict:
         sonata_config = {}
 
@@ -72,7 +62,6 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean": self.mean_amplitude,
                 "sigma": self.standard_deviation,
-                "dt": self.dt,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
@@ -114,16 +103,6 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         units="mV",
     )
 
-    dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-    ) = Field(
-        default=0.025,
-        description="Timestep of generated signal in milliseconds (ms).",
-        title="Timestep",
-        units="ms",
-    )
-
     def _generate_config(self) -> dict:
         sonata_config = {}
 
@@ -143,8 +122,6 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean": self.mean_amplitude,
                 "sigma": self.standard_deviation,
-                "reversal": self.reversal_potential,
-                "dt": self.dt,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
@@ -155,8 +132,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Relative)"
 
-    _module: str = "ornstein_uhlenbeck"
-    _input_type: str = "current"
+    _module: str = "relative_ornstein_uhlenbeck"
+    _input_type: str = "current_clamp"
 
     time_constant: PositiveFloat | list[PositiveFloat] = Field(
         default=2.7,
@@ -179,16 +156,6 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         units="%",
     )
 
-    dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-    ) = Field(
-        default=0.025,
-        description="Timestep of generated signal in milliseconds (ms).",
-        title="Timestep",
-        units="ms",
-    )
-
     def _generate_config(self) -> dict:
         sonata_config = {}
 
@@ -208,7 +175,6 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "sd_percent": self.standard_deviation_percentage_of_threshold,
-                "dt": self.dt,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
@@ -219,7 +185,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
 
-    _module: str = "ornstein_uhlenbeck"
+    _module: str = "relative_ornstein_uhlenbeck"
     _input_type: str = "conductance"
 
     time_constant: PositiveFloat | list[PositiveFloat] = Field(
@@ -252,16 +218,6 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         units="mV",
     )
 
-    dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-    ) = Field(
-        default=0.025,
-        description="Timestep of generated signal in milliseconds (ms).",
-        title="Timestep",
-        units="ms",
-    )
-
     def _generate_config(self) -> dict:
         sonata_config = {}
 
@@ -281,7 +237,6 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean_percent": self.mean_percentage_of_cells_input_conductance,
                 "sd_percent": self.standard_deviation_percentage_of_cells_input_conductance,
-                "dt": self.dt,
                 "reversal": self.reversal_potential,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
