@@ -180,7 +180,7 @@ def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
     validator = Draft7Validator(schema, resolver=resolver)
 
-    neuron_ids = {"name": "", "elements": [1]}
+    neuron_ids = {"elements": [1]}
     try:
         validator.validate(neuron_ids)
     except ValidationError:
