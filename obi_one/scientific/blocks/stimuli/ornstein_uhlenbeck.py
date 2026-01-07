@@ -80,17 +80,17 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
     )
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.1,
+        default=0.001,
         title="Mean Amplitude",
         description="The mean value of conductance to inject. Given in nanosiemens (nS).",
-        units="nS",
+        units="μS",
     )
 
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
-        default=0.05,
+        default=0.001,
         title="Standard Deviation",
         description="The standard deviation of conductance to inject. Given in nanosiemens (nS).",
-        units="nS",
+        units="μS",
     )
 
     reversal_potential: float | list[float] = Field(
@@ -119,6 +119,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean": self.mean_amplitude,
                 "sigma": self.standard_deviation,
+                "reversal": self.reversal_potential,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
@@ -172,7 +173,6 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
                 "tau": self.time_constant,
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "sd_percent": self.standard_deviation_percentage_of_threshold,
-                "reversal": self.reversal_potential,
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
