@@ -89,7 +89,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
         default=0.001,
         title="Standard Deviation",
-        description="The standard deviation of conductance to inject. Given in nanosiemens (nS).",
+        description="The standard deviation of conductance to inject. Given in microsiemens (μS).",
         units="μS",
     )
 
