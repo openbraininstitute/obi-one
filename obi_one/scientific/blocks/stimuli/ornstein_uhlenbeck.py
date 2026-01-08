@@ -82,7 +82,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.001,
         title="Mean Amplitude",
-        description="The mean value of conductance to inject. Given in nanosiemens (nS).",
+        description="The mean value of conductance to inject. Given in microsiemens (μS).",
         units="μS",
     )
 
