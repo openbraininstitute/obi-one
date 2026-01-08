@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import Any
+from typing import Any, Iterable, Mapping
 
+import morphio
+import pandas as pd
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 
 
 class CompartmentLocation(BaseModel):
@@ -50,3 +53,58 @@ class CompartmentSet(Block):
                 "compartment_set": deduped,
             }
         }
+
+    @classmethod
+    def from_locations(
+        cls,
+        population: str,
+        locations: Iterable[CompartmentLocation],
+    ) -> CompartmentSet:
+        """Convenience constructor from CompartmentLocation objects."""
+        triplets = [
+            (loc.node_id, loc.section_id, loc.offset)
+            for loc in locations
+        ]
+        return cls(population=population, compartment_entries=tuple(triplets))
+
+
+
+def build_compartment_set_from_locations_block(
+    population: str,
+    locations_block: MorphologyLocationsBlock,
+    morphologies: Mapping[int, morphio.Morphology],
+) -> CompartmentSet:
+    """Create a CompartmentSet from a MorphologyLocationsBlock and morphologies.
+
+    Parameters
+    ----------
+    population :
+        SONATA population name (e.g. 'nodes').
+    locations_block :
+        Block that generates locations on a single morphology.
+    morphologies :
+        Mapping from node_id -> morphio.Morphology.
+
+    Returns
+    -------
+    CompartmentSet
+        SONATA-compatible compartment_set block.
+    """
+    locations: list[CompartmentLocation] = []
+
+    for node_id, morph in morphologies.items():
+        df: pd.DataFrame = locations_block.points_on(morph)
+        print(df)
+
+        # Expect at least 'section_id' and 'offset' columns.
+        # If your spec uses other names, adjust here.
+        for _, row in df.iterrows():
+            locations.append(
+                CompartmentLocation(
+                    node_id=int(node_id),
+                    section_id=int(row["section_id"]),
+                    offset=float(row["offset"]),
+                )
+            )
+
+    return CompartmentSet.from_locations(population=population, locations=locations)

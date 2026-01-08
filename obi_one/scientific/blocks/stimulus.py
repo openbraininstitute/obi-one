@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, Any, ClassVar, Self
 
 import h5py
 import numpy as np
@@ -153,6 +153,34 @@ class CompartmentTargetedStimulus(Stimulus, ABC):
             raise ValueError(msg)
         return self
 
+    def _build_sonata_entries(self, extra_fields: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Common helper to expand timestamps into SONATA input entries.
+
+        Adds delay, duration, target (node_set / compartment_set), module, input_type,
+        and represents_physical_electrode, then merges `extra_fields`.
+        """
+        if extra_fields is None:
+            extra_fields = {}
+
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        sonata_config: dict[str, dict[str, Any]] = {}
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
+            entry: dict[str, Any] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                **self._target_entry(),
+                "module": self._module,
+                "input_type": self._input_type,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
+            entry.update(extra_fields)
+            sonata_config[f"{self.block_name}_{t_ind}"] = entry
+
+        return sonata_config
+
 
 class ConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     """A constant current injection at a fixed absolute amplitude."""
@@ -170,23 +198,11 @@ class ConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "amp_start": self.amplitude,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class RelativeConstantCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -206,23 +222,11 @@ class RelativeConstantCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "percent_start": self.percentage_of_threshold_current,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class LinearCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -249,24 +253,12 @@ class LinearCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "amp_start": self.amplitude_start,
                 "amp_end": self.amplitude_end,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class RelativeLinearCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -295,26 +287,12 @@ class RelativeLinearCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "percent_start": self.percentage_of_threshold_current_start,
                 "percent_end": self.percentage_of_threshold_current_end,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class NormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -340,24 +318,12 @@ class NormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "mean": self.mean_amplitude,
                 "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class RelativeNormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -386,24 +352,12 @@ class RelativeNormallyDistributedCurrentClampStimulus(CompartmentTargetedStimulu
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "mean_percent": self.mean_percentage_of_threshold_current,
                 "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class MultiPulseCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -443,25 +397,13 @@ class MultiPulseCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "amp_start": self.amplitude,
                 "width": self.width,
                 "frequency": self.frequency,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class SinusoidalCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -498,25 +440,13 @@ class SinusoidalCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "amp_start": self.maximum_amplitude,
                 "frequency": self.frequency,
                 "dt": self.dt,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class SubthresholdCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -538,23 +468,11 @@ class SubthresholdCurrentClampStimulus(CompartmentTargetedStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
+        return self._build_sonata_entries(
+            {
                 "percent_less": self.percentage_below_threshold,
-                "represents_physical_electrode": self._represents_physical_electrode,
             }
-        return sonata_config
+        )
 
 
 class HyperpolarizingCurrentClampStimulus(CompartmentTargetedStimulus):
@@ -569,22 +487,8 @@ class HyperpolarizingCurrentClampStimulus(CompartmentTargetedStimulus):
     _input_type: str = "current_clamp"
 
     def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                **self._target_entry(),
-                "module": self._module,
-                "input_type": self._input_type,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+        # No extra waveform parameters; just use the base entry.
+        return self._build_sonata_entries({})
 
 
 class SpikeStimulus(Stimulus):
