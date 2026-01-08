@@ -110,6 +110,8 @@ __all__ = [
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
+    "OrnsteinUhlenbeckConductanceSomaticStimulus",
+    "OrnsteinUhlenbeckCurrentSomaticStimulus",
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
@@ -132,6 +134,8 @@ __all__ = [
     "RelativeConstantCurrentClampSomaticStimulus",
     "RelativeLinearCurrentClampSomaticStimulus",
     "RelativeNormallyDistributedCurrentClampSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
     "ScanConfig",
     "ScanConfig",
@@ -246,7 +250,13 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.blocks.stimulus import (
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
