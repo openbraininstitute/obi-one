@@ -255,6 +255,7 @@ class BasicConnectivityPlotsTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # noqa: ARG002
         entity_cache: bool = False,  # noqa: ARG002
+        activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (
