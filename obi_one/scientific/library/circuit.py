@@ -72,14 +72,10 @@ class Circuit(OBIBaseModel):
     @staticmethod
     def _default_population_name(c: snap.Circuit) -> str:
         """Returns the default node population name of a SONATA circuit c."""
-        popul_names = Circuit.get_node_population_names(
-            c, incl_virtual=False, incl_point=False
-        )
+        popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=False)
         if len(popul_names) == 0:
             # Include point neurons
-            popul_names = Circuit.get_node_population_names(
-                c, incl_virtual=False, incl_point=True
-            )
+            popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
             return None  # No biophysical/point neurons
         if len(popul_names) != 1:
@@ -113,14 +109,10 @@ class Circuit(OBIBaseModel):
     @staticmethod
     def _default_edge_population_name(c: snap.Circuit) -> str:
         """Returns the default edge population name of a SONATA circuit c."""
-        popul_names = Circuit.get_edge_population_names(
-            c, incl_virtual=False, incl_point=False
-        )
+        popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=False)
         if len(popul_names) == 0:
             # Include point neuron sources
-            popul_names = Circuit.get_edge_population_names(
-                c, incl_virtual=False, incl_point=True
-            )
+            popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
             return None  # No biophysical/point neuron edges
         if len(popul_names) != 1:
