@@ -158,7 +158,10 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
     else:
-        return abs(radius) <= threshold
+        if radius >0:
+            return radius <= threshold
+        else:
+            return False
 
 
 @router.post(
