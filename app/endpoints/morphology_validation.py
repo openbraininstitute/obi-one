@@ -150,15 +150,13 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
     """
     try:
         # Load morphology with the Immutable API                                                         
-        m = neurom.load_morphology(file_path)
+	    m = neurom.load_morphology(file_path)
         radius = m.soma.radius
-
-        # Check if the largest diameter point exceeds the limit                                          
-        return radius <= threshold
-
-    except (NeuroMError, Exception) as e:
+    except Exception as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
+    else:
+        return radius <= threshold
 
 
 @router.post(
