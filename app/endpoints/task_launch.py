@@ -134,9 +134,7 @@ def _check_activity_status(
     return activity.status
 
 
-def _generate_failure_callback(
-    request: Request, activity_id: str, activity_type: str
-) -> str:
+def _generate_failure_callback(request: Request, activity_id: str, activity_type: str) -> str:
     """Builds the callback URL for task failure notifications."""
     failure_endpoint_url = str(request.url_for("task_failure_endpoint"))
     query_params = urlencode({"activity_id": activity_id, "activity_type": activity_type})
