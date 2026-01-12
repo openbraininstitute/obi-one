@@ -232,7 +232,7 @@ async def _set_final_activity_status(
         await asyncio.sleep(POLLING_INTERVAL)
 
 
-@router.get(
+@router.post(
     "/task-launch",
     summary="Task launch",
     description=(
