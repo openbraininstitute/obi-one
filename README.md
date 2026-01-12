@@ -55,6 +55,42 @@ make run-local
 
 <br>
 
+# Documentation
+
+OBI-ONE uses [MkDocs](https://www.mkdocs.org/) with the [Material theme](https://squidfunk.github.io/mkdocs-material/) for documentation.
+
+## Installing Documentation Dependencies
+
+To install the documentation dependencies (MkDocs and MkDocs Material) without affecting your existing dependencies:
+
+```bash
+make install-docs
+```
+
+This command uses `uv sync --group docs` to add only the documentation dependencies to your environment, ensuring that other installed packages remain unchanged.
+
+## Serving Documentation Locally
+
+To build and serve the documentation locally for preview:
+
+```bash
+make serve-docs
+```
+
+This will start a local development server (typically at `http://127.0.0.1:8000`) where you can preview the documentation. The server will automatically reload when you make changes to the documentation files.
+
+## Continuous Integration
+
+The documentation is automatically checked in CI on pull requests. The `.github/workflows/check-docs.yml` workflow:
+
+1. Checks if any files in the `docs/` directory have been modified in the pull request
+2. If no documentation changes are detected, the check fails with an error message
+3. You can skip this check by adding the `skip docs` label to your pull request
+
+This ensures that documentation is updated alongside code changes. The check only runs on pull requests targeting `main` and can be bypassed with the `skip docs` label when documentation updates are not needed.
+
+<br>
+
 # Contributions
 Please see [**CONTRIBUTIONS.md**](CONTRIBUTIONS.md) for guidelines on how to contribute.
  
