@@ -6,10 +6,11 @@ from http import HTTPStatus
 from typing import Annotated
 
 import morphio
-import numpy as np
+import neurom
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from neurom.exceptions import NeuroMError
 
 from app.dependencies.auth import user_verified
 from app.errors import ApiErrorCode
@@ -30,7 +31,7 @@ def _handle_empty_file(file: UploadFile) -> None:
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
         detail={
-            "code": ApiErrorCode.BAD_REQUEST,
+            "code": ApiErrorCode.INVALID_REQUEST,
             "detail": "Uploaded file is empty",
         },
     )
@@ -79,7 +80,7 @@ async def process_and_convert_morphology(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Failed to load and convert the file: {e!s}",
             },
         ) from e
@@ -111,7 +112,7 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResp
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Error creating zip file: {e!s}",
             },
         ) from e
@@ -132,7 +133,7 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Invalid file extension. Must be one of {valid_extensions}",
             },
         )
@@ -145,23 +146,20 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
 
 
 def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
-    """Returns True if the soma diameter is within the threshold.
-    Returns False if it exceeds the threshold or if no soma exists.
+    """Returns True if the soma radius is within the threshold.
+    Returns False if it exceeds the threshold.
     """
     try:
-        # Load morphology with the Immutable API
-        m = morphio.Morphology(file_path)
-        diameters = m.soma.diameters
-
-        # Return False if no soma points are present
-        if len(diameters) == 0:
+        m = neurom.load_morphology(file_path)
+        radius = m.soma.radius
+        if radius is None:
             return False
-
-        # Check if the largest diameter point exceeds the limit
-        return np.max(diameters) <= threshold
-
-    except (morphio.MorphioError, OSError, ValueError) as e:
+    except (NeuroMError, OSError, AttributeError) as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
+        return False
+    else:
+        if radius > 0:
+            return radius <= threshold
         return False
 
 
@@ -188,7 +186,7 @@ async def test_neuron_file(
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={
-                    "code": ApiErrorCode.BAD_REQUEST,
+                    "code": ApiErrorCode.INVALID_REQUEST,
                     "detail": "Unrealistic soma diameter detected.",
                 },
             )
