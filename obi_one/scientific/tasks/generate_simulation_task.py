@@ -302,7 +302,7 @@ class GenerateSimulationTask(Task):
             entity_id=self.config.single_entity.id,
             entity_type=entitysdk.models.Simulation,
             attrs_or_entity={
-                "number_neurons": 10000,
+                "number_neurons": self.config.initalize.node_set.get_number_neurons(),
             },
         )
 

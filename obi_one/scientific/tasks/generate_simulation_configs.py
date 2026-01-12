@@ -397,7 +397,8 @@ class SimulationSingleConfigMixin(abc.ABC):
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self.initialize.circuit.id_str,
                 simulation_campaign_id=campaign.id,
-                number_neurons=self.initialize.circuit.entity(db_client).number_neurons,
+                # number_neurons=self.initialize.circuit.entity(db_client).number_neurons,
+                number_neurons=-1,
             )
         )
 
