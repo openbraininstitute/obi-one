@@ -4,12 +4,13 @@ from enum import StrEnum
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlencode
 
 import entitysdk
 import httpx
 from entitysdk.models.execution import Execution
 from entitysdk.types import ContentType, ExecutorType
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from app.config import settings
 from app.dependencies.auth import user_verified
@@ -139,12 +140,22 @@ def _check_activity_status(
     return activity.status
 
 
+def _generate_failure_callback(
+    request: Request, activity_id: str, activity_type: str
+) -> str:
+    """Builds the callback URL for task failure notifications."""
+    failure_endpoint_url = str(request.url_for("task_failure_endpoint"))
+    query_params = urlencode({"activity_id": activity_id, "activity_type": activity_type})
+    return f"{failure_endpoint_url}?{query_params}"
+
+
 def _submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
     entity_type: TaskConfigType,
     entity_id: str,
     config_asset_id: str,
+    request: Request,
 ) -> str | None:
     """Creates an activity and submits a task as a job on the launch-system."""
     if not db_client.project_context:
@@ -178,6 +189,8 @@ def _submit_task_job(
         "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
     )
     release_tag = settings.APP_VERSION.split("-")[0]
+    # TODO: Use failure_callback_url in job_data for launch system to call back on task failure
+    _failure_callback_url = _generate_failure_callback(request, activity_id, activity_type)
     job_data = {
         "resources": {"cores": 1, "memory": 2, "timelimit": time_limit},
         "code": {
@@ -219,6 +232,7 @@ def _submit_task_job(
     ),
 )
 def task_launch_endpoint(
+    request: Request,
     entity_type: TaskConfigType,
     entity_id: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
@@ -231,7 +245,7 @@ def task_launch_endpoint(
 
     # Launch task
     activity_id, _activity_type, _job_id = _submit_task_job(
-        db_client, ls_client, entity_type, entity_id, config_asset_id
+        db_client, ls_client, entity_type, entity_id, config_asset_id, request
     )
 
     return activity_id
