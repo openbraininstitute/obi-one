@@ -15,10 +15,20 @@ theme:
 nav:
   - Home: index.md
   - Single Cell Simulations: scs.md
+  - API Reference: api.md
 
 # Plugins
 plugins:
   - search
+  - mkdocstrings
+      # handlers:
+      #   python:
+      #     setup_commands:
+      #       - import sys
+      #       - import os
+      #       - sys.path.insert(0, os.path.abspath('.'))
+      #     options:
+      #       docstring_style: google
 
 # Documentation directory
 docs_dir: docs
