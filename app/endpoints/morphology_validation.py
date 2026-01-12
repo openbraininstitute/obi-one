@@ -145,22 +145,18 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
 
 
 def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
-    """Returns True if the soma diameter is within the threshold.
-    Returns False if it exceeds the threshold or if no soma exists.
+    """Returns True if the soma radius is within the threshold.                                          
+    Returns False if it exceeds the threshold.                                                           
     """
     try:
-        # Load morphology with the Immutable API
-        m = morphio.Morphology(file_path)
-        diameters = m.soma.diameters
+        # Load morphology with the Immutable API                                                         
+        m = neurom.load_morphology(file_path)
+        radius = m.soma.radius
 
-        # Return False if no soma points are present
-        if len(diameters) == 0:
-            return False
+        # Check if the largest diameter point exceeds the limit                                          
+        return radius <= threshold
 
-        # Check if the largest diameter point exceeds the limit
-        return np.max(diameters) <= threshold
-
-    except (morphio.MorphioError, OSError, ValueError) as e:
+    except (NeuroMError, Exception) as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
 
