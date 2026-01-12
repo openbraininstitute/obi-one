@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -27,6 +27,12 @@ help:  ## Show this help
 install:  ## Create a virtual environment
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra connectivity
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
+
+install-docs:  ## Install documentation dependencies without uninstalling other dependencies
+	uv sync --group docs
+
+serve-docs:  ## Serve documentation locally
+	uv run mkdocs serve
 
 compile-deps:  ## Create or update the lock file, without upgrading the version of the dependencies
 	uv lock --upgrade-package entitysdk
