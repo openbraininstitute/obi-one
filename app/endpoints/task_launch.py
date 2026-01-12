@@ -1,4 +1,3 @@
-import asyncio
 import json
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -210,7 +209,7 @@ def _submit_task_job(
         "The type of task is determined based on the config entity provided."
     ),
 )
-async def task_launch_endpoint(
+def task_launch_endpoint(
     entity_type: TaskConfigType,
     entity_id: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
@@ -222,7 +221,7 @@ async def task_launch_endpoint(
     config_asset_id = _get_config_asset(db_client, entity_type, entity_id)
 
     # Launch task
-    activity_id, activity_type, job_id = _submit_task_job(
+    activity_id, _activity_type, _job_id = _submit_task_job(
         db_client, ls_client, entity_type, entity_id, config_asset_id
     )
 
