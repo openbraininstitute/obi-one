@@ -130,6 +130,15 @@ def _update_execution_activity_status(
     )
 
 
+def _check_activity_status(
+    db_client: entitysdk.Client, activity_type: str, activity_id: str
+) -> str:
+    """Returns the current status of a given execution activity."""
+    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    activity = db_client.get_entity(entity_type=activity_type_resolved, entity_id=activity_id)
+    return activity.status
+
+
 def _submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
@@ -241,7 +250,8 @@ async def task_failure_endpoint(
     activity_type: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
 ) -> dict:
-    # Set the execution activity status to "error"
-    _update_execution_activity_status(db_client, activity_type, activity_id, "error")
+    if _check_activity_status(db_client, activity_type, activity_id) != "done":
+        # Set the execution activity status to "error"
+        _update_execution_activity_status(db_client, activity_type, activity_id, "error")
 
     return
