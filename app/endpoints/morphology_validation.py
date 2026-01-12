@@ -152,11 +152,13 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
     try:
         m = neurom.load_morphology(file_path)
         radius = m.soma.radius
+        if len(radius) == 0:
+            return False
     except (NeuroMError, OSError, AttributeError) as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
     else:
-        return radius <= threshold
+        return abs(radius) <= threshold
 
 
 @router.post(
