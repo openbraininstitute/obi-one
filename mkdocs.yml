@@ -15,7 +15,6 @@ theme:
 nav:
   - Home: index.md
   - Single Cell Simulations: scs.md
-  - Explore: explore.md
 
 # Plugins
 plugins:
