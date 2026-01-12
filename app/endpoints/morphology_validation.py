@@ -149,8 +149,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
     Returns False if it exceeds the threshold.                                                           
     """
     try:
-        # Load morphology with the Immutable API                                                         
-	    m = neurom.load_morphology(file_path)
+	m = neurom.load_morphology(file_path)
         radius = m.soma.radius
     except Exception as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
