@@ -297,6 +297,16 @@ class GenerateSimulationTask(Task):
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
+
+    def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client) -> None:
+        db_client.update_entity(
+            entity_id=self.config.single_entity.id,
+            entity_type=entitysdk.models.Simulation,
+            attrs_or_entity={
+                "number_neurons": 10000,
+            },
+        )
+
     def _write_simulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
         with simulation_config_path.open("w", encoding="utf-8") as f:
@@ -350,5 +360,6 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_reports()
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
+        self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
