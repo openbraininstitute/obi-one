@@ -31,7 +31,7 @@ def _handle_empty_file(file: UploadFile) -> None:
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
         detail={
-            "code": ApiErrorCode.BAD_REQUEST,
+            "code": ApiErrorCode.INVALID_REQUEST,
             "detail": "Uploaded file is empty",
         },
     )
@@ -80,7 +80,7 @@ async def process_and_convert_morphology(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Failed to load and convert the file: {e!s}",
             },
         ) from e
@@ -112,7 +112,7 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResp
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Error creating zip file: {e!s}",
             },
         ) from e
@@ -133,7 +133,7 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.BAD_REQUEST,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Invalid file extension. Must be one of {valid_extensions}",
             },
         )
@@ -182,7 +182,7 @@ async def test_neuron_file(
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={
-                    "code": ApiErrorCode.BAD_REQUEST,
+                    "code": ApiErrorCode.INVALID_REQUEST,
                     "detail": "Unrealistic soma diameter detected.",
                 },
             )
