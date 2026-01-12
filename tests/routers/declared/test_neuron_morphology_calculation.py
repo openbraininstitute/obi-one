@@ -79,7 +79,13 @@ def mock_template_and_functions(monkeypatch):
     )
 
     # FIX: Mock file processing to return None, None to bypass output file cleanup
-    async def mock_process_and_convert(temp_file_path, file_extension):  # noqa: ARG001
+    async def mock_process_and_convert(
+        _temp_file_path: str,
+        _file_extension: str,
+        *,
+        _output_basename: str | None = None,
+        _single_point_soma_by_ext: dict[str, bool] | None = None,
+    ) -> tuple[str, str]:
         return None, None
 
     # FIX: Patch directly in the calling module to ensure correct mocking
@@ -210,6 +216,14 @@ def test_morphology_registration_success(
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._register_assets_and_measurements",
         mock_register_assets_and_measurements,
+    )
+
+    async def mock_process_and_convert(*_args, **_kwargs):
+        return "mock_converted_1.h5", "mock_converted_2.asc"
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.process_and_convert_morphology",
+        mock_process_and_convert,
     )
 
     # Request
