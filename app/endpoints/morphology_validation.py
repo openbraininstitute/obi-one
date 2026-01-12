@@ -6,10 +6,11 @@ from http import HTTPStatus
 from typing import Annotated
 
 import morphio
-import numpy as np
+import neurom
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
+from neurom.exceptions import NeuroMError
 
 from app.dependencies.auth import user_verified
 from app.errors import ApiErrorCode
@@ -145,13 +146,13 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
 
 
 def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
-    """Returns True if the soma radius is within the threshold.                                          
-    Returns False if it exceeds the threshold.                                                           
+    """Returns True if the soma radius is within the threshold.
+    Returns False if it exceeds the threshold.
     """
     try:
-	m = neurom.load_morphology(file_path)
+        m = neurom.load_morphology(file_path)
         radius = m.soma.radius
-    except Exception as e:
+    except (NeuroMError, OSError, AttributeError) as e:
         L.error(f"Error validating soma diameter for {file_path}: {e!s}")
         return False
     else:
