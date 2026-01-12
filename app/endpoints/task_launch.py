@@ -202,36 +202,6 @@ def _submit_task_job(
     return activity_id, activity_type, job_id
 
 
-async def _set_final_activity_status(
-    db_client: entitysdk.Client,
-    ls_client: httpx.Client,
-    activity_type: str,
-    activity_id: str,
-    job_id: str,
-) -> None:
-    """Waits until the job is completed (done or error) and sets the final activity status."""
-    while True:
-        # Check job status
-        response = ls_client.get(url=f"/job/{job_id}")
-        if response.status_code != HTTPStatus.OK:
-            msg = "Job status could not be determined!"
-            raise ValueError(msg)
-        response_body = response.json()
-        job_status = response_body.get("status")
-
-        if job_status == "done":
-            # Set activity status to done
-            # Note: Should have been set already by launch script!
-            _update_execution_activity_status(db_client, activity_type, activity_id, "done")
-            return
-        if job_status == "error":
-            # Set activity status to error
-            _update_execution_activity_status(db_client, activity_type, activity_id, "error")
-            return
-        # Wait and repeat
-        await asyncio.sleep(POLLING_INTERVAL)
-
-
 @router.post(
     "/task-launch",
     summary="Task launch",
@@ -256,7 +226,23 @@ async def task_launch_endpoint(
         db_client, ls_client, entity_type, entity_id, config_asset_id
     )
 
-    # Wait for job completion and set final activity status
-    await _set_final_activity_status(db_client, ls_client, activity_type, activity_id, job_id)
-
     return activity_id
+
+
+@router.post(
+    "/task-failure",
+    summary="Task failure callback",
+    description=(
+        "Callback endpoint to mark a task execution activity as failed. "
+        "Used by the launch-system to report task failures."
+    ),
+)
+async def task_failure_endpoint(
+    activity_id: str,
+    activity_type: str,
+    db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
+) -> dict:
+    # Set the execution activity status to "error"
+    _update_execution_activity_status(db_client, activity_type, activity_id, "error")
+
+    return
