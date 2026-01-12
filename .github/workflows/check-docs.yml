@@ -8,6 +8,8 @@ on:
 jobs:
   check-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.head_ref != 'main' && !contains(join(github.event.pull_request.labels.*.name, ','), 'skip docs')
     steps:
       - name: Check out code
