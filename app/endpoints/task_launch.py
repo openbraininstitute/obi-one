@@ -26,12 +26,6 @@ OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 """Path to launch script within the repository. Must contain code.py and requirements.txt."""
 OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
 
-"""Commit hash of the code version to use."""
-OBI_ONE_COMMIT_SHA = "e8b3d74a82e530ec7553a82023cb0ba0694d1143"
-
-"""Time interval in seconds to check job status."""
-POLLING_INTERVAL = 5
-
 
 class TaskConfigType(StrEnum):
     """List of entitycore config types supported for job submission."""
@@ -196,14 +190,11 @@ def _submit_task_job(
         "code": {
             "type": "python_repository",
             "location": OBI_ONE_REPO,
-            # TODO: Use "ref" instead of "commit" once https://github.com/openbraininstitute/
-            #       launch-system/pull/71 is deployed
-            "commit": OBI_ONE_COMMIT_SHA,
             "ref": f"tag:{release_tag}",
             "path": str(Path(OBI_ONE_LAUNCH_PATH) / "code.py"),
             "dependencies": str(Path(OBI_ONE_LAUNCH_PATH) / "requirements.txt"),
         },
-        "invocation": f"code::path {' '.join(cmd_args)}",
+        "inputs": cmd_args,
         "project_id": project_id,
     }
 
