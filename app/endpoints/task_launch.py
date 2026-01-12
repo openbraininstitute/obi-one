@@ -245,7 +245,7 @@ def task_launch_endpoint(
         "Used by the launch-system to report task failures."
     ),
 )
-async def task_failure_endpoint(
+def task_failure_endpoint(
     activity_id: str,
     activity_type: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
