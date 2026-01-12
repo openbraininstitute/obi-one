@@ -297,7 +297,6 @@ class GenerateSimulationTask(Task):
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client) -> None:
         db_client.update_entity(
             entity_id=self.config.single_entity.id,
