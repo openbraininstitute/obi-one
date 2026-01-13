@@ -125,7 +125,8 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     def get_neuron_set_size(self, circuit: Circuit, population: str | None = None) -> int:
         """Returns the size of the neuron set (after subsampling, if specified)."""
-        return len(self.get_neuron_ids(circuit, population))
+        return len(self.get_neuron_ids(circuit, circuit.default_population_name))
+    
 
     def get_node_set_definition(
         self, circuit: Circuit, population: str | None = None, *, force_resolve_ids: bool = False
