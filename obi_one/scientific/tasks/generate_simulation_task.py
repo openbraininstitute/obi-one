@@ -303,7 +303,9 @@ class GenerateSimulationTask(Task):
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,
                 attrs_or_entity={
-                    "number_neurons": self.config.initialize.node_set.block.get_neuron_set_size(self._circuit),
+                    "number_neurons": self.config.initialize.node_set.block.get_neuron_set_size(
+                        self._circuit
+                    ),
                 },
             )
 
