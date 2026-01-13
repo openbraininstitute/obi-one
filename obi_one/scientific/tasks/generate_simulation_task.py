@@ -315,15 +315,6 @@ class GenerateSimulationTask(Task):
         self, db_client: entitysdk.client.Client | None
     ) -> None:
         if db_client:
-            L.info("-- Upload sonata_simulation_config")
-            _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,
-                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
-                file_content_type="application/json",
-                asset_label="sonata_simulation_config",
-            )
-
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
@@ -345,6 +336,15 @@ class GenerateSimulationTask(Task):
                             file_content_type="application/x-hdf5",
                             asset_label="replay_spikes",
                         )
+
+            L.info("-- Upload sonata_simulation_config")
+            _ = db_client.upload_file(
+                entity_id=self.config.single_entity.id,
+                entity_type=entitysdk.models.Simulation,
+                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
+                file_content_type="application/json",
+                asset_label="sonata_simulation_config",
+            )
 
     def execute(
         self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
