@@ -54,3 +54,4 @@ Notebooks are available in the [examples/](../examples/) directory.
 ## Documentation
 
 - [Single Cell Simulations](scs.md) - Learn about single cell simulation workflows
+- [Small Circuit Simulations](scircuit.md) - Learn about small circuit simulation workflows
