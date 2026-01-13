@@ -9,8 +9,6 @@ Scan configs intended for the UI require the `ui_enabled` (boolean) property. Se
 The config is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
 All root elements and block elements must have a valid `ui_element`. [See below for details](#valid-ui_elements).
 
-**If a config requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and corresponding validation scripts, and a UI design**
-
 ### Constraints
 
 All properties of a scan config must be _root elements_. (See below).
@@ -42,6 +40,110 @@ Block elements:
 - `int_parameter_sweep`
 - `reference`
 - `entity_property_dropdown`
+
+## Adding ui_elements to the spec
+
+**If a config requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and corresponding validation scripts, and a UI design**
+
+Any two `ui_elements` sharign the same `ui_element` string must share the same pydantic inplementation (and by extension the same json schema). 
+
+
+For example the following would be an incorrect use of `ui_element` since the resulting schemas differ in structure, `field_A` is of `integer` type where as `field_B` contains an `anyOf` property.
+
+```py
+# ❌ Wrong use of ui_element
+
+class Block:
+    field_A: int = Field(ui_element="integer_input", ...)
+    field_B: int | None = Field(ui_element="integer_input", ...)
+```
+
+```jsonc
+
+// Schemas differ in structure 
+
+"field_A": {
+      "title": "Field A",
+      "type": "integer",  
+      "ui_element": "integer_input"
+    },
+
+"field_B": {
+      "title": "Field B",
+      "anyOf": [ // anyOf
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "ui_element": "integer_input"
+    }
+
+```
+
+In such cases either either make them consistent or create separate `ui_elements`
+
+```py
+# ✅ Consistent types
+class Block:
+    field_A: int | None = Field(ui_element="integer_input", ...)
+    field_B: int | None = Field(ui_element="integer_input", ...)
+
+```
+
+```py
+# ✅ Separate ui_elements
+class Block:
+    field_A: int = Field(ui_element="integer_input", ...)
+    field_B: int | None = Field(ui_element="nullable_integer_input", ...)
+```
+
+### Writing validation scripts
+
+For each new `ui_element` a corresponding validation function must be added to [validate_root_element](../scripts/validate_schema.py#L30) in case of new `root_elements` or to [validate_block_elements](../scripts/validate_block.py#L210) in the case of new `block_elements`.
+
+The purpose of validation functions is twofold:
+1. Ensure that the schema of the element matches the structure the frontend needs to render the input element.
+2. Ensure the element accepts as input the expected types the frontend is expected to produce.
+
+For example [block dictionaries](#block_dictionary) require that the `oneOf` property is present in the schema, therefore the script must check it exists:
+
+```py
+if schema.get("additionalProperties", {}).get("oneOf") is None:
+        msg = (
+            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
+            "in additionalProperties"
+        )
+        raise ValueError(msg)
+```
+
+To check the expected input types are accepted by the `ui_element` one can simply use `validate` from the `jsonschema` library. 
+For example the `float_parameter_sweep` must accept a `float` or a `list[float]`, so that's what we check:
+
+```py
+try:
+    validate(1.0, param_schema)
+
+except ValidationError:
+    msg = (
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed "
+            "to validate an float"
+        )
+    raise ValidationError(msg) from None
+
+try:
+    validate([1.0], param_schema)
+
+except ValidationError:
+    msg = (
+            f"Validation error at {ref}: float_parameter_sweep param {param} failed "
+            "to validate an float array"
+        )
+    raise ValidationError(msg) from None
+```
+
 
 ## Hidden elements
 
