@@ -58,7 +58,7 @@ dependencies = [
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
     # Add an upper bound only if automatic upgrades must be prevented.
     "entitysdk",
-    "obi-auth>=0.3.0",
+    "obi-auth>=1.0.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
     "cachetools>=5.5.2",
