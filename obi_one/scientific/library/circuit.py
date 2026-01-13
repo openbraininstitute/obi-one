@@ -1,4 +1,6 @@
+from pathlib import Path
 import bluepysnap as snap
+import morphio
 import numpy as np
 from conntility import ConnectivityMatrix
 
@@ -103,3 +105,53 @@ class Circuit(OBIBaseModel):
     def default_edge_population_name(self) -> str:
         """Returns the default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
+
+
+    def get_cell(self, node_id: int, population: str | None = None):
+        """Return BluePySnap node accessor for one cell."""
+        c = self.sonata_circuit
+        pop = population or self.default_population_name
+        return c.nodes[pop].get(node_id)
+
+    def get_morphology_name(self, node_id: int, population: str | None = None) -> str:
+        pop = population or self.default_population_name
+        node = self.sonata_circuit.nodes[pop].get(node_id)
+        # common patterns in BluePySnap:
+        # - node.morphology
+        # - node["morphology"]
+        try:
+            return node.morphology
+        except Exception:
+            try:
+                return node["morphology"]
+            except Exception as e:
+                raise KeyError(
+                    f"Could not read morphology attribute for node_id={node_id} in population '{pop}'."
+                ) from e
+
+    def get_morphology_path(self, node_id: int, population: str | None = None) -> Path:
+        """Resolve morphology file path for a given node id."""
+        c = self.sonata_circuit
+        morph_name = self.get_morphology_name(node_id, population=population)
+
+        morph_dir = Path(c.config["components"]["morphologies_dir"])
+        morph_path = morph_dir / morph_name
+
+        # Some circuits store names without extension
+        if morph_path.exists():
+            return morph_path
+
+        for ext in [".h5", ".asc", ".swc"]:
+            p = morph_dir / f"{morph_name}{ext}"
+            if p.exists():
+                return p
+
+        raise FileNotFoundError(
+            f"Could not find morphology file for node_id={node_id}. "
+            f"Tried '{morph_path}' and common extensions in '{morph_dir}'."
+        )
+
+    def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
+        """Load morphology object (MorphIO) for a given node id."""
+        morph_path = self.get_morphology_path(node_id, population=population)
+        return morphio.Morphology(str(morph_path))

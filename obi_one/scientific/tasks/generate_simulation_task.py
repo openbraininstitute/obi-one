@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import ClassVar, get_args, get_type_hints
 
 import entitysdk
+import morphio
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.builders.stimuli import materialize_locations_to_compartment_sets
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.blocks.timestamps import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -201,6 +203,14 @@ class GenerateSimulationTask(Task):
                     stimulus
                 )
 
+    def _materialize_location_targets(self) -> None:
+        materialize_locations_to_compartment_sets(
+            self.config,
+            self._circuit,
+            self._circuit.default_population_name,
+            self._load_morphology,
+        )
+
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
         if (
@@ -219,6 +229,21 @@ class GenerateSimulationTask(Task):
             )
 
         return DEFAULT_NEURON_SET_BLOCK_REFERENCE
+
+    def _load_morphology(
+        self, circuit: Circuit, node_id: int, population: str | None
+    ) -> morphio.Morphology | None:
+        population_name = population or circuit.default_population_name
+        try:
+            return circuit.load_morphology(node_id, population=population_name)
+        except Exception as exc:  # pragma: no cover - external dependency
+            L.warning(
+                "Unable to load morphology for node %s in population '%s': %s",
+                node_id,
+                population_name,
+                exc,
+            )
+            return None
 
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.
@@ -372,6 +397,7 @@ class GenerateSimulationTask(Task):
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
+        self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports()
         self._add_sonata_simulation_config_manipulations()

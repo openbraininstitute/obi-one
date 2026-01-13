@@ -96,6 +96,7 @@ __all__ = [
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
+    "MorphologyLocationsReference",
     "MorphologyMetricsOutput",
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
@@ -358,6 +359,7 @@ from obi_one.scientific.unions.unions_manipulations import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
