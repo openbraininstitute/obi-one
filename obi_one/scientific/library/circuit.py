@@ -129,29 +129,47 @@ class Circuit(OBIBaseModel):
                     f"Could not read morphology attribute for node_id={node_id} in population '{pop}'."
                 ) from e
 
-    def get_morphology_path(self, node_id: int, population: str | None = None) -> Path:
-        """Resolve morphology file path for a given node id."""
+    def _population_config(self, population: str | None) -> dict:
         c = self.sonata_circuit
+        pop = population or self.default_population_name
+
+        networks = c.config.get("networks", {})
+        for nodes_entry in networks.get("nodes", []):
+            pops = nodes_entry.get("populations", {})
+            if pop in pops:
+                return pops[pop]
+
+        # Fallback: some configs expose components at top-level
+        components = c.config.get("components")
+        if components is not None:
+            return {"morphologies_dir": components.get("morphologies_dir")}
+
+        raise KeyError(f"Could not find population config for population={pop!r}")
+
+    def get_morphology_path(self, node_id: int, population: str | None = None) -> Path:
         morph_name = self.get_morphology_name(node_id, population=population)
+        pop_cfg = self._population_config(population)
+        morph_dir_raw = pop_cfg.get("morphologies_dir")
+        if not morph_dir_raw:
+            raise KeyError("No 'morphologies_dir' found in population config.")
 
-        morph_dir = Path(c.config["components"]["morphologies_dir"])
-        morph_path = morph_dir / morph_name
+        morph_dir = Path(morph_dir_raw)
 
-        # Some circuits store names without extension
-        if morph_path.exists():
-            return morph_path
+        # If morph_name already contains an extension, try directly first.
+        direct = morph_dir / morph_name
+        if direct.exists():
+            return direct
 
-        for ext in [".h5", ".asc", ".swc"]:
+        # Try common extensions if the stored name is extension-less.
+        for ext in (".asc", ".swc", ".h5"):
             p = morph_dir / f"{morph_name}{ext}"
             if p.exists():
                 return p
 
         raise FileNotFoundError(
-            f"Could not find morphology file for node_id={node_id}. "
-            f"Tried '{morph_path}' and common extensions in '{morph_dir}'."
+            f"Could not find morphology file for node_id={node_id}, population={population}. "
+            f"Tried '{direct}' and common extensions in '{morph_dir}'."
         )
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
-        """Load morphology object (MorphIO) for a given node id."""
-        morph_path = self.get_morphology_path(node_id, population=population)
-        return morphio.Morphology(str(morph_path))
+        return morphio.Morphology(str(self.get_morphology_path(node_id, population=population)))

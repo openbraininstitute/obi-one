@@ -1,4 +1,4 @@
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, Optional, Union
 
 from pydantic import Field
 
@@ -18,10 +18,11 @@ class CompartmentSetReference(BlockReference):
 
 
 def resolve_compartment_set_ref_to_name(
-    comp_ref: CompartmentSetReference | str | None, default: str | None = None
-) -> str | None:
+    comp_ref: Optional[Union["CompartmentSetReference", str]],
+    default: Optional[str] = None,
+) -> Optional[str]:
     if comp_ref is None:
         return default
     if isinstance(comp_ref, str):
         return comp_ref
-    return comp_ref.block.block_name
+    return comp_ref.block_name

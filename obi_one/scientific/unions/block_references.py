@@ -1,5 +1,6 @@
 from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
 from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import StimulusReference
@@ -12,4 +13,5 @@ AllBlockReferenceTypes = [
     RecordingReference,
     TimestampsReference,
     CompartmentSetReference,
+    MorphologyLocationsReference,
 ]

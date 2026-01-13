@@ -55,7 +55,7 @@ class Stimulus(Block, ABC):
     ) = None
 
     _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+    _default_timestamps: Any = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -138,25 +138,9 @@ class TargetedStimulus(Stimulus, ABC):
 
     @model_validator(mode="after")
     def _validate_targeting(self) -> Self:
-        targeting_fields = {
-            "neuron_set": self.neuron_set,
-            "compartment_set": self.compartment_set,
-            "locations": self.locations,
-        }
-
-        if self.locations is not None:
-            if self.neuron_set is None:
-                raise ValueError("'locations' requires 'neuron_set' (which cells to apply to).")
-            if self.compartment_set is not None:
-                raise ValueError("Choose either 'compartment_set' or 'locations', not both.")
-            return self
-
-        else:
-            if self.neuron_set is not None and self.compartment_set is not None:
-                msg = (
-                    "Only one of 'neuron_set' or 'compartment_set' may be set."
-                )
-                raise ValueError(msg)
+        if self.compartment_set is not None:
+            if self.neuron_set is not None or self.locations is not None:
+                raise ValueError("If 'compartment_set' is set, do not set 'neuron_set' or 'locations'.")
 
         return self
 
@@ -174,6 +158,34 @@ class TargetedStimulus(Stimulus, ABC):
         # Otherwise cell-level targeting
         node_set_name = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
         return {"node_set": node_set_name}
+
+    def _build_sonata_entries(self, extra_fields: dict[str, Any] | None = None) -> dict[str, Any]:
+        extra_fields = extra_fields or {}
+
+        # Resolve the timestamps block (using default if self.timestamps is None)
+        ts_block = resolve_timestamps_ref_to_timestamps_block(self.timestamps, self._default_timestamps)
+        ts = list(ts_block.timestamps())
+
+        def _pick(value, i: int) -> Any:
+            return value[i % len(value)] if isinstance(value, list) else value
+
+        out: dict[str, dict[str, Any]] = {}
+        for i, t0 in enumerate(ts):
+            delay = float(t0) + float(_pick(self.timestamp_offset or 0.0, i))
+            duration = float(_pick(self.duration, i))
+
+            entry: dict[str, Any] = {
+                "module": self._module,
+                "input_type": self._input_type,
+                "delay": delay,
+                "duration": duration,
+                "represents_physical_electrode": self._represents_physical_electrode,
+                **self._target_entry(),
+                **extra_fields,
+            }
+            out[f"{self.block_name}_{i}"] = entry
+
+        return out
 
 
 class SpikeStimulus(Stimulus):

@@ -33,6 +33,8 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
@@ -130,6 +132,17 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
         group_order=2,
     )
+
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        reference_type=MorphologyLocationsReference.__name__,
+        description="Rules to generate locations on morphologies (used by stimuli.locations).",
+        singular_name="Morphology Locations",
+        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+        group_order=3,
+    )
+
 
     class Initialize(Block):
         circuit: None
