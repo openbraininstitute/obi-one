@@ -58,6 +58,7 @@ class GenerateSimulationTask(Task):
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
+    _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -270,6 +271,7 @@ class GenerateSimulationTask(Task):
         population (but which won't be a human-readable representation any more).
         """
         sonata_circuit = self._circuit.sonata_circuit
+        self._neuron_set_definitions = {}
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
@@ -281,12 +283,18 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                _neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+                self._neuron_set_definitions[_neuron_set_key] = (
+                    _neuron_set.add_node_set_definition_to_sonata_circuit(
+                        self._circuit, sonata_circuit
+                    )
+                )
 
         else:
             neuron_set = AllNeurons()
             neuron_set.set_block_name(DEFAULT_NODE_SET_NAME)
-            neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+            self._neuron_set_definitions[DEFAULT_NODE_SET_NAME] = (
+                neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+            )
 
         # 3. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
@@ -299,14 +307,17 @@ class GenerateSimulationTask(Task):
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
+            if hasattr(self.config, "neuron_sets"):
+                number_neurons = self._neuron_set_definitions[
+                    self.config.initialize.node_set.block_name
+                ]
+            else:
+                number_neurons = self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]
+
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,
-                attrs_or_entity={
-                    "number_neurons": self.config.initialize.node_set.block.get_neuron_set_size(
-                        self._circuit
-                    ),
-                },
+                attrs_or_entity={"number_neurons": number_neurons},
             )
 
     def _write_simulation_config_to_file(self) -> None:

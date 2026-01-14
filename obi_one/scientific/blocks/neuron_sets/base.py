@@ -73,7 +73,7 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> None:
+    ) -> dict:
         nset_def = self.get_node_set_definition(
             circuit, circuit.default_population_name, force_resolve_ids=True
         )
@@ -81,6 +81,8 @@ class AbstractNeuronSet(Block, abc.ABC):
         add_node_set_to_circuit(
             sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
         )
+
+        return nset_def
 
     def get_population(self, population: str | None = None) -> str:
         return self._population(population)
@@ -122,10 +124,6 @@ class AbstractNeuronSet(Block, abc.ABC):
             L.warning("Neuron set empty!")
 
         return ids
-
-    def get_neuron_set_size(self, circuit: Circuit) -> int:
-        """Returns the size of the neuron set (after subsampling, if specified)."""
-        return len(self.get_neuron_ids(circuit, circuit.default_population_name))
 
     def get_node_set_definition(
         self, circuit: Circuit, population: str | None = None, *, force_resolve_ids: bool = False
