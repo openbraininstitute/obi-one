@@ -8,7 +8,6 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
 from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
-from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
@@ -36,7 +35,6 @@ ScanConfigsUnion = Annotated[
     | FolderCompressionScanConfig
     | MEModelSimulationScanConfig
     | MorphologyContainerizationScanConfig
-    # | ElectrophysiologyMetricsScanConfig
     | MorphologyDecontainerizationScanConfig
     | MorphologyMetricsScanConfig
     | MorphologyLocationsScanConfig

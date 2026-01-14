@@ -14,10 +14,6 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
-from obi_one.scientific.tasks.ephys_extraction import (
-    ElectrophysiologyMetricsSingleConfig,
-    ElectrophysiologyMetricsTask,
-)
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
@@ -60,7 +56,6 @@ _config_tasks_map = {
     ContributeMorphologySingleConfig: ContributeMorphologyTask,
     BasicConnectivityPlotsSingleConfig: BasicConnectivityPlotsTask,
     ConnectivityMatrixExtractionSingleConfig: ConnectivityMatrixExtractionTask,
-    ElectrophysiologyMetricsSingleConfig: ElectrophysiologyMetricsTask,
     FolderCompressionSingleConfig: FolderCompressionTask,
     IonChannelFittingSingleConfig: IonChannelFittingTask,
     MorphologyContainerizationSingleConfig: MorphologyContainerizationTask,
