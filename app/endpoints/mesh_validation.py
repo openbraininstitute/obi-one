@@ -1,9 +1,9 @@
 import pathlib
 import tempfile
-import trimesh
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
+import trimesh
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -23,25 +23,32 @@ class FileTooLargeError(Exception):
     """Raised when an uploaded file exceeds the maximum allowed size."""
 
 
-def validate_mesh_reader(mesh_file_path: str) -> None:
+def _handle_empty_geometry(path: str) -> NoReturn:
+    """Helper to raise ValueError for empty geometry."""
+    msg = f"The file '{path}' contains no geometry or is corrupted."
+    raise ValueError(msg)
+
+
+def _handle_mesh_load_error(error: Exception) -> NoReturn:
+    """Helper to raise ValueError for mesh loading failures."""
+    msg = f"Failed to load OBJ file: {error}"
+    raise ValueError(msg) from error
+
+
+def validate_mesh_reader(mesh_file_path: str):
     """Try all MESH readers. Succeed if at least one works."""
-    #read the obj and
-
     try:
-        # trimesh.load can return a Trimesh object or a Scene (if multiple objects exist)
-        mesh = trimesh.load(mesh_file_path, file_type='obj')
-
-        # Check if the loaded object actually contains geometry
-        if mesh.is_empty:
-            raise ValueError(f"The file '{file_path}' contains no geometry or is corrupted.")
-
-        return mesh
-
+        # trimesh.load can return a Trimesh object or a Scene
+        mesh = trimesh.load(mesh_file_path, file_type="obj")
     except Exception as e:
         # Catch library-specific loading errors and re-raise them clearly
-        raise ValueError(f"Failed to load OBJ file: {e}")
-    
-    raise RuntimeError("cannot read obj")
+        _handle_mesh_load_error(e)
+    else:
+        # Check if the loaded object actually contains geometry
+        if mesh.is_empty:
+            _handle_empty_geometry(mesh_file_path)
+
+        return mesh
 
 
 class MESHValidationResponse(BaseModel):
@@ -57,11 +64,12 @@ class MESHValidationResponse(BaseModel):
 def _handle_empty_file(file: UploadFile) -> NoReturn:
     """Handle empty file upload by raising an appropriate HTTPException."""
     L.error(f"Empty file uploaded: {file.filename}")
+    msg = "Uploaded file is empty"
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
         detail={
             "code": ApiErrorCode.INVALID_REQUEST,
-            "detail": "Uploaded file is empty",
+            "detail": msg,
         },
     )
 
@@ -85,7 +93,6 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
         try:
             file.file.seek(0)  # Reset pointer
             while True:
-                # Use chunk_size
                 chunk = file.file.read(chunk_size)
                 if not chunk:
                     break
@@ -93,7 +100,6 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
                 chunk_len = len(chunk)
                 total_size += chunk_len
 
-                # Check size limit before writing
                 if total_size > MAX_FILE_SIZE:
                     _handle_file_too_large()
 
@@ -124,19 +130,20 @@ def validate_mesh_file(
     """Validates an uploaded .mesh file using registered readers."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
     if file_extension != ".obj":
+        msg = "Invalid file extension. Must be .mesh"
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Invalid file extension. Must be .mesh",
+                "detail": msg,
             },
         )
 
     # --- FAIL-FAST FILE SIZE CHECK ---
-    # Check if file size is available and exceeds the maximum limit (150 MB)
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
     if file.size is not None and file.size > MAX_FILE_SIZE:
-        L.error(f"MESH upload failed: File too large (Max: {max_mb:.0f} MB) based on file.size.")
+        log_msg = f"MESH upload failed: File too large (Max: {max_mb:.0f} MB)"
+        L.error(log_msg)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -167,9 +174,7 @@ def validate_mesh_file(
         )
 
     except FileTooLargeError:
-        max_mb = MAX_FILE_SIZE / (1024 * 1024)
         L.error(f"MESH upload failed: File too large (Max: {max_mb:.0f} MB)")
-        # Cleanup is handled inside _save_upload_to_tempfile
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -178,11 +183,9 @@ def validate_mesh_file(
             },
         ) from None
 
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         L.error(f"MESH validation failed: {e!s}")
-        # Clean up immediately on error - calling helper
         _cleanup_temp_file(temp_file_path)
-
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -192,9 +195,7 @@ def validate_mesh_file(
         ) from e
     except OSError as e:
         L.error(f"File system error during MESH validation: {e!s}")
-        # Clean up immediately on error - calling helper
         _cleanup_temp_file(temp_file_path)
-
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
