@@ -58,6 +58,7 @@ class GenerateSimulationTask(Task):
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
+    _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -270,6 +271,7 @@ class GenerateSimulationTask(Task):
         population (but which won't be a human-readable representation any more).
         """
         sonata_circuit = self._circuit.sonata_circuit
+        self._neuron_set_definitions = {}
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
@@ -281,12 +283,18 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                _neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+                self._neuron_set_definitions[_neuron_set_key] = (
+                    _neuron_set.add_node_set_definition_to_sonata_circuit(
+                        self._circuit, sonata_circuit
+                    )
+                )
 
         else:
             neuron_set = AllNeurons()
             neuron_set.set_block_name(DEFAULT_NODE_SET_NAME)
-            neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+            self._neuron_set_definitions[DEFAULT_NODE_SET_NAME] = (
+                neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+            )
 
         # 3. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
@@ -297,6 +305,22 @@ class GenerateSimulationTask(Task):
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
+    def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
+        if db_client:
+            if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
+                neuron_set_definition = self._neuron_set_definitions[
+                    self.config.initialize.node_set.block_name
+                ]
+            else:
+                neuron_set_definition = self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]
+
+            number_neurons = len(neuron_set_definition["node_id"])
+            db_client.update_entity(
+                entity_id=self.config.single_entity.id,
+                entity_type=entitysdk.models.Simulation,
+                attrs_or_entity={"number_neurons": number_neurons},
+            )
+
     def _write_simulation_config_to_file(self) -> None:
         simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
         with simulation_config_path.open("w", encoding="utf-8") as f:
@@ -306,15 +330,6 @@ class GenerateSimulationTask(Task):
         self, db_client: entitysdk.client.Client | None
     ) -> None:
         if db_client:
-            L.info("-- Upload sonata_simulation_config")
-            _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,
-                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
-                file_content_type="application/json",
-                asset_label="sonata_simulation_config",
-            )
-
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
@@ -337,6 +352,15 @@ class GenerateSimulationTask(Task):
                             asset_label="replay_spikes",
                         )
 
+            L.info("-- Upload sonata_simulation_config")
+            _ = db_client.upload_file(
+                entity_id=self.config.single_entity.id,
+                entity_type=entitysdk.models.Simulation,
+                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
+                file_content_type="application/json",
+                asset_label="sonata_simulation_config",
+            )
+
     def execute(
         self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
     ) -> None:
@@ -350,5 +374,6 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_reports()
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
+        self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)

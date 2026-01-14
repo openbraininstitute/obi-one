@@ -77,7 +77,7 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> None:
+    ) -> dict:
         nset_def = self.get_node_set_definition(
             circuit, circuit.default_population_name, force_resolve_ids=True
         )
@@ -85,6 +85,8 @@ class AbstractNeuronSet(Block, abc.ABC):
         add_node_set_to_circuit(
             sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
         )
+
+        return nset_def
 
     def get_population(self, population: str | None = None) -> str:
         return self._population(population)
