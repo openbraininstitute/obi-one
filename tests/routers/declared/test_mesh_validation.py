@@ -59,6 +59,7 @@ def valid_mesh_upload() -> dict:
 def empty_mesh_upload() -> dict:
     return {"file": (f"empty{VALID_EXTENSION}", BytesIO(b""), "application/octet-stream")}
 
+
 # -----------------------------------------------------------------
 # TESTS
 # -----------------------------------------------------------------
@@ -117,7 +118,7 @@ def test_validate_mesh_file_too_large(client, valid_mesh_upload):
     # Simulate the FileTooLargeError raised during the save process
     with patch(
         "app.endpoints.mesh_validation._save_upload_to_tempfile",
-        side_effect=FileTooLargeError("Too big")
+        side_effect=FileTooLargeError("Too big"),
     ):
         response = client.post(ROUTE, files=valid_mesh_upload)
 
@@ -131,12 +132,11 @@ def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path):
 
     with (
         patch(
-            "app.endpoints.mesh_validation._save_upload_to_tempfile",
-            return_value=str(saved_path)
+            "app.endpoints.mesh_validation._save_upload_to_tempfile", return_value=str(saved_path)
         ),
         patch(
             "app.endpoints.mesh_validation.validate_mesh_reader",
-            side_effect=RuntimeError("Trimesh explosion")
+            side_effect=RuntimeError("Trimesh explosion"),
         ),
     ):
         response = client.post(ROUTE, files=valid_mesh_upload)
@@ -149,8 +149,7 @@ def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path):
 
 def test_validate_mesh_file_os_error(client, valid_mesh_upload):
     with patch(
-        "app.endpoints.mesh_validation._save_upload_to_tempfile",
-        side_effect=OSError("Disk full")
+        "app.endpoints.mesh_validation._save_upload_to_tempfile", side_effect=OSError("Disk full")
     ):
         response = client.post(ROUTE, files=valid_mesh_upload)
 
@@ -165,8 +164,7 @@ def test_validate_mesh_file_background_cleanup_scheduled(client, valid_mesh_uplo
     mock_cleanup = MagicMock()
     with (
         patch(
-            "app.endpoints.mesh_validation._save_upload_to_tempfile",
-            return_value=str(saved_path)
+            "app.endpoints.mesh_validation._save_upload_to_tempfile", return_value=str(saved_path)
         ),
         patch("app.endpoints.mesh_validation.validate_mesh_reader", return_value=None),
         patch("app.endpoints.mesh_validation._cleanup_temp_file", side_effect=mock_cleanup),
