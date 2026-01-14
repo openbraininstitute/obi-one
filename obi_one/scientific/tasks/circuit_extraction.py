@@ -580,67 +580,36 @@ class CircuitExtractionTask(Task):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
-    def _create_execution_activity(
-        self, db_client: Client = None
-    ) -> models.CircuitExtractionExecution | None:
-        """Create and register a new CircuitExtractionExecution activity."""
-        if db_client:
-            execution_model = models.CircuitExtractionExecution(
-                start_time=datetime.now(UTC),
-                used=[self.config.single_entity],
-                status=types.CircuitExtractionExecutionStatus.running,
-                authorized_public=False,
-            )
-            execution_entity = db_client.register_entity(execution_model)
-            L.info("CircuitExtractionExecution activity CREATED")
-        else:
-            execution_entity = None
-        return execution_entity
-
+    @staticmethod
     def _get_execution_activity(
-        self,
         db_client: Client = None,
         activity_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
         """Returns the CircuitExtractionExecution activity.
 
-        If an external activity ID is provided, returns the corresponding activity.
-        Otherwise, creates a new activity internally.
+        Such activity is expected to be created and managed externally.
         """
-        is_external = False
-        if db_client:
-            if activity_id:
-                execution_entity = db_client.get_entity(
-                    entity_type=models.CircuitExtractionExecution, entity_id=activity_id
-                )
-                is_external = True  # Activity status managed externally
-            else:
-                execution_entity = self._create_execution_activity(db_client=db_client)
+        if db_client and activity_id:
+            execution_entity = db_client.get_entity(
+                entity_type=models.CircuitExtractionExecution, entity_id=activity_id
+            )
         else:
             execution_entity = None
-        return execution_entity, is_external
+        return execution_entity
 
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
         execution_entity: models.CircuitExtractionExecution | None = None,
         circuit_id: str | None = None,
-        *,
-        is_external: bool = False,
     ) -> models.CircuitExtractionExecution | None:
         """Updates a CircuitExtractionExecution activity after task completion.
 
-        For activities created externally, only the generated circuit ID will be registered.
-        When created internally, also the status and end time will be updated.
+        Registers only the generated circuit ID. Other updates (status,
+        end time, executor, etc) are expected to be managed externally.
         """
         if db_client and execution_entity and circuit_id:
             upd_dict = {"generated_ids": [circuit_id]}
-            if not is_external:
-                # Update status and end time
-                upd_dict |= {
-                    "end_time": datetime.now(UTC),
-                    "status": types.CircuitExtractionExecutionStatus.done,
-                }
             upd_entity = db_client.update_entity(
                 entity_id=execution_entity.id,
                 entity_type=models.CircuitExtractionExecution,
@@ -658,8 +627,8 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        # Get execution activity (creates a new one, if not provided externally)
-        execution_activity, is_external_activity = self._get_execution_activity(
+        # Get execution activity (expected to be created and managed externally)
+        execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, activity_id=activity_id
         )
 
@@ -785,15 +754,12 @@ class CircuitExtractionTask(Task):
             # self._add_contributions(db_client=db_client,
             # registered_circuit=new_circuit_entity)
 
-            L.info("Registration DONE")
+            # Update execution activity (if any)
+            self._update_execution_activity(
+                db_client=db_client, execution_entity=execution_activity, circuit_id=new_circuit_id
+            )
 
-        # Update execution activity
-        self._update_execution_activity(
-            db_client=db_client,
-            execution_entity=execution_activity,
-            circuit_id=new_circuit_id,
-            is_external=is_external_activity,
-        )
+            L.info("Registration DONE")
 
         # Clean-up
         self._cleanup_temp_dir()
