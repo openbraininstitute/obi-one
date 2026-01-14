@@ -32,6 +32,13 @@ class TaskConfigType(StrEnum):
 
     CIRCUIT_EXTRACTION = entitysdk.models.CircuitExtractionConfig.__name__
 
+    def get_execution_type(self) -> str:
+        """Returns the execution activity type for this config type."""
+        mapping = {
+            TaskConfigType.CIRCUIT_EXTRACTION: entitysdk.models.CircuitExtractionExecution.__name__,
+        }
+        return mapping[self]
+
 
 def _get_config_asset(
     db_client: entitysdk.Client, entity_type: TaskConfigType, entity_id: str
@@ -52,27 +59,6 @@ def _get_config_asset(
         raise ValueError(msg)
     config_asset_id = str(config_assets[0].id)
     return config_asset_id
-
-
-def _get_execution_activity_type(config_entity_type: str) -> str:
-    """Determines the execution activity for a given config entity type."""
-    type_key = config_entity_type.replace("Config", "")
-    all_models = [
-        _name
-        for _name in dir(entitysdk.models)
-        if hasattr(getattr(entitysdk.models, _name), "__base__")
-    ]
-    exec_models = [
-        _name for _name in all_models if getattr(entitysdk.models, _name).__base__ == Execution
-    ]
-    exec_model = [_name for _name in exec_models if type_key in _name]
-    if len(exec_model) != 1:
-        msg = (
-            f"Execution activity for '{config_entity_type}' could not be determined "
-            f"({len(exec_model)} found)!"
-        )
-        raise ValueError(msg)
-    return exec_model[0]
 
 
 def _create_execution_activity(
@@ -157,7 +143,7 @@ def _submit_task_job(
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
     # Create activity and set to pending for launching the job
-    activity_type = _get_execution_activity_type(entity_type)
+    activity_type = entity_type.get_execution_type()
     activity_id = _create_execution_activity(db_client, activity_type, entity_type, entity_id)
     _update_execution_activity_status(db_client, activity_type, activity_id, "pending")
 
