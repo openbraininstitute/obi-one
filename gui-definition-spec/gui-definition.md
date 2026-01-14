@@ -404,16 +404,16 @@ CircuitNode = Annotated[str, Field(min_length=1)] # Required in the schema
 NodeSetType = CircuitNode | list[CircuitNode] # list[] not required
 
 class Block:
-    node_set: Annotated[
-        NodeSetType,
-        Field(
-            ui_element="entity_property_dropdown",
-            entity_type="circuit",
-            property="NodeSet",
-            title="entity property dropdown",
-            description="the description"
-        ),
-    ]
+
+    node_set: NodeSetType = Field(
+        ui_element="entity_property_dropdown",
+        entity_type=EntityType.CIRCUIT,
+        property=CircuitPropertyType.NODE_SET,
+        title="Node Set",
+        description="Name of the node set to use.",
+        min_length=1,
+    )
+    
 ```
 
 ### UI design

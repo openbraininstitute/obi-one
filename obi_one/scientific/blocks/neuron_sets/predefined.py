@@ -24,7 +24,6 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         property=CircuitPropertyType.NODE_SET,
         title="Node Set",
         description="Name of the node set to use.",
-        min_length=1,
     )
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:

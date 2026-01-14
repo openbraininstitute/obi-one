@@ -52,7 +52,7 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
 
     used_groups: dict[str, list[int]] = defaultdict(list)
 
-    for root_element, root_element_schema in schema.get("properties", {}).items():  # type:ignore[]
+    for root_element, root_element_schema in schema.get("properties", {}).items():
         if root_element == "type":
             continue
 
@@ -138,7 +138,7 @@ def validate_config(form: dict, config_ref: str) -> None:
     validate_group_order(form, config_ref)
     validate_hidden_refs_not_required(form, config_ref)
 
-    for root_element, root_element_schema in form.get("properties", {}).items():  # type:ignore[]
+    for root_element, root_element_schema in form.get("properties", {}).items():
         if root_element == "type":
             validate_type(root_element_schema, config_ref)
             continue
