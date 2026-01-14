@@ -36,7 +36,7 @@ ScanConfigsUnion = Annotated[
     | FolderCompressionScanConfig
     | MEModelSimulationScanConfig
     | MorphologyContainerizationScanConfig
-    | ElectrophysiologyMetricsScanConfig
+    # | ElectrophysiologyMetricsScanConfig
     | MorphologyDecontainerizationScanConfig
     | MorphologyMetricsScanConfig
     | MorphologyLocationsScanConfig
