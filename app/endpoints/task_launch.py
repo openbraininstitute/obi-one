@@ -237,9 +237,7 @@ def task_failure_endpoint(
     activity_id: str,
     activity_type: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
-) -> dict:
+) -> None:
     if _check_activity_status(db_client, activity_type, activity_id) != "done":
         # Set the execution activity status to "error"
         _update_execution_activity_status(db_client, activity_type, activity_id, "error")
-
-    return
