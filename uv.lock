@@ -2053,6 +2053,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
+    { name = "trimesh" },
     { name = "uvicorn" },
 ]
 
@@ -2108,6 +2109,7 @@ requires-dist = [
     { name = "python-multipart" },
     { name = "sqlalchemy" },
     { name = "starlette" },
+    { name = "trimesh" },
     { name = "uvicorn" },
 ]
 provides-extras = ["connectivity"]
