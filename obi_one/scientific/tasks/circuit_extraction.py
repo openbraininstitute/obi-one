@@ -395,7 +395,6 @@ class CircuitExtractionTask(Task):
             used=parent,
             generated=registered_circuit,
             derivation_type=derivation_type,
-            authorized_public=False,
         )
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
@@ -743,11 +742,8 @@ class CircuitExtractionTask(Task):
             # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
             # registered_circuit=new_circuit_entity)
 
-            # TODO: Derivation link
-            # https://github.com/openbraininstitute/entitycore/issues/427
-            # --> Not yet supported to create inter-project derivations
-            # self._add_derivation_link(db_client=db_client,
-            # registered_circuit=new_circuit_entity)
+            # Derivation link
+            self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
 
             # TODO: Contribution links
             # --> Contributors to be still defined (don't copy parent circuit's ones)
