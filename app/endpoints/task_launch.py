@@ -148,7 +148,7 @@ def _submit_task_job(
 
     # Command line arguments
     entity_cache = True
-    output_root = "./grid_scan"  # TODO: Check root
+    output_root = settings.LAUNCH_SYSTEM_OUTPUT_DIR
     cmd_args = [
         f"--entity_type {entity_type}",
         f"--entity_id {entity_id}",
