@@ -307,7 +307,7 @@ class GenerateSimulationTask(Task):
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
-            if hasattr(self.config, "neuron_sets"):
+            if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
                 neuron_set_definition = self._neuron_set_definitions[
                     self.config.initialize.node_set.block_name
                 ]
