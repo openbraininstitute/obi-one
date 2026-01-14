@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 
 import entitysdk
 import httpx
-from entitysdk.models.execution import Execution
 from entitysdk.types import ContentType, ExecutorType
 from fastapi import APIRouter, Depends, Request
 
