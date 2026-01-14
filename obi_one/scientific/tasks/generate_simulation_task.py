@@ -312,7 +312,7 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.node_set.block_name
                 ]
             else:
-                number_neurons = self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]
+                number_neurons = len(self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]['node_id'])
 
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,
