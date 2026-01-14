@@ -35,12 +35,12 @@ def _handle_mesh_load_error(error: Exception) -> NoReturn:
     raise ValueError(msg) from error
 
 
-def validate_mesh_reader(mesh_file_path: str):
+def validate_mesh_reader(mesh_file_path: str) -> trimesh.base.Trimesh | trimesh.Scene:
     """Try all MESH readers. Succeed if at least one works."""
     try:
         # trimesh.load can return a Trimesh object or a Scene
         mesh = trimesh.load(mesh_file_path, file_type="obj")
-    except Exception as e:
+    except (ValueError, RuntimeError, ImportError) as e:
         # Catch library-specific loading errors and re-raise them clearly
         _handle_mesh_load_error(e)
     else:
