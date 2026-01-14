@@ -69,7 +69,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     except ValidationError:
         msg = (
             f"Validation error at {ref}: float_parameter_sweep param {param} failed "
-            "to validate an float"
+            "to validate a float"
         )
         raise ValidationError(msg) from None
 
@@ -79,7 +79,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     except ValidationError:
         msg = (
             f"Validation error at {ref}: float_parameter_sweep param {param} failed "
-            "to validate an float array"
+            "to validate a float array"
         )
         raise ValidationError(msg) from None
 
