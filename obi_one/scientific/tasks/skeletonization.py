@@ -83,11 +83,15 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     info: Info = Field(
         title="Info",
         description="Information about the skeletonization campaign.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=0,
     )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
+        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group_order=1,
     )
 
     def create_campaign_entity_with_config(
