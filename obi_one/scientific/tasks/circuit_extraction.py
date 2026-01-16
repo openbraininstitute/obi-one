@@ -752,7 +752,9 @@ class CircuitExtractionTask(Task):
 
             # Update execution activity (if any)
             self._update_execution_activity(
-                db_client=db_client, execution_entity=execution_activity, circuit_id=new_circuit_id
+                db_client=db_client,
+                execution_activity=execution_activity,
+                circuit_id=new_circuit_id,
             )
 
             L.info("Registration DONE")
