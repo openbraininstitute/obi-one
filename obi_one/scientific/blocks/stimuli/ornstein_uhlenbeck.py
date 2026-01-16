@@ -24,6 +24,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         units="ms",
+        ui_element="float_parameter_sweep",
     )
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -31,6 +32,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Mean Amplitude",
         description="The mean value of current to inject. Given in nanoamps (nA).",
         units="nA",
+        ui_element="float_parameter_sweep",
     )
 
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
@@ -38,6 +40,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Standard Deviation",
         description="The standard deviation of current to inject. Given in nanoamps (nA).",
         units="nA",
+        ui_element="float_parameter_sweep",
     )
 
     def _generate_config(self) -> dict:
@@ -77,6 +80,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         units="ms",
+        ui_element="float_parameter_sweep",
     )
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -84,6 +88,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Mean Amplitude",
         description="The mean value of conductance to inject. Given in microsiemens (μS).",
         units="μS",
+        ui_element="float_parameter_sweep",
     )
 
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
@@ -91,6 +96,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Standard Deviation",
         description="The standard deviation of conductance to inject. Given in microsiemens (μS).",
         units="μS",
+        ui_element="float_parameter_sweep",
     )
 
     reversal_potential: float | list[float] = Field(
@@ -98,6 +104,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         units="mV",
+        ui_element="float_parameter_sweep",
     )
 
     def _generate_config(self) -> dict:
@@ -138,6 +145,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         units="ms",
+        ui_element="float_parameter_sweep",
     )
 
     mean_percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -145,6 +153,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Mean Percentage of Threshold Current",
         description="Signal mean as percentage of a cell's threshold current.",
         units="%",
+        ui_element="float_parameter_sweep",
     )
 
     standard_deviation_percentage_of_threshold: PositiveFloat | list[PositiveFloat] = Field(
@@ -152,6 +161,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's threshold current.",
         units="%",
+        ui_element="float_parameter_sweep",
     )
 
     def _generate_config(self) -> dict:
@@ -191,6 +201,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         units="ms",
+        ui_element="float_parameter_sweep",
     )
 
     mean_percentage_of_cells_input_conductance: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -198,6 +209,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Mean Percentage of Cells' Input Conductance",
         description="Signal mean as percentage of a cell's input conductance.",
         units="%",
+        ui_element="float_parameter_sweep",
     )
 
     standard_deviation_percentage_of_cells_input_conductance: (
@@ -207,6 +219,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's input conductance.",
         units="%",
+        ui_element="float_parameter_sweep",
     )
 
     reversal_potential: float | list[float] = Field(
@@ -214,6 +227,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         units="mV",
+        ui_element="float_parameter_sweep",
     )
 
     def _generate_config(self) -> dict:
