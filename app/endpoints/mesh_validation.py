@@ -15,8 +15,8 @@ from app.logger import L
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
-# Max file size: 150 MB
-MAX_FILE_SIZE = 150 * 1024 * 1024
+# Max file size: 5 GB
+MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
 
 
 class FileTooLargeError(Exception):
