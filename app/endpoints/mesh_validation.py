@@ -3,7 +3,7 @@ import tempfile
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
-import trimesh
+import pyvista as pv
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -31,21 +31,21 @@ def _handle_empty_geometry(path: str) -> NoReturn:
 
 def _handle_mesh_load_error(error: Exception) -> NoReturn:
     """Helper to raise ValueError for mesh loading failures."""
-    msg = f"Failed to load OBJ file: {error}"
+    msg = f"Failed to load OBJ file with PyVista: {error}"
     raise ValueError(msg) from error
 
 
-def validate_mesh_reader(mesh_file_path: str) -> trimesh.base.Trimesh | trimesh.Scene:
-    """Try all MESH readers. Succeed if at least one works."""
+def validate_mesh_reader(mesh_file_path: str) -> pv.DataSet:
+    """Try PyVista reader to validate the mesh file."""
     try:
-        # trimesh.load can return a Trimesh object or a Scene
-        mesh = trimesh.load(mesh_file_path, file_type="obj")
-    except (ValueError, RuntimeError, ImportError) as e:
-        # Catch library-specific loading errors and re-raise them clearly
+        # pyvista.read handles various formats including OBJ
+        mesh = pv.read(mesh_file_path)
+    except (ValueError, RuntimeError, Exception) as e:
+        # Catch PyVista/VTK specific loading errors
         _handle_mesh_load_error(e)
     else:
-        # Check if the loaded object actually contains geometry
-        if mesh.is_empty:
+        # PyVista meshes don't have 'is_empty'; we check point/cell counts
+        if mesh.n_points == 0 or mesh.n_cells == 0:
             _handle_empty_geometry(mesh_file_path)
 
         return mesh
@@ -74,7 +74,6 @@ def _handle_empty_file(file: UploadFile) -> NoReturn:
     )
 
 
-# Helper function to abstract the raise statement
 def _handle_file_too_large() -> NoReturn:
     """Handles cleanup and raises error when file size limit exceeded."""
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
@@ -105,7 +104,6 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
 
                 temp_file.write(chunk)
         except Exception:
-            # Cleanup for any exception during reading/writing
             if pathlib.Path(temp_path).exists():
                 pathlib.Path(temp_path).unlink(missing_ok=True)
             raise
@@ -127,7 +125,7 @@ def validate_mesh_file(
     file: Annotated[UploadFile, File(description="MESH file to upload (.obj)")],
     background_tasks: BackgroundTasks,
 ) -> MESHValidationResponse:
-    """Validates an uploaded .obj file using registered readers."""
+    """Validates an uploaded .obj file using PyVista."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
     if file_extension != ".obj":
         msg = "Invalid file extension. Must be .obj"
@@ -139,7 +137,6 @@ def validate_mesh_file(
             },
         )
 
-    # --- FAIL-FAST FILE SIZE CHECK ---
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
     if file.size is not None and file.size > MAX_FILE_SIZE:
         log_msg = f"MESH upload failed: File too large (Max: {max_mb:.0f} MB)"
@@ -151,21 +148,18 @@ def validate_mesh_file(
                 "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
             },
         )
-    # ---------------------------------
 
     temp_file_path = ""
 
     try:
-        # Save upload synchronously
         temp_file_path = _save_upload_to_tempfile(file, suffix=".obj")
 
         if pathlib.Path(temp_file_path).stat().st_size == 0:
             _handle_empty_file(file)
 
-        # Validate the file synchronously
+        # PyVista validation
         validate_mesh_reader(temp_file_path)
 
-        # Schedule cleanup as a background task
         background_tasks.add_task(_cleanup_temp_file, temp_file_path)
 
         return MESHValidationResponse(
@@ -207,7 +201,7 @@ def activate_test_mesh_endpoint(router: APIRouter) -> None:
     router.post(
         "/validate-mesh-file",
         summary="Validate MESH file format for OBP.",
-        description="Validates an uploaded .obj file using registered readers.",
+        description="Validates an uploaded .obj file using PyVista.",
     )(validate_mesh_file)
 
 
