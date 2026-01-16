@@ -38,13 +38,14 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
     class Initialize(Block):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
-            title="EM Cell Mesh", description="EM cell mesh to use for skeletonization."
+            ui_element="model_identifier", title="EM Cell Mesh", description="EM cell mesh to use for skeletonization."
         )
 
         neuron_voxel_size: (
             Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]
             | list[Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]]
         ) = Field(
+            ui_element="float_parameter_sweep",
             default=0.1,
             title="Neuron Voxel Size",
             description="Neuron reconstruction resolution in micrometers.",
@@ -55,6 +56,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]
             | list[Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]]
         ) = Field(
+            ui_element="float_parameter_sweep",
             default=0.05,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
