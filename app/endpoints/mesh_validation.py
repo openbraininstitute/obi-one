@@ -124,13 +124,13 @@ def _cleanup_temp_file(temp_path: str) -> None:
 
 
 def validate_mesh_file(
-    file: Annotated[UploadFile, File(description="MESH file to upload (.mesh)")],
+    file: Annotated[UploadFile, File(description="MESH file to upload (.obj)")],
     background_tasks: BackgroundTasks,
 ) -> MESHValidationResponse:
-    """Validates an uploaded .mesh file using registered readers."""
+    """Validates an uploaded .obj file using registered readers."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
     if file_extension != ".obj":
-        msg = "Invalid file extension. Must be .mesh"
+        msg = "Invalid file extension. Must be .obj"
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -157,7 +157,7 @@ def validate_mesh_file(
 
     try:
         # Save upload synchronously
-        temp_file_path = _save_upload_to_tempfile(file, suffix=".mesh")
+        temp_file_path = _save_upload_to_tempfile(file, suffix=".obj")
 
         if pathlib.Path(temp_file_path).stat().st_size == 0:
             _handle_empty_file(file)
@@ -207,7 +207,7 @@ def activate_test_mesh_endpoint(router: APIRouter) -> None:
     router.post(
         "/validate-mesh-file",
         summary="Validate MESH file format for OBP.",
-        description="Validates an uploaded .mesh file using registered readers.",
+        description="Validates an uploaded .obj file using registered readers.",
     )(validate_mesh_file)
 
 
