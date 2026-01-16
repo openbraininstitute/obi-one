@@ -1,0 +1,75 @@
+{
+  "anyOf": [
+    {
+      "oneOf": [
+        {
+          "$ref": "#/components/schemas/Circuit"
+        },
+        // This must be present.
+        {
+          "properties": {
+            "id_str": {
+              "type": "string",
+              "title": "Id Str",
+              "description": "ID of the entity in string format."
+            },
+            "type": {
+              "type": "string",
+              "const": "CircuitFromID",
+              "title": "Type"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["id_str", "type"],
+          "title": "CircuitFromID"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "Circuit": "#/components/schemas/Circuit",
+          "CircuitFromID": "#/components/schemas/CircuitFromID"
+        }
+      }
+    },
+    {
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Circuit"
+          },
+          {
+            "properties": {
+              "id_str": {
+                "type": "string",
+                "title": "Id Str",
+                "description": "ID of the entity in string format."
+              },
+              "type": {
+                "type": "string",
+                "const": "CircuitFromID",
+                "title": "Type"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object",
+            "required": ["id_str", "type"],
+            "title": "CircuitFromID"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "Circuit": "#/components/schemas/Circuit",
+            "CircuitFromID": "#/components/schemas/CircuitFromID"
+          }
+        }
+      },
+      "type": "array"
+    }
+  ],
+  "title": "Circuit",
+  "description": "Circuit to simulate.",
+  "ui_element": "model_identifier",
+}

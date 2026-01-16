@@ -840,14 +840,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.10.7"
+version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/53/1a14fd2e57c212b6d031e16e63fba4cae52ce76b57da67a8d85dc98ebc72/entitysdk-0.10.7.tar.gz", hash = "sha256:a0a1d969d69f0742329ceb9abdd4b2900864ada05389ccee5b1a6e2188fe0245", size = 67053, upload-time = "2025-12-17T13:52:03.152Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/aa/f6b6532f1d977f2e11ea0289ee7844d61c3604e7fe393514932a25ca1eb8/entitysdk-0.11.1.tar.gz", hash = "sha256:7a388c62a16d75a857674146ff45b51f5193861ec7ea1413c2e13291cd146737", size = 68163, upload-time = "2026-01-13T13:51:37.555Z" }
 
 [[package]]
 name = "executing"
@@ -1993,7 +1993,7 @@ wheels = [
 
 [[package]]
 name = "obi-auth"
-version = "0.4.1"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -2005,7 +2005,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/d0/a4bac580aabec42d79250e55b60c7924db8b8af1b2ce880f4be6753ddea1/obi_auth-0.4.1.tar.gz", hash = "sha256:9b45b1c1912b13158757ed23c5ac50e71ef5fd7c132141472a75ad8eb2be5c2e", size = 23033, upload-time = "2025-10-13T14:35:10.865Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/45/17159e8a481e72252665b5ae687233474859a51cd98646d0881d9eabcf01/obi_auth-1.0.0.tar.gz", hash = "sha256:2dbed5437fb97c7be8f8547632feba36fde0d42539948358dd47e9242e3df829", size = 23994, upload-time = "2026-01-13T12:03:43.972Z" }
 
 [[package]]
 name = "obi-notebook"
@@ -2067,6 +2067,7 @@ audit = [
 ]
 dev = [
     { name = "coverage" },
+    { name = "jsonschema" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2099,7 +2100,7 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "neurom" },
     { name = "notebook" },
-    { name = "obi-auth", specifier = ">=0.3.0" },
+    { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core" },
@@ -2116,6 +2117,7 @@ provides-extras = ["connectivity"]
 audit = [{ name = "pip-audit", specifier = ">=2.9.0" }]
 dev = [
     { name = "coverage", extras = ["toml"] },
+    { name = "jsonschema", specifier = ">=4.25.1" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
