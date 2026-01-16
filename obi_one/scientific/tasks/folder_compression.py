@@ -50,7 +50,7 @@ class FolderCompressionTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # noqa: ARG002
         entity_cache: bool = False,  # noqa: ARG002
-        activity_id: str | None = None,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         # Initial checks
         if not Path(self.config.initialize.folder_path.path).is_dir():

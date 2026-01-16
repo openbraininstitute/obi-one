@@ -14,18 +14,20 @@ L = logging.getLogger(__name__)
 
 
 def update_activity_status(
-    db_client: Client, activity_type: str, activity_id: str, status: str
+    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: str
 ) -> None:
     if not db_client:
         return
-    if not activity_id:
+    if not execution_activity_id:
         L.warning("Status update not possible since no execution activity provided!")
         return
 
-    activity_type_resolved = getattr(models, activity_type)
+    execution_activity_type_resolved = getattr(models, execution_activity_type)
     status_dict = {"status": status}
     db_client.update_entity(
-        entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=status_dict
+        entity_type=execution_activity_type_resolved,
+        entity_id=execution_activity_id,
+        attrs_or_entity=status_dict,
     )
 
 
@@ -38,8 +40,8 @@ def main() -> int:
         --entity_type Simulation
         --entity_id babb299c-782a-41f1-b782-bc4c5da45462
         --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8
-        --activity_type SimulationExecution
-        --activity_id b6759d3d-001d-49b3-b57f-84303415fe0a
+        --execution_activity_type SimulationExecution
+        --execution_activity_id b6759d3d-001d-49b3-b57f-84303415fe0a
         --entity_cache True
         --scan_output_root ./grid_scan
         --virtual_lab_id e6030ed8-a589-4be2-80a6-f975406eb1f6
@@ -66,9 +68,13 @@ def main() -> int:
             "--config_asset_id", required=True, help="Configuration Asset ID as string"
         )
         parser.add_argument(
-            "--activity_type", required=False, help="EntitySDK execution activity type as string"
+            "--execution_activity_type",
+            required=False,
+            help="EntitySDK execution activity type as string",
         )
-        parser.add_argument("--activity_id", required=False, help="Execution activity ID as string")
+        parser.add_argument(
+            "--execution_activity_id", required=False, help="Execution activity ID as string"
+        )
         parser.add_argument(
             "--entity_cache",
             required=True,
@@ -90,7 +96,7 @@ def main() -> int:
         L.error(f"Argument parsing error: {e}")
         return 1
 
-    if args.activity_id and not args.activity_type:
+    if args.execution_activity_id and not args.execution_activity_type:
         L.error("Execution activity type required!")
         return 1
 
@@ -118,7 +124,9 @@ def main() -> int:
         )
 
         # Update activity status
-        update_activity_status(db_client, args.activity_type, args.activity_id, "running")
+        update_activity_status(
+            db_client, args.execution_activity_type, args.execution_activity_id, "running"
+        )
 
         # Run actual task
         run_task_for_single_config_asset(
@@ -128,16 +136,20 @@ def main() -> int:
             scan_output_root=args.scan_output_root,
             db_client=db_client,
             entity_cache=args.entity_cache,
-            activity_id=args.activity_id,
+            execution_activity_id=args.execution_activity_id,
         )
     except Exception as e:  # noqa: BLE001
         # Catch any error that may occur to make sure that error status is correctly set
         L.error(f"Error launching task for single configuration asset: {e}")
-        update_activity_status(db_client, args.activity_type, args.activity_id, "error")
+        update_activity_status(
+            db_client, args.execution_activity_type, args.execution_activity_id, "error"
+        )
         return 1
 
     # Task completed without error
-    update_activity_status(db_client, args.activity_type, args.activity_id, "done")
+    update_activity_status(
+        db_client, args.execution_activity_type, args.execution_activity_id, "done"
+    )
 
     return 0
 

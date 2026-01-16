@@ -214,7 +214,7 @@ class ContributeMorphologyTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,
-        activity_id: str | None = None,
+        execution_activity_id: str | None = None,
     ) -> None:
         pass
 
@@ -245,6 +245,6 @@ class ContributeSubjectTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,
-        activity_id: str | None = None,
+        execution_activity_id: str | None = None,
     ) -> None:
         pass

@@ -165,7 +165,7 @@ class EMSynapseMappingTask(Task):
         *,
         db_client: Client = None,
         entity_cache: bool = False,  # noqa: ARG002
-        activity_id: str | None = None,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         if db_client is None:
             err_str = "Synapse lookup and mapping requires a working db_client!"

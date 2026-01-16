@@ -582,24 +582,24 @@ class CircuitExtractionTask(Task):
     @staticmethod
     def _get_execution_activity(
         db_client: Client = None,
-        activity_id: str | None = None,
+        execution_activity_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
         """Returns the CircuitExtractionExecution activity.
 
         Such activity is expected to be created and managed externally.
         """
-        if db_client and activity_id:
-            execution_entity = db_client.get_entity(
-                entity_type=models.CircuitExtractionExecution, entity_id=activity_id
+        if db_client and execution_activity_id:
+            execution_activity = db_client.get_entity(
+                entity_type=models.CircuitExtractionExecution, entity_id=execution_activity_id
             )
         else:
-            execution_entity = None
-        return execution_entity
+            execution_activity = None
+        return execution_activity
 
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
-        execution_entity: models.CircuitExtractionExecution | None = None,
+        execution_activity: models.CircuitExtractionExecution | None = None,
         circuit_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
         """Updates a CircuitExtractionExecution activity after task completion.
@@ -607,10 +607,10 @@ class CircuitExtractionTask(Task):
         Registers only the generated circuit ID. Other updates (status,
         end time, executor, etc) are expected to be managed externally.
         """
-        if db_client and execution_entity and circuit_id:
+        if db_client and execution_activity and circuit_id:
             upd_dict = {"generated_ids": [circuit_id]}
             upd_entity = db_client.update_entity(
-                entity_id=execution_entity.id,
+                entity_id=execution_activity.id,
                 entity_type=models.CircuitExtractionExecution,
                 attrs_or_entity=upd_dict,
             )
@@ -624,11 +624,11 @@ class CircuitExtractionTask(Task):
         *,
         db_client: Client = None,
         entity_cache: bool = False,
-        activity_id: str | None = None,
+        execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
         # Get execution activity (expected to be created and managed externally)
         execution_activity = CircuitExtractionTask._get_execution_activity(
-            db_client=db_client, activity_id=activity_id
+            db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         # Resolve parent circuit (local path or staging from ID)

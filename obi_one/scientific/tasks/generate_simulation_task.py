@@ -366,7 +366,7 @@ class GenerateSimulationTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,
-        activity_id: str | None = None,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache

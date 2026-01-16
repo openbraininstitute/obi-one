@@ -62,7 +62,7 @@ def _get_config_asset(
 
 def _create_execution_activity(
     db_client: entitysdk.Client,
-    activity_type: str,
+    execution_activity_type: str,
     config_entity_type: TaskConfigType,
     config_entity_id: str,
 ) -> str:
@@ -72,57 +72,79 @@ def _create_execution_activity(
         entity_type=config_entity_type_resolved, entity_id=config_entity_id
     )
 
-    activity_type_resolved = getattr(entitysdk.models, activity_type)
-    activity_model = activity_type_resolved(
+    execution_activity_type_resolved = getattr(entitysdk.models, execution_activity_type)
+    activity_model = execution_activity_type_resolved(
         start_time=datetime.now(UTC),
         used=[config_entity],
         status="created",
         authorized_public=False,
     )
     execution_activity = db_client.register_entity(activity_model)
-    L.info(f"Execution activity of type '{activity_type}' created (ID {execution_activity.id})")
-    activity_id = str(execution_activity.id)
-    return activity_id
+    L.info(
+        f"Execution activity of type '{execution_activity_type}' created "
+        f"(ID {execution_activity.id})"
+    )
+    execution_activity_id = str(execution_activity.id)
+    return execution_activity_id
 
 
 def _update_execution_activity_executor(
-    db_client: entitysdk.Client, activity_type: str, activity_id: str, job_id: str
+    db_client: entitysdk.Client,
+    execution_activity_type: str,
+    execution_activity_id: str,
+    job_id: str,
 ) -> None:
     """Updates the execution activity by adding a job as executor."""
-    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    execution_activity_type_resolved = getattr(entitysdk.models, execution_activity_type)
     exec_dict = {
         "executor": ExecutorType.single_node_job,
         "execution_id": job_id,
     }
     db_client.update_entity(
-        entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=exec_dict
+        entity_type=execution_activity_type_resolved,
+        entity_id=execution_activity_id,
+        attrs_or_entity=exec_dict,
     )
 
 
 def _update_execution_activity_status(
-    db_client: entitysdk.Client, activity_type: str, activity_id: str, status: str
+    db_client: entitysdk.Client,
+    execution_activity_type: str,
+    execution_activity_id: str,
+    status: str,
 ) -> None:
     """Updates the execution activity by setting a new status."""
-    activity_type_resolved = getattr(entitysdk.models, activity_type)
+    execution_activity_type_resolved = getattr(entitysdk.models, execution_activity_type)
     status_dict = {"status": status}
     db_client.update_entity(
-        entity_type=activity_type_resolved, entity_id=activity_id, attrs_or_entity=status_dict
+        entity_type=execution_activity_type_resolved,
+        entity_id=execution_activity_id,
+        attrs_or_entity=status_dict,
     )
 
 
-def _check_activity_status(
-    db_client: entitysdk.Client, activity_type: str, activity_id: str
+def _check_execution_activity_status(
+    db_client: entitysdk.Client, execution_activity_type: str, execution_activity_id: str
 ) -> str:
     """Returns the current status of a given execution activity."""
-    activity_type_resolved = getattr(entitysdk.models, activity_type)
-    activity = db_client.get_entity(entity_type=activity_type_resolved, entity_id=activity_id)
-    return activity.status
+    execution_activity_type_resolved = getattr(entitysdk.models, execution_activity_type)
+    execution_activity = db_client.get_entity(
+        entity_type=execution_activity_type_resolved, entity_id=execution_activity_id
+    )
+    return execution_activity.status
 
 
-def _generate_failure_callback(request: Request, activity_id: str, activity_type: str) -> str:
+def _generate_failure_callback(
+    request: Request, execution_activity_id: str, execution_activity_type: str
+) -> str:
     """Builds the callback URL for task failure notifications."""
     failure_endpoint_url = str(request.url_for("task_failure_endpoint"))
-    query_params = urlencode({"activity_id": activity_id, "activity_type": activity_type})
+    query_params = urlencode(
+        {
+            "execution_activity_id": execution_activity_id,
+            "execution_activity_type": execution_activity_type,
+        }
+    )
     return f"{failure_endpoint_url}?{query_params}"
 
 
@@ -142,9 +164,13 @@ def _submit_task_job(
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
     # Create activity and set to pending for launching the job
-    activity_type = entity_type.get_execution_type()
-    activity_id = _create_execution_activity(db_client, activity_type, entity_type, entity_id)
-    _update_execution_activity_status(db_client, activity_type, activity_id, "pending")
+    execution_activity_type = entity_type.get_execution_type()
+    execution_activity_id = _create_execution_activity(
+        db_client, execution_activity_type, entity_type, entity_id
+    )
+    _update_execution_activity_status(
+        db_client, execution_activity_type, execution_activity_id, "pending"
+    )
 
     # Command line arguments
     entity_cache = True
@@ -157,8 +183,8 @@ def _submit_task_job(
         f"--scan_output_root {output_root}",
         f"--virtual_lab_id {virtual_lab_id}",
         f"--project_id {project_id}",
-        f"--activity_type {activity_type}",
-        f"--activity_id {activity_id}",
+        f"--execution_activity_type {execution_activity_type}",
+        f"--execution_activity_id {execution_activity_id}",
     ]
 
     # Job specification
@@ -167,7 +193,9 @@ def _submit_task_job(
     )
     release_tag = settings.APP_VERSION.split("-")[0]
     # TODO: Use failure_callback_url in job_data for launch system to call back on task failure
-    _failure_callback_url = _generate_failure_callback(request, activity_id, activity_type)
+    _failure_callback_url = _generate_failure_callback(
+        request, execution_activity_id, execution_activity_type
+    )
     job_data = {
         "resources": {"cores": 1, "memory": 2, "timelimit": time_limit},
         "code": {
@@ -184,7 +212,9 @@ def _submit_task_job(
     # Submit job
     response = ls_client.post(url="/job", json=job_data)
     if response.status_code != HTTPStatus.OK:
-        _update_execution_activity_status(db_client, activity_type, activity_id, "error")
+        _update_execution_activity_status(
+            db_client, execution_activity_type, execution_activity_id, "error"
+        )
         msg = f"Job submission failed!\n{json.loads(response.text)}"
         raise RuntimeError(msg)
     response_body = response.json()
@@ -192,9 +222,11 @@ def _submit_task_job(
     L.info(f"Job submitted (ID {job_id})")
 
     # Add job as executor to activity
-    _update_execution_activity_executor(db_client, activity_type, activity_id, job_id)
+    _update_execution_activity_executor(
+        db_client, execution_activity_type, execution_activity_id, job_id
+    )
 
-    return activity_id, activity_type, job_id
+    return execution_activity_id, execution_activity_type, job_id
 
 
 @router.post(
@@ -212,17 +244,17 @@ def task_launch_endpoint(
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
     ls_client: Annotated[httpx.Client, Depends(get_ls_client)],
 ) -> str | None:
-    activity_id = None
+    execution_activity_id = None
 
     # Determine config asset
     config_asset_id = _get_config_asset(db_client, entity_type, entity_id)
 
     # Launch task
-    activity_id, _activity_type, _job_id = _submit_task_job(
+    execution_activity_id, _execution_activity_type, _job_id = _submit_task_job(
         db_client, ls_client, entity_type, entity_id, config_asset_id, request
     )
 
-    return activity_id
+    return execution_activity_id
 
 
 @router.post(
@@ -234,10 +266,15 @@ def task_launch_endpoint(
     ),
 )
 def task_failure_endpoint(
-    activity_id: str,
-    activity_type: str,
+    execution_activity_id: str,
+    execution_activity_type: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
 ) -> None:
-    if _check_activity_status(db_client, activity_type, activity_id) != "done":
+    current_status = _check_execution_activity_status(
+        db_client, execution_activity_type, execution_activity_id
+    )
+    if current_status != "done":
         # Set the execution activity status to "error"
-        _update_execution_activity_status(db_client, activity_type, activity_id, "error")
+        _update_execution_activity_status(
+            db_client, execution_activity_type, execution_activity_id, "error"
+        )
