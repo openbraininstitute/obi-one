@@ -4,6 +4,7 @@ import logging
 import os
 import time
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar
 from urllib.parse import urlparse
@@ -27,6 +28,12 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 L = logging.getLogger(__name__)
 
 
+class BlockGroup(StrEnum):
+    """Authentication and authorization errors."""
+
+    SETUP_BLOCK_GROUP = "Setup"
+
+
 class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
 
@@ -35,6 +42,14 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     description: ClassVar[str] = "Skeletonization campaign"
 
     _campaign: entitysdk.models.SkeletonizationCampaign = None
+
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
+            "group_order": [
+                BlockGroup.SETUP_BLOCK_GROUP,
+            ],
+        }
 
     class Initialize(Block):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
