@@ -59,8 +59,8 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         )
 
         neuron_voxel_size: (
-            Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]
-            | list[Annotated[PositiveFloat, Field(ge=0.001, le=1.0)]]
+            Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
+            | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
             ui_element="float_parameter_sweep",
             default=0.1,
@@ -70,8 +70,8 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         )
 
         spines_voxel_size: (
-            Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]
-            | list[Annotated[PositiveFloat, Field(ge=0.001, le=0.1)]]
+            Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
+            | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
             ui_element="float_parameter_sweep",
             default=0.05,
