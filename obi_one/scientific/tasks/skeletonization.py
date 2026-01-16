@@ -80,12 +80,6 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             units="μm",
         )
 
-        _segment_spines: bool = Field(
-            default=True,
-            title="Segment Spines",
-            description="Segment dendritic spines from the neuron morphology.",
-        )
-
     info: Info = Field(
         title="Info",
         description="Information about the skeletonization campaign.",
@@ -210,6 +204,12 @@ class SkeletonizationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
 
+    _segment_spines: bool = Field(
+        default=True,
+        title="Segment Spines",
+        description="Segment dendritic spines from the neuron morphology.",
+    )
+
     def _setup_input_task_params(self, db_client: entitysdk.client.Client) -> None:
         self._input_params = {
             "name": self.config.initialize.cell_mesh.id_str,
@@ -221,7 +221,7 @@ class SkeletonizationTask(Task):
             "em_cell_mesh_id": self.config.initialize.cell_mesh.id_str,
             "neuron_voxel_size": self.config.initialize.neuron_voxel_size,
             "spines_voxel_size": self.config.initialize.spines_voxel_size,
-            "segment_spines": self.config.initialize._segment_spines,
+            "segment_spines": self._segment_spines,
         }
 
     def _setup_clients(self, db_client: entitysdk.client.Client) -> None:
