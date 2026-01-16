@@ -80,7 +80,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             units="μm",
         )
 
-        segment_spines: bool = Field(
+        _segment_spines: bool = Field(
             default=True,
             title="Segment Spines",
             description="Segment dendritic spines from the neuron morphology.",
@@ -221,7 +221,7 @@ class SkeletonizationTask(Task):
             "em_cell_mesh_id": self.config.initialize.cell_mesh.id_str,
             "neuron_voxel_size": self.config.initialize.neuron_voxel_size,
             "spines_voxel_size": self.config.initialize.spines_voxel_size,
-            "segment_spines": self.config.initialize.segment_spines,
+            "segment_spines": self.config.initialize._segment_spines,
         }
 
     def _setup_clients(self, db_client: entitysdk.client.Client) -> None:
