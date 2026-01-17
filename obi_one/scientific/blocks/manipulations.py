@@ -85,6 +85,35 @@ class ConnectSynapticManipulation(NewSynapticManipulation):
 
         return sonata_config
     
+class SetSpontaneousMinisRate0HzSynapticManipulation(NewSynapticManipulation):
+    """Set spontaneous minis rate to 0Hz. By default, the spontaneous minis rate is set in..."""
+
+    title: ClassVar[str] = "0Hz Spontaneous Minis"
+
+    def _generate_config(self) -> dict:
+        sonata_config = super()._generate_config()
+        sonata_config["spont_minis"] = 0.0
+
+        return sonata_config
+    
+class SetSpontaneousMinisRateSynapticManipulation(NewSynapticManipulation):
+    """Set spontaneous minis rate. By default, the spontaneous minis rate is set in..."""
+
+    title: ClassVar[str] = "Set Spontaneous Minis Rate"
+
+    rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        default=0.0,
+        title="Spontaneous Minis Rate",
+        description="Set the spontaneous minis rate in Hz.",
+        units="Hz",
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = super()._generate_config()
+        sonata_config["spont_minis"] = self.rate
+        return sonata_config
+    
 
 class SynapticManipulation(Block, ABC):
     @staticmethod
