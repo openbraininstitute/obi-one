@@ -1,4 +1,3 @@
-from email.policy import default
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
