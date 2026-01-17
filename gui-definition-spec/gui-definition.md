@@ -1,17 +1,17 @@
 # Specification for JSONSchema GUI definition
 
-## Scan configs
+## ScanConfigs
 
 ### ui_enabled
 
-Scan configs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
+ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
 
-The config is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
+The ScanConfig is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
 All root elements and block elements must have a valid `ui_element`. [See below for details](#valid-ui_elements).
 
 ### Constraints
 
-All properties of a scan config must be _root elements_. (See below).
+All properties of a ScanConfig must be _root elements_. (See below).
 
 They should contain `group_order` property which must be an array of strings determining the order of groups of root elements. All values in `group_order` must be present in at least one root element's `group` string.
 
@@ -387,7 +387,7 @@ class Block:
 
 <img src="designs/reference.png"  width="300" />
 
-## Entity property dropdown
+## Entity property dropdown parameter scan
 
 ui_element: `entity_property_dropdown`
 
@@ -419,6 +419,33 @@ class Block:
 ### UI design
 
 <img src="designs/entity_property_dropdown.png"  width="300" />
+
+
+## String dropdown parameter scan
+
+ui_element: `string_dropdown_parameter_sweep`
+
+- Should accept a single `string` as input.
+- Should have a list of strings '' (non-validating)
+
+String dropdown schema [string_dropdown_parameter_sweep](reference_schemas/string_dropdown_parameter_sweep.json)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    mtau_eq: Literal["A", "B", "C"] | list[Literal["A", "B", "C"]] = Field(
+        ui_element="string_dropdown_parameter_sweep",
+        title=r"\tau_m equation",
+        description="Equation to use for \tau_m.",
+        default="sig_fit_mtau",
+    )
+```
+
+### UI design
+
+<img src="designs/reference.png"  width="300" />
+
 
 ## Legacy elements
 

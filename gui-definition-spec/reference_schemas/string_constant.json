@@ -1,0 +1,7 @@
+{
+    "type": "string",
+    "const": "sig_fit_minf",
+    "title": "m_{inf} equation",
+    "description": "Equation to use for m_{inf}.",
+    "default": "sig_fit_minf"
+},
