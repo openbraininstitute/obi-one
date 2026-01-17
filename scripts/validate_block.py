@@ -1,3 +1,4 @@
+from email.policy import default
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
@@ -54,6 +55,25 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
         msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
         raise ValidationError(msg) from None
 
+def determine_numeric_test_value(schema: dict) -> float | int:
+    default = schema.get("default")
+    single_type = schema.get("anyOf", [{}])[0]
+    minimum = single_type.get("minimum")
+    maximum = single_type.get("maximum")
+    exclusive_minimum = single_type.get("exclusiveMinimum")
+    exclusive_maximum = single_type.get("exclusiveMaximum")
+
+    test_value = 1
+    if default is not None:
+        test_value = default
+    elif exclusive_minimum is not None or exclusive_maximum is not None:
+        test_value = minimum
+    elif minimum is not None:
+        test_value = minimum
+    elif maximum is not None:
+        test_value = maximum
+
+    return test_value
 
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     if schema.get("anyOf", [{}])[0].get("type") != "number":
@@ -63,8 +83,10 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
+    test_value = determine_numeric_test_value(schema)
+    
     try:
-        validate(1.0, schema)
+        validate(test_value, schema)
 
     except ValidationError:
         msg = (
@@ -74,7 +96,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
     try:
-        validate([1.0], schema)
+        validate([test_value], schema)
 
     except ValidationError:
         msg = (
@@ -91,21 +113,24 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
             "be a union with an 'int' as first element"
         )
         raise ValidationError(msg) from None
+    
+    test_value = determine_numeric_test_value(schema)
     try:
-        validate(1, schema)
+        validate(test_value, schema)
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} failedto validate an int"
+            f"Validation error at {ref}: int_parameter_sweep param {param} failed "
+            "to validate an int"
         )
         raise ValidationError(msg) from None
 
     try:
-        validate([1], schema)
+        validate([test_value], schema)
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} failed"
+            f"Validation error at {ref}: int_parameter_sweep param {param} failed "
             "to validate an int array"
         )
         raise ValidationError(msg) from None
