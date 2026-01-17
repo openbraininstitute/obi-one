@@ -161,7 +161,7 @@ class GenerateSimulationTask(Task):
             # Generate list of synaptic manipulation configs (executed in the order in the list)
             # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
             manipulation_list = [
-                manipulation.config()
+                manipulation.config(DEFAULT_NODE_SET_NAME)
                 for manipulation in self.config.synaptic_manipulations.values()
             ]
             if len(manipulation_list) > 0:

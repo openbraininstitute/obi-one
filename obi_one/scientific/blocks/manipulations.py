@@ -1,17 +1,98 @@
 from abc import ABC
 from typing import ClassVar
 
-from pydantic import Field, NonNegativeFloat
+from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.block import Block
 
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
+
+class NewSynapticManipulation(Block, ABC):
+
+    # Should this be a SingleTimestamp?
+    timestamp: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        default=0.0,
+        title="Timestamp",
+        description="Time at which synaptic manipulation occurs in milliseconds (ms).",
+        units="ms",
+    )
+
+    source_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        ui_element="reference",
+        reference_type=NeuronSetReference.__name__,
+        title="Neuron Set (Source)",
+        description="Source neuron set to simulate",
+        supports_virtual=True,
+    )
+
+    targeted_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        ui_element="reference",
+        reference_type=NeuronSetReference.__name__,
+        title="Neuron Set (Target)",
+        description="Target neuron set to simulate",
+        supports_virtual=False,
+    )
+
+    _default_node_set: str = PrivateAttr(default="All")
+
+    @staticmethod
+    def _get_override_name() -> str:
+        pass
+
+    def config(self, default_node_set: str = "All") -> dict:
+        self._default_node_set = default_node_set
+        return self._generate_config()
+
+    def _generate_config(self) -> dict:
+        sonata_config = {
+            "name": self.block_name,
+            "source": resolve_neuron_set_ref_to_node_set(
+                self.source_neuron_set, self._default_node_set
+            ),
+            "target": resolve_neuron_set_ref_to_node_set(
+                self.targeted_neuron_set, self._default_node_set
+            ),
+            "delay": self.timestamp,
+        }
+
+        return sonata_config
+
+class DisconnectSynapticManipulation(NewSynapticManipulation):
+    """Disconnect synapses between specified source and target neuron sets."""
+
+    title: ClassVar[str] = "Disconnect Synapses"
+
+    def _generate_config(self) -> dict:
+        sonata_config = super()._generate_config()
+        sonata_config["weight"] = 0.0
+
+        return sonata_config
+    
+class ConnectSynapticManipulation(NewSynapticManipulation):
+    """Connect synapses between specified source and target neuron sets."""
+
+    title: ClassVar[str] = "Connect Synapses"
+
+    def _generate_config(self) -> dict:
+        sonata_config = super()._generate_config()
+        sonata_config["weight"] = 0.0
+
+        return sonata_config
+    
 
 class SynapticManipulation(Block, ABC):
     @staticmethod
     def _get_override_name() -> str:
         pass
 
-    def config(self) -> dict:
+    def config(self, default_node_set: str = "All") -> dict:
+        self._default_node_set = default_node_set
         return self._generate_config()
 
     def _generate_config(self) -> dict:

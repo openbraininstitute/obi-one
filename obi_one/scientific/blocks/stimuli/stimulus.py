@@ -602,7 +602,7 @@ class SpikeStimulus(Stimulus):
         reference_type=NeuronSetReference.__name__,
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
-        supports_virtual=True,
+        supports_virtual=False,
     )
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
