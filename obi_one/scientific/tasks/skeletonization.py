@@ -89,7 +89,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     )
 
     initialize: Initialize = Field(
-        ui_element="root_block"
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
