@@ -208,7 +208,7 @@ class SkeletonizationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
 
-    _segment_spines: bool = Field(
+    _segment_spines: bool = PrivateAttr(
         default=True,
         title="Segment Spines",
         description="Segment dendritic spines from the neuron morphology.",
