@@ -20,7 +20,6 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 
 L = logging.getLogger(__name__)
@@ -76,16 +75,15 @@ class BlockGroup(StrEnum):
 
 
 class HodgkinHuxleyIonChannelModel(Block):
-
     m_power: int = Field(
-            title="m exponent in channel equation",
-            default=1,
-            ge=1,
-            le=4,
-            description=(
-                r"Exponent \(p\) of \(m\) in the channel equation: "
-                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-            ),
+        title="m exponent in channel equation",
+        default=1,
+        ge=1,
+        le=4,
+        description=(
+            r"Exponent \(p\) of \(m\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
     )
     h_power: int = Field(
         title="h exponent in channel equation",
@@ -99,13 +97,14 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     minf_eq: Literal["sig_fit_minf", "1"] = Field(
-            title="m_{inf} equation",
-            description="Equation to use for m_{inf}.",
-            default="sig_fit_minf",
-        )
+        title="m_{inf} equation",
+        description="Equation to use for m_{inf}.",
+        default="sig_fit_minf",
+    )
 
-
-    mtau_eq: Literal["sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau", "1"] = Field(
+    mtau_eq: Literal[
+        "sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau", "1"
+    ] = Field(
         title=r"\tau_m equation",
         description="Equation to use for \tau_m.",
         default="sig_fit_mtau",
@@ -122,8 +121,6 @@ class HodgkinHuxleyIonChannelModel(Block):
         description="Equation to use for \tau_h.",
         default="sig_fit_htau",
     )
-
-    
 
 
 class IonChannelFittingBetaScanConfig(ScanConfig):
@@ -160,8 +157,6 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
             )
         )
 
-        
-
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
@@ -182,7 +177,6 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
         group=BlockGroup.MODEL,
         group_order=0,
     )
-
 
     def create_campaign_entity_with_config(
         self,

@@ -20,9 +20,11 @@ from obi_one.scientific.from_id.circuit_from_id import (
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
+    _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -86,12 +88,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
+            "ui_enabled": True,
+            "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
-                BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             ],
             "default_block_reference_labels": {
                 NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
@@ -100,15 +102,17 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         }
 
     timestamps: dict[str, TimestampsUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Timestamps",
         reference_type=TimestampsReference.__name__,
         description="Timestamps for the simulation.",
         singular_name="Timestamps",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
+        group=BlockGroup.EVENTS_GROUP,
         group_order=0,
     )
     recordings: dict[str, RecordingUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=RecordingReference.__name__,
         description="Recordings for the simulation.",
@@ -139,12 +143,14 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 Field(min_length=1),
             ]
         ) = Field(
+            ui_element="float_parameter_sweep",
             default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             units="ms",
         )
-        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
+        extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+            ui_element="float_parameter_sweep",
             default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
@@ -155,14 +161,18 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             ),
             units="mM",
         )
-        v_init: list[float] | float = Field(
+        v_init: float | list[float] = Field(
+            ui_element="float_parameter_sweep",
             default=-80.0,
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             units="mV",
         )
-        random_seed: list[int] | int = Field(
-            default=1, description="Random seed for the simulation."
+        random_seed: int | list[int] = Field(
+            ui_element="int_parameter_sweep",
+            default=1,
+            title="Random Seed",
+            description="Random seed for the simulation.",
         )
 
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
@@ -180,7 +190,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
 
-    info: Info = Field(
+    info: Info = Field(  # type: ignore[]
+        ui_element="root_block",
         title="Info",
         description="Information about the simulation campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -224,7 +235,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SimulationCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -255,10 +266,11 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model", description="ME Model to simulate."
+            ui_element="model_identifier", title="ME Model", description="ME Model to simulate."
         )
 
     initialize: Initialize = Field(
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -266,6 +278,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     )
 
     stimuli: dict[str, MEModelStimulusUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Stimuli",
         reference_type=StimulusReference.__name__,
@@ -274,6 +287,20 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
         group_order=0,
     )
+
+    class Config(SimulationScanConfig.Config):
+        json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
+            "group_order": [
+                BlockGroup.SETUP_BLOCK_GROUP,
+                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                BlockGroup.EVENTS_GROUP,
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            },
+        }
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
@@ -284,6 +311,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
@@ -292,6 +320,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         group_order=0,
     )
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=SynapticManipulationsReference.__name__,
         description="Synaptic manipulations for the simulation.",
@@ -302,16 +331,20 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Circuit to simulate."
+            ui_element="model_identifier",
+            title="Circuit",
+            description="Circuit to simulate.",
         )
-        node_set: (
-            Annotated[
-                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-            ]
-            | None
-        ) = None
+        node_set: NeuronSetReference | None = Field(
+            ui_element="reference",
+            default=None,
+            title="Neuron Set",
+            description="Neuron set to simulate.",
+            reference_type=NeuronSetReference.__name__,
+        )
 
     initialize: Initialize = Field(
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -319,6 +352,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
     stimuli: dict[str, StimulusUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         title="Stimuli",
         reference_type=StimulusReference.__name__,
@@ -337,6 +371,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     description: ClassVar[str] = "SONATA simulation campaign"
 
     neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+        ui_element="block_dictionary",
         default_factory=dict,
         reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
@@ -348,9 +383,14 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     class Initialize(SimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
-        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+        ) = Field(
+            ui_element="model_identifier",
+            title="MEModel With Synapses",
+            description="MEModel with synapses to simulate.",
+        )
 
     initialize: Initialize = Field(
+        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -395,6 +435,7 @@ class SimulationSingleConfigMixin(abc.ABC):
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
                 entity_id=self.initialize.circuit.id_str,
                 simulation_campaign_id=campaign.id,
+                number_neurons=-1,
             )
         )
 
@@ -402,7 +443,7 @@ class SimulationSingleConfigMixin(abc.ABC):
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
             asset_label="simulation_generation_config",
         )

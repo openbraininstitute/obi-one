@@ -1,0 +1,21 @@
+{
+  "anyOf": [
+    // Single value must come first
+    {
+      "type": "number",
+      "minimum": 0.0
+    },
+    {
+      "items": {
+        "type": "number",
+        "minimum": 0.0
+      },
+      "type": "array"
+    }
+  ],
+  "title": "Extracellular Calcium Concentration",
+  "description": "Extracellular calcium concentration around the synapse in millimoles (mM). Increasing this value increases the probability of synaptic vesicle release, which in turn increases the level of network activity. In vivo values are estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM.",
+  "default": 1.1,
+  "units": "mM",
+  "ui_element": "float_parameter_sweep"
+}

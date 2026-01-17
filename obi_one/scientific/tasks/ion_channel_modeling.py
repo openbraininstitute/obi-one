@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar
 
 import entitysdk
 from entitysdk import models
@@ -22,6 +22,7 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.IonChannelModelingCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -302,7 +303,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.IonChannelModelingConfig,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
             asset_label="ion_channel_modeling_generation_config",
         )
