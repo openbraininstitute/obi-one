@@ -74,7 +74,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
             ui_element="float_parameter_sweep",
-            default=0.05,
+            default=0.1,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
             units="μm",
