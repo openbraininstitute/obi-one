@@ -208,10 +208,9 @@ class SkeletonizationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
 
+    # Segment Spines, Segment dendritic spines from the neuron morphology.
     _segment_spines: bool = PrivateAttr(
         default=True,
-        title="Segment Spines",
-        description="Segment dendritic spines from the neuron morphology.",
     )
 
     def _setup_input_task_params(self, db_client: entitysdk.client.Client) -> None:
