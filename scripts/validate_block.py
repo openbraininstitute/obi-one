@@ -102,14 +102,31 @@ def determine_numeric_test_value(schema: dict) -> float | int:
 
     return test_value
 
-def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+def validate_numeric_single_and_list_types(schema: dict, param: str, ref: str, ui_element: str) -> None:
     if schema.get("anyOf", [{}])[0].get("type") != "number":
         msg = (
-            f"Validation error at {ref}: float_parameter_sweep param {param} should "
+            f"Validation error at {ref}: {ui_element} param {param} should "
             "be a union with a 'number' as first element"
         )
         raise ValidationError(msg) from None
+    
+    if schema.get("anyOf", [{}])[1].get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: {ui_element} param {param} should "
+            "be a union with an 'array' as second element"
+        )
+        raise ValidationError(msg) from None
+    
+    if schema.get("anyOf", [{}])[0] != schema.get("anyOf", [{}])[1].get("items"):
+        msg = (
+            f"Validation error at {ref}: {ui_element} param {param} should "
+            "have matching types for single value and array items"
+        )
+        raise ValidationError(msg) from None
 
+def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+    
+    validate_numeric_single_and_list_types(schema, param, ref, "float_parameter_sweep")
     test_value = determine_numeric_test_value(schema)
     
     try:
@@ -134,13 +151,8 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("anyOf", [{}])[0].get("type") != "integer":
-        msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} should "
-            "be a union with an 'int' as first element"
-        )
-        raise ValidationError(msg) from None
     
+    validate_numeric_single_and_list_types(schema, param, ref, "int_parameter_sweep")
     test_value = determine_numeric_test_value(schema)
     try:
         validate(test_value, schema)
