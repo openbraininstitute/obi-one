@@ -65,8 +65,36 @@ def determine_numeric_test_value(schema: dict) -> float | int:
     test_value = 1
     if default is not None:
         test_value = default
-    elif exclusive_minimum is not None or exclusive_maximum is not None:
+    elif exclusive_minimum is not None and exclusive_maximum is not None:
+        if exclusive_minimum == exclusive_maximum | exclusive_minimum > exclusive_maximum:
+            msg = "exclusiveMinimum is greater than or equal to exclusiveMaximum, invalid schema"
+            raise ValidationError(
+                msg
+            )
+    elif exclusive_minimum is not None and maximum is not None:
+        if exclusive_minimum >= maximum:
+            msg = "exclusiveMinimum is greater than or equal to maximum, invalid schema"
+            raise ValidationError(
+                msg
+            )
+    elif minimum is not None and exclusive_maximum is not None:
+        if minimum >= exclusive_maximum:
+            msg = "minimum is greater than or equal to exclusiveMaximum, invalid schema"
+            raise ValidationError(
+                msg
+            ) 
+    elif minimum is not None and maximum is not None:
+        if minimum == maximum:
+            test_value = minimum
+        elif minimum > maximum:
+            msg = "minimum is greater than maximum, invalid schema"
+            raise ValidationError(
+                msg
+            )
+    elif exclusive_minimum is not None:
         test_value = minimum
+    elif exclusive_maximum is not None:
+        test_value = maximum
     elif minimum is not None:
         test_value = minimum
     elif maximum is not None:
