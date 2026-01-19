@@ -54,7 +54,7 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
         msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
         raise ValidationError(msg) from None
 
-def determine_numeric_test_value(schema: dict) -> float | int:
+def determine_numeric_test_value(schema: dict, proposed_test_value: float | int) -> float | int:
     default = schema.get("default")
     single_type = schema.get("anyOf", [{}])[0]
     minimum = single_type.get("minimum")
@@ -62,9 +62,8 @@ def determine_numeric_test_value(schema: dict) -> float | int:
     exclusive_minimum = single_type.get("exclusiveMinimum")
     exclusive_maximum = single_type.get("exclusiveMaximum")
 
-    test_value = 1
-    if default is not None:
-        test_value = default
+    
+    # Logical checks for min/max consistency
 
     # If exclusiveMin and exclusiveMax, exclusiveMax should be greater than exclusiveMin
     if exclusive_minimum is not None and exclusive_maximum is not None:
@@ -90,20 +89,49 @@ def determine_numeric_test_value(schema: dict) -> float | int:
                 msg
             ) 
         
-    # Else if minimum and maximum
-    elif minimum is not None and maximum is not None:
-        # If minimum equals maximum, set test_value to minimum
-        if minimum == maximum:
-            test_value = minimum
-
-        # Else if minimum must be less than maximum
-        elif not minimum < maximum:
-            msg = "minimum is not less than maximum, invalid schema"
+    # If minimum and maximum, minimum must be less than or equal to maximum
+    if minimum is not None and maximum is not None:
+        if not minimum <= maximum:
+            msg = "minimum is not less than or equal maximum, invalid schema"
             raise ValidationError(
                 msg
             )
         
-    # Other cases
+    # Logical checks for default consistency
+    if default is not None:
+        if minimum is not None:
+            if default < minimum:
+                msg = "default is less than minimum, invalid schema"
+                raise ValidationError(
+                    msg
+                )
+        if maximum is not None:
+            if default > maximum:
+                msg = "default is greater than maximum, invalid schema"
+                raise ValidationError(
+                    msg
+                )
+        if exclusive_minimum is not None:
+            if default <= exclusive_minimum:
+                msg = "default is less than or equal to exclusiveMinimum, invalid schema"
+                raise ValidationError(
+                    msg
+                )
+        if exclusive_maximum is not None:
+            if default >= exclusive_maximum:
+                msg = "default is greater than or equal to exclusiveMaximum, invalid schema"
+                raise ValidationError(
+                    msg
+                )
+        
+    # Set the test_value
+    test_value = proposed_test_value
+
+    if default is not None:
+        test_value = default
+
+    elif minimum is not None and maximum is not None:
+        test_value = minimum
     elif exclusive_minimum is not None:
         test_value = minimum
     elif exclusive_maximum is not None:
@@ -140,7 +168,7 @@ def validate_numeric_single_and_list_types(schema: dict, param: str, ref: str, d
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     
     validate_numeric_single_and_list_types(schema, param, ref, "number", "float_parameter_sweep")
-    test_value = determine_numeric_test_value(schema)
+    test_value = determine_numeric_test_value(schema, proposed_test_value=1.0)
     
     try:
         validate(test_value, schema)
@@ -166,7 +194,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
     
     validate_numeric_single_and_list_types(schema, param, ref, "integer", "int_parameter_sweep")
-    test_value = determine_numeric_test_value(schema)
+    test_value = determine_numeric_test_value(schema, proposed_test_value=1)
     try:
         validate(test_value, schema)
 
