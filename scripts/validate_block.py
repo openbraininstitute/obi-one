@@ -175,53 +175,51 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-def validate_string_dropdown_parameter_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("anyOf", [{}])[0].get("type") != "string":
+def validate_string_dropdown(schema: dict, param: str, ref: str) -> None:
+    # Make sure type 
+    if schema.get("type") != "string":
         msg = (
-            f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} should "
+            f"Validation error at {ref}: string_dropdown param {param} should "
             "be a union with a 'string' as first element"
         )
         raise ValidationError(msg) from None
     
-    enum_list = schema.get("anyOf", [{}]).get("enum", None)
+    enum_list = schema.get("enum", None)
 
+    # Make sure enum field exists
     if enum_list is None:
         msg = (
-            f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} should "
+            f"Validation error at {ref}: string_dropdown param {param} should "
             "have an 'enum' field in its schema"
         )
         raise ValidationError(msg) from None
     
+    # Make sure enum is a non-empty list
     if type(enum_list) is not list or len(enum_list) == 0:
         msg = (
-            f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} should "
+            f"Validation error at {ref}: string_dropdown param {param} should "
             "have a non-empty list as its 'enum' field"
         )
         raise ValidationError(msg) from None
     
+    # Makesure all the values in the enum are strings
     for val in enum_list:
         if not isinstance(val, str):
             msg = (
-                f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} has "
+                f"Validation error at {ref}: string_dropdown param {param} has "
                 f"an enum value {val} that is not a string"
             )
             raise ValidationError(msg) from None
 
+    # Try validating a single string value
     try:
         validate(enum_list[0], schema)
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} failedto validate a string"
+            f"Validation error at {ref}: string_dropdown param {param} failed to validate a string"
         )
         raise ValidationError(msg) from None
     
-    try:
-        validate([enum_list[0]], schema)
-    except ValidationError:
-        msg = (
-            f"Validation error at {ref}: string_dropdown_parameter_sweep param {param} failedto validate a string array"
-        )
-        raise ValidationError(msg) from None
 
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
@@ -267,8 +265,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
             validate_entity_property_dropdown(schema, param, ref)
         case "reference":
             validate_reference(schema, param, ref)
-        case "string_dropdown_parameter_sweep":
-            validate_string_dropdown_parameter_sweep(schema, param, ref)
+        case "string_dropdown":
+            validate_string_dropdown(schema, param, ref)
         case "neuron_ids":
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
