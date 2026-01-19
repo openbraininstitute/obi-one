@@ -15,10 +15,13 @@ def run_task_for_single_config(
     *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
+    execution_activity_id: str | None = None,
 ) -> Any:
     task_type = get_configs_task_type(single_config)
     task = task_type(config=single_config)
-    return task.execute(db_client=db_client, entity_cache=entity_cache)
+    return task.execute(
+        db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
+    )
 
 
 def run_task_for_single_configs(
@@ -52,6 +55,7 @@ def run_task_for_single_config_asset(
     *,
     db_client: entitysdk.client.Client = None,
     entity_cache: bool = False,
+    execution_activity_id: str | None = None,
 ) -> None:
     """Run the appropriate task for a single configuration stored as an asset."""
     json_str = db_client.download_content(
@@ -70,4 +74,5 @@ def run_task_for_single_config_asset(
         single_config,
         db_client=db_client,
         entity_cache=entity_cache,
+        execution_activity_id=execution_activity_id,
     )
