@@ -5,9 +5,9 @@
         "thermo_fit_mtau",
         "thermo_fit_mtau_v2",
         "bell_fit_mtau"
-    ]
+    ],
     "title": "tau_m equation",
     "description": "Equation to use for tau_m.",
     "default": "sig_fit_mtau",
-    "ui_element": "string_dropdown_parameter_sweep"
+    "ui_element": "string_dropdown"
 }
