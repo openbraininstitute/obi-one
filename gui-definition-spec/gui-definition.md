@@ -423,22 +423,22 @@ class Block:
 
 ## String dropdown parameter scan
 
-ui_element: `string_dropdown_parameter_sweep`
+ui_element: `string_dropdown`
 
 - Should accept a single `string` as input.
-- Should have a list of strings '' (non-validating)
+- Should have a list of strings 'enum' with valid values (non-validating)
 
-String dropdown schema [string_dropdown_parameter_sweep](reference_schemas/string_dropdown_parameter_sweep.json)
+String dropdown schema [string_dropdown](reference_schemas/string_dropdown.json)
 
 ### Example Pydantic implementation
 
 ```py
 class Block:
-    mtau_eq: Literal["A", "B", "C"] | list[Literal["A", "B", "C"]] = Field(
-        ui_element="string_dropdown_parameter_sweep",
-        title=r"\tau_m equation",
-        description="Equation to use for \tau_m.",
-        default="sig_fit_mtau",
+    mtau_eq: Literal["A", "B", "C"] = Field(
+        ui_element="string_dropdown",
+        title="Option",
+        description="Option A, B or C",
+        default="B",
     )
 ```
 
