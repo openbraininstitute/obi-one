@@ -444,7 +444,7 @@ class Block:
 
 ### UI design
 
-<img src="designs/reference.png"  width="300" />
+<img src="designs/string_dropdown.png"  width="300" />
 
 
 ## Legacy elements
