@@ -447,6 +447,33 @@ class Block:
 <img src="designs/string_dropdown.png"  width="300" />
 
 
+## String constant
+
+ui_element: `string_constant`
+
+- Should accept a single `string` as input.
+- Should have a list of strings 'enum' with valid values (non-validating)
+
+String dropdown schema [string_dropdown](reference_schemas/string_dropdown.json)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    mtau_eq: Literal["Hodgkin-Huxley"] = Field(
+        ui_element="string_dropdown",
+        title="Ion Channel Type",
+        description="Text",
+        default="Hodgkin-Huxley",
+    )
+```
+
+### UI design
+
+<img src="designs/string_constant.png"  width="300" />
+
+
+
 ## Legacy elements
 
 ## Neuron ids
