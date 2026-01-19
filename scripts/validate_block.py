@@ -65,32 +65,45 @@ def determine_numeric_test_value(schema: dict) -> float | int:
     test_value = 1
     if default is not None:
         test_value = default
-    elif exclusive_minimum is not None and exclusive_maximum is not None:
-        if exclusive_minimum == exclusive_maximum | exclusive_minimum > exclusive_maximum:
-            msg = "exclusiveMinimum is greater than or equal to exclusiveMaximum, invalid schema"
+
+    # If exclusiveMin and exclusiveMax, exclusiveMax should be greater than exclusiveMin
+    if exclusive_minimum is not None and exclusive_maximum is not None:
+        if not exclusive_maximum > exclusive_minimum:
+            msg = "exclusiveMaximum is not greater than exclusiveMinimum, invalid schema"
             raise ValidationError(
                 msg
             )
+        
+    # Else if exclusiveMin and maximum, maximum must be greater than exclusiveMin
     elif exclusive_minimum is not None and maximum is not None:
-        if exclusive_minimum >= maximum:
-            msg = "exclusiveMinimum is greater than or equal to maximum, invalid schema"
+        if not maximum > exclusive_minimum:
+            msg = "maximum is not greater than exclusiveMinimum, invalid schema"
             raise ValidationError(
                 msg
             )
+        
+    # Else if minimum and exclusiveMax, minimum must be less than exclusiveMax
     elif minimum is not None and exclusive_maximum is not None:
-        if minimum >= exclusive_maximum:
-            msg = "minimum is greater than or equal to exclusiveMaximum, invalid schema"
+        if not minimum < exclusive_maximum:
+            msg = "minimum is not less than exclusiveMaximum, invalid schema"
             raise ValidationError(
                 msg
             ) 
+        
+    # Else if minimum and maximum
     elif minimum is not None and maximum is not None:
+        # If minimum equals maximum, set test_value to minimum
         if minimum == maximum:
             test_value = minimum
-        elif minimum > maximum:
-            msg = "minimum is greater than maximum, invalid schema"
+
+        # Else if minimum must be less than maximum
+        elif not minimum < maximum:
+            msg = "minimum is not less than maximum, invalid schema"
             raise ValidationError(
                 msg
             )
+        
+    # Other cases
     elif exclusive_minimum is not None:
         test_value = minimum
     elif exclusive_maximum is not None:
