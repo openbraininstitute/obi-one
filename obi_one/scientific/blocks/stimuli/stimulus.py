@@ -63,7 +63,7 @@ class SomaticStimulus(Stimulus, ABC):
         ui_element="reference",
         default=None,
         reference_type=[NeuronSetReference.__name__, TimestampsReference.__name__],
-        title="Neuron Set1",
+        title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         supports_virtual=False,
     )
