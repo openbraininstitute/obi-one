@@ -59,11 +59,11 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NeuronSetReference | TimestampsReference | None = Field(
         ui_element="reference",
         default=None,
-        reference_type=NeuronSetReference.__name__,
-        title="Neuron Set",
+        reference_type=[NeuronSetReference.__name__, TimestampsReference.__name__],
+        title="Neuron Set1",
         description="Neuron set to which the stimulus is applied.",
         supports_virtual=False,
     )

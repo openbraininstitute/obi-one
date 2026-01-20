@@ -383,9 +383,21 @@ class Block:
                                                 reference_type="NeuronSetReference")
 ```
 
+Or if multiple possible reference types are acceptable:
+```py
+class Block:
+    node_set: NeuronSetReference | TimestampsReference | None = Field(default=None, #Must be present
+                                                ui_element="reference",
+                                                title="Neuron Set or Timestamps",
+                                                description="Neuron set or Timestamps.",
+                                                reference_type=["NeuronSetReference", "TimestampsReference"])
+```
+
+
+
 ### UI design
 
-<img src="designs/reference.png"  width="300" />
+<img src="designs/reference_multi_type.png"  width="300" />
 
 ## Entity property dropdown
 
