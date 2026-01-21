@@ -246,7 +246,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.CIRCUIT_EXTRACTION,
+            entity_type=TaskConfigType.CIRCUIT_EXTRACTION_CONFIG,
             entity_id=entity_id,
         )
 
@@ -338,7 +338,7 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION}&entity_id={entity_id}"
+            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION_CONFIG}&entity_id={entity_id}"
         )
 
         assert response.status_code == 200
@@ -378,7 +378,7 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION}&entity_id={entity_id}"
+            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION_CONFIG}&entity_id={entity_id}"
         )
 
         assert response.status_code == 400

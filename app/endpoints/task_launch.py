@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 import entitysdk
 import httpx
-from entitysdk.types import ContentType, ExecutorType
+from entitysdk.types import CircuitScale, ContentType, ExecutorType
 from fastapi import APIRouter, Depends, HTTPException, Request
 from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -32,13 +32,15 @@ OBI_ONE_LAUNCH_PATH = "launch_scripts/launch_task_for_single_config_asset"
 class TaskConfigType(StrEnum):
     """List of entitycore config types supported for job submission."""
 
-    CIRCUIT_EXTRACTION = entitysdk.models.CircuitExtractionConfig.__name__
+    CIRCUIT_EXTRACTION_CONFIG = entitysdk.models.CircuitExtractionConfig.__name__
     SIMULATION = entitysdk.models.Simulation.__name__
 
     def get_execution_type(self) -> str:
         """Returns the execution activity type for this config type."""
         mapping = {
-            TaskConfigType.CIRCUIT_EXTRACTION: entitysdk.models.CircuitExtractionExecution.__name__,
+            TaskConfigType.CIRCUIT_EXTRACTION_CONFIG: (
+                entitysdk.models.CircuitExtractionExecution.__name__
+            ),
             TaskConfigType.SIMULATION: entitysdk.models.SimulationExecution.__name__,
         }
         return mapping[self]
@@ -46,7 +48,7 @@ class TaskConfigType(StrEnum):
     def get_service_subtype(self) -> ServiceSubtype:
         """Returns the accounting service subtype for this config type."""
         mapping = {
-            TaskConfigType.CIRCUIT_EXTRACTION: ServiceSubtype.SMALL_CIRCUIT_SIM,
+            TaskConfigType.CIRCUIT_EXTRACTION_CONFIG: ServiceSubtype.SMALL_CIRCUIT_SIM,
         }
         return mapping[self]
 
@@ -185,21 +187,14 @@ def _evaluate_accounting_parameters(
         circuit_entity = db_client.get_entity(
             entity_id=circuit_id, entity_type=entitysdk.models.Circuit
         )
-        if circuit_entity is None:
-            msg = (
-                f"Circuit entity with ID '{circuit_id}' referenced by simulation "
-                f"could not be retrieved."
-            )
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
         # Get the scale and map it to service subtype
-        # Scale is stored as a string in the entity (e.g., "small", "microcircuit")
-        circuit_scale = str(circuit_entity.scale)
+        circuit_scale = circuit_entity.scale
         scale_to_subtype = {
-            "small": ServiceSubtype.SMALL_SIM,
-            "microcircuit": ServiceSubtype.MICROCIRCUIT_SIM,
-            "region": ServiceSubtype.REGION_SIM,
-            "system": ServiceSubtype.SYSTEM_SIM,
-            "whole_brain": ServiceSubtype.WHOLE_BRAIN_SIM,
+            CircuitScale.small: ServiceSubtype.SMALL_SIM,
+            CircuitScale.microcircuit: ServiceSubtype.MICROCIRCUIT_SIM,
+            CircuitScale.region: ServiceSubtype.REGION_SIM,
+            CircuitScale.system: ServiceSubtype.SYSTEM_SIM,
+            CircuitScale.whole_brain: ServiceSubtype.WHOLE_BRAIN_SIM,
         }
         service_subtype = scale_to_subtype.get(circuit_scale)
         if service_subtype is None:
@@ -337,7 +332,9 @@ async def estimate_endpoint(
     entity_type: TaskConfigType,
     entity_id: str,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
-    accounting_factory: Annotated[AsyncAccountingSessionFactory, Depends(get_accounting_factory)],
+    AsyncAccountingSessionFactoryDep: Annotated[  # noqa: N803
+        AsyncAccountingSessionFactory, Depends(get_accounting_factory)
+    ],
 ) -> dict:
     """Estimates the cost for a task launch."""
     # Evaluate accounting parameters
@@ -355,7 +352,7 @@ async def estimate_endpoint(
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
     # Compute cost estimate using accounting SDK
-    cost_estimate = await accounting_factory.estimate_oneshot_cost(
+    cost_estimate = await AsyncAccountingSessionFactoryDep.estimate_oneshot_cost(
         subtype=service_subtype,
         count=count,
         proj_id=project_id,
