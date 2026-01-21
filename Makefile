@@ -26,6 +26,8 @@ help:  ## Show this help
 
 install:  ## Create a virtual environment
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra connectivity
+
+install-ipython: install ## Create a virtual environment and install the ipython kernel
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
 
 compile-deps:  ## Create or update the lock file, without upgrading the version of the dependencies
