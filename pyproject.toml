@@ -72,7 +72,8 @@ dependencies = [
     "obi_notebook",
     "morph_spines",
     # CAVEclient
-    "caveclient>=7.11.0"
+    "caveclient>=7.11.0",
+    "obp-accounting-sdk>=0.4.2",
 ]
 
 [project.optional-dependencies]

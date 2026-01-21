@@ -9,9 +9,12 @@ from urllib.parse import urlencode
 import entitysdk
 import httpx
 from entitysdk.types import ContentType, ExecutorType
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory
+from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.config import settings
+from app.dependencies.accounting import get_accounting_factory
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client as get_db_client
 from app.dependencies.launchsystem import get_client as get_ls_client
@@ -30,11 +33,20 @@ class TaskConfigType(StrEnum):
     """List of entitycore config types supported for job submission."""
 
     CIRCUIT_EXTRACTION = entitysdk.models.CircuitExtractionConfig.__name__
+    SIMULATION = entitysdk.models.Simulation.__name__
 
     def get_execution_type(self) -> str:
         """Returns the execution activity type for this config type."""
         mapping = {
             TaskConfigType.CIRCUIT_EXTRACTION: entitysdk.models.CircuitExtractionExecution.__name__,
+            TaskConfigType.SIMULATION: entitysdk.models.SimulationExecution.__name__,
+        }
+        return mapping[self]
+
+    def get_service_subtype(self) -> ServiceSubtype:
+        """Returns the accounting service subtype for this config type."""
+        mapping = {
+            TaskConfigType.CIRCUIT_EXTRACTION: ServiceSubtype.SMALL_CIRCUIT_SIM,
         }
         return mapping[self]
 
@@ -148,6 +160,55 @@ def _generate_failure_callback(
     return f"{failure_endpoint_url}?{query_params}"
 
 
+def _evaluate_accounting_parameters(
+    db_client: entitysdk.Client,
+    entity_type: TaskConfigType,
+    entity_id: str,
+) -> dict:
+    """Evaluates accounting parameters from the task configuration.
+
+    Returns the service subtype and count needed for cost estimation.
+    For Simulation configs, determines the service subtype based on the circuit scale
+    and uses the neuron_count from the simulation entity for the count.
+    """
+    if entity_type == TaskConfigType.SIMULATION:
+        # Get the Simulation entity
+        simulation_entity = db_client.get_entity(
+            entity_id=entity_id, entity_type=entitysdk.models.Simulation
+        )
+        # Use neuron_count from the simulation entity
+        count = simulation_entity.neuron_count
+        # Get the circuit ID from the simulation's entity_id field
+        circuit_id = str(simulation_entity.entity_id)
+        # Get the Circuit entity
+        circuit_entity = db_client.get_entity(
+            entity_id=circuit_id, entity_type=entitysdk.models.Circuit
+        )
+        # Get the scale and map it to service subtype
+        # Scale is stored as a string in the entity (e.g., "small", "microcircuit")
+        circuit_scale = str(circuit_entity.scale)
+        scale_to_subtype = {
+            "small": ServiceSubtype.SMALL_SIM,
+            "microcircuit": ServiceSubtype.MICROCIRCUIT_SIM,
+            "region": ServiceSubtype.REGION_SIM,
+            "system": ServiceSubtype.SYSTEM_SIM,
+            "whole_brain": ServiceSubtype.WHOLE_BRAIN_SIM,
+        }
+        service_subtype = scale_to_subtype.get(circuit_scale)
+        if service_subtype is None:
+            msg = f"Unsupported circuit scale '{circuit_scale}' for cost estimation"
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
+    else:
+        # For other config types, use the default mapping
+        count = 1  # Single job
+        service_subtype = entity_type.get_service_subtype()
+
+    return {
+        "service_subtype": service_subtype,
+        "count": count,
+    }
+
+
 def _submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
@@ -255,6 +316,49 @@ def task_launch_endpoint(
     )
 
     return execution_activity_id
+
+
+@router.post(
+    "/estimate",
+    summary="Task cost estimate",
+    description=(
+        "Estimates the cost in credits for launching an obi-one task. "
+        "Takes the same parameters as /task-launch and returns a cost estimate."
+    ),
+)
+async def estimate_endpoint(
+    entity_type: TaskConfigType,
+    entity_id: str,
+    db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
+    accounting_factory: Annotated[AsyncAccountingSessionFactory, Depends(get_accounting_factory)],
+) -> dict:
+    """Estimates the cost for a task launch."""
+    # Evaluate accounting parameters
+    accounting_parameters = _evaluate_accounting_parameters(
+        db_client, entity_type, entity_id
+    )
+    service_subtype = accounting_parameters["service_subtype"]
+    count = accounting_parameters["count"]
+
+    # Get project context for proj_id and vlab_id
+    if not db_client.project_context:
+        msg = "Project context is required!"
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
+    project_id = str(db_client.project_context.project_id)
+    virtual_lab_id = str(db_client.project_context.virtual_lab_id)
+
+    # Compute cost estimate using accounting SDK
+    cost_estimate = await accounting_factory.estimate_oneshot_cost(
+        subtype=service_subtype,
+        count=count,
+        proj_id=project_id,
+        vlab_id=virtual_lab_id,
+    )
+
+    return {
+        "cost": str(cost_estimate),
+        "accounting_parameters": accounting_parameters,
+    }
 
 
 @router.post(
