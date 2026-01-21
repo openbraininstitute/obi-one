@@ -69,8 +69,9 @@ test-local:  ## Run tests locally
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test
 
-pip-audit:
-	uv run --group audit pip-audit --progress-spinner off -f json -o pip-audit-output.json || true
+pip-audit:  ## Run package auditing
+	uv run --with pip-audit pip-audit --local --progress-spinner off --desc off \
+		--ignore-vuln CVE-2025-53000
 
 run-local: ## Run the application locally
 	@$(call load_env,run-local)
