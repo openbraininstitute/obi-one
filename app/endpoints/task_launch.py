@@ -177,6 +177,7 @@ def _evaluate_accounting_parameters(
             entity_id=entity_id, entity_type=entitysdk.models.Simulation
         )
         # Use neuron_count from the simulation entity
+        # TODO: actually use the circuit and simulation files to determine the count
         count = simulation_entity.neuron_count
         # Get the circuit ID from the simulation's entity_id field
         circuit_id = str(simulation_entity.entity_id)
@@ -184,6 +185,12 @@ def _evaluate_accounting_parameters(
         circuit_entity = db_client.get_entity(
             entity_id=circuit_id, entity_type=entitysdk.models.Circuit
         )
+        if circuit_entity is None:
+            msg = (
+                f"Circuit entity with ID '{circuit_id}' referenced by simulation "
+                f"could not be retrieved."
+            )
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
         # Get the scale and map it to service subtype
         # Scale is stored as a string in the entity (e.g., "small", "microcircuit")
         circuit_scale = str(circuit_entity.scale)
