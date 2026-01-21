@@ -49,6 +49,8 @@ class Settings(BaseSettings):
 
     OUTPUT_DIR: Path = Path("../obi-output")
     ENTITYCORE_URL: str = "http://127.0.0.1:8000"
+    LAUNCH_SYSTEM_URL: str = "http://127.0.0.1:8001"
+    LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
 
 
 settings = Settings()
