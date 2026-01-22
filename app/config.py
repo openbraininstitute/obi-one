@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     ENTITYCORE_URL: str = "http://127.0.0.1:8000"
     LAUNCH_SYSTEM_URL: str = "http://127.0.0.1:8001"
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
+    ACCOUNTING_BASE_URL: str = "http://127.0.0.1:8002"
+    ACCOUNTING_DISABLED: bool = False
 
 
 settings = Settings()

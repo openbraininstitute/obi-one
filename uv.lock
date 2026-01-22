@@ -1961,6 +1961,7 @@ dependencies = [
     { name = "notebook" },
     { name = "obi-auth" },
     { name = "obi-notebook" },
+    { name = "obp-accounting-sdk" },
     { name = "pydantic" },
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
@@ -2014,6 +2015,7 @@ requires-dist = [
     { name = "notebook" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook" },
+    { name = "obp-accounting-sdk", specifier = ">=0.4.2" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
@@ -2035,6 +2037,27 @@ dev = [
     { name = "pytest-freezer", specifier = ">=0.4.9" },
     { name = "pytest-httpx", specifier = ">=0.35.0" },
     { name = "ruff", specifier = "<=0.12.7" },
+]
+
+[[package]]
+name = "obp-accounting-sdk"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8b/2a/669477f5e4cb88d971dc833441b39acd62fe60b81d8a5fd93ac0c021fa18/obp_accounting_sdk-0.4.2.tar.gz", hash = "sha256:f88aba08dc890764573aafe5adaea866cd9911871dee78fed114916961a81d81", size = 28474, upload-time = "2025-11-05T10:53:35.698Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/36/f5/55633c4e5286fdfa07c80abf726a4a2a41ef8fdf32a244d1276ce7abc2ce/obp_accounting_sdk-0.4.2-py3-none-any.whl", hash = "sha256:94757bd263e403f3f44012a91231a3c243c802025314910da6493ecf47f6bce5", size = 22144, upload-time = "2025-11-05T10:53:34.223Z" },
+]
+
+[[package]]
+name = "packageurl-python"
+version = "0.17.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/f0/de0ac00a4484c0d87b71e3d9985518278d89797fa725e90abd3453bccb42/packageurl_python-0.17.5.tar.gz", hash = "sha256:a7be3f3ba70d705f738ace9bf6124f31920245a49fa69d4b416da7037dd2de61", size = 43832, upload-time = "2025-08-06T14:08:20.235Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/78/9dbb7d2ef240d20caf6f79c0f66866737c9d0959601fd783ff635d1d019d/packageurl_python-0.17.5-py3-none-any.whl", hash = "sha256:f0e55452ab37b5c192c443de1458e3f3b4d8ac27f747df6e8c48adeab081d321", size = 30544, upload-time = "2025-08-06T14:08:19.055Z" },
 ]
 
 [[package]]
