@@ -84,14 +84,14 @@ def mock_accounting_factory():
 class TestEvaluateAccountingParameters:
     """Tests for _evaluate_accounting_parameters function."""
 
+    @classmethod
     def test_simulation_small_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
         mock_circuit_entity_small,
     ):
         """Test evaluation for Simulation with small circuit scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         mock_db_client.get_entity.side_effect = [
@@ -102,27 +102,27 @@ class TestEvaluateAccountingParameters:
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_simulation,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.SMALL_SIM
         assert result["count"] == 1000
         assert mock_db_client.get_entity.call_count == 2
         mock_db_client.get_entity.assert_any_call(
-            entity_id=entity_id, entity_type=entitysdk.models.Simulation
+            entity_id=circuit_id, entity_type=entitysdk.models.Simulation
         )
         mock_db_client.get_entity.assert_any_call(
             entity_id=circuit_id, entity_type=entitysdk.models.Circuit
         )
 
+    @classmethod
     def test_simulation_microcircuit_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
         mock_circuit_entity_microcircuit,
     ):
         """Test evaluation for Simulation with microcircuit scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         mock_db_client.get_entity.side_effect = [
@@ -133,20 +133,20 @@ class TestEvaluateAccountingParameters:
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_simulation,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.MICROCIRCUIT_SIM
         assert result["count"] == 1000
 
+    @classmethod
     def test_simulation_region_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
         mock_circuit_entity_region,
     ):
         """Test evaluation for Simulation with region scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         mock_db_client.get_entity.side_effect = [
@@ -157,20 +157,20 @@ class TestEvaluateAccountingParameters:
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_simulation,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.REGION_SIM
         assert result["count"] == 1000
 
+    @classmethod
     def test_simulation_system_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
         mock_circuit_entity_system,
     ):
         """Test evaluation for Simulation with system scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         mock_db_client.get_entity.side_effect = [
@@ -181,20 +181,20 @@ class TestEvaluateAccountingParameters:
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_simulation,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.SYSTEM_SIM
         assert result["count"] == 1000
 
+    @classmethod
     def test_simulation_whole_brain_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
         mock_circuit_entity_whole_brain,
     ):
         """Test evaluation for Simulation with whole_brain scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         mock_db_client.get_entity.side_effect = [
@@ -205,19 +205,19 @@ class TestEvaluateAccountingParameters:
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_simulation,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.WHOLE_BRAIN_SIM
         assert result["count"] == 1000
 
+    @classmethod
     def test_simulation_unsupported_scale(
-        self,
+        cls,
         mock_db_client,
         mock_simulation_entity,
     ):
         """Test evaluation for Simulation with unsupported circuit scale."""
-        entity_id = str(uuid.uuid4())
         circuit_id = str(mock_simulation_entity.entity_id)
 
         circuit_entity = MagicMock()
@@ -232,22 +232,23 @@ class TestEvaluateAccountingParameters:
             _evaluate_accounting_parameters(
                 db_client=mock_db_client,
                 task_type=TaskType.circuit_simulation,
-                entity_id=entity_id,
+                entity_id=circuit_id,
             )
         assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
         assert "Unsupported circuit scale" in exc_info.value.detail
 
+    @classmethod
     def test_circuit_extraction(
-        self,
+        cls,
         mock_db_client,
     ):
         """Test evaluation for CircuitExtraction config type."""
-        entity_id = str(uuid.uuid4())
+        circuit_id = str(mock_simulation_entity.entity_id)
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
             task_type=TaskType.circuit_extraction,
-            entity_id=entity_id,
+            entity_id=circuit_id,
         )
 
         assert result["service_subtype"] == ServiceSubtype.SMALL_CIRCUIT_SIM
@@ -259,8 +260,9 @@ class TestEvaluateAccountingParameters:
 class TestEstimateEndpoint:
     """Tests for the /estimate endpoint."""
 
+    @classmethod
     def test_estimate_simulation_small_scale(
-        self,
+        cls,
         client,
         mock_db_client,
         mock_simulation_entity,
@@ -269,7 +271,7 @@ class TestEstimateEndpoint:
         monkeypatch,
     ):
         """Test estimate endpoint for Simulation with small scale."""
-        entity_id = str(uuid.uuid4())
+        circuit_id = str(mock_simulation_entity.entity_id)
 
         # Setup project context
         project_context = MagicMock()
@@ -283,9 +285,7 @@ class TestEstimateEndpoint:
         ]
 
         # Override dependencies
-        monkeypatch.setitem(
-            client.app.dependency_overrides, get_db_client, lambda: mock_db_client
-        )
+        monkeypatch.setitem(client.app.dependency_overrides, get_db_client, lambda: mock_db_client)
         monkeypatch.setitem(
             client.app.dependency_overrides,
             get_accounting_factory,
@@ -294,7 +294,7 @@ class TestEstimateEndpoint:
 
         response = client.post(
             ROUTE_ESTIMATE,
-            json={"task_type": TaskType.circuit_simulation, "config_id": entity_id},
+            json={"task_type": TaskType.circuit_simulation, "config_id": circuit_id},
         )
 
         assert response.status_code == 200
@@ -312,15 +312,16 @@ class TestEstimateEndpoint:
         assert call_kwargs["proj_id"] == str(project_context.project_id)
         assert call_kwargs["vlab_id"] == str(project_context.virtual_lab_id)
 
+    @classmethod
     def test_estimate_circuit_extraction(
-        self,
+        cls,
         client,
         mock_db_client,
         mock_accounting_factory,
         monkeypatch,
     ):
         """Test estimate endpoint for CircuitExtraction."""
-        entity_id = str(uuid.uuid4())
+        circuit_id = str(mock_simulation_entity.entity_id)
 
         # Setup project context
         project_context = MagicMock()
@@ -329,9 +330,7 @@ class TestEstimateEndpoint:
         mock_db_client.project_context = project_context
 
         # Override dependencies
-        monkeypatch.setitem(
-            client.app.dependency_overrides, get_db_client, lambda: mock_db_client
-        )
+        monkeypatch.setitem(client.app.dependency_overrides, get_db_client, lambda: mock_db_client)
         monkeypatch.setitem(
             client.app.dependency_overrides,
             get_accounting_factory,
@@ -340,7 +339,7 @@ class TestEstimateEndpoint:
 
         response = client.post(
             ROUTE_ESTIMATE,
-            json={"task_type": TaskType.circuit_extraction, "config_id": entity_id},
+            json={"task_type": TaskType.circuit_extraction, "config_id": circuit_id},
         )
 
         assert response.status_code == 200
@@ -356,23 +355,22 @@ class TestEstimateEndpoint:
         assert call_kwargs["subtype"] == ServiceSubtype.SMALL_CIRCUIT_SIM
         assert call_kwargs["count"] == 1
 
+    @classmethod
     def test_estimate_no_project_context(
-        self,
+        cls,
         client,
         mock_db_client,
         mock_accounting_factory,
         monkeypatch,
     ):
         """Test estimate endpoint fails when project context is missing."""
-        entity_id = str(uuid.uuid4())
+        circuit_id = str(mock_simulation_entity.entity_id)
 
         # No project context
         mock_db_client.project_context = None
 
         # Override dependencies
-        monkeypatch.setitem(
-            client.app.dependency_overrides, get_db_client, lambda: mock_db_client
-        )
+        monkeypatch.setitem(client.app.dependency_overrides, get_db_client, lambda: mock_db_client)
         monkeypatch.setitem(
             client.app.dependency_overrides,
             get_accounting_factory,
@@ -381,14 +379,15 @@ class TestEstimateEndpoint:
 
         response = client.post(
             ROUTE_ESTIMATE,
-            json={"task_type": TaskType.circuit_extraction, "config_id": entity_id},
+            json={"task_type": TaskType.circuit_extraction, "config_id": circuit_id},
         )
 
         assert response.status_code == 400
         assert "Project context is required" in response.json()["detail"]
 
+    @classmethod
     def test_estimate_unsupported_scale(
-        self,
+        cls,
         client,
         mock_db_client,
         mock_simulation_entity,
@@ -396,7 +395,7 @@ class TestEstimateEndpoint:
         monkeypatch,
     ):
         """Test estimate endpoint fails for unsupported circuit scale."""
-        entity_id = str(uuid.uuid4())
+        circuit_id = str(mock_simulation_entity.entity_id)
 
         # Setup project context
         project_context = MagicMock()
@@ -413,9 +412,7 @@ class TestEstimateEndpoint:
         ]
 
         # Override dependencies
-        monkeypatch.setitem(
-            client.app.dependency_overrides, get_db_client, lambda: mock_db_client
-        )
+        monkeypatch.setitem(client.app.dependency_overrides, get_db_client, lambda: mock_db_client)
         monkeypatch.setitem(
             client.app.dependency_overrides,
             get_accounting_factory,
@@ -424,7 +421,7 @@ class TestEstimateEndpoint:
 
         response = client.post(
             ROUTE_ESTIMATE,
-            json={"task_type": TaskType.circuit_simulation, "config_id": entity_id},
+            json={"task_type": TaskType.circuit_simulation, "config_id": circuit_id},
         )
 
         assert response.status_code == 400, (
