@@ -241,6 +241,7 @@ class TestEvaluateAccountingParameters:
     def test_circuit_extraction(
         cls,
         mock_db_client,
+        mock_simulation_entity,
     ):
         """Test evaluation for CircuitExtraction config type."""
         circuit_id = str(mock_simulation_entity.entity_id)
