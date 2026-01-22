@@ -183,6 +183,41 @@ def _generate_failure_callback(
     return f"{failure_endpoint_url}?{query_params}"
 
 
+def _generate_accounting_failure_callback(
+    accounting_job_id: str,
+) -> str:
+    """Builds the callback URL for accounting failure (reservation deletion).
+
+    Points directly to the accounting service DELETE endpoint.
+    The job_id is included in the URL path.
+    """
+    callback_url = f"{settings.ACCOUNTING_BASE_URL}/reservation/oneshot/{accounting_job_id}"
+    return callback_url
+
+
+def _generate_accounting_success_callback(
+    accounting_job_id: str,
+    service_subtype: ServiceSubtype,
+    count: int,
+    project_id: str,
+) -> tuple[str, dict]:
+    """Builds the callback URL and payload for accounting success (usage addition).
+
+    Points directly to the accounting service POST /usage/oneshot endpoint.
+    """
+    callback_url = f"{settings.ACCOUNTING_BASE_URL}/usage/oneshot"
+    timestamp = datetime.now(UTC).isoformat()
+    payload = {
+        "type": "oneshot",
+        "subtype": service_subtype,
+        "proj_id": project_id,
+        "job_id": accounting_job_id,
+        "count": count,
+        "timestamp": timestamp,
+    }
+    return callback_url, payload
+
+
 def _evaluate_accounting_parameters(
     db_client: entitysdk.Client,
     task_type: TaskType,
@@ -241,7 +276,11 @@ def _submit_task_job(
     entity_id: str,
     config_asset_id: str,
     request: Request,
-) -> tuple[str, TaskType]:
+    accounting_job_id: str,
+    service_subtype: ServiceSubtype,
+    count: int,
+    project_id: str,
+) -> tuple[str, TaskType, str]:
     """Creates an activity and submits a task as a job on the launch-system."""
     if not db_client.project_context:
         msg = "Project context is required!"
@@ -279,10 +318,50 @@ def _submit_task_job(
         "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
     )
     release_tag = settings.APP_VERSION.split("-")[0]
-    # TODO: Use failure_callback_url in job_data for launch system to call back on task failure
-    _failure_callback_url = _generate_failure_callback(
+    failure_callback_url = _generate_failure_callback(
         request, execution_activity_id, task_type
     )
+
+    # Generate accounting callbacks (pointing directly to accounting service)
+    accounting_failure_callback_url = _generate_accounting_failure_callback(
+        accounting_job_id
+    )
+    (
+        accounting_success_callback_url,
+        accounting_success_payload,
+    ) = _generate_accounting_success_callback(
+        accounting_job_id, service_subtype, count, project_id
+    )
+
+    # Format callbacks for launch system
+    callbacks = [
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": failure_callback_url,
+                "method": "POST",
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": accounting_failure_callback_url,
+                "method": "DELETE",
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_success",
+            "config": {
+                "url": accounting_success_callback_url,
+                "method": "POST",
+                "payload": accounting_success_payload,
+            },
+        },
+    ]
+
     job_data = {
         "resources": {"cores": 1, "memory": 2, "timelimit": time_limit},
         "code": {
@@ -294,6 +373,7 @@ def _submit_task_job(
         },
         "inputs": cmd_args,
         "project_id": project_id,
+        "callbacks": callbacks,
     }
 
     # Submit job
@@ -324,20 +404,48 @@ def _submit_task_job(
         "The type of task is determined based on the config entity provided."
     ),
 )
-def task_launch_endpoint(
+async def task_launch_endpoint(
     request: Request,
     json_model: TaskLaunchCreate,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
     ls_client: Annotated[httpx.Client, Depends(get_ls_client)],
+    AsyncAccountingSessionFactoryDep: Annotated[  # noqa: N803
+        AsyncAccountingSessionFactory, Depends(get_accounting_factory)
+    ],
 ) -> str | None:
-    execution_activity_id = None
 
-    # Determine config asset
     config_asset_id = _get_config_asset(
         db_client, json_model.task_type, str(json_model.config_id)
     )
 
-    # Launch task
+    # Step 1: Evaluate accounting parameters
+    accounting_parameters = _evaluate_accounting_parameters(
+        db_client, json_model.task_type, str(json_model.config_id)
+    )
+    service_subtype = accounting_parameters["service_subtype"]
+    count = accounting_parameters["count"]
+
+    if not db_client.project_context:
+        msg = "Project context is required!"
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
+
+    # Step 2: Reserve
+    project_id = str(db_client.project_context.project_id)
+    virtual_lab_id = str(db_client.project_context.virtual_lab_id)
+
+    reservation_result = await AsyncAccountingSessionFactoryDep.reserve_oneshot(
+        subtype=service_subtype,
+        count=count,
+        proj_id=project_id,
+        vlab_id=virtual_lab_id,
+    )
+    accounting_job_id = str(reservation_result.job_id)
+    L.info(
+        f"Accounting parameters reserved: subtype={service_subtype}, "
+        f"count={count}, job_id={accounting_job_id}"
+    )
+
+    # Step 3: Create activity and submit task job
     execution_activity_id, _task_type, _job_id = _submit_task_job(
         db_client,
         ls_client,
@@ -345,6 +453,10 @@ def task_launch_endpoint(
         str(json_model.config_id),
         config_asset_id,
         request,
+        accounting_job_id,
+        service_subtype,
+        count,
+        project_id,
     )
 
     return execution_activity_id
