@@ -79,6 +79,10 @@ make serve-docs
 
 This will start a local development server (typically at `http://127.0.0.1:8000`) where you can preview the documentation. The server will automatically reload when you make changes to the documentation files.
 
+## Tags
+
+Tags are metadata used to link documentation `.md` files to products. Each documentation file should include appropriate tags in its frontmatter to categorize and organize content.
+
 ## Continuous Integration
 
 The documentation is automatically checked in CI on pull requests. The `.github/workflows/check-docs.yml` workflow:
