@@ -319,6 +319,7 @@ class TestEstimateEndpoint:
         client,
         mock_db_client,
         mock_accounting_factory,
+        mock_simulation_entity,
         monkeypatch,
     ):
         """Test estimate endpoint for CircuitExtraction."""
