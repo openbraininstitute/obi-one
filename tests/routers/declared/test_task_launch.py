@@ -13,7 +13,7 @@ from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.dependencies.accounting import get_accounting_factory
 from app.dependencies.entitysdk import get_client as get_db_client
-from app.endpoints.task_launch import TaskConfigType, _evaluate_accounting_parameters
+from app.endpoints.task_launch import TaskType, _evaluate_accounting_parameters
 
 ROUTE_ESTIMATE = "/declared/estimate"
 
@@ -101,7 +101,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.SIMULATION,
+            task_type=TaskType.circuit_simulation,
             entity_id=entity_id,
         )
 
@@ -132,7 +132,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.SIMULATION,
+            task_type=TaskType.circuit_simulation,
             entity_id=entity_id,
         )
 
@@ -156,7 +156,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.SIMULATION,
+            task_type=TaskType.circuit_simulation,
             entity_id=entity_id,
         )
 
@@ -180,7 +180,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.SIMULATION,
+            task_type=TaskType.circuit_simulation,
             entity_id=entity_id,
         )
 
@@ -204,7 +204,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.SIMULATION,
+            task_type=TaskType.circuit_simulation,
             entity_id=entity_id,
         )
 
@@ -231,7 +231,7 @@ class TestEvaluateAccountingParameters:
         with pytest.raises(HTTPException) as exc_info:
             _evaluate_accounting_parameters(
                 db_client=mock_db_client,
-                entity_type=TaskConfigType.SIMULATION,
+                task_type=TaskType.circuit_simulation,
                 entity_id=entity_id,
             )
         assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
@@ -246,7 +246,7 @@ class TestEvaluateAccountingParameters:
 
         result = _evaluate_accounting_parameters(
             db_client=mock_db_client,
-            entity_type=TaskConfigType.CIRCUIT_EXTRACTION_CONFIG,
+            task_type=TaskType.circuit_extraction,
             entity_id=entity_id,
         )
 
@@ -293,7 +293,8 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.SIMULATION}&entity_id={entity_id}"
+            ROUTE_ESTIMATE,
+            json={"task_type": TaskType.circuit_simulation, "config_id": entity_id},
         )
 
         assert response.status_code == 200
@@ -338,7 +339,8 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION_CONFIG}&entity_id={entity_id}"
+            ROUTE_ESTIMATE,
+            json={"task_type": TaskType.circuit_extraction, "config_id": entity_id},
         )
 
         assert response.status_code == 200
@@ -378,7 +380,8 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.CIRCUIT_EXTRACTION_CONFIG}&entity_id={entity_id}"
+            ROUTE_ESTIMATE,
+            json={"task_type": TaskType.circuit_extraction, "config_id": entity_id},
         )
 
         assert response.status_code == 400
@@ -420,7 +423,8 @@ class TestEstimateEndpoint:
         )
 
         response = client.post(
-            f"{ROUTE_ESTIMATE}?entity_type={TaskConfigType.SIMULATION}&entity_id={entity_id}"
+            ROUTE_ESTIMATE,
+            json={"task_type": TaskType.circuit_simulation, "config_id": entity_id},
         )
 
         assert response.status_code == 400, (
