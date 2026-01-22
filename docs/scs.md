@@ -1,3 +1,8 @@
+---
+tags:
+  - single-cell-simulation
+---
+
 # Single Cell Simulations
 
 Single cell simulations in OBI-one use **MEModel** (Morphology and Electrophysiology Model) configurations to simulate individual neurons.

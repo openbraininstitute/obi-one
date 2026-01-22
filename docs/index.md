@@ -1,3 +1,16 @@
+---
+tags:
+  - explore
+  - launch-notebook
+  - contribute-and-fix-data
+  - build-ion-channel-model
+  - single-cell-simulation
+  - paired-neuron-simulation
+  - circuit-simulation
+  - neuron-skeletonization
+  - virtual-labs
+---
+
 # OBI-one
 
 OBI-one is a standardized library of workflows for biophysically-detailed brain modeling.

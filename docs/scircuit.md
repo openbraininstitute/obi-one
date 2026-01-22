@@ -1,3 +1,8 @@
+---
+tags:
+  - circuit-simulation
+---
+
 # Small Circuit Simulations
 
 Small circuit simulations in OBI-one simulate networks of interconnected neurons using SONATA circuit format. A "small circuit" is defined as a circuit containing up to 20 biophysical neurons.
