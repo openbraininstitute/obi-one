@@ -206,7 +206,6 @@ def _generate_accounting_success_callback(
     Points directly to the accounting service POST /usage/oneshot endpoint.
     """
     callback_url = f"{settings.ACCOUNTING_BASE_URL}/usage/oneshot"
-    # Format timestamp as ISO 8601 with Z suffix
     timestamp = datetime.now(UTC).isoformat()
     payload = {
         "type": "oneshot",
@@ -319,8 +318,7 @@ def _submit_task_job(
         "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
     )
     release_tag = settings.APP_VERSION.split("-")[0]
-    # TODO: Use failure_callback_url in job_data for launch system to call back on task failure
-    _failure_callback_url = _generate_failure_callback(
+    failure_callback_url = _generate_failure_callback(
         request, execution_activity_id, task_type
     )
 
@@ -337,6 +335,14 @@ def _submit_task_job(
 
     # Format callbacks for launch system
     callbacks = [
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": failure_callback_url,
+                "method": "POST",
+            },
+        },
         {
             "action_type": "http_request_with_token",
             "event_type": "job_on_failure",
