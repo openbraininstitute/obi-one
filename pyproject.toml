@@ -82,9 +82,6 @@ connectivity = [
 ]
 
 [dependency-groups]
-audit = [
-    "pip-audit>=2.9.0",
-]
 dev = [
     "coverage[toml]",
     "jsonschema>=4.25.1",
