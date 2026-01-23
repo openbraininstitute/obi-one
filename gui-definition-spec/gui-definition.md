@@ -41,116 +41,10 @@ Block elements:
 - `reference`
 - `entity_property_dropdown`
 
-## Adding ui_elements to the spec
 
-**If a config requires ui elements not specified in the current spec they must be added by defining a `ui_element` string, a reference schema and corresponding validation scripts, and a UI design**
+[Adding New UI Elements](adding_new_ui_elements)
 
-Any ui elements sharing the same `ui_element` string must share the same pydantic implementation (and by extension the same json schema). 
-
-For example the following would be an incorrect use of `ui_element` since the resulting schemas differ in structure, `field_A` is of `integer` type where as `field_B` contains an `anyOf` property.
-
-```py
-# ❌ Wrong use of ui_element
-
-class Block:
-    field_A: int = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="integer_input", ...)
-```
-
-```jsonc
-
-// Schemas differ in structure 
-
-"field_A": {
-      "title": "Field A",
-      "type": "integer",  
-      "ui_element": "integer_input"
-    },
-
-"field_B": {
-      "title": "Field B",
-      "anyOf": [ // anyOf
-        {
-          "type": "integer"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "ui_element": "integer_input"
-    }
-
-```
-
-In such cases either make them consistent or create separate `ui_element`s.
-
-```py
-# ✅ Consistent types
-class Block:
-    field_A: int | None = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="integer_input", ...)
-
-```
-
-```py
-# ✅ Separate ui_elements
-class Block:
-    field_A: int = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="nullable_integer_input", ...)
-```
-
-### Writing validation scripts
-
-For each new `ui_element` a corresponding validation function must be added to [validate_root_element](../scripts/validate_schema.py#L30) in case of new root elements or to [validate_block_elements](../scripts/validate_block.py#L210) in the case of new block elements.
-
-The purpose of validation functions is twofold:
-1. Ensure that the schema of the element matches the structure the frontend needs to render the input element.
-2. Ensure the element accepts as input the types the frontend is expected to produce.
-
-For example [block dictionaries](#block_dictionary) require that the `oneOf` property is present in the schema, since it renders the elements of that array, therefore the script must check it exists:
-
-```py
-def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
-    if schema.get("additionalProperties", {}).get("oneOf") is None:
-        msg = (
-            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-            "in additionalProperties"
-        )
-        raise ValueError(msg)
-
-    ...
-
-```
-
-To check the expected input types are accepted by the `ui_element` one can simply use `validate` from the `jsonschema` library. 
-For example the `float_parameter_sweep` must accept a `float` or a `list[float]`, so that's what we check:
-
-```py
-def validate_float_param_sweep(param_schema: dict, param: str, ref: str) -> None:
-     
-    ##... We check input types after checking the schema structure
-
-    try:
-        validate(1.0, param_schema)
-
-    except ValidationError:
-        msg = (
-                f"Validation error at {ref}: float_parameter_sweep param {param} failed "
-                "to validate a float"
-            )
-        raise ValidationError(msg) from None
-
-    try:
-        validate([1.0], param_schema)
-
-    except ValidationError:
-        msg = (
-                f"Validation error at {ref}: float_parameter_sweep param {param} failed "
-                "to validate a float array"
-            )
-        raise ValidationError(msg) from None
-```
-
+[Writing Validation Scripts](writing_validation_scripts)
 
 ## Hidden elements
 
@@ -177,9 +71,9 @@ They should contain a `group_order` integer (unique within the group).
 
 They should contain a `title` and a `description`.
 
-[root_block/root_block.md](root_block/root_block.md)
+[root_block](root_block/root_block.md)
 
-[block_dictionary/block_dictionary.md](block_dictionary/block_dictionary.md)
+[block_dictionary](block_dictionary/block_dictionary.md)
 
 ## Block elements
 
@@ -188,12 +82,16 @@ The parents of block elements must be blocks, never scan configs
 
 They should contain a `title` and a `description`.
 
-[string/string.md](string/string.md)
-[model_identifier/model_identifier.md](model_identifier/model_identifier.md)
-[numeric/numeric.md](numeric/numeric.md)
-[reference/reference.md](reference/reference.md)
-[entity_property_dropdown/entity_property_dropdown.md](entity_property_dropdown/entity_property_dropdown.md)
+[string](string/string.md)
+
+[model_identifier](model_identifier/model_identifier.md)
+
+[numeric](numeric/numeric.md)
+
+[reference](reference/reference.md)
+
+[entity_property_dropdown](entity_property_dropdown/entity_property_dropdown.md)
 
 ## Legacy elements
 
-[neuron_ids/neuron_ids.md](neuron_ids/neuron_ids.md)
+[neuron_ids](neuron_ids/neuron_ids.md)
