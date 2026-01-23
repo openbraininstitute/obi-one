@@ -4,6 +4,7 @@
 
 ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI. The ScanConfig is considered valid if its schema is valid and the schemas of all its elements (root elements and block elements) are valid.
 
+
 <!-- All root elements and block elements must be a valid `ui_element`. [See below for details](#valid-ui_elements). -->
 
 <!-- ### Constraints -->
@@ -14,7 +15,7 @@ Scan configs should contain `group_order` property which must be an array of str
 
 Optionally, scan configs should contain a `default_block_element_labels` dictionary, specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
-[Scan config example schema](scan_config/scan_config.jsonc)
+[Scan config example schema](components/scan_config/scan_config.jsonc)
 
 ## ui_element
 
@@ -39,23 +40,6 @@ Block elements:
 - `entity_property_dropdown`
 
 
-
-
-## Hidden elements
-
-Setting the property `ui_hidden` to `true` will hide it from the UI. All hidden elements must have a `default`.
-
-### Example
-
-```py
-class Block:
-    field: str = Field(default="hidden input",  # Default must be present if ui_hidden==True
-                        ui_hidden=True,
-                        ui_element="string_input",
-                        title="title",
-                        description="description")
-```
-
 ## Root elements
 
 _root elements_ are the properties of scan configs they can be either _root blocks_ or _block dictionaries_ .
@@ -68,9 +52,9 @@ Root elements must have the following properties:
 
 Currently supported root elements:
 
-- [root_block](ui_elements/root_block/root_block.md)
+- [root_block](components/root_block/root_block.md)
 
-- [block_dictionary](ui_elements/block_dictionary/block_dictionary.md)
+- [block_dictionary](components/block_dictionary/block_dictionary.md)
 
 ## Block elements
 
@@ -79,23 +63,33 @@ Block elements are properties of blocks. The parents of block elements must be b
 - `title`
 - `description`
 
+Block elements can also optionally specifify:
+- `unit`
 
-Currently supported block elements:
 
-- [string](ui_elements/string/string.md)
+Currently supported block element types:
 
-- [model_identifier](ui_elements/model_identifier/model_identifier.md)
+- [string](components/string/string.md)
 
-- [numeric](ui_elements/numeric/numeric.md)
+- [model_identifier](components/model_identifier/model_identifier.md)
 
-- [reference](ui_elements/reference/reference.md)
+- [numeric](components/numeric/numeric.md)
 
-- [entity_property_dropdown](ui_elements/entity_property_dropdown/entity_property_dropdown.md)
+- [reference](components/reference/reference.md)
+
+- [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
 Legacy block elements:
 
-- [neuron_ids](ui_elements/neuron_ids/neuron_ids.md)
+- [neuron_ids](components/neuron_ids/neuron_ids.md)
 
+## Hidden elements
+
+Setting `ui_hidden = true` can be used to [hide](components/ui_hidden/ui_hidden.md) any UI element.
+
+<!-- ['ui_hidden'](components/hidden_element/hidden_element.md) = true can be used to hide any UI element.
+
+- ['ui_hidden'](components/hidden_element/hidden_element.md) = true' -->
 
 ## Contributing
 
