@@ -205,7 +205,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.76"
+version = "2.6.77"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -222,9 +222,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/6b/11ed2a4ebafb843f5d560cb33c2412b4339a5e11ebe05137b0a66570dd07/bluecellulab-2.6.76.tar.gz", hash = "sha256:0c4dc1ae3207c663dbc8134379d5fc4368dfc0982362fc9e23ff54d37a01d476", size = 537391, upload-time = "2025-12-23T09:34:52.789Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/7e/0f803eb0ce49fbc4cea82696d1444399cf6f1131d7fee4ba9d135afed436/bluecellulab-2.6.77.tar.gz", hash = "sha256:8ecddadc9a8c7a1007ba44bda247688529727f53c1748e966d6fe749609b580b", size = 538840, upload-time = "2026-01-22T16:26:57.817Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/93/ae8403296f02b01a1ce94133746e2d4ba2c944f998e092f312083aed7a07/bluecellulab-2.6.76-py3-none-any.whl", hash = "sha256:4596c8f0f809cbb3c1c6a04f04bc98fa62819180b17f26b7d07a4561687e8d49", size = 159627, upload-time = "2025-12-23T09:34:51.705Z" },
+    { url = "https://files.pythonhosted.org/packages/37/55/ac02a34a8ff336bd2cb152cb11252449cf426f71712c4db145c12cfa78e0/bluecellulab-2.6.77-py3-none-any.whl", hash = "sha256:de73bf33ad6e9bafffdaadbcf4ed4b0356fa84bda7abde6da021aa10b3dbcd9b", size = 160895, upload-time = "2026-01-22T16:26:56.431Z" },
 ]
 
 [[package]]
@@ -2035,7 +2035,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/ff/45/17159e8a481e72252
 
 [[package]]
 name = "obi-notebook"
-version = "0.3"
+version = "0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "entitysdk" },
@@ -2043,7 +2043,7 @@ dependencies = [
     { name = "pandas" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/7d/2d652962ee61c9e5a451f2077fd0e34edd5fe27803ddecc08512398301ac/obi_notebook-0.3.tar.gz", hash = "sha256:3f142b076912a4d83510f0b2cabb51a32ae897445f405548d6e0f73991b654e8", size = 3876588, upload-time = "2025-10-22T07:53:28.749Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/06/62fc6cf782caa7f3109e2d2c73ef7e72217fed5c50242ffd83c1dc7c5ab8/obi_notebook-0.4.tar.gz", hash = "sha256:ee9c44b46f321c5c0e1e68ff2916cccd54622da6e2fc7f63bc3499e32c973617", size = 3876610, upload-time = "2026-01-22T15:08:57.386Z" }
 
 [[package]]
 name = "obi-one"
@@ -2168,15 +2168,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8b/2a/669477f5e4cb88d971dc833441b39acd62fe60b81d8a5fd93ac0c021fa18/obp_accounting_sdk-0.4.2.tar.gz", hash = "sha256:f88aba08dc890764573aafe5adaea866cd9911871dee78fed114916961a81d81", size = 28474, upload-time = "2025-11-05T10:53:35.698Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/36/f5/55633c4e5286fdfa07c80abf726a4a2a41ef8fdf32a244d1276ce7abc2ce/obp_accounting_sdk-0.4.2-py3-none-any.whl", hash = "sha256:94757bd263e403f3f44012a91231a3c243c802025314910da6493ecf47f6bce5", size = 22144, upload-time = "2025-11-05T10:53:34.223Z" },
-]
-
-[[package]]
-name = "packageurl-python"
-version = "0.17.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3a/f0/de0ac00a4484c0d87b71e3d9985518278d89797fa725e90abd3453bccb42/packageurl_python-0.17.5.tar.gz", hash = "sha256:a7be3f3ba70d705f738ace9bf6124f31920245a49fa69d4b416da7037dd2de61", size = 43832, upload-time = "2025-08-06T14:08:20.235Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/78/9dbb7d2ef240d20caf6f79c0f66866737c9d0959601fd783ff635d1d019d/packageurl_python-0.17.5-py3-none-any.whl", hash = "sha256:f0e55452ab37b5c192c443de1458e3f3b4d8ac27f747df6e8c48adeab081d321", size = 30544, upload-time = "2025-08-06T14:08:19.055Z" },
 ]
 
 [[package]]
