@@ -177,71 +177,9 @@ They should contain a `group_order` integer (unique within the group).
 
 They should contain a `title` and a `description`.
 
-## root_block
+[root_block/root_block.md](root_block/root_block.md)
 
-ui_element: `root_block`
-
-Root blocks are blocks defined at the root level of a scan config.
-
-They should contain `properties` in its schema which are _block_elements_.
-
-Reference schema: [root_block](reference_schemas/root_block_schema.jsonc)
-
-### Example Pydantic implementation
-
-```py
-
-class Info(Block):
-    campaign_name: str = Field(
-        ui_element="string_input",
-        title="campaign name",
-        description="Name of the campaign.")
-
-class Config:
-
-    info: Info = Field(
-        ui_element="root_block",
-        title="Title",
-        description="Description",
-        group="Group 1", # Must be present in its parent's config `group_order` array,
-        group_order=0, # Unique within the group.
-    )
-```
-
-## block_dictionary
-
-ui_element: `block_dictionary`
-
-- They should contain no `properties`
-- They should contain `additionalProperties` with a single `oneOf` array with block schemas.
-- They should contain a `singular_name`.
-- They should contain a `reference_type`.
-
-Reference schema: [block_dictionary](reference_schemas/block_dictionary.jsonc)
-
-### Example Pydantic implementation
-
-```py
-class Config:
-
-    ## SimulationNeuronSetUnion is a union of blocks (i.e. classes with block_elements)
-
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        ui_element="block_dictionary",
-        default_factory=dict,
-        reference_type="NeuronSetReference",
-        title="Neuron sets",
-        description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group="Group 1", # Must exit in parent config's `group_order` array
-        group_order=0, # Unique within the group
-    )
-
-```
-
-### UI design
-
-<img src="designs/block_dictionary.png"  width="300" />
+[block_dictionary/block_dictionary.md](block_dictionary/block_dictionary.md)
 
 ## Block elements
 
@@ -305,87 +243,15 @@ class Block:
 
 <img src="designs/model_identifier.png"  width="300" />
 
-## Float parameter sweep
 
-ui_element: `float_parameter_sweep`
 
-- Should have an `anyOf` property.
-- Should accept a `number` and `number array`.
-- _The single `number` value must come first_.
-- Optional `minimum` and `maximum` and `default` in both cases.
-- Optional `units` string.
 
-Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep.jsonc)
 
-### Example Pydantic implementation
+[numeric/numeric.md](numeric/numeric.md)
+[reference/reference.md](reference/reference.md)
 
-```py
 
-class Block:
 
-    extracellular_calcium_concentration:  NonNegativeFloat | list[NonNegativeFloat] = Field( # The single value must come first in the union
-            ui_element="float_parameter_sweep",
-            default=1.1,
-            title="Extracellular Calcium Concentration",
-            description=(
-                "Extracellular calcium concentration",
-            ),
-            units="mM",
-        )
-
-```
-
-### UI design
-
-<img src="designs/float_parameter_sweep.png"  width="300" />
-
-## Integer parameter sweep
-
-ui_element: `int_parameter_sweep`
-
-- Same as `parameter_sweep` but with `int` types in the `anyOf` array.
-
-Reference schema [int_parameter_sweep](reference_schemas/int_parameter_sweep.json)
-
-### Example Pydantic implementation
-
-```py
-class Block:
-    random_seed: int | list[int] = Field(
-            ui_element="int_parameter_sweep",
-            default=1,
-            title="Random seed"
-            description="Random seed for the simulation."
-        )
-
-```
-
-## Reference
-
-ui_element: `reference`
-
-- Should accept as input an `object` with `string` fields `block_name` and `block_dict_name`.
-- Second element should be `null`.
-- Should have a string (non-validating) `reference_type`, which is consitent with the type of the reference.
-
-_References are hidden from the ui if either the `ui_hidden` property is `True` or their `reference_type` is missing in its configuration's `default_block_reference_labels` [See](#constraints)_.
-
-Reference schema [reference](reference_schemas/reference.json)
-
-### Example Pydantic implementation
-
-```py
-class Block:
-    node_set: NeuronSetReference | None = Field(default=None, #Must be present
-                                                ui_element="reference",
-                                                title="Neuron Set",
-                                                description="Neuron set to simulate.",
-                                                reference_type="NeuronSetReference")
-```
-
-### UI design
-
-<img src="designs/reference.png"  width="300" />
 
 ## Entity property dropdown
 
