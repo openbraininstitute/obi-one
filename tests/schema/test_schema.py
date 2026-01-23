@@ -166,4 +166,3 @@ def test_schema() -> None:
 
         schema = resolve_ref(openapi_schema, schema_ref)
         validate_config(schema, schema_ref)
-
