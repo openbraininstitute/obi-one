@@ -189,20 +189,10 @@ The parents of block elements must be blocks, never scan configs
 They should contain a `title` and a `description`.
 
 [string/string.md](string/string.md)
-
-
 [model_identifier/model_identifier.md](model_identifier/model_identifier.md)
-
-
-
-
 [numeric/numeric.md](numeric/numeric.md)
 [reference/reference.md](reference/reference.md)
 [entity_property_dropdown/entity_property_dropdown.md](entity_property_dropdown/entity_property_dropdown.md)
-
-
-
-
 
 ## Legacy elements
 
