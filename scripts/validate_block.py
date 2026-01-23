@@ -1,6 +1,7 @@
+import sys
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
-
+import math
 from app.application import app
 
 openapi_schema = get_openapi(
@@ -54,17 +55,80 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
         msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
         raise ValidationError(msg) from None
 
+def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
 
-def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("anyOf", [{}])[0].get("type") != "number":
+    default = schema.get("default")
+    single_type = schema.get("anyOf", [{}])[0]
+
+    if single_type.get("type") == "integer":
+        minimum = single_type.get("minimum", None)
+        if minimum is None:
+            minimum = single_type.get("exclusiveMinimum", -sys.maxsize)
+            minimum = minimum + 1
+
+
+        maximum = single_type.get("maximum", None)
+        if maximum is None:
+            maximum = single_type.get("exclusiveMaximum", sys.maxsize)
+            maximum = maximum - 1
+
+    elif single_type.get("type") == "number":
+        minimum = single_type.get("minimum", None)
+        if minimum is None:
+            minimum = single_type.get("exclusiveMinimum", -sys.float_info.max)
+            minimum = minimum + math.ulp(minimum)
+
+        maximum = single_type.get("maximum", None)
+        if maximum is None:
+            maximum = single_type.get("exclusiveMaximum", sys.float_info.max)
+            maximum = maximum - math.ulp(maximum)   
+
+    # Logical check if minimum less than or equal to maximum
+    if not minimum <= maximum:
+        msg = "minimum is not less than or equal maximum, invalid schema"
+        raise ValidationError(
+            msg
+        )
+        
+    # Logical checks for default consistency
+    if default is not None:
+        if not minimum <= default <= maximum:
+            msg = "default is less than minimum or greater than maximum, invalid schema"
+            raise ValidationError(
+                msg
+            )
+        
+    return minimum
+
+def validate_numeric_single_and_list_types(schema: dict, param: str, ref: str, data_type: str, ui_element: str) -> None:
+    if schema.get("anyOf", [{}])[0].get("type") != data_type:
         msg = (
-            f"Validation error at {ref}: float_parameter_sweep param {param} should "
-            "be a union with a 'number' as first element"
+            f"Validation error at {ref}: {ui_element} param {param} should "
+            f"be a union with a '{data_type}' as first element"
+        )
+        raise ValidationError(msg) from None
+    
+    if schema.get("anyOf", [{}])[1].get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: {ui_element} param {param} should "
+            "be a union with an 'array' as second element"
+        )
+        raise ValidationError(msg) from None
+    
+    if schema.get("anyOf", [{}])[0] != schema.get("anyOf", [{}])[1].get("items"):
+        msg = (
+            f"Validation error at {ref}: {ui_element} param {param} should "
+            "have matching types for single value and array items"
         )
         raise ValidationError(msg) from None
 
+def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+    
+    validate_numeric_single_and_list_types(schema, param, ref, "number", "float_parameter_sweep")
+    test_value = determine_minimum_valid_numeric_value(schema)
+    
     try:
-        validate(1.0, schema)
+        validate(test_value, schema)
 
     except ValidationError:
         msg = (
@@ -74,7 +138,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
     try:
-        validate([1.0], schema)
+        validate([test_value], schema)
 
     except ValidationError:
         msg = (
@@ -85,27 +149,25 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("anyOf", [{}])[0].get("type") != "integer":
-        msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} should "
-            "be a union with an 'int' as first element"
-        )
-        raise ValidationError(msg) from None
+    
+    validate_numeric_single_and_list_types(schema, param, ref, "integer", "int_parameter_sweep")
+    test_value = determine_minimum_valid_numeric_value(schema)
     try:
-        validate(1, schema)
+        validate(test_value, schema)
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} failedto validate an int"
+            f"Validation error at {ref}: int_parameter_sweep param {param} failed "
+            "to validate an int"
         )
         raise ValidationError(msg) from None
 
     try:
-        validate([1], schema)
+        validate([test_value], schema)
 
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: int_parameter_sweep param {param} failed"
+            f"Validation error at {ref}: int_parameter_sweep param {param} failed "
             "to validate an int array"
         )
         raise ValidationError(msg) from None
