@@ -2,7 +2,7 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-from validate_block import (
+from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
@@ -157,7 +157,7 @@ def validate_config(form: dict, config_ref: str) -> None:
         validate_root_element(root_element_schema, root_element, ref, config_ref)
 
 
-def validate_schema() -> None:
+def test_schema() -> None:
     for path, value in openapi_schema["paths"].items():
         if not path.startswith("/generated"):
             continue
@@ -167,6 +167,3 @@ def validate_schema() -> None:
         schema = resolve_ref(openapi_schema, schema_ref)
         validate_config(schema, schema_ref)
 
-
-if __name__ == "__main__":
-    validate_schema()
