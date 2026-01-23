@@ -1,12 +1,13 @@
 # Specification for JSONSchema GUI definition
 
-## Scan configs
+## ScanConfigs
 
 ### ui_enabled
 
-Scan configs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
+ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
 
-The config is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
+The ScanConfig is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
+
 All root elements and block elements must have a valid `ui_element`. [See below for details](#valid-ui_elements).
 
 ### Constraints
@@ -92,6 +93,6 @@ They should contain a `title` and a `description`.
 
 [entity_property_dropdown](entity_property_dropdown/entity_property_dropdown.md)
 
-## Legacy elements
+### Legacy block elements
 
 [neuron_ids](neuron_ids/neuron_ids.md)
