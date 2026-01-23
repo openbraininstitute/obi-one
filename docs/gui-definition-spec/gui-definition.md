@@ -14,7 +14,7 @@ Scan configs should contain `group_order` property which must be an array of str
 
 Optionally, scan configs should contain a `default_block_element_labels` dictionary, specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
-[Scan config example schema](reference_schemas/scan_config.jsonc)
+[Scan config example schema](scan_config/scan_config.jsonc)
 
 ## ui_element
 
@@ -68,9 +68,9 @@ Root elements must have the following properties:
 
 Currently supported root elements:
 
-- [root_block](root_block/root_block.md)
+- [root_block](ui_elements/root_block/root_block.md)
 
-- [block_dictionary](block_dictionary/block_dictionary.md)
+- [block_dictionary](ui_elements/block_dictionary/block_dictionary.md)
 
 ## Block elements
 
@@ -82,23 +82,23 @@ Block elements are properties of blocks. The parents of block elements must be b
 
 Currently supported block elements:
 
-- [string](string/string.md)
+- [string](ui_elements/string/string.md)
 
-- [model_identifier](model_identifier/model_identifier.md)
+- [model_identifier](ui_elements/model_identifier/model_identifier.md)
 
-- [numeric](numeric/numeric.md)
+- [numeric](ui_elements/numeric/numeric.md)
 
-- [reference](reference/reference.md)
+- [reference](ui_elements/reference/reference.md)
 
-- [entity_property_dropdown](entity_property_dropdown/entity_property_dropdown.md)
+- [entity_property_dropdown](ui_elements/entity_property_dropdown/entity_property_dropdown.md)
 
 Legacy block elements:
 
-- [neuron_ids](neuron_ids/neuron_ids.md)
+- [neuron_ids](ui_elements/neuron_ids/neuron_ids.md)
 
 
 ## Contributing
 
-[Adding New UI Elements](adding_new_ui_elements)
+[Adding New UI Elements](contributing/adding_new_ui_elements/adding_new_ui_elements.md)
 
-[Writing Validation Scripts](writing_validation_scripts)
+[Writing Validation Scripts](contributing/writing_validation_scripts/writing_validation_scripts.md)
