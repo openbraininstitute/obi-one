@@ -188,118 +188,22 @@ The parents of block elements must be blocks, never scan configs
 
 They should contain a `title` and a `description`.
 
-## String input
-
-ui_element: `string_input`
-
-Represents a simple input field.
-
-The type should be `string`.
-
-Reference schema: [string_input](reference_schemas/string_input.json)
-
-### Example Pydantic implementation
-
-```py
-class Block:
-    field: str = Field(ui_element="string_input",
-                      min_length=1,
-                      title="title",
-                      description="description")
-```
-
-### UI design
-
-<img src="designs/string_input.png" width="300" />
-
-## Model identifier
-
-ui_element: `model_identifier`
-
-- Should accept as input an object including an `id_str` string field.
-
-Reference schema [model_identifier](reference_schemas/model_identifier.jsonc)
-
-### Example Pydantic implementation
-
-```py
-
-class Circuit:
-    pass
-
-# Required
-class CircuitFromId(OBIBaseModel):
-    id_str: str = Field(description="ID of the entity in string format.")
+[string/string.md](string/string.md)
 
 
-class Block:
-    circuit: Circuit | CircuitFromId = Field( # Other elements in the union other than `CircuitFromId` not required.
-            ui_element="model_identifier",
-            title="Circuit", description="Circuit to simulate."
-        )
-```
-
-### UI design
-
-<img src="designs/model_identifier.png"  width="300" />
-
+[model_identifier/model_identifier.md](model_identifier/model_identifier.md)
 
 
 
 
 [numeric/numeric.md](numeric/numeric.md)
 [reference/reference.md](reference/reference.md)
+[entity_property_dropdown/entity_property_dropdown.md](entity_property_dropdown/entity_property_dropdown.md)
 
 
 
 
-## Entity property dropdown
-
-ui_element: `entity_property_dropdown`
-
-- Should accept a single `string` as input.
-- Should have an `entity_type` non-validating string.
-- Should have a `property` non-validating string.
-
-Reference schema [entity_property_dropdown](reference_schemas/entity_property_dropdown.json)
-
-### Example Pydantic implementation
-
-```py
-CircuitNode = Annotated[str, Field(min_length=1)] # Required in the schema
-NodeSetType = CircuitNode | list[CircuitNode] # list[] not required
-
-class Block:
-
-    node_set: NodeSetType = Field(
-        ui_element="entity_property_dropdown",
-        entity_type=EntityType.CIRCUIT,
-        property=CircuitPropertyType.NODE_SET,
-        title="Node Set",
-        description="Name of the node set to use.",
-        min_length=1,
-    )
-    
-```
-
-### UI design
-
-<img src="designs/entity_property_dropdown.png"  width="300" />
 
 ## Legacy elements
 
-## Neuron ids
-
-ui_element: `neuron_ids`
-
-This element's schema is particularly disordered, we have to keep it for legacy reasons (to avoid breaking changes to the schema). But it shouldn't be used in new configs.
-
-Reference schema [neuron_ids](reference_schemas/neuron_ids.json)
-
-Current pydantic implementation (`ui_element` added) for reference:
-
-```py
-class Block:
-    neuron_ids: NamedTuple | list[NamedTuple] = Field(ui_element="neuron_ids", min_length=1, title="neuron ids", description="description")
-
-```
+[neuron_ids/neuron_ids.md](neuron_ids/neuron_ids.md)
