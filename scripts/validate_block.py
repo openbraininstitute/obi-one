@@ -64,13 +64,13 @@ def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
         minimum = single_type.get("minimum", None)
         if minimum is None:
             minimum = single_type.get("exclusiveMinimum", -sys.maxsize)
-            minimum = minimum + math.ulp(minimum)
+            minimum = minimum + 1
 
 
         maximum = single_type.get("maximum", None)
         if maximum is None:
             maximum = single_type.get("exclusiveMaximum", sys.maxsize)
-            maximum = maximum - math.ulp(maximum)
+            maximum = maximum - 1
 
     elif single_type.get("type") == "number":
         minimum = single_type.get("minimum", None)
