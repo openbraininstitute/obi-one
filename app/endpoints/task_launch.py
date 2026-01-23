@@ -75,9 +75,7 @@ class TaskEstimateCreate(BaseModel):
     config_id: UUID
 
 
-def _get_config_asset(
-    db_client: entitysdk.Client, task_type: TaskType, entity_id: str
-) -> str:
+def _get_config_asset(db_client: entitysdk.Client, task_type: TaskType, entity_id: str) -> str:
     """Determines the asset ID of the JSON config asset."""
     task_def = TASK_DEFINITIONS[task_type]
     entity = db_client.get_entity(entity_id=entity_id, entity_type=task_def.config_cls)
@@ -252,12 +250,8 @@ def _submit_task_job(
     task_def = TASK_DEFINITIONS[task_type]
 
     # Create activity and set to pending for launching the job
-    execution_activity_id = _create_execution_activity(
-        db_client, task_type, entity_id
-    )
-    _update_execution_activity_status(
-        db_client, task_type, execution_activity_id, "pending"
-    )
+    execution_activity_id = _create_execution_activity(db_client, task_type, entity_id)
+    _update_execution_activity_status(db_client, task_type, execution_activity_id, "pending")
 
     # Command line arguments
     entity_cache = True
@@ -280,9 +274,7 @@ def _submit_task_job(
     )
     release_tag = settings.APP_VERSION.split("-")[0]
     # TODO: Use failure_callback_url in job_data for launch system to call back on task failure
-    _failure_callback_url = _generate_failure_callback(
-        request, execution_activity_id, task_type
-    )
+    _failure_callback_url = _generate_failure_callback(request, execution_activity_id, task_type)
     job_data = {
         "resources": {"cores": 1, "memory": 2, "timelimit": time_limit},
         "code": {
@@ -299,9 +291,7 @@ def _submit_task_job(
     # Submit job
     response = ls_client.post(url="/job", json=job_data)
     if response.status_code != HTTPStatus.OK:
-        _update_execution_activity_status(
-            db_client, task_type, execution_activity_id, "error"
-        )
+        _update_execution_activity_status(db_client, task_type, execution_activity_id, "error")
         msg = f"Job submission failed!\n{json.loads(response.text)}"
         raise RuntimeError(msg)
     response_body = response.json()
@@ -309,9 +299,7 @@ def _submit_task_job(
     L.info(f"Job submitted (ID {job_id})")
 
     # Add job as executor to activity
-    _update_execution_activity_executor(
-        db_client, task_type, execution_activity_id, job_id
-    )
+    _update_execution_activity_executor(db_client, task_type, execution_activity_id, job_id)
 
     return execution_activity_id, task_type, job_id
 
@@ -333,9 +321,7 @@ def task_launch_endpoint(
     execution_activity_id = None
 
     # Determine config asset
-    config_asset_id = _get_config_asset(
-        db_client, json_model.task_type, str(json_model.config_id)
-    )
+    config_asset_id = _get_config_asset(db_client, json_model.task_type, str(json_model.config_id))
 
     # Launch task
     execution_activity_id, _task_type, _job_id = _submit_task_job(
@@ -417,11 +403,7 @@ def task_failure_endpoint(
         msg = f"Unknown execution activity type: {execution_activity_type}"
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
 
-    current_status = _check_execution_activity_status(
-        db_client, task_type, execution_activity_id
-    )
+    current_status = _check_execution_activity_status(db_client, task_type, execution_activity_id)
     if current_status != "done":
         # Set the execution activity status to "error"
-        _update_execution_activity_status(
-            db_client, task_type, execution_activity_id, "error"
-        )
+        _update_execution_activity_status(db_client, task_type, execution_activity_id, "error")

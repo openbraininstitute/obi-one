@@ -1,4 +1,4 @@
-from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory
+from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory  # noqa: PLC2701
 
 from app.config import settings
 
