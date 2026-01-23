@@ -1,7 +1,7 @@
 import sys
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
-
+import math
 from app.application import app
 
 openapi_schema = get_openapi(
@@ -60,11 +60,27 @@ def determine_numeric_test_value(schema: dict, proposed_test_value: float | int)
     single_type = schema.get("anyOf", [{}])[0]
 
     if single_type.get("type") == "integer":
-        minimum = single_type.get("minimum", -sys.maxsize)
-        maximum = single_type.get("maximum", sys.maxsize)
+        minimum = single_type.get("minimum", None)
+        if minimum is None:
+            minimum = single_type.get("exclusiveMinimum", -sys.maxsize)
+            minimum = minimum + math.ulp(minimum)
+
+
+        maximum = single_type.get("maximum", None)
+        if maximum is None:
+            maximum = single_type.get("exclusiveMaximum", sys.maxsize)
+            maximum = maximum - math.ulp(maximum)
+
     elif single_type.get("type") == "number":
-        minimum = single_type.get("minimum", -sys.float_info.max)
-        maximum = single_type.get("maximum", sys.float_info.max)
+        minimum = single_type.get("minimum", None)
+        if minimum is None:
+            minimum = single_type.get("exclusiveMinimum", -sys.float_info.max)
+            minimum = minimum + math.ulp(minimum)
+
+        maximum = single_type.get("maximum", None)
+        if maximum is None:
+            maximum = single_type.get("exclusiveMaximum", sys.float_info.max)
+            maximum = maximum - math.ulp(maximum)   
 
     # Logical check if minimum less than or equal to maximum
     if not minimum <= maximum:
