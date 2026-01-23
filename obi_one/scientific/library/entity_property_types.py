@@ -13,4 +13,4 @@ class CircuitPropertyType(StrEnum):
 
 
 class IonChannelPropertyType(StrEnum):
-    RANGE_VARIABLES = "RangeVariables"
+    RECORDABLE_VARIABLES = "RecordableVariables"

@@ -29,9 +29,8 @@ def mapped_ion_channel_properties_endpoint(
             db_client=db_client,
         )
         mapped_ion_channel_properties = {}
-        # conductance can be str or None if not existent
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = (
-            ion_channel_properties.conductance
+            ion_channel_properties.variables
         )
 
     except entitysdk.exception.EntitySDKError as err:
