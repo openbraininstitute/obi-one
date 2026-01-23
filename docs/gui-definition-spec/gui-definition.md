@@ -2,23 +2,19 @@
 
 ## ScanConfigs
 
-### ui_enabled
+ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI. The ScanConfig is considered valid if its schema is valid and the schemas of all its elements (root elements and block elements) are valid.
 
-ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI.
+<!-- All root elements and block elements must be a valid `ui_element`. [See below for details](#valid-ui_elements). -->
 
-The ScanConfig is considered valid if its schema is valid and the schemas of all its root elements and block elements are valid.
+<!-- ### Constraints -->
 
-All root elements and block elements must have a valid `ui_element`. [See below for details](#valid-ui_elements).
+All properties of a scan config must be _root elements_.
 
-### Constraints
+Scan configs should contain `group_order` property which must be an array of strings determining the order in which groups of root elements appear in the UI. All values in `group_order` must be present in at least one root element's `group` string.
 
-All properties of a scan config must be _root elements_. (See below).
+Optionally, scan configs should contain a `default_block_element_labels` dictionary, specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
-They should contain `group_order` property which must be an array of strings determining the order of groups of root elements. All values in `group_order` must be present in at least one root element's `group` string.
-
-Optionally, they should contain a `default_block_element_labels` dictionary, specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
-
-Reference schema: [scan_config](reference_schemas/scan_config.jsonc)
+[Scan config example schema](reference_schemas/scan_config.jsonc)
 
 ## ui_element
 
@@ -43,9 +39,7 @@ Block elements:
 - `entity_property_dropdown`
 
 
-[Adding New UI Elements](adding_new_ui_elements)
 
-[Writing Validation Scripts](writing_validation_scripts)
 
 ## Hidden elements
 
@@ -68,7 +62,7 @@ _root elements_ are the properties of scan configs they can be either _root bloc
 
 Root elements must have the following properties:
 - `group` string that points to a string in its parent config's `group_order` array.
-- `group_order` integer (unique within the group).
+- `group_order` integer (unique within the group) which determines the in which the root element appears within its specified `group`.
 - `title` 
 - `description`
 
@@ -101,3 +95,10 @@ Currently supported block elements:
 Legacy block elements:
 
 - [neuron_ids](neuron_ids/neuron_ids.md)
+
+
+## Contributing
+
+[Adding New UI Elements](adding_new_ui_elements)
+
+[Writing Validation Scripts](writing_validation_scripts)
