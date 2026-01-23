@@ -66,33 +66,38 @@ class Block:
 
 _root elements_ are the properties of scan configs they can be either _root blocks_ or _block dictionaries_ .
 
-They should contain a `group` string that points to a string in its parent config's `group_order` array.
+Root elements must have the following properties:
+- `group` string that points to a string in its parent config's `group_order` array.
+- `group_order` integer (unique within the group).
+- `title` 
+- `description`
 
-They should contain a `group_order` integer (unique within the group).
+Currently supported root elements:
 
-They should contain a `title` and a `description`.
+- [root_block](root_block/root_block.md)
 
-[root_block](root_block/root_block.md)
-
-[block_dictionary](block_dictionary/block_dictionary.md)
+- [block_dictionary](block_dictionary/block_dictionary.md)
 
 ## Block elements
 
-Block elements are properties of blocks, they must have a `ui_element` property.
-The parents of block elements must be blocks, never scan configs
+Block elements are properties of blocks. The parents of block elements must be blocks, never scan configs. Blocks must have the following properties:
+- `ui_element`
+- `title`
+- `description`
 
-They should contain a `title` and a `description`.
 
-[string](string/string.md)
+Currently supported block elements:
 
-[model_identifier](model_identifier/model_identifier.md)
+- [string](string/string.md)
 
-[numeric](numeric/numeric.md)
+- [model_identifier](model_identifier/model_identifier.md)
 
-[reference](reference/reference.md)
+- [numeric](numeric/numeric.md)
 
-[entity_property_dropdown](entity_property_dropdown/entity_property_dropdown.md)
+- [reference](reference/reference.md)
 
-### Legacy block elements
+- [entity_property_dropdown](entity_property_dropdown/entity_property_dropdown.md)
 
-[neuron_ids](neuron_ids/neuron_ids.md)
+Legacy block elements:
+
+- [neuron_ids](neuron_ids/neuron_ids.md)
