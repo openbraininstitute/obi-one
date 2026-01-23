@@ -4,20 +4,19 @@ from enum import StrEnum, auto
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any
-from urllib.parse import urlencode
 from uuid import UUID
 
 import entitysdk
 import httpx
 from entitysdk.types import CircuitScale, ContentType, ExecutorType
 from fastapi import APIRouter, Depends, HTTPException, Request
-from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory
+from obp_accounting_sdk._sync.factory import AccountingSessionFactory
 from obp_accounting_sdk.constants import ServiceSubtype
 from pydantic import BaseModel
 
 from app.config import settings
 from app.dependencies.accounting import get_accounting_factory
-from app.dependencies.auth import user_verified
+from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import get_client as get_db_client
 from app.dependencies.launchsystem import get_client as get_ls_client
 from app.logger import L
@@ -170,17 +169,15 @@ def _check_execution_activity_status(
 
 def _generate_failure_callback(
     request: Request, execution_activity_id: str, task_type: TaskType
-) -> str:
-    """Builds the callback URL for task failure notifications."""
+) -> tuple[str, dict[str, str]]:
+    """Builds the callback URL and params for task failure notifications."""
     failure_endpoint_url = str(request.url_for("task_failure_endpoint"))
     task_def = TASK_DEFINITIONS[task_type]
-    query_params = urlencode(
-        {
-            "execution_activity_id": execution_activity_id,
-            "execution_activity_type": task_def.execution_cls.__name__,
-        }
-    )
-    return f"{failure_endpoint_url}?{query_params}"
+    params = {
+        "execution_activity_id": execution_activity_id,
+        "execution_activity_type": task_def.execution_cls.__name__,
+    }
+    return failure_endpoint_url, params
 
 
 def _generate_accounting_failure_callback(
@@ -318,7 +315,7 @@ def _submit_task_job(
         "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
     )
     release_tag = settings.APP_VERSION.split("-")[0]
-    failure_callback_url = _generate_failure_callback(
+    failure_callback_url, failure_callback_params = _generate_failure_callback(
         request, execution_activity_id, task_type
     )
 
@@ -341,6 +338,7 @@ def _submit_task_job(
             "config": {
                 "url": failure_callback_url,
                 "method": "POST",
+                "params": failure_callback_params,
             },
         },
         {
@@ -404,14 +402,15 @@ def _submit_task_job(
         "The type of task is determined based on the config entity provided."
     ),
 )
-async def task_launch_endpoint(
+def task_launch_endpoint(
     request: Request,
     json_model: TaskLaunchCreate,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
     ls_client: Annotated[httpx.Client, Depends(get_ls_client)],
-    AsyncAccountingSessionFactoryDep: Annotated[  # noqa: N803
-        AsyncAccountingSessionFactory, Depends(get_accounting_factory)
+    accounting_factory: Annotated[
+        AccountingSessionFactory, Depends(get_accounting_factory)
     ],
+    user_context: UserContextDep,
 ) -> str | None:
 
     config_asset_id = _get_config_asset(
@@ -431,33 +430,40 @@ async def task_launch_endpoint(
 
     # Step 2: Reserve
     project_id = str(db_client.project_context.project_id)
-    virtual_lab_id = str(db_client.project_context.virtual_lab_id)
+    user_id = str(user_context.subject)
 
-    reservation_result = await AsyncAccountingSessionFactoryDep.reserve_oneshot(
+    # Create oneshot session and make reservation
+    oneshot_session = accounting_factory.oneshot_session(
         subtype=service_subtype,
-        count=count,
         proj_id=project_id,
-        vlab_id=virtual_lab_id,
+        user_id=user_id,
+        count=count,
     )
-    accounting_job_id = str(reservation_result.job_id)
+    oneshot_session.make_reservation()
+    accounting_job_id = str(oneshot_session._job_id)  # noqa: SLF001
     L.info(
         f"Accounting parameters reserved: subtype={service_subtype}, "
         f"count={count}, job_id={accounting_job_id}"
     )
 
     # Step 3: Create activity and submit task job
-    execution_activity_id, _task_type, _job_id = _submit_task_job(
-        db_client,
-        ls_client,
-        json_model.task_type,
-        str(json_model.config_id),
-        config_asset_id,
-        request,
-        accounting_job_id,
-        service_subtype,
-        count,
-        project_id,
-    )
+    try:
+        execution_activity_id, _task_type, _job_id = _submit_task_job(
+            db_client,
+            ls_client,
+            json_model.task_type,
+            str(json_model.config_id),
+            config_asset_id,
+            request,
+            accounting_job_id,
+            service_subtype,
+            count,
+            project_id,
+        )
+    except Exception as exc:
+        # Cancel reservation if job submission fails
+        oneshot_session.finish(exc_type=type(exc))
+        raise
 
     return execution_activity_id
 
@@ -470,11 +476,11 @@ async def task_launch_endpoint(
         "Takes the same parameters as /task-launch and returns a cost estimate."
     ),
 )
-async def estimate_endpoint(
+def estimate_endpoint(
     json_model: TaskEstimateCreate,
     db_client: Annotated[entitysdk.Client, Depends(get_db_client)],
-    AsyncAccountingSessionFactoryDep: Annotated[  # noqa: N803
-        AsyncAccountingSessionFactory, Depends(get_accounting_factory)
+    accounting_factory: Annotated[
+        AccountingSessionFactory, Depends(get_accounting_factory)
     ],
 ) -> dict:
     """Estimates the cost for a task launch."""
@@ -493,7 +499,7 @@ async def estimate_endpoint(
     virtual_lab_id = str(db_client.project_context.virtual_lab_id)
 
     # Compute cost estimate using accounting SDK
-    cost_estimate = await AsyncAccountingSessionFactoryDep.estimate_oneshot_cost(
+    cost_estimate = accounting_factory.estimate_oneshot_cost(
         subtype=service_subtype,
         count=count,
         proj_id=project_id,
