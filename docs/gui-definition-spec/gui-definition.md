@@ -6,10 +6,7 @@ ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Set
 
 Different elements of the scan config are of different type specified by the `ui_element`. 
 
-ScanConfigs can have the following elements:
-
-- `Root elements`: 
-    - There are currently two supported root element types:
+ScanConfigs are composed of `Root elements`. There are currently two supported root elements:
         - [root_block](components/root_block/root_block.md)
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
 
