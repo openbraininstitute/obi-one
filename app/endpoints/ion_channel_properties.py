@@ -1,0 +1,46 @@
+from http import HTTPStatus
+from typing import Annotated
+
+import entitysdk.client
+import entitysdk.exception
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.dependencies.auth import user_verified
+from app.dependencies.entitysdk import get_client
+from app.errors import ApiErrorCode
+from obi_one.scientific.library.entity_property_types import IonChannelPropertyType
+from obi_one.scientific.library.ion_channel_properties import get_ion_channel_variables
+
+router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
+
+
+@router.get(
+    "/mapped-ion-channel-properties/{ion_channel_id}",
+    summary="Mapped ion channel properties",
+    description="Returns a dictionary of mapped ion channel properties.",
+)
+def mapped_ion_channel_properties_endpoint(
+    ion_channel_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> dict:
+    try:
+        ion_channel_properties = get_ion_channel_variables(
+            ion_channel_id=ion_channel_id,
+            db_client=db_client,
+        )
+        mapped_ion_channel_properties = {}
+        # conductance can be str or None if not existent
+        mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = (
+            ion_channel_properties.conductance
+        )
+
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the ion channel model {ion_channel_id}.",
+            },
+        ) from err
+
+    return mapped_ion_channel_properties

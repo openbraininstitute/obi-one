@@ -10,3 +10,7 @@ class CircuitPropertyType(StrEnum):
     POPULATION = "Population"
     BIOPHYSICAL_POPULATION = "BiophysicalPopulation"
     VIRTUAL_POPULATION = "VirtualPopulation"
+
+
+class IonChannelPropertyType(StrEnum):
+    RANGE_VARIABLES = "RangeVariables"

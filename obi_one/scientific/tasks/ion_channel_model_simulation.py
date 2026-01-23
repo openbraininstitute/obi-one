@@ -1,17 +1,12 @@
 """Ion channel model simulation scan config."""
 
-import json
 import logging
-import subprocess  # noqa: S404
-import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, ClassVar
 
 import entitysdk
-from entitysdk import models
-from entitysdk.types import AssetLabel, ContentType
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
@@ -19,24 +14,20 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.task import Task
-from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
-    _SCAN_CONFIG_FILENAME
+    _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
     DEFAULT_NODE_SET_NAME,
-    DEFAULT_TIMESTAMPS_NAME
+    DEFAULT_TIMESTAMPS_NAME,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
-    SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -48,7 +39,6 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
-
 
 L = logging.getLogger(__name__)
 
@@ -236,7 +226,7 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         )
 
         return self._campaign
-    
+
     def create_campaign_generation_entity(
         self,
         ion_channel_simulations: list[entitysdk.models.IonChannelModelSimulationConfig],
@@ -255,9 +245,7 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         )
 
 
-class IonChannelModelSimulationSingleConfig(
-    IonChannelModelSimulationScanConfig, SingleConfigMixin
-):
+class IonChannelModelSimulationSingleConfig(IonChannelModelSimulationScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
     _single_entity: entitysdk.models.IonChannelModelSimulationConfig
@@ -272,9 +260,7 @@ class IonChannelModelSimulationSingleConfig(
         db_client: entitysdk.client.Client,
     ) -> entitysdk.models.IonChannelModelSimulationConfig:
         """Saves the simulation config to the database."""
-        L.info(
-            f"2.{self.idx} Saving ion channel model simulation config {self.idx} to database..."
-        )
+        L.info(f"2.{self.idx} Saving ion channel model simulation config {self.idx} to database...")
 
         # This loop will be useful when we support multiple recordings
         for model in self.initialize.ion_channel_models:
