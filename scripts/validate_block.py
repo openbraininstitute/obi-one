@@ -81,7 +81,6 @@ def determine_numeric_test_value(schema: dict, proposed_test_value: float | int)
                 msg
             )
         
-    print(minimum)
     return minimum
 
 def validate_numeric_single_and_list_types(schema: dict, param: str, ref: str, data_type: str, ui_element: str) -> None:
