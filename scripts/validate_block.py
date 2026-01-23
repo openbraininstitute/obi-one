@@ -55,7 +55,8 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
         msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
         raise ValidationError(msg) from None
 
-def determine_numeric_test_value(schema: dict, proposed_test_value: float | int) -> float | int:
+def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
+
     default = schema.get("default")
     single_type = schema.get("anyOf", [{}])[0]
 
@@ -124,7 +125,7 @@ def validate_numeric_single_and_list_types(schema: dict, param: str, ref: str, d
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     
     validate_numeric_single_and_list_types(schema, param, ref, "number", "float_parameter_sweep")
-    test_value = determine_numeric_test_value(schema, proposed_test_value=1.0)
+    test_value = determine_minimum_valid_numeric_value(schema)
     
     try:
         validate(test_value, schema)
@@ -150,7 +151,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
     
     validate_numeric_single_and_list_types(schema, param, ref, "integer", "int_parameter_sweep")
-    test_value = determine_numeric_test_value(schema, proposed_test_value=1)
+    test_value = determine_minimum_valid_numeric_value(schema)
     try:
         validate(test_value, schema)
 
