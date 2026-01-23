@@ -191,6 +191,9 @@ max-statements = 50
 max-public-methods = 60
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
 minversion = "6.0"
 addopts = [
     "--import-mode=importlib",
