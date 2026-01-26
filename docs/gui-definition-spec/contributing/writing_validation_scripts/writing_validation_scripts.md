@@ -1,6 +1,6 @@
 ### Writing validation scripts
 
-For each new `ui_element` a corresponding validation function must be added to [validate_root_element](../../../../scripts/validate_schema.py#L30) in case of new root elements or to [validate_block_elements](../../../../scripts/validate_block.py#L210) in the case of new block elements.
+For each new `ui_element` a corresponding validation function must be added to [validate_root_element](../../../../tests/schema/test_schema.py#L30) in case of new root elements or to [validate_block_elements](../../../../tests/schema/validate_block.py#L210) in the case of new block elements.
 
 The purpose of validation functions is twofold:
 1. Ensure that the schema of the element matches the structure the frontend needs to render the input element.
