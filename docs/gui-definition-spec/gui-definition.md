@@ -57,6 +57,8 @@ There are two major types of such UI elements:
 
         - [string_input](components/string_input/string_input.md)
 
+        - [boolean_input](components/boolean_input/boolean_input.md)
+
         - [model_identifier](components/model_identifier/model_identifier.md)
 
         - [numeric](components/numeric/numeric.md)

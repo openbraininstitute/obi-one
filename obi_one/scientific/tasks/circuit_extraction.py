@@ -62,6 +62,7 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EXTRACTION_TARGET,
