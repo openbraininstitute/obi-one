@@ -6,7 +6,7 @@ Root blocks are blocks defined at the root level of a scan config.
 
 They should contain `properties` in its schema which are _block_elements_.
 
-Reference schema: [root_block](reference_schemas/root_block_schema.jsonc)
+Reference schema: [root_block](reference_schemas/root_block.jsonc)
 
 ### Example Pydantic implementation
 

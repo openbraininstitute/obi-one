@@ -8,7 +8,7 @@ ui_element: `reference`
 - Second element should be `null`.
 - Should have a string (non-validating) `reference_type`, which is consitent with the type of the reference.
 
-_References are hidden from the ui if either the `ui_hidden` property is `True` or their `reference_type` is missing in its configuration's `default_block_reference_labels` [See](#constraints)_.
+_References are hidden from the UI if either the `ui_hidden` property is `True` or their `reference_type` is missing in its configuration's `default_block_reference_labels` [See](../../gui-definition.md#scanconfigs-additional).
 
 Reference schema [reference](reference_schemas/reference.json)
 
