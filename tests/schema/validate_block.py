@@ -269,28 +269,22 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
     if schema.get("type") != "boolean":
-        msg = (
-            f"Validation error at {ref}: boolean_input param {param} should "
-            "have type 'boolean'"
-        )
+        msg = f"Validation error at {ref}: boolean_input param {param} should have type 'boolean'"
         raise ValidationError(msg)
 
+    test_true = True
+    test_false = False
+
     try:
-        validate(True, schema)
+        validate(test_true, schema)
     except ValidationError:
-        msg = (
-            f"Validation error at {ref}: boolean_input param {param} failed "
-            "to validate True"
-        )
+        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate True"
         raise ValidationError(msg) from None
 
     try:
-        validate(False, schema)
+        validate(test_false, schema)
     except ValidationError:
-        msg = (
-            f"Validation error at {ref}: boolean_input param {param} failed "
-            "to validate False"
-        )
+        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate False"
         raise ValidationError(msg) from None
 
 

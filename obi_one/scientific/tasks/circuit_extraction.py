@@ -66,7 +66,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             "group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EXTRACTION_TARGET,
-            ]
+            ],
         }
 
     class Initialize(Block):
