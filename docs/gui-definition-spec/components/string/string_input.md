@@ -21,3 +21,7 @@ class Block:
 ### UI design
 
 <img src="designs/string_input.png" width="300" />
+
+
+
+## TO BE ADDED: string_input_parameter_sweep
