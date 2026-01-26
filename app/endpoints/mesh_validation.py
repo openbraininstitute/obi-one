@@ -22,6 +22,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
 
 class ValidationStatus(StrEnum):
     """Enumeration of possible validation outcomes."""
+
     SUCCESS = "success"
     FAILURE = "failure"
 
