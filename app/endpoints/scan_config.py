@@ -25,6 +25,7 @@ from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanC
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
+from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
@@ -105,6 +106,7 @@ def activate_scan_config_endpoints() -> None:
         (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),
+        (SkeletonizationScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
