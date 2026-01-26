@@ -1,0 +1,2 @@
+- latex: {'key': 'equation'}
+- description: {'key': 'description'}

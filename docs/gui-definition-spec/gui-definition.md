@@ -51,7 +51,11 @@ There are two major types of such UI elements:
 
     - Currently supported block element types:
 
-        - [string](components/string/string_input.md)
+        - [string_input](components/string/string_input.md)
+
+        - [string_constant and](components/string/string_constant.md)
+
+        - [string_selection](components/string/string_selection.md)
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
