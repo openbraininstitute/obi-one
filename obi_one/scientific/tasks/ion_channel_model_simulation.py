@@ -14,6 +14,10 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.blocks.ion_channel_model import (
+    IonChannelModelWithConductance,
+    IonChannelModelWithConductanceReference,
+)
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
@@ -71,17 +75,16 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         }
 
     class Initialize(Block):
-        ion_channel_models: list[IonChannelModelFromID] = Field(
-            ui_element="model_identifier",
-            title="Ion channel models",
-            description="IDs of the models to simulate.",
-        )
-
-        # a new field should appear each time a new ion channel model is added
-        conductances: list[NonNegativeFloat] = Field(
-            ui_element="float_parameter_sweep",
-            title="Conductances (in S/cm2)",
-            description="Each conductance is associated to an ion channel model.",
+        # contains models and their conductances
+        ion_channel_models: dict[str, IonChannelModelWithConductance] = Field(
+            ui_element="block_dictionary",
+            default_factory=dict,
+            title="Ion Channel Models",
+            reference_type=IonChannelModelWithConductanceReference.__name__,
+            description="Ion channel models and their conductances.",
+            singular_name="Ion Channel Models",
+            group=BlockGroup.SETUP,
+            group_order=1,
         )
 
         simulation_length: (
@@ -144,7 +147,7 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP,
-        group_order=1,
+        group_order=2,
     )
 
     info: Info = Field(
