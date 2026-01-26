@@ -3,7 +3,6 @@
 ui_element: `string_selection`
 
 <!-- Represents a simple input field. -->
-
 <!-- The type should be `string`. -->
 
 Reference schema: [string_selection](reference_schemas/string_selection.json)
@@ -21,50 +20,50 @@ class Block:
 
 ### UI design
 
+The design for string selection dropdown in the closed position:
+
 <img src="designs/string_selection_closed.png" width="300" />
+
+The design for string selection dropdown in the open position, showing one of the options selected:
 <img src="designs/string_selection_open.png" width="300" />
 
 
+## String selection extras
 
-## String selection parameter sweep (Not yet supported)
+Several additional options are available for the presentation of string_selection elements. These only add to the presentation of the ui_element, and do not change the validatity of inputs. These extras do have implications for the validity of the schema, however. 
 
-ui_element: `string_selection_parameter_sweep`
+## String selection key descriptions
 
-<!-- Represents a simple input field. -->
-
-<!-- The type should be `string`. -->
-
-Reference schema: [string_selection_parameter_sweep](reference_schemas/string_selection_parameter_sweep.json)
+See the section of the [string_selection reference schema](reference_schemas/string_selection.json)
 
 ### Example Pydantic implementation
 
 ```py
 class Block:
-    field: Literal["A", "B", "C"] | List[Literal["A", "B", "C"]] = Field(
+    field: Literal["A", "B", "C"] = Field(
         title="Select A, B or C",
         description="Select option A, B or C.",
         default="A",
-        minLength=1
+        descriptions_by_key={'A': 'A is a ...', 
+                            'B': 'B is a ...', 
+                            'C': 'C is a ...'},
+        latex_by_key={'A': 'A is a ...', 
+                    'B': 'B is a ...', 
+                    'C': 'C is a ...'}
     )
 ```
 
-### UI design
+### UI Design
 
-For the simple string selection, string_selection_parameter_sweep follows the design of string_selection, with the addition of a 
+The design for string selection dropdown with descriptions in the closed position:
 
-<img src="designs/string_selection_parameter_sweep_closed.png" width="300" />
-<img src="designs/string_selection_parameter_sweep_open.png" width="300" />
+<img src="designs/string_selection_closed_description.png" width="300" />
 
+The design for string selection dropdown with descriptions in the open position:
 
-## String extras
-
-Several additional options are available for the presentation of string_selection and string_selection_parameter_sweep elements. These only enhance the presentation of the ui_element, and do not change the validatity of inputs. These do have implications for the validity of the schema, which are checked during validation of the schema
+<img src="designs/string_selection_open_description.png" width="300" />
 
 
-### Description
-
-<img src="designs/string_selection_closed_latex_description.png.png" width="300" />
-<img src="designs/string_selection_open_latex_description.png" width="300" />
 
 ### Latex
 
@@ -73,5 +72,5 @@ Several additional options are available for the presentation of string_selectio
 
 ### Latex and description
 
-<img src="designs/string_selection_closed_description.png" width="300" />
-<img src="designs/string_selection_open_description.png" width="300" />
+<img src="designs/string_selection_closed_latex_description.png" width="300" />
+<img src="designs/string_selection_open_latex_description.png" width="300" />
