@@ -1,6 +1,6 @@
 import pathlib
 import tempfile
-from enum import Enum
+from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
 
 
-class ValidationStatus(str, Enum):
+class ValidationStatus(StrEnum):
     """Enumeration of possible validation outcomes."""
     SUCCESS = "success"
     FAILURE = "failure"
