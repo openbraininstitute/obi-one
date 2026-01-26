@@ -24,4 +24,6 @@ class Block:
 
 
 
-## TO BE ADDED: string_input_parameter_sweep
+## String Input Parameter Sweep (Placeholder, not yet supported)
+
+ui_element: `string_input_parameter_sweep`
