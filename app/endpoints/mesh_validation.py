@@ -1,5 +1,6 @@
 import pathlib
 import tempfile
+from enum import Enum
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
@@ -17,6 +18,12 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 # Max file size: 5 GB
 MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
+
+
+class ValidationStatus(str, Enum):
+    """Enumeration of possible validation outcomes."""
+    SUCCESS = "success"
+    FAILURE = "failure"
 
 
 class FileTooLargeError(Exception):
@@ -54,7 +61,7 @@ def validate_mesh_reader(mesh_file_path: str) -> pv.DataSet:
 class MESHValidationResponse(BaseModel):
     """Schema for the MESH file validation success response."""
 
-    status: str
+    status: ValidationStatus
     message: str
 
 
@@ -163,7 +170,7 @@ def validate_mesh_file(
         background_tasks.add_task(_cleanup_temp_file, temp_file_path)
 
         return MESHValidationResponse(
-            status="success",
+            status=ValidationStatus.SUCCESS,
             message="MESH file validation successful.",
         )
 
@@ -199,7 +206,7 @@ def validate_mesh_file(
 def activate_test_mesh_endpoint(router: APIRouter) -> None:
     """Define MESH file validation endpoint."""
     router.post(
-        "/validate-mesh-file",
+        "/test-mesh-file",
         summary="Validate MESH file format for OBP.",
         description="Validates an uploaded .obj file using PyVista.",
     )(validate_mesh_file)
