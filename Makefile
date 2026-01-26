@@ -72,6 +72,14 @@ test-local:  ## Run tests locally
 	uv run -m coverage xml
 	uv run -m coverage html
 
+test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
+	@$(call load_env,test-local)
+	uv run -m pytest $(FILE) --no-cov --disable-warnings
+
+test-schema: ## Run schema tests locally.
+	@$(call load_env,test-local)
+	uv run -m pytest tests/schema/test_schema.py --no-cov --disable-warnings
+
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test
 
