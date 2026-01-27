@@ -14,10 +14,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.blocks.ion_channel_model import (
-    IonChannelModelWithConductance,
-    IonChannelModelWithConductanceReference,
-)
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
@@ -29,6 +25,10 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.tasks.generate_simulation_configs import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
+)
+from obi_one.scientific.unions.unions_ion_channel_model import (
+    IonChannelModelReference,
+    IonChannelModelUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -76,11 +76,11 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
 
     class Initialize(Block):
         # contains models and their conductances
-        ion_channel_models: dict[str, IonChannelModelWithConductance] = Field(
+        ion_channel_models: dict[str, IonChannelModelUnion] = Field(
             ui_element="block_dictionary",
             default_factory=dict,
             title="Ion Channel Models",
-            reference_type=IonChannelModelWithConductanceReference.__name__,
+            reference_type=IonChannelModelReference.__name__,
             description="Ion channel models and their conductances.",
             singular_name="Ion Channel Models",
             group=BlockGroup.SETUP,
