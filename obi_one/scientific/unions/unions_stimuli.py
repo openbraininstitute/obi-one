@@ -39,7 +39,6 @@ _INJECTION_STIMULI = (
     | OrnsteinUhlenbeckCurrentSomaticStimulus
     | OrnsteinUhlenbeckConductanceSomaticStimulus
     | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
-    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
 
 _SPIKE_STIMULI = (
