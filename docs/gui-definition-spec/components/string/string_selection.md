@@ -25,6 +25,7 @@ The design for string selection dropdown in the closed position:
 <img src="designs/string_selection_closed.png" width="300" />
 
 And in the open position, showing one of the options selected:
+
 <img src="designs/string_selection_open.png" width="300" />
 
 
