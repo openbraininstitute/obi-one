@@ -12,6 +12,8 @@ class SimulationsForm(CircuitSimulationScanConfig):
 
     initialize: Initialize
 
+    # TODO[pydantic]: The `Config` class inherits from another class, please create the `model_config` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
     class Config(CircuitSimulationScanConfig.Config):
         json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
 

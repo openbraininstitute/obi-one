@@ -5,7 +5,7 @@ from enum import StrEnum, auto
 from typing import Annotated, ClassVar
 
 import entitysdk
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
@@ -52,9 +52,7 @@ class Author(BaseModel):
 class Reference(BaseModel):
     type: str = Field(..., description="Reference type (e.g. DOI, PubMed)")
     identifier: str = Field(..., description="Unique reference identifier")
-
-    class Config:
-        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Reference"}
+    model_config = ConfigDict()
 
 
 class Publication(Block):
@@ -65,9 +63,7 @@ class Publication(Block):
     authors: Author | None = Field(default=None)
     publication_year: int | None = Field(default=None)
     abstract: str | None = Field(default="")
-
-    class Config:
-        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Publication"}
+    model_config = ConfigDict()
 
 
 class MTypeClassification(Block):
@@ -145,19 +141,7 @@ class ContributeMorphologyScanConfig(ScanConfig):
     single_coord_class_name: ClassVar[str] = "ContributeMorphologySingleConfig"
     name: ClassVar[str] = "Contribute a Morphology"
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
-
-    class Config:
-        json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.ASSET_BLOCK_GROUP,
-                BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-                BlockGroup.STRAIN_BLOCK_GROUP,
-                BlockGroup.LOCATION_GROUP,
-                BlockGroup.PROTOCOL_GROUP,
-                BlockGroup.LICENSE_GROUP,
-            ]
-        }
+    model_config = ConfigDict()
 
     assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 

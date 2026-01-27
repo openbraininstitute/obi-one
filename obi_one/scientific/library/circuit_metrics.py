@@ -399,7 +399,7 @@ class CircuitMetricsNodePopulation(BaseModel):
     property_names: list[str]
     property_unique_values: dict[str, list[str]]
     property_value_counts: dict[str, dict[str, int]]
-    node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
+    node_location_info: dict[SpatialCoordinate, dict[str, float]] | None = None
 
 
 class CircuitMetricsEdgePopulation(BaseModel):
@@ -407,8 +407,8 @@ class CircuitMetricsEdgePopulation(BaseModel):
     name: str
     population_type: EdgePopulationType
     property_names: list[str]
-    property_stats: dict[str, dict[str, float]] | None
-    degree_stats: dict[DegreeTypes, dict[str, float]] | None
+    property_stats: dict[str, dict[str, float]] | None = None
+    degree_stats: dict[DegreeTypes, dict[str, float]] | None = None
 
 
 class CircuitPopulationsResponse(BaseModel):

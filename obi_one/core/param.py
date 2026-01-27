@@ -30,4 +30,4 @@ class MultiValueScanParam(ScanParam):
 
 
 class SingleValueScanParam(ScanParam):
-    value: Any
+    value: Any = None
