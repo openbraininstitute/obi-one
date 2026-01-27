@@ -6,7 +6,6 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     OrnsteinUhlenbeckConductanceSomaticStimulus,
     OrnsteinUhlenbeckCurrentSomaticStimulus,
-    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
