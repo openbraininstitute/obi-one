@@ -1,0 +1,13 @@
+{
+    "type": "string",
+    "const": "A",
+    "title": "Constant",
+    "description": "Constant description.",
+    "description_by_key": {
+        "A": "Description for option A."
+    },
+    "latex_by_key": {
+        "A": "A_{latex}"
+    },
+    "ui_element": "string_constant_enhanced"
+}

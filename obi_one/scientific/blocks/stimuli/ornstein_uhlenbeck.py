@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
@@ -25,6 +25,48 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         description="The time constant of the Ornstein-Uhlenbeck process.",
         units="ms",
         ui_element="float_parameter_sweep",
+    )
+
+    temp_option_remove_string_selection: Literal["A", "B", "C"] = Field(
+        ui_element="string_selection",
+        title="Option",
+        description="Option description.",
+        default="A",
+    )
+
+    temp_option_remove_string_constant: Literal["A"] = Field(
+        ui_element="string_constant",
+        title="Constant",
+        description="Constant description.",
+    )
+
+    temp_option_remove_string_selection_enhanced: Literal["A", "B", "C"] = Field(
+        ui_element="string_selection_enhanced",
+        title="Option",
+        description="Option description.",
+        default="A",
+        description_by_key={
+            "A": "Description for option A.",
+            "B": "Description for option B.",
+            "C": "Description for option C.",
+        },
+        latex_by_key={
+            "A": r"A_{latex}",
+            "B": r"B_{latex}",
+            "C": r"C_{latex}",
+        },
+    )
+
+    temp_option_remove_string_constant_enhanced: Literal["A"] = Field(
+        ui_element="string_constant_enhanced",
+        title="Constant",
+        description="Constant description.",
+        description_by_key={
+            "A": "Description for option A."
+        },
+        latex_by_key={
+            "A": r"A_{latex}",
+        },
     )
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
