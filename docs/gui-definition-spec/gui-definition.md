@@ -2,7 +2,11 @@
 
 ## ScanConfigs
 
-ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation; only configs complying with the specification can be integrated into the UI. The ScanConfig is considered valid if its schema is valid and the schemas of all its elements are valid.
+ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation in continuous integration; only configs complying with the specification can be integrated into the UI. The ScanConfig is considered valid if its schema is valid and the schemas of all its elements are valid.
+
+The schema can be tested locally with the command:
+`make test-schema`
+
 
 
 ## UI Elements

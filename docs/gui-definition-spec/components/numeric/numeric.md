@@ -38,7 +38,7 @@ ui_element: `int_parameter_sweep`
 
 - Same as `parameter_sweep` but with `int` types in the `anyOf` array.
 
-Reference schema [int_parameter_sweep](reference_schemas/int_parameter_sweep.json)
+Reference schema [int_parameter_sweep](reference_schemas/int_parameter_sweep.jsonc)
 
 ### Example Pydantic implementation
 
