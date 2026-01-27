@@ -1,7 +1,6 @@
 ## String selection
 
 ui_element: `string_selection`
-
 <!-- Represents a simple input field. -->
 <!-- The type should be `string`. -->
 
@@ -12,8 +11,9 @@ Reference schema: [string_selection](reference_schemas/string_selection.json)
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
-        title="Select A, B or C",
-        description="Select option A, B or C.",
+        ui_element="string_selection",
+        title="Option",
+        description="Option description.",
         default="A",
     )
 ```
@@ -29,26 +29,35 @@ And in the open position, showing one of the options selected:
 <img src="designs/string_selection_open.png" width="300" />
 
 
-## String selection extras
+## String selection enhanced
 
-Several additional options are available for the presentation of string_selection elements. These only add to the presentation of the ui_element, and do not change the validatity of inputs. These extras do have implications for the validity of the schema, however. 
+ui_element: `string_selection_enhanced`
 
-## String selection: description by keys
+Reference schema: [string_selection_enhanced](reference_schemas/string_selection_enhanced.json)
 
-See the section of the [string_selection reference schema](reference_schemas/string_selection.json)
+This offers an alternative dropdown style for selecting strings in a dropdown, with descriptions and/or latex representations.
 
 ### Example Pydantic implementation
 
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
-        title="Select A, B or C",
-        description="Select option A, B or C.",
+        ui_element="string_selection_enhanced",
+        title="Option",
+        description="Option description.",
         default="A",
-        descriptions_by_key={'A': 'A is a ...', 
-                            'B': 'B is a ...', 
-                            'C': 'C is a ...'},
+        description_by_key={ # Optional
+            "A": "Description for option A.",
+            "B": "Description for option B.",
+            "C": "Description for option C.",
+        },
+        latex_by_key={ # Optional
+            "A": r"A_{latex}",
+            "B": r"B_{latex}",
+            "C": r"C_{latex}",
+        },
     )
+    # Note: atleast one of `description_by_key` or `latex_by_key` should be present.
 ```
 
 ### UI Design
@@ -61,28 +70,6 @@ And in the open position, showing one of the options selected:
 
 <img src="designs/string_selection_open_description.png" width="300" />
 
-
-
-## String selection: LaTeX by key
-
-LaTeX equations by key can be specified in a similar manner as the descriptions by key. See [string_selection reference schema](reference_schemas/string_selection.json)
-
-### Pydantic example implementation
-
-```py
-class Block:
-    field: Literal["A", "B", "C"] = Field(
-        title="Select A, B or C",
-        description="Select option A, B or C.",
-        default="A",
-        latex_by_key={'A': 'A is a ...',
-                    'B': 'B is a ...',
-                    'C': 'C is a ...'}
-    )
-```
-
-### UI Design
-
 The design for string selection dropdown with descriptions by key in the closed position:
 
 <img src="designs/string_selection_closed_latex.png" width="300" />
@@ -91,11 +78,6 @@ And in the open position, showing one of the options selected:
 
 <img src="designs/string_selection_open_latex.png" width="300" />
 
-### String selection: Description and LaTeX by key 
-
-Descriptions by key and LaTeX by key can be presented simultaneously if both are specified.
-
-## UI Design
 
 The design for string selection dropdown with latex by key and descriptions by key in the closed position:
 
