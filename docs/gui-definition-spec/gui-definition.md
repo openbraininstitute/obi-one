@@ -55,9 +55,9 @@ There are two major types of such UI elements:
 
     - Currently supported block element types:
 
-        - [string_input, string_input_parameter_sweep](components/string/string_input.md)
+        - [string_input](components/string/string_input.md)
 
-        - [string_selection, string_selection_parameter_sweep](components/string/string_selection.md)
+        - [string_selection](components/string/string_selection.md)
 
         - [string_constant](components/string/string_constant.md)
 
