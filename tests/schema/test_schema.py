@@ -29,16 +29,16 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
 
 def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
     match ui_element := schema.get("ui_element"):
-        case "root_block":
-            validate_block(schema, ref)
+        case "block_single":
+            validate_block_single(schema, element, ref)
         case "block_dictionary":
             validate_block_dictionary(schema, element, config_ref)
-        case "block_single":
-            validate_block_single(schema, element, config_ref)
+        case "block_union":
+            validate_block_union(schema, element, config_ref)
         case _:
             msg = (
-                f"Validation error at {config_ref} {element}: 'ui_element' must be 'root_block',"
-                f" 'block_dictionary', or 'block_single'. Got: {ui_element}"
+                f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
+                f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
             )
             raise ValueError(msg)
 
@@ -119,9 +119,9 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
         validate_block(block_schema, ref)
 
 
-def validate_block_single(schema: dict, key: str, config_ref: str) -> None:
+def validate_block_union(schema: dict, key: str, config_ref: str) -> None:
     if schema.get("oneOf") is None:
-        msg = f"Validation error at {config_ref}: block_single {key} must have 'oneOf'"
+        msg = f"Validation error at {config_ref}: block_union {key} must have 'oneOf'"
         raise ValueError(msg)
 
     for block_schema in schema.get("oneOf"):
@@ -133,9 +133,9 @@ def validate_block_single(schema: dict, key: str, config_ref: str) -> None:
         validate_block(block_schema, ref)
 
 
-def validate_root_block(schema: dict, key: str, ref: str) -> None:
+def validate_block_single(schema: dict, key: str, ref: str) -> None:
     if not isinstance(schema.get("properties"), dict):
-        msg = f"Validation error at {ref}: root_block {key} must have 'properties'"
+        msg = f"Validation error at {ref}: block_single {key} must have 'properties'"
         raise TypeError(msg)
 
     validate_block(schema, ref)

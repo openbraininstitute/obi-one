@@ -191,7 +191,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             return self._spike_location
 
     info: Info = Field(  # type: ignore[]
-        ui_element="root_block",
+        ui_element="block_single",
         title="Info",
         description="Information about the simulation campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -270,7 +270,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         )
 
     initialize: Initialize = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -344,7 +344,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         )
 
     initialize: Initialize = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -390,7 +390,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         )
 
     initialize: Initialize = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the simulation.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
