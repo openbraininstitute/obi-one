@@ -14,5 +14,5 @@
   "description": "description of the block",
   "group": "Group 1", // Must be present in its parent config's `group_order` array.
   "group_order": 0, // Unique within the group.
-  "ui_element": "single_block"
+  "ui_element": "block_single"
 }
