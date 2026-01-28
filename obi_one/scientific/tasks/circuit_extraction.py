@@ -73,7 +73,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
                 "ui_element": "model_identifier",
-            }
+            },
         )
         do_virtual: bool = Field(
             default=True,
@@ -83,7 +83,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " extracted sub-circuit.",
             json_schema_extra={
                 "ui_element": "boolean_input",
-            }
+            },
         )
         create_external: bool = Field(
             default=True,
@@ -93,7 +93,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " of virtual neurons (together with their connectivity onto the specified neuron set).",
             json_schema_extra={
                 "ui_element": "boolean_input",
-            }
+            },
         )
 
     info: Info = Field(
