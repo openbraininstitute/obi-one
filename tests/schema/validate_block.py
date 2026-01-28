@@ -1,3 +1,4 @@
+import logging
 import math
 import sys
 
@@ -6,7 +7,6 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
 
-import logging
 L = logging.getLogger()
 
 openapi_schema = get_openapi(
@@ -285,8 +285,45 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_enhanced_string_fields(schema: dict, param: str, ref: str) -> None:
+    description_by_key = schema.get("description_by_key")
+    latex_by_key = schema.get("latex_by_key")
+
+    enum_list = schema.get("enum", [])
+
+    if description_by_key is None:
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} should "
+            "have a 'description_by_key' field in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    if latex_by_key is None:
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} should "
+            "have a  'latex_by_key' field in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    for key in enum_list:
+        if key not in description_by_key:
+            msg = (
+                f"Validation error at {ref}: enhanced string param {param} is missing "
+                f"a description for key '{key}' in 'description_by_key'"
+            )
+            raise ValidationError(msg) from None
+
+        if key not in latex_by_key:
+            msg = (
+                f"Validation error at {ref}: enhanced string param {param} is missing "
+                f"a latex entry for key '{key}' in 'latex_by_key'"
+            )
+            raise ValidationError(msg) from None
+
+
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
     validate_string_selection(schema=schema, param=param, ref=ref)
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref)
 
 
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
@@ -325,6 +362,7 @@ def validate_string_constant(schema: dict, param: str, ref: str) -> None:
 
 def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
     validate_string_constant(schema=schema, param=param, ref=ref)
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref)
 
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
