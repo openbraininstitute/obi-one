@@ -207,7 +207,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         title="Info",
         description="Information about the simulation campaign.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 0,
         },
@@ -290,7 +290,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },
@@ -375,7 +375,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },
@@ -427,7 +427,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },

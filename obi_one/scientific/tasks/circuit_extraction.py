@@ -60,20 +60,30 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
+<<<<<<< HEAD
     model_config = ConfigDict(
         json_schema_extra={
             "block_block_group_order": [
+=======
+    class Config:
+        json_schema_extra: ClassVar[dict] = {
+            "ui_enabled": True,
+            "group_order": [
+>>>>>>> main
                 BlockGroup.SETUP,
                 BlockGroup.EXTRACTION_TARGET,
-            ]
+            ],
         }
     )
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Parent circuit to extract a sub-circuit from."
+            ui_element="model_identifier",
+            title="Circuit",
+            description="Parent circuit to extract a sub-circuit from.",
         )
         do_virtual: bool = Field(
+            ui_element="boolean_input",
             default=True,
             title="Include Virtual Populations",
             description="Include virtual neurons which target the cells contained in the specified"
@@ -81,6 +91,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " extracted sub-circuit.",
         )
         create_external: bool = Field(
+            ui_element="boolean_input",
             default=True,
             title="Create External Population",
             description="Convert (non-virtual) neurons which are outside of the specified neuron"
@@ -89,6 +100,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         )
 
     info: Info = Field(
+        ui_element="block_single",
         title="Info",
         description="Information about the circuit extraction campaign.",
         json_schema_extra={
@@ -97,6 +109,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         },
     )
     initialize: Initialize = Field(
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         json_schema_extra={
@@ -105,6 +118,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
+        ui_element="block_union",
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",

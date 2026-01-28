@@ -28,11 +28,14 @@ There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently two supported types:
+    - There are currently three supported types:
 
-        - [root_block](components/root_block/root_block.md)
+        - [block_single](components/block_single/block_single.md)
+
+        - [block_union](components/block_union/block_union.md)
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
+        
 
     - Root elements must have the following properties:
         - `title`
@@ -43,7 +46,7 @@ There are two major types of such UI elements:
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
         info: Info = Field(
-            ui_element="root_block",
+            ui_element="block_single",
             title="Title",
             description="Description",
             group="Group 1", # Must be present in its parent's config `group_order` array,
@@ -56,6 +59,8 @@ There are two major types of such UI elements:
     - Currently supported block element types:
 
         - [string_input](components/string_input/string_input.md)
+
+        - [boolean_input](components/boolean_input/boolean_input.md)
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 

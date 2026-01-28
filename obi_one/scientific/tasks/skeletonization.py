@@ -83,7 +83,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         title="Info",
         description="Information about the skeletonization campaign.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 0,
         },
@@ -93,7 +93,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
         json_schema_extra={
-            "ui_element": "root_block",
+            "ui_element": "block_single",
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },
