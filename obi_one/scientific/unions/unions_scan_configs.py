@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling_beta import IonChannelFittingBetaScanConfig
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationScanConfig,
 )
@@ -42,6 +43,7 @@ ScanConfigsUnion = Annotated[
     | MorphologyMetricsScanConfig
     | MorphologyLocationsScanConfig
     | IonChannelFittingScanConfig
+    | IonChannelFittingBetaScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig,
     Discriminator("type"),

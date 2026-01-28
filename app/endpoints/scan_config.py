@@ -22,9 +22,11 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling_beta import IonChannelFittingBetaScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
+from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.unions.aliases import SimulationsForm
 
@@ -57,6 +59,10 @@ def create_endpoint_for_scan_config(
     ) -> str:
         L.info("generate_grid_scan")
         L.info(db_client)
+
+        if model is SchemaExampleScanConfig:
+            error_msg = "SchemaExampleScanConfig endpoint is non-functional."
+            raise HTTPException(status_code=500, detail=error_msg)
 
         campaign = None
         try:
@@ -105,8 +111,10 @@ def activate_scan_config_endpoints() -> None:
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (IonChannelFittingBetaScanConfig, "generate", "", True),
         (CircuitExtractionScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
+        (SchemaExampleScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
