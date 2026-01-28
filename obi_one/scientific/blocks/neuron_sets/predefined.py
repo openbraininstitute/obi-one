@@ -19,11 +19,13 @@ class PredefinedNeuronSet(AbstractNeuronSet):
     title: ClassVar[str] = "Predefined Neuron Set"
 
     node_set: NodeSetType = Field(
-        ui_element="entity_property_dropdown",
-        entity_type=EntityType.CIRCUIT,
-        property=CircuitPropertyType.NODE_SET,
         title="Node Set",
         description="Name of the node set to use.",
+        json_schema_extra={
+            "ui_element": "entity_property_dropdown",
+            "entity_type": EntityType.CIRCUIT,
+            "property": CircuitPropertyType.NODE_SET,
+        },
     )
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:

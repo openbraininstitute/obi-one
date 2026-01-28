@@ -1,4 +1,4 @@
-from typing import ClassVar
+from pydantic import ConfigDict
 
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
@@ -12,8 +12,9 @@ class SimulationsForm(CircuitSimulationScanConfig):
 
     initialize: Initialize
 
-    class Config(CircuitSimulationScanConfig.Config):
-        json_schema_extra: ClassVar[dict] = {"ui_enabled": False}
+    model_config = ConfigDict(
+        json_schema_extra={"ui_enabled": False},
+    )
 
 
 class Simulation(CircuitSimulationSingleConfig):

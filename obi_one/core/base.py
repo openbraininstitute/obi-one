@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -10,7 +9,7 @@ class OBIBaseModel(BaseModel):
     Sets encoder for EntitySDK Entities
     """
 
-    model_config = ConfigDict(json_encoders={Path: str}, discriminator="type", extra="forbid")
+    model_config = ConfigDict(discriminator="type", extra="forbid")
 
     @model_validator(mode="before")
     @classmethod

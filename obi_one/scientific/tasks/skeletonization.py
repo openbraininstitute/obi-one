@@ -12,7 +12,7 @@ from uuid import UUID
 
 import entitysdk
 import httpx
-from pydantic import Field, PositiveFloat, PrivateAttr
+from pydantic import ConfigDict, Field, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -43,57 +43,60 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SkeletonizationCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
             ],
         }
+    )
 
     class Initialize(Block):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
-            ui_element="model_identifier",
             title="EM Cell Mesh",
             description="EM cell mesh to use for skeletonization.",
+            json_schema_extra={"ui_element": "model_identifier"},
         )
 
         neuron_voxel_size: (
             Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
             | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
-            ui_element="float_parameter_sweep",
             default=0.1,
             title="Neuron Voxel Size",
             description="Neuron reconstruction resolution in micrometers.",
-            units="μm",
+            json_schema_extra={"ui_element": "float_parameter_sweep", "units": "μm"},
         )
 
         spines_voxel_size: (
             Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
             | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
-            ui_element="float_parameter_sweep",
             default=0.1,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
-            units="μm",
+            json_schema_extra={"ui_element": "float_parameter_sweep", "units": "μm"},
         )
 
     info: Info = Field(
-        ui_element="block_single",
         title="Info",
         description="Information about the skeletonization campaign.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 0,
+        },
     )
 
     initialize: Initialize = Field(
-        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
     def create_campaign_entity_with_config(
