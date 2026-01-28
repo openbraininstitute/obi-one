@@ -58,7 +58,11 @@ There are two major types of such UI elements:
 
     - Currently supported block element types:
 
-        - [string_input](components/string_input/string_input.md)
+        - [string_input](components/string/string_input.md)
+
+        - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
+
+        - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
         - [boolean_input](components/boolean_input/boolean_input.md)
 

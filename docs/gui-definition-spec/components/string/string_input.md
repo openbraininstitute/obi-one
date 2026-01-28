@@ -21,3 +21,9 @@ class Block:
 ### UI design
 
 <img src="designs/string_input.png" width="300" />
+
+
+
+## String Input Parameter Sweep (Placeholder, not yet supported)
+
+ui_element: `string_input_parameter_sweep`
