@@ -81,7 +81,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         )
 
     info: Info = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Info",
         description="Information about the skeletonization campaign.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
@@ -89,7 +89,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
     )
 
     initialize: Initialize = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
         group=BlockGroup.SETUP_BLOCK_GROUP,
