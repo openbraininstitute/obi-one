@@ -235,16 +235,17 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
+
 def validate_string_selection(schema: dict, param: str, ref: str) -> None:
-    # Make sure type 
+    # Make sure type
     if schema.get("type") != "string":
         msg = (
             f"Validation error at {ref}: string_dropdown param {param} should "
             "be a union with a 'string' as first element"
         )
         raise ValidationError(msg) from None
-    
-    enum_list = schema.get("enum", None)
+
+    enum_list = schema.get("enum")
 
     # Make sure enum field exists
     if enum_list is None:
@@ -253,7 +254,7 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
             "have an 'enum' field in its schema"
         )
         raise ValidationError(msg) from None
-    
+
     # Make sure enum is a non-empty list
     if type(enum_list) is not list or len(enum_list) == 0:
         msg = (
@@ -261,7 +262,7 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
             "have a non-empty list as its 'enum' field"
         )
         raise ValidationError(msg) from None
-    
+
     # Makesure all the values in the enum are strings
     for val in enum_list:
         if not isinstance(val, str):
@@ -279,20 +280,19 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
             f"Validation error at {ref}: string_dropdown param {param} failed to validate a string"
         )
         raise ValidationError(msg) from None
-    
+
+
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
     pass
 
+
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
-    # Make sure type 
+    # Make sure type
     if schema.get("type") != "string":
-        msg = (
-            f"Validation error at {ref}: string_constant param {param} should "
-            "be of type 'string'"
-        )
+        msg = f"Validation error at {ref}: string_constant param {param} should be of type 'string'"
         raise ValidationError(msg) from None
-    
-    const_value = schema.get("const", None)
+
+    const_value = schema.get("const")
 
     # Make sure const field exists
     if const_value is None:
@@ -301,7 +301,7 @@ def validate_string_constant(schema: dict, param: str, ref: str) -> None:
             "have a 'const' field in its schema"
         )
         raise ValidationError(msg) from None
-    
+
     # Make sure const is a string
     if not isinstance(const_value, str):
         msg = (
@@ -318,9 +318,11 @@ def validate_string_constant(schema: dict, param: str, ref: str) -> None:
             f"Validation error at {ref}: string_constant param {param} failed to validate a string"
         )
         raise ValidationError(msg) from None
-    
+
+
 def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
     pass
+
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
@@ -374,7 +376,7 @@ def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get("ui_element"):
         case "string_input":
             validate_string_param(schema, param, ref)
@@ -396,7 +398,6 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
             validate_string_constant(schema, param, ref)
         case "string_constant_enhanced":
             validate_string_constant_enhanced(schema, param, ref)
-
         case "neuron_ids":
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
