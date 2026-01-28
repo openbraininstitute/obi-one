@@ -107,7 +107,7 @@ class CircuitExtractionScanConfig(ScanConfig):
         group_order=1,
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        ui_element="discriminated_union",
+        ui_element="block_single",
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
