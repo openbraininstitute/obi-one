@@ -235,7 +235,7 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-def validate_string_dropdown(schema: dict, param: str, ref: str) -> None:
+def validate_string_selection(schema: dict, param: str, ref: str) -> None:
     # Make sure type 
     if schema.get("type") != "string":
         msg = (
@@ -280,7 +280,47 @@ def validate_string_dropdown(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
     
+def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
+    pass
 
+def validate_string_constant(schema: dict, param: str, ref: str) -> None:
+    # Make sure type 
+    if schema.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} should "
+            "be of type 'string'"
+        )
+        raise ValidationError(msg) from None
+    
+    const_value = schema.get("const", None)
+
+    # Make sure const field exists
+    if const_value is None:
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} should "
+            "have a 'const' field in its schema"
+        )
+        raise ValidationError(msg) from None
+    
+    # Make sure const is a string
+    if not isinstance(const_value, str):
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} should "
+            "have a string as its 'const' field"
+        )
+        raise ValidationError(msg) from None
+
+    # Try validating the constant value
+    try:
+        validate(const_value, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} failed to validate a string"
+        )
+        raise ValidationError(msg) from None
+    
+def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
+    pass
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
@@ -325,8 +365,15 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
             validate_entity_property_dropdown(schema, param, ref)
         case "reference":
             validate_reference(schema, param, ref)
-        case "string_dropdown":
-            validate_string_dropdown(schema, param, ref)
+        case "string_selection":
+            validate_string_selection(schema, param, ref)
+        case "string_selection_enhanced":
+            validate_string_selection_enhanced(schema, param, ref)
+        case "string_constant":
+            validate_string_constant(schema, param, ref)
+        case "string_constant_enhanced":
+            validate_string_constant_enhanced(schema, param, ref)
+
         case "neuron_ids":
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
