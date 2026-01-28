@@ -109,9 +109,7 @@ class HodgkinHuxleyIonChannelModel(Block):
         },
     )
 
-    mtau_eq: Literal[
-        "sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau", "1"
-    ] = (
+    mtau_eq: Literal["sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau"] = (
         Field(
             title=r"\tau_m equation",
             description="Equation to use for \tau_m.",
@@ -131,7 +129,7 @@ class HodgkinHuxleyIonChannelModel(Block):
                     "bell_fit_mtau": "",
                 },
             },
-        ),
+        )
     )
 
     hinf_eq: Literal["sig_fit_hinf"] = Field(
@@ -195,21 +193,22 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
             )
         )
 
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        json_schema_extra={
-            "ui_element": "block_single",
-            "group_order": 0,
-            "group": BlockGroup.SETUP,
-        },
-    )
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
         json_schema_extra={
             "ui_element": "block_single",
             "group_order": 0,
+            "group": BlockGroup.SETUP,
+        },
+    )
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the simulation.",
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group_order": 1,
             "group": BlockGroup.SETUP,
         },
     )
