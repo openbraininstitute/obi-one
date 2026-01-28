@@ -18,10 +18,10 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations."""
 
     n_clusters: int | list[int] = Field(
-        name="Number of clusters", description="Number of location clusters to generate"
+        title="Number of clusters", description="Number of location clusters to generate"
     )
     cluster_max_distance: float | list[float] = Field(
-        name="Cluster maximum distance",
+        title="Cluster maximum distance",
         description="Maximum distance in um of generated locations from the center of their \
             cluster",
     )
@@ -89,18 +89,18 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     """
 
     path_dist_mean: float | list[float] = Field(
-        name="Path distance mean",
+        title="Path distance mean",
         description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
     )
     path_dist_sd: float | list[float] = Field(
-        name="Path distance mean",
+        title="Path distance mean",
         description="SD of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
-        name="Number of groups per cluster",
+        title="Number of groups per cluster",
         description="Number of conceptual groups per location cluster to generate",
     )
 
