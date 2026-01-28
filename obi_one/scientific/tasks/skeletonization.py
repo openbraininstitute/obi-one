@@ -12,7 +12,7 @@ from uuid import UUID
 
 import entitysdk
 import httpx
-from pydantic import Field, PositiveFloat, PrivateAttr
+from pydantic import ConfigDict, Field, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -43,13 +43,14 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SkeletonizationCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
             ],
         }
+    )
 
     class Initialize(Block):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(

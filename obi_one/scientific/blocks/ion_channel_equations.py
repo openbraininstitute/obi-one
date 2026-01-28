@@ -3,7 +3,7 @@
 from abc import ABC
 from typing import Annotated, Any, ClassVar
 
-from pydantic import Discriminator
+from pydantic import ConfigDict, Discriminator
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -21,18 +21,19 @@ class SigFitMInf(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_minf"
     title: ClassVar[str] = r"Sigmoid equation for m_{\infty}"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
         }
+    )
 
 
 class SigFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_mtau"
     title: ClassVar[str] = r"Sigmoid equation combination for \tau_m"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": (
                 r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
                 r"\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
@@ -40,18 +41,20 @@ class SigFitMTau(IonChannelEquation):
                 r" \frac{A_2}{ 1. + e^{ \frac{v - v_2}{k_2} } } "
             ),
         }
+    )
 
 
 class ThermoFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "thermo_fit_mtau"
     title: ClassVar[str] = r"Double exponential denominator equation for \tau_m"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": (
                 r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
             )
         }
+    )
 
 
 class ThermoFitMTauV2(IonChannelEquation):
@@ -60,43 +63,47 @@ class ThermoFitMTauV2(IonChannelEquation):
         r"Double exponential denominator equation with slope constraint for \tau_m"
     )
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": (
                 r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } }"
                 r" + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
             ),
         }
+    )
 
 
 class BellFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "bell_fit_mtau"
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
         }
+    )
 
 
 class SigFitHInf(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_hinf"
     title: ClassVar[str] = r"Sigmoid equation for h_{\infty}"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
         }
+    )
 
 
 class SigFitHTau(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_htau"
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "latex_equation": r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
         }
+    )
 
 
 MInfUnion = Annotated[
