@@ -1,0 +1,11 @@
+{
+  "oneOf": [
+    // References to blocks here.
+  ],
+  "type": "object",
+  "title": "Block single title",
+  "description": "Block single description",
+  "group": "Group 2", // Must be present in its parent config's group_order array
+  "group_order": 0, // Unique within the group.
+  "ui_element": "block_union"
+}

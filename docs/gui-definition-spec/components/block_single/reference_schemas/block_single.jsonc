@@ -1,11 +1,18 @@
 {
-  "oneOf": [
-    // References to blocks here.
-  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "Block"
+    }
+
+    // Block elements defined here
+  },
+  "additionalProperties": false,
   "type": "object",
-  "title": "Block single title",
-  "description": "Block single description",
-  "group": "Group 2", // Must be present in its parent config's group_order array
+  "required": ["type"],
+  "title": "Title of the Block",
+  "description": "description of the block",
+  "group": "Group 1", // Must be present in its parent config's `group_order` array.
   "group_order": 0, // Unique within the group.
-  "ui_element": "block_single"
+  "ui_element": "single_block"
 }
