@@ -19,6 +19,7 @@ from app.endpoints import (
     circuit_properties,
     count_scan_coordinates,
     ephys_metrics,
+    mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
     morphology_validation,
@@ -141,6 +142,7 @@ app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
+app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)
 app.include_router(morphology_metrics_calculation.router)
