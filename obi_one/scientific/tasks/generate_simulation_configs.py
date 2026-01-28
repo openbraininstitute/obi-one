@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import ConfigDict, Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -86,8 +86,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
@@ -100,6 +100,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             },
         }
+    )
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
@@ -308,8 +309,8 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    class Config(SimulationScanConfig.Config):
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
@@ -321,6 +322,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
                 TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             },
         }
+    )
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
