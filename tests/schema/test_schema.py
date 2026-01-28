@@ -30,7 +30,7 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
 def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
     match ui_element := schema.get("ui_element"):
         case "block_single":
-            validate_block_single(schema, element, config_ref, ref)
+            validate_block_single(schema, element, ref)
         case "block_dictionary":
             validate_block_dictionary(schema, element, config_ref)
         case "block_union":
@@ -133,9 +133,9 @@ def validate_block_union(schema: dict, key: str, config_ref: str) -> None:
         validate_block(block_schema, ref)
 
 
-def validate_block_single(schema: dict, key: str, config_ref: str, ref: str) -> None:
+def validate_block_single(schema: dict, key: str, ref: str) -> None:
     if not isinstance(schema.get("properties"), dict):
-        msg = f"Validation error at {config_ref}: block_single {key} must have 'properties'"
+        msg = f"Validation error at {ref}: block_single {key} must have 'properties'"
         raise TypeError(msg)
 
     validate_block(schema, ref)
