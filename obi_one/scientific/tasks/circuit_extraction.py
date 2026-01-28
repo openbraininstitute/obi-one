@@ -60,19 +60,10 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
-<<<<<<< HEAD
     model_config = ConfigDict(
         json_schema_extra={
-            "block_block_group_order": [
-=======
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
             "ui_enabled": True,
-            "group_order": [
->>>>>>> main
-                BlockGroup.SETUP,
-                BlockGroup.EXTRACTION_TARGET,
-            ],
+            "block_block_group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGE],
         }
     )
 
