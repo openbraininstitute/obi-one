@@ -53,7 +53,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-DEFAULT_NODE_SET_NAME = "Hodgkin-Huxley"
+DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 
 
@@ -338,7 +338,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         node_set: NeuronSetReference | None = Field(
             ui_element="reference",
             default=None,
-            title="Ion Channel Type",
+            title="Neuron Set",
             description="Neuron set to simulate.",
             reference_type=NeuronSetReference.__name__,
         )
