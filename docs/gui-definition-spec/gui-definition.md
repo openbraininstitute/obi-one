@@ -57,9 +57,9 @@ There are two major types of such UI elements:
 
         - [string_input](components/string/string_input.md)
 
-        - [string_selection](components/string/string_selection.md)
+        - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
 
-        - [string_constant](components/string/string_constant.md)
+        - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
