@@ -285,45 +285,91 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
-def validate_enhanced_string_fields(schema: dict, param: str, ref: str) -> None:
+def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_list: list) -> None:
     description_by_key = schema.get("description_by_key")
     latex_by_key = schema.get("latex_by_key")
 
-    enum_list = schema.get("enum", [])
-
-    if description_by_key is None:
+    # Make sure at least one of description_by_key or latex_by_key exists
+    if description_by_key is None and latex_by_key is None:
         msg = (
             f"Validation error at {ref}: enhanced string param {param} should "
-            "have a 'description_by_key' field in its schema"
+            "have at least one of 'description_by_key' and 'latex_by_key' fields in its schema"
         )
         raise ValidationError(msg) from None
 
-    if latex_by_key is None:
-        msg = (
-            f"Validation error at {ref}: enhanced string param {param} should "
-            "have a  'latex_by_key' field in its schema"
-        )
-        raise ValidationError(msg) from None
-
-    for key in enum_list:
-        if key not in description_by_key:
+    if description_by_key is not None:
+        # Check that description_by_key is a dict
+        if type(description_by_key) is not dict:
             msg = (
-                f"Validation error at {ref}: enhanced string param {param} is missing "
-                f"a description for key '{key}' in 'description_by_key'"
+                f"Validation error at {ref}: enhanced string param {param} should "
+                "'description_by_key' be a dictionary"
             )
             raise ValidationError(msg) from None
-
-        if key not in latex_by_key:
+        
+        # Check that description_by_key has same length as enum
+        if len(description_by_key) != len(enum_list):
             msg = (
-                f"Validation error at {ref}: enhanced string param {param} is missing "
-                f"a latex entry for key '{key}' in 'latex_by_key'"
+                f"Validation error at {ref}: enhanced string param {param} has "
+                "'description_by_key' with length different from 'enum' length"
             )
             raise ValidationError(msg) from None
+        
+        for key in enum_list:
+            # Check that each enum key has a description
+            if key not in description_by_key:
+                msg = (
+                    f"Validation error at {ref}: enhanced string param {param} is missing "
+                    f"a description for key '{key}' in 'description_by_key'"
+                )
+                raise ValidationError(msg) from None
+            
+            # Check that each description is a string
+            if not isinstance(description_by_key[key], str):
+                msg = (
+                    f"Validation error at {ref}: enhanced string param {param} has "
+                    f"a non-string description for key '{key}' in 'description_by_key'"
+                )
+                raise ValidationError(msg) from None
+            
+    if latex_by_key is not None:
+        # Check that latex_by_key is a dict
+        if type(latex_by_key) is not dict:
+            msg = (
+                f"Validation error at {ref}: enhanced string param {param} should "
+                "'latex_by_key' be a dictionary"
+            )
+            raise ValidationError(msg) from None
+        
+        # Check that latex_by_key has same length as enum
+        if len(latex_by_key) != len(enum_list):
+            msg = (
+                f"Validation error at {ref}: enhanced string param {param} has "
+                "'latex_by_key' with length different from 'enum' length"
+            )
+            raise ValidationError(msg) from None
+        
+        for key in enum_list:
+            # Check that each enum key has a latex entry
+            if key not in latex_by_key:
+                msg = (
+                    f"Validation error at {ref}: enhanced string param {param} is missing "
+                    f"a latex entry for key '{key}' in 'latex_by_key'"
+                )
+                raise ValidationError(msg) from None
+            # Check that each latex entry is a string
+            if not isinstance(latex_by_key[key], str):
+                msg = (
+                    f"Validation error at {ref}: enhanced string param {param} has "
+                    f"a non-string latex entry for key '{key}' in 'latex_by_key'"
+                )
+                raise ValidationError(msg) from None
 
 
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
     validate_string_selection(schema=schema, param=param, ref=ref)
-    validate_enhanced_string_fields(schema=schema, param=param, ref=ref)
+
+    enum_list = schema.get("enum")
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
 
 
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
@@ -362,7 +408,9 @@ def validate_string_constant(schema: dict, param: str, ref: str) -> None:
 
 def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
     validate_string_constant(schema=schema, param=param, ref=ref)
-    validate_enhanced_string_fields(schema=schema, param=param, ref=ref)
+
+    enum_list = [schema.get("const")]
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
 
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
