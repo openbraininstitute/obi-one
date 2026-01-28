@@ -6,6 +6,9 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
 
+import logging
+L = logging.getLogger()
+
 openapi_schema = get_openapi(
     title=app.title,
     version=app.version,
@@ -283,7 +286,7 @@ def validate_string_selection(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
-    pass
+    validate_string_selection(schema=schema, param=param, ref=ref)
 
 
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
@@ -321,7 +324,7 @@ def validate_string_constant(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
-    pass
+    validate_string_constant(schema=schema, param=param, ref=ref)
 
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
