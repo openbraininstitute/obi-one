@@ -54,6 +54,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
+from obi_one.scientific.tasks.skeletonization import (
+    SkeletonizationSingleConfig,
+    SkeletonizationTask,
+)
 from obi_one.scientific.unions.aliases import Simulation
 
 _config_tasks_map = {
@@ -73,6 +77,7 @@ _config_tasks_map = {
     MorphologyMetricsSingleConfig: MorphologyMetricsTask,
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
+    SkeletonizationSingleConfig: SkeletonizationTask,
 }
 
 

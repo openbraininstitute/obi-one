@@ -1,0 +1,22 @@
+{
+    "type": "string",
+    "enum": [
+        "A",
+        "B",
+        "C"
+    ],
+    "title": "Option",
+    "description": "Option description.",
+    "default": "A",
+    "description_by_key": {
+        "A": "Description for option A.",
+        "B": "Description for option B.",
+        "C": "Description for option C."
+    },
+    "latex_by_key": {
+        "A": "A_{latex}",
+        "B": "B_{latex}",
+        "C": "C_{latex}"
+    },
+    "ui_element": "string_selection_enhanced"
+}

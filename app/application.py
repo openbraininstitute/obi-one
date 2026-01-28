@@ -19,11 +19,13 @@ from app.endpoints import (
     circuit_properties,
     count_scan_coordinates,
     ephys_metrics,
+    mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
     morphology_validation,
     multi_values,
     scan_config,
+    task_launch,
     validate_electrophysiology_protocol_nwb,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
@@ -140,6 +142,7 @@ app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
+app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)
 app.include_router(morphology_metrics_calculation.router)
@@ -147,3 +150,4 @@ app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(task_launch.router)

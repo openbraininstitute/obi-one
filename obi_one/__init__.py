@@ -53,6 +53,7 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "EMCellMeshFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -154,6 +155,8 @@ __all__ = [
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SinusoidalPoissonSpikeStimulus",
+    "SkeletonizationScanConfig",
+    "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
     "StimulusReference",
     "StimulusUnion",
@@ -282,6 +285,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -363,6 +367,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
+)
+from obi_one.scientific.tasks.skeletonization import (
+    SkeletonizationScanConfig,
+    SkeletonizationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
