@@ -90,21 +90,27 @@ class CircuitExtractionScanConfig(ScanConfig):
     info: Info = Field(
         title="Info",
         description="Information about the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={
+            "group": BlockGroup.SETUP,
+            "group_order": 0,
+        },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={
+            "group": BlockGroup.SETUP,
+            "group_order": 1,
+        },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
-        group=BlockGroup.EXTRACTION_TARGET,
-        group_order=0,
+        json_schema_extra={
+            "group": BlockGroup.EXTRACTION_TARGET,
+            "group_order": 0,
+        },
     )
 
     def create_campaign_entity_with_config(
