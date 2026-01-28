@@ -19,7 +19,7 @@ NodeSetType = CircuitNode | list[CircuitNode]
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
-        name="Filter",
+        title="Filter",
         description="Filter dictionary. Note as this is NOT a Block and the list here is \
                     not to support multi-dimensional parameters but to support a key-value pair \
                     with multiple values i.e. {'layer': ['2', '3']}}",
@@ -77,7 +77,7 @@ class PropertyNeuronSet(NeuronSet):
     """
 
     property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
-        name="Neuron property filter",
+        title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=(),
     )
