@@ -30,7 +30,7 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
 def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
     match ui_element := schema.get("ui_element"):
         case "block_single":
-            validate_block(schema, ref)
+            validate_block_single(schema, element, ref)
         case "block_dictionary":
             validate_block_dictionary(schema, element, config_ref)
         case "block_union":
