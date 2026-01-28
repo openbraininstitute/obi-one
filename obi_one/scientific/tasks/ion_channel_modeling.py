@@ -12,7 +12,7 @@ from typing import Annotated, Any, ClassVar
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from pydantic import Field, StringConstraints
+from pydantic import ConfigDict, Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -83,14 +83,15 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "block_block_group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EQUATIONS,
                 BlockGroup.GATEEXPONENTS,
             ]
         }
+    )
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(

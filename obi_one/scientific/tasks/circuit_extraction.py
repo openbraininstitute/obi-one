@@ -16,7 +16,7 @@ import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from pydantic import Field, PrivateAttr
+from pydantic import ConfigDict, Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -60,13 +60,14 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "block_block_group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EXTRACTION_TARGET,
             ]
         }
+    )
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
