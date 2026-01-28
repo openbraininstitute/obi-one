@@ -53,6 +53,8 @@ dependencies = [
     "aiofiles",
     "neurom",
     "morph-tool",
+    # MESHES
+    "pyvista",
     # ENTITYSDK
     # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
