@@ -93,21 +93,21 @@ class SchemaExampleScanConfig(ScanConfig):
         )
 
     info: Info = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Info",
         description="Information about the circuit extraction campaign.",
         group=BlockGroup.SETUP,
         group_order=0,
     )
     initialize: Initialize = Field(
-        ui_element="root_block",
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         group=BlockGroup.SETUP,
         group_order=1,
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        ui_element="block_single",
+        ui_element="block_union",
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
@@ -122,5 +122,5 @@ class SchemaExampleScanConfig(ScanConfig):
         description="Neuron sets for the simulation.",
         singular_name="Neuron Set",
         group=BlockGroup.EXTRACTION_TARGET,
-        group_order=0,
+        group_order=1,
     )
