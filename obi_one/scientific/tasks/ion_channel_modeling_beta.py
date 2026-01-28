@@ -102,64 +102,58 @@ class HodgkinHuxleyIonChannelModel(Block):
         title="m_{inf} equation",
         description="Equation to use for m_{inf}.",
         default="sig_fit_minf",
-        json_schema_extra={"ui_element": "string_constant_enhanced",
-                           "latex_by_key": {
-                                "sig_fit_minf": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}" 
-                            },
-                            "description_by_key": {
-                                "sig_fit_minf": "Sigmoid equation for m_{inf}."
-                            }
-        }
+        json_schema_extra={
+            "ui_element": "string_constant_enhanced",
+            "latex_by_key": {"sig_fit_minf": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}"},
+            "description_by_key": {"sig_fit_minf": "Sigmoid equation for m_{inf}."},
+        },
     )
 
     mtau_eq: Literal[
         "sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau", "1"
-    ] = Field(
-        title=r"\tau_m equation",
-        description="Equation to use for \tau_m.",
-        default="sig_fit_mtau",
-        json_schema_extra={"ui_element": "string_selection_enhanced",
-                           "latex_by_key": {
-                                "sig_fit_mtau": r"",
-                                "thermo_fit_mtau": r"",
-                                "thermo_fit_mtau_v2": r"",
-                                "bell_fit_mtau": r""
-                                },
-                            "description_by_key": {
-                                "sig_fit_mtau": "",
-                                "thermo_fit_mtau": "",
-                                "thermo_fit_mtau_v2": "",
-                                "bell_fit_mtau": "",
-                            }
-        }
-    ),
+    ] = (
+        Field(
+            title=r"\tau_m equation",
+            description="Equation to use for \tau_m.",
+            default="sig_fit_mtau",
+            json_schema_extra={
+                "ui_element": "string_selection_enhanced",
+                "latex_by_key": {
+                    "sig_fit_mtau": r"",
+                    "thermo_fit_mtau": r"",
+                    "thermo_fit_mtau_v2": r"",
+                    "bell_fit_mtau": r"",
+                },
+                "description_by_key": {
+                    "sig_fit_mtau": "",
+                    "thermo_fit_mtau": "",
+                    "thermo_fit_mtau_v2": "",
+                    "bell_fit_mtau": "",
+                },
+            },
+        ),
+    )
 
     hinf_eq: Literal["sig_fit_hinf"] = Field(
         title="h_{inf} equation",
         description="Equation to use for h_{inf}.",
         default="sig_fit_hinf",
-        json_schema_extra={"ui_element": "string_constant_enhanced",
-                           "latex_by_key": {
-                                "sig_fit_hinf": r""
-                            },
-                            "description_by_key": {
-                                "sig_fit_hinf": ""
-                            }
-        }
+        json_schema_extra={
+            "ui_element": "string_constant_enhanced",
+            "latex_by_key": {"sig_fit_hinf": r""},
+            "description_by_key": {"sig_fit_hinf": ""},
+        },
     )
 
     htau_eq: Literal["sig_fit_htau"] = Field(
         title=r"\tau_h equation",
         description="Equation to use for \tau_h.",
         default="sig_fit_htau",
-        json_schema_extra={"ui_element": "string_constant_enhanced",
-                           "latex_by_key": {
-                                "sig_fit_htau": r"" 
-                            },
-                            "description_by_key": {
-                                "sig_fit_htau": ""
-                            }
-        }
+        json_schema_extra={
+            "ui_element": "string_constant_enhanced",
+            "latex_by_key": {"sig_fit_htau": r""},
+            "description_by_key": {"sig_fit_htau": ""},
+        },
     )
 
 
@@ -176,12 +170,12 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
             "group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.MODEL,
-            ]
+            ],
         }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
-            title="Ion channel recording", 
+            title="Ion channel recording",
             description="IDs of the traces of interest.",
             json_schema_extra={"ui_element": "model_identifier"},
         )
@@ -204,24 +198,30 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        json_schema_extra={"ui_element": "block_single",
-                           "group_order": 0,
-                           "group": BlockGroup.SETUP},
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group_order": 0,
+            "group": BlockGroup.SETUP,
+        },
     )
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
-        json_schema_extra={"ui_element": "block_single",
-                           "group_order": 0,
-                            "group": BlockGroup.SETUP},
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group_order": 0,
+            "group": BlockGroup.SETUP,
+        },
     )
 
     model_type: HodgkinHuxleyIonChannelModel = Field(
         title="Model",
         description="Hodgkin-Huxley type ion channel model to fit.",
-        json_schema_extra={"ui_element": "block_single",
-                           "group_order": 0,
-                           "group": BlockGroup.MODEL},
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group_order": 0,
+            "group": BlockGroup.MODEL,
+        },
     )
 
     def create_campaign_entity_with_config(
