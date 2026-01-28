@@ -28,11 +28,13 @@ There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently two supported types:
+    - There are currently three supported types:
 
         - [root_block](components/root_block/root_block.md)
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
+
+        - [block_single](components/block_single/block_single.md)
 
     - Root elements must have the following properties:
         - `title`
