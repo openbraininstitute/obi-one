@@ -204,6 +204,9 @@ testpaths = [
     "tests",
     "examples",
 ]
+filterwarnings = [
+    "error::pydantic.warnings.PydanticDeprecationWarning",
+]
 
 [tool.coverage.run]
 branch = true
