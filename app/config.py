@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "https://staging.openbraininstitute.org",
         "https://next.staging.openbraininstitute.org",
     ]
+    CORS_ORIGIN_REGEX: str | None = None
 
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = (
