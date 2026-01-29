@@ -62,17 +62,21 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
+            "ui_enabled": True,
+            "group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EXTRACTION_TARGET,
-            ]
+            ],
         }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Parent circuit to extract a sub-circuit from."
+            ui_element="model_identifier",
+            title="Circuit",
+            description="Parent circuit to extract a sub-circuit from.",
         )
         do_virtual: bool = Field(
+            ui_element="boolean_input",
             default=True,
             title="Include Virtual Populations",
             description="Include virtual neurons which target the cells contained in the specified"
@@ -80,6 +84,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " extracted sub-circuit.",
         )
         create_external: bool = Field(
+            ui_element="boolean_input",
             default=True,
             title="Create External Population",
             description="Convert (non-virtual) neurons which are outside of the specified neuron"
@@ -88,18 +93,21 @@ class CircuitExtractionScanConfig(ScanConfig):
         )
 
     info: Info = Field(
+        ui_element="block_single",
         title="Info",
         description="Information about the circuit extraction campaign.",
         group=BlockGroup.SETUP,
         group_order=0,
     )
     initialize: Initialize = Field(
+        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         group=BlockGroup.SETUP,
         group_order=1,
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
+        ui_element="block_union",
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
