@@ -1,8 +1,6 @@
 ## String selection
 
 ui_element: `string_selection`
-<!-- Represents a simple input field. -->
-<!-- The type should be `string`. -->
 
 Reference schema: [string_selection](reference_schemas/string_selection.json)
 
@@ -35,7 +33,9 @@ ui_element: `string_selection_enhanced`
 
 Reference schema: [string_selection_enhanced](reference_schemas/string_selection_enhanced.json)
 
-This offers an alternative dropdown style for selecting strings in a dropdown, with descriptions and/or latex representations.
+This offers an alternative dropdown style for selecting strings in a dropdown. 
+
+Particularly, additional descriptions and/or latex representations can be added for each dropdown option, using the dictionaries `description_by_key` and `latex_by_key` respectively. At least one of these two dictionaries must be specified. Moreover, when used, each dictionary must have entries for each dropdown option.
 
 ### Example Pydantic implementation
 
@@ -57,7 +57,6 @@ class Block:
             "C": r"C_{latex}",
         },
     )
-    # Note: atleast one of `description_by_key` or `latex_by_key` should be present.
 ```
 
 ### UI Design
