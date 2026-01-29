@@ -88,7 +88,7 @@ def task_launch_endpoint(
     summary="Estimate task cost.",
     description=(
         "Estimates the cost in credits for launching an obi-one task. "
-        "Takes the same parameters as /task-launch and returns a cost estimate."
+        "Takes the same parameters as /launch and returns a cost estimate."
     ),
 )
 def estimate_endpoint(
