@@ -75,7 +75,7 @@ dependencies = [
     "morph_spines",
     # CAVEclient
     "caveclient>=7.11.0",
-    "obp-accounting-sdk>=0.4.2",
+    "obp-accounting-sdk>=0.5.0",
 ]
 
 [project.optional-dependencies]
