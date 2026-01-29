@@ -11,7 +11,7 @@ from obi_one.core.run_tasks import (
     run_tasks_for_generated_scan,
 )
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.serialization import (
+from obi_one.core.deserialize import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
 )
