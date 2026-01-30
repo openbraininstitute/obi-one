@@ -121,12 +121,14 @@ def _circuit_simulation_job_data(
         "resources": {
             "type": "cluster",
             "instances": 1,
-            "instance_type": "largenode",
+            "instance_type": "small",
         },
-        "inputs": {
-            "simulation_id": str(simulation_id),
-            "simulation_execution_id": str(simulation_execution_id),
-        },
+        "inputs": [
+            "--simulation-id",
+            str(simulation_id),
+            "--simulation-execution-id",
+            str(simulation_execution_id),
+        ],
         "code": {
             "type": "builtin",
             "script": "circuit_simulation",

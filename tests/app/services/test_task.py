@@ -272,12 +272,14 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
         "resources": {
             "type": "cluster",
             "instances": 1,
-            "instance_type": "largenode",
+            "instance_type": "small",
         },
-        "inputs": {
-            "simulation_id": str(config_id),
-            "simulation_execution_id": str(activity_id),
-        },
+        "inputs": [
+            "--simulation-id",
+            str(config_id),
+            "--simulation-execution-id",
+            str(activity_id),
+        ],
         "code": {
             "type": "builtin",
             "script": "circuit_simulation",
