@@ -18,7 +18,6 @@ from entitysdk._server_schemas import (
 )
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import (
-    CellMorphology,
     Circuit,
     EMCellMesh,
     EMDenseReconstructionDataset,
@@ -217,7 +216,7 @@ class EMSynapseMappingTask(Task):
 
         L.info("Resolving skeleton provenance...")
         pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(
-            db_client, morph_entity
+            db_client, morph_from_id
         )
 
         cave_version = source_mesh_entity.release_version
@@ -351,14 +350,12 @@ class EMSynapseMappingTask(Task):
         return syns, coll_pre, coll_post, [syns_notice, *nodes_notice]
 
     def resolve_provenance(
-        self, db_client: Client, morph_entity: CellMorphology
+        self, db_client: Client, morph_from_id: CellMorphologyFromID
     ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
         pt_root_id = self.config.initialize.pt_root_id
+        source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
         if pt_root_id is None:
-            pt_root_id = int(morph_entity.description.split()[-1][:-1])
-        source_mesh_entity = db_client.search_entity(
-            entity_type=EMCellMesh, query={"dense_reconstruction_cell_id": pt_root_id}
-        ).first()
+            pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
         source_dataset = db_client.get_entity(
             entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,
             entity_type=EMDenseReconstructionDataset,
