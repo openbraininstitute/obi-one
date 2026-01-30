@@ -10,6 +10,10 @@ Current pydantic implementation (`ui_element` added) for reference:
 
 ```py
 class Block:
-    neuron_ids: NamedTuple | list[NamedTuple] = Field(ui_element="neuron_ids", min_length=1, title="neuron ids", description="description")
+    neuron_ids: NamedTuple | list[NamedTuple] = Field(
+                                                    min_length=1, 
+                                                    title="neuron ids", 
+                                                    description="description",
+                                                    json_schema_extra={"ui_element": "neuron_ids"})
 
 ```

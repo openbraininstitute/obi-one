@@ -17,10 +17,11 @@ Reference schema [reference](reference_schemas/reference.json)
 ```py
 class Block:
     node_set: NeuronSetReference | None = Field(default=None, #Must be present
-                                                ui_element="reference",
                                                 title="Neuron Set",
                                                 description="Neuron set to simulate.",
-                                                reference_type="NeuronSetReference")
+                                                json_schema_extra={"ui_element": "reference",
+                                                                    "reference_type": "NeuronSetReference"}
+                                                )
 ```
 
 ### UI design
