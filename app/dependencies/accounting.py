@@ -1,12 +1,16 @@
-from obp_accounting_sdk._async.factory import AsyncAccountingSessionFactory  # noqa: PLC2701
+from typing import Annotated
+
+from fastapi import Depends
+from obp_accounting_sdk import AccountingSessionFactory
 
 from app.config import settings
 
 
-def get_accounting_factory() -> AsyncAccountingSessionFactory:
-    """Get an accounting session factory instance."""
-    factory = AsyncAccountingSessionFactory(
+def get_accounting_factory() -> AccountingSessionFactory:
+    return AccountingSessionFactory(
         base_url=settings.ACCOUNTING_BASE_URL,
         disabled=settings.ACCOUNTING_DISABLED,
     )
-    return factory
+
+
+AccountingSessionFactoryDep = Annotated[AccountingSessionFactory, Depends(get_accounting_factory)]

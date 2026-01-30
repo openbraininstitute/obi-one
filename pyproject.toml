@@ -75,7 +75,7 @@ dependencies = [
     "morph_spines",
     # CAVEclient
     "caveclient>=7.11.0",
-    "obp-accounting-sdk>=0.4.2",
+    "obp-accounting-sdk>=0.5.0",
 ]
 
 [project.optional-dependencies]
@@ -191,6 +191,9 @@ max-statements = 50
 max-public-methods = 60
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
 minversion = "6.0"
 addopts = [
     "--import-mode=importlib",
