@@ -1,4 +1,7 @@
+from typing import Annotated
+
 import httpx
+from fastapi import Depends
 
 from app.config import settings
 from app.dependencies.auth import UserContextDep
@@ -12,3 +15,6 @@ def get_client(
     client = httpx.Client(base_url=api_url, headers={"Authorization": f"Bearer {token}"})
 
     return client
+
+
+LaunchSystemClientDep = Annotated[httpx.Client, Depends(get_client)]

@@ -1,9 +1,13 @@
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.errors import ApiErrorCode
+
+
+class Schema(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid", from_attributes=True)
 
 
 class ErrorResponse(BaseModel, use_enum_values=True):

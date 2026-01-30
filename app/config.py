@@ -55,5 +55,11 @@ class Settings(BaseSettings):
     ACCOUNTING_BASE_URL: str = "http://127.0.0.1:8002"
     ACCOUNTING_DISABLED: bool = False
 
+    # Path to the obi-one repository
+    OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
+
+    # Path to launch script within the repository. Must contain code.py and requirements.txt.
+    OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
+
 
 settings = Settings()
