@@ -15,8 +15,7 @@ class Block:
     field: str = Field(min_length=1,
                       title="title",
                       description="description",
-                    json_schema_extra={"ui_element": "reference",
-                                        "reference_type": "NeuronSetReference"})
+                    json_schema_extra={"ui_element": "string_input"})
 ```
 
 ### UI design
