@@ -21,6 +21,7 @@ from pydantic import Field, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
+from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -393,6 +394,45 @@ class CircuitExtractionTask(Task):
         L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
         return directory_asset
 
+    @staticmethod
+    def _run_circuit_folder_compression(circuit_path: Path) -> Path:
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
+            FolderCompressionScanConfig,
+        )
+
+        # Set up circuit folder compression
+        folder_path = NamedPath(
+            name=circuit_path.parent.name + "__COMPRESSED__",  # Used as output name
+            path=str(circuit_path.parent),
+        )
+        compression_init = FolderCompressionScanConfig.Initialize(
+            folder_path=[folder_path], file_format="gz", file_name="circuit"
+        )
+        folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
+
+        # Run circuit folder compression
+        grid_scan = GridScanGenerationTask(
+            form=folder_compressions_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output file
+        output_file = (
+            grid_scan.single_configs[0].coordinate_output_root
+            / f"{compression_init.file_name}.{compression_init.file_format}"
+        )
+        if not output_file.exists():
+            msg = "Circuit folder could not be compressed!"
+            raise OBIONEError(msg)
+        L.info(f"Circuit folder compressed into {output_file}")
+        return output_file
+
     def _add_derivation_link(
         self, db_client: Client, registered_circuit: models.Circuit
     ) -> models.Derivation:
@@ -709,6 +749,9 @@ class CircuitExtractionTask(Task):
             self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
+
+        # Generate additional assets
+        _ = self._run_circuit_folder_compression(circuit_path=new_circuit_path)
 
         # Register new circuit entity incl. assets and linked entities
         new_circuit_id = None
