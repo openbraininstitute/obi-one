@@ -117,8 +117,7 @@ class SingleConfigMixin:
     def serialize(self, output_path: Path) -> None:
         """Serialize the object to a JSON file."""
         # Important to use model_dump_json() instead of model_dump()
-        # so OBIBaseModel's custom encoder is used to seri
-        # PosixPaths as strings
+        # (so Path objects are serialized as strings)
         model_dump = self.model_dump_json()
 
         # Now load it back into a dict to do some additional modifications
