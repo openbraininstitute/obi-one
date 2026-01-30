@@ -10,5 +10,8 @@ class Block:
                         ui_hidden=True,
                         ui_element="string_input",
                         title="title",
-                        description="description")
+                        description="description",
+                        json_schema_extra={"ui_element": "reference",
+                                            "reference_type": "NeuronSetReference"}
+                        )
 ```

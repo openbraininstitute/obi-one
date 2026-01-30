@@ -12,10 +12,11 @@ Reference schema: [string_input](reference_schemas/string_input.json)
 
 ```py
 class Block:
-    field: str = Field(ui_element="string_input",
-                      min_length=1,
+    field: str = Field(min_length=1,
                       title="title",
-                      description="description")
+                      description="description",
+                    json_schema_extra={"ui_element": "reference",
+                                        "reference_type": "NeuronSetReference"})
 ```
 
 ### UI design
