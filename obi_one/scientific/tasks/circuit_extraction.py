@@ -395,6 +395,28 @@ class CircuitExtractionTask(Task):
         return directory_asset
 
     @staticmethod
+    def _add_compressed_circuit_asset(
+        db_client: Client, compressed_file: Path, registered_circuit: models.Circuit
+    ) -> models.Asset:
+        """Upload a compressed circuit file asset to a registered circuit entity."""
+        asset_label = "compressed_sonata_circuit"
+
+        if not compressed_file.exists():
+            msg = f"Compressed circuit file '{compressed_file}' does not exist!"
+            raise OBIONEError(msg)
+
+        # Upload compressed file asset
+        compressed_asset = db_client.upload_file(
+            entity_id=registered_circuit.id,
+            entity_type=models.Circuit,
+            file_path=compressed_file,
+            file_content_type="application/gzip",
+            asset_label=asset_label,
+        )
+        L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
+        return compressed_asset
+
+    @staticmethod
     def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
@@ -672,7 +694,9 @@ class CircuitExtractionTask(Task):
 
     @staticmethod
     def _generate_additional_circuit_assets(
-        new_circuit_path: Path, new_circuit_entity: models.Circuit
+        db_client: Client,
+        new_circuit_path: Path,
+        new_circuit_entity: models.Circuit,
     ) -> None:
         """Generate and register additional circuit assets."""
         # Compressed circuit asset
@@ -686,14 +710,13 @@ class CircuitExtractionTask(Task):
             L.warning(f"Circuit compression failed: {e}")
             compressed_circuit = None
 
-        if new_circuit_entity and compressed_circuit:
+        if db_client and new_circuit_entity and compressed_circuit:
             try:
-                pass
-                # TODO: Register compressed circuit asset
-                # https://github.com/openbraininstitute/obi-one/issues/462
-                # --> Requires running circuit compression
-                # CircuitExtractionTask._add_compressed_circuit_asset(db_client=db_client,
-                # circuit_path=new_circuit_path, registered_circuit=new_circuit_entity)
+                CircuitExtractionTask._add_compressed_circuit_asset(
+                    db_client=db_client,
+                    compressed_file=compressed_circuit,
+                    registered_circuit=new_circuit_entity,
+                )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Compressed circuit registration failed: {e}")
@@ -832,7 +855,11 @@ class CircuitExtractionTask(Task):
             L.info("Registration DONE")
 
         # Generate and register compressed circuit asset
-        self._generate_additional_circuit_assets(new_circuit_path, new_circuit_entity)
+        self._generate_additional_circuit_assets(
+            db_client=db_client,
+            new_circuit_path=new_circuit_path,
+            new_circuit_entity=new_circuit_entity,
+        )
 
         # Clean-up
         self._cleanup_temp_dir()
