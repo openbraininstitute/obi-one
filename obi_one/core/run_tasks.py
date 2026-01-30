@@ -5,7 +5,7 @@ from typing import Any
 import entitysdk
 
 from obi_one.core.scan_generation import ScanGenerationTask
-from obi_one.core.serialization import deserialize_obi_object_from_json_data
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
 
