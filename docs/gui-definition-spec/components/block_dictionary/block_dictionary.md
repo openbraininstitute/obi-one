@@ -17,14 +17,16 @@ class Config:
     ## SimulationNeuronSetUnion is a union of blocks (i.e. classes with block_elements)
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        ui_element="block_dictionary",
         default_factory=dict,
-        reference_type="NeuronSetReference",
         title="Neuron sets",
         description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group="Group 1", # Must exit in parent config's `group_order` array
-        group_order=0, # Unique within the group
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "group": "Group 1", # Must exit in parent config's `group_order` array
+            "group_order": 0, # Unique within the group
+            "singular_name": "Neuron Set",
+            "reference_type": "NeuronSetReference",
+        }
     )
 
 ```

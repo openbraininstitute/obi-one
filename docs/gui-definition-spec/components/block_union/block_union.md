@@ -14,11 +14,13 @@ class Config:
     ## SimulationNeuronSetUnion is a union of blocks (i.e. classes with block_elements)
 
     neuron_set: SimulationNeuronSetUnion = Field(
-        ui_element="block_union",
         title="Neuron set",
         description="Neuron set for the simulation.",
-        group="Group 1", # Must exist in parent config's `group_order` array
-        group_order=0, # Unique within the group
+        json_schema_extra={
+            "ui_element": "block_union",
+            "group": "Group 1", # Must be present in its parent's config `group_order` array,
+            "group_order": 0, # Unique within the group.
+        }   
     )
 
 ```
