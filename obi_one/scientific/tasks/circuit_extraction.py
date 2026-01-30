@@ -395,7 +395,7 @@ class CircuitExtractionTask(Task):
         return directory_asset
 
     @staticmethod
-    def _run_circuit_folder_compression(circuit_path: Path) -> Path:
+    def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
         from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
@@ -409,7 +409,10 @@ class CircuitExtractionTask(Task):
             path=str(circuit_path.parent),
         )
         compression_init = FolderCompressionScanConfig.Initialize(
-            folder_path=[folder_path], file_format="gz", file_name="circuit"
+            folder_path=[folder_path],
+            file_format="gz",
+            file_name="circuit",
+            archive_name=circuit_name,
         )
         folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
 
@@ -428,7 +431,7 @@ class CircuitExtractionTask(Task):
             / f"{compression_init.file_name}.{compression_init.file_format}"
         )
         if not output_file.exists():
-            msg = "Circuit folder could not be compressed!"
+            msg = "Compressed circuit file does not exist!"
             raise OBIONEError(msg)
         L.info(f"Circuit folder compressed into {output_file}")
         return output_file
@@ -667,6 +670,47 @@ class CircuitExtractionTask(Task):
             upd_entity = None
         return upd_entity
 
+    @staticmethod
+    def _generate_additional_circuit_assets(
+        new_circuit_path: Path, new_circuit_entity: models.Circuit
+    ) -> None:
+        """Generate and register additional circuit assets."""
+        # Compressed circuit asset
+        try:
+            compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
+                circuit_path=new_circuit_path,
+                circuit_name=new_circuit_entity.name if new_circuit_entity else None,
+            )
+        except Exception as e:  # noqa: BLE001
+            # Catch any exception here and turn into warnings only
+            L.warning(f"Circuit compression failed: {e}")
+            compressed_circuit = None
+
+        if new_circuit_entity and compressed_circuit:
+            try:
+                pass
+                # TODO: Register compressed circuit asset
+                # https://github.com/openbraininstitute/obi-one/issues/462
+                # --> Requires running circuit compression
+                # CircuitExtractionTask._add_compressed_circuit_asset(db_client=db_client,
+                # circuit_path=new_circuit_path, registered_circuit=new_circuit_entity)
+            except Exception as e:  # noqa: BLE001
+                # Catch any exception here and turn into warnings only
+                L.warning(f"Compressed circuit registration failed: {e}")
+
+        # TODO: Connectivity matrix folder asset
+        # https://github.com/openbraininstitute/obi-one/issues/441
+        # --> Requires running matrix extraction
+        # self._add_matrix_folder_asset(db_client=db_client, circuit_path=new_circuit_path,
+        # registered_circuit=new_circuit_entity)
+
+        # TODO: Circuit figures for detailed explore page
+        # https://github.com/openbraininstitute/obi-one/issues/442
+        # --> Requires generating a new overview figure
+        # --> Requires running circuit analysis & plotting
+        # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
+        # registered_circuit=new_circuit_entity)
+
     def execute(
         self,
         *,
@@ -750,16 +794,12 @@ class CircuitExtractionTask(Task):
 
         L.info("Extraction DONE")
 
-        # Generate additional assets
-        _ = self._run_circuit_folder_compression(circuit_path=new_circuit_path)
-
-        # Register new circuit entity incl. assets and linked entities
-        new_circuit_id = None
+        # Register new circuit entity incl. folder asset and linked entities
+        new_circuit_entity = None
         if db_client and self._circuit_entity:
             new_circuit_entity = self._create_circuit_entity(
                 db_client=db_client, circuit_path=new_circuit_path
             )
-            new_circuit_id = str(new_circuit_entity.id)
 
             # Register circuit folder asset
             self._add_circuit_folder_asset(
@@ -767,25 +807,6 @@ class CircuitExtractionTask(Task):
                 circuit_path=new_circuit_path,
                 registered_circuit=new_circuit_entity,
             )
-
-            # TODO: Register compressed circuit asset
-            # https://github.com/openbraininstitute/obi-one/issues/462
-            # --> Requires running circuit compression
-            # self._add_compressed_circuit_asset(db_client=db_client, circuit_path=new_circuit_path,
-            # registered_circuit=new_circuit_entity)
-
-            # TODO: Connectivity matrix folder asset
-            # https://github.com/openbraininstitute/obi-one/issues/441
-            # --> Requires running matrix extraction
-            # self._add_matrix_folder_asset(db_client=db_client, circuit_path=new_circuit_path,
-            # registered_circuit=new_circuit_entity)
-
-            # TODO: Circuit figures for detailed explore page
-            # https://github.com/openbraininstitute/obi-one/issues/442
-            # --> Requires generating a new overview figure
-            # --> Requires running circuit analysis & plotting
-            # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
-            # registered_circuit=new_circuit_entity)
 
             # TODO: Circuit figure for campaign designer UI
             # https://github.com/openbraininstitute/obi-one/issues/442
@@ -805,12 +826,17 @@ class CircuitExtractionTask(Task):
             self._update_execution_activity(
                 db_client=db_client,
                 execution_activity=execution_activity,
-                circuit_id=new_circuit_id,
+                circuit_id=str(new_circuit_entity.id),
             )
 
             L.info("Registration DONE")
 
+        # Generate and register compressed circuit asset
+        self._generate_additional_circuit_assets(new_circuit_path, new_circuit_entity)
+
         # Clean-up
         self._cleanup_temp_dir()
 
-        return new_circuit_id
+        if new_circuit_entity:
+            return str(new_circuit_entity.id)
+        return None
