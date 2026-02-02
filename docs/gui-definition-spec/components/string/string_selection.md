@@ -60,9 +60,9 @@ class Block:
                 "C": r"C_{latex}",
             },
             "title_by_key": {
-                "A": "A_{Title}",
-                "B": "B_{Title}",
-                "C": "C_{Title}",
+                "A": r"A_{Title}",
+                "B": r"B_{Title}",
+                "C": r"C_{Title}",
             }
         }
         
