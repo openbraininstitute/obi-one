@@ -35,7 +35,9 @@ ui_element: `string_selection_enhanced`
 
 Reference schema: [string_selection_enhanced](reference_schemas/string_selection_enhanced.json)
 
-This offers an alternative dropdown style for selecting strings in a dropdown, with additional descriptions and/or latex representations. Particularly, at least one of the dictionaries `descriptions_by_key` and `latex_by_key` should be present.
+This offers an alternative dropdown style for selecting strings in a dropdown, with additional descriptions and/or latex representations, as well as custom titles. Particularly, at least one of the dictionaries `descriptions_by_key` and `latex_by_key` should be present. 
+
+Additionally, if the dictionary `title_by_key` is present, then values in the dictionary are shown as the title rather than the enum key.
 
 ### Example Pydantic implementation
 
@@ -48,15 +50,20 @@ class Block:
         default="A",
         json_schema_extra={
             "description_by_key": {
-            "A": "Description for option A.",
-            "B": "Description for option B.",
-            "C": "Description for option C.",
+                "A": "Description for option A.",
+                "B": "Description for option B.",
+                "C": "Description for option C.",
             },
             "latex_by_key": {
                 "A": r"A_{latex}",
                 "B": r"B_{latex}",
                 "C": r"C_{latex}",
             },
+            "title_by_key": {
+                "A": "A_{Title}",
+                "B": "B_{Title}",
+                "C": "C_{Title}",
+            }
         }
         
     )
