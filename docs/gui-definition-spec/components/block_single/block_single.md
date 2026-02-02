@@ -14,7 +14,6 @@ Reference schema: [block_single](reference_schemas/block_single.jsonc)
 
 class Info(Block):
     campaign_name: str = Field(
-        
         title="campaign name",
         description="Name of the campaign."
         json_schema_extra={

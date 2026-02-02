@@ -9,9 +9,11 @@ These represent string variables which should display in the UI but currently ca
 ```py
 class Block:
     field: Literal["A"] = Field(
-        ui_element="string_constant",
         title="Constant",
         description="Constant description.",
+        json_schema_extra={
+            "ui_element": "string_constant"
+        }
     )
 ```
 
