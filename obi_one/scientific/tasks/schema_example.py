@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import ClassVar, Literal
 
-from pydantic import Field, ConfigDict
+from pydantic import ConfigDict, Field
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
