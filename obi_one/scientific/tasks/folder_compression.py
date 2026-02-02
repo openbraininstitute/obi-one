@@ -85,8 +85,7 @@ class FolderCompressionTask(Task):
         # Determine archive name: use provided value or default to folder name
         archive_name = (
             self.config.initialize.archive_name
-            if self.config.initialize.archive_name
-            else Path(self.config.initialize.folder_path.path).name
+            or Path(self.config.initialize.folder_path.path).name
         )
 
         with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:
