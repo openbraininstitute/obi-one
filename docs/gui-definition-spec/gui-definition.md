@@ -40,8 +40,9 @@ There are two major types of such UI elements:
     - Root elements must have the following properties:
         - `title`
         - `description`
-        - `group` string that points to a string in its parent config's `group_order` array.
-        - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
+        - A dictionary called `json_schema_extra` (the standard name for adding extra information to the schema in Pydantic). Within the `json_schema_extra` dictionary, the following properties must be specified:
+            - `group` string that points to a string in its parent config's `group_order` array.
+            - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
 
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
@@ -49,8 +50,10 @@ There are two major types of such UI elements:
             ui_element="block_single",
             title="Title",
             description="Description",
-            group="Group 1", # Must be present in its parent's config `group_order` array,
-            group_order=0, # Unique within the group.
+            json_schema_extra={
+                "group": "Group 1", # Must be present in its parent's config `group_order` array,
+                "group_order": 0 # Unique within the group.
+            }
         )
         ```
         

@@ -10,8 +10,8 @@ For example the following would be an incorrect use of `ui_element` since the re
 # ❌ Wrong use of ui_element
 
 class Block:
-    field_A: int = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="integer_input", ...)
+    field_A: int = Field(json_schema_extra={"ui_element": "integer_input", ...})
+    field_B: int | None = Field(json_schema_extra={"ui_element": "integer_input", ...})
 ```
 
 ```jsonc
@@ -44,14 +44,14 @@ In such cases either make them consistent or create separate `ui_element`s.
 ```py
 # ✅ Consistent types
 class Block:
-    field_A: int | None = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="integer_input", ...)
+    field_A: int | None = Field(json_schema_extra={"ui_element": "integer_input", ...})
+    field_B: int | None = Field(json_schema_extra={"ui_element": "integer_input", ...})
 
 ```
 
 ```py
 # ✅ Separate ui_elements
 class Block:
-    field_A: int = Field(ui_element="integer_input", ...)
-    field_B: int | None = Field(ui_element="nullable_integer_input", ...)
+    field_A: int = Field(json_schema_extra={"ui_element": "integer_input", ...})
+    field_B: int | None = Field(json_schema_extra={"ui_element": "nullable_integer_input", ...})
 ```
