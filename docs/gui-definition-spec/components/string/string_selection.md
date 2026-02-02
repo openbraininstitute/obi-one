@@ -9,10 +9,19 @@ Reference schema: [string_selection](reference_schemas/string_selection.json)
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
+<<<<<<< HEAD
         ui_element="string_selection",
         title="Option",
         description="Option description.",
         default="A",
+=======
+        title="Option",
+        description="Option description.",
+        default="A",
+        json_schema_extra={
+            "ui_element": "string_selection
+        }
+>>>>>>> main
     )
 ```
 
@@ -33,9 +42,7 @@ ui_element: `string_selection_enhanced`
 
 Reference schema: [string_selection_enhanced](reference_schemas/string_selection_enhanced.json)
 
-This offers an alternative dropdown style for selecting strings in a dropdown. 
-
-Particularly, additional descriptions and/or latex representations can be added for each dropdown option, using the dictionaries `description_by_key` and `latex_by_key` respectively. At least one of these two dictionaries must be specified. Moreover, when used, each dictionary must have entries for each dropdown option.
+This offers an alternative dropdown style for selecting strings in a dropdown, with additional descriptions and/or latex representations. Particularly, at least one of the dictionaries `descriptions_by_key` and `latex_by_key` should be present.
 
 ### Example Pydantic implementation
 
@@ -46,6 +53,7 @@ class Block:
         title="Option",
         description="Option description.",
         default="A",
+<<<<<<< HEAD
         description_by_key={ # Optional
             "A": "Description for option A.",
             "B": "Description for option B.",
@@ -56,6 +64,21 @@ class Block:
             "B": r"B_{latex}",
             "C": r"C_{latex}",
         },
+=======
+        json_schema_extra={
+            "description_by_key": {
+            "A": "Description for option A.",
+            "B": "Description for option B.",
+            "C": "Description for option C.",
+            },
+            "latex_by_key": {
+                "A": r"A_{latex}",
+                "B": r"B_{latex}",
+                "C": r"C_{latex}",
+            },
+        }
+        
+>>>>>>> main
     )
 ```
 

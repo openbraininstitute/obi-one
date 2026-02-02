@@ -16,7 +16,7 @@ import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from pydantic import Field, PrivateAttr
+from pydantic import ConfigDict, Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -60,59 +60,69 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "ui_enabled": True,
-            "group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EXTRACTION_TARGET,
-            ],
+            "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
         }
+    )
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            ui_element="model_identifier",
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
+            json_schema_extra={
+                "ui_element": "model_identifier",
+            },
         )
         do_virtual: bool = Field(
-            ui_element="boolean_input",
             default=True,
             title="Include Virtual Populations",
             description="Include virtual neurons which target the cells contained in the specified"
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
+            json_schema_extra={
+                "ui_element": "boolean_input",
+            },
         )
         create_external: bool = Field(
-            ui_element="boolean_input",
             default=True,
             title="Create External Population",
             description="Convert (non-virtual) neurons which are outside of the specified neuron"
             " set, but which target the cells contained therein, into a new external population"
             " of virtual neurons (together with their connectivity onto the specified neuron set).",
+            json_schema_extra={
+                "ui_element": "boolean_input",
+            },
         )
 
     info: Info = Field(
-        ui_element="block_single",
         title="Info",
         description="Information about the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP,
+            "group_order": 0,
+        },
     )
     initialize: Initialize = Field(
-        ui_element="block_single",
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP,
+            "group_order": 1,
+        },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        ui_element="block_union",
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
-        group=BlockGroup.EXTRACTION_TARGET,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_union",
+            "group": BlockGroup.EXTRACTION_TARGET,
+            "group_order": 0,
+        },
     )
 
     def create_campaign_entity_with_config(

@@ -1,6 +1,10 @@
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.deserialize import (
+    deserialize_obi_object_from_json_data,
+    deserialize_obi_object_from_json_file,
+)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
@@ -11,10 +15,6 @@ from obi_one.core.run_tasks import (
     run_tasks_for_generated_scan,
 )
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.serialization import (
-    deserialize_obi_object_from_json_data,
-    deserialize_obi_object_from_json_file,
-)
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple

@@ -12,10 +12,16 @@ Reference schema: [boolean_input](reference_schemas/boolean_input.json)
 
 ```py
 class Block:
-    field: bool = Field(ui_element="boolean_input",
+    field: bool = Field(
                        default=False,
                        title="title",
-                       description="description")
+                       description="description",
+                       json_schema_extra={
+                            "ui_element": "boolean_input",
+                            "group": "Group 1", # Must be present in its parent's config `group_order` array,
+                            "group_order": 0, # Unique within the group.
+                        } 
+                    )
 ```
 
 ### UI design
