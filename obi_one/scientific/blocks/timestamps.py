@@ -8,10 +8,12 @@ from obi_one.core.block import Block
 
 class Timestamps(Block, ABC):
     start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=0.0,
         description="Sart time of the timestamps in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     def timestamps(self) -> list:
@@ -37,16 +39,20 @@ class RegularTimestamps(Timestamps):
     title: ClassVar[str] = "Regular Timestamps"
 
     interval: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=10.0,
         description="Interval between timestamps in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     number_of_repetitions: NonNegativeInt | list[NonNegativeInt] = Field(
-        ui_element="int_parameter_sweep",
         default=10,
         description="Number of timestamps to generate.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
     )
 
     def _resolve_timestamps(self) -> list[float]:

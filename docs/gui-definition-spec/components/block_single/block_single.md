@@ -14,17 +14,23 @@ Reference schema: [block_single](reference_schemas/block_single.jsonc)
 
 class Info(Block):
     campaign_name: str = Field(
-        ui_element="string_input",
+        
         title="campaign name",
-        description="Name of the campaign.")
+        description="Name of the campaign."
+        json_schema_extra={
+            "ui_element": "string_input",
+        }        
+    )
 
 class Config:
 
     info: Info = Field(
-        ui_element="block_single",
         title="Title",
         description="Description",
-        group="Group 1", # Must be present in its parent's config `group_order` array,
-        group_order=0, # Unique within the group.
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": "Group 1", # Must be present in its parent's config `group_order` array,
+            "group_order": 0, # Unique within the group.
+        }        
     )
 ```
