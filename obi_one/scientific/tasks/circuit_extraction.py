@@ -427,6 +427,36 @@ class CircuitExtractionTask(Task):
         return compressed_asset
 
     @staticmethod
+    def _add_connectivity_matrix_asset(
+        db_client: Client, matrix_dir: Path, registered_circuit: models.Circuit
+    ) -> models.Asset:
+        """Upload connectivity matrix directory asset to a registered circuit entity."""
+        asset_label = "connectivity_matrix"
+
+        if not matrix_dir.is_dir():
+            msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
+            raise OBIONEError(msg)
+
+        # Collect matrix files
+        matrix_files = {
+            str(path.relative_to(matrix_dir)): path
+            for path in matrix_dir.rglob("*")
+            if path.is_file()
+        }
+        L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
+
+        # Upload directory asset
+        matrix_asset = db_client.upload_directory(
+            label=asset_label,
+            name=asset_label,
+            entity_id=registered_circuit.id,
+            entity_type=models.Circuit,
+            paths=matrix_files,
+        )
+        L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
+        return matrix_asset
+
+    @staticmethod
     def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
@@ -467,6 +497,47 @@ class CircuitExtractionTask(Task):
             raise OBIONEError(msg)
         L.info(f"Circuit folder compressed into {output_file}")
         return output_file
+
+    @staticmethod
+    def _run_connectivity_matrix_extraction(circuit_path: Path) -> Path:
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # noqa: PLC0415
+            ConnectivityMatrixExtractionScanConfig,
+        )
+
+        # Set up connectivity matrix extraction
+        circuit = Circuit(
+            name=circuit_path.parent.name + "__CONN_MATRIX__",  # Used as output name
+            path=str(circuit_path),
+        )
+        edge_population = circuit.default_edge_population_name
+        matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
+            circuit=[circuit],
+            edge_population=edge_population,
+            node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
+            with_matrix_config=True,
+        )
+        matrix_extraction_config = ConnectivityMatrixExtractionScanConfig(initialize=matrix_init)
+
+        # Run connectivity matrix extraction
+        grid_scan = GridScanGenerationTask(
+            form=matrix_extraction_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output directory
+        output_dir = grid_scan.single_configs[0].coordinate_output_root
+        output_file = output_dir / "matrix_config.json"
+        if not output_file.exists():
+            msg = "Connectivity matrix config file does not exist!"
+            raise OBIONEError(msg)
+        L.info(f"Connectivity matrix extracted to {output_dir}")
+        return output_dir
 
     def _add_derivation_link(
         self, db_client: Client, registered_circuit: models.Circuit
@@ -731,11 +802,26 @@ class CircuitExtractionTask(Task):
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Compressed circuit registration failed: {e}")
 
-        # TODO: Connectivity matrix folder asset
-        # https://github.com/openbraininstitute/obi-one/issues/441
-        # --> Requires running matrix extraction
-        # self._add_matrix_folder_asset(db_client=db_client, circuit_path=new_circuit_path,
-        # registered_circuit=new_circuit_entity)
+        # Connectivity matrix asset
+        try:
+            matrix_dir = CircuitExtractionTask._run_connectivity_matrix_extraction(
+                circuit_path=new_circuit_path
+            )
+        except Exception as e:  # noqa: BLE001
+            # Catch any exception here and turn into warnings only
+            L.warning(f"Connectivity matrix extraction failed: {e}")
+            matrix_dir = None
+
+        if db_client and new_circuit_entity and matrix_dir:
+            try:
+                CircuitExtractionTask._add_connectivity_matrix_asset(
+                    db_client=db_client,
+                    matrix_dir=matrix_dir,
+                    registered_circuit=new_circuit_entity,
+                )
+            except Exception as e:  # noqa: BLE001
+                # Catch any exception here and turn into warnings only
+                L.warning(f"Connectivity matrix registration failed: {e}")
 
         # TODO: Circuit figures for detailed explore page
         # https://github.com/openbraininstitute/obi-one/issues/442
