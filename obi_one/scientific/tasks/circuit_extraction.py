@@ -431,7 +431,7 @@ class CircuitExtractionTask(Task):
         db_client: Client, matrix_dir: Path, registered_circuit: models.Circuit
     ) -> models.Asset:
         """Upload connectivity matrix directory asset to a registered circuit entity."""
-        asset_label = "connectivity_matrix"
+        asset_label = "circuit_connectivity_matrices"
 
         if not matrix_dir.is_dir():
             msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
