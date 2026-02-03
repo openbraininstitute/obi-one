@@ -42,3 +42,18 @@ class IonChannelModelFromID(EntityFromID):
     def has_max_permeability(self, db_client: entitysdk.client.Client = None) -> bool:
         """Returns True if the ion channel model has a max permeability name."""
         return self.get_max_permeability_name(db_client=db_client) is not None
+    
+    # Could be used to set other parameters in ion channel model simulation
+    def get_other_parameter_names(self, db_client: entitysdk.client.Client = None) -> list[str]:
+        """Returns a list of RANGE parameter names except conductance and max permeability."""
+        entity = self.entity(db_client=db_client)
+        range_params = entity.neuron_block.range or []
+        conductance_permeability_list = [
+            self.get_conductance_name(db_client),
+            self.get_max_permeability_name(db_client)
+        ]
+        return [
+            param
+            for param in range_params
+            if param not in conductance_permeability_list
+        ]
