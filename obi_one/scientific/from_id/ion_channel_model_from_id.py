@@ -4,7 +4,6 @@ from typing import ClassVar
 import entitysdk
 from entitysdk.models import IonChannelModel
 from entitysdk.models.entity import Entity
-from entitysdk.staging.ion_channel_model import find_conductance_name # curently in PR #175
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
 from pydantic import PrivateAttr
@@ -29,10 +28,17 @@ class IonChannelModelFromID(EntityFromID):
         return asset.path
     
     def get_conductance_name(self, db_client: entitysdk.client.Client = None) -> str|None:
-        """Returns the conductance name if present in the RANGE metadata, else return None."""
-        return find_conductance_name(self.entity(db_client=db_client))
+        """Returns the conductance name if present, else return None."""
+        return self.entity(db_client=db_client).conductance_name
 
     def has_conductance(self, db_client: entitysdk.client.Client = None) -> bool:
-        """Returns True if the ion channel model has conductance in the RANGE metadata."""
-        conductance_name = self.get_conductance_name(db_client=db_client)
-        return conductance_name is not None
+        """Returns True if the ion channel model has a conductance name."""
+        return self.get_conductance_name(db_client=db_client) is not None
+    
+    def get_max_permeability_name(self, db_client: entitysdk.client.Client = None) -> str|None:
+        """Returns the max permeability name if present, else return None."""
+        return self.entity(db_client=db_client).max_permeability_name
+
+    def has_max_permeability(self, db_client: entitysdk.client.Client = None) -> bool:
+        """Returns True if the ion channel model has a max permeability name."""
+        return self.get_max_permeability_name(db_client=db_client) is not None

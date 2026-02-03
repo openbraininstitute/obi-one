@@ -81,7 +81,7 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
             default_factory=dict,
             title="Ion Channel Models",
             reference_type=IonChannelModelReference.__name__,
-            description="Ion channel models and their conductances.",
+            description="Ion channel models and their conductance / max permeability.",
             singular_name="Ion Channel Models",
             group=BlockGroup.SETUP,
             group_order=1,

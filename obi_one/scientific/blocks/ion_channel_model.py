@@ -18,6 +18,13 @@ class IonChannelModelWithConductance(IonChannelModel):
     conductance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         ui_element="float_parameter_sweep",
         title="Conductance value (in S/cm2)",
-        description="Each conductance is associated to an ion channel model.",
-        default=0.0,  # for the models without conductance
+        description="Conductance value (in S/cm2).",
+    )
+
+
+class IonChannelModelWithMaxPermeability(IonChannelModel):
+    max_permeability: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        title="Maximum permeability value (in cm/s)",
+        description="Maximum permeability value (in cm/s).",
     )
