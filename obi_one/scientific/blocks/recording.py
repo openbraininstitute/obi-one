@@ -8,6 +8,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
+from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -144,3 +145,44 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         self._end_time = self.end_time
 
         return super()._generate_config()
+
+
+class IonChannelVariableRecording(Recording):
+    """Records a variable of an ion channel model for the full length of the experiment."""
+
+    title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
+
+    variable_name: str = Field(
+        ui_element="entity_property_dropdown",
+        entity_type=EntityType.IONCHANNELMODEL,
+        property=IonChannelPropertyType.RECORDABLE_VARIABLES,
+        title="Ion Channel Variable Name",
+        description="Name of the variable to record.",
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+        # three cases for now:
+        # current variables (starting with "i"),
+        # concentration variables (ending with "i"),
+        # and fallback for unexpected variables (no unit)
+        unit = (
+            "mA/cm2"
+            if self.variable_name[0] == "i"
+            else "mM"
+            if self.variable_name[-1] == "i"
+            else ""
+        )
+
+        sonata_config[self.block_name] = {
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "sections": "soma",
+            "type": "compartment",
+            "compartments": "center",
+            "variable_name": self.variable_name,
+            "unit": unit,
+            "dt": self.dt,
+            "start_time": self._start_time,
+            "end_time": self._end_time,
+        }
+        return sonata_config

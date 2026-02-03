@@ -47,9 +47,7 @@ _RELATIVE_INJECTION_STIMULI = (
     | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
 
-_INJECTION_STIMULI = (
-    _RELATIVE_INJECTION_STIMULI | _NONRELATIVE_INJECTION_STIMULI
-)
+_INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _NONRELATIVE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
     PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
@@ -67,9 +65,8 @@ MEModelStimulusUnion = Annotated[
 
 IonChannelStimulusUnion = Annotated[
     _NONRELATIVE_INJECTION_STIMULI | SEClampSomaticStimulus,
-     Discriminator("type"),   
+    Discriminator("type"),
 ]
-
 
 
 class StimulusReference(BlockReference):
