@@ -582,6 +582,22 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
+class SEClampSomaticStimulus(SomaticStimulus):
+    """A voltage clamp injection with an arbitrary number of steps at different voltages."""
+
+    title: ClassVar[str] = "SEClamp Somatic Stimulus"
+
+    _module: str = "seclamp"
+    _input_type: str = "voltage_clamp"
+
+    def _generate_config(self) -> dict:
+        pass
+        # will have to wait for new SONATA definition for SECLamp
+        # -> see https://github.com/openbraininstitute/neurodamus/issues/432
+        # will have to see how to use timestamps (if we use them) to determine step durations
+        # might drop delay and duration
+
+
 class SpikeStimulus(Stimulus):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"

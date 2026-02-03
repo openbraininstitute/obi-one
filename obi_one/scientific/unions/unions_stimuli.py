@@ -20,26 +20,35 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SEClampStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-_INJECTION_STIMULI = (
+
+_NONRELATIVE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
     | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
     | OrnsteinUhlenbeckCurrentSomaticStimulus
     | OrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_RELATIVE_INJECTION_STIMULI = (
+    RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
     | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
     | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_INJECTION_STIMULI = (
+    _RELATIVE_INJECTION_STIMULI | _NONRELATIVE_INJECTION_STIMULI
 )
 
 _SPIKE_STIMULI = (
@@ -55,6 +64,12 @@ MEModelStimulusUnion = Annotated[
     _INJECTION_STIMULI,
     Discriminator("type"),
 ]
+
+IonChannelStimulusUnion = Annotated[
+    _NONRELATIVE_INJECTION_STIMULI | SEClampStimulus,
+     Discriminator("type"),   
+]
+
 
 
 class StimulusReference(BlockReference):
