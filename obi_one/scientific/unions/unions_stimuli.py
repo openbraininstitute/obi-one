@@ -20,7 +20,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    SEClampStimulus,
+    SEClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
@@ -56,7 +56,7 @@ _SPIKE_STIMULI = (
 )
 
 StimulusUnion = Annotated[
-    _INJECTION_STIMULI | _SPIKE_STIMULI,
+    _INJECTION_STIMULI | _SPIKE_STIMULI | SEClampSomaticStimulus,
     Discriminator("type"),
 ]
 
@@ -66,7 +66,7 @@ MEModelStimulusUnion = Annotated[
 ]
 
 IonChannelStimulusUnion = Annotated[
-    _NONRELATIVE_INJECTION_STIMULI | SEClampStimulus,
+    _NONRELATIVE_INJECTION_STIMULI | SEClampSomaticStimulus,
      Discriminator("type"),   
 ]
 

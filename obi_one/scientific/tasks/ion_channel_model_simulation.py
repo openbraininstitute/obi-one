@@ -37,6 +37,7 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
+    IonChannelModelStimulusUnion,
     StimulusReference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
