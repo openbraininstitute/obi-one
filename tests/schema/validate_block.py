@@ -335,6 +335,7 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
         )
         raise ValidationError(msg) from None
 
+    # Validate title_by_key, description_by_key, latex_by_key dictionaries
     validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, "description_by_key")
     validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, "latex_by_key")
     validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, "title_by_key")
