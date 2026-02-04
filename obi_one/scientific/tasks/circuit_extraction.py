@@ -17,6 +17,7 @@ from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
 from entitysdk import Client, models, types
+from PIL import Image
 from pydantic import ConfigDict, Field, PrivateAttr
 
 from obi_one.core.block import Block
@@ -456,6 +457,69 @@ class CircuitExtractionTask(Task):
         )
         L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
         return matrix_asset
+
+    @staticmethod
+    def convert_image_to_webp(
+        image_path: Path, *, overwrite: bool = False, quality: int = 80, method: int = 6
+    ) -> Path:
+        """Converts an image file (e.g., .png) to .webp format."""
+        if not image_path.exists():
+            msg = f"Input file '{image_path}' does not exist!"
+            raise OBIONEError(msg)
+        output_path = image_path.with_suffix(".webp")
+        if not overwrite and output_path.exists():
+            msg = f"Output file '{output_path}' already exists!"
+            raise OBIONEError(msg)
+        with Image.open(image_path) as img:
+            image = img.convert("RGBA")
+            image.save(output_path, "webp", quality=quality, method=method)
+        return output_path
+
+    @staticmethod
+    def _add_connectivity_plot_assets(
+        db_client: Client, plot_dir: Path, plot_files: list, registered_circuit: models.Circuit
+    ) -> list[models.Asset]:
+        """Upload connectivity plot assets to a registered circuit entity.
+
+        Note: Image files will be converted to .webp before the upload.
+        """
+        asset_label_map = {
+            "node_stats": "node_stats",
+            "small_adj_and_stats": "network_stats_a",
+            "small_network_in_2D": "network_stats_b",
+            "network_global_stats": "network_stats_a",
+            "network_pathway_stats": "network_stats_b",
+        }
+        if not plot_dir.is_dir():
+            msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
+            raise OBIONEError(msg)
+
+        # Compress image files to .webp format
+        plot_paths_webp = []
+        for file in plot_files:
+            webp_path = CircuitExtractionTask.convert_image_to_webp(image_path=plot_dir / file)
+            plot_paths_webp.append(webp_path)
+
+        # Upload image file assets
+        plot_assets = []
+        for file_path in plot_paths_webp:
+            if not file_path.is_file():
+                msg = f"Connectivity plot '{file_path.name}' does not exist!"
+                raise OBIONEError(msg)
+            if file_path.stem not in asset_label_map:
+                msg = f"Unknown asset label for plot '{file_path.name}'!"
+                raise OBIONEError(msg)
+            asset_label = asset_label_map[file_path.stem]
+            plot_asset = db_client.upload_file(
+                entity_id=registered_circuit.id,
+                entity_type=models.Circuit,
+                file_path=file_path,
+                file_content_type="image/webp",
+                asset_label=asset_label,
+            )
+            L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
+            plot_assets.append(plot_asset)
+        return plot_assets
 
     @staticmethod
     def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
@@ -900,7 +964,7 @@ class CircuitExtractionTask(Task):
 
         # Connectivity plots asset
         try:
-            plots_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
+            plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
                 circuit_path=new_circuit_path,
                 matrix_config=matrix_config,
                 edge_population=edge_population,
@@ -908,18 +972,19 @@ class CircuitExtractionTask(Task):
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity plots generation failed: {e}")
-            plots_dir = plot_files = None
+            plot_dir = plot_files = None
 
-        # if db_client and new_circuit_entity and plots_dir:
-        #     try:
-        #         CircuitExtractionTask._add_connectivity_plots_asset(
-        #             db_client=db_client,
-        #             plots_dir=plots_dir,
-        #             registered_circuit=new_circuit_entity,
-        #         )
-        #     except Exception as e:  # noqa: BLE001
-        #         # Catch any exception here and turn into warnings only
-        #         L.warning(f"Connectivity plots registration failed: {e}")
+        if db_client and new_circuit_entity and plot_dir and plot_files:
+            try:
+                CircuitExtractionTask._add_connectivity_plot_assets(
+                    db_client=db_client,
+                    plot_dir=plot_dir,
+                    plot_files=plot_files,
+                    registered_circuit=new_circuit_entity,
+                )
+            except Exception as e:  # noqa: BLE001
+                # Catch any exception here and turn into warnings only
+                L.warning(f"Connectivity plots registration failed: {e}")
 
     def execute(
         self,
