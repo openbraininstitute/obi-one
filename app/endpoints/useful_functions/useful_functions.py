@@ -84,20 +84,13 @@ def _process_measurement(
     neurite_type: int | None = None,
 ) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
-    nm_get_key = label
 
-    # 1. Simplification logic: Correctly set nm_get_key to 'max_radial_distance'
-    if label.endswith("max_radial_distance"):
-        nm_get_key = "max_radial_distance"
+    nm_get_key = "max_radial_distance" if label.endswith("max_radial_distance") else label
 
-    # 2. Key change: Ensure the call uses the simplified 'nm_get_key' in both branches.
-    if neurite_type is not None and "neurite" in label:
+    if neurite_type is not None:
         data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
     else:
-        # Use nm_get_key here to support 'morphology_max_radial_distance'
-        # (which has been simplified to 'max_radial_distance') and 'soma' metrics
-        # (where nm_get_key is the same as label).
-        data = nm.get(nm_get_key, neuron)  # <--- THIS LINE IS THE FIX
+        data = nm.get(nm_get_key, neuron)
 
     elements = [label, data, unit]
 

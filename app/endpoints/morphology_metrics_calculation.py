@@ -115,7 +115,7 @@ def _get_analysis_dict() -> dict:
     if DEFAULT_NEURITE_DOMAIN in analysis_dict:
         default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
         for domain in TARGET_NEURITE_DOMAINS:
-            analysis_dict[domain] = default_analysis
+            analysis_dict.setdefault(domain, default_analysis)
 
     _get_analysis_dict.cached = analysis_dict
     return analysis_dict
