@@ -109,7 +109,6 @@ def _circuit_simulation_job_data(
     task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "type": "circuit_simulation",
         "code": task_definition.code,
         "resources": task_definition.resources,
         "inputs": [
@@ -136,7 +135,6 @@ def _generic_job_data(
     task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "type": "generic",
         "code": task_definition.code,
         "resources": task_definition.resources,
         "inputs": [

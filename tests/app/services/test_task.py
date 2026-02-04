@@ -271,7 +271,6 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
     )
 
     assert res == {
-        "type": "circuit_simulation",
         "resources": {
             "type": "cluster",
             "instances": 1,
@@ -326,7 +325,6 @@ def test_generic_job_data(config_id, activity_id, callbacks):
     )
 
     assert res == {
-        "type": "generic",
         "resources": {"type": "machine", "cores": 1, "memory": 2, "timelimit": "00:10"},
         "code": {
             "type": "python_repository",
