@@ -5,6 +5,7 @@ import shutil
 import tempfile
 from datetime import UTC, datetime
 from enum import StrEnum
+from importlib.resources import files
 from pathlib import Path
 from typing import ClassVar
 
@@ -476,45 +477,47 @@ class CircuitExtractionTask(Task):
         return output_path
 
     @staticmethod
-    def _add_connectivity_plot_assets(
+    def _add_image_assets(
         db_client: Client, plot_dir: Path, plot_files: list, registered_circuit: models.Circuit
     ) -> list[models.Asset]:
         """Upload connectivity plot assets to a registered circuit entity.
 
-        Note: Image files will be converted to .webp before the upload.
+        Note: Image files will be converted to .webp, if needed.
         """
         asset_label_map = {
-            "node_stats": "node_stats",
-            "small_adj_and_stats": "network_stats_a",
-            "small_network_in_2D": "network_stats_b",
-            "network_global_stats": "network_stats_a",
-            "network_pathway_stats": "network_stats_b",
+            "node_stats": ("node_stats", "webp"),
+            "small_adj_and_stats": ("network_stats_a", "webp"),
+            "small_network_in_2D": ("network_stats_b", "webp"),
+            "network_global_stats": ("network_stats_a", "webp"),
+            "network_pathway_stats": ("network_stats_b", "webp"),
+            "circuit_visualization": ("circuit_visualization", "webp"),
+            "simulation_designer_image": ("simulation_designer_image", "png"),
         }
         if not plot_dir.is_dir():
             msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
             raise OBIONEError(msg)
 
-        # Compress image files to .webp format
-        plot_paths_webp = []
-        for file in plot_files:
-            webp_path = CircuitExtractionTask.convert_image_to_webp(image_path=plot_dir / file)
-            plot_paths_webp.append(webp_path)
-
-        # Upload image file assets
+        # Upload image file assets (incl. conversion to .webp format if needed)
         plot_assets = []
-        for file_path in plot_paths_webp:
+        for file in plot_files:
+            file_path = plot_dir / file
             if not file_path.is_file():
                 msg = f"Connectivity plot '{file_path.name}' does not exist!"
                 raise OBIONEError(msg)
             if file_path.stem not in asset_label_map:
                 msg = f"Unknown asset label for plot '{file_path.name}'!"
                 raise OBIONEError(msg)
-            asset_label = asset_label_map[file_path.stem]
+            asset_label, fmt = asset_label_map[file_path.stem]
+            if fmt == "webp":
+                file_path = CircuitExtractionTask.convert_image_to_webp(image_path=file_path)
+            if "." + fmt != file_path.suffix:
+                msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
+                raise OBIONEError(msg)
             plot_asset = db_client.upload_file(
                 entity_id=registered_circuit.id,
                 entity_type=models.Circuit,
                 file_path=file_path,
-                file_content_type="image/webp",
+                file_content_type=f"image/{fmt}",
                 asset_label=asset_label,
             )
             L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
@@ -909,7 +912,35 @@ class CircuitExtractionTask(Task):
         return upd_entity
 
     @staticmethod
-    def _generate_additional_circuit_assets(
+    def _generate_overview_figure(output_file: Path) -> Path:
+        """Generates an overview figure of the extracted circuit."""
+        # Use template figure from library
+        # TODO: May be replaced by a proper figure generator, if needed
+        fig_path = Path(
+            str(files("obi_one.scientific.library").joinpath("extracted_circuit_schematic.png"))
+        )
+
+        # Check that output file has the correct extension
+        if output_file.suffix != fig_path.suffix:
+            msg = (
+                f"Output file extension '{output_file.suffix}' does not match "
+                f"figure extension '{fig_path.suffix}'!"
+            )
+            raise OBIONEError(msg)
+
+        # Check that output file does not exist yet
+        if output_file.exists():
+            msg = f"Output file '{output_file}' already exists!"
+            raise OBIONEError(msg)
+
+        # Copy figure to output file
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(fig_path, output_file)
+
+        return output_file
+
+    @staticmethod
+    def _generate_additional_circuit_assets(  # noqa: C901
         db_client: Client,
         new_circuit_path: Path,
         new_circuit_entity: models.Circuit,
@@ -976,7 +1007,7 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and plot_dir and plot_files:
             try:
-                CircuitExtractionTask._add_connectivity_plot_assets(
+                CircuitExtractionTask._add_image_assets(
                     db_client=db_client,
                     plot_dir=plot_dir,
                     plot_files=plot_files,
@@ -985,6 +1016,37 @@ class CircuitExtractionTask(Task):
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity plots registration failed: {e}")
+
+        # Overview & sim designer visualizations
+        try:
+            viz_dir = new_circuit_path.parent.with_name(
+                new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
+            )
+            viz_files = []
+            viz_path = CircuitExtractionTask._generate_overview_figure(
+                viz_dir / "circuit_visualization.png"
+            )
+            viz_files.append(viz_path.name)
+            sim_viz_path = CircuitExtractionTask._generate_overview_figure(
+                viz_dir / "simulation_designer_image.png"
+            )
+            viz_files.append(sim_viz_path.name)
+        except Exception as e:  # noqa: BLE001
+            # Catch any exception here and turn into warnings only
+            L.warning(f"Circuit visualization generation failed: {e}")
+            viz_dir = viz_files = None
+
+        if db_client and new_circuit_entity and viz_dir and viz_files:
+            try:
+                CircuitExtractionTask._add_image_assets(
+                    db_client=db_client,
+                    plot_dir=viz_dir,
+                    plot_files=viz_files,
+                    registered_circuit=new_circuit_entity,
+                )
+            except Exception as e:  # noqa: BLE001
+                # Catch any exception here and turn into warnings only
+                L.warning(f"Circuit visualization registration failed: {e}")
 
     def execute(
         self,
