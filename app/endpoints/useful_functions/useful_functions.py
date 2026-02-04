@@ -84,7 +84,6 @@ def _process_measurement(
     neurite_type: int | None = None,
 ) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
-
     nm_get_key = "max_radial_distance" if label.endswith("max_radial_distance") else label
 
     if neurite_type is not None:
