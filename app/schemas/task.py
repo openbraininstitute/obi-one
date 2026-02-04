@@ -41,6 +41,8 @@ class TaskDefinition(Schema):
     activity_type: type[Activity]
     accounting_service_subtype: ServiceSubtype
     config_asset_label: AssetLabel
+    code: dict
+    resources: dict
 
     @property
     def config_type_name(self) -> str:
