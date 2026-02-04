@@ -87,6 +87,11 @@ class SchemaExampleScanConfig(ScanConfig):
                     "B": r"B_{latex}",
                     "C": r"C_{latex}",
                 },
+                "title_by_key": {
+                    "A": "Option A",
+                    "B": "Option B",
+                    "C": "Option C"
+                },
             },
         )
 
@@ -100,6 +105,9 @@ class SchemaExampleScanConfig(ScanConfig):
                 },
                 "latex_by_key": {
                     "A": r"A_{latex}",
+                },
+                "title_by_key": {
+                    "A": "Option A",
                 },
             },
         )
