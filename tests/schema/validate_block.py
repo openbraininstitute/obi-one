@@ -320,10 +320,6 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
     latex_by_key = schema.get("latex_by_key")
     title_by_key = schema.get("title_by_key")
 
-    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, "description_by_key")
-    validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, "latex_by_key")
-    validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, "title_by_key")
-
     # Make sure at least one of description_by_key or latex_by_key exists
     if description_by_key is None and latex_by_key is None:
         msg = (
@@ -338,6 +334,10 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
             "have a 'title_by_key' field in its schema"
         )
         raise ValidationError(msg) from None
+
+    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, "description_by_key")
+    validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, "latex_by_key")
+    validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, "title_by_key")
 
 
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
