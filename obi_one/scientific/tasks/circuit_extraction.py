@@ -15,6 +15,7 @@ import numpy as np
 import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
+from conntility import ConnectivityMatrix
 from entitysdk import Client, models, types
 from pydantic import ConfigDict, Field, PrivateAttr
 
@@ -458,6 +459,7 @@ class CircuitExtractionTask(Task):
 
     @staticmethod
     def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
+        """Set up and run folder compression task."""
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
         from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
@@ -500,6 +502,7 @@ class CircuitExtractionTask(Task):
 
     @staticmethod
     def _run_connectivity_matrix_extraction(circuit_path: Path) -> Path:
+        """Set up and run connectivity matrix extraction task."""
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
         from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
@@ -537,7 +540,75 @@ class CircuitExtractionTask(Task):
             msg = "Connectivity matrix config file does not exist!"
             raise OBIONEError(msg)
         L.info(f"Connectivity matrix extracted to {output_dir}")
-        return output_dir
+        return output_dir, output_file, edge_population
+
+    @staticmethod
+    def _run_basic_connectivity_plots(
+        circuit_path: Path, matrix_config: Path, edge_population: str
+    ) -> tuple[Path, list]:
+        """Set up and run basic connectivity plotting task."""
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
+            BasicConnectivityPlotsScanConfig,
+        )
+
+        # Find the connectivity matrix file
+        if not matrix_config.exists():
+            msg = f"Connectivity matrix config file '{matrix_config}' not found!"
+            raise OBIONEError(msg)
+        with matrix_config.open(encoding="utf-8") as f:
+            config_dict = json.load(f)
+        edge_pop_config = config_dict.get(edge_population, {})
+        matrix_file = matrix_config.parent / edge_pop_config.get("single", {}).get("path", "")
+        if not matrix_file.is_file():
+            msg = f"Connectivity matrix file '{matrix_file}' not found!"
+            raise OBIONEError(msg)
+
+        # Set up basic connectivity plots
+        matrix_path = NamedPath(
+            name=circuit_path.parent.name + "__BASIC_PLOTS__",  # Used as output name
+            path=str(matrix_file),
+        )
+        cmat = ConnectivityMatrix.from_h5(matrix_path.path)
+        if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
+            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D")
+        else:
+            plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
+        plots_init = BasicConnectivityPlotsScanConfig.Initialize(
+            matrix_path=[matrix_path],
+            plot_formats=("png",),
+            rendering_cmap="tab10",
+            plot_types=plot_types,
+        )
+        plots_config = BasicConnectivityPlotsScanConfig(initialize=plots_init)
+
+        # Run basic connectivity plots
+        grid_scan = GridScanGenerationTask(
+            form=plots_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output directory
+        output_file_map = {
+            "nodes": "node_stats.png",
+            "small_adj_and_stats": "small_adj_and_stats.png",
+            "network_in_2D": "small_network_in_2D.png",
+            "connectivity_global": "network_global_stats.png",
+            "connectivity_pathway": "network_pathway_stats.png",
+        }
+        output_dir = grid_scan.single_configs[0].coordinate_output_root
+        output_files = [output_file_map[_pt] for _pt in plot_types]
+        for file in output_files:
+            if not (output_dir / file).is_file():
+                msg = f"Connectivity plot '{file}' missing!"
+                raise OBIONEError(msg)
+        L.info(f"Basic connectivity plots generated in {output_dir}: {output_files}")
+        return output_dir, output_files
 
     def _add_derivation_link(
         self, db_client: Client, registered_circuit: models.Circuit
@@ -804,13 +875,17 @@ class CircuitExtractionTask(Task):
 
         # Connectivity matrix asset
         try:
-            matrix_dir = CircuitExtractionTask._run_connectivity_matrix_extraction(
+            (
+                matrix_dir,
+                matrix_config,
+                edge_population,
+            ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
                 circuit_path=new_circuit_path
             )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity matrix extraction failed: {e}")
-            matrix_dir = None
+            matrix_dir = matrix_config = edge_population = None
 
         if db_client and new_circuit_entity and matrix_dir:
             try:
@@ -823,12 +898,28 @@ class CircuitExtractionTask(Task):
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity matrix registration failed: {e}")
 
-        # TODO: Circuit figures for detailed explore page
-        # https://github.com/openbraininstitute/obi-one/issues/442
-        # --> Requires generating a new overview figure
-        # --> Requires running circuit analysis & plotting
-        # self._add_circuit_fig_assets(db_client=db_client, circuit_path=new_circuit_path,
-        # registered_circuit=new_circuit_entity)
+        # Connectivity plots asset
+        try:
+            plots_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
+                circuit_path=new_circuit_path,
+                matrix_config=matrix_config,
+                edge_population=edge_population,
+            )
+        except Exception as e:  # noqa: BLE001
+            # Catch any exception here and turn into warnings only
+            L.warning(f"Connectivity plots generation failed: {e}")
+            plots_dir = plot_files = None
+
+        # if db_client and new_circuit_entity and plots_dir:
+        #     try:
+        #         CircuitExtractionTask._add_connectivity_plots_asset(
+        #             db_client=db_client,
+        #             plots_dir=plots_dir,
+        #             registered_circuit=new_circuit_entity,
+        #         )
+        #     except Exception as e:  # noqa: BLE001
+        #         # Catch any exception here and turn into warnings only
+        #         L.warning(f"Connectivity plots registration failed: {e}")
 
     def execute(
         self,
