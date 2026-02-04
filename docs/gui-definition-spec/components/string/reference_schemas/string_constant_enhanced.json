@@ -3,6 +3,9 @@
     "const": "A",
     "title": "Constant",
     "description": "Constant description.",
+    "title_by_key": {
+        "A": "Option A"
+    },
     "description_by_key": {
         "A": "Description for option A."
     },

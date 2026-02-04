@@ -8,6 +8,11 @@
     "title": "Option",
     "description": "Option description.",
     "default": "A",
+    "title_by_key": {
+        "A": "Option A",
+        "B": "Option B",
+        "C": "Option C"
+    },
     "description_by_key": {
         "A": "Description for option A.",
         "B": "Description for option B.",
