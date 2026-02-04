@@ -70,7 +70,6 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EQUATIONS = "Equations"
     MODEL = "Model"
 
 
