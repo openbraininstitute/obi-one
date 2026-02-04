@@ -14,29 +14,35 @@ class NewSynapticManipulation(Block, ABC):
 
     # Should this be a SingleTimestamp?
     timestamp: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=0.0,
         title="Timestamp",
         description="Time at which synaptic manipulation occurs in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
-        ui_element="reference",
-        reference_type=NeuronSetReference.__name__,
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
-        supports_virtual=True,
+        json_schema_extra={
+            "supports_virtual": True,
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+        },
     )
 
-    targeted_neuron_set: NeuronSetReference | None = Field(
+    target_neuron_set: NeuronSetReference | None = Field(
         default=None,
-        ui_element="reference",
-        reference_type=NeuronSetReference.__name__,
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
-        supports_virtual=False,
+        json_schema_extra={
+            "supports_virtual": False,
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+        },
     )
 
     _default_node_set: str = PrivateAttr(default="All")
@@ -56,7 +62,7 @@ class NewSynapticManipulation(Block, ABC):
                 self.source_neuron_set, self._default_node_set
             ),
             "target": resolve_neuron_set_ref_to_node_set(
-                self.targeted_neuron_set, self._default_node_set
+                self.target_neuron_set, self._default_node_set
             ),
             "delay": self.timestamp,
         }
@@ -102,10 +108,13 @@ class SetSpontaneousMinisRateSynapticManipulation(NewSynapticManipulation):
     title: ClassVar[str] = "Set Spontaneous Minis Rate"
 
     rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=0.0,
         title="Spontaneous Minis Rate",
         description="Set the spontaneous minis rate in Hz.",
+        json_schema_extra={
+            "units": "Hz",
+            "ui_element": "float_parameter_sweep",
+        },
         units="Hz",
     )
 
@@ -164,10 +173,12 @@ class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
     )
 
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=0.7050728631217412,
         title="Scale U_SE (ACh)",
         description="Scale the U_SE (ACh) parameter of the Tsodyks-Markram synaptic model.",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+        },
     )
 
     @staticmethod
@@ -187,11 +198,13 @@ class SynapticMgManipulation(GlobalSynapticManipulation):
     title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
 
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=2.4,
         title="Extracellular Magnesium Concentration",
         description="Extracellular magnesium concentration in millimoles (mM).",
-        units="mM",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mM",
+        },
     )
 
     @staticmethod
