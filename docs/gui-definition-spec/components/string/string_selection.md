@@ -9,19 +9,12 @@ Reference schema: [string_selection](reference_schemas/string_selection.json)
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
-<<<<<<< HEAD
-        ui_element="string_selection",
-        title="Option",
-        description="Option description.",
-        default="A",
-=======
         title="Option",
         description="Option description.",
         default="A",
         json_schema_extra={
             "ui_element": "string_selection
         }
->>>>>>> main
     )
 ```
 
