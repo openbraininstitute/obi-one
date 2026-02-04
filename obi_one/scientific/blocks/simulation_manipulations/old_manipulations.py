@@ -11,10 +11,11 @@ class SynapticManipulation(Block, ABC):
     def _get_override_name() -> str:
         pass
 
-    def config(self) -> dict:
-        return self._generate_config()
+    def config(self, default_node_set: str = "All") -> dict:
+        self._default_node_set = default_node_set
+        return self._generate_sonata_manipulations_list()
 
-    def _generate_config(self) -> dict:
+    def _generate_sonata_manipulations_list(self) -> dict:
         sonata_config = {
             "name": self._get_override_name(),
             "source": "All",
@@ -22,14 +23,14 @@ class SynapticManipulation(Block, ABC):
             "synapse_configure": self._get_synapse_configure(),
         }
 
-        return sonata_config
+        return [sonata_config]
 
 
 class GlobalSynapticManipulation(SynapticManipulation):
     def _get_modoverride_name(self) -> str:
         pass
 
-    def _generate_config(self) -> dict:
+    def _generate_sonata_manipulations_list(self) -> dict:
         sonata_config = {
             "name": self._get_override_name(),
             "source": "All",
@@ -38,7 +39,7 @@ class GlobalSynapticManipulation(SynapticManipulation):
             "modoverride": self._get_modoverride_name(),
         }
 
-        return sonata_config
+        return [sonata_config]
 
 
 class ScaleAcetylcholineUSESynapticManipulation(SynapticManipulation):
