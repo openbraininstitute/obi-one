@@ -149,49 +149,49 @@ class MorphologyVisualisationScanConfig(ScanConfig, abc.ABC):
             default=(1.0, 0.0, 0.0),
             title="Soma Color",
             description="Color of the soma in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         axon_color: tuple[float, float, float] = Field(
             default=(0.0, 1.0, 0.0),
             title="Axon Color",
             description="Color of the axon in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         basal_dendrites_color: tuple[float, float, float] = Field(
             default=(0.0, 0.0, 1.0),
             title="Basal Dendrites Color",
             description="Color of the basal dendrites in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         apical_dendrites_color: tuple[float, float, float] = Field(
             default=(1.0, 1.0, 0.0),
             title="Apical Dendrites Color",
             description="Color of the apical dendrites in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         spines_color: tuple[float, float, float] = Field(
             default=(1.0, 0.0, 1.0),
             title="Spines Color",
             description="Color of the spines in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         nucleus_color: tuple[float, float, float] = Field(
             default=(0.0, 1.0, 1.0),
             title="Nucleus Color",
             description="Color of the nucleus in RGB format (values between 0 and 1).",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
         articulations_color: tuple[float, float, float] = Field(
             default=(0.5, 0.5, 0.5),
             title="Articulations Color",
             description="Color of the articulations in RGB format (values between 0 and 1). Applied only if MORPHOLOGY_RECONSTRUCTION_ALGORITHM=articulated-sections",
-            json_schema_extra={"ui_element": "color_picker"},
+            json_schema_extra={"ui_hidden": True},
         )
 
     info: Info = Field(
@@ -248,6 +248,9 @@ class MorphologyVisualisationSingleConfig(SkeletonizationScanConfig, SingleConfi
     ) -> None:
         pass
 
+def neuro_morph_vis_rgb_representation(color: tuple[float, float, float]) -> str:
+    """Converts a tuple of floats representing RGB values to a string representation used in NeuroMorphoVis configuration."""
+    return "_".join(str(int(x * 255)) for x in color)
 
 class MorphologyVisualisationTask(Task):
     config: MorphologyVisualisationSingleConfig
@@ -260,15 +263,31 @@ class MorphologyVisualisationTask(Task):
     ) -> None:
         
         ex_str = ""
-        ex_str += self.config.initialize.cell_morphology.SWC_PATH + "\n"
-        ex_str += self.config.initialize.camera_view + "\n"
+        ex_str += "MORPHOLOGY_FILE=" + self.config.initialize.cell_morphology.SWC_PATH + "\n"
 
+        ex_str += "SOMA_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.soma_color) + "\n"
+        ex_str += "AXON_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.axon_color) + "\n"
+        ex_str += "BASAL_DENDRITES_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.basal_dendrites_color) + "\n"
+        ex_str += "APICAL_DENDRITE_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.apical_dendrites_color) + "\n"
+        ex_str += "SPINES_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.spines_color) + "\n"
+        ex_str += "NUCLEUS_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.nucleus_color) + "\n"
+
+        exc_str += "SHADER=" + self.config.initialize.shader_type + "\n"
+        exc_str += "RENDER_SCALE_BAR=" + ("yes" if self.config.initialize.render_scale_bar else "no") + "\n"
+        exc_str += "FRAME_RESOLUTION=" + str(self.config.initialize.frame_resolution) + "\n"
+        exc_str += "RENDER_IMAGES_TO_SCALE=" + ("yes" if self.config.initialize.render_images_to_scale else "no") + "\n"
+        exc_str += "RENDERING_VIEW=" + self.config.initialize.rendering_view + "\n"
+        exc_str += "CAMERA_VIEW=" + self.config.initialize.camera_view + "\n"
+
+
+        # If morphology reconstruction algorithm is set to articulated-sections
+        ex_str += "ARTICULATIONS_COLOR=" + neuro_morph_vis_rgb_representation(self.config.initialize.articulations_color) + "\n"
 
         # if RENDER_TO_SCALE=yes
-        # ex_str += "RESOLUTION_SCALE_FACTOR=" + str(self.config.initialize.resolution_scale_factor) + "\n"
+        ex_str += "RESOLUTION_SCALE_FACTOR=" + str(self.config.initialize.resolution_scale_factor) + "\n"
 
         # if RENDERING_VIEW=close-up
-        # ex_str += "CLOSEUP_VIEW_DIMENSIONS=" + str(self.config.initialize.close_up_dimensions) + "\n"
+        ex_str += "CLOSEUP_VIEW_DIMENSIONS=" + str(self.config.initialize.close_up_dimensions) + "\n"
 
 
         # ex_str += OUTPUT_DIRECTORY + "\n"
