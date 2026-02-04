@@ -36,18 +36,23 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
     default=0.0,
     title="Timestamp Offset",
     description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
-    units="ms",
+    json_schema_extra={
+        "ui_element": "float_parameter_sweep",
+        "units": "ms",
+    },
 )
 
 
 class Stimulus(Block, ABC):
-    timestamps: (
-        Annotated[
-            TimestampsReference,
-            Field(title="Timestamps", description="Timestamps at which the stimulus is applied."),
-        ]
-        | None
-    ) = None
+    timestamps: TimestampsReference | None = Field(
+        default=None,
+        title="Timestamps",
+        description="Timestamps at which the stimulus is applied.",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": TimestampsReference.__name__,
+        },
+    )
 
     _default_node_set: str = PrivateAttr(default="All")
     _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
@@ -58,17 +63,16 @@ class Stimulus(Block, ABC):
 
 
 class SomaticStimulus(Stimulus, ABC):
-    neuron_set: (
-        Annotated[
-            NeuronSetReference,
-            Field(
-                title="Neuron Set",
-                description="Neuron set to which the stimulus is applied.",
-                supports_virtual=False,
-            ),
-        ]
-        | None
-    ) = None
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Neuron set to which the stimulus is applied.",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": False,
+        },
+    )
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
@@ -76,7 +80,10 @@ class SomaticStimulus(Stimulus, ABC):
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     _represents_physical_electrode: bool = PrivateAttr(default=False)
@@ -127,7 +134,10 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.1,
         description="The injected current. Given in nanoamps.",
         title="Amplitude",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -165,7 +175,10 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
         title="Percentage of Threshold Current",
         description="The percentage of a cell's threshold current to inject when the stimulus \
                     activates.",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -203,14 +216,20 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         title="Start Amplitude",
         description="The amount of current initially injected when the stimulus activates. "
         "Given in nanoamps.",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
     amplitude_end: float | list[float] = Field(
         default=0.2,
         title="End Amplitude",
         description="If given, current is interpolated such that current reaches this value when "
         "the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -251,14 +270,20 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         description="The percentage of a cell's threshold current to inject "
         "when the stimulus activates.",
         title="Percentage of Threshold Current (Start)",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
     percentage_of_threshold_current_end: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
         description="If given, the percentage of a cell's threshold current is interpolated such "
         "that the percentage reaches this value when the stimulus concludes.",
         title="Percentage of Threshold Current (End)",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -296,14 +321,20 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.01,
         description="The mean value of current to inject. Given in nanoamps (nA).",
         title="Mean Amplitude",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
         title="Variance",
-        units="nA^2",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA^2",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -344,14 +375,20 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         description="The mean value of current to inject as a percentage of a cell's \
                     threshold current.",
         title="Percentage of Threshold Current (Mean)",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.01,
         description="The variance around the mean of current to inject using a \
                     normal distribution.",
         title="Variance",
-        units="nA^2",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA^2",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -392,7 +429,10 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         description="The amount of current initially injected when each pulse activates. "
         "Given in nanoamps (nA).",
         title="Amplitude",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
     width: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
@@ -401,7 +441,10 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         default=_DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
     frequency: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
@@ -410,7 +453,10 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         default=1.0,
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -449,7 +495,10 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.1,
         description="The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
         title="Maximum Amplitude",
-        units="nA",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "nA",
+        },
     )
     frequency: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
@@ -458,7 +507,10 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         default=1.0,
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
     dt: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
@@ -467,7 +519,10 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         default=0.025,
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -509,7 +564,10 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
                             value will give more than 100. E.g. -20 will inject 120\\% of the \
                                 threshold current.",
         title="Percentage Below Threshold",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
 
     def _generate_config(self) -> dict:
@@ -571,14 +629,27 @@ class SpikeStimulus(Stimulus):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
-    source_neuron_set: (
-        (Annotated[NeuronSetReference, Field(title="Neuron Set (Source)", supports_virtual=True)])
-        | None
-    ) = None
-    targeted_neuron_set: (
-        Annotated[NeuronSetReference, Field(title="Neuron Set (Target)", supports_virtual=False)]
-        | None
-    ) = None
+    source_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Source)",
+        description="Source neuron set to simulate",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": True,
+        },
+    )
+
+    targeted_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Target)",
+        description="Target neuron set to simulate",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": True,
+        },
+    )
 
     timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
 
@@ -697,7 +768,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
     frequency: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
@@ -706,13 +780,19 @@ class PoissonSpikeStimulus(SpikeStimulus):
         default=1.0,
         title="Frequency",
         description="Mean frequency (Hz) of the Poisson input.",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
         description="Seed for the random number generator to ensure "
         "reproducibility of the spike generation.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
     )
 
     def generate_spikes(
@@ -840,7 +920,10 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration of the stimulus in milliseconds.",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     # --- sinusoidal rate params ---
@@ -851,7 +934,10 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         default=0.00001,
         title="Minimum Rate",
         description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
 
     maximum_rate: (
@@ -862,7 +948,10 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Maximum Rate",
         description="Maximum rate of the stimulus in Hz. Must be greater than or equal to "
         "Minimum Rate.",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
 
     modulation_frequency_hz: (
@@ -872,20 +961,29 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         default=5.0,
         title="Modulation Frequency",
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
 
     phase_degrees: float | list[float] = Field(
         default=0.0,
         title="Phase Offset",
         description="Phase offset (degrees) of the sinusoid.",
-        units="°",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "°",
+        },
     )
 
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
         description="Seed for the random number generator to ensure reproducibility.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
     )
 
     @model_validator(mode="after")

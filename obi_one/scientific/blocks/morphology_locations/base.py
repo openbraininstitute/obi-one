@@ -12,16 +12,16 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
     random_seed: int | list[int] = Field(
-        default=0, name="Random seed", description="Seed for the random generation of locations"
+        default=0, title="Random seed", description="Seed for the random generation of locations"
     )
     number_of_locations: int | list[int] = Field(
         default=1,
-        name="Number of locations",
+        title="Number of locations",
         description="Number of locations to generate on morphology",
     )
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
         default=None,
-        name="Section types",
+        title="Section types",
         description="Types of sections to generate locations on. 2: axon, 3: basal, 4: apical",
     )
 

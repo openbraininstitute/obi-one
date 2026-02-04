@@ -16,7 +16,7 @@ import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from pydantic import Field, PrivateAttr
+from pydantic import ConfigDict, Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -60,17 +60,20 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EXTRACTION_TARGET,
-            ]
+    model_config = ConfigDict(
+        json_schema_extra={
+            "ui_enabled": True,
+            "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
         }
+    )
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Parent circuit to extract a sub-circuit from."
+            title="Circuit",
+            description="Parent circuit to extract a sub-circuit from.",
+            json_schema_extra={
+                "ui_element": "model_identifier",
+            },
         )
         do_virtual: bool = Field(
             default=True,
@@ -78,6 +81,9 @@ class CircuitExtractionScanConfig(ScanConfig):
             description="Include virtual neurons which target the cells contained in the specified"
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
+            json_schema_extra={
+                "ui_element": "boolean_input",
+            },
         )
         create_external: bool = Field(
             default=True,
@@ -85,26 +91,38 @@ class CircuitExtractionScanConfig(ScanConfig):
             description="Convert (non-virtual) neurons which are outside of the specified neuron"
             " set, but which target the cells contained therein, into a new external population"
             " of virtual neurons (together with their connectivity onto the specified neuron set).",
+            json_schema_extra={
+                "ui_element": "boolean_input",
+            },
         )
 
     info: Info = Field(
         title="Info",
         description="Information about the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP,
+            "group_order": 0,
+        },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP,
+            "group_order": 1,
+        },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
-        group=BlockGroup.EXTRACTION_TARGET,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_union",
+            "group": BlockGroup.EXTRACTION_TARGET,
+            "group_order": 0,
+        },
     )
 
     def create_campaign_entity_with_config(
@@ -395,7 +413,6 @@ class CircuitExtractionTask(Task):
             used=parent,
             generated=registered_circuit,
             derivation_type=derivation_type,
-            authorized_public=False,
         )
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
@@ -580,56 +597,57 @@ class CircuitExtractionTask(Task):
                 # among populations)
                 shutil.copyfile(src_file, dest_file)
 
-    def _create_execution_activity(
-        self, db_client: Client = None
+    @staticmethod
+    def _get_execution_activity(
+        db_client: Client = None,
+        execution_activity_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
-        """Create and register a CircuitExtractionExecution activity upon task launch."""
-        # TODO: To be moved to service or task manager
-        if db_client:
-            execution_model = models.CircuitExtractionExecution(
-                start_time=datetime.now(UTC),
-                used=[self.config.single_entity],
-                status=types.CircuitExtractionExecutionStatus.created,
-                authorized_public=False,
+        """Returns the CircuitExtractionExecution activity.
+
+        Such activity is expected to be created and managed externally.
+        """
+        if db_client and execution_activity_id:
+            execution_activity = db_client.get_entity(
+                entity_type=models.CircuitExtractionExecution, entity_id=execution_activity_id
             )
-            execution_entity = db_client.register_entity(execution_model)
-            L.info("CircuitExtractionExecution activity CREATED")
         else:
-            execution_entity = None
-        return execution_entity
+            execution_activity = None
+        return execution_activity
 
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
-        execution_entity: models.CircuitExtractionExecution | None = None,
+        execution_activity: models.CircuitExtractionExecution | None = None,
         circuit_id: str | None = None,
     ) -> models.CircuitExtractionExecution | None:
-        """Updates a CircuitExtractionExecution activity after task completion."""
-        # TODO: To be moved to service or task manager
-        if db_client and execution_entity and circuit_id:
-            done_entity = db_client.update_entity(
-                entity_id=execution_entity.id,
+        """Updates a CircuitExtractionExecution activity after task completion.
+
+        Registers only the generated circuit ID. Other updates (status,
+        end time, executor, etc) are expected to be managed externally.
+        """
+        if db_client and execution_activity and circuit_id:
+            upd_dict = {"generated_ids": [circuit_id]}
+            upd_entity = db_client.update_entity(
+                entity_id=execution_activity.id,
                 entity_type=models.CircuitExtractionExecution,
-                attrs_or_entity={
-                    "end_time": datetime.now(UTC),
-                    "status": types.CircuitExtractionExecutionStatus.done,
-                    "generated_ids": [circuit_id],
-                },
+                attrs_or_entity=upd_dict,
             )
-            L.info("CircuitExtractionExecution activity DONE")
+            L.info("CircuitExtractionExecution activity UPDATED")
         else:
-            done_entity = None
-        return done_entity
+            upd_entity = None
+        return upd_entity
 
     def execute(
         self,
         *,
         db_client: Client = None,
         entity_cache: bool = False,
+        execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        # Create execution activity
-        # TODO: To be moved to service or task manager
-        execution_activity = self._create_execution_activity(db_client=db_client)
+        # Get execution activity (expected to be created and managed externally)
+        execution_activity = CircuitExtractionTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
 
         # Resolve parent circuit (local path or staging from ID)
         self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
@@ -742,26 +760,22 @@ class CircuitExtractionTask(Task):
             # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
             # registered_circuit=new_circuit_entity)
 
-            # TODO: Derivation link
-            # https://github.com/openbraininstitute/entitycore/issues/427
-            # --> Not yet supported to create inter-project derivations
-            # self._add_derivation_link(db_client=db_client,
-            # registered_circuit=new_circuit_entity)
+            # Derivation link
+            self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
 
             # TODO: Contribution links
             # --> Contributors to be still defined (don't copy parent circuit's ones)
             # self._add_contributions(db_client=db_client,
             # registered_circuit=new_circuit_entity)
 
-            L.info("Registration DONE")
+            # Update execution activity (if any)
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                circuit_id=new_circuit_id,
+            )
 
-        # Update execution activity
-        # TODO: To be moved to service or task manager
-        self._update_execution_activity(
-            db_client=db_client,
-            execution_entity=execution_activity,
-            circuit_id=new_circuit_id,
-        )
+            L.info("Registration DONE")
 
         # Clean-up
         self._cleanup_temp_dir()

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import ConfigDict, Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -86,37 +86,44 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
+    model_config = ConfigDict(
+        json_schema_extra={
+            "ui_enabled": True,
+            "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
                 BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
-                BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             ],
             "default_block_reference_labels": {
                 NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
                 TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             },
         }
+    )
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
         title="Timestamps",
-        reference_type=TimestampsReference.__name__,
         description="Timestamps for the simulation.",
-        singular_name="Timestamps",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": TimestampsReference.__name__,
+            "singular_name": "Timestamps",
+            "group": BlockGroup.EVENTS_GROUP,
+            "group_order": 0,
+        },
     )
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,
-        reference_type=RecordingReference.__name__,
         description="Recordings for the simulation.",
-        singular_name="Recording",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": RecordingReference.__name__,
+            "singular_name": "Recording",
+            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
     class Initialize(Block):
@@ -144,9 +151,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
-            units="ms",
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+                "units": "ms",
+            },
         )
-        extracellular_calcium_concentration: list[NonNegativeFloat] | NonNegativeFloat = Field(
+        extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
             default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
@@ -155,16 +165,27 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 "which in turn increases the level of network activity. In vivo values are "
                 "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
             ),
-            units="mM",
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+                "units": "mM",
+            },
         )
-        v_init: list[float] | float = Field(
+        v_init: float | list[float] = Field(
             default=-80.0,
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
-            units="mV",
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+                "units": "mV",
+            },
         )
-        random_seed: list[int] | int = Field(
-            default=1, description="Random seed for the simulation."
+        random_seed: int | list[int] = Field(
+            default=1,
+            title="Random Seed",
+            description="Random seed for the simulation.",
+            json_schema_extra={
+                "ui_element": "int_parameter_sweep",
+            },
         )
 
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
@@ -182,11 +203,14 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
 
-    info: Info = Field(
+    info: Info = Field(  # type: ignore[]
         title="Info",
         description="Information about the simulation campaign.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 0,
+        },
     )
 
     def create_campaign_entity_with_config(
@@ -257,24 +281,47 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model", description="ME Model to simulate."
+            title="ME Model",
+            description="ME Model to simulate.",
+            json_schema_extra={"ui_element": "model_identifier"},
         )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
     stimuli: dict[str, MEModelStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
-        reference_type=StimulusReference.__name__,
         description="Stimuli for the simulation.",
-        singular_name="Stimulus",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": StimulusReference.__name__,
+            "singular_name": "Stimulus",
+            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            "group_order": 0,
+        },
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "ui_enabled": True,
+            "group_order": [
+                BlockGroup.SETUP_BLOCK_GROUP,
+                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                BlockGroup.EVENTS_GROUP,
+            ],
+            "default_block_reference_labels": {
+                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            },
+        }
     )
 
 
@@ -287,47 +334,64 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,
-        reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": NeuronSetReference.__name__,
+            "singular_name": "Neuron Set",
+            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group_order": 0,
+        },
     )
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
         default_factory=dict,
-        reference_type=SynapticManipulationsReference.__name__,
         description="Synaptic manipulations for the simulation.",
-        singular_name="Synaptic Manipulation",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": SynapticManipulationsReference.__name__,
+            "singular_name": "Synaptic Manipulation",
+            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit", description="Circuit to simulate."
+            title="Circuit",
+            description="Circuit to simulate.",
+            json_schema_extra={"ui_element": "model_identifier"},
         )
-        node_set: (
-            Annotated[
-                NeuronSetReference, Field(title="Neuron Set", description="Neuron set to simulate.")
-            ]
-            | None
-        ) = None
+        node_set: NeuronSetReference | None = Field(
+            default=None,
+            title="Neuron Set",
+            description="Neuron set to simulate.",
+            json_schema_extra={
+                "ui_element": "reference",
+                "reference_type": NeuronSetReference.__name__,
+            },
+        )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
     stimuli: dict[str, StimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
-        reference_type=StimulusReference.__name__,
         description="Stimuli for the simulation.",
-        singular_name="Stimulus",
-        group=BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": StimulusReference.__name__,
+            "singular_name": "Stimulus",
+            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            "group_order": 0,
+        },
     )
 
 
@@ -340,23 +404,33 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
 
     neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
         default_factory=dict,
-        reference_type=NeuronSetReference.__name__,
         description="Neuron sets for the simulation.",
-        singular_name="Neuron Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": NeuronSetReference.__name__,
+            "singular_name": "Neuron Set",
+            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group_order": 0,
+        },
     )
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
-        ) = Field(title="MEModel With Synapses", description="MEModel with synapses to simulate.")
+        ) = Field(
+            title="MEModel With Synapses",
+            description="MEModel with synapses to simulate.",
+            json_schema_extra={"ui_element": "model_identifier"},
+        )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP_BLOCK_GROUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.SETUP_BLOCK_GROUP,
+            "group_order": 1,
+        },
     )
 
 

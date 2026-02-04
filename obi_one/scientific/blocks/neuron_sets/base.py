@@ -47,11 +47,19 @@ class AbstractNeuronSet(Block, abc.ABC):
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
 
     sample_seed: int | list[int] = Field(
-        default=1, title="Sample Seed", description="Seed for random sampling."
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
     )
 
     @abc.abstractmethod
