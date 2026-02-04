@@ -109,8 +109,8 @@ def _circuit_simulation_job_data(
     task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "code": task_definition.code,
-        "resources": task_definition.resources,
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": task_definition.resources.model_dump(mode="json"),
         "inputs": [
             "--simulation-id",
             str(simulation_id),
@@ -135,8 +135,8 @@ def _generic_job_data(
     task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "code": task_definition.code,
-        "resources": task_definition.resources,
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": task_definition.resources.model_dump(mode="json"),
         "inputs": [
             f"--entity_type {task_definition.config_type_name}",
             f"--entity_id {config_id}",

@@ -275,6 +275,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "type": "cluster",
             "instances": 1,
             "instance_type": "small",
+            "timelimit": "00:10",
         },
         "inputs": [
             "--simulation-id",
@@ -329,7 +330,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute/obi-one.git",
-            "ref": task_definition.code["ref"],
+            "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
             "dependencies": "launch_scripts/launch_task_for_single_config_asset/requirements.txt",
         },
