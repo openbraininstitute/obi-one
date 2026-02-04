@@ -59,18 +59,6 @@ class Block:
         title="Option",
         description="Option description.",
         default="A",
-<<<<<<< HEAD
-        description_by_key={ # Optional
-            "A": "Description for option A.",
-            "B": "Description for option B.",
-            "C": "Description for option C.",
-        },
-        latex_by_key={ # Optional
-            "A": r"A_{latex}",
-            "B": r"B_{latex}",
-            "C": r"C_{latex}",
-        },
-=======
         json_schema_extra={
             "title_by_key": {
                 "A": r"A_{Title}",
@@ -88,8 +76,6 @@ class Block:
                 "C": r"C_{latex}",
             }
         }
-        
->>>>>>> main
     )
 ```
 
