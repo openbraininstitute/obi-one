@@ -127,6 +127,11 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
         filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
+        measurement_kinds = filled["data"][0]["measurement_kinds"]
+        filled["data"][0]["measurement_kinds"] = [
+            mk for mk in measurement_kinds
+            if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
+        ]
         return filled["data"][0]["measurement_kinds"]
     except Exception as e:
         raise HTTPException(

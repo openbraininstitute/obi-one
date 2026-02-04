@@ -91,6 +91,8 @@ def _process_measurement(
     else:
         data = nm.get(nm_get_key, neuron)
 
+    if isinstance(data, list) and not data:
+        data = None
     elements = [label, data, unit]
 
     if isinstance(data, list) and data:
@@ -276,6 +278,8 @@ def fill_json(
                     payload = (payload, entry[2])
                 if "measurement_items" not in measurement:
                     measurement["measurement_items"] = []
+                if payload is None or (isinstance(payload, list) and len(payload) == 0):
+                    continue
                 update_measurement_items(measurement["measurement_items"], payload)
                 break
     return template
