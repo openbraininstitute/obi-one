@@ -12,7 +12,7 @@ from typing import Annotated, Any, ClassVar
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from pydantic import Field, StringConstraints
+from pydantic import ConfigDict, Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -83,14 +83,15 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "block_block_group_order": [
                 BlockGroup.SETUP,
                 BlockGroup.EQUATIONS,
                 BlockGroup.GATEEXPONENTS,
             ]
         }
+    )
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
@@ -136,60 +137,66 @@ class IonChannelFittingScanConfig(ScanConfig):
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 1},
     )
 
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 0},
     )
 
     minf_eq: equations_module.MInfUnion = Field(
         title=r"m_{\infty} equation",
-        reference_type=equations_module.MInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=0,
         description=(
             r"Steady state activation parameter \( m_{\infty} \) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.MInfReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 0,
+        },
     )
     mtau_eq: equations_module.MTauUnion = Field(
         title=r"\tau_m equation",
-        reference_type=equations_module.MTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=1,
         description=(
             r"Activation time constant \(\tau_m\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.MTauReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 1,
+        },
     )
     hinf_eq: equations_module.HInfUnion = Field(
         title=r"h_{\infty} equation",
-        reference_type=equations_module.HInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=2,
         description=(
             r"Steady state inactivation parameter \(h_{\infty}\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.HInfReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 2,
+        },
     )
     htau_eq: equations_module.HTauUnion = Field(
         title=r"\tau_h equation",
-        reference_type=equations_module.HTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=3,
         description=(
             r"Inactivation time constant \(\tau_h\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.HTauReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 3,
+        },
     )
 
     gate_exponents: GateExponents = Field(
@@ -198,8 +205,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
-        group=BlockGroup.GATEEXPONENTS,
-        group_order=0,
+        json_schema_extra={"group": BlockGroup.GATEEXPONENTS, "group_order": 0},
     )
 
     def create_campaign_entity_with_config(
@@ -467,6 +473,7 @@ class IonChannelFittingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
