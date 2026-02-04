@@ -1,3 +1,4 @@
+import logging
 import math
 import sys
 
@@ -5,6 +6,8 @@ from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
+
+L = logging.getLogger()
 
 openapi_schema = get_openapi(
     title=app.title,
@@ -236,6 +239,156 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_string_selection(schema: dict, param: str, ref: str) -> None:
+    # Make sure type
+    if schema.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: string_dropdown param {param} should "
+            "be a union with a 'string' as first element"
+        )
+        raise ValidationError(msg) from None
+
+    enum_list = schema.get("enum")
+
+    # Make sure enum field exists
+    if enum_list is None:
+        msg = (
+            f"Validation error at {ref}: string_dropdown param {param} should "
+            "have an 'enum' field in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    # Make sure enum is a non-empty list
+    if type(enum_list) is not list or len(enum_list) == 0:
+        msg = (
+            f"Validation error at {ref}: string_dropdown param {param} should "
+            "have a non-empty list as its 'enum' field"
+        )
+        raise ValidationError(msg) from None
+
+    # Make sure all the values in the enum are strings
+    if not all(isinstance(val, str) for val in enum_list):
+        msg = (
+            f"Validation error at {ref}: string_dropdown param {param} has "
+            "an enum value that is not a string"
+        )
+        raise ValidationError(msg) from None
+
+    # Try validating a single string value
+    try:
+        validate(enum_list[0], schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: string_dropdown param {param} failed to validate a string"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_dictionary_by_enum_key(
+    param: str, ref: str, enum_list: list, dictionary_by_enum_key: dict, dictionary_name: str
+) -> None:
+    if dictionary_by_enum_key is None:
+        return
+
+    # Check that description_by_key is a dict
+    if type(dictionary_by_enum_key) is not dict:
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} should "
+            f"'{dictionary_name}' be a dictionary"
+        )
+        raise ValidationError(msg) from None
+
+    # Check that description_by_key has a key for each enum key
+    if sorted(enum_list) != sorted(dictionary_by_enum_key.keys()):
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} has "
+            f"'{dictionary_name}' with keys different from 'enum' values"
+        )
+        raise ValidationError(msg) from None
+
+    # Check that each description is a string
+    if not all(isinstance(val, str) for val in dictionary_by_enum_key.values()):
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} has "
+            f"a non-string description in '{dictionary_name}'"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_list: list) -> None:
+    description_by_key = schema.get("description_by_key")
+    latex_by_key = schema.get("latex_by_key")
+    title_by_key = schema.get("title_by_key")
+
+    # Make sure at least one of description_by_key or latex_by_key exists
+    if description_by_key is None and latex_by_key is None:
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} should "
+            "have at least one of 'description_by_key' and 'latex_by_key' fields in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    if title_by_key is None:
+        msg = (
+            f"Validation error at {ref}: enhanced string param {param} should "
+            "have a 'title_by_key' field in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    # Validate title_by_key, description_by_key, latex_by_key dictionaries
+    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, "description_by_key")
+    validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, "latex_by_key")
+    validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, "title_by_key")
+
+
+def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
+    validate_string_selection(schema=schema, param=param, ref=ref)
+
+    enum_list = schema.get("enum")
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
+
+
+def validate_string_constant(schema: dict, param: str, ref: str) -> None:
+    # Make sure type
+    if schema.get("type") != "string":
+        msg = f"Validation error at {ref}: string_constant param {param} should be of type 'string'"
+        raise ValidationError(msg) from None
+
+    const_value = schema.get("const")
+
+    # Make sure const field exists
+    if const_value is None:
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} should "
+            "have a 'const' field in its schema"
+        )
+        raise ValidationError(msg) from None
+
+    # Make sure const is a string
+    if not isinstance(const_value, str):
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} should "
+            "have a string as its 'const' field"
+        )
+        raise ValidationError(msg) from None
+
+    # Try validating the constant value
+    try:
+        validate(const_value, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: string_constant param {param} failed to validate a string"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_string_constant_enhanced(schema: dict, param: str, ref: str) -> None:
+    validate_string_constant(schema=schema, param=param, ref=ref)
+
+    enum_list = [schema.get("const")]
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
+
+
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
     validator = Draft7Validator(schema, resolver=resolver)
@@ -288,7 +441,7 @@ def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get("ui_element"):
         case "string_input":
             validate_string_param(schema, param, ref)
@@ -302,6 +455,14 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:
             validate_entity_property_dropdown(schema, param, ref)
         case "reference":
             validate_reference(schema, param, ref)
+        case "string_selection":
+            validate_string_selection(schema, param, ref)
+        case "string_selection_enhanced":
+            validate_string_selection_enhanced(schema, param, ref)
+        case "string_constant":
+            validate_string_constant(schema, param, ref)
+        case "string_constant_enhanced":
+            validate_string_constant_enhanced(schema, param, ref)
         case "neuron_ids":
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":

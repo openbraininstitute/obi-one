@@ -17,3 +17,23 @@ class CallBackEvent(StrEnum):
 class CallBackAction(StrEnum):
     http_request = auto()
     http_request_with_token = auto()
+
+
+class ResourcesConfigType(StrEnum):
+    """Resources configuration type."""
+
+    machine = auto()
+    cluster = auto()
+
+
+class CodeType(StrEnum):
+    """Code type."""
+
+    python_repository = auto()
+    builtin = auto()
+
+
+class BuiltinScript(StrEnum):
+    """Builtin script."""
+
+    circuit_simulation = auto()

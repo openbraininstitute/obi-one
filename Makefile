@@ -80,6 +80,10 @@ test-schema: ## Run schema tests locally.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/schema/test_schema.py --no-cov --disable-warnings
 
+test-schema-verbose: ## Run schema tests locally with verbose output.
+	@$(call load_env,test-local)
+	uv run -m pytest tests/schema/test_schema.py --no-cov --disable-warnings --log-cli-level=INFO
+
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test
 

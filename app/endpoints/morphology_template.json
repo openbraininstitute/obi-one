@@ -46,6 +46,39 @@
                         "pref_label": "total_volume"
                     },
                     {
+                        "structural_domain": "axon",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median",  "unit": "dimensionless", "value": null},
+                            {"name": "mean",    "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "section_strahler_orders"
+                    },
+                    {
+                        "structural_domain": "axon",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "partition_asymmetry"
+                        },
+                        {
+                        "structural_domain": "axon",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
+                        ],
+                        "pref_label": "partition_asymmetry_length"
+                    },
+                    {
                         "structural_domain": "basal_dendrite",
                         "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
                         "pref_label": "neurite_max_radial_distance"
@@ -370,6 +403,39 @@
                         "pref_label": "total_volume"
                     },
                     {
+                        "structural_domain": "apical_dendrite",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median",  "unit": "dimensionless", "value": null},
+                            {"name": "mean",    "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "section_strahler_orders"
+                    },
+                    {
+                        "structural_domain": "apical_dendrite",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "dimensionless", "value": null},
+                            {"name": "maximum", "unit": "dimensionless", "value": null},
+                            {"name": "median", "unit": "dimensionless", "value": null},
+                            {"name": "mean", "unit": "dimensionless", "value": null},
+                            {"name": "standard_deviation", "unit": "dimensionless", "value": null}
+                        ],
+                        "pref_label": "partition_asymmetry"
+                        },
+                        {
+                        "structural_domain": "apical_dendrite",
+                        "measurement_items": [
+                            {"name": "minimum", "unit": "μm", "value": null},
+                            {"name": "maximum", "unit": "μm", "value": null},
+                            {"name": "median", "unit": "μm", "value": null},
+                            {"name": "mean", "unit": "μm", "value": null},
+                            {"name": "standard_deviation", "unit": "μm", "value": null}
+                        ],
+                        "pref_label": "partition_asymmetry_length"
+                    },
+                    {
                         "structural_domain": "neuron_morphology",
                         "measurement_items": [{"name": "raw", "unit": "μm", "value": null}],
                         "pref_label": "morphology_max_radial_distance"
@@ -444,4 +510,4 @@
         ],
         "pagination": {"page": 1, "page_size": 100, "total_items": 1},
         "facets": null
-} 
+}
