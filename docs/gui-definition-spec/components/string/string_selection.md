@@ -69,6 +69,7 @@ class Block:
                 "C": r"C_{latex}",
             }
         }
+        
     )
 ```
 
