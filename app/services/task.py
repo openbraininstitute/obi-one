@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from uuid import UUID
 
 import entitysdk
@@ -36,12 +35,6 @@ def submit_task_job(
         activity_status="pending",
         activity_type=task_definition.activity_type,
     ).id
-
-    # Job specification
-    time_limit = (
-        "00:10"  # TODO: Determine and set proper time limit and compute/memory requirements
-    )
-
     failure_callback = _generate_failure_callback(
         activity_id=activity_id,
         task_type=task_definition.task_type,
@@ -57,21 +50,19 @@ def submit_task_job(
                 simulation_execution_id=activity_id,
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
+                task_definition=task_definition,
             )
         case _:
-            release_tag = settings.APP_VERSION.split("-")[0]
             config_asset_id = db_sdk.get_config_asset(
                 client=db_client,
                 config=config,
                 asset_label=task_definition.config_asset_label,
             ).id
             job_data = _generic_job_data(
-                ref=f"tag:{release_tag}",
                 entity_cache=True,
                 config_id=config_id,
                 activity_id=activity_id,
                 config_asset_id=config_asset_id,
-                time_limit=time_limit,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
@@ -115,24 +106,17 @@ def _circuit_simulation_job_data(
     simulation_execution_id: UUID,
     project_id: UUID,
     callbacks: list[CallBack],
+    task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "type": "circuit_simulation",
-        "resources": {
-            "type": "cluster",
-            "instances": 1,
-            "instance_type": "small",
-        },
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": task_definition.resources.model_dump(mode="json"),
         "inputs": [
             "--simulation-id",
             str(simulation_id),
             "--simulation-execution-id",
             str(simulation_execution_id),
         ],
-        "code": {
-            "type": "builtin",
-            "script": "circuit_simulation",
-        },
         "project_id": str(project_id),
         "callbacks": [c.model_dump(mode="json") for c in callbacks],
     }
@@ -140,33 +124,19 @@ def _circuit_simulation_job_data(
 
 def _generic_job_data(
     *,
-    ref: str,
     config_id: UUID,
     activity_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
-    time_limit: str,
     config_asset_id: UUID,
-    task_definition: TaskDefinition,
     entity_cache: bool,
     output_root: str,
     callbacks: list[CallBack],
+    task_definition: TaskDefinition,
 ) -> dict:
     return {
-        "type": "generic",
-        "resources": {
-            "type": "machine",
-            "cores": 1,
-            "memory": 2,
-            "timelimit": time_limit,
-        },
-        "code": {
-            "type": "python_repository",
-            "location": settings.OBI_ONE_REPO,
-            "ref": ref,
-            "path": str(Path(settings.OBI_ONE_LAUNCH_PATH) / "code.py"),
-            "dependencies": str(Path(settings.OBI_ONE_LAUNCH_PATH) / "requirements.txt"),
-        },
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": task_definition.resources.model_dump(mode="json"),
         "inputs": [
             f"--entity_type {task_definition.config_type_name}",
             f"--entity_id {config_id}",
