@@ -65,6 +65,50 @@ except ImportError:
     ) -> None:
         pass
 
+class EquationKeys(StrEnum):
+    """Equation keys."""
+
+    SIG_FIT_MINF = "sig_fit_minf"
+    SIG_FIT_MTAU = "sig_fit_mtau"
+    THERMO_FIT_MTAU = "thermo_fit_mtau"
+    THERMO_FIT_MTAU_V2 = "thermo_fit_mtau_v2"
+    BELL_FIT_MTAU = "bell_fit_mtau"
+    SIG_FIT_HINF = "sig_fit_hinf"
+    SIG_FIT_HTAU = "sig_fit_htau"
+
+class EquationTitlesByKey(StrEnum):
+    """Equation titles by key."""
+
+    SIG_FIT_MINF = r"Sigmoid equation for m_{\infty}"
+    SIG_FIT_MTAU = r"Sigmoid equation for \tau_{m}"
+    THERMO_FIT_MTAU = r"Double exponential denominator equation for \tau_{m}"
+    THERMO_FIT_MTAU_V2 = r"Improved double exponential denominator equation for \tau_{m}"
+    BELL_FIT_MTAU = r"Bell-shaped equation for \tau_{m}"
+    SIG_FIT_HINF = r"Sigmoid equation for h_{\infty}"
+    SIG_FIT_HTAU = r"Sigmoid equation for \tau_{h}"
+
+
+class EquationLatexByKey(StrEnum):
+    """Equation LaTeX by key."""
+    
+    SIG_FIT_MINF = r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}"
+    SIG_FIT_MTAU = (
+        r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
+        r"\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
+        r"( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
+        r" \frac{A_2}{ 1. + e^{ \frac{v - v_2}{k_2} } } "
+    )
+    THERMO_FIT_MTAU = r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
+    THERMO_FIT_MTAU_V2 = (
+        r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } }"
+                r" + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
+    )
+    BELL_FIT_MTAU = r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+    SIG_FIT_HINF = r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
+    SIG_FIT_HTAU = (
+        r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
+    )
+
 
 class BlockGroup(StrEnum):
     """Block Groups."""
@@ -74,6 +118,10 @@ class BlockGroup(StrEnum):
 
 
 class HodgkinHuxleyIonChannelModel(Block):
+
+    title: ClassVar[str] = "Hodgkin-Huxley type ion channel model"
+    description: ClassVar[str] = "Hodgkin-Huxley type ion channel model to fit. [MAYBE EXPAND LATER]"
+
     m_power: int | list[int] = Field(
         title="m exponent in channel equation",
         default=1,
@@ -97,59 +145,75 @@ class HodgkinHuxleyIonChannelModel(Block):
         json_schema_extra={"ui_element": "int_parameter_sweep"},
     )
 
-    minf_eq: Literal["sig_fit_minf"] = Field(
-        title="m_{inf} equation",
-        description="Equation to use for m_{inf}.",
-        default="sig_fit_minf",
+    minf_eq: Literal[EquationKeys.SIG_FIT_MINF] = Field(
+        title=r"m_{\infty} equation",
+        description=(
+            r"Steady state activation parameter \( m_{\infty} \) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+        ),
+        default=EquationKeys.SIG_FIT_MINF,
         json_schema_extra={
             "ui_element": "string_constant_enhanced",
-            "latex_by_key": {"sig_fit_minf": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}"},
-            "description_by_key": {"sig_fit_minf": "Sigmoid equation for m_{inf}."},
+            "title_by_key": {EquationKeys.SIG_FIT_MINF: EquationTitlesByKey.SIG_FIT_MINF},
+            "latex_by_key": {EquationKeys.SIG_FIT_MINF: EquationLatexByKey.SIG_FIT_MINF},
         },
     )
 
-    mtau_eq: Literal["sig_fit_mtau", "thermo_fit_mtau", "thermo_fit_mtau_v2", "bell_fit_mtau"] = (
+    mtau_eq: Literal[EquationKeys.SIG_FIT_MTAU, EquationKeys.THERMO_FIT_MTAU, EquationKeys.THERMO_FIT_MTAU_V2, EquationKeys.BELL_FIT_MTAU] = (
         Field(
-            title=r"\tau_m equation",
-            description="Equation to use for \tau_m.",
-            default="sig_fit_mtau",
+            title=r"\tau_{m} equation",
+            description=(
+                r"Activation time constant \(\tau_m\) equation. "
+                r"This equation will be used for solving the differential equation: "
+                r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+            ),
+            default=EquationKeys.SIG_FIT_MTAU,
             json_schema_extra={
                 "ui_element": "string_selection_enhanced",
-                "latex_by_key": {
-                    "sig_fit_mtau": r"",
-                    "thermo_fit_mtau": r"",
-                    "thermo_fit_mtau_v2": r"",
-                    "bell_fit_mtau": r"",
+                "title_by_key": {
+                    EquationKeys.SIG_FIT_MTAU: EquationTitlesByKey.SIG_FIT_MTAU,
+                    EquationKeys.THERMO_FIT_MTAU: EquationTitlesByKey.THERMO_FIT_MTAU,
+                    EquationKeys.THERMO_FIT_MTAU_V2: EquationTitlesByKey.THERMO_FIT_MTAU_V2,
+                    EquationKeys.BELL_FIT_MTAU: EquationTitlesByKey.BELL_FIT_MTAU,
                 },
-                "description_by_key": {
-                    "sig_fit_mtau": "",
-                    "thermo_fit_mtau": "",
-                    "thermo_fit_mtau_v2": "",
-                    "bell_fit_mtau": "",
+                "latex_by_key": {
+                    EquationKeys.SIG_FIT_MTAU: EquationLatexByKey.SIG_FIT_MTAU,
+                    EquationKeys.THERMO_FIT_MTAU: EquationLatexByKey.THERMO_FIT_MTAU,
+                    EquationKeys.THERMO_FIT_MTAU_V2: EquationLatexByKey.THERMO_FIT_MTAU_V2,
+                    EquationKeys.BELL_FIT_MTAU: EquationLatexByKey.BELL_FIT_MTAU,
                 },
             },
         )
     )
 
-    hinf_eq: Literal["sig_fit_hinf"] = Field(
+    hinf_eq: Literal[EquationKeys.SIG_FIT_HINF] = Field(
         title="h_{inf} equation",
-        description="Equation to use for h_{inf}.",
-        default="sig_fit_hinf",
+        description=(
+            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
+        default=EquationKeys.SIG_FIT_HINF,
         json_schema_extra={
             "ui_element": "string_constant_enhanced",
-            "latex_by_key": {"sig_fit_hinf": r""},
-            "description_by_key": {"sig_fit_hinf": ""},
+            "title_by_key": {EquationKeys.SIG_FIT_HINF: EquationTitlesByKey.SIG_FIT_HINF},
+            "latex_by_key": {EquationKeys.SIG_FIT_HINF: EquationLatexByKey.SIG_FIT_HINF},
         },
     )
 
-    htau_eq: Literal["sig_fit_htau"] = Field(
+    htau_eq: Literal[EquationKeys.SIG_FIT_HTAU] = Field(
         title=r"\tau_h equation",
-        description="Equation to use for \tau_h.",
-        default="sig_fit_htau",
+        description=(
+            r"Inactivation time constant \(\tau_h\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
+        default=EquationKeys.SIG_FIT_HTAU,
         json_schema_extra={
             "ui_element": "string_constant_enhanced",
-            "latex_by_key": {"sig_fit_htau": r""},
-            "description_by_key": {"sig_fit_htau": ""},
+            "title_by_key": {EquationKeys.SIG_FIT_HTAU: EquationTitlesByKey.SIG_FIT_HTAU},
+            "latex_by_key": {EquationKeys.SIG_FIT_HTAU: EquationLatexByKey.SIG_FIT_HTAU},
         },
     )
 
