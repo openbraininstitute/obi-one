@@ -332,7 +332,9 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "location": "https://github.com/openbraininstitute/obi-one.git",
             "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
-            "dependencies": "launch_scripts/launch_task_for_single_config_asset/requirements.txt",
+            "dependencies": (
+                "launch_scripts/launch_task_for_single_config_asset/dependencies/default.txt"
+            ),
         },
         "inputs": [
             "--entity_type CircuitExtractionConfig",

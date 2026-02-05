@@ -16,7 +16,7 @@ from app.types import BuiltinScript, TaskType
 
 APP_TAG = f"tag:{settings.APP_VERSION.split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "code.py")
-OBI_ONE_DEPS_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "requirements.txt")
+OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
 TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
@@ -30,12 +30,30 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=OBI_ONE_DEPS_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
             cores=1,
             memory=2,
             timelimit="00:10",
+        ),
+    ),
+    TaskType.morphology_skeletonization: TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=models.SkeletonizationConfig,
+        activity_type=models.SkeletonizationExecution,
+        accounting_service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
+        config_asset_label=AssetLabel.skeletonization_config,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+        ),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="00:30",
         ),
     ),
     TaskType.circuit_simulation: TaskDefinition(
