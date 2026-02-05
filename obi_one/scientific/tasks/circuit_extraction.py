@@ -926,7 +926,7 @@ class CircuitExtractionTask(Task):
         # Use template figure from library if no circular plot available
         if fig_path is None:
             fig_path = Path(
-                str(files("obi_one.scientific.library").joinpath("extracted_circuit_schematic.png"))
+                str(files("obi_one.scientific.library").joinpath("extracted_circuit_template.png"))
             )
 
         # Check that output file has the correct extension
