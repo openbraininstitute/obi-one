@@ -39,7 +39,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
     ),
     TaskType.morphology_skeletonization: TaskDefinition(
         task_type=TaskType.morphology_skeletonization,
-        config_type=models.SkeltonizationConfig,
+        config_type=models.SkeletonizationConfig,
         activity_type=models.SkeletonizationExecution,
         accounting_service_subtype=None,
         config_asset_label=AssetLabel.skeletonization_config,
