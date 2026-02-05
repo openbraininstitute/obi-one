@@ -640,7 +640,7 @@ class CircuitExtractionTask(Task):
         )
         cmat = ConnectivityMatrix.from_h5(matrix_path.path)
         if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D")
+            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D", "network_in_2D_circular")
         else:
             plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
         plots_init = BasicConnectivityPlotsScanConfig.Initialize(
@@ -665,6 +665,7 @@ class CircuitExtractionTask(Task):
             "nodes": "node_stats.png",
             "small_adj_and_stats": "small_adj_and_stats.png",
             "network_in_2D": "small_network_in_2D.png",
+            "network_in_2D_circular": "small_network_in_2D_circular.png",
             "connectivity_global": "network_global_stats.png",
             "connectivity_pathway": "network_pathway_stats.png",
         }
@@ -912,13 +913,21 @@ class CircuitExtractionTask(Task):
         return upd_entity
 
     @staticmethod
-    def _generate_overview_figure(output_file: Path) -> Path:
+    def _generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
         """Generates an overview figure of the extracted circuit."""
-        # Use template figure from library
-        # TODO: May be replaced by a proper figure generator, if needed
-        fig_path = Path(
-            str(files("obi_one.scientific.library").joinpath("extracted_circuit_schematic.png"))
-        )
+        # Use circular view from basic connectivity plots, if existing
+        if basic_plots_dir:
+            fig_path = basic_plots_dir / "small_network_in_2D_circular.png"
+            if not fig_path.is_file():
+                fig_path = None
+        else:
+            fig_path = None
+
+        # Use template figure from library if no circular plot available
+        if fig_path is None:
+            fig_path = Path(
+                str(files("obi_one.scientific.library").joinpath("extracted_circuit_schematic.png"))
+            )
 
         # Check that output file has the correct extension
         if output_file.suffix != fig_path.suffix:
@@ -1024,11 +1033,11 @@ class CircuitExtractionTask(Task):
             )
             viz_files = []
             viz_path = CircuitExtractionTask._generate_overview_figure(
-                viz_dir / "circuit_visualization.png"
+                plot_dir, viz_dir / "circuit_visualization.png"
             )
             viz_files.append(viz_path.name)
             sim_viz_path = CircuitExtractionTask._generate_overview_figure(
-                viz_dir / "simulation_designer_image.png"
+                plot_dir, viz_dir / "simulation_designer_image.png"
             )
             viz_files.append(sim_viz_path.name)
         except Exception as e:  # noqa: BLE001

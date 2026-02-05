@@ -23,6 +23,7 @@ from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     plot_connection_probability_stats,
     plot_node_stats,
     plot_node_table,
+    plot_small_network,
     plot_smallMC,
     plot_smallMC_network_stats,
 )
@@ -45,6 +46,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
                                 Not useful for small circuits
       - "small_adj_and_stats": Matrix and node statistics for small connectomes only (<= 20 nodes).
       - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
+      - "network_in_2D_circular": Circular projection only for small connectomes (<= 20 nodes).
       - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
     """
 
@@ -64,6 +66,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
             "connectivity_pathway",  # for medium and large connectomes
             "small_adj_and_stats",
             "network_in_2D",
+            "network_in_2D_circular",
             "property_table",  # for small connectomes only
         )
         rendering_cmap: str | None = None  # Color map of the node identities
@@ -223,6 +226,55 @@ class BasicConnectivityPlotsTask(Task):
                 fig_network_in_2d.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
     @staticmethod
+    def network_in_2D_circular_plot(
+        plot_formats: tuple[str, ...],
+        dpi: int,
+        size: tuple[int, int],
+        n_max_2d_plot: int,
+        conn: ConnectivityMatrix,
+        dir_path: str | Path,
+    ) -> None:
+        """Generate circular projection plot only (ax4 from plot_smallMC)."""
+        if size[0] > n_max_2d_plot:
+            L.warning("Your network is too large for this plot.")
+        else:
+            # Create a single figure for circular projection
+            fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
+
+            # Setup colors
+            cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
+            color_map_nodes = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+            color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+            color_property = "synapse_class"
+
+            # Plot circular projection (same as ax4 in plot_smallMC)
+            plot_small_network(
+                ax,
+                conn,
+                color_nodes_by_prop=True,
+                color_map_nodes=color_map_nodes,
+                color_property_nodes=color_property,
+                color_edges_by_prop=True,
+                color_map_edges=color_map_edges,
+                color_property_edges=color_property,
+                color_edges_by="pre",
+                edge_weight_scale=4,
+                min_size=300,
+                max_size=1500,
+                projection="circular",
+                coord_names=None,
+                axis_fontsize=14,
+                title=None,
+                title_fontsize=14,
+            )
+
+            for fmt in plot_formats:
+                output_file = Path(dir_path) / f"small_network_in_2D_circular.{fmt}"
+                fig.savefig(output_file, dpi=dpi, bbox_inches="tight", facecolor="white")
+
+            plt.close(fig)
+
+    @staticmethod
     def property_table_plot(
         plot_formats: tuple[str, ...],
         dpi: int,
@@ -345,6 +397,17 @@ class BasicConnectivityPlotsTask(Task):
         if "network_in_2D" in plot_types:
             self.network_in_2D_plot(
                 full_width,
+                plot_formats,
+                dpi,
+                size,
+                n_max_2d_plot,
+                conn,
+                self.config.coordinate_output_root,
+            )
+
+        # Plot network in 2D circular projection only
+        if "network_in_2D_circular" in plot_types:
+            self.network_in_2D_circular_plot(
                 plot_formats,
                 dpi,
                 size,
