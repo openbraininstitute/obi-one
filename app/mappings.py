@@ -14,6 +14,7 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, TaskType
 
+APP_TAG = f"tag:{settings.APP_VERSION.split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "code.py")
 OBI_ONE_DEPS_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "requirements.txt")
 
@@ -27,7 +28,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_asset_label=AssetLabel.circuit_extraction_config,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="tag:2026.1.7",
+            ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=OBI_ONE_DEPS_PATH,
         ),
