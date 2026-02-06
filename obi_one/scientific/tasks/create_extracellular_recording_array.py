@@ -43,6 +43,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
+    ELECTRODE_POSITIONS = "Electrode Location"
 
 
 class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
@@ -71,34 +72,24 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
                 "ui_element": "model_identifier",
             },
         )
-        calculation_method: Literal["PointSource", "LineSource", "Reciprocity", "DipoleReciprocity", ] = Field(
+        calculation_method: Literal["PointSource", "LineSource", "ObjectiveCSD"] = Field(
             title="Calculation Method",
             description="Method to calculate extracellular signals from the specified neuron set and"
             " electrode locations.",
             json_schema_extra={
                 "ui_element": "string_selection_enhanced",
+                "title_by_key": {
+                    "PointSource": "Point Source",
+                    "LineSource": "Line Source",
+                    "ObjectiveCSD": "Objective CSD",
+                },
+                "description_by_key": {
+                    "PointSource": "Calculate extracellular signals using the Point Source method.",
+                    "LineSource": "Calculate extracellular signals using the Line Source method.",
+                    "ObjectiveCSD": "Calculate extracellular signals using the Objective CSD method.",
+                }
             },
         )
-        # do_virtual: bool = Field(
-        #     default=True,
-        #     title="Include Virtual Populations",
-        #     description="Include virtual neurons which target the cells contained in the specified"
-        #     " neuron set (together with their connectivity onto the specified neuron set) in the"
-        #     " extracted sub-circuit.",
-        #     json_schema_extra={
-        #         "ui_element": "boolean_input",
-        #     },
-        # )
-        # create_external: bool = Field(
-        #     default=True,
-        #     title="Create External Population",
-        #     description="Convert (non-virtual) neurons which are outside of the specified neuron"
-        #     " set, but which target the cells contained therein, into a new external population"
-        #     " of virtual neurons (together with their connectivity onto the specified neuron set).",
-        #     json_schema_extra={
-        #         "ui_element": "boolean_input",
-        #     },
-        # )
 
     info: Info = Field(
         title="Info",
@@ -123,7 +114,7 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         description="Electrode locations for recording extracellular signals.",
         json_schema_extra={
             "ui_element": "block_union",
-            "group": BlockGroup.SETUP,
-            "group_order": 2,
+            "group": BlockGroup.ELECTRODE_POSITIONS,
+            "group_order": 0,
         },
     )
