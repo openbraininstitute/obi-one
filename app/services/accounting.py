@@ -87,7 +87,6 @@ def estimate_task_cost(
         subtype=task_definition.accounting_service_subtype,
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
-        vlab_id=str(project_context.virtual_lab_id),
     )
     return TaskAccountingInfo(
         cost=cost_estimate,
