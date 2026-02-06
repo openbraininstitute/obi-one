@@ -32,6 +32,7 @@ class FolderCompressionScanConfig(ScanConfig):
         folder_path: NamedPath | list[NamedPath]
         file_format: str | list[str | None] | None = "gz"
         file_name: str | list[str | None] | None = "compressed"
+        archive_name: str | None = None
 
     initialize: Initialize
 
@@ -80,10 +81,17 @@ class FolderCompressionTask(Task):
             f" '{self.config.initialize.folder_path}'...",
         )
         t0 = time.time()
+
+        # Determine archive name: use provided value or default to folder name
+        archive_name = (
+            self.config.initialize.archive_name
+            or Path(self.config.initialize.folder_path.path).name
+        )
+
         with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:
             tar.add(
                 self.config.initialize.folder_path.path,
-                arcname=Path(self.config.initialize.folder_path.path).name,
+                arcname=archive_name,
             )
 
         # Once done, check elapsed time and resulting file size for reporting
