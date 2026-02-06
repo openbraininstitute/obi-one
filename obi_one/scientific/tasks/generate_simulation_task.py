@@ -167,6 +167,16 @@ class GenerateSimulationTask(Task):
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
 
+        if hasattr(self.config, "parameter_modifications"):
+            # Generate list of parameter modification configs
+            modifications_list = [
+                modification.config(self._circuit.default_population_name,
+                                    DEFAULT_NODE_SET_NAME,)
+                for modification in self.config.parameter_modifications.values()
+            ]
+            if len(modifications_list) > 0:
+                self._sonata_config["conditions"]["modifications"] = modifications_list
+
     def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
         self, block: Block
     ) -> None:
