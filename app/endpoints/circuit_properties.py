@@ -130,6 +130,11 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties = {}
         mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
 
+        # CHECK if the entity for circuit_id is MEModel
+        # IF so get all ion channels in the emodel
+        # MAke a list of all the modifiable variables 
+        # mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = ["Name of mechanism, Name of variable, original value, bounds"]
+
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
