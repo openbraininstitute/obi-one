@@ -12,10 +12,11 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     SynapticMgManipulation,
 )
 
-_NEW_MANIPULATIONS = DisconnectSynapticManipulation | ConnectSynapticManipulation
-
 SynapticManipulationsUnion = Annotated[
-    SynapticMgManipulation | ScaleAcetylcholineUSESynapticManipulation | _NEW_MANIPULATIONS,
+    DisconnectSynapticManipulation
+    | ConnectSynapticManipulation
+    | SynapticMgManipulation
+    | ScaleAcetylcholineUSESynapticManipulation,
     Discriminator("type"),
 ]
 
