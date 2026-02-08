@@ -11,7 +11,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 class DisconnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
     """Disconnect synapses between specified source and target neuron sets."""
 
-    title: ClassVar[str] = "Disconnect Synapses (Between Neuron Sets)"
+    title: ClassVar[str] = "Disconnect Synapses"
 
     def _sonata_manipulations_list(self) -> dict:
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
@@ -32,7 +32,7 @@ class DisconnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
 class ConnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
     """Connect synapses between specified source and target neuron sets."""
 
-    title: ClassVar[str] = "Connect Synapses (Between Neuron Sets)"
+    title: ClassVar[str] = "Connect Synapses"
 
     def _sonata_manipulations_list(self) -> dict:
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
