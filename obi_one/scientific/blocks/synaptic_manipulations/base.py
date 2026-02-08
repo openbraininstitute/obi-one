@@ -60,14 +60,16 @@ class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticMan
     def _get_synapse_configure(self) -> str:
         pass
 
-
     def _sonata_manipulations_list(self) -> dict:
         manipulation = super()._sonata_manipulations_list()[0]
         manipulation["synapse_configure"] = self._get_synapse_configure()
-        
+
         return [manipulation]
 
-class ModSpecificVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
+
+class ModSpecificVariableInterNeuronSetSynapticManipulation(
+    InterNeuronSetSynapticManipulation, ABC
+):
     def _get_synapse_configure(self) -> str:
         pass
 
@@ -80,6 +82,7 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapt
         manipulation["modoverride"] = self._get_modoverride_name()
 
         return [manipulation]
+
 
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations with a delay parameter."""
