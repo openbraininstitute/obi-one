@@ -148,9 +148,17 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         )
 
         for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            config = super()._generate_config()
-            config["delay"] = timestamp + self.timestamp_offset
-            sonata_config[self.block_name + "_" + str(t_ind)] = config
+            sonata_config[self.block_name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
+                "module": self._module,
+                "input_type": self._input_type,
+                "amp_start": self.amplitude,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
 
         return sonata_config
 
