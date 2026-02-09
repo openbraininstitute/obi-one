@@ -43,8 +43,10 @@ def task_launch_endpoint(
     user_context: UserContextWithProjectIdDep,
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
-    L.info(f"Task launch request: task_type={json_model.task_type}, config_id={json_model.config_id}")
-    
+    L.info(
+        f"Task launch request: task_type={json_model.task_type}, config_id={json_model.config_id}"
+    )
+
     project_context = db_client.project_context
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
@@ -58,7 +60,7 @@ def task_launch_endpoint(
             task_definition=task_definition,
             accounting_factory=accounting_factory,
         )
-        
+
         # Make accounting reservation
         accounting_session = accounting_service.make_task_reservation(
             user_context=user_context,
@@ -66,7 +68,7 @@ def task_launch_endpoint(
             accounting_factory=accounting_factory,
             accounting_parameters=accounting_info.parameters,
         )
-        
+
         # Generate accounting callbacks
         accounting_callbacks = accounting_service.generate_accounting_callbacks(
             accounting_job_id=accounting_session._job_id,  # noqa: SLF001
@@ -74,7 +76,7 @@ def task_launch_endpoint(
             count=accounting_info.parameters.count,
             project_id=user_context.project_id,
         )
-        
+
         # Submit task job
         return task_service.submit_task_job(
             db_client=db_client,
@@ -87,16 +89,16 @@ def task_launch_endpoint(
         )
     except Exception as exc:
         L.error(f"Task launch failed: {exc}", exc_info=True)
-        
+
         # Clean up accounting session if it was created
         if accounting_session is not None:
             try:
                 accounting_session.finish(exc_type=type(exc))
-            except Exception as cleanup_exc:
+            except Exception as cleanup_exc:  # noqa: BLE001
                 L.error(f"Failed to clean up accounting session: {cleanup_exc}", exc_info=True)
-        
+
         raise ApiError(
-            message=f"Failed to launch task: {str(exc)}",
+            message=f"Failed to launch task: {exc}",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
@@ -141,7 +143,7 @@ def task_failure_endpoint(
     _user_context: UserContextWithProjectIdDep,
 ) -> None:
     L.info(f"Task failure callback received: task_type={task_type}, activity_id={activity_id}")
-    
+
     try:
         task_service.handle_task_failure_callback(
             db_client=db_client,
@@ -150,11 +152,14 @@ def task_failure_endpoint(
         )
         L.info(f"Task failure callback processed successfully for activity {activity_id}")
     except Exception as exc:
-        L.error(f"Failed to process task failure callback for activity {activity_id}: {exc}", exc_info=True)
+        L.error(
+            f"Failed to process task failure callback for activity {activity_id}: {exc}",
+            exc_info=True,
+        )
         raise ApiError(
-            message=f"Failed to process task failure callback: {str(exc)}",
+            message=f"Failed to process task failure callback: {exc}",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
-    
+
     return Response(status_code=HTTPStatus.NO_CONTENT)
