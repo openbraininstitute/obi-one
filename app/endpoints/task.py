@@ -119,13 +119,29 @@ def estimate_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskAccountingInfo:
     """Estimates the cost for launching a task."""
-    return accounting_service.estimate_task_cost(
-        db_client=db_client,
-        config_id=json_model.config_id,
-        project_context=db_client.project_context,
-        accounting_factory=accounting_factory,
-        task_definition=TASK_DEFINITIONS[json_model.task_type],
+    L.info(
+        f"Task cost estimate request: task_type={json_model.task_type}, "
+        f"config_id={json_model.config_id}"
     )
+
+    try:
+        result = accounting_service.estimate_task_cost(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            project_context=db_client.project_context,
+            accounting_factory=accounting_factory,
+            task_definition=TASK_DEFINITIONS[json_model.task_type],
+        )
+    except Exception as exc:
+        L.error(f"Task cost estimation failed: {exc}", exc_info=True)
+        raise ApiError(
+            message=f"Failed to estimate task cost: {exc}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        ) from exc
+
+    L.info(f"Task cost estimated successfully for config {json_model.config_id}")
+    return result
 
 
 @router.post(
@@ -150,7 +166,6 @@ def task_failure_endpoint(
             activity_id=activity_id,
             task_definition=TASK_DEFINITIONS[task_type],
         )
-        L.info(f"Task failure callback processed successfully for activity {activity_id}")
     except Exception as exc:
         L.error(
             f"Failed to process task failure callback for activity {activity_id}: {exc}",
@@ -162,4 +177,5 @@ def task_failure_endpoint(
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
 
+    L.info(f"Task failure callback processed successfully for activity {activity_id}")
     return Response(status_code=HTTPStatus.NO_CONTENT)
