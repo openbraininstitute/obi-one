@@ -318,6 +318,11 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
+    @property
+    def conductance_name(self) -> str:
+        """Get the conductance name for the generated ion channel model."""
+        return f"g{self.config.initialize.ion_channel_name}bar"
+
     def download_input(
         self, db_client: entitysdk.client.Client = None
     ) -> tuple[list[Path], list[float]]:
@@ -453,6 +458,8 @@ class IonChannelFittingTask(Task):
                 neuron_block=neuron_block,
                 brain_region=brain_region,
                 subject=subject,
+                conductance_name=self.conductance_name,
+                max_permeability_name=None,
             )
         )
 
@@ -572,7 +579,7 @@ class IonChannelFittingTask(Task):
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",
                 temperature=recording_entity.temperature,
-                mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
+                mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
