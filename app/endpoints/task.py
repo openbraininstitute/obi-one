@@ -9,6 +9,7 @@ from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launchsystem import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
+from app.logger import L
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import (
     TaskAccountingCreate,
@@ -42,29 +43,39 @@ def task_launch_endpoint(
     user_context: UserContextWithProjectIdDep,
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
+    L.info(f"Task launch request: task_type={json_model.task_type}, config_id={json_model.config_id}")
+    
     project_context = db_client.project_context
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
-    accounting_info = accounting_service.estimate_task_cost(
-        db_client=db_client,
-        config_id=json_model.config_id,
-        project_context=project_context,
-        task_definition=task_definition,
-        accounting_factory=accounting_factory,
-    )
-    accounting_session = accounting_service.make_task_reservation(
-        user_context=user_context,
-        service_subtype=task_definition.accounting_service_subtype,
-        accounting_factory=accounting_factory,
-        accounting_parameters=accounting_info.parameters,
-    )
-    accounting_callbacks = accounting_service.generate_accounting_callbacks(
-        accounting_job_id=accounting_session._job_id,  # noqa: SLF001
-        service_subtype=task_definition.accounting_service_subtype,
-        count=accounting_info.parameters.count,
-        project_id=user_context.project_id,
-    )
+    accounting_session = None
     try:
+        # Estimate task cost
+        accounting_info = accounting_service.estimate_task_cost(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            project_context=project_context,
+            task_definition=task_definition,
+            accounting_factory=accounting_factory,
+        )
+        
+        # Make accounting reservation
+        accounting_session = accounting_service.make_task_reservation(
+            user_context=user_context,
+            service_subtype=task_definition.accounting_service_subtype,
+            accounting_factory=accounting_factory,
+            accounting_parameters=accounting_info.parameters,
+        )
+        
+        # Generate accounting callbacks
+        accounting_callbacks = accounting_service.generate_accounting_callbacks(
+            accounting_job_id=accounting_session._job_id,  # noqa: SLF001
+            service_subtype=task_definition.accounting_service_subtype,
+            count=accounting_info.parameters.count,
+            project_id=user_context.project_id,
+        )
+        
+        # Submit task job
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -75,9 +86,17 @@ def task_launch_endpoint(
             callbacks=accounting_callbacks,
         )
     except Exception as exc:
-        accounting_session.finish(exc_type=type(exc))
+        L.error(f"Task launch failed: {exc}", exc_info=True)
+        
+        # Clean up accounting session if it was created
+        if accounting_session is not None:
+            try:
+                accounting_session.finish(exc_type=type(exc))
+            except Exception as cleanup_exc:
+                L.error(f"Failed to clean up accounting session: {cleanup_exc}", exc_info=True)
+        
         raise ApiError(
-            message="Failed to submit task job",
+            message=f"Failed to launch task: {str(exc)}",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
@@ -121,9 +140,21 @@ def task_failure_endpoint(
     db_client: DatabaseClientDep,
     _user_context: UserContextWithProjectIdDep,
 ) -> None:
-    task_service.handle_task_failure_callback(
-        db_client=db_client,
-        activity_id=activity_id,
-        task_definition=TASK_DEFINITIONS[task_type],
-    )
+    L.info(f"Task failure callback received: task_type={task_type}, activity_id={activity_id}")
+    
+    try:
+        task_service.handle_task_failure_callback(
+            db_client=db_client,
+            activity_id=activity_id,
+            task_definition=TASK_DEFINITIONS[task_type],
+        )
+        L.info(f"Task failure callback processed successfully for activity {activity_id}")
+    except Exception as exc:
+        L.error(f"Failed to process task failure callback for activity {activity_id}: {exc}", exc_info=True)
+        raise ApiError(
+            message=f"Failed to process task failure callback: {str(exc)}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        ) from exc
+    
     return Response(status_code=HTTPStatus.NO_CONTENT)
