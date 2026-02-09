@@ -176,16 +176,16 @@ def _check_generated_sonata_configs(tmp_path, scan):
         assert cfg.pop("reports") == {"VoltageRecording": volt_dict}
         mg = instance.synaptic_manipulations["SynapticMgManipulation"].magnesium_value
         mg_dict = {
-            "name": "Mg",
-            "source": "All",
-            "target": "All",
+            "name": "SynapticMgManipulation",
+            "source": "Default: All Biophysical Neurons",
+            "target": "Default: All Biophysical Neurons",
             "modoverride": "GluSynapse",
             "synapse_configure": f"mg = {mg}",
         }
         use_dict = {
-            "name": "ach_use",
-            "source": "All",
-            "target": "All",
+            "name": "ScaleAcetylcholineUSESynapticManipulation",
+            "source": "Default: All Biophysical Neurons",
+            "target": "Default: All Biophysical Neurons",
             "synapse_configure": "%s.Use *= 0.7050728631217412",
         }
         assert cfg.pop("connection_overrides") == [mg_dict, use_dict]
@@ -264,10 +264,17 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     }
     vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
     mg = scan.form.synaptic_manipulations["SynapticMgManipulation"].magnesium_value
-    mg_dict = {"type": "SynapticMgManipulation", "magnesium_value": mg}
+    mg_dict = {
+        "type": "SynapticMgManipulation",
+        "magnesium_value": mg,
+        "source_neuron_set": None,
+        "target_neuron_set": None,
+    }
     use_dict = {
         "type": "ScaleAcetylcholineUSESynapticManipulation",
         "use_scaling": 0.7050728631217412,
+        "source_neuron_set": None,
+        "target_neuron_set": None,
     }
     circuit_list = [
         {
@@ -427,10 +434,17 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "ID3": id3_dict,
             "VPM_input": vpm_dict,
         }
-        mg_dict = {"type": "SynapticMgManipulation", "magnesium_value": mg}
+        mg_dict = {
+            "type": "SynapticMgManipulation",
+            "magnesium_value": mg,
+            "source_neuron_set": None,
+            "target_neuron_set": None,
+        }
         use_dict = {
             "type": "ScaleAcetylcholineUSESynapticManipulation",
             "use_scaling": 0.7050728631217412,
+            "source_neuron_set": None,
+            "target_neuron_set": None,
         }
         assert cfg.pop("synaptic_manipulations") == {
             "SynapticMgManipulation": mg_dict,
