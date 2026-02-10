@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime
 from http import HTTPStatus
 from uuid import UUID
@@ -201,8 +202,8 @@ def _generate_accounting_success_callback(
             "subtype": service_subtype,
             "proj_id": project_id,
             "job_id": accounting_job_id,
-            "count": count,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "count": str(count),
+            "timestamp": str(int(time.time())),
         },
     )
     return CallBack(
