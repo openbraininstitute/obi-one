@@ -7,7 +7,7 @@ from typing import Annotated
 
 import morphio
 import neurom
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, BackgroundTasks
 from fastapi.responses import FileResponse
 from morph_tool import convert
 from neurom.exceptions import NeuroMError
@@ -95,20 +95,32 @@ def _create_zip_file_sync(zip_path: str, file1: str, file2: str) -> None:
         my_zip.write(file2, arcname=f"{pathlib.Path(file2).name}")
 
 
-async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResponse:
+def _cleanup_zip_dir(temp_dir: str) -> None:
+    """Removes the temporary directory and its contents after the response is sent."""
+    dir_path = pathlib.Path(temp_dir)
+    if dir_path.exists():
+        for file in dir_path.iterdir():
+            file.unlink(missing_ok=True)
+        dir_path.rmdir()
+        L.info(f"Cleaned up temporary directory: {temp_dir}")
+
+
+async def _create_and_return_zip(outputfile1: str, outputfile2: str, background_tasks: BackgroundTasks) -> FileResponse:
     """Asynchronously creates a zip file and returns it as a FileResponse."""
-    zip_filename = "morph_archive.zip"
+    temp_dir = tempfile.mkdtemp()
+    zip_path = pathlib.Path(temp_dir) / "morph_archive.zip"
     try:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
             None,
             _create_zip_file_sync,
-            zip_filename,
+            str(zip_path),
             outputfile1,
             outputfile2,
         )
     except Exception as e:
         L.error(f"Error creating zip file: {e!s}")
+        _cleanup_zip_dir(temp_dir)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -117,8 +129,9 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResp
             },
         ) from e
     else:
-        L.info(f"Created zip file: {zip_filename}")
-        return FileResponse(path=zip_filename, filename=zip_filename, media_type="application/zip")
+        L.info(f"Created zip file: {zip_path}")
+        background_tasks.add_task(_cleanup_zip_dir, temp_dir)
+        return FileResponse(path=str(zip_path), filename="morph_archive.zip", media_type="application/zip")
 
 
 async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
@@ -170,6 +183,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
 )
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
+    background_tasks: BackgroundTasks,
     single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028, FBT002
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
@@ -202,13 +216,15 @@ async def test_neuron_file(
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
 
-        return await _create_and_return_zip(outputfile1, outputfile2)
+        return await _create_and_return_zip(outputfile1, outputfile2, background_tasks)
 
     finally:
         if temp_file_path:
             try:
                 pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                pathlib.Path(outputfile1).unlink(missing_ok=True)
-                pathlib.Path(outputfile2).unlink(missing_ok=True)
+                if outputfile1:
+                    pathlib.Path(outputfile1).unlink(missing_ok=True)
+                if outputfile2:
+                    pathlib.Path(outputfile2).unlink(missing_ok=True)
             except OSError as e:
                 L.error(f"Error deleting temporary files: {e!s}")
