@@ -26,6 +26,7 @@ The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/
 - **Neuron Sets**: Dictionary of neuron sets defining which neurons to include
 - **Node Set**: Reference to the specific neuron set to simulate (must be biophysical)
 - **Synaptic Manipulations**: Optional modifications to synaptic properties
+- **Parameter Modifications**: Optional modifications to neuron and channel parameters (MEModel only)
 - **Simulation Parameters**: Duration, timestep, initial voltage, extracellular calcium
 - **Stimuli**: Various stimulus types that can be applied to the network
 - **Recordings**: Voltage and other electrophysiological recordings
@@ -95,6 +96,7 @@ config = CircuitSimulationSingleConfig(
     stimuli={...},
     recordings={...},
     synaptic_manipulations={...},
+    parameter_modifications={...},
     timestamps={...}
 )
 ```
@@ -144,6 +146,23 @@ Optional modifications to synaptic properties:
 - **ScaleAcetylcholineUSESynapticManipulation**: Scale acetylcholine effects
 
 Manipulations are applied as `connection_overrides` in the SONATA config.
+
+### Parameter Modifications
+
+Modifications to neuron and channel parameters for MEModel circuits:
+
+#### BasicParameterModification
+Modify a single mechanism variable from the MEModel's parameter set. The variable is selected from a dropdown populated with available mechanism variables (e.g., `g_pas.all`, `decay_CaDynamics_DC0.somatic`, `TTX`).
+
+#### CustomParameterModification
+Modify arbitrary NEURON SectionList variables with free-text input. Use this for parameters not in the dropdown, such as membrane properties (`cm.axonal`, `cm.somatic`) or reversal potentials (`ena.axonal`, `ek.all`). The variable name must follow the format `variable.SectionList` (e.g., `cm.axonal`, `ena.somatic`) or just `variable` for TTX.
+
+Both modification types generate SONATA `conditions.modifications` entries:
+- **ttx**: Blocks sodium channels (special TTX entry)
+- **configure_all_sections**: Applies to all sections (when `section_list == "all"`)
+- **section_list**: Applies to a specific NEURON SectionList
+
+Current
 
 ### Stimuli
 
