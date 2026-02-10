@@ -148,21 +148,10 @@ def task_failure_endpoint(
     db_client: DatabaseClientDep,
     _user_context: UserContextWithProjectIdDep,
 ) -> None:
-    try:
-        task_service.handle_task_failure_callback(
-            db_client=db_client,
-            activity_id=activity_id,
-            task_definition=TASK_DEFINITIONS[task_type],
-        )
-    except Exception as exc:
-        L.error(
-            f"Failed to process task failure callback for activity {activity_id}: {exc}",
-            exc_info=True,
-        )
-        raise ApiError(
-            message=f"Failed to process task failure callback: {exc}",
-            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            error_code=ApiErrorCode.INTERNAL_ERROR,
-        ) from exc
+    task_service.handle_task_failure_callback(
+        db_client=db_client,
+        activity_id=activity_id,
+        task_definition=TASK_DEFINITIONS[task_type],
+    )
 
     return Response(status_code=HTTPStatus.NO_CONTENT)
