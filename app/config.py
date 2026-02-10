@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
+    VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
 
     # Path to the obi-one repository
     OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
