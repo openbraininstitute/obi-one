@@ -92,11 +92,13 @@ def _parse_optimization_parameters(parameters_json: list[dict]) -> list[Mechanis
         else:
             neuron_variable = parts[0]
             section_list = "all"
-        parsed.append(MechanismVariable(
-            neuron_variable=neuron_variable,
-            section_list=section_list,
-            value=value,
-        ))
+        parsed.append(
+            MechanismVariable(
+                neuron_variable=neuron_variable,
+                section_list=section_list,
+                value=value,
+            )
+        )
     return parsed
 
 
@@ -119,17 +121,21 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
         if neuron_block.range:
             for range_entry in neuron_block.range:
                 for var_name in range_entry:
-                    variables.append(MechanismVariable(
-                        neuron_variable=f"{var_name}_{suffix}",
-                        section_list="all",
-                    ))
+                    variables.append(
+                        MechanismVariable(
+                            neuron_variable=f"{var_name}_{suffix}",
+                            section_list="all",
+                        )
+                    )
 
         if neuron_block.global_:
             for global_entry in neuron_block.global_:
                 for var_name in global_entry:
-                    variables.append(MechanismVariable(
-                        neuron_variable=f"{var_name}_{suffix}",
-                        section_list="all",
-                    ))
+                    variables.append(
+                        MechanismVariable(
+                            neuron_variable=f"{var_name}_{suffix}",
+                            section_list="all",
+                        )
+                    )
 
     return variables

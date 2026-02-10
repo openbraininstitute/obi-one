@@ -9,8 +9,7 @@ from obi_one.scientific.blocks.parameter_modifications.parameter_modifications i
 )
 
 ParameterModificationUnion = Annotated[
-    BasicParameterModification |
-    CustomParameterModification,
+    BasicParameterModification | CustomParameterModification,
     Discriminator("type"),
 ]
 

@@ -170,8 +170,10 @@ class GenerateSimulationTask(Task):
         if hasattr(self.config, "parameter_modifications"):
             # Generate list of parameter modification configs
             modifications_list = [
-                modification.config(self._circuit.default_population_name,
-                                    DEFAULT_NODE_SET_NAME,)
+                modification.config(
+                    self._circuit.default_population_name,
+                    DEFAULT_NODE_SET_NAME,
+                )
                 for modification in self.config.parameter_modifications.values()
             ]
             if len(modifications_list) > 0:

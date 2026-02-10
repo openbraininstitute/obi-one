@@ -334,7 +334,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
                 BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
-
             ],
             "default_block_reference_labels": {
                 NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
