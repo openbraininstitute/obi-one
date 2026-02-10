@@ -1,5 +1,4 @@
 import time
-from datetime import UTC, datetime
 from http import HTTPStatus
 from uuid import UUID
 
