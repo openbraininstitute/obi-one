@@ -43,10 +43,6 @@ def task_launch_endpoint(
     user_context: UserContextWithProjectIdDep,
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
-    L.info(
-        f"Task launch request: task_type={json_model.task_type}, config_id={json_model.config_id}"
-    )
-
     project_context = db_client.project_context
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
@@ -119,11 +115,6 @@ def estimate_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskAccountingInfo:
     """Estimates the cost for launching a task."""
-    L.info(
-        f"Task cost estimate request: task_type={json_model.task_type}, "
-        f"config_id={json_model.config_id}"
-    )
-
     try:
         result = accounting_service.estimate_task_cost(
             db_client=db_client,
@@ -140,7 +131,6 @@ def estimate_endpoint(
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
 
-    L.info(f"Task cost estimated successfully for config {json_model.config_id}")
     return result
 
 
@@ -158,8 +148,6 @@ def task_failure_endpoint(
     db_client: DatabaseClientDep,
     _user_context: UserContextWithProjectIdDep,
 ) -> None:
-    L.info(f"Task failure callback received: task_type={task_type}, activity_id={activity_id}")
-
     try:
         task_service.handle_task_failure_callback(
             db_client=db_client,
@@ -177,5 +165,4 @@ def task_failure_endpoint(
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
 
-    L.info(f"Task failure callback processed successfully for activity {activity_id}")
     return Response(status_code=HTTPStatus.NO_CONTENT)
