@@ -105,7 +105,9 @@ def _cleanup_zip_dir(temp_dir: str) -> None:
         L.info(f"Cleaned up temporary directory: {temp_dir}")
 
 
-async def _create_and_return_zip(outputfile1: str, outputfile2: str, background_tasks: BackgroundTasks) -> FileResponse:
+async def _create_and_return_zip(
+    outputfile1: str, outputfile2: str, background_tasks: BackgroundTasks
+) -> FileResponse:
     """Asynchronously creates a zip file and returns it as a FileResponse."""
     temp_dir = tempfile.mkdtemp()
     zip_path = pathlib.Path(temp_dir) / "morph_archive.zip"
@@ -131,7 +133,9 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str, background_
     else:
         L.info(f"Created zip file: {zip_path}")
         background_tasks.add_task(_cleanup_zip_dir, temp_dir)
-        return FileResponse(path=str(zip_path), filename="morph_archive.zip", media_type="application/zip")
+        return FileResponse(
+            path=str(zip_path), filename="morph_archive.zip", media_type="application/zip"
+        )
 
 
 async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
