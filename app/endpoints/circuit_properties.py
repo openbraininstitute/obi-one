@@ -15,6 +15,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.memodel_circuit import try_get_mechanism_variables
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -127,14 +128,6 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties = {}
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
-
-        # CHECK if the entity for circuit_id is MEModel
-        # IF so get all ion channels in the emodel
-        # MAke a list of all the modifiable variables 
-        # mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = ["Name of mechanism, Name of variable, original value, bounds"]
-
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -143,4 +136,15 @@ def mapped_circuit_properties_endpoint(
                 "detail": f"Internal error retrieving the circuit {circuit_id}.",
             },
         ) from err
+
+    mapped_circuit_properties = {}
+    mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+
+    mechanism_variables = try_get_mechanism_variables(
+        db_client=db_client,
+        entity_id=circuit_id,
+    )
+    if mechanism_variables is not None:
+        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = mechanism_variables
+
     return mapped_circuit_properties

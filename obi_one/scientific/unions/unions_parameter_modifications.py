@@ -4,13 +4,13 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.parameter_modifications.parameter_modifications import (
-    AdvancedParameterModification,
-    BasicParameterModification
+    BasicParameterModification,
+    CustomParameterModification,
 )
 
 ParameterModificationUnion = Annotated[
     BasicParameterModification |
-    AdvancedParameterModification,
+    CustomParameterModification,
     Discriminator("type"),
 ]
 
