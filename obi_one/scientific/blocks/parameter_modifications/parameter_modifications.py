@@ -7,6 +7,16 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
+_VARIABLE_SECTION_PARTS = 2
+
+
+def _parse_variable_and_section(variable_str: str) -> tuple[str, str]:
+    """Parse 'neuron_variable.section_list' into (variable, section_list)."""
+    parts = variable_str.split(".", 1)
+    neuron_variable = parts[0]
+    section_list = parts[1] if len(parts) == _VARIABLE_SECTION_PARTS else ""
+    return neuron_variable, section_list
+
 
 class BasicParameterModification(Block):
     """Modify a single mechanism variable of the emodel."""
@@ -61,10 +71,9 @@ class BasicParameterModification(Block):
         """
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
 
-        # Parse combined "neuron_variable.section_list" format
-        parts = self.variable_for_modification.split(".", 1)
-        neuron_variable = parts[0]
-        section_list = parts[1] if len(parts) == 2 else ""
+        neuron_variable, section_list = _parse_variable_and_section(
+            self.variable_for_modification,
+        )
 
         # Special case: TTX
         if neuron_variable == "TTX":
@@ -149,10 +158,9 @@ class CustomParameterModification(Block):
         """
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
 
-        # Parse combined "neuron_variable.section_list" format
-        parts = self.variable_for_modification.split(".", 1)
-        neuron_variable = parts[0]
-        section_list = parts[1] if len(parts) == 2 else ""
+        neuron_variable, section_list = _parse_variable_and_section(
+            self.variable_for_modification,
+        )
 
         # Special case: TTX
         if neuron_variable == "TTX":

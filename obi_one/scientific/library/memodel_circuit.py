@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Self
 
@@ -32,7 +33,7 @@ def try_get_mechanism_variables(
 
     try:
         return get_mechanism_variables(db_client, memodel)
-    except Exception:
+    except (entitysdk.exception.EntitySDKError, json.JSONDecodeError, KeyError, AttributeError):
         L.warning("Failed to fetch mechanism variables for entity %s", entity_id, exc_info=True)
         return None
 

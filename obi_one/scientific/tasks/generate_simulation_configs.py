@@ -31,14 +31,14 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions.unions_parameter_modifications import (
-    ParameterModificationUnion,
-    ParameterModificationReference,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
+)
+from obi_one.scientific.unions.unions_parameter_modifications import (
+    ParameterModificationReference,
+    ParameterModificationUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,

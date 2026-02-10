@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import entitysdk.client
-import entitysdk.exception
 from entitysdk.models import EModel, MEModel
 from entitysdk.types import AssetLabel
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    import entitysdk.exception
+
+_VARIABLE_SECTION_PARTS = 2
 
 L = logging.getLogger(__name__)
 
@@ -37,9 +42,7 @@ def get_mechanism_variables(
     # Merge: keep optimized params; add ion channel vars not already present
     optimized_var_names = {p.neuron_variable for p in optimized_params}
     merged = list(optimized_params)
-    for var in ion_channel_vars:
-        if var.neuron_variable not in optimized_var_names:
-            merged.append(var)
+    merged.extend(var for var in ion_channel_vars if var.neuron_variable not in optimized_var_names)
 
     # Special TTX entry
     merged.append(MechanismVariable(neuron_variable="TTX", section_list=""))
@@ -66,7 +69,7 @@ def _fetch_optimization_parameters(
     return _parse_optimization_parameters(data.get("parameter", []))
 
 
-def _find_optimization_output_asset(emodel: EModel):
+def _find_optimization_output_asset(emodel: EModel) -> object | None:
     """Find the emodel_optimization_output asset on an EModel entity."""
     if not emodel.assets:
         return None
@@ -87,7 +90,7 @@ def _parse_optimization_parameters(parameters_json: list[dict]) -> list[Mechanis
         name = param.get("name", "")
         value = param.get("value")
         parts = name.split(".", 1)
-        if len(parts) == 2:
+        if len(parts) == _VARIABLE_SECTION_PARTS:
             neuron_variable, section_list = parts
         else:
             neuron_variable = parts[0]
@@ -119,23 +122,23 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
             continue
 
         if neuron_block.range:
-            for range_entry in neuron_block.range:
-                for var_name in range_entry:
-                    variables.append(
-                        MechanismVariable(
-                            neuron_variable=f"{var_name}_{suffix}",
-                            section_list="all",
-                        )
-                    )
+            variables.extend(
+                MechanismVariable(
+                    neuron_variable=f"{var_name}_{suffix}",
+                    section_list="all",
+                )
+                for range_entry in neuron_block.range
+                for var_name in range_entry
+            )
 
         if neuron_block.global_:
-            for global_entry in neuron_block.global_:
-                for var_name in global_entry:
-                    variables.append(
-                        MechanismVariable(
-                            neuron_variable=f"{var_name}_{suffix}",
-                            section_list="all",
-                        )
-                    )
+            variables.extend(
+                MechanismVariable(
+                    neuron_variable=f"{var_name}_{suffix}",
+                    section_list="all",
+                )
+                for global_entry in neuron_block.global_
+                for var_name in global_entry
+            )
 
     return variables
