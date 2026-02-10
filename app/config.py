@@ -49,10 +49,10 @@ class Settings(BaseSettings):
     AUTH_CACHE_INFO: bool = False
 
     OUTPUT_DIR: Path = Path("../obi-output")
-    ENTITYCORE_URL: str  # Required: URL to entitycore service
-    LAUNCH_SYSTEM_URL: str  # Required: URL to launch-system service
+    ENTITYCORE_URL: str = "http://127.0.0.1:8000"
+    LAUNCH_SYSTEM_URL: str = "http://127.0.0.1:8001"
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
-    ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
+    ACCOUNTING_BASE_URL: str = "http://127.0.0.1:8002"
     ACCOUNTING_DISABLED: bool = False
 
     # Path to the obi-one repository
