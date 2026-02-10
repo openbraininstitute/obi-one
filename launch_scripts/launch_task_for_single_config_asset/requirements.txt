@@ -1,4 +1,3 @@
 entitysdk==0.11.1
 obi_auth==1.0.0
-connectome-analysis>=1.0.1
-obi-one
+obi-one[connectivity]
