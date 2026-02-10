@@ -260,19 +260,22 @@ def test_submit_task_job__failure(
 
 
 def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS["circuit_simulation"]
+
     res = test_module._circuit_simulation_job_data(
         simulation_id=config_id,
         simulation_execution_id=activity_id,
         project_id=PROJECT_ID,
         callbacks=callbacks,
+        task_definition=task_definition,
     )
 
     assert res == {
-        "type": "circuit_simulation",
         "resources": {
             "type": "cluster",
             "instances": 1,
             "instance_type": "small",
+            "timelimit": "00:10",
         },
         "inputs": [
             "--simulation-id",
@@ -308,27 +311,26 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
 
 
 def test_generic_job_data(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS["circuit_extraction"]
+
     res = test_module._generic_job_data(
-        ref="my-tag",
         config_id=config_id,
         activity_id=activity_id,
         project_id=PROJECT_ID,
         virtual_lab_id=VIRTUAL_LAB_ID,
-        time_limit="10:00",
         config_asset_id=config_id,
-        task_definition=TASK_DEFINITIONS["circuit_extraction"],
+        task_definition=task_definition,
         entity_cache=True,
         output_root="/foo",
         callbacks=callbacks,
     )
 
     assert res == {
-        "type": "generic",
-        "resources": {"type": "machine", "cores": 1, "memory": 2, "timelimit": "10:00"},
+        "resources": {"type": "machine", "cores": 1, "memory": 2, "timelimit": "00:10"},
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute/obi-one.git",
-            "ref": "my-tag",
+            "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
             "dependencies": "launch_scripts/launch_task_for_single_config_asset/requirements.txt",
         },
