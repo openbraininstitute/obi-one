@@ -23,7 +23,10 @@ class BasicParameterModification(Block):
 
     variable_for_modification: str = Field(
         title="Variable for Modification",
-        description="Mechanism variable for modification (e.g. 'g_pas.all', 'decay_CaDynamics_DC0.somatic', 'TTX').",
+        description=(
+            "Mechanism variable for modification (e.g. 'g_pas.all', "
+            "'decay_CaDynamics_DC0.somatic', 'TTX')."
+        ),
         min_length=1,
         json_schema_extra={
             "ui_element": "entity_property_dropdown",
@@ -41,7 +44,7 @@ class BasicParameterModification(Block):
         },
     )
 
-    def config(self, default_population_name: str, default_node_set: str) -> dict:
+    def config(self, _default_population_name: str, default_node_set: str) -> dict:
         """Generate a SONATA conditions.modifications entry.
 
         Produces one of three modification types:
@@ -110,7 +113,10 @@ class CustomParameterModification(Block):
 
     variable_for_modification: str = Field(
         title="Variable for Modification",
-        description="NEURON variable name in 'variable.sectionlist' format (e.g. 'cm.axonal', 'ena.somatic', 'g_pas.all').",
+        description=(
+            "NEURON variable name in 'variable.sectionlist' format "
+            "(e.g. 'cm.axonal', 'ena.somatic', 'g_pas.all')."
+        ),
         min_length=1,
         json_schema_extra={
             "ui_element": "string_input",
@@ -126,7 +132,7 @@ class CustomParameterModification(Block):
         },
     )
 
-    def config(self, default_population_name: str, default_node_set: str) -> dict:
+    def config(self, _default_population_name: str, default_node_set: str) -> dict:
         """Generate a SONATA conditions.modifications entry.
 
         Produces one of three modification types:

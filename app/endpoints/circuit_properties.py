@@ -15,8 +15,8 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.library.memodel_circuit import try_get_mechanism_variables
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.memodel_circuit import try_get_mechanism_variables
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
