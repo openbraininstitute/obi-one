@@ -46,9 +46,8 @@ def task_launch_endpoint(
     project_context = db_client.project_context
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
-    accounting_session = None
+    # Estimate task cost
     try:
-        # Estimate task cost
         accounting_info = accounting_service.estimate_task_cost(
             db_client=db_client,
             config_id=json_model.config_id,
@@ -56,24 +55,53 @@ def task_launch_endpoint(
             task_definition=task_definition,
             accounting_factory=accounting_factory,
         )
+    except Exception as exc:
+        L.error(f"Task cost estimation failed: {exc}", exc_info=True)
+        raise ApiError(
+            message=f"Failed to estimate task cost: {exc}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        ) from exc
 
-        # Make accounting reservation
+    # Make accounting reservation
+    try:
         accounting_session = accounting_service.make_task_reservation(
             user_context=user_context,
             service_subtype=task_definition.accounting_service_subtype,
             accounting_factory=accounting_factory,
             accounting_parameters=accounting_info.parameters,
         )
+    except Exception as exc:
+        L.error(f"Accounting reservation failed: {exc}", exc_info=True)
+        raise ApiError(
+            message=f"Failed to reserve accounting credits: {exc}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        ) from exc
 
-        # Generate accounting callbacks
+    # Generate accounting callbacks
+    try:
         accounting_callbacks = accounting_service.generate_accounting_callbacks(
             accounting_job_id=accounting_session._job_id,  # noqa: SLF001
             service_subtype=task_definition.accounting_service_subtype,
             count=accounting_info.parameters.count,
             project_id=user_context.project_id,
         )
+    except Exception as exc:
+        L.error(f"Accounting callback generation failed: {exc}", exc_info=True)
+        # Clean up accounting session
+        try:
+            accounting_session.finish(exc_type=type(exc))
+        except Exception as cleanup_exc:  # noqa: BLE001
+            L.error(f"Failed to clean up accounting session: {cleanup_exc}", exc_info=True)
+        raise ApiError(
+            message=f"Failed to generate accounting callbacks: {exc}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        ) from exc
 
-        # Submit task job
+    # Submit task job
+    try:
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -84,17 +112,14 @@ def task_launch_endpoint(
             callbacks=accounting_callbacks,
         )
     except Exception as exc:
-        L.error(f"Task launch failed: {exc}", exc_info=True)
-
-        # Clean up accounting session if it was created
-        if accounting_session is not None:
-            try:
-                accounting_session.finish(exc_type=type(exc))
-            except Exception as cleanup_exc:  # noqa: BLE001
-                L.error(f"Failed to clean up accounting session: {cleanup_exc}", exc_info=True)
-
+        L.error(f"Task job submission failed: {exc}", exc_info=True)
+        # Clean up accounting session
+        try:
+            accounting_session.finish(exc_type=type(exc))
+        except Exception as cleanup_exc:  # noqa: BLE001
+            L.error(f"Failed to clean up accounting session: {cleanup_exc}", exc_info=True)
         raise ApiError(
-            message=f"Failed to launch task: {exc}",
+            message=f"Failed to submit task job: {exc}",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             error_code=ApiErrorCode.INTERNAL_ERROR,
         ) from exc
@@ -153,5 +178,4 @@ def task_failure_endpoint(
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
     )
-
     return Response(status_code=HTTPStatus.NO_CONTENT)
