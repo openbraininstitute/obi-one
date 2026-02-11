@@ -22,6 +22,7 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling_beta import IonChannelFittingBetaScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
@@ -110,6 +111,7 @@ def activate_scan_config_endpoints() -> None:
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (IonChannelFittingBetaScanConfig, "generate", "", True),
         (CircuitExtractionScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
