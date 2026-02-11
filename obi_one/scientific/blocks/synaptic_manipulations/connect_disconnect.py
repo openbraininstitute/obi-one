@@ -1,50 +1,23 @@
 from typing import ClassVar
 
+from pydantic import PrivateAttr
+
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
-    DelayedInterNeuronSetSynapticManipulation,
-)
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
+    WeightChangeDelayedInterNeuronSetSynapticManipulation,
 )
 
 
-class DisconnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
+class DisconnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
     """Disconnect synapses between specified source and target neuron sets."""
 
     title: ClassVar[str] = "Disconnect Synapses"
 
-    def _sonata_manipulations_list(self) -> dict:
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        manipulations_list = []
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            manipulation = super()._sonata_manipulations_list()[0]
-            manipulation["name"] = manipulation["name"] + "_" + str(t_ind)
-            manipulation["delay"] = timestamp + self.timestamp_offset
-            manipulation["weight"] = 0.0
-            manipulations_list.append(manipulation)
-
-        return manipulations_list
+    _weight: float = PrivateAttr(default=0.0)
 
 
-class ConnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
+class ConnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
     """Connect synapses between specified source and target neuron sets."""
 
     title: ClassVar[str] = "Connect Synapses"
 
-    def _sonata_manipulations_list(self) -> list:
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        manipulations_list = []
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            manipulation = super()._sonata_manipulations_list()[0]
-            manipulation["name"] = manipulation["name"] + "_" + str(t_ind)
-            manipulation["delay"] = timestamp + self.timestamp_offset
-            manipulation["weight"] = 1.0
-            manipulations_list.append(manipulation)
-
-        return manipulations_list
+    _weight: float = PrivateAttr(default=1.0)
