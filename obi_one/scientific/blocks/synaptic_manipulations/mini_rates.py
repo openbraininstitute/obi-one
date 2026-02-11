@@ -32,7 +32,7 @@ class SetSpontaneousMinisRateSynapticManipulation(InterNeuronSetSynapticManipula
         },
     )
 
-    def _sonata_manipulations_list(self) -> dict:
+    def _sonata_manipulations_list(self) -> list:
         sonata_config = super()._sonata_manipulations_list()[0]
         sonata_config["spont_minis"] = self.rate
         return [sonata_config]
