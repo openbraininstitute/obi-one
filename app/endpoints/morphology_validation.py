@@ -95,7 +95,6 @@ def _create_zip_file_sync(zip_path: str, file1: str, file2: str) -> None:
 
 def _cleanup_zip_dir(temp_dir: str) -> None:
     shutil.rmtree(temp_dir, ignore_errors=True)
-    L.info(f"Cleaned up temporary directory: {temp_dir}")
 
 
 async def _create_and_return_zip(
@@ -176,6 +175,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     background_tasks: BackgroundTasks,
+    *,
     single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
