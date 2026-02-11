@@ -38,7 +38,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 
     _default_node_set: str = PrivateAttr(default="All")
 
-    def config(self, default_node_set: str = "All") -> dict:
+    def config(self, default_node_set: str = "All") -> list:
         self._default_node_set = default_node_set
         return self._sonata_manipulations_list()
 
