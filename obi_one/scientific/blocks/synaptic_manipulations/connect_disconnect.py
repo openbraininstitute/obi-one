@@ -8,7 +8,7 @@ from obi_one.scientific.blocks.synaptic_manipulations.base import (
 
 
 class DisconnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
-    """Disconnect synapses between specified source and target neuron sets."""
+    """Disconnect all synapses between specified source and target neuron sets."""
 
     title: ClassVar[str] = "Disconnect Synapses"
 
@@ -16,7 +16,7 @@ class DisconnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticMa
 
 
 class ConnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
-    """Connect synapses between specified source and target neuron sets."""
+    """Connect all synapses between specified source and target neuron sets."""
 
     title: ClassVar[str] = "Connect Synapses"
 

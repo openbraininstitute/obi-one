@@ -63,7 +63,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 
 
 class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
-    """Base class for synaptic manipulations with a global variable parameter."""
+    """Base class for synaptic manipulations applied to all mechanisms using the variable."""
 
     def _get_synapse_configure(self) -> str:
         pass
@@ -79,7 +79,7 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
     InterNeuronSetSynapticManipulation, ABC
 ):
     """
-    Base class for synaptic manipulations with a modoverride parameter.
+    Base class for synaptic manipulation of a single variable applied to a single mechanism.
     """
     def _get_synapse_configure(self) -> str:
         pass
@@ -96,7 +96,7 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
 
 
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
-    """Base class for synaptic manipulations with a delay parameter."""
+    """Base class for synaptic manipulations applied with a delay at different timestamps."""
 
     _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
