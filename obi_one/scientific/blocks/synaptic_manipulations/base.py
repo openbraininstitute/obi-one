@@ -102,7 +102,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
     timestamps: TimestampsReference | None = Field(
         default=None,
         title="Timestamps",
-        description="Timestamps at which the stimulus is applied.",
+        description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
             "ui_element": "reference",
             "reference_type": TimestampsReference.__name__,
@@ -112,7 +112,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
     timestamp_offset: float | list[float] | None = Field(
         default=0.0,
         title="Timestamp Offset",
-        description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
+        description="An optional offset of the manipulation relative to each timestamp in milliseconds (ms).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",

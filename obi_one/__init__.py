@@ -43,6 +43,7 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
+    "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
@@ -53,6 +54,7 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -274,6 +276,14 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
 from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
@@ -368,10 +378,6 @@ from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
-)
-from obi_one.scientific.unions.unions_manipulations import (
-    ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,

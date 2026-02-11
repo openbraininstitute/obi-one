@@ -267,14 +267,14 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     mg_dict = {
         "type": "SynapticMgManipulation",
         "magnesium_value": mg,
-        "source_neuron_set": None,
-        "target_neuron_set": None,
+        "presynaptic_neuron_set": None,
+        "postsynaptic_neuron_set": None,
     }
     use_dict = {
         "type": "ScaleAcetylcholineUSESynapticManipulation",
         "use_scaling": 0.7050728631217412,
-        "source_neuron_set": None,
-        "target_neuron_set": None,
+        "presynaptic_neuron_set": None,
+        "postsynaptic_neuron_set": None,
     }
     circuit_list = [
         {
@@ -437,14 +437,14 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         mg_dict = {
             "type": "SynapticMgManipulation",
             "magnesium_value": mg,
-            "source_neuron_set": None,
-            "target_neuron_set": None,
+            "presynaptic_neuron_set": None,
+            "postsynaptic_neuron_set": None,
         }
         use_dict = {
             "type": "ScaleAcetylcholineUSESynapticManipulation",
             "use_scaling": 0.7050728631217412,
-            "source_neuron_set": None,
-            "target_neuron_set": None,
+            "presynaptic_neuron_set": None,
+            "postsynaptic_neuron_set": None,
         }
         assert cfg.pop("synaptic_manipulations") == {
             "SynapticMgManipulation": mg_dict,
