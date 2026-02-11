@@ -176,7 +176,9 @@ async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     background_tasks: BackgroundTasks,
     *,
-    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
+    single_point_soma: Annotated[
+        bool, Query(default=False, description="Convert soma to single point")
+    ],
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
