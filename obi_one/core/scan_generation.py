@@ -175,8 +175,7 @@ class ScanGenerationTask(Task, abc.ABC):
             inheriting from OBIBaseModel for future deserialization
         """
         # Important to use model_dump_json() instead of model_dump()
-        # so OBIBaseModel's custom encoder is used to seri
-        # PosixPaths as strings
+        # (so Path objects are serialized as strings)
         model_dump = self.model_dump_json()
 
         # Now load it back into an ordered dict to do some additional modifications

@@ -49,11 +49,17 @@ class Settings(BaseSettings):
     AUTH_CACHE_INFO: bool = False
 
     OUTPUT_DIR: Path = Path("../obi-output")
-    ENTITYCORE_URL: str = "http://127.0.0.1:8000"
-    LAUNCH_SYSTEM_URL: str = "http://127.0.0.1:8001"
+    ENTITYCORE_URL: str  # Required: URL to entitycore service
+    LAUNCH_SYSTEM_URL: str  # Required: URL to launch-system service
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
-    ACCOUNTING_BASE_URL: str = "http://127.0.0.1:8002"
+    ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
+
+    # Path to the obi-one repository
+    OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
+
+    # Path to launch script within the repository. Must contain code.py and requirements.txt.
+    OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
 
 
 settings = Settings()

@@ -12,13 +12,15 @@ The schema can be tested locally with the command:
 ## UI Elements
 Scan configs are composed of multiple UI elements, each corresponding to a variable in the Python definition of the ScanConfig. For example, there is a UI element for specifying a user-defined string:
 ```py
-file_name: str = Field(ui_element="string_input",
-                    min_length=1,
-                    title="title",
-                    description="description")
+file_name: str = Field(min_length=1,
+                        title="title",
+                        description="description",
+                        json_schema_extra={
+                            "ui_element": "string_input",
+                        })
 ```
 
-The `ui_element` specified in the Field definition identifies the UI element which should be displayed for user to enter this parameter. Each `ui_element` identifier corresponds to a strict reference schema. Schema validation checks that the definition of the parameter fits with what is expected and required for a `string_input`. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
+The `ui_element` specified in the `json_schema_extra` dictionary of the Field definition identifies the UI element which should be displayed for user to enter this parameter. Each `ui_element` identifier corresponds to a strict reference schema. Schema validation checks that the definition of the parameter fits with what is expected and required for a `string_input`. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
 
 All ui_elements must contain a `title` and a `description`.
 
@@ -40,17 +42,20 @@ There are two major types of such UI elements:
     - Root elements must have the following properties:
         - `title`
         - `description`
-        - `group` string that points to a string in its parent config's `group_order` array.
-        - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
+        - A dictionary called `json_schema_extra` (the standard name for adding extra information to the schema in Pydantic). Within the `json_schema_extra` dictionary, the following properties must be specified:
+            - `group` string that points to a string in its parent config's `group_order` array.
+            - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
 
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
         info: Info = Field(
-            ui_element="block_single",
             title="Title",
             description="Description",
-            group="Group 1", # Must be present in its parent's config `group_order` array,
-            group_order=0, # Unique within the group.
+            json_schema_extra={
+                "ui_element": "block_single",
+                "group": "Group 1", # Must be present in its parent's config `group_order` array,
+                "group_order": 0 # Unique within the group.
+            }
         )
         ```
         
@@ -58,7 +63,11 @@ There are two major types of such UI elements:
 
     - Currently supported block element types:
 
-        - [string_input](components/string_input/string_input.md)
+        - [string_input](components/string/string_input.md)
+
+        - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
+
+        - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
         - [boolean_input](components/boolean_input/boolean_input.md)
 
