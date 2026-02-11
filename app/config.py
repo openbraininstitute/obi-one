@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
 
+    def get_virtual_lab_url(self, virtual_lab_id) -> str:
+        """Return the virtual-lab-api URL for the given virtual lab."""
+        return f"{self.VIRTUAL_LAB_API_URL}/virtual-labs/{virtual_lab_id}"
+
     # Path to the obi-one repository
     OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
 

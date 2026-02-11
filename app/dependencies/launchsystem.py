@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated
 
 import httpx
@@ -6,7 +7,16 @@ from starlette.requests import Request
 
 from app.config import settings
 from app.dependencies.auth import UserContextDep
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from app.utils.http import make_http_request
+
+COMPUTE_CELL_PLACEHOLDER = "cell-X"
+COMPUTE_CELL_MAP = {
+    "CELL_A": "cell-a",
+    "CELL_B": "cell-b",
+}
+COMPUTE_CELL_DEFAULT = "cell-a"
 
 
 def _resolve_launch_system_url(
@@ -15,40 +25,48 @@ def _resolve_launch_system_url(
 ) -> str:
     """Resolve the launch-system URL based on the virtual lab's compute_cell property.
 
-    Fetches the virtual lab from the virtual-lab-api and checks its ``compute_cell``
-    property.  When the property is ``"cell_b"``, every occurrence of ``"cell-a"`` in
-    the configured ``LAUNCH_SYSTEM_URL`` is replaced with ``"cell-b"``.  In all other
-    cases (property absent, ``"cell_a"``, or fetch failure) the URL is returned
-    unchanged.
+    The configured ``LAUNCH_SYSTEM_URL`` may contain a ``cell-X`` placeholder.  This
+    function fetches the virtual lab from the virtual-lab-api and replaces the
+    placeholder with ``cell-a`` or ``cell-b`` depending on the ``compute_cell``
+    property.
     """
     api_url = settings.LAUNCH_SYSTEM_URL
 
-    if not user_context.virtual_lab_id:
+    if COMPUTE_CELL_PLACEHOLDER not in api_url:
         return api_url
 
-    try:
-        vlab_url = (
-            f"{settings.VIRTUAL_LAB_API_URL}/virtual-labs/{user_context.virtual_lab_id}"
-        )
-        token = user_context.token.credentials
-        response = http_client.get(
-            vlab_url,
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        if response.is_success:
-            data = response.json()
-            compute_cell = (
-                data.get("data", {}).get("virtual_lab", {}).get("compute_cell")
-            )
-            if compute_cell in ("cell_b", "CELL_B"):
-                api_url = api_url.replace("cell-a", "cell-b")
-                L.info("Using compute cell-b for launch-system: %s", api_url)
-    except Exception:
-        L.warning(
-            "Failed to fetch virtual lab compute_cell, using default launch-system URL"
-        )
+    compute_cell_resolved = COMPUTE_CELL_DEFAULT
 
-    return api_url
+    if user_context.virtual_lab_id:
+        vlab_url = settings.get_virtual_lab_url(user_context.virtual_lab_id)
+        token = user_context.token.credentials
+        response = make_http_request(
+            vlab_url,
+            method="GET",
+            headers={"Authorization": f"Bearer {token}"},
+            http_client=http_client,
+        )
+        data = response.json()
+        compute_cell = data["data"]["virtual_lab"]["compute_cell"]
+        if compute_cell in COMPUTE_CELL_MAP:
+            compute_cell_resolved = COMPUTE_CELL_MAP[compute_cell]
+        else:
+            L.error("Unknown compute cell: %s", compute_cell)
+            raise ApiError(
+                message=f"Unknown compute cell: {compute_cell}",
+                error_code=ApiErrorCode.INVALID_REQUEST,
+                http_status_code=HTTPStatus.BAD_REQUEST,
+            )
+        api_url = api_url.replace(COMPUTE_CELL_PLACEHOLDER, compute_cell_resolved)
+        L.info("Resolved launch-system URL: %s", api_url)
+        return api_url
+
+    L.error("No virtual lab ID found")
+    raise ApiError(
+        message="No virtual lab ID found",
+        error_code=ApiErrorCode.INVALID_REQUEST,
+        http_status_code=HTTPStatus.BAD_REQUEST,
+    )
 
 
 def get_client(
