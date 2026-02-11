@@ -13,8 +13,8 @@ from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
 
-_NEURON_SET_DESCRIPTION = "The manipulation is applied to all synapses between\
-    the presynaptic and postsynaptic neuron sets."
+_NEURON_SET_DESCRIPTION = ("The manipulation is applied to all synapses between"
+    " the presynaptic and postsynaptic neuron sets.")
 
 
 class InterNeuronSetSynapticManipulation(Block, ABC):
