@@ -1,5 +1,6 @@
 import asyncio
 import pathlib
+import shutil
 import tempfile
 import zipfile
 from http import HTTPStatus
@@ -26,7 +27,6 @@ DEFAULT_SINGLE_POINT_SOMA_BY_EXT: dict[str, bool] = {
 
 
 def _handle_empty_file(file: UploadFile) -> None:
-    """Handle empty file upload by raising an appropriate HTTPException."""
     L.error(f"Empty file uploaded: {file.filename}")
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
@@ -44,7 +44,6 @@ async def process_and_convert_morphology(
     output_basename: str | None = None,
     single_point_soma_by_ext: dict[str, bool] | None = None,
 ) -> tuple[str, str]:
-    """Process and convert a neuron morphology file."""
     try:
         morphio.set_raise_warnings(False)
         _ = morphio.Morphology(temp_file_path)
@@ -57,7 +56,7 @@ async def process_and_convert_morphology(
             target_exts = (".h5", ".asc")
         elif file_extension == ".h5":
             target_exts = (".swc", ".asc")
-        else:  # ".asc"
+        else:
             target_exts = (".swc", ".h5")
 
         outputfile1 = out_dir / f"{stem}{target_exts[0]}"
@@ -89,26 +88,19 @@ async def process_and_convert_morphology(
 
 
 def _create_zip_file_sync(zip_path: str, file1: str, file2: str) -> None:
-    """Synchronously create a zip file from two files."""
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as my_zip:
         my_zip.write(file1, arcname=f"{pathlib.Path(file1).name}")
         my_zip.write(file2, arcname=f"{pathlib.Path(file2).name}")
 
 
 def _cleanup_zip_dir(temp_dir: str) -> None:
-    """Removes the temporary directory and its contents after the response is sent."""
-    dir_path = pathlib.Path(temp_dir)
-    if dir_path.exists():
-        for file in dir_path.iterdir():
-            file.unlink(missing_ok=True)
-        dir_path.rmdir()
-        L.info(f"Cleaned up temporary directory: {temp_dir}")
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    L.info(f"Cleaned up temporary directory: {temp_dir}")
 
 
 async def _create_and_return_zip(
     outputfile1: str, outputfile2: str, background_tasks: BackgroundTasks
 ) -> FileResponse:
-    """Asynchronously creates a zip file and returns it as a FileResponse."""
     temp_dir = tempfile.mkdtemp()
     zip_path = pathlib.Path(temp_dir) / "morph_archive.zip"
     try:
@@ -139,7 +131,6 @@ async def _create_and_return_zip(
 
 
 async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
-    """Validates file extension and reads content."""
     L.info(f"Received file upload: {file.filename}")
     allowed_extensions = {".swc", ".h5", ".asc"}
     file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
@@ -163,9 +154,6 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
 
 
 def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
-    """Returns True if the soma radius is within the threshold.
-    Returns False if it exceeds the threshold.
-    """
     try:
         m = neurom.load_morphology(file_path)
         radius = m.soma.radius
@@ -188,7 +176,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
 async def test_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     background_tasks: BackgroundTasks,
-    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028, FBT002
+    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
