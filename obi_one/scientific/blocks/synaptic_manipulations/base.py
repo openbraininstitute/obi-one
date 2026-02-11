@@ -112,7 +112,8 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
     timestamp_offset: float | list[float] | None = Field(
         default=0.0,
         title="Timestamp Offset",
-        description="An optional offset of the manipulation relative to each timestamp in milliseconds (ms).",
+        description="An optional offset of the manipulation relative to each "
+        "timestamp in milliseconds (ms).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",

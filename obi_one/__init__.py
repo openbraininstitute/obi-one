@@ -54,6 +54,7 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
     "ElectrophysiologyMetricsScanConfig",
@@ -69,6 +70,7 @@ __all__ = [
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
     "GenerateSimulationTask",
+    "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -76,6 +78,7 @@ __all__ = [
     "Info",
     "InhibitoryNeurons",
     "IntRange",
+    "InterNeuronSetSynapticManipulation",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -88,6 +91,7 @@ __all__ = [
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
+    "ModSpecificVariableInterNeuronSetSynapticManipulation",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -170,6 +174,7 @@ __all__ = [
     "TimestampsUnion",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
+    "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
@@ -275,6 +280,13 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.base import (
+    DelayedInterNeuronSetSynapticManipulation,
+    GlobalVariableInterNeuronSetSynapticManipulation,
+    InterNeuronSetSynapticManipulation,
+    ModSpecificVariableInterNeuronSetSynapticManipulation,
+    WeightChangeDelayedInterNeuronSetSynapticManipulation,
 )
 from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
     ConnectSynapticManipulation,
