@@ -76,7 +76,7 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
     def _get_modoverride_name(self) -> str:
         pass
 
-    def _sonata_manipulations_list(self) -> dict:
+    def _sonata_manipulations_list(self) -> list:
         manipulation = super()._sonata_manipulations_list()[0]
         manipulation["synapse_configure"] = self._get_synapse_configure()
         manipulation["modoverride"] = self._get_modoverride_name()
