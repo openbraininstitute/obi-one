@@ -46,7 +46,7 @@ async def process_and_convert_morphology(
 ) -> tuple[str, str]:
     try:
         morphio.set_raise_warnings(False)
-        _ = morphio.Morphology(temp_file_path)
+        morphio.Morphology(temp_file_path)
 
         temp_path = pathlib.Path(temp_file_path)
         out_dir = temp_path.parent
@@ -164,7 +164,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
         return False
     else:
         if radius > 0:
-            return radius <= threshold
+            return float(radius) <= threshold
         return False
 
 
