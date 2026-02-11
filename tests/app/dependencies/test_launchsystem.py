@@ -64,7 +64,7 @@ def test_compute_cell_a(monkeypatch, httpx_mock):
     httpx_mock.add_response(
         url=f"{VIRTUAL_LAB_API_URL}/virtual-labs/{VIRTUAL_LAB_ID}",
         method="GET",
-        json=_vlab_response("CELL_A"),
+        json=_vlab_response("cell_a"),
     )
     user_context = _make_user_context(virtual_lab_id=VIRTUAL_LAB_ID)
     result = _resolve_launch_system_url(user_context, httpx.Client())
@@ -77,7 +77,7 @@ def test_compute_cell_b(monkeypatch, httpx_mock):
     httpx_mock.add_response(
         url=f"{VIRTUAL_LAB_API_URL}/virtual-labs/{VIRTUAL_LAB_ID}",
         method="GET",
-        json=_vlab_response("CELL_B"),
+        json=_vlab_response("cell_b"),
     )
     user_context = _make_user_context(virtual_lab_id=VIRTUAL_LAB_ID)
     result = _resolve_launch_system_url(user_context, httpx.Client())

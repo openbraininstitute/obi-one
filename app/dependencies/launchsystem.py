@@ -13,8 +13,8 @@ from app.utils.http import make_http_request
 
 COMPUTE_CELL_PLACEHOLDER = "cell-X"
 COMPUTE_CELL_MAP = {
-    "CELL_A": "cell-a",
-    "CELL_B": "cell-b",
+    "cell_a": "cell-a",
+    "cell_b": "cell-b",
 }
 COMPUTE_CELL_DEFAULT = "cell-a"
 
