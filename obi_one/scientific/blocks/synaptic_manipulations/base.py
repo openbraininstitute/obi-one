@@ -13,9 +13,9 @@ from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
 
-_NEURON_SET_DESCRIPTION = (
-    "The manipulation is applied to all synapses between the presynaptic and postsynaptic neuron sets."
-)
+_NEURON_SET_DESCRIPTION = "The manipulation is applied to all synapses between\
+    the presynaptic and postsynaptic neuron sets."
+
 
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
@@ -78,9 +78,8 @@ class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticMan
 class ModSpecificVariableInterNeuronSetSynapticManipulation(
     InterNeuronSetSynapticManipulation, ABC
 ):
-    """
-    Base class for synaptic manipulation of a single variable applied to a single mechanism.
-    """
+    """Base class for synaptic manipulation of a single variable applied to a single mechanism."""
+
     def _get_synapse_configure(self) -> str:
         pass
 
