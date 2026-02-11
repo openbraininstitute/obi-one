@@ -34,7 +34,7 @@ class ConnectSynapticManipulation(DelayedInterNeuronSetSynapticManipulation):
 
     title: ClassVar[str] = "Connect Synapses"
 
-    def _sonata_manipulations_list(self) -> dict:
+    def _sonata_manipulations_list(self) -> list:
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
