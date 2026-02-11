@@ -42,7 +42,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         self._default_node_set = default_node_set
         return self._sonata_manipulations_list()
 
-    def _sonata_manipulations_list(self) -> dict:
+    def _sonata_manipulations_list(self) -> list:
         sonata_config = {
             "name": self.block_name,
             "source": resolve_neuron_set_ref_to_node_set(
