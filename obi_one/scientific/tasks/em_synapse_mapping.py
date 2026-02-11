@@ -128,7 +128,7 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
             title="Neuron identifier within the EM dense reconstruction dataset.",
             description="""Neurons in an EM dataset are uniquely identified by a number,
             often called 'pt_root_id'. Please provide that identifier.
-            Otherwise, it will be guessed from the neuron entities name and description.""",
+            Otherwise, it will be infered from the provenance of the `spiny_neuron` entity.""",
             default=None,
         )
         edge_population_name: str = Field(
