@@ -50,15 +50,21 @@ class Settings(BaseSettings):
 
     OUTPUT_DIR: Path = Path("../obi-output")
     ENTITYCORE_URL: str  # Required: URL to entitycore service
-    LAUNCH_SYSTEM_URL: str  # Required: URL to launch-system service
+    LAUNCH_SYSTEM_URL_TEMPLATE: str  # Required: URL template to launch-system service
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
 
+    SUBDOMAIN_PLACEHOLDER: str = "cell-X"
+
     def get_virtual_lab_url(self, virtual_lab_id: str) -> str:
         """Return the virtual-lab-api URL for the given virtual lab."""
         return f"{self.VIRTUAL_LAB_API_URL}/virtual-labs/{virtual_lab_id}"
+
+    def build_launch_system_url(self, subdomain: str) -> str:
+        """Return the launch-system URL with the subdomain placeholder resolved."""
+        return self.LAUNCH_SYSTEM_URL_TEMPLATE.replace(self.SUBDOMAIN_PLACEHOLDER, subdomain)
 
     # Path to the obi-one repository
     OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
