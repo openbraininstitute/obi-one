@@ -1,5 +1,6 @@
 import asyncio
 import pathlib
+import shutil
 import tempfile
 import zipfile
 from http import HTTPStatus
@@ -7,7 +8,7 @@ from typing import Annotated
 
 import morphio
 import neurom
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from morph_tool import convert
 from neurom.exceptions import NeuroMError
@@ -26,7 +27,6 @@ DEFAULT_SINGLE_POINT_SOMA_BY_EXT: dict[str, bool] = {
 
 
 def _handle_empty_file(file: UploadFile) -> None:
-    """Handle empty file upload by raising an appropriate HTTPException."""
     L.error(f"Empty file uploaded: {file.filename}")
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
@@ -44,10 +44,9 @@ async def process_and_convert_morphology(
     output_basename: str | None = None,
     single_point_soma_by_ext: dict[str, bool] | None = None,
 ) -> tuple[str, str]:
-    """Process and convert a neuron morphology file."""
     try:
         morphio.set_raise_warnings(False)
-        _ = morphio.Morphology(temp_file_path)
+        morphio.Morphology(temp_file_path)
 
         temp_path = pathlib.Path(temp_file_path)
         out_dir = temp_path.parent
@@ -57,7 +56,7 @@ async def process_and_convert_morphology(
             target_exts = (".h5", ".asc")
         elif file_extension == ".h5":
             target_exts = (".swc", ".asc")
-        else:  # ".asc"
+        else:
             target_exts = (".swc", ".h5")
 
         outputfile1 = out_dir / f"{stem}{target_exts[0]}"
@@ -89,26 +88,32 @@ async def process_and_convert_morphology(
 
 
 def _create_zip_file_sync(zip_path: str, file1: str, file2: str) -> None:
-    """Synchronously create a zip file from two files."""
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as my_zip:
         my_zip.write(file1, arcname=f"{pathlib.Path(file1).name}")
         my_zip.write(file2, arcname=f"{pathlib.Path(file2).name}")
 
 
-async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResponse:
-    """Asynchronously creates a zip file and returns it as a FileResponse."""
-    zip_filename = "morph_archive.zip"
+def _cleanup_zip_dir(temp_dir: str) -> None:
+    shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+async def _create_and_return_zip(
+    outputfile1: str, outputfile2: str, background_tasks: BackgroundTasks
+) -> FileResponse:
+    temp_dir = tempfile.mkdtemp()
+    zip_path = pathlib.Path(temp_dir) / "morph_archive.zip"
     try:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
             None,
             _create_zip_file_sync,
-            zip_filename,
+            str(zip_path),
             outputfile1,
             outputfile2,
         )
     except Exception as e:
         L.error(f"Error creating zip file: {e!s}")
+        _cleanup_zip_dir(temp_dir)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -117,12 +122,14 @@ async def _create_and_return_zip(outputfile1: str, outputfile2: str) -> FileResp
             },
         ) from e
     else:
-        L.info(f"Created zip file: {zip_filename}")
-        return FileResponse(path=zip_filename, filename=zip_filename, media_type="application/zip")
+        L.info(f"Created zip file: {zip_path}")
+        background_tasks.add_task(_cleanup_zip_dir, temp_dir)
+        return FileResponse(
+            path=str(zip_path), filename="morph_archive.zip", media_type="application/zip"
+        )
 
 
 async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
-    """Validates file extension and reads content."""
     L.info(f"Received file upload: {file.filename}")
     allowed_extensions = {".swc", ".h5", ".asc"}
     file_extension = f".{file.filename.split('.')[-1].lower()}" if file.filename else ""
@@ -146,9 +153,6 @@ async def _validate_and_read_file(file: UploadFile) -> tuple[bytes, str]:
 
 
 def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
-    """Returns True if the soma radius is within the threshold.
-    Returns False if it exceeds the threshold.
-    """
     try:
         m = neurom.load_morphology(file_path)
         radius = m.soma.radius
@@ -159,7 +163,7 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
         return False
     else:
         if radius > 0:
-            return radius <= threshold
+            return float(radius) <= threshold
         return False
 
 
@@ -168,9 +172,11 @@ def _validate_soma_diameter(file_path: str, threshold: float = 100.0) -> bool:
     summary="Validate morphology format and returns the conversion to other formats.",
     description="Tests a neuron file (.swc, .h5, or .asc) with basic validation.",
 )
-async def test_neuron_file(
+async def validate_neuron_file(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
-    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,  # noqa: PT028, FBT002
+    background_tasks: BackgroundTasks,
+    *,
+    single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
 ) -> FileResponse:
     content, file_extension = await _validate_and_read_file(file)
 
@@ -202,13 +208,15 @@ async def test_neuron_file(
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
 
-        return await _create_and_return_zip(outputfile1, outputfile2)
+        return await _create_and_return_zip(outputfile1, outputfile2, background_tasks)
 
     finally:
         if temp_file_path:
             try:
                 pathlib.Path(temp_file_path).unlink(missing_ok=True)
-                pathlib.Path(outputfile1).unlink(missing_ok=True)
-                pathlib.Path(outputfile2).unlink(missing_ok=True)
+                if outputfile1:
+                    pathlib.Path(outputfile1).unlink(missing_ok=True)
+                if outputfile2:
+                    pathlib.Path(outputfile2).unlink(missing_ok=True)
             except OSError as e:
                 L.error(f"Error deleting temporary files: {e!s}")
