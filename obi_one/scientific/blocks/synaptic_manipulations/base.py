@@ -143,9 +143,10 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
 
         manipulations_list = []
         for t_ind, timestamp in enumerate(timestamps):
-            manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
-            manipulation["delay"] = timestamp + self.timestamp_offset
-            manipulation["weight"] = self._weight
-            manipulations_list.append(manipulation)
+            new_manipulation = manipulation.copy()
+            new_manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
+            new_manipulation["delay"] = timestamp + self.timestamp_offset
+            new_manipulation["weight"] = self._weight
+            manipulations_list.append(new_manipulation)
 
         return manipulations_list
