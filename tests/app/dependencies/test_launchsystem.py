@@ -25,10 +25,8 @@ def _make_settings(
         VIRTUAL_LAB_API_URL=vlab_api_url,
     )
     ns.get_virtual_lab_url = lambda vid: f"{ns.VIRTUAL_LAB_API_URL}/virtual-labs/{vid}"
-    ns.build_launch_system_url = (
-        lambda subdomain: ns.LAUNCH_SYSTEM_URL_TEMPLATE.replace(
-            ns.SUBDOMAIN_PLACEHOLDER, subdomain
-        )
+    ns.build_launch_system_url = lambda subdomain: ns.LAUNCH_SYSTEM_URL_TEMPLATE.replace(
+        ns.SUBDOMAIN_PLACEHOLDER, subdomain
     )
     return ns
 
