@@ -13,7 +13,6 @@ import bluepysnap as snap
 import bluepysnap.circuit_validation
 import h5py
 import numpy as np
-import tqdm
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
@@ -801,6 +800,7 @@ class CircuitExtractionTask(Task):
                 # https://github.com/openbraininstitute/obi-one/issues/387
 
                 # Copy containerized morphologies into new container
+                L.info(f"Copying {len(morphology_list)} containerized .{_morph_ext} morphologies")
                 Path(os.path.split(dest_morph_dirs[_morph_ext])[0]).mkdir(
                     parents=True, exist_ok=True
                 )
@@ -811,10 +811,7 @@ class CircuitExtractionTask(Task):
                     h5py.File(dest_container, "a") as f_dest,
                 ):
                     skip_counter = 0
-                    for morphology_name in tqdm.tqdm(
-                        morphology_list,
-                        desc=f"Copying containerized .{_morph_ext} morphologies",
-                    ):
+                    for morphology_name in morphology_list:
                         if morphology_name in f_dest:
                             skip_counter += 1
                         else:
@@ -829,10 +826,9 @@ class CircuitExtractionTask(Task):
                 )
             else:
                 # Copy morphology files
+                L.info(f"Copying {len(morphology_list)} .{_morph_ext} morphologies")
                 Path(dest_morph_dirs[_morph_ext]).mkdir(parents=True, exist_ok=True)
-                for morphology_name in tqdm.tqdm(
-                    morphology_list, desc=f"Copying .{_morph_ext} morphologies"
-                ):
+                for morphology_name in morphology_list:
                     src_file = Path(_src_dir) / f"{morphology_name}.{_morph_ext}"
                     dest_file = (
                         Path(dest_morph_dirs[_morph_ext]) / f"{morphology_name}.{_morph_ext}"
