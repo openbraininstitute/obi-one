@@ -22,16 +22,14 @@ from entitysdk.models import (
     Subject,
 )
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from requests.exceptions import RequestException
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_validation import (
-    DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
-    process_and_convert_morphology,
-)
+from app.services.morphology import DEFAULT_SINGLE_POINT_SOMA_BY_EXT, convert_morphology
 
 
 class ApiErrorCode:
@@ -399,10 +397,11 @@ async def morphology_metrics_calculation(
             (
                 converted_morphology_file1,
                 converted_morphology_file2,
-            ) = await process_and_convert_morphology(
-                temp_file_path=temp_file_path,
-                file_extension=file_extension,
-                output_basename=Path(morphology_name).stem,
+            ) = await run_in_threadpool(
+                convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=pathlib.Path(temp_file_path).parent,
+                output_stem=Path(morphology_name).stem,
                 single_point_soma_by_ext=single_point_soma_by_ext,
             )
             if converted_morphology_file1:
