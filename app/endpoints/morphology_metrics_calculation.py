@@ -37,7 +37,6 @@ class ApiErrorCode:
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
 
 
-# Base class for TypeVar bounding
 class BaseEntity:
     def __init__(self, entity_id: Any | None = None) -> None:
         """Initialize the base entity."""
@@ -101,9 +100,7 @@ def _get_template() -> dict:
     return template
 
 
-# --- LAZY ANALYSIS DICT ---
 def _get_analysis_dict() -> dict:
-    """Lazily initialize and cache the analysis dictionary."""
     if hasattr(_get_analysis_dict, "cached"):
         return _get_analysis_dict.cached
 
@@ -119,7 +116,6 @@ def _get_analysis_dict() -> dict:
     return analysis_dict
 
 
-# --- MORPHOLOGY ANALYSIS ---
 def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     try:
         neuron = nm.load_morphology(morphology_path)
@@ -142,7 +138,6 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
         ) from e
 
 
-# --- CONFIGURATION ---
 NEW_ENTITY_DEFAULTS = {
     "authorized_public": False,
     "license_id": None,
@@ -156,7 +151,6 @@ NEW_ENTITY_DEFAULTS = {
 }
 
 
-# --- Pydantic Model for Metadata ---
 class MorphologyMetadata(BaseModel):
     name: str | None = None
     description: str | None = None
@@ -173,7 +167,6 @@ class MorphologyMetadata(BaseModel):
     single_point_soma_by_ext: dict[str, bool] | None = None
 
 
-# --- HELPER FUNCTIONS ---
 async def _parse_file_and_metadata(
     file: UploadFile, metadata_str: str
 ) -> tuple[str, str, bytes, MorphologyMetadata]:
@@ -196,7 +189,6 @@ async def _parse_file_and_metadata(
     return morphology_name, file_extension, content, metadata_obj
 
 
-# --- API CALL FUNCTIONS ---
 T = TypeVar("T", bound=BaseEntity)
 
 
@@ -253,11 +245,9 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 def register_assets(
     client: Client,
     entity_id: str,
-    file_folder: str,
-    morphology_name: str,
+    file_path: str,
 ) -> dict[str, Any]:
-    file_path_obj = pathlib.Path(file_folder) / morphology_name
-    file_path = str(file_path_obj)
+    file_path_obj = pathlib.Path(file_path)
 
     if not file_path_obj.exists():
         error_msg = f"Asset file not found at path: {file_path}"
@@ -330,35 +320,6 @@ def _prepare_entity_payload(
     return entity_payload
 
 
-def _register_assets_and_measurements(
-    client: Client,
-    entity_id: str,
-    morphology_name: str,
-    content: bytes,
-    measurement_list: list[dict[str, Any]],
-    converted_morphology_file1: str,
-    converted_morphology_file2: str,
-) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-        temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
-        temp_upload_path_obj.write_bytes(content)
-        register_assets(client, entity_id, temp_dir_for_upload, morphology_name)
-
-    if converted_morphology_file1:
-        output1_path_obj = pathlib.Path(converted_morphology_file1)
-        if output1_path_obj.exists():
-            register_assets(client, entity_id, str(output1_path_obj.parent), output1_path_obj.name)
-
-    if converted_morphology_file2:
-        output2_path_obj = pathlib.Path(converted_morphology_file2)
-        if output2_path_obj.exists():
-            register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
-
-    registered = register_measurements(client, entity_id, measurement_list)
-    return registered
-
-
-# --- MAIN ENDPOINT ---
 @router.post(
     "/register-morphology-with-calculated-metrics",
     summary="Calculate morphology metrics and register entities.",
@@ -378,50 +339,51 @@ async def morphology_metrics_calculation(
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
+    
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
     single_point_soma_by_ext = (
         metadata_obj.model_dump().get("single_point_soma_by_ext")
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
+
     try:
-        with ExitStack() as stack:
-            temp_file_obj = stack.enter_context(
-                tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
-            )
-            temp_file_path = temp_file_obj.name
-            temp_file_obj.write(content)
-            temp_file_obj.close()
-            stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = pathlib.Path(temp_dir)
+            original_file_path = temp_dir_path / morphology_name
+            original_file_path.write_bytes(content)
 
             (
                 converted_morphology_file1,
                 converted_morphology_file2,
             ) = await run_in_threadpool(
                 convert_morphology,
-                input_file=pathlib.Path(temp_file_path),
-                output_dir=pathlib.Path(temp_file_path).parent,
-                output_stem=Path(morphology_name).stem,
+                input_file=original_file_path,
+                output_dir=temp_dir_path,
+                output_stem=original_file_path.stem,
                 single_point_soma_by_ext=single_point_soma_by_ext,
             )
-            if converted_morphology_file1:
-                stack.callback(pathlib.Path(converted_morphology_file1).unlink, missing_ok=True)
-            if converted_morphology_file2:
-                stack.callback(pathlib.Path(converted_morphology_file2).unlink, missing_ok=True)
-            measurement_list = _run_morphology_analysis(temp_file_path)
+
+            measurement_list = _run_morphology_analysis(str(original_file_path))
 
             data = register_morphology(client, entity_payload)
             entity_id = str(data.id)
-            data2 = _register_assets_and_measurements(
-                client,
-                entity_id,
-                morphology_name,
-                content,
-                measurement_list,
-                converted_morphology_file1,
-                converted_morphology_file2,
-            )
+
+            register_assets(client, entity_id, str(original_file_path))
+
+            if converted_morphology_file1:
+                path1 = pathlib.Path(converted_morphology_file1)
+                if path1.exists():
+                    register_assets(client, entity_id, str(path1))
+
+            if converted_morphology_file2:
+                path2 = pathlib.Path(converted_morphology_file2)
+                if path2.exists():
+                    register_assets(client, entity_id, str(path2))
+
+            data2 = register_measurements(client, entity_id, measurement_list)
             measurement_entity_id = str(data2.id)
+
     except HTTPException:
         raise
     except Exception as e:
