@@ -35,7 +35,7 @@ CLASS_NAME_MAP: dict[str, type] = {
     "ContributeSubjectScanConfig": ContributeSubjectScanConfig,
     "CircuitSimulationScanConfig": CircuitSimulationScanConfig,
     "MEModelSimulationScanConfig": MEModelSimulationScanConfig,
-    "MEModelWithSynapsesCircuitSimulationScanConfig": MEModelWithSynapsesCircuitSimulationScanConfig,
+    "MEModelWithSynapsesCircuitSimulationScanConfig": MEModelWithSynapsesCircuitSimulationScanConfig,  # noqa: E501
     "IonChannelFittingScanConfig": IonChannelFittingScanConfig,
     "MorphologyMetricsScanConfig": MorphologyMetricsScanConfig,
     "SchemaExampleScanConfig": SchemaExampleScanConfig,
@@ -75,7 +75,7 @@ class ConfigValidationResponse(BaseModel):
 @router.post(
     "/validate",
     summary="Validate scan config data",
-    description="Instantiate a scan config class with the provided data and return validation results.",
+    description="Instantiate a scan config class and return validation results.",
 )
 def validate_config(request: ConfigValidationRequest) -> ConfigValidationResponse:
     """Validate arbitrary data against a scan config class."""
