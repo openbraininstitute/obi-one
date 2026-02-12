@@ -322,7 +322,6 @@ def _prepare_entity_payload(
 
 async def _process_registration(
     client: Client,
-    morph_name: str,
     payload: dict,
     file_info: tuple[Path, str | None, str | None],
     measurements: list,
@@ -386,7 +385,7 @@ async def morphology_metrics_calculation(
             metrics = _run_morphology_analysis(str(orig_file))
 
             ent_id, meas_id = await _process_registration(
-                client, morphology_name, entity_payload, (orig_file, conv1, conv2), metrics
+                client, entity_payload, (orig_file, conv1, conv2), metrics
             )
 
     except HTTPException:
