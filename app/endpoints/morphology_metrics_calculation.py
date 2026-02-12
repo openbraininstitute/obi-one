@@ -339,7 +339,7 @@ async def morphology_metrics_calculation(
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
-    
+
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
     single_point_soma_by_ext = (
