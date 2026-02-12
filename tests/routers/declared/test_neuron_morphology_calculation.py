@@ -24,7 +24,7 @@ def monkeypatch_session():
 
 
 @pytest.fixture(autouse=True, scope="module")
-def mock_heavy_dependencies(monkeypatch_session):
+def mock_heavy_dependencies(_monkeypatch_session):
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
     sys.modules["neurom"] = mock_neurom

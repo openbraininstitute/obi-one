@@ -2,7 +2,7 @@ import json
 import pathlib
 import tempfile
 import traceback
-from contextlib import ExitStack, suppress
+from contextlib import suppress
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
@@ -320,6 +320,29 @@ def _prepare_entity_payload(
     return entity_payload
 
 
+async def _process_registration(
+    client: Client,
+    morph_name: str,
+    payload: dict,
+    file_info: tuple[Path, str | None, str | None],
+    measurements: list,
+) -> tuple[str, str]:
+    data = register_morphology(client, payload)
+    entity_id = str(data.id)
+
+    original_path, conv1, conv2 = file_info
+    register_assets(client, entity_id, str(original_path))
+
+    for conv_file in [conv1, conv2]:
+        if conv_file:
+            path = pathlib.Path(conv_file)
+            if path.exists():
+                register_assets(client, entity_id, str(path))
+
+    data2 = register_measurements(client, entity_id, measurements)
+    return entity_id, str(data2.id)
+
+
 @router.post(
     "/register-morphology-with-calculated-metrics",
     summary="Calculate morphology metrics and register entities.",
@@ -335,54 +358,36 @@ async def morphology_metrics_calculation(
 ) -> dict:
     (
         morphology_name,
-        file_extension,
+        _,
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
 
-    entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
-    single_point_soma_by_ext = (
+    soma_config = (
         metadata_obj.model_dump().get("single_point_soma_by_ext")
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dir_path = pathlib.Path(temp_dir)
-            original_file_path = temp_dir_path / morphology_name
-            original_file_path.write_bytes(content)
+            temp_path = pathlib.Path(temp_dir)
+            orig_file = temp_path / morphology_name
+            orig_file.write_bytes(content)
 
-            (
-                converted_morphology_file1,
-                converted_morphology_file2,
-            ) = await run_in_threadpool(
+            conv1, conv2 = await run_in_threadpool(
                 convert_morphology,
-                input_file=original_file_path,
-                output_dir=temp_dir_path,
-                output_stem=original_file_path.stem,
-                single_point_soma_by_ext=single_point_soma_by_ext,
+                input_file=orig_file,
+                output_dir=temp_path,
+                output_stem=orig_file.stem,
+                single_point_soma_by_ext=soma_config,
             )
 
-            measurement_list = _run_morphology_analysis(str(original_file_path))
+            metrics = _run_morphology_analysis(str(orig_file))
 
-            data = register_morphology(client, entity_payload)
-            entity_id = str(data.id)
-
-            register_assets(client, entity_id, str(original_file_path))
-
-            if converted_morphology_file1:
-                path1 = pathlib.Path(converted_morphology_file1)
-                if path1.exists():
-                    register_assets(client, entity_id, str(path1))
-
-            if converted_morphology_file2:
-                path2 = pathlib.Path(converted_morphology_file2)
-                if path2.exists():
-                    register_assets(client, entity_id, str(path2))
-
-            data2 = register_measurements(client, entity_id, measurement_list)
-            measurement_entity_id = str(data2.id)
+            ent_id, meas_id = await _process_registration(
+                client, morphology_name, entity_payload, (orig_file, conv1, conv2), metrics
+            )
 
     except HTTPException:
         raise
@@ -397,8 +402,8 @@ async def morphology_metrics_calculation(
         ) from e
     else:
         return {
-            "entity_id": entity_id,
-            "measurement_entity_id": measurement_entity_id,
+            "entity_id": ent_id,
+            "measurement_entity_id": meas_id,
             "status": "success",
             "morphology_name": morphology_name,
         }
