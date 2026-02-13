@@ -504,8 +504,9 @@ class CircuitExtractionTask(Task):
                 msg = f"Connectivity plot '{file_path.name}' does not exist!"
                 raise OBIONEError(msg)
             if file_path.stem not in asset_label_map:
-                msg = f"Unknown asset label for plot '{file_path.name}'!"
-                raise OBIONEError(msg)
+                msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
+                L.warning(msg)
+                continue
             asset_label, fmt = asset_label_map[file_path.stem]
             if fmt == "webp":
                 file_path = CircuitExtractionTask.convert_image_to_webp(image_path=file_path)
@@ -665,6 +666,7 @@ class CircuitExtractionTask(Task):
             "small_adj_and_stats": "small_adj_and_stats.png",
             "network_in_2D": "small_network_in_2D.png",
             "network_in_2D_circular": "small_network_in_2D_circular.png",
+            "property_table_extra": "property_table_extra.png",
             "connectivity_global": "network_global_stats.png",
             "connectivity_pathway": "network_pathway_stats.png",
         }
@@ -924,9 +926,9 @@ class CircuitExtractionTask(Task):
             img_R = Image.open(fig_paths[-1])
             width = img_L.width + img_R.width
             height = max(img_L.height, img_R.height)
-            img_merged = Image.new("RGB", (width, height))
+            img_merged = Image.new("RGB", (width, height), (255, 255, 255))
             img_merged.paste(img_L, (0, 0))
-            img_merged.paste(img_R, (img_L.width, 0))
+            img_merged.paste(img_R, (img_L.width, height - img_R.height >> 1))
             img_merged.save(output_file)
         else:
             # Check that output file has the correct extension
