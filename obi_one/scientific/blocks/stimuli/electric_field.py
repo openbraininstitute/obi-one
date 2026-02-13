@@ -71,18 +71,9 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     _frequency: float = PrivateAttr(0.0)
     _phase_degrees: float = PrivateAttr(0.0)
-    _E_x: float = PrivateAttr(0.0)
-    _E_y: float = PrivateAttr(0.0)
-    _E_z: float = PrivateAttr(0.0)
 
     def _generate_config(self) -> dict:
         sonata_config = {}
-
-        self._frequency = self._frequency
-        self._phase_degrees = self._phase_degrees
-        self._E_x = self._E_x
-        self._E_y = self._E_y
-        self._E_z = self._E_z
 
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
@@ -98,9 +89,9 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
                 "ramp_down_time": self.ramp_down_time,
                 "fields": [
                     {
-                        "E_x": self._E_x,
-                        "E_y": self._E_y,
-                        "E_z": self._E_z,
+                        "E_x": self.E_x,
+                        "E_y": self.E_y,
+                        "E_z": self.E_z,
                         "frequency": self._frequency,
                         "phase": np.deg2rad(self._phase_degrees),
                     }
@@ -158,7 +149,4 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
     def _set_private_vars(self) -> Self:
         self._frequency = self.frequency
         self._phase_degrees = self.phase_degrees
-        self._E_x = self.E_x
-        self._E_y = self.E_y
-        self._E_z = self.E_z
         return self
