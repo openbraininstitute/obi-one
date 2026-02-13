@@ -15,7 +15,13 @@ class IDNeuronSet(AbstractNeuronSet):
 
     title: ClassVar[str] = "ID Neuron Set"
 
-    neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)]
+    neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
+        title="ID Neuronset",
+        description="List of neuron IDs to include in the neuron set.",
+        json_schema_extra={
+            "ui_element": "neuron_ids",
+        },
+    )
 
     def check_neuron_ids(self, circuit: Circuit, population: str) -> None:
         popul_ids = circuit.sonata_circuit.nodes[population].ids()

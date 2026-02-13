@@ -47,11 +47,19 @@ class AbstractNeuronSet(Block, abc.ABC):
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units="%",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "%",
+        },
     )
 
     sample_seed: int | list[int] = Field(
-        default=1, title="Sample Seed", description="Seed for random sampling."
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
     )
 
     @abc.abstractmethod
@@ -73,7 +81,7 @@ class AbstractNeuronSet(Block, abc.ABC):
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> None:
+    ) -> dict:
         nset_def = self.get_node_set_definition(
             circuit, circuit.default_population_name, force_resolve_ids=True
         )
@@ -81,6 +89,8 @@ class AbstractNeuronSet(Block, abc.ABC):
         add_node_set_to_circuit(
             sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
         )
+
+        return nset_def
 
     def get_population(self, population: str | None = None) -> str:
         return self._population(population)

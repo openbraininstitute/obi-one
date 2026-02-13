@@ -13,12 +13,12 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     """Locations around a specified path distance."""
 
     path_dist_mean: float | list[float] = Field(
-        name="Path distance mean",
+        title="Path distance mean",
         description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
     )
     path_dist_tolerance: float | list[float] = Field(
-        name="Path distance tolerance",
+        title="Path distance tolerance",
         description="Amount of deviation in um from mean path distance that is tolerated. Must be \
             > 1.0",
     )

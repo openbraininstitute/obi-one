@@ -22,13 +22,14 @@ from entitysdk.models import (
     Subject,
 )
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from requests.exceptions import RequestException
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_validation import process_and_convert_morphology
+from app.services.morphology import DEFAULT_SINGLE_POINT_SOMA_BY_EXT, convert_morphology
 
 
 class ApiErrorCode:
@@ -49,6 +50,7 @@ DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
 TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
 
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
+
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -111,7 +113,7 @@ def _get_analysis_dict() -> dict:
     if DEFAULT_NEURITE_DOMAIN in analysis_dict:
         default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
         for domain in TARGET_NEURITE_DOMAINS:
-            analysis_dict[domain] = default_analysis
+            analysis_dict.setdefault(domain, default_analysis)
 
     _get_analysis_dict.cached = analysis_dict
     return analysis_dict
@@ -123,6 +125,12 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
         filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
+        measurement_kinds = filled["data"][0]["measurement_kinds"]
+        filled["data"][0]["measurement_kinds"] = [
+            mk
+            for mk in measurement_kinds
+            if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
+        ]
         return filled["data"][0]["measurement_kinds"]
     except Exception as e:
         raise HTTPException(
@@ -136,14 +144,14 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 
 # --- CONFIGURATION ---
 NEW_ENTITY_DEFAULTS = {
-    "authorized_public": True,
+    "authorized_public": False,
     "license_id": None,
     "name": "test",
-    "description": "string",
-    "location": {"x": 0, "y": 0, "z": 0},
-    "legacy_id": ["string"],
-    "brain_region_id": "72893207-1e8f-48f3-b17b-075b58b9fac5",
-    "subject_id": "9edb44c6-33b5-403b-8ab6-0890cfb12d07",
+    "description": None,
+    "location": None,
+    "legacy_id": None,
+    "brain_region_id": None,
+    "subject_id": None,
     "cell_morphology_protocol_id": None,
 }
 
@@ -160,6 +168,9 @@ class MorphologyMetadata(BaseModel):
     repair_pipeline_state: str | None = None
     cell_morphology_protocol_id: str | None = None
     brain_location: list[float] | None = None
+    authorized_public: bool = False
+    published_in: str | None = None
+    single_point_soma_by_ext: dict[str, bool] | None = None
 
 
 # --- HELPER FUNCTIONS ---
@@ -232,6 +243,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         location=brain_location,
         legacy_id=None,
         authorized_public=authorized_public,
+        published_in=new_item.get("published_in"),
     )
 
     registered = client.register_entity(entity=morphology)
@@ -368,6 +380,10 @@ async def morphology_metrics_calculation(
     ) = await _parse_file_and_metadata(file, metadata)
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
+    single_point_soma_by_ext = (
+        metadata_obj.model_dump().get("single_point_soma_by_ext")
+        or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
+    )
     try:
         with ExitStack() as stack:
             temp_file_obj = stack.enter_context(
@@ -381,8 +397,12 @@ async def morphology_metrics_calculation(
             (
                 converted_morphology_file1,
                 converted_morphology_file2,
-            ) = await process_and_convert_morphology(
-                temp_file_path=temp_file_path, file_extension=file_extension
+            ) = await run_in_threadpool(
+                convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=pathlib.Path(temp_file_path).parent,
+                output_stem=Path(morphology_name).stem,
+                single_point_soma_by_ext=single_point_soma_by_ext,
             )
             if converted_morphology_file1:
                 stack.callback(pathlib.Path(converted_morphology_file1).unlink, missing_ok=True)

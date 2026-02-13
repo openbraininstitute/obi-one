@@ -3,7 +3,12 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.stimulus import (
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -19,7 +24,7 @@ from obi_one.scientific.blocks.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-StimulusUnion = Annotated[
+_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
@@ -30,23 +35,22 @@ StimulusUnion = Annotated[
     | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
-    | PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-    | SinusoidalPoissonSpikeStimulus,
+    | OrnsteinUhlenbeckCurrentSomaticStimulus
+    | OrnsteinUhlenbeckConductanceSomaticStimulus
+    | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
+)
+
+_SPIKE_STIMULI = (
+    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+)
+
+StimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI,
     Discriminator("type"),
 ]
 
 MEModelStimulusUnion = Annotated[
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus,
+    _INJECTION_STIMULI,
     Discriminator("type"),
 ]
 

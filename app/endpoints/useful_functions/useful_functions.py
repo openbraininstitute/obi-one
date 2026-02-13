@@ -84,21 +84,15 @@ def _process_measurement(
     neurite_type: int | None = None,
 ) -> list[Any]:
     """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
-    nm_get_key = label
+    nm_get_key = "max_radial_distance" if label.endswith("max_radial_distance") else label
 
-    # 1. Simplification logic: Correctly set nm_get_key to 'max_radial_distance'
-    if label.endswith("max_radial_distance"):
-        nm_get_key = "max_radial_distance"
-
-    # 2. Key change: Ensure the call uses the simplified 'nm_get_key' in both branches.
-    if neurite_type is not None and "neurite" in label:
+    if neurite_type is not None:
         data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
     else:
-        # Use nm_get_key here to support 'morphology_max_radial_distance'
-        # (which has been simplified to 'max_radial_distance') and 'soma' metrics
-        # (where nm_get_key is the same as label).
-        data = nm.get(nm_get_key, neuron)  # <--- THIS LINE IS THE FIX
+        data = nm.get(nm_get_key, neuron)
 
+    if isinstance(data, list) and not data:
+        data = None
     elements = [label, data, unit]
 
     if isinstance(data, list) and data:
@@ -245,6 +239,23 @@ def update_measurement_items(
         _update_scalar_items(measurement_items, entry_value)
 
 
+def _get_payload(entry: list[Any]) -> Any | None:
+    """Return payload to write, or None if it should be skipped."""
+    if not entry or len(entry) <= 1:
+        return None
+
+    payload = entry[1]
+
+    if payload is None or (isinstance(payload, list) and not payload):
+        return None
+
+    is_complex_list = isinstance(payload, list) and payload and isinstance(payload[0], list)
+    if not is_complex_list and len(entry) > MIN_MEASUREMENT_ITEM_ENTRIES:
+        payload = (payload, entry[2])
+
+    return payload
+
+
 def fill_json(
     template: dict[str, Any],
     values: dict[str, Any],
@@ -255,35 +266,23 @@ def fill_json(
     """
     _update_entity_id_recursive(template, entity_id)
 
-    data_list = template.get("data", [])
-    for data_obj in data_list:
-        measurement_kinds = data_obj.get("measurement_kinds", [])
-        for measurement in measurement_kinds:
+    for data_obj in template.get("data", []):
+        for measurement in data_obj.get("measurement_kinds", []):
             domain = measurement.get("structural_domain")
             label = measurement.get("pref_label")
             if not domain or not label:
                 continue
-            domain_entries = values.get(domain)
-            if not domain_entries:
-                continue
-            for entry in domain_entries:
-                if not entry:
+
+            for entry in values.get(domain, []):
+                if not entry or entry[0] != label:
                     continue
-                entry_label = entry[0]
-                if entry_label != label:
-                    continue
-                payload = entry[1] if len(entry) > 1 else None
-                is_complex_list = (
-                    isinstance(payload, list) and payload and isinstance(payload[0], list)
-                )
-                if (
-                    payload is not None
-                    and not is_complex_list
-                    and len(entry) > MIN_MEASUREMENT_ITEM_ENTRIES
-                ):
-                    payload = (payload, entry[2])
-                if "measurement_items" not in measurement:
-                    measurement["measurement_items"] = []
+
+                payload = _get_payload(entry)
+                if payload is None:
+                    break  # matched label but nothing to write
+
+                measurement.setdefault("measurement_items", [])
                 update_measurement_items(measurement["measurement_items"], payload)
                 break
+
     return template
