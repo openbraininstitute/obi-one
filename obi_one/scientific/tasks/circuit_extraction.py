@@ -20,6 +20,7 @@ from entitysdk import Client, models, types
 from PIL import Image
 from pydantic import ConfigDict, Field, PrivateAttr
 
+from obi_one.core.benchmark import BenchmarkTracker
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
@@ -1079,13 +1080,14 @@ class CircuitExtractionTask(Task):
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
-        split_population.split_subcircuit(
-            self.config.coordinate_output_root,
-            nset_name,
-            sonata_circuit,
-            self.config.initialize.do_virtual,
-            self.config.initialize.create_external,
-        )
+        with BenchmarkTracker.section("split_subcircuit"):
+            split_population.split_subcircuit(
+                self.config.coordinate_output_root,
+                nset_name,
+                sonata_circuit,
+                self.config.initialize.do_virtual,
+                self.config.initialize.create_external,
+            )
 
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
@@ -1182,6 +1184,12 @@ class CircuitExtractionTask(Task):
 
         # Clean-up
         self._cleanup_temp_dir()
+
+        # Save and print benchmark summary
+        benchmark_dir = new_circuit_path.parent.parent / (new_circuit_path.parent.name + "__BENCHMARK__")
+        benchmark_file = benchmark_dir / "benchmark_results.json"
+        BenchmarkTracker.save_to_file(benchmark_file)
+        BenchmarkTracker.print_summary()
 
         if new_circuit_entity:
             return str(new_circuit_entity.id)
