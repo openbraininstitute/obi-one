@@ -90,36 +90,29 @@ class BenchmarkTracker:
                 "peak_mem_mb": round(peak_mem_mb, 2),
             }
 
-            L.info(
-                f"[BENCHMARK] {name}: {duration:.2f}s, "
-                f"Memory: {mem_before_mb:.1f} -> {mem_after_mb:.1f} MB "
-                f"(Δ {mem_delta_mb:+.1f} MB), Peak: {peak_mem_mb:.1f} MB"
-            )
+            # Log individual benchmark as JSON
+            benchmark_json = json.dumps({name: cls._benchmarks[name]})
+            L.info(f"[BENCHMARK] {benchmark_json}")
 
     @classmethod
     def print_summary(cls) -> None:
-        """Print a formatted summary of all benchmarks to stdout."""
+        """Print a JSON summary of all benchmarks to stdout."""
         if not cls._benchmarks:
             L.info("No benchmark data collected.")
             return
 
-        print("\n" + "=" * 80)
-        print("BENCHMARK SUMMARY")
-        print("=" * 80)
-
+        # Calculate total duration
         total_duration = sum(b["duration_s"] for b in cls._benchmarks.values())
 
-        for name, data in cls._benchmarks.items():
-            print(f"\n{name}:")
-            print(f"  Duration:      {data['duration_s']:>10.2f} s")
-            print(f"  Memory Before: {data['mem_before_mb']:>10.2f} MB")
-            print(f"  Memory After:  {data['mem_after_mb']:>10.2f} MB")
-            print(f"  Memory Delta:  {data['mem_delta_mb']:>10.2f} MB")
-            print(f"  Peak Memory:   {data['peak_mem_mb']:>10.2f} MB")
+        # Prepare summary data
+        summary_data = {
+            "benchmarks": cls._benchmarks,
+            "total_duration_s": round(total_duration, 2),
+        }
 
-        print(f"\n{'─' * 80}")
-        print(f"Total Duration: {total_duration:.2f} s")
-        print("=" * 80 + "\n")
+        # Print as single-line JSON with same format as individual sections
+        summary_json = json.dumps(summary_data)
+        L.info(f"[BENCHMARK SUMMARY] {summary_json}")
 
     @classmethod
     def save_to_file(cls, output_path: Path) -> None:
