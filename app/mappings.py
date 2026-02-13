@@ -46,7 +46,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_asset_label=AssetLabel.skeletonization_config,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="tag:2026.1.7",
+            ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=OBI_ONE_DEPS_PATH,
         ),
