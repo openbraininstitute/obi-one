@@ -41,6 +41,7 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
+    CircuitStimulusUnion,
     MEModelStimulusUnion,
     StimulusReference,
     StimulusUnion,
@@ -381,7 +382,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    stimuli: dict[str, StimulusUnion] = Field(
+    stimuli: dict[str, CircuitStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
         description="Stimuli for the simulation.",
