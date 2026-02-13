@@ -505,8 +505,9 @@ class CircuitExtractionTask(Task):
                 msg = f"Connectivity plot '{file_path.name}' does not exist!"
                 raise OBIONEError(msg)
             if file_path.stem not in asset_label_map:
-                msg = f"Unknown asset label for plot '{file_path.name}'!"
-                raise OBIONEError(msg)
+                msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
+                L.warning(msg)
+                continue
             asset_label, fmt = asset_label_map[file_path.stem]
             if fmt == "webp":
                 file_path = CircuitExtractionTask.convert_image_to_webp(image_path=file_path)
@@ -640,7 +641,13 @@ class CircuitExtractionTask(Task):
         )
         cmat = ConnectivityMatrix.from_h5(matrix_path.path)
         if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D", "network_in_2D_circular")
+            plot_types = (
+                "nodes",
+                "small_adj_and_stats",
+                "network_in_2D",
+                "network_in_2D_circular",
+                "property_table_extra",
+            )
         else:
             plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
         plots_init = BasicConnectivityPlotsScanConfig.Initialize(
@@ -666,6 +673,7 @@ class CircuitExtractionTask(Task):
             "small_adj_and_stats": "small_adj_and_stats.png",
             "network_in_2D": "small_network_in_2D.png",
             "network_in_2D_circular": "small_network_in_2D_circular.png",
+            "property_table_extra": "property_table_extra.png",
             "connectivity_global": "network_global_stats.png",
             "connectivity_pathway": "network_pathway_stats.png",
         }
@@ -692,26 +700,6 @@ class CircuitExtractionTask(Task):
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
-
-    def _add_contributions(self, db_client: Client, registered_circuit: models.Circuit) -> list:
-        """Add circuit contributions (from the parent circuit)."""
-        # Get parent contributions
-        parent = self._circuit_entity  # Parent circuit entity
-        parent_contributions = db_client.search_entity(
-            entity_type=models.Contribution, query={"entity__id": parent.id}
-        ).all()
-
-        # Register same contributions for extracted circuit
-        contributions_list = []
-        for contr in parent_contributions:
-            contr_model = models.Contribution(
-                agent=contr.agent, role=contr.role, entity=registered_circuit
-            )
-            registered_contr = db_client.register_entity(contr_model)
-            contributions_list.append(registered_contr)
-        # TODO: Additional contributors to be added by the user?
-        L.info(f"{len(contributions_list)} contributions registered")
-        return contributions_list
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -914,34 +902,51 @@ class CircuitExtractionTask(Task):
         """Generates an overview figure of the extracted circuit."""
         # Use circular view from basic connectivity plots, if existing
         if basic_plots_dir:
-            fig_path = basic_plots_dir / "small_network_in_2D_circular.png"
-            if not fig_path.is_file():
-                fig_path = None
+            fig_paths = basic_plots_dir / "small_network_in_2D_circular.png"
+            if fig_paths.is_file():
+                # Add table path (optional)
+                tab_path = basic_plots_dir / "property_table_extra.png"
+                if tab_path.is_file():
+                    fig_paths = (fig_paths, tab_path)
+            else:
+                fig_paths = None
         else:
-            fig_path = None
+            fig_paths = None
 
         # Use template figure from library if no circular plot available
-        if fig_path is None:
-            fig_path = Path(
+        if fig_paths is None:
+            fig_paths = Path(
                 str(files("obi_one.scientific.library").joinpath("extracted_circuit_template.png"))
             )
-
-        # Check that output file has the correct extension
-        if output_file.suffix != fig_path.suffix:
-            msg = (
-                f"Output file extension '{output_file.suffix}' does not match "
-                f"figure extension '{fig_path.suffix}'!"
-            )
-            raise OBIONEError(msg)
 
         # Check that output file does not exist yet
         if output_file.exists():
             msg = f"Output file '{output_file}' already exists!"
             raise OBIONEError(msg)
 
-        # Copy figure to output file
+        # Save output figure
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(fig_path, output_file)
+        if isinstance(fig_paths, tuple):
+            # Stack images horizontally
+            img_left = Image.open(fig_paths[0])
+            img_right = Image.open(fig_paths[-1])
+            width = img_left.width + img_right.width
+            height = max(img_left.height, img_right.height)
+            img_merged = Image.new("RGB", (width, height), (255, 255, 255))
+            img_merged.paste(img_left, (0, 0))
+            img_merged.paste(img_right, (img_left.width, height - img_right.height >> 1))
+            img_merged.save(output_file)
+        else:
+            # Check that output file has the correct extension
+            if output_file.suffix != fig_paths.suffix:
+                msg = (
+                    f"Output file extension '{output_file.suffix}' does not match "
+                    f"figure extension '{fig_paths.suffix}'!"
+                )
+                raise OBIONEError(msg)
+
+            # Copy figure to output file
+            shutil.copy(fig_paths, output_file)
 
         return output_file
 
@@ -1152,19 +1157,8 @@ class CircuitExtractionTask(Task):
                 registered_circuit=new_circuit_entity,
             )
 
-            # TODO: Circuit figure for campaign designer UI
-            # https://github.com/openbraininstitute/obi-one/issues/442
-            # --> Requires generating a new campaign designer figure
-            # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
-            # registered_circuit=new_circuit_entity)
-
             # Derivation link
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
-
-            # TODO: Contribution links
-            # --> Contributors to be still defined (don't copy parent circuit's ones)
-            # self._add_contributions(db_client=db_client,
-            # registered_circuit=new_circuit_entity)
 
             # Update execution activity (if any)
             self._update_execution_activity(
@@ -1175,7 +1169,7 @@ class CircuitExtractionTask(Task):
 
             L.info("Registration DONE")
 
-        # Generate and register compressed circuit asset
+        # Generate and register additional circuit asset
         self._generate_additional_circuit_assets(
             db_client=db_client,
             new_circuit_path=new_circuit_path,

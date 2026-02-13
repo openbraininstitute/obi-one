@@ -157,3 +157,18 @@ def test_task_failure_endpoint(client, task_type):
                 "activity_id": str(activity_id),
             },
         ).raise_for_status()
+
+
+@pytest.mark.parametrize("task_type", TaskType)
+def test_task_success_endpoint(client, task_type):
+    job_id = uuid4()
+
+    with patch("app.services.accounting.finish_accounting_session", autospec=True):
+        client.post(
+            url="/declared/task/callback/success",
+            json={
+                "task_type": task_type,
+                "job_id": str(job_id),
+                "count": 11,
+            },
+        ).raise_for_status()
