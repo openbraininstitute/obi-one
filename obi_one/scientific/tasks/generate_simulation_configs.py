@@ -44,7 +44,6 @@ from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     MEModelStimulusUnion,
     StimulusReference,
-    StimulusUnion,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,

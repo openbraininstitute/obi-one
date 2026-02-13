@@ -35,6 +35,7 @@ __all__ = [
     "CircuitFromID",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
+    "CircuitStimulusUnion",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -52,6 +53,7 @@ __all__ = [
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
     "ContributeSubjectSingleConfig",
+    "CosinusoidalSpatiallyUniformElectricFieldStimulus",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
@@ -88,6 +90,7 @@ __all__ = [
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
+    "MEModelStimulusUnion",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
@@ -161,6 +164,7 @@ __all__ = [
     "SkeletonizationScanConfig",
     "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
+    "SpatiallyUniformElectricFieldStimulus",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -259,6 +263,10 @@ from obi_one.scientific.blocks.recording import (
     Recording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
+)
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    CosinusoidalSpatiallyUniformElectricFieldStimulus,
+    SpatiallyUniformElectricFieldStimulus,
 )
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     OrnsteinUhlenbeckConductanceSomaticStimulus,
@@ -398,7 +406,12 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
+from obi_one.scientific.unions.unions_stimuli import (
+    CircuitStimulusUnion,
+    MEModelStimulusUnion,
+    StimulusReference,
+    StimulusUnion,
+)
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
