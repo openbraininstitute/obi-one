@@ -38,6 +38,24 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             timelimit="00:10",
         ),
     ),
+    TaskType.morphology_skeletonization: TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=models.SkeletonizationConfig,
+        activity_type=models.SkeletonizationExecution,
+        accounting_service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
+        config_asset_label=AssetLabel.skeletonization_config,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=OBI_ONE_DEPS_PATH,
+        ),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="00:30",
+        ),
+    ),
     TaskType.circuit_simulation: TaskDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
