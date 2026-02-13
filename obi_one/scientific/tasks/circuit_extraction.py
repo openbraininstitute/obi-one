@@ -692,25 +692,6 @@ class CircuitExtractionTask(Task):
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
 
-    def _add_contributions(self, db_client: Client, registered_circuit: models.Circuit) -> list:
-        """Add circuit contributions (from the parent circuit)."""
-        # Get parent contributions
-        parent = self._circuit_entity  # Parent circuit entity
-        parent_contributions = db_client.search_entity(
-            entity_type=models.Contribution, query={"entity__id": parent.id}
-        ).all()
-
-        # Register same contributions for extracted circuit
-        contributions_list = []
-        for contr in parent_contributions:
-            contr_model = models.Contribution(
-                agent=contr.agent, role=contr.role, entity=registered_circuit
-            )
-            registered_contr = db_client.register_entity(contr_model)
-            contributions_list.append(registered_contr)
-        # TODO: Additional contributors to be added by the user?
-        L.info(f"{len(contributions_list)} contributions registered")
-        return contributions_list
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -1150,19 +1131,8 @@ class CircuitExtractionTask(Task):
                 registered_circuit=new_circuit_entity,
             )
 
-            # TODO: Circuit figure for campaign designer UI
-            # https://github.com/openbraininstitute/obi-one/issues/442
-            # --> Requires generating a new campaign designer figure
-            # self._add_sim_designer_fig_asset(db_client=db_client, circuit_path=new_circuit_path,
-            # registered_circuit=new_circuit_entity)
-
             # Derivation link
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
-
-            # TODO: Contribution links
-            # --> Contributors to be still defined (don't copy parent circuit's ones)
-            # self._add_contributions(db_client=db_client,
-            # registered_circuit=new_circuit_entity)
 
             # Update execution activity (if any)
             self._update_execution_activity(
@@ -1173,7 +1143,7 @@ class CircuitExtractionTask(Task):
 
             L.info("Registration DONE")
 
-        # Generate and register compressed circuit asset
+        # Generate and register additional circuit asset
         self._generate_additional_circuit_assets(
             db_client=db_client,
             new_circuit_path=new_circuit_path,
