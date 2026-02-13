@@ -16,6 +16,7 @@ from obi_one.scientific.library.circuit_metrics import (
     get_circuit_metrics,
 )
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.memodel_circuit import try_get_mechanism_variables
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -120,6 +121,10 @@ def mapped_circuit_properties_endpoint(
     circuit_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
+    mapped_circuit_properties: dict = {}
+
+    # Try fetching circuit metrics (nodesets). This succeeds for Circuit entities
+    # but fails for MEModel entities which are not stored as Circuit in the DB.
     try:
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
@@ -127,15 +132,25 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties = {}
         mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+    except entitysdk.exception.EntitySDKError:
+        pass
 
-    except entitysdk.exception.EntitySDKError as err:
+    # Try fetching mechanism variables (succeeds for MEModel entities).
+    mechanism_variables = try_get_mechanism_variables(
+        db_client=db_client,
+        entity_id=circuit_id,
+    )
+    if mechanism_variables is not None:
+        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = mechanism_variables
+
+    if not mapped_circuit_properties:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+                "detail": f"No properties found for entity {circuit_id}.",
             },
-        ) from err
+        )
+
     return mapped_circuit_properties

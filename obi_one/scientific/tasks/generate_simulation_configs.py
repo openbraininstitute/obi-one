@@ -36,6 +36,10 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.unions_parameter_modifications import (
+    ParameterModificationReference,
+    ParameterModificationUnion,
+)
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
     RecordingUnion,
@@ -62,7 +66,7 @@ class BlockGroup(StrEnum):
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
-    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
@@ -92,7 +96,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-                BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+                BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
             ],
             "default_block_reference_labels": {
@@ -309,12 +313,26 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         },
     )
 
+    parameter_modifications: dict[str, ParameterModificationUnion] = Field(
+        default_factory=dict,
+        title="Mechanism Parameter Modifications",
+        description="Parameter modifications for the simulation.",
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": ParameterModificationReference.__name__,
+            "singular_name": "Parameter Modification",
+            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            "group_order": 0,
+        },
+    )
+
     model_config = ConfigDict(
         json_schema_extra={
             "ui_enabled": True,
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+                BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
                 BlockGroup.EVENTS_GROUP,
             ],
             "default_block_reference_labels": {
@@ -339,7 +357,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             "ui_element": "block_dictionary",
             "reference_type": NeuronSetReference.__name__,
             "singular_name": "Neuron Set",
-            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             "group_order": 0,
         },
     )
@@ -350,7 +368,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             "ui_element": "block_dictionary",
             "reference_type": SynapticManipulationsReference.__name__,
             "singular_name": "Synaptic Manipulation",
-            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             "group_order": 1,
         },
     )
@@ -409,7 +427,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
             "ui_element": "block_dictionary",
             "reference_type": NeuronSetReference.__name__,
             "singular_name": "Neuron Set",
-            "group": BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             "group_order": 0,
         },
     )

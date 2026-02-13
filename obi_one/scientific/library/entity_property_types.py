@@ -10,3 +10,4 @@ class CircuitPropertyType(StrEnum):
     POPULATION = "Population"
     BIOPHYSICAL_POPULATION = "BiophysicalPopulation"
     VIRTUAL_POPULATION = "VirtualPopulation"
+    MECHANISM_VARIABLES = "MechanismVariables"
