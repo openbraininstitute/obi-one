@@ -103,3 +103,9 @@ class TaskDefinition(Schema):
     def activity_type_name(self) -> str:
         """Return the name of the activity class."""
         return self.activity_type.__name__
+
+
+class TaskCallBackSuccessRequest(Schema):
+    task_type: TaskType
+    job_id: UUID
+    count: int

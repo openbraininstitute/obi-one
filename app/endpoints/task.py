@@ -13,6 +13,7 @@ from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import (
     TaskAccountingCreate,
     TaskAccountingInfo,
+    TaskCallBackSuccessRequest,
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
@@ -59,10 +60,12 @@ def task_launch_endpoint(
         accounting_parameters=accounting_info.parameters,
     )
     accounting_callbacks = accounting_service.generate_accounting_callbacks(
+        task_type=json_model.task_type,
         accounting_job_id=accounting_session._job_id,  # noqa: SLF001
-        service_subtype=task_definition.accounting_service_subtype,
         count=accounting_info.parameters.count,
         project_id=user_context.project_id,
+        virtual_lab_id=user_context.virtual_lab_id,
+        callback_url=callback_url,
     )
     try:
         return task_service.submit_task_job(
@@ -125,5 +128,26 @@ def task_failure_endpoint(
         db_client=db_client,
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.post(
+    "/callback/success",
+    summary="Task success callback",
+    description=("Callback endpoint that is called on task success."),
+)
+def task_success_endpoint(
+    json_model: TaskCallBackSuccessRequest,
+    accounting_factory: AccountingSessionFactoryDep,
+    user_context: UserContextWithProjectIdDep,
+) -> None:
+    task_definition = TASK_DEFINITIONS[json_model.task_type]
+    accounting_service.finish_accounting_session(
+        accounting_job_id=json_model.job_id,
+        service_subtype=task_definition.accounting_service_subtype,
+        count=json_model.count,
+        project_id=user_context.project_id,
+        http_client=accounting_factory._http_client,  # noqa: SLF001
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
