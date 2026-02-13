@@ -40,8 +40,7 @@ def run_process(parameters: ProcessParameters, output_dir: Path) -> None:
 
 
 def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
-    """
-    Collect, post-process, and organize skeletonization output files.
+    """Collect, post-process, and organize skeletonization output files.
 
     This function:
     1. Locates the combined morphology H5 file and renames it by appending
@@ -55,7 +54,7 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
     output_dir : Path
         Directory where skeletonization output files were generated.
 
-    Returns
+    Returns:
     -------
     SkeletonizationOutputs
         Object containing paths to:
@@ -64,7 +63,7 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
         - ASC morphology file
         - Combined H5 morphology file (with spines)
 
-    Raises
+    Raises:
     ------
     OBIONEError
         If required morphology files (.h5 or .swc) cannot be found in the output directory.
