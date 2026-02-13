@@ -640,7 +640,13 @@ class CircuitExtractionTask(Task):
         )
         cmat = ConnectivityMatrix.from_h5(matrix_path.path)
         if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D", "network_in_2D_circular", "property_table_extra")
+            plot_types = (
+                "nodes",
+                "small_adj_and_stats",
+                "network_in_2D",
+                "network_in_2D_circular",
+                "property_table_extra",
+            )
         else:
             plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
         plots_init = BasicConnectivityPlotsScanConfig.Initialize(
@@ -693,7 +699,6 @@ class CircuitExtractionTask(Task):
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
-
 
     @staticmethod
     def _filter_ext(file_list: list, ext: str) -> list:
@@ -922,13 +927,13 @@ class CircuitExtractionTask(Task):
         output_file.parent.mkdir(parents=True, exist_ok=True)
         if isinstance(fig_paths, tuple):
             # Stack images horizontally
-            img_L = Image.open(fig_paths[0])
-            img_R = Image.open(fig_paths[-1])
-            width = img_L.width + img_R.width
-            height = max(img_L.height, img_R.height)
+            img_left = Image.open(fig_paths[0])
+            img_right = Image.open(fig_paths[-1])
+            width = img_left.width + img_right.width
+            height = max(img_left.height, img_right.height)
             img_merged = Image.new("RGB", (width, height), (255, 255, 255))
-            img_merged.paste(img_L, (0, 0))
-            img_merged.paste(img_R, (img_L.width, height - img_R.height >> 1))
+            img_merged.paste(img_left, (0, 0))
+            img_merged.paste(img_right, (img_left.width, height - img_right.height >> 1))
             img_merged.save(output_file)
         else:
             # Check that output file has the correct extension

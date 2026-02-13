@@ -49,7 +49,8 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
       - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
       - "network_in_2D_circular": Circular projection only for small connectomes (<= 20 nodes).
       - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
-      - "property_table_extra": Extended property table with synapse class column for small connectomes (<= 20 nodes).
+      - "property_table_extra": Extended property table with synapse class column (but no
+        color legend) for small connectomes (<= 20 nodes).
     """
 
     single_coord_class_name: ClassVar[str] = "BasicConnectivityPlotsSingleConfig"
@@ -277,7 +278,7 @@ class BasicConnectivityPlotsTask(Task):
                 title=None,
                 title_fontsize=14,
             )
-            
+
             # Set aspect ratio to 1 (equal) for circular plot
             ax_main.set_aspect("equal")
 

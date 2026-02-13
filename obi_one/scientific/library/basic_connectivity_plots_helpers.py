@@ -966,13 +966,14 @@ def make_MC_fig_template(  # noqa: PLR0914
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
 
 
-def plot_network_legends(
+def plot_network_legends(  # noqa: PLR0913
     fig: plt.Figure,
     ax_edge: plt.Axes,
     ax_node_size: plt.Axes,
     ax_exc: plt.Axes,
     ax_inh: plt.Axes,
     cmap: plt.Colormap,
+    *,
     largest_radius: float = 0.1,
     y_position: float = 0.75,
     fontsize: int = 12,
@@ -982,7 +983,7 @@ def plot_network_legends(
     edge_label: str = "Edge thickness represents number of synapses",
 ) -> None:
     """Plot network legends for nodes and edges.
-    
+
     Args:
         fig: Matplotlib figure
         ax_edge: Axis for edge width legend
@@ -999,7 +1000,7 @@ def plot_network_legends(
         edge_label: Label text for edge width legend
     """
     color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-    
+
     # Excitatory neuron legend
     plot_growing_circles(
         fig, ax_exc, radii=[largest_radius], y1=y_position, color=color_map["EXC"][:-1]
@@ -1014,7 +1015,7 @@ def plot_network_legends(
         color=color_map["EXC"][:-1],
     )
     ax_exc.set_axis_off()
-    
+
     # Inhibitory neuron legend
     plot_growing_circles(
         fig, ax_inh, radii=[largest_radius], y1=y_position, color=color_map["INH"][:-1]
@@ -1029,7 +1030,7 @@ def plot_network_legends(
         color=color_map["INH"][:-1],
     )
     ax_inh.set_axis_off()
-    
+
     # Node size legend
     plot_growing_circles(
         fig,
@@ -1046,7 +1047,7 @@ def plot_network_legends(
         fontsize=fontsize,
         color="black",
     )
-    
+
     # Edge width legend
     plot_growing_arrows(
         ax_edge,
@@ -1181,7 +1182,7 @@ def plot_smallMC(  # noqa: PLR0914
         y_position=0.75,
         fontsize=12,
     )
-    
+
     return fig
 
 
@@ -1192,6 +1193,7 @@ def plot_node_table(  # noqa: PLR0914
     colors_file: str | None = None,  # path to rgba colors file
     h_scale: float = 2.5,
     v_scale: float = 2.5,
+    *,
     skip_color_column: bool = False,
     add_syn_class_column: bool = False,
 ) -> plt.Figure:
@@ -1200,7 +1202,12 @@ def plot_node_table(  # noqa: PLR0914
     col_sel = ["node_ids", "layer", "mtype"]
     if add_syn_class_column:
         col_sel += ["synapse_class"]
-    col_lbl_map = {"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type", "synapse_class": "Syn-class"}
+    col_lbl_map = {
+        "node_ids": "Neuron ID",
+        "layer": "Layer",
+        "mtype": "M-type",
+        "synapse_class": "Syn-class",
+    }
     df = conn.vertices[col_sel]
     df = df.copy().rename(columns={_col: col_lbl_map[_col] for _col in col_sel})
     if not skip_color_column:
@@ -1212,7 +1219,8 @@ def plot_node_table(  # noqa: PLR0914
             n = conn.matrix.shape[0]
             if not (hasattr(colors, "colors") and n <= colors.N):
                 msg = (
-                    "The rendering color map must contain at least as many colors as there are neurons."
+                    "The rendering color map must contain at least as many colors "
+                    "as there are neurons."
                 )
                 raise ValueError(msg)
             colors = [colors(i) for i in range(colors.N)]
@@ -1221,7 +1229,8 @@ def plot_node_table(  # noqa: PLR0914
             colors = [tuple(row) for row in colors_df.to_numpy()]
             if not len(colors) >= len(df):
                 msg = (
-                    "The rendering color map must contain at least as many colors as there are neurons."
+                    "The rendering color map must contain at least as many colors "
+                    "as there are neurons."
                 )
                 raise ValueError(msg)
 
