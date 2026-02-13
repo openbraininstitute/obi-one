@@ -132,9 +132,7 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = (
-            circuit_metrics.names_of_nodesets
-        )
+        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
     except entitysdk.exception.EntitySDKError:
         pass
 
@@ -144,9 +142,7 @@ def mapped_circuit_properties_endpoint(
         entity_id=circuit_id,
     )
     if mechanism_variables is not None:
-        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = (
-            mechanism_variables
-        )
+        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = mechanism_variables
 
     if not mapped_circuit_properties:
         raise HTTPException(
