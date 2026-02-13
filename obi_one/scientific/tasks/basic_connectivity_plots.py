@@ -49,6 +49,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
       - "network_in_2D": 2D visualization of the network for small connectomes only (<= 20 nodes).
       - "network_in_2D_circular": Circular projection only for small connectomes (<= 20 nodes).
       - "property_table": Table of node properties for small connectomes only (<= 20 nodes).
+      - "property_table_extra": Extended property table with synapse class column for small connectomes (<= 20 nodes).
     """
 
     single_coord_class_name: ClassVar[str] = "BasicConnectivityPlotsSingleConfig"
@@ -326,6 +327,33 @@ class BasicConnectivityPlotsTask(Task):
                 output_file = Path(dir_path) / f"property_table.{fmt}"
                 fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
 
+    @staticmethod
+    def property_table_extra_plot(
+        plot_formats: tuple[str, ...],
+        dpi: int,
+        size: tuple[int, int],
+        n_max_2d_plot: int,
+        conn: ConnectivityMatrix,
+        dir_path: str | Path,
+        figsize: tuple[float, float] = (5, 2),
+    ) -> None:
+        """Extended property table with synapse class column, without color column."""
+        if size[0] > n_max_2d_plot:
+            L.warning("Your network is too large for this table.")
+        else:
+            fig_property_table = plot_node_table(
+                conn,
+                figsize=figsize,
+                h_scale=2.5,
+                v_scale=2.5,
+                skip_color_column=True,
+                add_syn_class_column=True,
+            )
+
+            for fmt in plot_formats:
+                output_file = Path(dir_path) / f"property_table_extra.{fmt}"
+                fig_property_table.savefig(output_file, dpi=dpi, bbox_inches="tight")
+
     def execute(
         self,
         *,
@@ -451,6 +479,18 @@ class BasicConnectivityPlotsTask(Task):
                 self.config.coordinate_output_root,
                 colors_cmap=self.config.initialize.rendering_cmap,
                 colors_file=self.config.initialize.rendering_color_file,
+                figsize=(5, 2),
+            )
+
+        # Plot extended table of properties
+        if "property_table_extra" in plot_types:
+            self.property_table_extra_plot(
+                plot_formats,
+                dpi,
+                size,
+                n_max_2d_plot,
+                conn,
+                self.config.coordinate_output_root,
                 figsize=(5, 2),
             )
 

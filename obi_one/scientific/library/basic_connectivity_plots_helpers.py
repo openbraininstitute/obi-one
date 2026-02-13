@@ -1188,35 +1188,42 @@ def plot_smallMC(  # noqa: PLR0914
 def plot_node_table(  # noqa: PLR0914
     conn: ConnectivityMatrix,
     figsize: tuple[float, float],
-    colors_cmap: str,  # name of discrete colormap from matplotlib
+    colors_cmap: str | None = None,  # name of discrete colormap from matplotlib
     colors_file: str | None = None,  # path to rgba colors file
     h_scale: float = 2.5,
     v_scale: float = 2.5,
+    skip_color_column: bool = False,
+    add_syn_class_column: bool = False,
 ) -> plt.Figure:
     """Plot a table of node properties with color coding."""
     # Get data frame of properties
-    df = conn.vertices[["node_ids", "layer", "mtype"]]
-    df = df.copy().rename(columns={"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type"})
-    df.insert(0, " ", [""] * len(df))  # Add empty column for circles
+    col_sel = ["node_ids", "layer", "mtype"]
+    if add_syn_class_column:
+        col_sel += ["synapse_class"]
+    col_lbl_map = {"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type", "synapse_class": "Syn-class"}
+    df = conn.vertices[col_sel]
+    df = df.copy().rename(columns={_col: col_lbl_map[_col] for _col in col_sel})
+    if not skip_color_column:
+        df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 
-    # Get colors
-    if colors_cmap != "custom":  # From color map
-        colors = plt.get_cmap(colors_cmap)
-        n = conn.matrix.shape[0]
-        if not (hasattr(colors, "colors") and n <= colors.N):
-            msg = (
-                "The rendering color map must contain at least as many colors as there are neurons."
-            )
-            raise ValueError(msg)
-        colors = [colors(i) for i in range(colors.N)]
-    else:  # Load colors from file
-        colors_df = pd.read_csv(colors_file, header=None)
-        colors = [tuple(row) for row in colors_df.to_numpy()]
-        if not len(colors) >= len(df):
-            msg = (
-                "The rendering color map must contain at least as many colors as there are neurons."
-            )
-            raise ValueError(msg)
+        # Get colors
+        if colors_cmap != "custom":  # From color map
+            colors = plt.get_cmap(colors_cmap)
+            n = conn.matrix.shape[0]
+            if not (hasattr(colors, "colors") and n <= colors.N):
+                msg = (
+                    "The rendering color map must contain at least as many colors as there are neurons."
+                )
+                raise ValueError(msg)
+            colors = [colors(i) for i in range(colors.N)]
+        else:  # Load colors from file
+            colors_df = pd.read_csv(colors_file, header=None)
+            colors = [tuple(row) for row in colors_df.to_numpy()]
+            if not len(colors) >= len(df):
+                msg = (
+                    "The rendering color map must contain at least as many colors as there are neurons."
+                )
+                raise ValueError(msg)
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.axis("off")
@@ -1230,16 +1237,17 @@ def plot_node_table(  # noqa: PLR0914
     fig.canvas.draw()  # Draw table
 
     # Add color coding from the rendered image
-    for i in range(len(df)):
-        cell = table[i + 1, 0]  # +1 for header row
-        cell.get_text().set_text("")  # Remove text
-        bbox = cell.get_window_extent(fig.canvas.get_renderer())
-        inv = ax.transData.inverted()
-        x0, y0 = inv.transform((bbox.x0, bbox.y0))
-        x1, y1 = inv.transform((bbox.x1, bbox.y1))
-        xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
-        radius = (y1 - y0) * 0.35
-        circle = mpatches.Circle((xc, yc), radius, color=colors[i], zorder=10, clip_on=False)
-        ax.add_patch(circle)
+    if not skip_color_column:
+        for i in range(len(df)):
+            cell = table[i + 1, 0]  # +1 for header row
+            cell.get_text().set_text("")  # Remove text
+            bbox = cell.get_window_extent(fig.canvas.get_renderer())
+            inv = ax.transData.inverted()
+            x0, y0 = inv.transform((bbox.x0, bbox.y0))
+            x1, y1 = inv.transform((bbox.x1, bbox.y1))
+            xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
+            radius = (y1 - y0) * 0.35
+            circle = mpatches.Circle((xc, yc), radius, color=colors[i], zorder=10, clip_on=False)
+            ax.add_patch(circle)
 
     return fig
