@@ -17,7 +17,7 @@ from .stimulus import Stimulus
 class SpatiallyUniformElectricFieldStimulus(Stimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
-    title: ClassVar[str] = "Uniform Electric Field"
+    title: ClassVar[str] = "Spatially Uniform Electric Field"
 
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
@@ -35,10 +35,32 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         },
     )
 
+    ramp_up_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps up from zero to full amplitude, \
+            in milliseconds (ms).",
+        title="Ramp Up (Duration)",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    ramp_down_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps down from full amplitude to zero, \
+            in milliseconds (ms).",
+        title="Ramp Down (Duration)",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
     E_x: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
-        title="Amplitude in x-direction.",
+        title="X amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
@@ -48,7 +70,7 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
     E_y: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
-        title="Amplitude in y-direction.",
+        title="Y amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
@@ -58,32 +80,10 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
     E_z: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
-        title="Amplitude in z-direction.",
+        title="Z amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
-        },
-    )
-
-    ramp_up_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        description="Time over which the field linearly ramps up from zero to full amplitude, \
-            in milliseconds (ms).",
-        title="Ramp Up Time",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
-        },
-    )
-
-    ramp_down_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        description="Time over which the field linearly ramps down from full amplitude to zero, \
-            in milliseconds (ms).",
-        title="Ramp Down Time",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
         },
     )
 
@@ -103,8 +103,8 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
                 "duration": self.duration,
                 "module": self._module,
                 "input_type": self._input_type,
-                "ramp_up_time": self.ramp_up_time,
-                "ramp_down_time": self.ramp_down_time,
+                "ramp_up_duration": self.ramp_up_duration,
+                "ramp_down_duration": self.ramp_down_duration,
                 "fields": [
                     {
                         "E_x": self.E_x,
@@ -118,12 +118,16 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         return sonata_config
 
 
-class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
+class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
+    """A spatially uniform electric field stimulus applied to all compartments of biophysical neurons, where the field varies in time as a cosinusoid."""
+
+    title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
+
     frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
             assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] \
-            is applied, unless ramp_up_time or ramp_down_time is specified, in which case the \
+            is applied, unless ramp_up_duration or ramp_down_duration is specified, in which case the \
             field will increase/decrease linearly with time during the ramp periods, and will \
             be constant during the remaider of the stimulation period. Note that the signal \
             will be generated with the same time step as the simulation itself. Note that \
@@ -151,7 +155,7 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
     E_x: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
-        title="Peak amplitude in x-direction.",
+        title="X peak amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
@@ -161,7 +165,7 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
     E_y: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
-        title="Peak amplitude in y-direction.",
+        title="Y peak amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
@@ -171,7 +175,7 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
     E_z: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
-        title="Peak amplitude in z-direction.",
+        title="Z peak amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "V/m",
