@@ -966,6 +966,108 @@ def make_MC_fig_template(  # noqa: PLR0914
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
 
 
+def plot_network_legends(
+    fig: plt.Figure,
+    ax_edge: plt.Axes,
+    ax_node_size: plt.Axes,
+    ax_exc: plt.Axes,
+    ax_inh: plt.Axes,
+    cmap: plt.Colormap,
+    largest_radius: float = 0.1,
+    y_position: float = 0.75,
+    fontsize: int = 12,
+    exc_label: str = "Excitatory neuron",
+    inh_label: str = "Inhibitory neuron",
+    node_size_label: str = "Node size represents in+out degree",
+    edge_label: str = "Edge thickness represents number of synapses",
+) -> None:
+    """Plot network legends for nodes and edges.
+    
+    Args:
+        fig: Matplotlib figure
+        ax_edge: Axis for edge width legend
+        ax_node_size: Axis for node size legend
+        ax_exc: Axis for excitatory neuron legend
+        ax_inh: Axis for inhibitory neuron legend
+        cmap: Colormap for node colors
+        largest_radius: Radius for the largest circle
+        y_position: Vertical position for circles
+        fontsize: Font size for labels
+        exc_label: Label text for excitatory neurons
+        inh_label: Label text for inhibitory neurons
+        node_size_label: Label text for node size legend
+        edge_label: Label text for edge width legend
+    """
+    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+    
+    # Excitatory neuron legend
+    plot_growing_circles(
+        fig, ax_exc, radii=[largest_radius], y1=y_position, color=color_map["EXC"][:-1]
+    )
+    ax_exc.text(
+        0.5,
+        0.1,
+        exc_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color=color_map["EXC"][:-1],
+    )
+    ax_exc.set_axis_off()
+    
+    # Inhibitory neuron legend
+    plot_growing_circles(
+        fig, ax_inh, radii=[largest_radius], y1=y_position, color=color_map["INH"][:-1]
+    )
+    ax_inh.text(
+        0.5,
+        0.1,
+        inh_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color=color_map["INH"][:-1],
+    )
+    ax_inh.set_axis_off()
+    
+    # Node size legend
+    plot_growing_circles(
+        fig,
+        ax_node_size,
+        radii=[largest_radius / 6, largest_radius / 3, largest_radius / 2],
+        y1=y_position,
+    )
+    ax_node_size.text(
+        0.5,
+        0.1,
+        node_size_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color="black",
+    )
+    
+    # Edge width legend
+    plot_growing_arrows(
+        ax_edge,
+        widths=np.linspace(1, 12, 3),
+        head_widths=[0.1, 0.2, 0.3],
+        y1=y_position,
+        color="black",
+        length=0.2,
+        gap=0.05,
+    )
+    ax_edge.text(
+        0.5,
+        0.1,
+        edge_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color="black",
+    )
+
+
 def plot_smallMC(  # noqa: PLR0914
     conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
 ) -> plt.Figure:
@@ -1067,67 +1169,19 @@ def plot_smallMC(  # noqa: PLR0914
         title_fontsize=textsize,
     )
 
-    # Node legends
-    largest_radius = 0.1
-    y_nodes = 0.75
-    # INH
-    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-    plot_growing_circles(fig, ax7, radii=[largest_radius], y1=y_nodes, color=color_map["EXC"][:-1])
-    ax7.text(
-        0.5,
-        0.1,
-        "Excitatory neuron",
-        va="center",
-        ha="center",
+    # Add network legends
+    plot_network_legends(
+        fig=fig,
+        ax_edge=ax5,
+        ax_node_size=ax6,
+        ax_exc=ax7,
+        ax_inh=ax8,
+        cmap=cmap,
+        largest_radius=0.1,
+        y_position=0.75,
         fontsize=12,
-        color=color_map["EXC"][:-1],
     )
-    ax7.set_axis_off()
-    # EXC
-    plot_growing_circles(fig, ax8, radii=[largest_radius], y1=y_nodes, color=color_map["INH"][:-1])
-    ax8.text(
-        0.5,
-        0.1,
-        "Inhibitory neuron",
-        va="center",
-        ha="center",
-        fontsize=12,
-        color=color_map["INH"][:-1],
-    )
-    ax8.set_axis_off()
-    # Node size
-    plot_growing_circles(
-        fig, ax6, radii=[largest_radius / 6, largest_radius / 3, largest_radius / 2], y1=0.75
-    )
-    ax6.text(
-        0.5,
-        0.1,
-        "Node size represents in+out degree",
-        va="center",
-        ha="center",
-        fontsize=14,
-        color="black",
-    )
-
-    # Edge width legend
-    plot_growing_arrows(
-        ax5,
-        widths=np.linspace(1, 12, 3),
-        head_widths=[0.1, 0.2, 0.3],
-        y1=0.75,
-        color="black",
-        length=0.2,
-        gap=0.05,
-    )
-    ax5.text(
-        0.5,
-        0.1,
-        "Edge thickness represents number of synapses",
-        va="center",
-        ha="center",
-        fontsize=12,
-        color="black",
-    )
+    
     return fig
 
 

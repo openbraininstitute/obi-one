@@ -21,6 +21,7 @@ from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     connection_probability_within_pathway,
     plot_connection_probability_pathway_stats,
     plot_connection_probability_stats,
+    plot_network_legends,
     plot_node_stats,
     plot_node_table,
     plot_small_network,
@@ -238,8 +239,16 @@ class BasicConnectivityPlotsTask(Task):
         if size[0] > n_max_2d_plot:
             L.warning("Your network is too large for this plot.")
         else:
-            # Create a single figure for circular projection
-            fig, ax = plt.subplots(figsize=(8, 8), facecolor="white")
+            # Create figure with main plot and legend space (4 legend axes)
+            fig = plt.figure(figsize=(10, 10), facecolor="white")
+            gs = fig.add_gridspec(
+                2, 4, height_ratios=[10, 1], width_ratios=[1, 1, 1, 1], hspace=0.1, wspace=0.2
+            )
+            ax_main = fig.add_subplot(gs[0, :])
+            ax_edge = fig.add_subplot(gs[1, 0])
+            ax_node_size = fig.add_subplot(gs[1, 1])
+            ax_exc = fig.add_subplot(gs[1, 2])
+            ax_inh = fig.add_subplot(gs[1, 3])
 
             # Setup colors
             cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
@@ -247,9 +256,9 @@ class BasicConnectivityPlotsTask(Task):
             color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
             color_property = "synapse_class"
 
-            # Plot circular projection (same as ax4 in plot_smallMC)
+            # Plot circular projection
             plot_small_network(
-                ax,
+                ax_main,
                 conn,
                 color_nodes_by_prop=True,
                 color_map_nodes=color_map_nodes,
@@ -266,6 +275,21 @@ class BasicConnectivityPlotsTask(Task):
                 axis_fontsize=14,
                 title=None,
                 title_fontsize=14,
+            )
+            
+            # Set aspect ratio to 1 (equal) for circular plot
+            ax_main.set_aspect("equal")
+
+            # Add network legends
+            plot_network_legends(
+                fig=fig,
+                ax_edge=ax_edge,
+                ax_node_size=ax_node_size,
+                ax_exc=ax_exc,
+                ax_inh=ax_inh,
+                cmap=cmap,
+                node_size_label="Total degree",
+                edge_label="Number of synapses",
             )
 
             for fmt in plot_formats:
