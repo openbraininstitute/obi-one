@@ -17,6 +17,10 @@ from .stimulus import Stimulus
 class SpatiallyUniformElectricFieldStimulus(Stimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
+    json_schema_extra = {
+        "entity_property_requirement": {"scale": ["small_microcircuit"]},
+    }
+
     title: ClassVar[str] = "Uniform Electric Field"
 
     _module: str = "spatially_uniform_e_field"
