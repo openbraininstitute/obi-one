@@ -29,28 +29,40 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     E_x: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
         title="Amplitude in x-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     E_y: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
         title="Amplitude in y-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     E_z: float | list[float] = Field(
         default=0.1,
         description="Amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
         title="Amplitude in z-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     ramp_up_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -58,7 +70,10 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         description="Time over which the field linearly ramps up from zero to full amplitude, \
             in milliseconds (ms).",
         title="Ramp Up Time",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     ramp_down_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -66,7 +81,10 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         description="Time over which the field linearly ramps down from full amplitude to zero, \
             in milliseconds (ms).",
         title="Ramp Down Time",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     _frequency: float = PrivateAttr(0.0)
@@ -112,14 +130,20 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
             frequency should therefore be less than the Nyquist frequency of the simulation \
             (i.e., 1/(2*dt))",
         title="Frequency",
-        units="Hz",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
     )
 
     phase_degrees: float | list[float] = Field(
         default=0.0,
         description="Phase of the cosinusoid, in degrees.",
         title="Phase",
-        units="°",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "°",
+        },
     )
 
     # Redefine E_x, E_y, and E_z with different names and descriptions
@@ -128,21 +152,30 @@ class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectric
         default=0.1,
         description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
         title="Peak amplitude in x-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     E_y: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
         title="Peak amplitude in y-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     E_z: float | list[float] = Field(
         default=0.1,
         description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
         title="Peak amplitude in z-direction.",
-        units="V/m",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "V/m",
+        },
     )
 
     @model_validator(mode="after")
