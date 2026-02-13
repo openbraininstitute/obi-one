@@ -19,6 +19,7 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     json_schema_extra = {
         "entity_property_requirement": {"scale": ["small_microcircuit"]},
+        "entity_property_unfulfilled_message": "This stimulus is currently only supported for microcircuits.",
     }
 
     title: ClassVar[str] = "Uniform Electric Field"
