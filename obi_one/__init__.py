@@ -53,7 +53,7 @@ __all__ = [
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
     "ContributeSubjectSingleConfig",
-    "CosinusoidalSpatiallyUniformElectricFieldStimulus",
+    "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
@@ -265,7 +265,7 @@ from obi_one.scientific.blocks.recording import (
     TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.blocks.stimuli.electric_field import (
-    CosinusoidalSpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
     SpatiallyUniformElectricFieldStimulus,
 )
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (

@@ -4,7 +4,7 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.stimuli.electric_field import (
-    CosinusoidalSpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
     SpatiallyUniformElectricFieldStimulus,
 )
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
@@ -49,7 +49,7 @@ _SPIKE_STIMULI = (
 )
 
 _FIELD_STIMULI = (
-    SpatiallyUniformElectricFieldStimulus | CosinusoidalSpatiallyUniformElectricFieldStimulus
+    SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
 )
 
 StimulusUnion = Annotated[
