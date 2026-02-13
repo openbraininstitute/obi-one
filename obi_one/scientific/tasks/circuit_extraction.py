@@ -639,7 +639,7 @@ class CircuitExtractionTask(Task):
         )
         cmat = ConnectivityMatrix.from_h5(matrix_path.path)
         if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D", "network_in_2D_circular")
+            plot_types = ("nodes", "small_adj_and_stats", "network_in_2D", "network_in_2D_circular", "property_table_extra")
         else:
             plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
         plots_init = BasicConnectivityPlotsScanConfig.Initialize(
@@ -894,34 +894,51 @@ class CircuitExtractionTask(Task):
         """Generates an overview figure of the extracted circuit."""
         # Use circular view from basic connectivity plots, if existing
         if basic_plots_dir:
-            fig_path = basic_plots_dir / "small_network_in_2D_circular.png"
-            if not fig_path.is_file():
-                fig_path = None
+            fig_paths = basic_plots_dir / "small_network_in_2D_circular.png"
+            if fig_paths.is_file():
+                # Add table path (optional)
+                tab_path = basic_plots_dir / "property_table_extra.png"
+                if tab_path.is_file():
+                    fig_paths = (fig_paths, tab_path)
+            else:
+                fig_paths = None
         else:
-            fig_path = None
+            fig_paths = None
 
         # Use template figure from library if no circular plot available
-        if fig_path is None:
-            fig_path = Path(
+        if fig_paths is None:
+            fig_paths = Path(
                 str(files("obi_one.scientific.library").joinpath("extracted_circuit_template.png"))
             )
-
-        # Check that output file has the correct extension
-        if output_file.suffix != fig_path.suffix:
-            msg = (
-                f"Output file extension '{output_file.suffix}' does not match "
-                f"figure extension '{fig_path.suffix}'!"
-            )
-            raise OBIONEError(msg)
 
         # Check that output file does not exist yet
         if output_file.exists():
             msg = f"Output file '{output_file}' already exists!"
             raise OBIONEError(msg)
 
-        # Copy figure to output file
+        # Save output figure
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(fig_path, output_file)
+        if isinstance(fig_paths, tuple):
+            # Stack images horizontally
+            img_L = Image.open(fig_paths[0])
+            img_R = Image.open(fig_paths[-1])
+            width = img_L.width + img_R.width
+            height = max(img_L.height, img_R.height)
+            img_merged = Image.new("RGB", (width, height))
+            img_merged.paste(img_L, (0, 0))
+            img_merged.paste(img_R, (img_L.width, 0))
+            img_merged.save(output_file)
+        else:
+            # Check that output file has the correct extension
+            if output_file.suffix != fig_paths.suffix:
+                msg = (
+                    f"Output file extension '{output_file.suffix}' does not match "
+                    f"figure extension '{fig_paths.suffix}'!"
+                )
+                raise OBIONEError(msg)
+
+            # Copy figure to output file
+            shutil.copy(fig_paths, output_file)
 
         return output_file
 
