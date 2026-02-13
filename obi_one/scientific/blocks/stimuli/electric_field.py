@@ -1,7 +1,7 @@
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 import numpy as np
-from pydantic import Field, NonNegativeFloat
+from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -34,25 +34,82 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     E_x: float | list[float] = Field(
         default=0.1,
-        description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
-        title="Peak amplitude in x-direction.",
+        description="Amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
+        title="Amplitude in x-direction.",
         units="V/m",
     )
 
     E_y: float | list[float] = Field(
         default=0.1,
-        description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
-        title="Peak amplitude in y-direction.",
+        description="Amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
+        title="Amplitude in y-direction.",
         units="V/m",
     )
 
     E_z: float | list[float] = Field(
         default=0.1,
-        description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
-        title="Peak amplitude in z-direction.",
+        description="Amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
+        title="Amplitude in z-direction.",
         units="V/m",
     )
 
+    ramp_up_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps up from zero to full amplitude, \
+            in milliseconds (ms).",
+        title="Ramp Up Time",
+        units="ms",
+    )
+
+    ramp_down_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        description="Time over which the field linearly ramps down from full amplitude to zero, \
+            in milliseconds (ms).",
+        title="Ramp Down Time",
+        units="ms",
+    )
+
+    _frequency: float = PrivateAttr(0.0)
+    _phase_degrees: float = PrivateAttr(0.0)
+    _E_x: float = PrivateAttr(0.0)
+    _E_y: float = PrivateAttr(0.0)
+    _E_z: float = PrivateAttr(0.0)
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+
+        self._frequency = self._frequency
+        self._phase_degrees = self._phase_degrees
+        self._E_x = self._E_x
+        self._E_y = self._E_y
+        self._E_z = self._E_z
+
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
+            sonata_config[self.block_name + "_" + str(t_ind)] = {
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
+                "module": self._module,
+                "input_type": self._input_type,
+                "ramp_up_time": self.ramp_up_time,
+                "ramp_down_time": self.ramp_down_time,
+                "fields": [
+                    {
+                        "E_x": self._E_x,
+                        "E_y": self._E_y,
+                        "E_z": self._E_z,
+                        "frequency": self._frequency,
+                        "phase": np.deg2rad(self._phase_degrees),
+                    }
+                ],
+            }
+        return sonata_config
+
+
+class CosinusoidalSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
     frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
@@ -74,45 +131,34 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
         units="°",
     )
 
-    ramp_up_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        description="Time over which the field linearly ramps up from zero to full amplitude, \
-            in milliseconds (ms).",
-        title="Ramp Up Time",
-        units="ms",
+    # Redefine E_x, E_y, and E_z with different names and descriptions
+
+    E_x: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
+        title="Peak amplitude in x-direction.",
+        units="V/m",
     )
 
-    ramp_down_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        description="Time over which the field linearly ramps down from full amplitude to zero, \
-            in milliseconds (ms).",
-        title="Ramp Down Time",
-        units="ms",
+    E_y: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
+        title="Peak amplitude in y-direction.",
+        units="V/m",
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
+    E_z: float | list[float] = Field(
+        default=0.1,
+        description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
+        title="Peak amplitude in z-direction.",
+        units="V/m",
+    )
 
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "module": self._module,
-                "input_type": self._input_type,
-                "ramp_up_time": self.ramp_up_time,
-                "ramp_down_time": self.ramp_down_time,
-                "fields": [
-                    {
-                        "E_x": self.E_x,
-                        "E_y": self.E_y,
-                        "E_z": self.E_z,
-                        "frequency": self.frequency,
-                        "phase": np.deg2rad(self.phase_degrees),
-                    }
-                ],
-            }
-        return sonata_config
+    @model_validator(mode="after")
+    def _set_private_vars(self) -> Self:
+        self._frequency = self.frequency
+        self._phase_degrees = self.phase_degrees
+        self._E_x = self.E_x
+        self._E_y = self.E_y
+        self._E_z = self.E_z
+        return self
