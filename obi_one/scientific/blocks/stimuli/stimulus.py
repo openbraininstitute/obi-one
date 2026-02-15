@@ -62,7 +62,7 @@ class Stimulus(Block, ABC):
         pass
 
 
-class SomaticStimulus(Stimulus, ABC):
+class ContinuousStimulus(Stimulus, ABC):
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
@@ -122,7 +122,7 @@ class SomaticStimulus(Stimulus, ABC):
         return self._generate_config()
 
 
-class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
+class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
     title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
@@ -162,7 +162,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
@@ -203,7 +203,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class LinearCurrentClampSomaticStimulus(SomaticStimulus):
+class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
     title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
@@ -255,7 +255,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
@@ -309,7 +309,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
     title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
@@ -360,7 +360,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
@@ -414,7 +414,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
+class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
@@ -483,7 +483,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
+class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
@@ -549,7 +549,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
     title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
@@ -592,7 +592,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
+class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
