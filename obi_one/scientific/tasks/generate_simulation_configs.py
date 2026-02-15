@@ -86,21 +86,19 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-                BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-                BlockGroup.EVENTS_GROUP,
-            ],
-            "default_block_reference_labels": {
-                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            },
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+    }
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,

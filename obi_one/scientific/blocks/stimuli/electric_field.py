@@ -22,7 +22,7 @@ from .stimulus import ContinuousStimulus
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
-    extra: ClassVar[dict] = {
+    json_schema_extra_additions: ClassVar[dict] = {
         "entity_requirement": True,
         "entity_property_requirement": {"scale": ["small_microcircuit"]},
         "entity_property_unfulfilled_message": "This stimulus is currently only "

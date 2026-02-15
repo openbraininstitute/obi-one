@@ -12,7 +12,7 @@ class OBIBaseModel(BaseModel):
     model_config = ConfigDict(discriminator="type", extra="forbid", json_schema_extra={})
 
     title: ClassVar[str | None] = None  # Optional: subclasses can override
-    extra: ClassVar[dict] = {}
+    json_schema_extra_additions: ClassVar[dict] = {}
 
     @model_validator(mode="before")
     @classmethod
@@ -31,7 +31,7 @@ class OBIBaseModel(BaseModel):
         # Use the subclass-provided title, or fall back to the class name
         cls.model_config.update({"title": cls.title or cls.__name__})
 
-        cls.model_config["json_schema_extra"].update(cls.extra)
+        cls.model_config["json_schema_extra_additions"].update(cls.json_schema_extra_additions)
 
     def __str__(self) -> str:
         """Return a string representation of the OBIBaseModel object."""

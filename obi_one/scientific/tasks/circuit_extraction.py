@@ -63,12 +63,10 @@ class CircuitExtractionScanConfig(ScanConfig):
 
     _campaign: models.CircuitExtractionCampaign = None
 
-    model_config = ConfigDict(
-        json_schema_extra={
+    json_schema_extra_additions: ClassVar[dict] = {
             "ui_enabled": True,
             "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
         }
-    )
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(

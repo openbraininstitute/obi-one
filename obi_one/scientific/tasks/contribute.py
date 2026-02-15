@@ -144,8 +144,7 @@ class ContributeMorphologyScanConfig(ScanConfig):
     name: ClassVar[str] = "Contribute a Morphology"
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
-    model_config = ConfigDict(
-        json_schema_extra={
+    json_schema_extra_additions: ClassVar[dict] = {
             "group_order": [
                 BlockGroup.SETUP_BLOCK_GROUP,
                 BlockGroup.ASSET_BLOCK_GROUP,
@@ -156,7 +155,6 @@ class ContributeMorphologyScanConfig(ScanConfig):
                 BlockGroup.LICENSE_GROUP,
             ]
         }
-    )
 
     assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 

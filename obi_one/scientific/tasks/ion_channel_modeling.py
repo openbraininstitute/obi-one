@@ -83,15 +83,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-            ]
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "group_order": [
+            BlockGroup.SETUP,
+            BlockGroup.EQUATIONS,
+            BlockGroup.GATEEXPONENTS,
+        ]
+    }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
