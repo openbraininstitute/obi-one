@@ -7,18 +7,18 @@ from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions.unions_timestamps import (
+    resolve_timestamps_ref_to_timestamps_block,
+)
 
-from .stimulus import Stimulus
+from .stimulus import ContinuousStimulus
 
 
-class SpatiallyUniformElectricFieldStimulus(Stimulus):
+class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
     title: ClassVar[str] = "Spatially Uniform Electric Field"
@@ -35,7 +35,7 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
             "reference_type": NeuronSetReference.__name__,
             "supports_virtual": False,
         },
-    ) 
+    )
 
     duration: (
         Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
