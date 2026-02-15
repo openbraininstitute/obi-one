@@ -18,7 +18,7 @@ from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
 from entitysdk import Client, models, types
 from PIL import Image
-from pydantic import ConfigDict, Field, PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -64,9 +64,9 @@ class CircuitExtractionScanConfig(ScanConfig):
     _campaign: models.CircuitExtractionCampaign = None
 
     json_schema_extra_additions: ClassVar[dict] = {
-            "ui_enabled": True,
-            "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
-        }
+        "ui_enabled": True,
+        "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+    }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(

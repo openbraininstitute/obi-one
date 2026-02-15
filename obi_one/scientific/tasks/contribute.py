@@ -145,16 +145,16 @@ class ContributeMorphologyScanConfig(ScanConfig):
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
     json_schema_extra_additions: ClassVar[dict] = {
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.ASSET_BLOCK_GROUP,
-                BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-                BlockGroup.STRAIN_BLOCK_GROUP,
-                BlockGroup.LOCATION_GROUP,
-                BlockGroup.PROTOCOL_GROUP,
-                BlockGroup.LICENSE_GROUP,
-            ]
-        }
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.ASSET_BLOCK_GROUP,
+            BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+            BlockGroup.STRAIN_BLOCK_GROUP,
+            BlockGroup.LOCATION_GROUP,
+            BlockGroup.PROTOCOL_GROUP,
+            BlockGroup.LICENSE_GROUP,
+        ]
+    }
 
     assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 
