@@ -16,7 +16,10 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType, CircuitSimulationVisibilityOption
+from obi_one.scientific.library.entity_property_types import (
+    CircuitPropertyType,
+    CircuitSimulationVisibilityOption,
+)
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -151,7 +154,6 @@ def circuit_simulation_options_visibility_endpoint(
     circuit_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-
     simulation_options_visibility = {
         CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI: False,
         CircuitSimulationVisibilityOption.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
@@ -167,7 +169,9 @@ def circuit_simulation_options_visibility_endpoint(
                 "detail": f"Internal error retrieving the circuit {circuit_id}.",
             },
         ) from err
-    
-    simulation_options_visibility[CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = circuit.scale in ["microcircuit"]
-    
+
+    simulation_options_visibility[CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = (
+        circuit.scale == "microcircuit"
+    )
+
     return simulation_options_visibility

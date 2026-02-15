@@ -97,7 +97,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         "default_block_reference_labels": {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-        }
+        },
     }
 
     timestamps: dict[str, TimestampsUnion] = Field(

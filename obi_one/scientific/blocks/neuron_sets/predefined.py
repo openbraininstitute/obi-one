@@ -5,7 +5,10 @@ from pydantic import Field
 
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import CircuitSimulationVisibilityOption, EntityType
+from obi_one.scientific.library.entity_property_types import (
+    CircuitSimulationVisibilityOption,
+    EntityType,
+)
 
 L = logging.getLogger("obi-one")
 
