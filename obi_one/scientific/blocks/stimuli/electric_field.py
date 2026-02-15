@@ -3,6 +3,8 @@ from typing import Annotated, ClassVar, Self
 import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
+from obi_one.scientific.library.entity_property_types import CircuitSimulationVisibilityOption, EntityType
+
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_EFIELD_FREQUENCY_HZ,
@@ -24,9 +26,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "entity_requirement": True,
-        "entity_property_requirement": {"scale": ["small_microcircuit"]},
+        "entity_type": EntityType.CIRCUIT,
+        "property": CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI,
         "entity_property_unfulfilled_message": "This stimulus is currently only "
-        "supported for microcircuits.",
+                                                "supported for microcircuits.",
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field"

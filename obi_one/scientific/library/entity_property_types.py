@@ -14,4 +14,4 @@ class CircuitPropertyType(StrEnum):
 
 class CircuitSimulationVisibilityOption(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
-    INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
+    SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

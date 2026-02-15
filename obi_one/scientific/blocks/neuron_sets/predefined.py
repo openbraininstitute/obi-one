@@ -5,7 +5,7 @@ from pydantic import Field
 
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType, EntityType
+from obi_one.scientific.library.entity_property_types import CircuitSimulationVisibilityOption, EntityType
 
 L = logging.getLogger("obi-one")
 
@@ -24,7 +24,7 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         json_schema_extra={
             "ui_element": "entity_property_dropdown",
             "entity_type": EntityType.CIRCUIT,
-            "property": CircuitPropertyType.NODE_SET,
+            "property": CircuitSimulationVisibilityOption.NODE_SET,
         },
     )
 
