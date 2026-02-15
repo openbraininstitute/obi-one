@@ -330,7 +330,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "properties_endpoint": "/mapped-circuit-properties/{circuit_id}",
-        "visibility_options_endpoint": "/circuit-simulation-options-visibility/{circuit_id}",
+        "usability_endpoint": "/circuit-simulation-options-usability/{circuit_id}",
     }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(

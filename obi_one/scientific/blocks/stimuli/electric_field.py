@@ -9,7 +9,7 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
-    CircuitSimulationVisibilityOption,
+    CircuitSimulationUsabilityOption,
     EntityType,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -27,11 +27,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "entity_requirement": True,
-        "entity_type": EntityType.CIRCUIT,
-        "property": CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI,
-        "entity_property_unfulfilled_message": "This stimulus is currently only "
-        "supported for microcircuits.",
+        "block_usability_entity_dependent": True,
+        "block_usability_entity_type": EntityType.CIRCUIT,
+        "block_usability_property": CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI,
+        "block_usability_false_message": "This stimulus is currently only supported for microcircuits.",
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field"

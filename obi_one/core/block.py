@@ -23,7 +23,7 @@ class Block(OBIBaseModel, extra="forbid"):
     _block_name = None
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "entity_requirement": False,
+        "block_usability_entity_dependent": False,
     }
 
     @property

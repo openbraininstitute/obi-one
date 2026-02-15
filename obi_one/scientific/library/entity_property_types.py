@@ -12,6 +12,6 @@ class CircuitPropertyType(StrEnum):
     VIRTUAL_POPULATION = "VirtualPopulation"
 
 
-class CircuitSimulationVisibilityOption(StrEnum):
+class CircuitSimulationUsabilityOption(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

@@ -18,7 +18,7 @@ from obi_one.scientific.library.circuit_metrics import (
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitPropertyType,
-    CircuitSimulationVisibilityOption,
+    CircuitSimulationUsabilityOption,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -146,17 +146,17 @@ def mapped_circuit_properties_endpoint(
 
 
 @router.get(
-    "/circuit-simulation-options-visibility/{circuit_id}",
-    summary="Circuit simulation options visibility",
-    description="Returns a dictionary of circuit simulation options visibility.",
+    "/circuit-simulation-options-usability/{circuit_id}",
+    summary="Circuit simulation options usability",
+    description="Returns a dictionary of circuit simulation options usability.",
 )
-def circuit_simulation_options_visibility_endpoint(
+def circuit_simulation_options_usability_endpoint(
     circuit_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-    simulation_options_visibility = {
-        CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI: False,
-        CircuitSimulationVisibilityOption.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    simulation_options_usability = {
+        CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI: False,
+        CircuitSimulationUsabilityOption.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
     }
 
     try:
@@ -170,8 +170,8 @@ def circuit_simulation_options_visibility_endpoint(
             },
         ) from err
 
-    simulation_options_visibility[CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = (
+    simulation_options_usability[CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = (
         circuit.scale == "microcircuit"
     )
 
-    return simulation_options_visibility
+    return simulation_options_usability
