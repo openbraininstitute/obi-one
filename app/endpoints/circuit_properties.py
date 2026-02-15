@@ -3,6 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.circuit import Circuit
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -15,7 +16,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.entity_property_types import CircuitPropertyType, CircuitSimulationVisibilityOption
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -139,3 +140,34 @@ def mapped_circuit_properties_endpoint(
             },
         ) from err
     return mapped_circuit_properties
+
+
+@router.get(
+    "/circuit-simulation-options-visibility/{circuit_id}",
+    summary="Circuit simulation options visibility",
+    description="Returns a dictionary of circuit simulation options visibility.",
+)
+def circuit_simulation_options_visibility_endpoint(
+    circuit_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> dict:
+
+    simulation_options_visibility = {
+        CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI: False,
+        CircuitSimulationVisibilityOption.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
+
+    try:
+        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+            },
+        ) from err
+    
+    simulation_options_visibility[CircuitSimulationVisibilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = circuit.scale in ["microcircuit"]
+    
+    return simulation_options_visibility

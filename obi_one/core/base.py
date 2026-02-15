@@ -31,7 +31,7 @@ class OBIBaseModel(BaseModel):
         # Use the subclass-provided title, or fall back to the class name
         cls.model_config.update({"title": cls.title or cls.__name__})
 
-        cls.model_config["json_schema_extra_additions"].update(cls.json_schema_extra_additions)
+        cls.model_config["json_schema_extra"].update(cls.json_schema_extra_additions)
 
     def __str__(self) -> str:
         """Return a string representation of the OBIBaseModel object."""
