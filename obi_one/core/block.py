@@ -18,20 +18,13 @@ class Block(OBIBaseModel, extra="forbid"):
     Tuples should be used when list-like parameter is needed.
     """
 
-    title: ClassVar[str | None] = None  # Optional: subclasses can override
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
-        """Initialize subclass."""
-        super().__init_subclass__(**kwargs)
-
-        # Use the subclass-provided title, or fall back to the class name
-        cls.model_config.update({"title": cls.title or cls.__name__})
-
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
-
     _ref = None
     _block_name = None
+
+    extra: ClassVar[dict] = {
+        "entity_requirement": False,
+    }
 
     @property
     def block_name(self) -> str:

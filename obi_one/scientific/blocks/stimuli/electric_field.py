@@ -1,7 +1,7 @@
 from typing import Annotated, ClassVar, Self
 
 import numpy as np
-from pydantic import ConfigDict, Field, NonNegativeFloat, PrivateAttr, model_validator
+from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -22,13 +22,12 @@ from .stimulus import ContinuousStimulus
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "entity_property_requirement": {"scale": ["small_microcircuit"]},
-            "entity_property_unfulfilled_message": "This stimulus is currently only "
-            "supported for microcircuits.",
-        }
-    )
+    extra: ClassVar[dict] = {
+        "entity_requirement": True,
+        "entity_property_requirement": {"scale": ["small_microcircuit"]},
+        "entity_property_unfulfilled_message": "This stimulus is currently only "
+        "supported for microcircuits.",
+    }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field"
 
