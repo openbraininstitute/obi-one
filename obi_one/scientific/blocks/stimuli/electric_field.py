@@ -10,6 +10,10 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetReference,
+    resolve_neuron_set_ref_to_node_set,
+)
 
 from .stimulus import Stimulus
 
@@ -21,6 +25,17 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
+
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Neuron set to which the stimulus is applied.",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": False,
+        },
+    ) 
 
     duration: (
         Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
@@ -99,10 +114,13 @@ class SpatiallyUniformElectricFieldStimulus(Stimulus):
 
         for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
                 "module": self._module,
                 "input_type": self._input_type,
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
+                "delay": timestamp + self.timestamp_offset,
+                "duration": self.duration,
                 "ramp_up_duration": self.ramp_up_duration,
                 "ramp_down_duration": self.ramp_down_duration,
                 "fields": [
