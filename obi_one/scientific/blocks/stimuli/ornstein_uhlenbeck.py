@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
-from obi_one.scientific.blocks.stimuli.stimulus import SomaticStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ContinuousStimulus
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
@@ -11,7 +11,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 )
 
 
-class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
+class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """A current injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Absolute)"
@@ -73,7 +73,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
+class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """A conductance injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Absolute)"
@@ -146,7 +146,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
+class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck current injection as a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Relative)"
@@ -208,7 +208,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(SomaticStimulus):
+class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck conductance injection as a percentage of each cell's input conductance."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
