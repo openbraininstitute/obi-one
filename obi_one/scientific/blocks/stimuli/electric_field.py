@@ -137,7 +137,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
 
 class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
-    """A spatially uniform electric field stimulus applied to all compartments of biophysical neurons, where the field varies in time as a cosinusoid."""
+    """A spatially uniform electric field stimulus where the field varies in time as a cosinusoid.
+
+    The stimulus is applied to all compartments of the neuron set.
+    """
 
     title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
 
@@ -145,8 +148,9 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         default=0.0,
         description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
             assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] \
-            is applied, unless ramp_up_duration or ramp_down_duration is specified, in which case the \
-            field will increase/decrease linearly with time during the ramp periods, and will \
+            is applied, unless ramp_up_duration or ramp_down_duration is specified,  \
+            in which case the field will increase/decrease linearly \
+            with time during the ramp periods, and will \
             be constant during the remaider of the stimulation period. Note that the signal \
             will be generated with the same time step as the simulation itself. Note that \
             frequency should therefore be less than the Nyquist frequency of the simulation \
