@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    _MAX_EFIELD_FREQUENCY_HZ,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -144,7 +145,25 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
 
     title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
 
-    frequency: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    frequency: (
+        Annotated[
+            NonNegativeFloat,
+            Field(
+                le=_MAX_EFIELD_FREQUENCY_HZ,
+            ),
+        ]
+        | Annotated[
+            list[
+                Annotated[
+                    NonNegativeFloat,
+                    Field(
+                        le=_MAX_EFIELD_FREQUENCY_HZ,
+                    ),
+                ]
+            ],
+            Field(min_length=1),
+        ]
+    ) = Field(
         default=0.0,
         description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
             assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] \
