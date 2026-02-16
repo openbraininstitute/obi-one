@@ -17,8 +17,8 @@ from obi_one.scientific.library.circuit_metrics import (
     get_circuit_metrics,
 )
 from obi_one.scientific.library.entity_property_types import (
-    CircuitPropertyType,
-    CircuitSimulationUsabilityOption,
+    CircuitMappedProperties,
+    CircuitSimulationUsability,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -132,7 +132,9 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
         mapped_circuit_properties = {}
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+        mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
+            circuit_metrics.names_of_nodesets
+        )
 
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(
@@ -155,8 +157,8 @@ def circuit_simulation_options_usability_endpoint(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     simulation_options_usability = {
-        CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI: False,
-        CircuitSimulationUsabilityOption.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+        CircuitSimulationUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+        CircuitSimulationUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
     }
 
     try:
@@ -170,7 +172,7 @@ def circuit_simulation_options_usability_endpoint(
             },
         ) from err
 
-    simulation_options_usability[CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI] = (
+    simulation_options_usability[CircuitSimulationUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
         circuit.scale == "microcircuit"
     )
 
