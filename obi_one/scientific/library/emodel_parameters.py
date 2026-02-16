@@ -23,6 +23,8 @@ class MechanismVariable(BaseModel):
     neuron_variable: str
     section_list: str
     value: float | None = None
+    units: str = ""
+    limits: list[float] | None = None
 
 
 def get_mechanism_variables(
@@ -95,14 +97,58 @@ def _parse_optimization_parameters(parameters_json: list[dict]) -> list[Mechanis
         else:
             neuron_variable = parts[0]
             section_list = "all"
+
+        # Add limits for variables starting with 'g'
+        limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
+
         parsed.append(
             MechanismVariable(
                 neuron_variable=neuron_variable,
                 section_list=section_list,
                 value=value,
+                limits=limits,
             )
         )
     return parsed
+
+
+def _create_mechanism_variable_from_ion_channel(
+    var_name: str,
+    var_units: str,
+    suffix: str,
+) -> MechanismVariable | None:
+    """Create a MechanismVariable from ion channel metadata.
+
+    Filters out variables starting with 'i' (ionic currents).
+    Adds limits [0,10] for variables starting with 'g'.
+    """
+    # Filter out variables starting with 'i' (ionic currents)
+    if var_name.startswith("i"):
+        return None
+
+    neuron_variable = f"{var_name}_{suffix}"
+    limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
+
+    return MechanismVariable(
+        neuron_variable=neuron_variable,
+        section_list="all",
+        units=var_units if isinstance(var_units, str) else "",
+        limits=limits,
+    )
+
+
+def _process_neuron_block_entries(
+    entries: list[dict],
+    suffix: str,
+) -> list[MechanismVariable]:
+    """Process RANGE or GLOBAL entries from a neuron block."""
+    variables = []
+    for entry in entries:
+        for var_name, var_units in entry.items():
+            var = _create_mechanism_variable_from_ion_channel(var_name, var_units, suffix)
+            if var is not None:
+                variables.append(var)
+    return variables
 
 
 def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
@@ -110,6 +156,7 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
 
     Constructs NEURON variable names in the format {variable}_{nmodl_suffix}.
     Returns with section_list="all" and value=None (user checks defaults on platform).
+    Filters out variables starting with 'i' (ionic currents that cannot be modified).
     """
     variables = []
     if not emodel.ion_channel_models:
@@ -122,23 +169,9 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
             continue
 
         if neuron_block.range:
-            variables.extend(
-                MechanismVariable(
-                    neuron_variable=f"{var_name}_{suffix}",
-                    section_list="all",
-                )
-                for range_entry in neuron_block.range
-                for var_name in range_entry
-            )
+            variables.extend(_process_neuron_block_entries(neuron_block.range, suffix))
 
         if neuron_block.global_:
-            variables.extend(
-                MechanismVariable(
-                    neuron_variable=f"{var_name}_{suffix}",
-                    section_list="all",
-                )
-                for global_entry in neuron_block.global_
-                for var_name in global_entry
-            )
+            variables.extend(_process_neuron_block_entries(neuron_block.global_, suffix))
 
     return variables
