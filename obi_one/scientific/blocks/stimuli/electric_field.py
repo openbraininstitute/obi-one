@@ -25,9 +25,10 @@ from .stimulus import ContinuousStimulus
 
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A spatially uniform electric field of fixed magnitute and direction.
-    
-    The stimulus is applied to all compartments of the selected Neuron Set. 
-    Neurons must be in a biophysical population."""
+
+    The stimulus is applied to all compartments of the selected Neuron Set.
+    Neurons must be in a biophysical population.
+    """
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
@@ -153,11 +154,13 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
 class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
     """A spatially uniform electric field of fixed direction and time-varying magnitude.
-    
-    The stimulus is applied to all compartments of the selected Neuron Set. 
+
+    The stimulus is applied to all compartments of the selected Neuron Set.
     Neurons must be in a biophysical population.
     Stimulus magnitude varies cosinusoidally between zero and a maximum magnitude.
-    The direction and maximum magnitude of the field are determined by the E_x, E_y, and E_z parameters."""
+    The direction and maximum magnitude of the field are determined by the E_x, E_y, and E_z
+    parameters.
+    """
 
     title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
 
