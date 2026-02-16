@@ -26,7 +26,7 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         description="Name of the node set to use.",
         json_schema_extra={
             "ui_element": "entity_property_dropdown",
-            "entity_type": MappedPropertiesGroup.CIRCUIT,
+            "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.NODE_SET,
         },
     )
