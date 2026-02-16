@@ -8,13 +8,10 @@ from obi_one.scientific.library.constants import (
     _MAX_EFIELD_FREQUENCY_HZ,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
-<<<<<<< HEAD
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     UsabilityGroup,
 )
-=======
->>>>>>> main
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -42,7 +39,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
         "block_usability_group": UsabilityGroup.CIRCUIT,
-        "block_usability_property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI
+        "block_usability_property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"

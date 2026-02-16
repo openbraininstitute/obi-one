@@ -3,16 +3,17 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.scientific.blocks.stimuli.stimulus import ContinuousStimulus
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    UsabilityGroup,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-    UsabilityGroup,
-)
+
 
 class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """A current injection based on the Ornstein-Uhlenbeck process."""
@@ -219,7 +220,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
         "block_usability_group": UsabilityGroup.CIRCUIT,
-        "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI
+        "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
     }
 
     _module: str = "relative_ornstein_uhlenbeck"

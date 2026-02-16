@@ -337,9 +337,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         "properties_endpoints": {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
-        "usability_endpoints": {
-            UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"
-        },
+        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
