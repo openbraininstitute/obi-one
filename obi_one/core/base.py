@@ -2,6 +2,8 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+import copy
+
 
 class OBIBaseModel(BaseModel):
     """Sets `type` fields for model_dump which are then used for desserialization.
@@ -27,6 +29,8 @@ class OBIBaseModel(BaseModel):
         super().__init_subclass__(**kwargs)
         cls.__annotations__["type"] = Literal[cls.__qualname__]
         cls.type = cls.__qualname__
+
+        cls.model_config = copy.deepcopy(cls.model_config)
 
         # Use the subclass-provided title, or fall back to the class name
         cls.model_config.update({"title": cls.title or cls.__name__})
