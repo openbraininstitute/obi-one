@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
@@ -34,7 +35,7 @@ class BenchmarkTracker:
 
     @classmethod
     @contextmanager
-    def section(cls, name: str, poll_interval: float = 0.1):
+    def section(cls, name: str, poll_interval: float = 0.1) -> Generator[None, None, None]:
         """Context manager for benchmarking a code section.
 
         Args:
@@ -57,13 +58,13 @@ class BenchmarkTracker:
         peak_mem_mb = mem_before_mb
         stop_monitoring = threading.Event()
 
-        def monitor_memory():
+        def monitor_memory() -> None:
             nonlocal peak_mem_mb
             while not stop_monitoring.is_set():
                 try:
                     current_mem = cls._process.memory_info().rss / 1024 / 1024
                     peak_mem_mb = max(peak_mem_mb, current_mem)
-                except Exception:  # noqa: S110
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass  # Process might be in weird state, ignore
                 time.sleep(poll_interval)
 
