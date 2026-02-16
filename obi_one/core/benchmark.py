@@ -18,11 +18,19 @@ class BenchmarkTracker:
 
     _benchmarks: ClassVar[dict] = {}
     _process = psutil.Process()
+    _start_time: ClassVar[float | None] = None
 
     @classmethod
     def reset(cls) -> None:
         """Reset all benchmark data."""
         cls._benchmarks = {}
+        cls._start_time = None
+
+    @classmethod
+    def start_tracking(cls) -> None:
+        """Start tracking overall execution time."""
+        cls._start_time = time.perf_counter()
+        L.info("[BENCHMARK] Started tracking overall execution time")
 
     @classmethod
     @contextmanager
@@ -95,51 +103,52 @@ class BenchmarkTracker:
             L.info(f"[BENCHMARK] {benchmark_json}")
 
     @classmethod
-    def print_summary(cls) -> None:
-        """Print a JSON summary of all benchmarks to stdout."""
+    def print_summary(cls, output_path: Path | None = None) -> None:
+        """Print a JSON summary of all benchmarks to stdout and optionally save to file.
+
+        Args:
+            output_path: Optional path to save the benchmark results as JSON file
+        """
         if not cls._benchmarks:
             L.info("No benchmark data collected.")
             return
 
-        # Calculate total duration
-        total_duration = sum(b["duration_s"] for b in cls._benchmarks.values())
+        # Calculate total execution time if tracking was started
+        if cls._start_time is not None:
+            total_execution_time = time.perf_counter() - cls._start_time
+        else:
+            total_execution_time = None
+
+        # Calculate sum of benchmarked sections
+        benchmarked_time = sum(b["duration_s"] for b in cls._benchmarks.values())
+
+        # Calculate unbenchmarked time
+        if total_execution_time is not None:
+            unbenchmarked_time = total_execution_time - benchmarked_time
+        else:
+            unbenchmarked_time = None
 
         # Prepare summary data
         summary_data = {
             "benchmarks": cls._benchmarks,
-            "total_duration_s": round(total_duration, 2),
+            "benchmarked_time_s": round(benchmarked_time, 2),
         }
+
+        # Add total execution and unbenchmarked time if available
+        if total_execution_time is not None:
+            summary_data["total_execution_time_s"] = round(total_execution_time, 2)
+            summary_data["unbenchmarked_time_s"] = round(unbenchmarked_time, 2)
+            summary_data["unbenchmarked_percentage"] = round(
+                (unbenchmarked_time / total_execution_time) * 100, 1
+            )
 
         # Print as single-line JSON with same format as individual sections
         summary_json = json.dumps(summary_data)
         L.info(f"[BENCHMARK SUMMARY] {summary_json}")
 
-    @classmethod
-    def save_to_file(cls, output_path: Path) -> None:
-        """Save benchmark results to a JSON file.
-
-        Args:
-            output_path: Path to the output JSON file
-        """
-        if not cls._benchmarks:
-            L.warning("No benchmark data to save.")
-            return
-
-        # Create output directory if it doesn't exist
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Calculate total duration
-        total_duration = sum(b["duration_s"] for b in cls._benchmarks.values())
-
-        # Prepare output data
-        output_data = {
-            "benchmarks": cls._benchmarks,
-            "total_duration_s": round(total_duration, 2),
-        }
-
-        # Write to file
-        with output_path.open("w", encoding="utf-8") as f:
-            json.dump(output_data, f, indent=2)
-
-        L.info(f"Benchmark results saved to {output_path}")
-
+        # Save to file if path provided
+        if output_path is not None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with output_path.open("w", encoding="utf-8") as f:
+                json.dump(summary_data, f, indent=2)
+            L.info(f"Benchmark results saved to {output_path}")

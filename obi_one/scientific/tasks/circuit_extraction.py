@@ -1066,6 +1066,9 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
+        # Start benchmark tracking
+        BenchmarkTracker.start_tracking()
+
         # Get execution activity (expected to be created and managed externally)
         execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
@@ -1179,11 +1182,10 @@ class CircuitExtractionTask(Task):
         # Clean-up
         self._cleanup_temp_dir()
 
-        # Save and print benchmark summary
+        # Print and save benchmark summary
         benchmark_dir = new_circuit_path.parent.parent / (new_circuit_path.parent.name + "__BENCHMARK__")
         benchmark_file = benchmark_dir / "benchmark_results.json"
-        BenchmarkTracker.save_to_file(benchmark_file)
-        BenchmarkTracker.print_summary()
+        BenchmarkTracker.print_summary(output_path=benchmark_file)
 
         if new_circuit_entity:
             return str(new_circuit_entity.id)
