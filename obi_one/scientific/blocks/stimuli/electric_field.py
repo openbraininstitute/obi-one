@@ -168,7 +168,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         Annotated[
             NonNegativeFloat,
             Field(
-                le=_MAX_EFIELD_FREQUENCY_HZ,
+                lt=_MAX_EFIELD_FREQUENCY_HZ,
             ),
         ]
         | Annotated[
@@ -176,7 +176,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
                 Annotated[
                     NonNegativeFloat,
                     Field(
-                        le=_MAX_EFIELD_FREQUENCY_HZ,
+                        lt=_MAX_EFIELD_FREQUENCY_HZ,
                     ),
                 ]
             ],
