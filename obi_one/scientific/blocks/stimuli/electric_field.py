@@ -24,7 +24,10 @@ from .stimulus import ContinuousStimulus
 
 
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
-    """A uniform electric field stimulus applied to all compartments of biophysical neurons."""
+    """A spatially uniform electric field of fixed magnitute and direction.
+    
+    The stimulus is applied to all compartments of the selected Neuron Set. 
+    Neurons must be in a biophysical population."""
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
@@ -33,7 +36,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         "block_usability_false_message": "This stimulus is currently only supported for microcircuits.",
     }
 
-    title: ClassVar[str] = "Spatially Uniform Electric Field"
+    title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
 
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
@@ -86,7 +89,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     E_x: float | list[float] = Field(
         default=0.1,
-        description="Amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
+        description="Amplitude of the electric field in the x-direction, in V/m. May be negative",
         title="X amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -96,7 +99,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     E_y: float | list[float] = Field(
         default=0.1,
-        description="Amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
+        description="Amplitude of the electric field in the y-direction, in V/m. May be negative",
         title="Y amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -106,7 +109,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     E_z: float | list[float] = Field(
         default=0.1,
-        description="Amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
+        description="Amplitude of the electric field in the z-direction, in V/m. May be negative",
         title="Z amplitude",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -149,10 +152,12 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
 
 class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
-    """A spatially uniform electric field stimulus where the field varies in time as a cosinusoid.
-
-    The stimulus is applied to all compartments of the neuron set.
-    """
+    """A spatially uniform electric field of fixed direction and time-varying magnitude.
+    
+    The stimulus is applied to all compartments of the selected Neuron Set. 
+    Neurons must be in a biophysical population.
+    Stimulus magnitude varies cosinusoidally between zero and a maximum magnitude.
+    The direction and maximum magnitude of the field are determined by the E_x, E_y, and E_z parameters."""
 
     title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
 
