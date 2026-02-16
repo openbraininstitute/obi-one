@@ -17,7 +17,7 @@ class CircuitMappedProperties(StrEnum):
 
 
 class UsabilityGroup(StrEnum):
-    CIRCUIT_SIMULATION = "CircuitSimulation"
+    CIRCUIT = "Circuit"
 
 
 class CircuitSimulationUsability(StrEnum):
