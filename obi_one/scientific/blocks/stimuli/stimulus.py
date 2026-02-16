@@ -590,12 +590,47 @@ class SEClampSomaticStimulus(SomaticStimulus):
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
+    # overwrite duration to have a more accurate description for this stimulus
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        ui_element="float_parameter_sweep",
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Total Duration",
+        description="Time duration in milliseconds for how long the SEClamp is activated.",
+        units="ms",
+    )
+
+    # would actually need an arbitrary number of duration+voltage pairs.
+    duration_levels: list[NonNegativeFloat] = Field(
+        # ui_element="float_parameter_sweep",
+        title="Duration of each step voltage input",
+        description="Duration of each step voltage input.",
+        units="ms",
+    )
+
+    voltage_levels: list[float] = Field(
+        # ui_element="float_parameter_sweep",
+        title="Voltage level of each step input",
+        description="Voltage level of each step input.",
+        units="mV",
+    )
+
     def _generate_config(self) -> dict:
-        pass
-        # will have to wait for new SONATA definition for SECLamp
-        # -> see https://github.com/openbraininstitute/neurodamus/issues/432
-        # will have to see how to use timestamps (if we use them) to determine step durations
-        # might drop delay and duration
+        sonata_config[self.block_name + "_" + str(t_ind)] = {
+            "delay": 0,  # cannot have any delay with SEClamp
+            "duration": self.duration,
+            "voltage": 0,
+            # the delay is used as the duration of 1st voltage with v=0mV,
+            # then the duration_levels and voltage_levels are used together
+            # to determine the duration and voltage of each step. 
+            "duration_levels": [timestamp + self.timestamp_offset] + self.duration_levels,
+            "voltage_levels": self.voltage_levels,
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                self.neuron_set, self._default_node_set
+            ),
+            "module": self._module,
+            "input_type": self._input_type,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
 
 
 class SpikeStimulus(Stimulus):
