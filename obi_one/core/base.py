@@ -1,8 +1,7 @@
+import copy
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
-
-import copy
 
 
 class OBIBaseModel(BaseModel):

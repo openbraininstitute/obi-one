@@ -26,6 +26,10 @@ from obi_one.scientific.library.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
 )
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+    UsabilityGroup,
+)
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
@@ -329,8 +333,12 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "properties_endpoint": "/mapped-circuit-properties/{circuit_id}",
-        "usability_endpoint": "/circuit-simulation-options-usability/{circuit_id}",
+        "properties_endpoints": {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+        "usability_endpoints": {
+            UsabilityGroup.CIRCUIT_SIMULATION: "/circuit-simulation-usability/{circuit_id}"
+        },
     }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
