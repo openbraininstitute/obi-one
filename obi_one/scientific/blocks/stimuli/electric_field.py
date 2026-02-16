@@ -9,7 +9,7 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
-    CircuitSimulationUsability,
+    CircuitUsability,
     UsabilityGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -33,7 +33,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
         "block_usability_group": UsabilityGroup.CIRCUIT,
-        "block_usability_property": CircuitSimulationUsability.SHOW_ELECTRIC_FIELD_STIMULI,
+        "block_usability_property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
         "block_usability_false_message": "This stimulus is currently only supported for"
         " microcircuits.",
     }

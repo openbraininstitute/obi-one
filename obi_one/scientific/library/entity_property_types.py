@@ -20,6 +20,6 @@ class UsabilityGroup(StrEnum):
     CIRCUIT = "Circuit"
 
 
-class CircuitSimulationUsability(StrEnum):
+class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
