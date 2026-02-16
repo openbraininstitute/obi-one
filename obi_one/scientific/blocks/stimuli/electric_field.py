@@ -18,6 +18,12 @@ from obi_one.scientific.unions.unions_timestamps import (
 
 from .stimulus import ContinuousStimulus
 
+_RAMP_QAULIFIER_DESCRIPTION = (
+    "The duration does not include the ramp up and ramp down times, "
+    "so the total length of the stimulus will be the sum of the duration, "
+    "ramp up and ramp down times."
+)
+
 
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """A spatially uniform electric field of fixed magnitute and direction.
@@ -48,7 +54,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     ) = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
-        description="Time duration in milliseconds for how long input is activated.",
+        description="Time in milliseconds (ms) for how long the main stimulus is activated. "
+        + _RAMP_QAULIFIER_DESCRIPTION,
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -57,8 +64,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     ramp_up_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
-        description="Time over which the field linearly ramps up from zero to full amplitude, \
-            in milliseconds (ms).",
+        description=(
+            "Time over which the field linearly ramps up from zero to full amplitude, "
+            "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
+        ),
         title="Ramp Up (Duration)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -68,8 +77,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     ramp_down_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
-        description="Time over which the field linearly ramps down from full amplitude to zero, \
-            in milliseconds (ms).",
+        description=(
+            "Time over which the field linearly ramps down from full amplitude to zero, "
+            "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
+        ),
         title="Ramp Down (Duration)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -173,15 +184,17 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         ]
     ) = Field(
         default=0.0,
-        description="Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, \
-            assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] \
-            is applied, unless ramp_up_duration or ramp_down_duration is specified,  \
-            in which case the field will increase/decrease linearly \
-            with time during the ramp periods, and will \
-            be constant during the remaider of the stimulation period. Note that the signal \
-            will be generated with the same time step as the simulation itself. Note that \
-            frequency should therefore be less than the Nyquist frequency of the simulation \
-            (i.e., 1/(2*dt))",
+        description=(
+            "Frequency of the cosinusoid, in Hz. Must be non-negative. If not provided, "
+            "assumed to be 0. In this case, a time-invariant field with amplitude [Ex, Ey, Ez] "
+            "is applied, unless ramp_up_duration or ramp_down_duration is specified, "
+            "in which case the field will increase/decrease linearly "
+            "with time during the ramp periods, and will "
+            "be constant during the remainder of the stimulation period. Note that the signal "
+            "will be generated with the same time step as the simulation itself. Note that "
+            "frequency should therefore be less than the Nyquist frequency of the simulation "
+            "(i.e., 1/(2*dt))"
+        ),
         title="Frequency",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
