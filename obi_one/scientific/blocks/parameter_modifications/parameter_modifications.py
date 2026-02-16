@@ -1,5 +1,6 @@
 from pydantic import Field
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType, EntityType
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -16,6 +17,54 @@ def _parse_variable_and_section(variable_str: str) -> tuple[str, str]:
     neuron_variable = parts[0]
     section_list = parts[1] if len(parts) == _VARIABLE_SECTION_PARTS else ""
     return neuron_variable, section_list
+
+
+class BySectionListModification(OBIBaseModel):
+    by_section_list_modifications: dict[str, float | list[float]] = Field(
+        default_factory=dict,
+    )
+
+    """
+    by_section_list_modifications = {
+        "g_pas.axonal": 0.1,
+        "decay_CaDynamics_DC0.somatic": [0.1, 0.2, 0.3],
+    }
+    """
+
+class ByNeuronModification(OBIBaseModel):
+    ion_channel: str
+
+    new_value: float | list[float]
+
+class BySectionListNeuronalParameterModification(Block):
+    """Modify a single mechanism variable of the emodel for a specific section list."""
+
+    modifications: BySectionListModification = Field(
+        title="Variable for Modification",
+        description=(
+            "Mechanism variable for modification (e.g. 'g_pas.axonal', "
+            "'decay_CaDynamics_DC0.somatic', 'TTX')."
+        ),
+        json_schema_extra={
+            "ui_element": "custom_single_variable_by_section_list_modification", # DROPDOWN (Variables grouped by ion channel) + MULTIPLE FLOAT SWEEPS (constraints, units + number of float sweeps dynamic based on endpoint)
+            # "entity_type": EntityType.CIRCUIT, Pointer endpoint
+            "property": CircuitPropertyType.BY_ION_CHANNEL_RANGE_VARIABLES_WITH_SECTION_LISTS_AND_CONSTRAINTS,
+        },
+    )
+
+class ByNeuronNeuronalParameterModification(Block):
+
+    modification: ByNeuronModification = Field(
+        title="Variable for Modification",
+        description=(
+            "Mechanism variable for modification (e.g. 'g_pas', 'decay_CaDynamics_DC0', 'TTX')."
+        ),
+        json_schema_extra={
+            "ui_element": "custom_single_variable_by_neuron_modification", # DROPDOWN (Variables grouped by ion channel) + FLOAT SWEEP (constraints + units dynamic based on endpoint)
+            # "entity_type": EntityType.CIRCUIT, Pointer endpoint
+            "property": CircuitPropertyType.BY_ION_CHANNEL_GLOBAL_VARIABLES_WITH_CONSTRAINTS,
+        },
+    )
 
 
 class BasicParameterModification(Block):
