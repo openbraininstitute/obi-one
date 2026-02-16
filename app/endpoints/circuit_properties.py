@@ -18,7 +18,7 @@ from obi_one.scientific.library.circuit_metrics import (
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
-    CircuitSimulationUsability,
+    CircuitUsability,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -157,8 +157,8 @@ def circuit_simulation_options_usability_endpoint(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     simulation_options_usability = {
-        CircuitSimulationUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
-        CircuitSimulationUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
     }
 
     try:
@@ -172,7 +172,7 @@ def circuit_simulation_options_usability_endpoint(
             },
         ) from err
 
-    simulation_options_usability[CircuitSimulationUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
+    simulation_options_usability[CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
         circuit.scale == "microcircuit"
     )
 
