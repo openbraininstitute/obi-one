@@ -148,7 +148,7 @@ def mapped_circuit_properties_endpoint(
 
 
 @router.get(
-    "/circuit-simulation-options-usability/{circuit_id}",
+    "/circuit-usability/{circuit_id}",
     summary="Circuit simulation options usability",
     description="Returns a dictionary of circuit simulation options usability.",
 )

@@ -337,7 +337,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
         "usability_endpoints": {
-            UsabilityGroup.CIRCUIT: "/circuit-simulation-usability/{circuit_id}"
+            UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"
         },
     }
 
