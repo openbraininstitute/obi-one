@@ -20,7 +20,7 @@ from .stimulus import ContinuousStimulus
 
 
 class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
-    """A spatially uniform electric field of fixed magnitute and direction.
+    """A spatially uniform electric field of fixed magnitude and direction.
 
     The stimulus is applied to all compartments of the selected Neuron Set.
     Neurons must be in a biophysical population.
