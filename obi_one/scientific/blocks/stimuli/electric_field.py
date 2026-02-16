@@ -8,10 +8,13 @@ from obi_one.scientific.library.constants import (
     _MAX_EFIELD_FREQUENCY_HZ,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
+<<<<<<< HEAD
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     UsabilityGroup,
 )
+=======
+>>>>>>> main
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
