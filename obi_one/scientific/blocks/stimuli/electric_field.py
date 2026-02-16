@@ -34,7 +34,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         "block_usability_entity_dependent": True,
         "block_usability_entity_type": EntityType.CIRCUIT,
         "block_usability_property": CircuitSimulationUsabilityOption.SHOW_ELECTRIC_FIELD_STIMULI,
-        "block_usability_false_message": "This stimulus is currently only supported for microcircuits.",
+        "block_usability_false_message": "This stimulus is currently only supported for"
+        "microcircuits.",
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
