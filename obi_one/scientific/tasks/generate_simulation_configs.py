@@ -25,6 +25,7 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
+    _SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -194,8 +195,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             default="soma"
         )
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
-            default=0.025
-        )  # Simulation time step in ms
+            default=_SIMULATION_TIMESTEP_MILLISECONDS
+        )
 
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
