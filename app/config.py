@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Annotated
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,6 +73,10 @@ class Settings(BaseSettings):
 
     # Path to launch script within the repository. Must contain code.py and requirements.txt.
     OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
+
+    SERVICE_BASE_URL: Annotated[str, Field(description="URL to this service.")] = (
+        "https://base-service-url"
+    )
 
 
 settings = Settings()

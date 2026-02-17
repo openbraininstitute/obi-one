@@ -1,10 +1,12 @@
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends
+
+from app.config import settings
 
 
-def get_task_callback_url(request: Request) -> str:
-    return f"{request.base_url}declared/task/callback"
+def get_task_callback_url() -> str:
+    return f"{settings.SERVICE_BASE_URL}/task/callback"
 
 
-CallBackUrlDep = Annotated[str, Depends(get_task_callback_url)]
+TaskCallBackUrlDep = Annotated[str, Depends(get_task_callback_url)]
