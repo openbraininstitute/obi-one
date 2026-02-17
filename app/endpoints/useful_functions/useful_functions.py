@@ -112,14 +112,7 @@ def _process_measurement(
             ]
             elements = [label, new_data, unit]
         except ValueError:
-            new_data = [
-                ["minimum", 0, unit],
-                ["maximum", 0, unit],
-                ["median", 0.0, unit],
-                ["mean", 0.0, unit],
-                ["standard_deviation", 0.0, unit],
-            ]
-            elements = [label, new_data, unit]
+            return [label, None, unit]
 
     return elements
 
@@ -143,9 +136,22 @@ def build_results_dict(
 
     results_dict["soma"] = _run_analysis("soma")
     results_dict["neuron_morphology"] = _run_analysis("neuron_morphology")
-    results_dict["axon"] = _run_analysis("axon", nm.AXON)
-    results_dict["basal_dendrite"] = _run_analysis("basal_dendrite", nm.BASAL_DENDRITE)
-    results_dict["apical_dendrite"] = _run_analysis("apical_dendrite", nm.APICAL_DENDRITE)
+
+    # Only compute neurite-domain metrics if that structure exists
+    if _has_neurite_type(neuron, nm.AXON):
+        results_dict["axon"] = _run_analysis("axon", nm.AXON)
+    else:
+        results_dict["axon"] = []
+
+    if _has_neurite_type(neuron, nm.BASAL_DENDRITE):
+        results_dict["basal_dendrite"] = _run_analysis("basal_dendrite", nm.BASAL_DENDRITE)
+    else:
+        results_dict["basal_dendrite"] = []
+
+    if _has_neurite_type(neuron, nm.APICAL_DENDRITE):
+        results_dict["apical_dendrite"] = _run_analysis("apical_dendrite", nm.APICAL_DENDRITE)
+    else:
+        results_dict["apical_dendrite"] = []
 
     return results_dict
 
@@ -286,3 +292,8 @@ def fill_json(
                 break
 
     return template
+
+
+def _has_neurite_type(neuron: Morphology, neurite_type: int) -> bool:
+    """Return True if the morphology contains at least one neurite of the given type."""
+    return any(n.type == neurite_type for n in neuron.neurites)
