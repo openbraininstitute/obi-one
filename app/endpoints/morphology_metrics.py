@@ -1,14 +1,18 @@
-from http import HTTPStatus
 import tempfile
+from http import HTTPStatus
 from typing import Annotated, Literal
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.cell_morphology import CellMorphology
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import _run_morphology_analysis, register_measurements
+from app.endpoints.morphology_metrics_calculation import (
+    _run_morphology_analysis,
+    register_measurements,
+)
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.library.morphology_metrics import (
@@ -16,7 +20,6 @@ from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
-from entitysdk.models.cell_morphology import CellMorphology
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -60,6 +63,7 @@ def neuron_morphology_metrics_endpoint(
         error_code=ApiErrorCode.INTERNAL_ERROR,
         http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
+
 
 @router.post(
     "/neuron-morphology-metrics/{cell_morphology_id}/register",
