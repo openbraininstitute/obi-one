@@ -8,23 +8,29 @@ from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModel
 
 class IonChannelModel(Block, ABC):
     ion_channel_model: IonChannelModelFromID = Field(
-        ui_element="model_identifier",
         title="Ion channel model",
         description="ID of the model to simulate.",
+        json_schema_extra={
+            "ui_element": "model_identifier",
+        },
     )
 
 
 class IonChannelModelWithConductance(IonChannelModel):
     conductance: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         title="Conductance value (in S/cm2)",
         description="Conductance value (in S/cm2).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+        }
     )
 
 
 class IonChannelModelWithMaxPermeability(IonChannelModel):
     max_permeability: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         title="Maximum permeability value (in cm/s)",
         description="Maximum permeability value (in cm/s).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+        }
     )

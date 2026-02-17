@@ -592,42 +592,33 @@ class SEClampSomaticStimulus(SomaticStimulus):
 
     # overwrite duration to have a more accurate description for this stimulus
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Total Duration",
         description="Time duration in milliseconds for how long the SEClamp is activated.",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     initial_voltage: float | list[float] = Field(
-        ui_element="float_parameter_sweep",
         default=0.0,
         title="Initial Voltage",
         description="The initial voltage level in millivolts (mV) before the first step of the SEClamp.",
-        units="mV",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
     )
 
-    # would actually need an arbitrary number of duration+voltage pairs.
-    # duration_levels: list[NonNegativeFloat] = Field(
-    #     # ui_element="float_parameter_sweep",
-    #     title="Duration of each step voltage input",
-    #     description="Duration of each step voltage input.",
-    #     units="ms",
-    # )
-
-    # voltage_levels: list[float] = Field(
-    #     # ui_element="float_parameter_sweep",
-    #     title="Voltage level of each step input",
-    #     description="Voltage level of each step input.",
-    #     units="mV",
-    # )
-
     duration_voltage_combinations: list[tuple[NonNegativeFloat, float]] = Field(
-        ui_element="duration_voltage_combination",  # ask James IF I need ui_element, and if so, what I should use
         title="Duration and voltage combinations",
         description="A list of duration and voltage combinations for each step of the SEClamp stimulus. \
                     Each combination specifies the duration and voltage level of a step input. \
                     The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
+        json_schema_extra={
+            "ui_element": "duration_voltage_combination",  # ask James IF I need ui_element, and if so, what I should use
+        },
     )
 
     def _generate_config(self) -> dict:

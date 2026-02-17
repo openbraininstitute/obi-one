@@ -153,11 +153,13 @@ class IonChannelVariableRecording(Recording):
     title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
 
     variable_name: str = Field(
-        ui_element="entity_property_dropdown",
-        entity_type=EntityType.IONCHANNELMODEL,
-        property=IonChannelPropertyType.RECORDABLE_VARIABLES,
         title="Ion Channel Variable Name",
         description="Name of the variable to record.",
+        json_schema_extra={
+            "ui_element": "entity_property_dropdown",
+            "entity_type": EntityType.IONCHANNELMODEL,
+            "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
+        },
     )
 
     def _generate_config(self) -> dict:

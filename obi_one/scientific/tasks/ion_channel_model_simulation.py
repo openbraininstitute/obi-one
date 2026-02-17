@@ -97,32 +97,40 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
                 Field(min_length=1),
             ]
         ) = Field(
-            ui_element="float_parameter_sweep",
             default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
-            units="ms",
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+                "units": "ms",
+            },
         )
 
         temperature: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            ui_element="float_parameter_sweep",
             title="Temperature (in °C)",
             description="Temperature of the simulation.",
             default=34.0,
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+            }
         )
 
         v_init: float | list[float] = Field(
-            ui_element="float_parameter_sweep",
             default=-80.0,
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
-            units="mV",
+            json_schema_extra={
+                "ui_element": "float_parameter_sweep",
+                "units": "mV",
+            },
         )
         random_seed: int | list[int] = Field(
-            ui_element="int_parameter_sweep",
             default=1,
             title="Random Seed",
             description="Random seed for the simulation.",
+            json_schema_extra={
+                "ui_element": "int_parameter_sweep",
+            },
         )
         _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
             default=0.025
@@ -133,69 +141,81 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
             return self._timestep
 
     initialize: Initialize = Field(
-        ui_element="root_block",
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP,
-        group_order=2,
+        json_schema_extra={
+            "ui_element": "root_block",
+            "group": BlockGroup.SETUP,
+            "group_order": 2,
+        },
     )
 
     info: Info = Field(
-        ui_element="root_block",
         title="Info",
         description="Information about the ion channel model simulation campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "root_block",
+            "group": BlockGroup.SETUP,
+            "group_order": 0,
+        },
     )
 
     # contains models and their conductances
     ion_channel_models: dict[str, IonChannelModelUnion] = Field(
-        ui_element="block_dictionary",
         default_factory=dict,
         title="Ion Channel Models",
-        reference_type=IonChannelModelReference.__name__,
         description="Ion channel models and their conductance / max permeability.",
-        singular_name="Ion Channel Models",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "group": BlockGroup.SETUP,
+            "group_order": 1,
+            "singular_name": "Ion Channel Model",
+            "reference_type": IonChannelModelReference.__name__,
+        },
     )
 
     # have to define Union. Will probably be same as MEModel + SEClamp.
     # will have to wait for meeting with HPC team to confirm
     stimuli: dict[str, IonChannelModelStimulusUnion] = Field(
-        ui_element="block_dictionary",
         default_factory=dict,
         title="Stimuli",
-        reference_type=StimulusReference.__name__,
         description="Stimuli for the simulation.",
-        singular_name="Stimulus",
-        group=BlockGroup.STIMULI_RECORDINGS,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "group": BlockGroup.STIMULI_RECORDINGS,
+            "group_order": 0,
+            "singular_name": "Stimulus",
+            "reference_type": StimulusReference.__name__,
+        },
     )
     # can we have recording union depending on what model we choose?
     # should allow user to choose any recording in {SUFFIX}.{RANGE variable} list
     # should also allow simple voltage recording
     # attention! For cadynamics, should use `cai`, not `{SUFFIX}.cai`.
     recordings: dict[str, IonChannelModelRecordingUnion] = Field(
-        ui_element="block_dictionary",
         default_factory=dict,
-        reference_type=RecordingReference.__name__,
         title="Recordings",
         description="Recordings for the simulation.",
-        singular_name="Recording",
-        group=BlockGroup.STIMULI_RECORDINGS,
-        group_order=1,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "group": BlockGroup.STIMULI_RECORDINGS,
+            "group_order": 1,
+            "singular_name": "Recording",
+            "reference_type": RecordingReference.__name__,
+        },
     )
 
     timestamps: dict[str, TimestampsUnion] = Field(
-        ui_element="block_dictionary",
         default_factory=dict,
         title="Timestamps",
-        reference_type=TimestampsReference.__name__,
         description="Timestamps for the simulation.",
-        singular_name="Timestamps",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "group": BlockGroup.SETUP,
+            "group_order": 0,
+            "singular_name": "Timestamps",
+            "reference_type": TimestampsReference.__name__,
+        },
     )
 
     def create_campaign_entity_with_config(
