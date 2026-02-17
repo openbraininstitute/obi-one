@@ -15,22 +15,22 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 @router.get(
-    "/mapped-ion-channel-properties/{ion_channel_id}",
+    "/mapped-ion-channel-properties/",
     summary="Mapped ion channel properties",
     description="Returns a dictionary of mapped ion channel properties.",
 )
 def mapped_ion_channel_properties_endpoint(
-    ion_channel_id: str,
+    ion_channel_ids: List[str] = Query(..., description="List of ion channel IDs"),
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     try:
         ion_channel_properties = get_ion_channel_variables(
-            ion_channel_id=ion_channel_id,
+            ion_channel_id=ion_channel_ids,
             db_client=db_client,
         )
         mapped_ion_channel_properties = {}
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = (
-            ion_channel_properties.variables
+            {key: value.variables_and_units for key, value in ion_channel_properties.items()}
         )
 
     except entitysdk.exception.EntitySDKError as err:
@@ -38,7 +38,7 @@ def mapped_ion_channel_properties_endpoint(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Internal error retrieving the ion channel model {ion_channel_id}.",
+                "detail": f"Internal error retrieving ion channel models among {ion_channel_ids}.",
             },
         ) from err
 
