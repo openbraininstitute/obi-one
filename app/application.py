@@ -28,6 +28,7 @@ from app.endpoints import (
     scan_config,
     task,
     validate_electrophysiology_protocol_nwb,
+    check_if_entity_can_be_made_public,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
@@ -159,6 +160,7 @@ async def version() -> dict:
     }
 
 
+app.include_router(check_if_entity_can_be_made_public.router)
 app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(count_scan_coordinates.router)
