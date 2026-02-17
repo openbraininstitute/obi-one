@@ -611,13 +611,15 @@ class SEClampSomaticStimulus(SomaticStimulus):
         },
     )
 
-    duration_voltage_combinations: list[tuple[NonNegativeFloat, float]] = Field(
-        title="Duration and voltage combinations",
+    duration_voltage_combinations: list[tuple[NonNegativeFloat | list[NonNegativeFloat], float | list[float]]] = Field(
+        title="Duration and voltage combinations for each step",
         description="A list of duration and voltage combinations for each step of the SEClamp stimulus. \
                     Each combination specifies the duration and voltage level of a step input. \
                     The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "duration_voltage_combination",  # ask James IF I need ui_element, and if so, what I should use
+            "ui_element": "expandable_list",
+            "element_titles": ["Duration", "Voltage"],
+            "elelement_ui_elements": ["float_parameter_sweep", "float_parameter_sweep"],
         },
     )
 
