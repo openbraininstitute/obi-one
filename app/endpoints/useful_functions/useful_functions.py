@@ -149,7 +149,6 @@ def build_results_dict(
         results_dict["basal_dendrite"] = []
 
     if _has_neurite_type(neuron, nm.APICAL_DENDRITE):
-        print("Running apical dendrite analysis...")
         results_dict["apical_dendrite"] = _run_analysis("apical_dendrite", nm.APICAL_DENDRITE)
     else:
         results_dict["apical_dendrite"] = []
