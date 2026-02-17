@@ -17,11 +17,13 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 
 class Recording(Block, ABC):
     neuron_set: NeuronSetReference | None = Field(
-        ui_element="reference",
-        reference_type=NeuronSetReference.__name__,
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+        },
     )
 
     _start_time: NonNegativeFloat = 0.0
@@ -32,11 +34,13 @@ class Recording(Block, ABC):
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
         | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
     ) = Field(
-        ui_element="float_parameter_sweep",
         default=0.1,
         title="Timestep",
         description="Interval between recording time steps in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     _default_node_set: str = PrivateAttr(default="All")
@@ -109,17 +113,21 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
     start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=0.0,
         description="Recording start time in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     end_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        ui_element="float_parameter_sweep",
         default=100.0,
         description="Recording end time in milliseconds (ms).",
-        units="ms",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
     )
 
     @model_validator(mode="after")

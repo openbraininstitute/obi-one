@@ -41,7 +41,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
     n_groups: int | list[int] = Field(
         default=1,
-        name="Number of groups",
+        title="Number of groups",
         description="Number of groups of locations to \
             generate",
     )

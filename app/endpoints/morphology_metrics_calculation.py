@@ -22,16 +22,14 @@ from entitysdk.models import (
     Subject,
 )
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from requests.exceptions import RequestException
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_validation import (
-    DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
-    process_and_convert_morphology,
-)
+from app.services.morphology import DEFAULT_SINGLE_POINT_SOMA_BY_EXT, convert_morphology
 
 
 class ApiErrorCode:
@@ -115,7 +113,7 @@ def _get_analysis_dict() -> dict:
     if DEFAULT_NEURITE_DOMAIN in analysis_dict:
         default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
         for domain in TARGET_NEURITE_DOMAINS:
-            analysis_dict[domain] = default_analysis
+            analysis_dict.setdefault(domain, default_analysis)
 
     _get_analysis_dict.cached = analysis_dict
     return analysis_dict
@@ -127,6 +125,12 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
         filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
+        measurement_kinds = filled["data"][0]["measurement_kinds"]
+        filled["data"][0]["measurement_kinds"] = [
+            mk
+            for mk in measurement_kinds
+            if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
+        ]
         return filled["data"][0]["measurement_kinds"]
     except Exception as e:
         raise HTTPException(
@@ -393,10 +397,11 @@ async def morphology_metrics_calculation(
             (
                 converted_morphology_file1,
                 converted_morphology_file2,
-            ) = await process_and_convert_morphology(
-                temp_file_path=temp_file_path,
-                file_extension=file_extension,
-                output_basename=Path(morphology_name).stem,
+            ) = await run_in_threadpool(
+                convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=pathlib.Path(temp_file_path).parent,
+                output_stem=Path(morphology_name).stem,
                 single_point_soma_by_ext=single_point_soma_by_ext,
             )
             if converted_morphology_file1:
