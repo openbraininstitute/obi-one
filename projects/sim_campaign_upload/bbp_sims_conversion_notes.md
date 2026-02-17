@@ -8,6 +8,7 @@
     2) Split input spike files into two population input spike files
     3) Create new output spike file with "S1nonbarrel_neurons" name
     4) Remap output spikes to correct gids
+    5) TODO: Remap input spikes of both files
 5. Download circuit without edges using [download_circuit_without_edges.ipynb](download_circuit_without_edges.ipynb)
 6. Register campaign using [register_sim_campaigns.ipynb](register_sim_campaigns.ipynb)
 
