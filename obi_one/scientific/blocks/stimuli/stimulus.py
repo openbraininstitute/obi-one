@@ -622,22 +622,27 @@ class SEClampSomaticStimulus(SomaticStimulus):
     )
 
     def _generate_config(self) -> dict:
-        sonata_config[self.block_name + "_" + str(t_ind)] = {
-            "delay": 0,  # cannot have any delay with SEClamp
-            "duration": self.duration,
-            "voltage": initial_voltage,
-            # the delay is used as the duration of 1st voltage with v=0mV,
-            # then the duration_levels and voltage_levels are used together
-            # to determine the duration and voltage of each step. 
-            "duration_levels": [timestamp + self.timestamp_offset] + [duration for duration, _ in self.duration_voltage_combinations],
-            "voltage_levels": [voltage for _, voltage in self.duration_voltage_combinations],
-            "node_set": resolve_neuron_set_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
-            "module": self._module,
-            "input_type": self._input_type,
-            "represents_physical_electrode": self._represents_physical_electrode,
-        }
+        sonata_config = {}
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
+            sonata_config[self.block_name + "_" + str(t_ind)] = {
+                "delay": 0,  # cannot have any delay with SEClamp
+                "duration": self.duration,
+                "voltage": self.initial_voltage,
+                # the delay is used as the duration of 1st voltage with v=0mV,
+                # then the duration_levels and voltage_levels are used together
+                # to determine the duration and voltage of each step. 
+                "duration_levels": [timestamp + self.timestamp_offset] + [duration for duration, _ in self.duration_voltage_combinations],
+                "voltage_levels": [voltage for _, voltage in self.duration_voltage_combinations],
+                "node_set": resolve_neuron_set_ref_to_node_set(
+                    self.neuron_set, self._default_node_set
+                ),
+                "module": self._module,
+                "input_type": self._input_type,
+                "represents_physical_electrode": self._represents_physical_electrode,
+            }
 
 
 class SpikeStimulus(Stimulus):
