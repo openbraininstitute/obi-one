@@ -129,10 +129,13 @@ class ConnectivityMatrixExtractionTask(Task):
             raise ValueError(msg)
         edge_popul = self.config.initialize.edge_population
         if edge_popul is None:
-            if len(popul_names) != 1:
+            if len(popul_names) == 0:
+                msg = "Circuit has no edge population to extract connectivity from!"
+                raise ValueError(msg)
+            if len(popul_names) > 1:
                 msg = (
                     "Multiple edge populations found - please specify name of edge population"
-                    " 'edge_popul' to extract connectivity from!"
+                    " to extract connectivity from!"
                 )
                 raise ValueError(msg)
             edge_popul = popul_names[0]  # Selecting the only one
