@@ -2,12 +2,13 @@ import json
 import sys
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from app.dependencies.entitysdk import get_client
+from app.services.morphology import convert_morphology
 
 ROUTE = "/declared/register-morphology-with-calculated-metrics"
 
@@ -78,20 +79,14 @@ def mock_template_and_functions(monkeypatch):
         mock_create_analysis_dict,
     )
 
-    # FIX: Mock file processing to return None, None to bypass output file cleanup
-    async def mock_process_and_convert(
-        _temp_file_path: str,
-        _file_extension: str,
-        *,
-        _output_basename: str | None = None,
-        _single_point_soma_by_ext: dict[str, bool] | None = None,
-    ) -> tuple[str, str]:
-        return None, None
+    mock_convert_morphology = create_autospec(
+        convert_morphology, return_value=[Path("path0"), Path("path1")]
+    )
 
     # FIX: Patch directly in the calling module to ensure correct mocking
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.process_and_convert_morphology",
-        mock_process_and_convert,
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
+        mock_convert_morphology,
     )
 
 
@@ -218,12 +213,13 @@ def test_morphology_registration_success(
         mock_register_assets_and_measurements,
     )
 
-    async def mock_process_and_convert(*_args, **_kwargs):
-        return "mock_converted_1.h5", "mock_converted_2.asc"
+    mock_convert_morphology = create_autospec(
+        convert_morphology, return_value=["mock_converted_1.h5", "mock_converted_2.asc"]
+    )
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.process_and_convert_morphology",
-        mock_process_and_convert,
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
+        mock_convert_morphology,
     )
 
     # Request
