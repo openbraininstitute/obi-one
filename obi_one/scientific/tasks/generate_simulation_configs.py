@@ -25,6 +25,7 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
+    _SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -45,9 +46,9 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
+    CircuitStimulusUnion,
     MEModelStimulusUnion,
     StimulusReference,
-    StimulusUnion,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -196,8 +197,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             default="soma"
         )
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
-            default=0.025
-        )  # Simulation time step in ms
+            default=_SIMULATION_TIMESTEP_MILLISECONDS
+        )
 
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
@@ -399,7 +400,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    stimuli: dict[str, StimulusUnion] = Field(
+    stimuli: dict[str, CircuitStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
         description="Stimuli for the simulation.",
