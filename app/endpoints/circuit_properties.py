@@ -3,6 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models import MEModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -15,8 +16,16 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.library.emodel_parameters import (
+    IonChannelGlobalVariables,
+    IonChannelRangeVariables,
+    get_ion_channel_global_variables,
+    get_ion_channel_range_variables,
+)
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType
-from obi_one.scientific.library.memodel_circuit import try_get_mechanism_variables
+from obi_one.scientific.library.memodel_circuit import (
+    try_get_mechanism_variables,
+)
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -137,12 +146,14 @@ def mapped_circuit_properties_endpoint(
         pass
 
     # Try fetching mechanism variables (succeeds for MEModel entities).
-    mechanism_variables = try_get_mechanism_variables(
+    mechanism_variables_response = try_get_mechanism_variables(
         db_client=db_client,
         entity_id=circuit_id,
     )
-    if mechanism_variables is not None:
-        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = mechanism_variables
+    if mechanism_variables_response is not None:
+        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = (
+            mechanism_variables_response
+        )
 
     if not mapped_circuit_properties:
         raise HTTPException(
@@ -154,3 +165,57 @@ def mapped_circuit_properties_endpoint(
         )
 
     return mapped_circuit_properties
+
+
+@router.get(
+    "/ion-channel-range-variables/{circuit_id}",
+    summary="Ion channel RANGE variables",
+    description="Returns RANGE variables grouped by ion channel with section list values.",
+)
+def ion_channel_range_variables_endpoint(
+    circuit_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> list[IonChannelRangeVariables]:
+    """Get ion channel RANGE variables with section lists from circuit metrics."""
+    # Get section lists from circuit metrics
+    # TODO: Extract actual section lists from circuit metrics when available
+    section_lists = ["all", "somatic", "axonal", "apical", "basal"]
+
+    # Try to get MEModel entity
+    try:
+        memodel = db_client.get_entity(entity_id=circuit_id, entity_type=MEModel)
+        return get_ion_channel_range_variables(db_client, memodel, section_lists)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Failed to retrieve ion channel RANGE variables for {circuit_id}: {err}",
+            },
+        ) from err
+
+
+@router.get(
+    "/ion-channel-global-variables/{circuit_id}",
+    summary="Ion channel GLOBAL variables",
+    description="Returns GLOBAL variables grouped by ion channel.",
+)
+def ion_channel_global_variables_endpoint(
+    circuit_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> list[IonChannelGlobalVariables]:
+    """Get ion channel GLOBAL variables."""
+    # Try to get MEModel entity
+    try:
+        memodel = db_client.get_entity(entity_id=circuit_id, entity_type=MEModel)
+        return get_ion_channel_global_variables(db_client, memodel)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": (
+                    f"Failed to retrieve ion channel GLOBAL variables for {circuit_id}: {err}"
+                ),
+            },
+        ) from err

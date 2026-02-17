@@ -8,230 +8,159 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
-_VARIABLE_SECTION_PARTS = 2
+_MULTILOC_MAP = {
+    "alldend": ["apical", "basal"],
+    "somadend": ["apical", "basal", "somatic"],
+    "allnoaxon": ["apical", "basal", "somatic"],
+    "somaxon": ["axonal", "somatic"],
+    "allact": ["apical", "basal", "somatic", "axonal"],
+}
 
 
-def _parse_variable_and_section(variable_str: str) -> tuple[str, str]:
-    """Parse 'neuron_variable.section_list' into (variable, section_list)."""
-    parts = variable_str.split(".", 1)
-    neuron_variable = parts[0]
-    section_list = parts[1] if len(parts) == _VARIABLE_SECTION_PARTS else ""
-    return neuron_variable, section_list
+def _expand_section_list(section_list: str) -> list[str]:
+    """Expand a section-list alias into concrete section lists."""
+    return _MULTILOC_MAP.get(section_list, [section_list])
 
 
 class BySectionListModification(OBIBaseModel):
-    by_section_list_modifications: dict[str, float | list[float]] = Field(
+    """Modification for RANGE variables by section list.
+
+    Example:
+        ion_channel_id: "abc123"
+        variable_name: "gCa_HVAbar_Ca_HVA2"
+        section_list_modifications: {
+            "somatic": 0.1,
+            "axonal": [0.1, 0.2, 0.3],
+        }
+    """
+
+    ion_channel_id: str = Field(description="ID of the ion channel")
+    variable_name: str = Field(
+        description="Name of the RANGE variable (e.g., 'gCa_HVAbar_Ca_HVA2')"
+    )
+    section_list_modifications: dict[str, float | list[float]] = Field(
         default_factory=dict,
+        description="Modifications per section list (e.g., {'somatic': 0.1, 'axonal': 0.2})",
     )
 
-    """
-    by_section_list_modifications = {
-        "g_pas.axonal": 0.1,
-        "decay_CaDynamics_DC0.somatic": [0.1, 0.2, 0.3],
-    }
-    """
 
 class ByNeuronModification(OBIBaseModel):
-    ion_channel: str
+    """Modification for GLOBAL variables.
 
-    new_value: float | list[float]
+    Example:
+        ion_channel_id: "abc123"
+        variable_name: "ena_NaTg"
+        new_value: 0.5
+    """
+
+    ion_channel_id: str = Field(description="ID of the ion channel")
+    variable_name: str = Field(description="Name of the GLOBAL variable (e.g., 'ena_NaTg')")
+    new_value: float | list[float] = Field(description="New value(s) for the variable")
+
 
 class BySectionListNeuronalParameterModification(Block):
-    """Modify a single mechanism variable of the emodel for a specific section list."""
+    """Modify RANGE variables of ion channels for specific section lists.
 
-    modifications: BySectionListModification = Field(
-        title="Variable for Modification",
-        description=(
-            "Mechanism variable for modification (e.g. 'g_pas.axonal', "
-            "'decay_CaDynamics_DC0.somatic', 'TTX')."
-        ),
-        json_schema_extra={
-            "ui_element": "custom_single_variable_by_section_list_modification", # DROPDOWN (Variables grouped by ion channel) + MULTIPLE FLOAT SWEEPS (constraints, units + number of float sweeps dynamic based on endpoint)
-            # "entity_type": EntityType.CIRCUIT, Pointer endpoint
-            "property": CircuitPropertyType.BY_ION_CHANNEL_RANGE_VARIABLES_WITH_SECTION_LISTS_AND_CONSTRAINTS,
-        },
-    )
-
-class ByNeuronNeuronalParameterModification(Block):
-
-    modification: ByNeuronModification = Field(
-        title="Variable for Modification",
-        description=(
-            "Mechanism variable for modification (e.g. 'g_pas', 'decay_CaDynamics_DC0', 'TTX')."
-        ),
-        json_schema_extra={
-            "ui_element": "custom_single_variable_by_neuron_modification", # DROPDOWN (Variables grouped by ion channel) + FLOAT SWEEP (constraints + units dynamic based on endpoint)
-            # "entity_type": EntityType.CIRCUIT, Pointer endpoint
-            "property": CircuitPropertyType.BY_ION_CHANNEL_GLOBAL_VARIABLES_WITH_CONSTRAINTS,
-        },
-    )
-
-
-class BasicParameterModification(Block):
-    """Modify a single mechanism variable of the emodel."""
-
-    neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set (Target)",
-        description="Neuron set to modification is applied.",
-        json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-        },
-    )
-
-    variable_for_modification: str = Field(
-        title="Variable for Modification",
-        description=(
-            "Mechanism variable for modification (e.g. 'g_pas.all', "
-            "'decay_CaDynamics_DC0.somatic', 'TTX')."
-        ),
-        min_length=1,
-        json_schema_extra={
-            "ui_element": "entity_property_dropdown",
-            "entity_type": EntityType.CIRCUIT,
-            "property": CircuitPropertyType.MECHANISM_VARIABLES,
-        },
-    )
-
-    new_value: float | list[float] = Field(
-        default=0.1,
-        title="New Value",
-        description="New value to set for the parameter.",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-        },
-    )
-
-    def config(self, _default_population_name: str, default_node_set: str) -> dict:
-        """Generate a SONATA conditions.modifications entry.
-
-        Produces one of three modification types:
-        - ttx: blocks sodium channels (special TTX entry)
-        - configure_all_sections: applies to all sections (section_list == "all")
-        - section_list: applies to a specific NEURON SectionList
-
-        Args:
-            default_population_name: Default population name of the circuit.
-            default_node_set: Default node set name.
-
-        Returns:
-            A dict representing a SONATA conditions.modifications entry.
-        """
-        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
-
-        neuron_variable, section_list = _parse_variable_and_section(
-            self.variable_for_modification,
-        )
-
-        # Special case: TTX
-        if neuron_variable == "TTX":
-            return {
-                "name": "applyTTX",
-                "node_set": node_set,
-                "type": "ttx",
-            }
-
-        # configure_all_sections: applies to all sections
-        if section_list == "all":
-            return {
-                "name": f"modify_{neuron_variable}_all",
-                "node_set": node_set,
-                "type": "configure_all_sections",
-                "section_configure": f"%s.{neuron_variable} = {self.new_value}",
-            }
-
-        # section_list: applies to a specific section list
-        return {
-            "name": f"modify_{neuron_variable}_{section_list}",
-            "node_set": node_set,
-            "type": "section_list",
-            "section_configure": f"{section_list}.{neuron_variable} = {self.new_value}",
-        }
-
-
-class CustomParameterModification(Block):
-    """Modify an arbitrary NEURON section variable (e.g. cm, ena, ek).
-
-    Use this for parameters not listed in the mechanism variables dropdown.
-    The variable name must follow the format 'variable.sectionlist'
-    (e.g. 'cm.axonal', 'ena.somatic') or just 'variable' for TTX.
-    See https://sonata-extension.readthedocs.io/en/latest/sonata_simulation.html#parameters-required-for-modifications
+    This block allows modifying ion channel RANGE variables (e.g., conductances)
+    with different values for different section lists (e.g., somatic, axonal).
     """
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Target)",
-        description="Neuron set to modification is applied.",
+        description="Neuron set to which modification is applied.",
         json_schema_extra={
             "ui_element": "reference",
             "reference_type": NeuronSetReference.__name__,
         },
     )
 
-    variable_for_modification: str = Field(
-        title="Variable for Modification",
-        description=(
-            "NEURON variable name in 'variable.sectionlist' format "
-            "(e.g. 'cm.axonal', 'ena.somatic', 'g_pas.all')."
-        ),
-        min_length=1,
+    modification: BySectionListModification = Field(
+        title="RANGE Variable Modification",
+        description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
-            "ui_element": "string_input",
+            "ui_element": "ion_channel_range_variable_modification",
+            "entity_type": EntityType.CIRCUIT,
+            "property": CircuitPropertyType.ION_CHANNEL_RANGE_VARIABLES,
         },
     )
 
-    new_value: float | list[float] = Field(
-        default=0.1,
-        title="New Value",
-        description="New value to set for the parameter.",
+    def config(self, _default_population_name: str, default_node_set: str) -> list[dict]:
+        """Generate SONATA conditions.modifications entries for each section list.
+
+        Returns:
+            List of SONATA modification dicts, one per section list.
+        """
+        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+
+        modifications = []
+        for section_list, value in self.modification.section_list_modifications.items():
+            if section_list == "all":
+                modifications.append(
+                    {
+                        "name": f"modify_{self.modification.variable_name}_all",
+                        "node_set": node_set,
+                        "type": "configure_all_sections",
+                        "section_configure": f"%s.{self.modification.variable_name} = {value}",
+                    }
+                )
+                continue
+
+            modifications.extend(
+                {
+                    "name": f"modify_{self.modification.variable_name}_{expanded_section_list}",
+                    "node_set": node_set,
+                    "type": "section_list",
+                    "section_configure": (
+                        f"{expanded_section_list}.{self.modification.variable_name} = {value}"
+                    ),
+                }
+                for expanded_section_list in _expand_section_list(section_list)
+            )
+
+        return modifications
+
+
+class ByNeuronNeuronalParameterModification(Block):
+    """Modify GLOBAL variables of ion channels.
+
+    This block allows modifying ion channel GLOBAL variables that apply
+    to the entire neuron (e.g., reversal potentials).
+    """
+
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Target)",
+        description="Neuron set to which modification is applied.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+        },
+    )
+
+    modification: ByNeuronModification = Field(
+        title="GLOBAL Variable Modification",
+        description="Ion channel GLOBAL variable modification.",
+        json_schema_extra={
+            "ui_element": "ion_channel_global_variable_modification",
+            "entity_type": EntityType.CIRCUIT,
+            "property": CircuitPropertyType.ION_CHANNEL_GLOBAL_VARIABLES,
         },
     )
 
     def config(self, _default_population_name: str, default_node_set: str) -> dict:
-        """Generate a SONATA conditions.modifications entry.
-
-        Produces one of three modification types:
-        - ttx: blocks sodium channels (special TTX entry)
-        - configure_all_sections: applies to all sections (section_list == "all")
-        - section_list: applies to a specific NEURON SectionList
-
-        Args:
-            default_population_name: Default population name of the circuit.
-            default_node_set: Default node set name.
+        """Generate SONATA conditions.modifications entry.
 
         Returns:
-            A dict representing a SONATA conditions.modifications entry.
+            SONATA modification dict for the GLOBAL variable.
         """
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
 
-        neuron_variable, section_list = _parse_variable_and_section(
-            self.variable_for_modification,
-        )
-
-        # Special case: TTX
-        if neuron_variable == "TTX":
-            return {
-                "name": "applyTTX",
-                "node_set": node_set,
-                "type": "ttx",
-            }
-
-        # configure_all_sections: applies to all sections
-        if section_list == "all":
-            return {
-                "name": f"modify_{neuron_variable}_all",
-                "node_set": node_set,
-                "type": "configure_all_sections",
-                "section_configure": f"%s.{neuron_variable} = {self.new_value}",
-            }
-
-        # section_list: applies to a specific section list
         return {
-            "name": f"modify_{neuron_variable}_{section_list}",
+            "name": f"modify_{self.modification.variable_name}_global",
             "node_set": node_set,
-            "type": "section_list",
-            "section_configure": f"{section_list}.{neuron_variable} = {self.new_value}",
+            "type": "configure_all_sections",
+            "section_configure": (
+                f"%s.{self.modification.variable_name} = {self.modification.new_value}"
+            ),
         }

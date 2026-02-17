@@ -5,11 +5,12 @@ from typing import Self
 import entitysdk.client
 import entitysdk.exception
 from entitysdk.models import MEModel
-from pydantic import model_validator
+from pydantic import BaseModel, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.emodel_parameters import (
+    ChannelSectionListMapping,
     MechanismVariable,
     get_mechanism_variables,
 )
@@ -17,10 +18,17 @@ from obi_one.scientific.library.emodel_parameters import (
 L = logging.getLogger(__name__)
 
 
+class MechanismVariablesResponse(BaseModel):
+    """Response containing mechanism variables and channel section list mapping."""
+
+    MechanismVariables: list[MechanismVariable]
+    ChannelMapping: ChannelSectionListMapping
+
+
 def try_get_mechanism_variables(
     db_client: entitysdk.client.Client,
     entity_id: str,
-) -> list[MechanismVariable] | None:
+) -> MechanismVariablesResponse | None:
     """Try to fetch mechanism variables if entity_id refers to an MEModel.
 
     Returns None if the entity is not an MEModel or if fetching fails.
@@ -32,7 +40,10 @@ def try_get_mechanism_variables(
         return None
 
     try:
-        return get_mechanism_variables(db_client, memodel)
+        variables, channel_mapping = get_mechanism_variables(db_client, memodel)
+        return MechanismVariablesResponse(
+            MechanismVariables=variables, ChannelMapping=channel_mapping
+        )
     except (entitysdk.exception.EntitySDKError, json.JSONDecodeError, KeyError, AttributeError):
         L.warning("Failed to fetch mechanism variables for entity %s", entity_id, exc_info=True)
         return None

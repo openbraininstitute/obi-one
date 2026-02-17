@@ -4,12 +4,12 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.parameter_modifications.parameter_modifications import (
-    BasicParameterModification,
-    CustomParameterModification,
+    ByNeuronNeuronalParameterModification,
+    BySectionListNeuronalParameterModification,
 )
 
 ParameterModificationUnion = Annotated[
-    BasicParameterModification | CustomParameterModification,
+    BySectionListNeuronalParameterModification | ByNeuronNeuronalParameterModification,
     Discriminator("type"),
 ]
 
