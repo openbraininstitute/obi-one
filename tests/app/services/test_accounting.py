@@ -1,8 +1,10 @@
+import json
 from http import HTTPStatus
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import entitysdk
+import httpx
 import pytest
 from fastapi import HTTPException
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -16,7 +18,7 @@ from app.schemas.task import TaskAccountingInfo
 from app.services import accounting as test_module
 from app.types import TaskType
 
-from tests.utils import PROJECT_ID
+from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 
 @pytest.fixture
@@ -232,10 +234,12 @@ def test_generate_accounting_callbacks():
     job_id = uuid4()
 
     res = test_module.generate_accounting_callbacks(
+        task_type=TaskType.circuit_extraction,
         accounting_job_id=job_id,
-        service_subtype=ServiceSubtype.SMALL_SIM,
         count=11,
         project_id=PROJECT_ID,
+        virtual_lab_id=VIRTUAL_LAB_ID,
+        callback_url="my-callback",
     )
 
     assert len(res) == 2
@@ -247,3 +251,41 @@ def test_generate_accounting_callbacks():
 
     assert success_callback.event_type == CallBackEvent.job_on_success
     assert success_callback.action_type == CallBackAction.http_request_with_token
+
+
+def test_finish_accounting_session_success(monkeypatch, httpx_mock):
+    monkeypatch.setattr(
+        "app.services.accounting.settings.ACCOUNTING_BASE_URL",
+        "http://accounting",
+    )
+
+    httpx_mock.add_response(
+        method="POST",
+        url="http://accounting/usage/oneshot",
+        status_code=200,
+    )
+
+    client = httpx.Client()
+
+    test_module.finish_accounting_session(
+        accounting_job_id="job-1",
+        service_subtype="compute",
+        count=3,
+        project_id="proj-1",
+        http_client=client,
+    )
+
+    # Assert request content
+    request = httpx_mock.get_request()
+
+    assert request.method == "POST"
+    assert str(request.url) == "http://accounting/usage/oneshot"
+
+    assert json.loads(request.content) == {
+        "type": "oneshot",
+        "subtype": "compute",
+        "proj_id": "proj-1",
+        "count": "3",
+        "job_id": "job-1",
+        "timestamp": ANY,
+    }
