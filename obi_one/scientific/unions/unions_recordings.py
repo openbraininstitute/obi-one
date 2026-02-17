@@ -13,7 +13,7 @@ RecordingUnion = Annotated[
     SomaVoltageRecording | TimeWindowSomaVoltageRecording, Discriminator("type")
 ]
 
-IonChannelRecordingUnion = Annotated[
+IonChannelModelRecordingUnion = Annotated[
     RecordingUnion | IonChannelVariableRecording,
     Discriminator("type"),
 ]
@@ -22,4 +22,4 @@ IonChannelRecordingUnion = Annotated[
 class RecordingReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
-    allowed_block_types: ClassVar[Any] = IonChannelRecordingUnion
+    allowed_block_types: ClassVar[Any] = IonChannelModelRecordingUnion

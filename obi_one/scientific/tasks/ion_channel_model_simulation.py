@@ -35,6 +35,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
+    IonChannelModelRecordingUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     IonChannelModelStimulusUnion,
@@ -76,18 +77,6 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         }
 
     class Initialize(Block):
-        # contains models and their conductances
-        ion_channel_models: dict[str, IonChannelModelUnion] = Field(
-            ui_element="block_dictionary",
-            default_factory=dict,
-            title="Ion Channel Models",
-            reference_type=IonChannelModelReference.__name__,
-            description="Ion channel models and their conductance / max permeability.",
-            singular_name="Ion Channel Models",
-            group=BlockGroup.SETUP,
-            group_order=1,
-        )
-
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -157,6 +146,18 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         description="Information about the ion channel model simulation campaign.",
         group=BlockGroup.SETUP,
         group_order=0,
+    )
+
+    # contains models and their conductances
+    ion_channel_models: dict[str, IonChannelModelUnion] = Field(
+        ui_element="block_dictionary",
+        default_factory=dict,
+        title="Ion Channel Models",
+        reference_type=IonChannelModelReference.__name__,
+        description="Ion channel models and their conductance / max permeability.",
+        singular_name="Ion Channel Models",
+        group=BlockGroup.SETUP,
+        group_order=1,
     )
 
     # have to define Union. Will probably be same as MEModel + SEClamp.

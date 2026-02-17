@@ -585,7 +585,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
 class SEClampSomaticStimulus(SomaticStimulus):
     """A voltage clamp injection with an arbitrary number of steps at different voltages."""
 
-    title: ClassVar[str] = "SEClamp Somatic Stimulus"
+    title: ClassVar[str] = "Single Electrode Voltage Clamp Somatic Stimulus"
 
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
@@ -599,31 +599,47 @@ class SEClampSomaticStimulus(SomaticStimulus):
         units="ms",
     )
 
-    # would actually need an arbitrary number of duration+voltage pairs.
-    duration_levels: list[NonNegativeFloat] = Field(
-        # ui_element="float_parameter_sweep",
-        title="Duration of each step voltage input",
-        description="Duration of each step voltage input.",
-        units="ms",
+    initial_voltage: float | list[float] = Field(
+        ui_element="float_parameter_sweep",
+        default=0.0,
+        title="Initial Voltage",
+        description="The initial voltage level in millivolts (mV) before the first step of the SEClamp.",
+        units="mV",
     )
 
-    voltage_levels: list[float] = Field(
-        # ui_element="float_parameter_sweep",
-        title="Voltage level of each step input",
-        description="Voltage level of each step input.",
-        units="mV",
+    # would actually need an arbitrary number of duration+voltage pairs.
+    # duration_levels: list[NonNegativeFloat] = Field(
+    #     # ui_element="float_parameter_sweep",
+    #     title="Duration of each step voltage input",
+    #     description="Duration of each step voltage input.",
+    #     units="ms",
+    # )
+
+    # voltage_levels: list[float] = Field(
+    #     # ui_element="float_parameter_sweep",
+    #     title="Voltage level of each step input",
+    #     description="Voltage level of each step input.",
+    #     units="mV",
+    # )
+
+    duration_voltage_combinations: list[tuple[NonNegativeFloat, float]] = Field(
+        ui_element="duration_voltage_combination",  # ask James IF I need ui_element, and if so, what I should use
+        title="Duration and voltage combinations",
+        description="A list of duration and voltage combinations for each step of the SEClamp stimulus. \
+                    Each combination specifies the duration and voltage level of a step input. \
+                    The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
     )
 
     def _generate_config(self) -> dict:
         sonata_config[self.block_name + "_" + str(t_ind)] = {
             "delay": 0,  # cannot have any delay with SEClamp
             "duration": self.duration,
-            "voltage": 0,
+            "voltage": initial_voltage,
             # the delay is used as the duration of 1st voltage with v=0mV,
             # then the duration_levels and voltage_levels are used together
             # to determine the duration and voltage of each step. 
-            "duration_levels": [timestamp + self.timestamp_offset] + self.duration_levels,
-            "voltage_levels": self.voltage_levels,
+            "duration_levels": [timestamp + self.timestamp_offset] + [duration for duration, _ in self.duration_voltage_combinations],
+            "voltage_levels": [voltage for _, voltage in self.duration_voltage_combinations],
             "node_set": resolve_neuron_set_ref_to_node_set(
                 self.neuron_set, self._default_node_set
             ),
