@@ -5,7 +5,13 @@ from typing import Annotated, ClassVar, Self
 import h5py
 import numpy as np
 import pandas as pd
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
+from pydantic import (
+    Field,
+    NonNegativeFloat,
+    PositiveFloat,
+    PrivateAttr,
+    model_validator,
+)
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError

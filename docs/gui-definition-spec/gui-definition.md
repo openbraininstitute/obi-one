@@ -38,7 +38,6 @@ There are two major types of such UI elements:
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
         
-
     - Root elements must have the following properties:
         - `title`
         - `description`
@@ -109,6 +108,8 @@ Scan configs should additionally have the following property:
 And the following optional property:
 
 - `default_block_element_labels` specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
+
+- `properties_endpoint`, `usability_endpoint`
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 

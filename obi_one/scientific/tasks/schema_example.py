@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
@@ -28,12 +28,10 @@ class SchemaExampleScanConfig(ScanConfig):
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+    }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(

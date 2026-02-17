@@ -3,7 +3,11 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
+<<<<<<< HEAD
 from entitysdk.models import MEModel
+=======
+from entitysdk.models.circuit import Circuit
+>>>>>>> origin/hidden_block_dictionary_elements
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -16,6 +20,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+<<<<<<< HEAD
 from obi_one.scientific.library.emodel_parameters import (
     IonChannelGlobalVariables,
     IonChannelRangeVariables,
@@ -25,6 +30,11 @@ from obi_one.scientific.library.emodel_parameters import (
 from obi_one.scientific.library.entity_property_types import CircuitPropertyType
 from obi_one.scientific.library.memodel_circuit import (
     try_get_mechanism_variables,
+=======
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+>>>>>>> origin/hidden_block_dictionary_elements
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -141,7 +151,10 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+        mapped_circuit_properties = {}
+        mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
+            circuit_metrics.names_of_nodesets
+        )
     except entitysdk.exception.EntitySDKError:
         pass
 
@@ -219,3 +232,39 @@ def ion_channel_global_variables_endpoint(
                 ),
             },
         ) from err
+<<<<<<< HEAD
+=======
+    return mapped_circuit_properties
+
+
+@router.get(
+    "/circuit-usability/{circuit_id}",
+    summary="Circuit simulation options usability",
+    description="Returns a dictionary of circuit simulation options usability.",
+)
+def circuit_simulation_options_usability_endpoint(
+    circuit_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> dict:
+    simulation_options_usability = {
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
+
+    try:
+        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+            },
+        ) from err
+
+    simulation_options_usability[CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
+        circuit.scale == "microcircuit"
+    )
+
+    return simulation_options_usability
+>>>>>>> origin/hidden_block_dictionary_elements
