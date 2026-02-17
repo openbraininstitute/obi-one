@@ -1,8 +1,10 @@
+from typing import ClassVar
+
 from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType, EntityType
+from obi_one.scientific.library.entity_property_types import CircuitMappedProperties, EntityType
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -65,6 +67,10 @@ class BySectionListNeuronalParameterModification(Block):
     with different values for different section lists (e.g., somatic, axonal).
     """
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "block_usability_entity_dependent": True,
+    }
+
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Target)",
@@ -82,7 +88,7 @@ class BySectionListNeuronalParameterModification(Block):
         json_schema_extra={
             "ui_element": "ion_channel_range_variable_modification",
             "entity_type": EntityType.CIRCUIT,
-            "property": CircuitPropertyType.ION_CHANNEL_RANGE_VARIABLES,
+            "property": CircuitMappedProperties.ION_CHANNEL_RANGE_VARIABLES,
         },
     )
 
@@ -129,6 +135,10 @@ class ByNeuronNeuronalParameterModification(Block):
     to the entire neuron (e.g., reversal potentials).
     """
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "block_usability_entity_dependent": True,
+    }
+
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Target)",
@@ -146,7 +156,7 @@ class ByNeuronNeuronalParameterModification(Block):
         json_schema_extra={
             "ui_element": "ion_channel_global_variable_modification",
             "entity_type": EntityType.CIRCUIT,
-            "property": CircuitPropertyType.ION_CHANNEL_GLOBAL_VARIABLES,
+            "property": CircuitMappedProperties.ION_CHANNEL_GLOBAL_VARIABLES,
         },
     )
 

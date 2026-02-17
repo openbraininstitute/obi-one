@@ -221,7 +221,9 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         "block_usability_entity_dependent": True,
         "block_usability_group": UsabilityGroup.CIRCUIT,
         "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-        "block_usability_false_message": "Input resistance based stimuli are not supported for this circuit.",
+        "block_usability_false_message": (
+            "Input resistance based stimuli are not supported for this circuit."
+        ),
     }
 
     _module: str = "relative_ornstein_uhlenbeck"

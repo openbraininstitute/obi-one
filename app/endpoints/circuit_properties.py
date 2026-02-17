@@ -3,11 +3,8 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-<<<<<<< HEAD
 from entitysdk.models import MEModel
-=======
 from entitysdk.models.circuit import Circuit
->>>>>>> origin/hidden_block_dictionary_elements
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -20,21 +17,18 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-<<<<<<< HEAD
 from obi_one.scientific.library.emodel_parameters import (
     IonChannelGlobalVariables,
     IonChannelRangeVariables,
     get_ion_channel_global_variables,
     get_ion_channel_range_variables,
 )
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
-from obi_one.scientific.library.memodel_circuit import (
-    try_get_mechanism_variables,
-=======
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
->>>>>>> origin/hidden_block_dictionary_elements
+)
+from obi_one.scientific.library.memodel_circuit import (
+    try_get_mechanism_variables,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -164,7 +158,7 @@ def mapped_circuit_properties_endpoint(
         entity_id=circuit_id,
     )
     if mechanism_variables_response is not None:
-        mapped_circuit_properties[CircuitPropertyType.MECHANISM_VARIABLES] = (
+        mapped_circuit_properties[CircuitMappedProperties.MECHANISM_VARIABLES] = (
             mechanism_variables_response
         )
 
@@ -232,9 +226,6 @@ def ion_channel_global_variables_endpoint(
                 ),
             },
         ) from err
-<<<<<<< HEAD
-=======
-    return mapped_circuit_properties
 
 
 @router.get(
@@ -267,4 +258,3 @@ def circuit_simulation_options_usability_endpoint(
     )
 
     return simulation_options_usability
->>>>>>> origin/hidden_block_dictionary_elements

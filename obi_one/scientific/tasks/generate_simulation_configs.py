@@ -316,7 +316,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-<<<<<<< HEAD
     parameter_modifications: dict[str, ParameterModificationUnion] = Field(
         default_factory=dict,
         title="Mechanism Parameter Modifications",
@@ -335,6 +334,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {
