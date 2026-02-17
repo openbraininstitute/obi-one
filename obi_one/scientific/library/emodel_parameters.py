@@ -102,6 +102,43 @@ class IonChannelGlobalVariables(BaseModel):
     variables: list[GlobalVariable]
 
 
+def _is_global_variable(emodel: EModel, neuron_variable: str) -> bool:
+    """Check if a variable is GLOBAL by looking at emodel metadata neuron_block.global_.
+
+    Args:
+        emodel: The EModel entity containing ion channel models
+        neuron_variable: Variable name to check (e.g., 'g_pas', 'e_pas')
+
+    Returns:
+        True if variable appears in neuron_block.global_, False otherwise
+    """
+    # Extract suffix to find the relevant ion channel model
+    suffix = _extract_channel_suffix(
+        neuron_variable, [icm.nmodl_suffix for icm in emodel.ion_channel_models or []]
+    )
+
+    if not suffix:
+        return False
+
+    # Find the ion channel model with this suffix
+    for icm in emodel.ion_channel_models or []:
+        if icm.nmodl_suffix == suffix:
+            neuron_block = icm.neuron_block
+            if neuron_block and neuron_block.global_:
+                # Check if the variable name (without suffix) appears in global entries
+                var_name = (
+                    neuron_variable[: -(len(suffix) + 1)]
+                    if neuron_variable.endswith(f"_{suffix}")
+                    else neuron_variable
+                )
+                for global_entry in neuron_block.global_:
+                    if var_name in global_entry:
+                        return True
+            break
+
+    return False
+
+
 def get_mechanism_variables(
     db_client: entitysdk.client.Client,
     memodel: MEModel,
@@ -160,7 +197,7 @@ def _fetch_optimization_parameters(
         asset_id=asset.id,
     )
     data = json.loads(content_bytes)
-    return _parse_optimization_parameters(data.get("parameter", []))
+    return _parse_optimization_parameters(data.get("parameter", []), emodel)
 
 
 def _find_optimization_output_asset(emodel: EModel) -> object | None:
@@ -173,7 +210,9 @@ def _find_optimization_output_asset(emodel: EModel) -> object | None:
     return None
 
 
-def _parse_optimization_parameters(parameters_json: list[dict]) -> list[MechanismVariable]:
+def _parse_optimization_parameters(
+    parameters_json: list[dict], emodel: EModel
+) -> list[MechanismVariable]:
     """Parse the 'parameter' array from the emodel optimization output JSON.
 
     Each parameter name follows the format "<neuron_variable>.<section_list>"
@@ -193,8 +232,8 @@ def _parse_optimization_parameters(parameters_json: list[dict]) -> list[Mechanis
         # Add limits for variables starting with 'g'
         limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
 
-        # Determine variable type: RANGE if has specific section list, GLOBAL if 'all'
-        variable_type = "GLOBAL" if section_list == "all" else "RANGE"
+        # Determine variable type: GLOBAL only if in neuron_block.global_, otherwise RANGE
+        variable_type = "GLOBAL" if _is_global_variable(emodel, neuron_variable) else "RANGE"
 
         expanded_section_lists = _expand_section_list(section_list)
         parsed.extend(
