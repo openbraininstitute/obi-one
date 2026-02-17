@@ -69,6 +69,7 @@ class BySectionListNeuronalParameterModification(Block):
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
+        exclude=True,  # Hide from UI and serialization
         json_schema_extra={
             "ui_element": "reference",
             "reference_type": NeuronSetReference.__name__,
@@ -132,6 +133,7 @@ class ByNeuronNeuronalParameterModification(Block):
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
+        exclude=True,  # Hide from UI and serialization
         json_schema_extra={
             "ui_element": "reference",
             "reference_type": NeuronSetReference.__name__,
