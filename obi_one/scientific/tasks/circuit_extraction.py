@@ -959,10 +959,11 @@ class CircuitExtractionTask(Task):
         """Generate and register additional circuit assets."""
         # Compressed circuit asset
         try:
-            compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
-                circuit_path=new_circuit_path,
-                circuit_name=new_circuit_entity.name if new_circuit_entity else None,
-            )
+            with BenchmarkTracker.section("run_circuit_folder_compression"):
+                compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
+                    circuit_path=new_circuit_path,
+                    circuit_name=new_circuit_entity.name if new_circuit_entity else None,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit compression failed: {e}")
@@ -970,24 +971,26 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and compressed_circuit:
             try:
-                CircuitExtractionTask._add_compressed_circuit_asset(
-                    db_client=db_client,
-                    compressed_file=compressed_circuit,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_compressed_circuit_asset"):
+                    CircuitExtractionTask._add_compressed_circuit_asset(
+                        db_client=db_client,
+                        compressed_file=compressed_circuit,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Compressed circuit registration failed: {e}")
 
         # Connectivity matrix asset
         try:
-            (
-                matrix_dir,
-                matrix_config,
-                edge_population,
-            ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
-                circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("run_connectivity_matrix_extraction"):
+                (
+                    matrix_dir,
+                    matrix_config,
+                    edge_population,
+                ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
+                    circuit_path=new_circuit_path
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity matrix extraction failed: {e}")
@@ -995,22 +998,24 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and matrix_dir:
             try:
-                CircuitExtractionTask._add_connectivity_matrix_asset(
-                    db_client=db_client,
-                    matrix_dir=matrix_dir,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_matrix_asset"):
+                    CircuitExtractionTask._add_connectivity_matrix_asset(
+                        db_client=db_client,
+                        matrix_dir=matrix_dir,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity matrix registration failed: {e}")
 
         # Connectivity plots asset
         try:
-            plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
-                circuit_path=new_circuit_path,
-                matrix_config=matrix_config,
-                edge_population=edge_population,
-            )
+            with BenchmarkTracker.section("run_basic_connectivity_plots"):
+                plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
+                    circuit_path=new_circuit_path,
+                    matrix_config=matrix_config,
+                    edge_population=edge_population,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity plots generation failed: {e}")
@@ -1018,30 +1023,32 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and plot_dir and plot_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=plot_dir,
-                    plot_files=plot_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_plot_assets"):
+                    CircuitExtractionTask._add_image_assets(
+                        db_client=db_client,
+                        plot_dir=plot_dir,
+                        plot_files=plot_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity plots registration failed: {e}")
 
         # Overview & sim designer visualizations
         try:
-            viz_dir = new_circuit_path.parent.with_name(
-                new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
-            )
-            viz_files = []
-            viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "circuit_visualization.png"
-            )
-            viz_files.append(viz_path.name)
-            sim_viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "simulation_designer_image.png"
-            )
-            viz_files.append(sim_viz_path.name)
+            with BenchmarkTracker.section("generate_overview_figures"):
+                viz_dir = new_circuit_path.parent.with_name(
+                    new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
+                )
+                viz_files = []
+                viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "circuit_visualization.png"
+                )
+                viz_files.append(viz_path.name)
+                sim_viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "simulation_designer_image.png"
+                )
+                viz_files.append(sim_viz_path.name)
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit visualization generation failed: {e}")
@@ -1049,12 +1056,13 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and viz_dir and viz_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=viz_dir,
-                    plot_files=viz_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_overview_figure_assets"):
+                    CircuitExtractionTask._add_image_assets(
+                        db_client=db_client,
+                        plot_dir=viz_dir,
+                        plot_files=viz_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Circuit visualization registration failed: {e}")
@@ -1075,16 +1083,18 @@ class CircuitExtractionTask(Task):
         )
 
         # Resolve parent circuit (local path or staging from ID)
-        self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        with BenchmarkTracker.section("resolve_circuit"):
+            self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
-        nset_name = self.config.neuron_set.__class__.__name__
-        nset_def = self.config.neuron_set.get_node_set_definition(
-            self._circuit, self._circuit.default_population_name
-        )
-        sonata_circuit = self._circuit.sonata_circuit
-        add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+        with BenchmarkTracker.section("add_node_set"):
+            nset_name = self.config.neuron_set.__class__.__name__
+            nset_def = self.config.neuron_set.get_node_set_definition(
+                self._circuit, self._circuit.default_population_name
+            )
+            sonata_circuit = self._circuit.sonata_circuit
+            add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
@@ -1125,40 +1135,44 @@ class CircuitExtractionTask(Task):
             json.dump(config_dict, config_file, indent=4)
 
         # Copy subcircuit morphologies and e-models (separately per node population)
-        original_circuit = self._circuit.sonata_circuit
-        new_circuit = snap.Circuit(new_circuit_path)
-        for pop_name, pop in new_circuit.nodes.items():
-            if pop.config["type"] == "biophysical":
-                # Copying morphologies of any (supported) format
-                if "morphology" in pop.property_names:
-                    self._copy_morphologies(pop_name, pop, original_circuit)
+        with BenchmarkTracker.section("copy_morph_hoc_mod"):
+            original_circuit = self._circuit.sonata_circuit
+            new_circuit = snap.Circuit(new_circuit_path)
+            for pop_name, pop in new_circuit.nodes.items():
+                if pop.config["type"] == "biophysical":
+                    # Copying morphologies of any (supported) format
+                    if "morphology" in pop.property_names:
+                        self._copy_morphologies(pop_name, pop, original_circuit)
 
-                # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
-                if "biophysical_neuron_models_dir" in pop.config:
-                    self._copy_hoc_files(pop_name, pop, original_circuit)
+                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                    if "biophysical_neuron_models_dir" in pop.config:
+                        self._copy_hoc_files(pop_name, pop, original_circuit)
 
-        # Copy .mod files, if any
-        self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
+            # Copy .mod files, if any
+            self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
 
         # Run circuit validation
         if _RUN_VALIDATION:
-            self._run_validation(new_circuit_path)
+            with BenchmarkTracker.section("run_validation"):
+                self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. folder asset and linked entities
         new_circuit_entity = None
         if db_client and self._circuit_entity:
-            new_circuit_entity = self._create_circuit_entity(
-                db_client=db_client, circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("register_circuit_entity"):
+                new_circuit_entity = self._create_circuit_entity(
+                    db_client=db_client, circuit_path=new_circuit_path
+                )
 
             # Register circuit folder asset
-            self._add_circuit_folder_asset(
-                db_client=db_client,
-                circuit_path=new_circuit_path,
-                registered_circuit=new_circuit_entity,
-            )
+            with BenchmarkTracker.section("register_circuit_folder_asset"):
+                self._add_circuit_folder_asset(
+                    db_client=db_client,
+                    circuit_path=new_circuit_path,
+                    registered_circuit=new_circuit_entity,
+                )
 
             # Derivation link
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
@@ -1180,7 +1194,8 @@ class CircuitExtractionTask(Task):
         )
 
         # Clean-up
-        self._cleanup_temp_dir()
+        with BenchmarkTracker.section("cleanup"):
+            self._cleanup_temp_dir()
 
         # Print and save benchmark summary
         benchmark_dir = new_circuit_path.parent.parent / (new_circuit_path.parent.name + "__BENCHMARK__")
