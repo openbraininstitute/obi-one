@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
@@ -25,7 +27,7 @@ class BySectionListModification(OBIBaseModel):
         }
     """
 
-    ion_channel_id: str = Field(description="ID of the ion channel")
+    ion_channel_id: Annotated[str, Field(min_length=1, description="ID of the ion channel")]
     variable_name: str = Field(
         description="Name of the RANGE variable (e.g., 'gCa_HVAbar_Ca_HVA2')"
     )
@@ -45,10 +47,14 @@ class ByNeuronModification(OBIBaseModel):
         new_value: 0.5
     """
 
-    ion_channel_id: str = Field(description="ID of the ion channel")
-    channel_name: str = Field(
-        description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms"
-    )
+    ion_channel_id: Annotated[str, Field(min_length=1, description="ID of the ion channel")]
+    channel_name: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms",
+        ),
+    ]
     variable_name: str = Field(description="Name of the GLOBAL variable (e.g., 'ena_NaTg')")
     new_value: float | list[float] = Field(description="New value(s) for the variable")
 
