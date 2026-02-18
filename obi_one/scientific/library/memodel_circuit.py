@@ -18,17 +18,67 @@ from obi_one.scientific.library.emodel_parameters import (
 L = logging.getLogger(__name__)
 
 
-class MechanismVariablesResponse(BaseModel):
-    """Response containing mechanism variables and channel section list mapping."""
+class MechanismVariableDetail(BaseModel):
+    """Details for a single mechanism variable across all section lists."""
 
-    MechanismVariables: list[MechanismVariable]
-    ChannelMapping: ChannelSectionListMapping
+    units: str = ""
+    limits: list[float] | None = None
+    variable_type: str  # "RANGE" or "GLOBAL"
+    section_lists_original_values: dict[str, float | None]
+
+
+class IonChannelVariables(BaseModel):
+    """Ion channel entry with its section lists, entity id, and mechanism variables."""
+
+    section_lists: list[str]
+    entity_id: str | None = None
+    variables: dict[str, MechanismVariableDetail]
+
+
+def _build_mechanism_variables_by_ion_channel_response(
+    variables: list[MechanismVariable],
+    channel_mapping: ChannelSectionListMapping,
+) -> dict[str, IonChannelVariables]:
+    """Convert flat variables list and channel mapping to channel-grouped response."""
+    raw: dict[str, dict] = {}
+
+    for var in variables:
+        channel = var.channel_name or "unknown"
+        if channel not in raw:
+            channel_info = channel_mapping.channel_to_section_lists.get(channel)
+            raw[channel] = {
+                "section_lists": channel_info.section_lists if channel_info else [],
+                "entity_id": channel_info.entity_id if channel_info else None,
+                "variables": {},
+            }
+        var_entry = raw[channel]["variables"].setdefault(
+            var.neuron_variable,
+            {
+                "units": var.units,
+                "limits": var.limits,
+                "variable_type": var.variable_type,
+                "section_lists_original_values": {},
+            },
+        )
+        var_entry["section_lists_original_values"][var.section_list] = var.value
+
+    return {
+        channel: IonChannelVariables(
+            section_lists=data["section_lists"],
+            entity_id=data["entity_id"],
+            variables={
+                var_name: MechanismVariableDetail(**var_data)
+                for var_name, var_data in data["variables"].items()
+            },
+        )
+        for channel, data in raw.items()
+    }
 
 
 def try_get_mechanism_variables(
     db_client: entitysdk.client.Client,
     entity_id: str,
-) -> MechanismVariablesResponse | None:
+) -> dict[str, IonChannelVariables] | None:
     """Try to fetch mechanism variables if entity_id refers to an MEModel.
 
     Returns None if the entity is not an MEModel or if fetching fails.
@@ -41,9 +91,7 @@ def try_get_mechanism_variables(
 
     try:
         variables, channel_mapping = get_mechanism_variables(db_client, memodel)
-        return MechanismVariablesResponse(
-            MechanismVariables=variables, ChannelMapping=channel_mapping
-        )
+        return _build_mechanism_variables_by_ion_channel_response(variables, channel_mapping)
     except (entitysdk.exception.EntitySDKError, json.JSONDecodeError, KeyError, AttributeError):
         L.warning("Failed to fetch mechanism variables for entity %s", entity_id, exc_info=True)
         return None

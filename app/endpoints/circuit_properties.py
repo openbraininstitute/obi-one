@@ -151,7 +151,7 @@ def mapped_circuit_properties_endpoint(
         entity_id=circuit_id,
     )
     if mechanism_variables_response is not None:
-        mapped_circuit_properties[CircuitMappedProperties.MECHANISM_VARIABLES] = (
+        mapped_circuit_properties[CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL] = (
             mechanism_variables_response
         )
 
