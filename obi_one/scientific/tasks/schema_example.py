@@ -6,11 +6,15 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
+from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator, MappedPropertiesGroup, UsabilityGroup
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
+)
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    UsabilityGroup,
 )
 
 
@@ -19,6 +23,18 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     EXTRACTION_TARGET = "Extraction Target"
+
+class EntityDependentBlockExample(Block):
+    """Entity Dependent Block Example Description."""
+
+    title: ClassVar[str] = "Entity Dependent Block Example Title"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "block_usability_entity_dependent": True,
+        "block_usability_group": UsabilityGroup.CIRCUIT,
+        "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+        "block_usability_false_message": "This example block is not available for this circuit.",
+    }
 
 
 class SchemaExampleScanConfig(ScanConfig):
@@ -31,6 +47,10 @@ class SchemaExampleScanConfig(ScanConfig):
     json_schema_extra_additions: ClassVar[dict] = {
         "ui_enabled": True,
         "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+        "properties_endpoints": {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     class Initialize(Block):
@@ -144,5 +164,16 @@ class SchemaExampleScanConfig(ScanConfig):
             "reference_type": NeuronSetReference.__name__,
             "group": BlockGroup.EXTRACTION_TARGET,
             "group_order": 1,
+        },
+    )
+
+    entity_dependent_block_example: EntityDependentBlockExample = Field(
+        title="Entity Dependent Block Example",
+        description="Example block which is only usable for certain circuits based on the value of"
+        " the CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI property for that circuit.",
+        json_schema_extra={
+            "ui_element": "block_single",
+            "group": BlockGroup.EXTRACTION_TARGET,
+            "group_order": 2,
         },
     )

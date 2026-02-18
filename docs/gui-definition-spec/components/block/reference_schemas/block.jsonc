@@ -1,4 +1,0 @@
-"block_usability_entity_dependent": false,
-"block_usability_entity_type": "circuit",
-"block_usability_false_message": "This stimulus is currently only supported for microcircuits.",
-"block_usability_property": "ShowElectricFieldStimuli",
