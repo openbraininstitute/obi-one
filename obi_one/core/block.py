@@ -5,6 +5,7 @@ from pydantic import PrivateAttr
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
+from obi_one.core.complex_variable_holder import ComplexVariableHolder
 
 if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
@@ -73,16 +74,38 @@ class Block(OBIBaseModel, extra="forbid"):
             elif isinstance(value, list):
                 multi_values = value
 
+            elif isinstance(value, ComplexVariableHolder):
+                multi_values_list = value.multiple_value_parameters_list()
+
             else:
                 continue
 
             if block_key:
-                self._multiple_value_parameters.append(
-                    MultiValueScanParam(
-                        location_list=[category_name, block_key, key], values=multi_values
+
+                if isinstance(value, ComplexVariableHolder):
+
+                    for _, multi_values in enumerate(multi_values_list):
+                         self._multiple_value_parameters.append(
+                            MultiValueScanParam(
+                                location_list=[category_name, block_key, key],
+                                values=multi_values,
+                            )
+                        )
+                else:
+                    self._multiple_value_parameters.append(
+                        MultiValueScanParam(
+                            location_list=[category_name, block_key, key], values=multi_values
+                        )
                     )
-                )
             else:
+                if isinstance(value, ComplexVariableHolder):
+                    for _, multi_values in enumerate(multi_values_list):
+                         self._multiple_value_parameters.append(
+                            MultiValueScanParam(
+                                location_list=[category_name, key],
+                                values=multi_values,
+                            )
+                        )
                 self._multiple_value_parameters.append(
                     MultiValueScanParam(location_list=[category_name, key], values=multi_values)
                 )
