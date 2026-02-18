@@ -4,24 +4,15 @@ from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-from obi_one.scientific.library.entity_property_types import CircuitMappedProperties, EntityType
+from obi_one.scientific.library.emodel_parameters import _expand_section_list
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-
-_MULTILOC_MAP = {
-    "alldend": ["apical", "basal"],
-    "somadend": ["apical", "basal", "somatic"],
-    "allnoaxon": ["apical", "basal", "somatic"],
-    "somaxon": ["axonal", "somatic"],
-    "allact": ["apical", "basal", "somatic", "axonal"],
-}
-
-
-def _expand_section_list(section_list: str) -> list[str]:
-    """Expand a section-list alias into concrete section lists."""
-    return _MULTILOC_MAP.get(section_list, [section_list])
 
 
 class BySectionListModification(OBIBaseModel):
@@ -75,11 +66,8 @@ class BySectionListNeuronalParameterModification(Block):
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
-        exclude=True,  # Hide from UI and serialization
-        json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-        },
+        exclude=True,
+        json_schema_extra={"ui_hidden": True},
     )
 
     modification: BySectionListModification = Field(
@@ -87,7 +75,7 @@ class BySectionListNeuronalParameterModification(Block):
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
             "ui_element": "ion_channel_range_variable_modification",
-            "entity_type": EntityType.CIRCUIT,
+            "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.ION_CHANNEL_RANGE_VARIABLES,
         },
     )
@@ -143,11 +131,8 @@ class ByNeuronNeuronalParameterModification(Block):
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
-        exclude=True,  # Hide from UI and serialization
-        json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-        },
+        exclude=True,
+        json_schema_extra={"ui_hidden": True},
     )
 
     modification: ByNeuronModification = Field(
@@ -155,7 +140,7 @@ class ByNeuronNeuronalParameterModification(Block):
         description="Ion channel GLOBAL variable modification.",
         json_schema_extra={
             "ui_element": "ion_channel_global_variable_modification",
-            "entity_type": EntityType.CIRCUIT,
+            "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.ION_CHANNEL_GLOBAL_VARIABLES,
         },
     )

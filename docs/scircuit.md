@@ -151,16 +151,21 @@ Manipulations are applied as `connection_overrides` in the SONATA config.
 
 Modifications to neuron and channel parameters for MEModel circuits:
 
-#### BasicParameterModification
-Modify a single mechanism variable from the MEModel's parameter set. The variable is selected from a dropdown populated with available mechanism variables (e.g., `g_pas.all`, `decay_CaDynamics_DC0.somatic`, `TTX`).
+#### BySectionListNeuronalParameterModification
+Modify ion channel RANGE variables (e.g., conductances) with different values for different section lists.
+- **Neuron Set**: Target neurons for modification
+- **Variable Name**: Name of the RANGE variable (e.g., `gCa_HVAbar_Ca_HVA2`)
+- **Section List Modifications**: Dictionary mapping section lists to values (e.g., `{"somatic": 0.1, "axonal": 0.2}`)
 
-#### CustomParameterModification
-Modify arbitrary NEURON SectionList variables with free-text input. Use this for parameters not in the dropdown, such as membrane properties (`cm.axonal`, `cm.somatic`) or reversal potentials (`ena.axonal`, `ek.all`). The variable name must follow the format `variable.SectionList` (e.g., `cm.axonal`, `ena.somatic`) or just `variable` for TTX.
+#### ByNeuronNeuronalParameterModification
+Modify ion channel GLOBAL variables that apply to the entire neuron.
+- **Neuron Set**: Target neurons for modification
+- **Variable Name**: Name of the GLOBAL variable (e.g., `ena_NaTg`)
+- **New Value**: New value for the variable
 
 Both modification types generate SONATA `conditions.modifications` entries:
-- **ttx**: Blocks sodium channels (special TTX entry)
-- **configure_all_sections**: Applies to all sections (when `section_list == "all"`)
-- **section_list**: Applies to a specific NEURON SectionList
+- **section_list**: Applies modification to specific section lists (RANGE variables)
+- **configure_all_sections**: Applies modification to all sections (GLOBAL variables or `all` section list)
 
 Current
 

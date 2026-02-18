@@ -1,0 +1,24 @@
+{
+    "variable_modification_range": {
+        "type": "object",
+        "properties": {
+            "ui_element": {
+                "type": "string",
+                "const": "ion_channel_range_variable_modification"
+            },
+            "title": {
+                "type": "string"
+            },
+            "description": {
+                "type": "string"
+            },
+            "property_group": {
+                "type": "string"
+            },
+            "property": {
+                "type": "string"
+            }
+        },
+        "required": ["ui_element", "title", "description", "property_group", "property"]
+    }
+}
