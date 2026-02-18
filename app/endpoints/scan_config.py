@@ -105,7 +105,6 @@ def activate_scan_config_endpoints() -> None:
         (CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
-        (SimulationsForm, "generate", "save", True),
         (MorphologyMetricsScanConfig, "run", "", True),
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),

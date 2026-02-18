@@ -103,6 +103,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
+        "properties_endpoints": {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     timestamps: dict[str, TimestampsUnion] = Field(
@@ -332,13 +336,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "properties_endpoints": {
-            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
-        },
-        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
-    }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,
