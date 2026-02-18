@@ -300,7 +300,12 @@ class CircuitExtractionTask(Task):
             ]
         else:
             # Default case: Only include intrinsic synapse & connections
-            default_epop = c.default_edge_population_name
+            try:
+                default_epop = c.default_edge_population_name
+            except ValueError as e:
+                default_epop = None
+                L.warning(e)
+                # TODO: May erroneously lead to 0 synapses
             edge_pops = [] if default_epop is None else [default_epop]
 
         num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
