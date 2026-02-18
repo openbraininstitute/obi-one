@@ -14,7 +14,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
-
 class BySectionListModification(OBIBaseModel):
     """Modification for RANGE variables by section list.
 
@@ -57,10 +56,6 @@ class BySectionListNeuronalParameterModification(Block):
     This block allows modifying ion channel RANGE variables (e.g., conductances)
     with different values for different section lists (e.g., somatic, axonal).
     """
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": True,
-    }
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -122,10 +117,6 @@ class ByNeuronNeuronalParameterModification(Block):
     This block allows modifying ion channel GLOBAL variables that apply
     to the entire neuron (e.g., reversal potentials).
     """
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": True,
-    }
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
