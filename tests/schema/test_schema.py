@@ -101,6 +101,9 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
             )
             raise ValueError(msg)
 
+def validate_scan_config_dependendent_block_components(schema, block_schema, ref):
+    """"""
+
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
     if schema.get("additionalProperties", {}).get("oneOf") is None:
@@ -116,6 +119,8 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
+        validate_scan_config_dependendent_block_components(schema, block_schema, ref)
+
         validate_block(block_schema, ref)
 
 
@@ -130,6 +135,8 @@ def validate_block_union(schema: dict, key: str, config_ref: str) -> None:
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
+        validate_scan_config_dependendent_block_components(schema, block_schema, ref)
+
         validate_block(block_schema, ref)
 
 
@@ -137,6 +144,8 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     if not isinstance(schema.get("properties"), dict):
         msg = f"Validation error at {ref}: block_single {key} must have 'properties'"
         raise TypeError(msg)
+    
+    validate_scan_config_dependendent_block_components(schema, block_schema, ref)
 
     validate_block(schema, ref)
 
