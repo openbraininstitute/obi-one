@@ -1,5 +1,3 @@
-from typing import ClassVar
-
 from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
@@ -13,6 +11,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+
 
 class BySectionListModification(OBIBaseModel):
     """Modification for RANGE variables by section list.
@@ -41,11 +40,15 @@ class ByNeuronModification(OBIBaseModel):
 
     Example:
         ion_channel_id: "abc123"
+        channel_name: "NaTg"
         variable_name: "ena_NaTg"
         new_value: 0.5
     """
 
     ion_channel_id: str = Field(description="ID of the ion channel")
+    channel_name: str = Field(
+        description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms"
+    )
     variable_name: str = Field(description="Name of the GLOBAL variable (e.g., 'ena_NaTg')")
     new_value: float | list[float] = Field(description="New value(s) for the variable")
 
@@ -136,19 +139,14 @@ class ByNeuronNeuronalParameterModification(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> dict:
-        """Generate SONATA conditions.modifications entry.
+    def config(self, _default_population_name: str, _default_node_set: str) -> dict:
+        """Generate SONATA conditions.mechanisms entry.
 
         Returns:
-            SONATA modification dict for the GLOBAL variable.
+            Dict of {channel_name: {variable_name: value}} for conditions.mechanisms.
         """
-        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
-
         return {
-            "name": f"modify_{self.modification.variable_name}_global",
-            "node_set": node_set,
-            "type": "configure_all_sections",
-            "section_configure": (
-                f"%s.{self.modification.variable_name} = {self.modification.new_value}"
-            ),
+            self.modification.channel_name: {
+                self.modification.variable_name: self.modification.new_value
+            }
         }

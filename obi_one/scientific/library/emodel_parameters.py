@@ -56,6 +56,7 @@ class ChannelSectionListMapping(BaseModel):
 
 class MechanismVariable(BaseModel):
     neuron_variable: str
+    channel_name: str = ""
     section_list: str
     value: float | None = None
     units: str = ""
@@ -177,6 +178,19 @@ def get_mechanism_variables(
     )
 
     merged = list(optimized_params) + inferred_vars
+
+    # Enrich all variables with channel_name derived from neuron_variable suffix
+    merged = [
+        var.model_copy(
+            update={
+                "channel_name": suffix_to_channel_name.get(
+                    _extract_channel_suffix(var.neuron_variable, known_suffixes) or "",
+                    _extract_channel_suffix(var.neuron_variable, known_suffixes) or "",
+                )
+            }
+        )
+        for var in merged
+    ]
 
     return merged, channel_mapping
 
