@@ -109,16 +109,26 @@ class Circuit(OBIBaseModel):
     @staticmethod
     def _default_edge_population_name(c: snap.Circuit) -> str:
         """Returns the default edge population name of a SONATA circuit c."""
-        popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=False)
-        if len(popul_names) == 0:
-            # Include point neuron sources
-            popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
-        if len(popul_names) == 0:
-            return None  # No biophysical/point neuron edges
-        if len(popul_names) != 1:
+        try:
+            default_npop = Circuit._default_population_name(c)
+        except ValueError as e:
+            msg = f"Cannot determine default edge population: {e}"
+            raise ValueError(msg) from e
+        if default_npop is None:
+            return None
+        epop_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
+        intrinsic_epops = [
+            epop
+            for epop in epop_names
+            if c.edges[epop].source.name == default_npop
+            and c.edges[epop].target.name == default_npop
+        ]
+        if len(intrinsic_epops) == 0:
+            return None
+        if len(intrinsic_epops) > 1:
             msg = "Default edge population unknown!"
             raise ValueError(msg)
-        return popul_names[0]
+        return intrinsic_epops[0]
 
     @property
     def default_edge_population_name(self) -> str:
