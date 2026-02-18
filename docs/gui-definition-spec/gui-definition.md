@@ -109,7 +109,9 @@ And the following optional property:
 
 - `default_block_element_labels` specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
-- `properties_endpoint`, `usability_endpoint`
+- ScanConfigs can optionally have the following specifed:
+    - `usability_endpoint`: For hiding blocks depending on an entity (see [block_usability_entity_dependent](components/block_usability_entity_dependent/block_usability_entity_dependent.jsonc)).
+    - `properties_endpoint`: For providing data to a ui_element
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 
