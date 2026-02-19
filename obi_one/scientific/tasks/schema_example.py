@@ -6,15 +6,10 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-<<<<<<< HEAD
-from obi_one.scientific.library.entity_property_types import CircuitUsability, UsabilityGroup
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitDiscriminator,
     MappedPropertiesGroup,
 )
-=======
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator, MappedPropertiesGroup, MappedPropertiesGroup
->>>>>>> hidden_block_dictionary_elements
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
