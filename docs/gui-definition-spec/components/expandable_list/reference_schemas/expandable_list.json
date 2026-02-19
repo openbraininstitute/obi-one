@@ -24,13 +24,17 @@
   ],
   "title": "Duration and voltage combinations for each step",
   "description": "A list of duration and voltage combinations for each step of the SEClamp stimulus.",
-  "element_titles": [
-    "Duration (ms)",
-    "Voltage (mV)"
-  ],
-  "elelement_ui_elements": [
+  "subelement_ui_elements": [
     "float_parameter_sweep",
     "float_parameter_sweep"
+  ],
+  "subelement_titles": [
+    "Duration",
+    "Voltage"
+  ],
+  "subelement_units": [
+    "ms",
+    "mV"
   ],
   "ui_element": "expandable_list"
 }

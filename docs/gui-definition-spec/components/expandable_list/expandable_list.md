@@ -2,8 +2,10 @@
 
 ui_element: `expandable_list`
 
-- Should have an element_titles list of strings.
-- Should have an elelement_ui_elements list of strings.
+- Should have an subelement_ui_elements list of strings.
+- The subelement_ui_elements allowed are int_parameter_sweep and float_parameter_sweep
+- Should have an subelement_titles list of strings.
+- Should have subelement_units list of strings.
 
 Reference schema [expandable_list](reference_schemas/expandable_list.json)
 
@@ -21,8 +23,9 @@ class Block:
                     The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
         json_schema_extra={
             "ui_element": "expandable_list",
-            "element_titles": ["Duration", "Voltage"],
-            "elelement_ui_elements": ["float_parameter_sweep", "float_parameter_sweep"],
+            "subelement_ui_elements": ["float_parameter_sweep", "float_parameter_sweep"],
+            "subelement_titles": ["Duration", "Voltage"],
+            "subelement_units": ["ms", "mV"],
         },
     )
     
