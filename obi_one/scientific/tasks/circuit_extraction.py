@@ -529,7 +529,7 @@ class CircuitExtractionTask(Task):
         """Set up and run folder compression task."""
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.core.scan_generation_task.grid import GridScanGenerationTask  # noqa: PLC0415
         from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
             FolderCompressionScanConfig,
         )
@@ -572,7 +572,7 @@ class CircuitExtractionTask(Task):
         """Set up and run connectivity matrix extraction task."""
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.core.scan_generation_task.grid import GridScanGenerationTask  # noqa: PLC0415
         from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # noqa: PLC0415
             ConnectivityMatrixExtractionScanConfig,
         )
@@ -616,7 +616,7 @@ class CircuitExtractionTask(Task):
         """Set up and run basic connectivity plotting task."""
         # Import here to avoid circular import
         from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+        from obi_one.core.scan_generation_task.grid import GridScanGenerationTask  # noqa: PLC0415
         from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
             BasicConnectivityPlotsScanConfig,
         )

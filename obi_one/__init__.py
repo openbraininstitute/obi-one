@@ -203,11 +203,9 @@ from obi_one.core.parametric_multi_values import (
     PositiveFloatRange,
     PositiveIntRange,
 )
-from obi_one.core.scan_generation import (
-    CoupledScanGenerationTask,
-    GridScanGenerationTask,
-    ScanGenerationTask,
-)
+from obi_one.core.scan_generation_task.base import ScanGenerationTask
+from obi_one.core.scan_generation_task.coupled import CoupledScanGenerationTask
+from obi_one.core.scan_generation_task.grid import GridScanGenerationTask
 from obi_one.scientific.blocks.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,

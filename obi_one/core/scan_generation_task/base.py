@@ -4,7 +4,6 @@ import json
 import logging
 from collections import OrderedDict
 from importlib.metadata import version
-from itertools import product
 from pathlib import Path
 
 import entitysdk
@@ -12,7 +11,7 @@ from pydantic import PrivateAttr, ValidationError
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
+from obi_one.core.param import MultiValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
 from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
@@ -247,87 +246,3 @@ class ScanGenerationTask(Task, abc.ABC):
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
             self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
-
-
-class GridScanGenerationTask(ScanGenerationTask):
-    """Description."""
-
-    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
-        """Description."""
-        single_values_by_multi_value = []
-        multi_value_parameters = self.multiple_value_parameters()
-
-        if len(multi_value_parameters):
-            for multi_value in multi_value_parameters:
-                single_values = [
-                    SingleValueScanParam(location_list=multi_value.location_list, value=value)
-                    for value in multi_value.values
-                ]
-
-                single_values_by_multi_value.append(single_values)
-
-            self._coordinate_parameters = []
-            for scan_params in product(*single_values_by_multi_value):
-                self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)
-                )
-
-        else:
-            self._coordinate_parameters = [
-                SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
-                )
-            ]
-
-        # Optionally display the coordinate parameters
-        if display:
-            self.display_coordinate_parameters()
-
-        # Return the coordinate parameters
-        return self._coordinate_parameters
-
-
-class CoupledScanGenerationTask(ScanGenerationTask):
-    """Description."""
-
-    def coordinate_parameters(self, *, display: bool = False) -> list:
-        """Description."""
-        previous_len = -1
-
-        multi_value_parameters = self.multiple_value_parameters()
-        if len(multi_value_parameters):
-            for multi_value in multi_value_parameters:
-                current_len = len(multi_value.values)
-                if previous_len not in {-1, current_len}:
-                    msg = f"Multi value parameters have different lengths: {previous_len} and \
-                            {current_len}"
-                    raise ValueError(msg)
-
-                previous_len = current_len
-
-            n_coords = current_len
-
-            self._coordinate_parameters = []
-            for coord_i in range(n_coords):
-                scan_params = [
-                    SingleValueScanParam(
-                        location_list=multi_value.location_list,
-                        value=multi_value.values[coord_i],
-                    )
-                    for multi_value in multi_value_parameters
-                ]
-                self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)
-                )
-
-        else:
-            self._coordinate_parameters = [
-                SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
-                )
-            ]
-
-        if display:
-            self.display_coordinate_parameters()
-
-        return self._coordinate_parameters
