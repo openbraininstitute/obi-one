@@ -115,7 +115,7 @@ And the following optional property:
 
 - ScanConfigs can optionally have the following specifed:
     - `usability_endpoint`: For hiding blocks depending on an entity (see [block_usability_entity_dependent](components/block_usability_entity_dependent/block_usability_entity_dependent.jsonc)).
-    - `properties_endpoint`: For providing data to a ui_element
+    - `properties_endpoint`: url relative to the base url of the api, such as "/circuit-usability/{circuit_id}". For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 

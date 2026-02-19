@@ -29,7 +29,7 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
-    UsabilityGroup,
+    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -107,10 +107,9 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
-        "properties_endpoints": {
+        "property_endpoints": {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
-        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     timestamps: dict[str, TimestampsUnion] = Field(
