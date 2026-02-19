@@ -6,7 +6,7 @@ from app.logger import L
 from obi_one.core.parametric_multi_values import (
     MAX_N_COORDINATES,
 )
-from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.scan_generation_task.grid import GridScanGenerationTask
 from obi_one.scientific.unions.unions_scan_configs import (
     ScanConfigsUnion,
 )

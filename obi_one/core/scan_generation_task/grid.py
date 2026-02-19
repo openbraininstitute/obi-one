@@ -1,5 +1,7 @@
 import logging
 
+from itertools import product
+
 from obi_one.core.param import SingleValueScanParam
 from obi_one.core.scan_generation_task.base import ScanGenerationTask
 from obi_one.core.single import SingleCoordinateScanParams

@@ -4,7 +4,7 @@ from typing import Annotated
 
 import entitysdk.client
 from fastapi import APIRouter, Depends, HTTPException
-from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.scan_generation_task.grid import GridScanGenerationTask
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client

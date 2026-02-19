@@ -69,10 +69,10 @@ class Block(OBIBaseModel, extra="forbid"):
 
         for key, value in self.__dict__.items():
             if isinstance(value, ParametericMultiValue):
-                multi_values = list(value)
+                multi_values_list = [list(value)]
 
             elif isinstance(value, list):
-                multi_values = value
+                multi_values_list = [value]
 
             elif isinstance(value, ComplexVariableHolder):
                 multi_values_list = value.multiple_value_parameters_list()
@@ -81,32 +81,21 @@ class Block(OBIBaseModel, extra="forbid"):
                 continue
 
             if block_key:
-                if isinstance(value, ComplexVariableHolder):
-                    for _, multi_values in enumerate(multi_values_list):
-                        self._multiple_value_parameters.append(
-                            MultiValueScanParam(
-                                location_list=[category_name, block_key, key],
-                                values=multi_values,
-                            )
-                        )
-                else:
+                for _, multi_values in enumerate(multi_values_list):
                     self._multiple_value_parameters.append(
                         MultiValueScanParam(
-                            location_list=[category_name, block_key, key], values=multi_values
+                            location_list=[category_name, block_key, key],
+                            values=multi_values,
                         )
                     )
             else:
-                if isinstance(value, ComplexVariableHolder):
-                    for _, multi_values in enumerate(multi_values_list):
-                        self._multiple_value_parameters.append(
-                            MultiValueScanParam(
-                                location_list=[category_name, key],
-                                values=multi_values,
-                            )
+                for _, multi_values in enumerate(multi_values_list):
+                    self._multiple_value_parameters.append(
+                        MultiValueScanParam(
+                            location_list=[category_name, key],
+                            values=multi_values,
                         )
-                self._multiple_value_parameters.append(
-                    MultiValueScanParam(location_list=[category_name, key], values=multi_values)
-                )
+                    )
 
         return self._multiple_value_parameters
 
