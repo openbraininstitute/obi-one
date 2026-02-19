@@ -15,11 +15,6 @@ class CircuitMappedProperties(StrEnum):
     BIOPHYSICAL_POPULATION = "BiophysicalPopulation"
     VIRTUAL_POPULATION = "VirtualPopulation"
 
-
-class UsabilityGroup(StrEnum):
-    CIRCUIT = "Circuit"
-
-
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

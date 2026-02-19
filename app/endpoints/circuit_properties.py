@@ -144,23 +144,8 @@ def mapped_circuit_properties_endpoint(
                 "detail": f"Internal error retrieving the circuit {circuit_id}.",
             },
         ) from err
-    return mapped_circuit_properties
-
-
-@router.get(
-    "/circuit-usability/{circuit_id}",
-    summary="Circuit simulation options usability",
-    description="Returns a dictionary of circuit simulation options usability.",
-)
-def circuit_simulation_options_usability_endpoint(
-    circuit_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-) -> dict:
-    simulation_options_usability = {
-        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
-        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
-    }
-
+    
+    # Add usability
     try:
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
     except entitysdk.exception.EntitySDKError as err:
@@ -172,8 +157,11 @@ def circuit_simulation_options_usability_endpoint(
             },
         ) from err
 
-    simulation_options_usability[CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
-        circuit.scale == "microcircuit"
-    )
+    simulation_options_usability = {
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
 
-    return simulation_options_usability
+    mapped_circuit_properties['usability'] = simulation_options_usability
+
+    return mapped_circuit_properties

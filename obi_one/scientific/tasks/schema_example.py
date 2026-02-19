@@ -6,7 +6,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator, MappedPropertiesGroup, UsabilityGroup
+from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator, MappedPropertiesGroup, MappedPropertiesGroup
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
@@ -14,7 +14,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
-    UsabilityGroup,
+    MappedPropertiesGroup,
 )
 
 
@@ -31,7 +31,7 @@ class EntityDependentBlockExample(Block):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
-        "block_usability_group": UsabilityGroup.CIRCUIT,
+        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
         "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
         "block_usability_false_message": "This example block is not available for this circuit.",
     }
@@ -47,10 +47,10 @@ class SchemaExampleScanConfig(ScanConfig):
     json_schema_extra_additions: ClassVar[dict] = {
         "ui_enabled": True,
         "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
-        "properties_endpoints": {
+        "property_endpoints": {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
-        "usability_endpoints": {UsabilityGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
+        "usability_endpoints": {MappedPropertiesGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     class Initialize(Block):
