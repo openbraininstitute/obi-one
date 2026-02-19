@@ -219,9 +219,11 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
-        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
-        "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-        "block_usability_false_message": "Input resistance based stimuli are not supported for this circuit.",
+        "block_usability_dictionary": {
+            "property_group": MappedPropertiesGroup.CIRCUIT,
+            "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            "false_message": "Input resistance based stimuli are not supported for this circuit.",
+        },
     }
 
     _module: str = "relative_ornstein_uhlenbeck"

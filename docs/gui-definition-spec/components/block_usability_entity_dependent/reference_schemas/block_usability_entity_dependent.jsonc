@@ -1,7 +1,9 @@
 {
     // ...
     "block_usability_entity_dependent": true,
-    "block_usability_false_message": "This example block is not available for this circuit.",
-    "block_usability_property_group": "Circuit",
-    "block_usability_property": "InputResistanceBasedStimuli"
+    "block_usability_dictionary": {
+        "property_group": "Circuit",
+        "property": "InputResistanceBasedStimuli",
+        "false_message": "This example block is not available for this circuit."
+    },
 }

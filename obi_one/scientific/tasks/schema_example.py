@@ -31,9 +31,11 @@ class EntityDependentBlockExample(Block):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
-        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
-        "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-        "block_usability_false_message": "This example block is not available for this circuit.",
+        "block_usability_dictionary": {
+            "property_group": MappedPropertiesGroup.CIRCUIT,
+            "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            "false_message": "This example block is not available for this circuit.",
+        },
     }
 
 
@@ -50,7 +52,6 @@ class SchemaExampleScanConfig(ScanConfig):
         "property_endpoints": {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
-        "usability_endpoints": {MappedPropertiesGroup.CIRCUIT: "/circuit-usability/{circuit_id}"},
     }
 
     class Initialize(Block):
