@@ -6,6 +6,7 @@ from pydantic import ConfigDict, Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.complex_variable_holder import ExampleComplexVariableHolder
 from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
@@ -53,6 +54,10 @@ class SchemaExampleScanConfig(ScanConfig):
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
         )
+        example_complex_parameter_holder: ExampleComplexVariableHolder = Field(
+            title="Example Complex Variable Holder",
+            description="Example block holding complex variables.",
+        }
 
         temp_option_remove_string_selection: Literal["A", "B", "C"] = Field(
             json_schema_extra={
