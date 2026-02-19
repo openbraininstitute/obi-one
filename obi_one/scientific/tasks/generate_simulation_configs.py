@@ -29,7 +29,6 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
-    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (

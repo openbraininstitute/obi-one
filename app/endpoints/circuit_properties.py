@@ -162,8 +162,8 @@ def mapped_circuit_properties_endpoint(
                 "code": ApiErrorCode.INTERNAL_ERROR,
                 "detail": f"No properties found for entity {circuit_id}.",
             },
-) from err
-    
+        )
+
     # Add usability
     try:
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
@@ -181,6 +181,6 @@ def mapped_circuit_properties_endpoint(
         CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
     }
 
-    mapped_circuit_properties['usability'] = simulation_options_usability
+    mapped_circuit_properties["usability"] = simulation_options_usability
 
     return mapped_circuit_properties

@@ -37,7 +37,8 @@ class BySectionListModification(OBIBaseModel):
 
 
 class ByNeuronModification(OBIBaseModel):
-    """Modify neuron level changes - GLOBAL and RANGE (in all SectionLists) variables of ion channels.
+    """Modify neuron level changes - GLOBAL and RANGE (in all SectionLists) variables of ion
+    channels.
 
     Example (GLOBAL):
         ion_channel_id: uuid.UUID("...")
