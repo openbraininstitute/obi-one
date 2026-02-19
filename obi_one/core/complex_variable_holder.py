@@ -9,5 +9,5 @@ class ComplexVariableHolder(OBIBaseModel, ABC):
     def set_properties_from_dictionary(self, data: dict) -> None:
         pass
 
-    def multiple_value_parameters_list(self):
+    def multiple_value_parameters_list(self) -> list:
         pass

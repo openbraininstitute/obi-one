@@ -80,22 +80,16 @@ class Block(OBIBaseModel, extra="forbid"):
             else:
                 continue
 
+            location_list = [category_name, key]
             if block_key:
-                for _, multi_values in enumerate(multi_values_list):
-                    self._multiple_value_parameters.append(
-                        MultiValueScanParam(
-                            location_list=[category_name, block_key, key],
-                            values=multi_values,
-                        )
+                location_list = [category_name, block_key, key]
+            for multi_values in multi_values_list:
+                self._multiple_value_parameters.append(
+                    MultiValueScanParam(
+                        location_list=location_list,
+                        values=multi_values,
                     )
-            else:
-                for _, multi_values in enumerate(multi_values_list):
-                    self._multiple_value_parameters.append(
-                        MultiValueScanParam(
-                            location_list=[category_name, key],
-                            values=multi_values,
-                        )
-                    )
+                )
 
         return self._multiple_value_parameters
 

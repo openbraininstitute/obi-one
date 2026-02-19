@@ -1,5 +1,4 @@
 import logging
-
 from itertools import product
 
 from obi_one.core.param import SingleValueScanParam
