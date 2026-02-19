@@ -103,14 +103,20 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
-    if schema.get("additionalProperties", {}).get("oneOf") is None:
+    additional = schema.get("additionalProperties", {})
+    one_of = additional.get("oneOf")
+    single_ref = additional.get("$ref")
+
+    if one_of is None and single_ref is None:
         msg = (
             f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
             "in additionalProperties"
         )
         raise ValueError(msg)
 
-    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
+    block_schemas = one_of if one_of is not None else [{"$ref": single_ref}]
+
+    for block_schema in block_schemas:
         ref = block_schema.get("$ref")
 
         if ref:

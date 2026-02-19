@@ -10,9 +10,6 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
-from obi_one.scientific.blocks.parameter_modifications.parameter_modifications import (
-    ByNeuronNeuronalParameterModification,
-)
 from obi_one.scientific.blocks.timestamps import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
@@ -180,15 +177,13 @@ class GenerateSimulationTask(Task):
                     self._circuit.default_population_name,
                     DEFAULT_NODE_SET_NAME,
                 )
-                if isinstance(modification, ByNeuronNeuronalParameterModification):
-                    # GLOBAL variables -> conditions.mechanisms dict
-                    for channel, props in result.items():
-                        mechanisms.setdefault(channel, {}).update(props)
-                elif isinstance(result, list):
+                if isinstance(result, list):
                     # RANGE variables -> conditions.modifications list
                     range_modifications.extend(result)
                 else:
-                    range_modifications.append(result)
+                    # GLOBAL variables -> conditions.mechanisms dict
+                    for channel, props in result.items():
+                        mechanisms.setdefault(channel, {}).update(props)
             if range_modifications:
                 self._sonata_config["conditions"]["modifications"] = range_modifications
             if mechanisms:
