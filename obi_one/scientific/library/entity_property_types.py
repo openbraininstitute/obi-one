@@ -18,11 +18,6 @@ class CircuitMappedProperties(StrEnum):
     ION_CHANNEL_RANGE_VARIABLES = "IonChannelRangeVariables"
     ION_CHANNEL_GLOBAL_VARIABLES = "IonChannelGlobalVariables"
 
-
-class UsabilityGroup(StrEnum):
-    CIRCUIT = "Circuit"
-
-
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

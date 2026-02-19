@@ -5,7 +5,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat
 from obi_one.scientific.blocks.stimuli.stimulus import ContinuousStimulus
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
-    UsabilityGroup,
+    MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
@@ -219,7 +219,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
-        "block_usability_group": UsabilityGroup.CIRCUIT,
+        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
         "block_usability_property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
         "block_usability_false_message": (
             "Input resistance based stimuli are not supported for this circuit."

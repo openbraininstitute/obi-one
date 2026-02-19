@@ -10,7 +10,7 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
-    UsabilityGroup,
+    MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -38,7 +38,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
 
     json_schema_extra_additions: ClassVar[dict] = {
         "block_usability_entity_dependent": True,
-        "block_usability_group": UsabilityGroup.CIRCUIT,
+        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
         "block_usability_property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
         "block_usability_false_message": (
             "Electric field stimuli are not supported for this circuit."

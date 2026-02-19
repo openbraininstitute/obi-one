@@ -162,6 +162,7 @@ def mapped_circuit_properties_endpoint(
                 "code": ApiErrorCode.INTERNAL_ERROR,
                 "detail": f"No properties found for entity {circuit_id}.",
             },
+<<<<<<< HEAD
         )
 
     return mapped_circuit_properties
@@ -181,6 +182,11 @@ def circuit_simulation_options_usability_endpoint(
         CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
     }
 
+=======
+        ) from err
+    
+    # Add usability
+>>>>>>> hidden_block_dictionary_elements
     try:
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
     except entitysdk.exception.EntitySDKError as err:
@@ -192,8 +198,11 @@ def circuit_simulation_options_usability_endpoint(
             },
         ) from err
 
-    simulation_options_usability[CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] = (
-        circuit.scale == "microcircuit"
-    )
+    simulation_options_usability = {
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
 
-    return simulation_options_usability
+    mapped_circuit_properties['usability'] = simulation_options_usability
+
+    return mapped_circuit_properties
