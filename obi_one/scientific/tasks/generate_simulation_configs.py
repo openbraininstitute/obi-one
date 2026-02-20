@@ -29,7 +29,6 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
-    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -41,9 +40,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_parameter_modifications import (
+from obi_one.scientific.unions.unions_neuronal_manipulations import (
+    NeuronalManipulationUnion,
     ParameterModificationReference,
-    ParameterModificationUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -319,7 +318,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    parameter_modifications: dict[str, ParameterModificationUnion] = Field(
+    neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
         default_factory=dict,
         title="Mechanism Parameter Modifications",
         description="Parameter modifications for the simulation.",

@@ -15,7 +15,6 @@ from httpx import HTTPStatusError
 from pydantic import BaseModel
 
 from obi_one.scientific.library.entity_property_types import (
-    CircuitMappedProperties,
     CircuitUsability,
 )
 

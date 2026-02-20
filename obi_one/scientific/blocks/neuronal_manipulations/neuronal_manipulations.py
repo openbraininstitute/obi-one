@@ -59,12 +59,8 @@ class ByNeuronModification(OBIBaseModel):
     new_value: float | list[float] = Field(description="New value(s) for the variable")
 
 
-class BySectionListNeuronalParameterModification(Block):
-    """Modify RANGE variables of ion channels for specific section lists.
-
-    This block allows modifying ion channel RANGE variables (e.g., conductances)
-    with different values for different section lists (e.g., somatic, axonal).
-    """
+class BySectionListMechanismVariableNeuronalManipulation(Block):
+    """Set different values for a variable of an ion channel in each section list (i.e. axonal, apical, dendritic, somatic)."""
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -120,12 +116,8 @@ class BySectionListNeuronalParameterModification(Block):
         return modifications
 
 
-class ByNeuronNeuronalParameterModification(Block):
-    """Modify GLOBAL variables of ion channels.
-
-    This block allows modifying ion channel GLOBAL variables that apply
-    to the entire neuron (e.g., reversal potentials).
-    """
+class ByNeuronMechanismVariableNeuronalManipulation(Block):
+    """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
