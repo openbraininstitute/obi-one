@@ -218,7 +218,6 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": True,
         "block_usability_dictionary": {
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,

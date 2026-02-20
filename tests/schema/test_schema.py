@@ -102,16 +102,12 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
             raise ValueError(msg)
 
 
-def validate_block_usability_entity_dependent(schema: dict, block_schema: dict, ref: str, form: dict) -> None:
+def validate_block_usability_dictionary(schema: dict, block_schema: dict, ref: str, form: dict) -> None:
 
-    block_usability_entity_dependent = block_schema.get("block_usability_entity_dependent")
-    if block_usability_entity_dependent is None or type(block_usability_entity_dependent) is not bool:
-        raise ValueError(f"Validation error at {ref}: 'block_usability_entity_dependent' must be defined in the block schema and must be a boolean")
-    elif block_usability_entity_dependent:
-        block_usability_dictionary = block_schema.get("block_usability_dictionary")
-        if block_usability_dictionary is None \
-            or type(block_usability_dictionary) is not dict:
-                raise ValueError(f"Validation error at {ref}: 'block_usability_dictionary' must be defined in the block schema and must be a dictionary when 'block_usability_entity_dependent' is true")
+    block_usability_dictionary = block_schema.get("block_usability_dictionary")
+    if block_usability_dictionary is not None:
+        if type(block_usability_dictionary) is not dict:
+            raise ValueError(f"Validation error at {ref}: 'block_usability_dictionary' must be a dictionary if defined in the block schema when 'block_usability_entity_dependent' is true")
 
         property_group = block_usability_dictionary.get("property_group")
         property = block_usability_dictionary.get("property")
@@ -123,7 +119,7 @@ def validate_block_usability_entity_dependent(schema: dict, block_schema: dict, 
                     or type(property_group) is not str \
                         or type(property) is not str \
                             or type(false_message) is not str:
-            raise ValueError(f"Validation error at {ref}: 'block_usability_dictionary' must be defined in the block schema and must be a dictionary with string values for 'property_group', 'property', and 'false_message' when 'block_usability_entity_dependent' is true")
+            raise ValueError(f"Validation error at {ref}: 'block_usability_dictionary' must contain 'property_group', 'property', and 'false_message' keys with string values when defined in the block schema.")
         
         schema_property_endpoints = form.get("property_endpoints")
         if schema_property_endpoints is None \
@@ -135,7 +131,7 @@ def validate_block_usability_entity_dependent(schema: dict, block_schema: dict, 
         
 def validate_scan_config_dependendent_block_components(schema, block_schema, ref, form):
     
-    validate_block_usability_entity_dependent(schema, block_schema, ref, form)
+    validate_block_usability_dictionary(schema, block_schema, ref, form)
     
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
