@@ -15,6 +15,7 @@
   "group_order": ["Group 1", "Group 2"], // All groups must be used in at least one root element.
   "ui_enabled": true,
   "default_block_reference_labels": { "Reference_1": "Label_1" },
-  "properties_endpoint": "/mapped-circuit-properties/{circuit_id}",
-  "usability_endpoint": "/circuit-simulation-options-usability/{circuit_id}",
+  "properties_endpoint": {
+    "circuit": "/mapped-circuit-properties/{circuit_id}"
+  }
 }
