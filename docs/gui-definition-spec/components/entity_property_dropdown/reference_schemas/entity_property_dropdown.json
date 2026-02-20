@@ -14,7 +14,7 @@
   ],
   "title": "predefined neuronset",
   "description": "the description",
-  "entity_type": "circuit",
+  "property_group": "circuit",
   "property": "NodeSet",
   "ui_element": "entity_property_dropdown"
 }

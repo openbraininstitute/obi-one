@@ -12,7 +12,7 @@ from typing import Annotated, Any, ClassVar
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from pydantic import ConfigDict, Field, StringConstraints
+from pydantic import Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -83,15 +83,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-            ]
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "group_order": [
+            BlockGroup.SETUP,
+            BlockGroup.EQUATIONS,
+            BlockGroup.GATEEXPONENTS,
+        ]
+    }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
@@ -318,6 +316,11 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
+    @property
+    def conductance_name(self) -> str:
+        """Get the conductance name for the generated ion channel model."""
+        return f"g{self.config.initialize.ion_channel_name}bar"
+
     def download_input(
         self, db_client: entitysdk.client.Client = None
     ) -> tuple[list[Path], list[float]]:
@@ -386,12 +389,13 @@ class IonChannelFittingTask(Task):
         self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
+        figure_types = ["traces", "stimuli", "steady state", "time constant"]
         paths_to_register = [
             value
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
             for key, value in d.items()
-            if key != "order"
+            if key in figure_types
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
@@ -453,6 +457,8 @@ class IonChannelFittingTask(Task):
                 neuron_block=neuron_block,
                 brain_region=brain_region,
                 subject=subject,
+                conductance_name=self.conductance_name,
+                max_permeability_name=None,
             )
         )
 
@@ -572,7 +578,7 @@ class IonChannelFittingTask(Task):
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",
                 temperature=recording_entity.temperature,
-                mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
+                mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
