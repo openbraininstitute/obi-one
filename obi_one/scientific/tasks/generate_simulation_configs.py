@@ -320,12 +320,12 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
 
     neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
         default_factory=dict,
-        title="Mechanism Parameter Modifications",
-        description="Parameter modifications for the simulation.",
+        title="Neuronal Manipulations",
+        description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             "ui_element": "block_dictionary",
             "reference_type": NeuronalManipulationReference.__name__,
-            "singular_name": "Parameter Modification",
+            "singular_name": "Neuronal Manipulation",
             "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             "group_order": 0,
         },

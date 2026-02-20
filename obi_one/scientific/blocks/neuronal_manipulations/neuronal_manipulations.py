@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
@@ -76,10 +76,14 @@ class ByNeuronModification(OBIBaseModel):
 
 
 class BySectionListMechanismVariableNeuronalManipulation(Block):
-    """Set different values for a variable of an ion channel in each section list.
+    """Set values for an ion channel variable in each section type where the ion channel exists.
 
-    Example section lists: axonal, apical, dendritic, somatic.
+    Example section types: axonal, apical, dendritic, somatic.
+
+    These correspond to `section lists` in the NEURON simulator nomenclature.
     """
+
+    title: ClassVar[str] = "Ion Channel Variable Modification by Section Type"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -90,7 +94,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
     )
 
     modification: BySectionListModification = Field(
-        title="RANGE Variable Modification",
+        title="Ion channel variable manipulations by section type",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
             "ui_element": "ion_channel_variable_modification",
@@ -138,6 +142,8 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 class ByNeuronMechanismVariableNeuronalManipulation(Block):
     """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
+    title: ClassVar[str] = "Ion Channel Variable Modification by Neuron"
+
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Target)",
@@ -147,8 +153,8 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
     )
 
     modification: ByNeuronModification = Field(
-        title="Variable Modification",
-        description="Ion channel variable modification (RANGE or GLOBAL).",
+        title="Ion channel variable manipulations by neuron",
+        description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
         json_schema_extra={
             "ui_element": "ion_channel_variable_modification",
             "property_group": MappedPropertiesGroup.CIRCUIT,

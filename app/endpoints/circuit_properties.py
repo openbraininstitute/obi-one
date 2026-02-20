@@ -142,8 +142,14 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
             circuit_metrics.names_of_nodesets
         )
-    except entitysdk.exception.EntitySDKError:
-        pass
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+            },
+        ) from err
 
     # Try fetching mechanism variables (succeeds for MEModel entities).
     mechanism_variables_response = try_get_mechanism_variables(
@@ -167,15 +173,19 @@ def mapped_circuit_properties_endpoint(
     # Add usability
     try:
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
-        simulation_options_usability = {
-            CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
-            CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
-        }
-    except entitysdk.exception.EntitySDKError:
-        simulation_options_usability = {
-            CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
-            CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
-        }
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+            },
+        ) from err
+
+    simulation_options_usability = {
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
 
     mapped_circuit_properties["usability"] = simulation_options_usability
 
