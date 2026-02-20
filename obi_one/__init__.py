@@ -55,6 +55,8 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "CreateExtracellularRecordingArrayScanConfig",
+    "CreateExtracellularRecordingArrayTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
@@ -343,6 +345,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
+)
+from obi_one.scientific.tasks.create_recording_electrode.create_extracellular_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+    CreateExtracellularRecordingArrayTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
