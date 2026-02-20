@@ -42,7 +42,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationUnion,
-    ParameterModificationReference,
+    NeuronalManipulationReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -324,7 +324,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         description="Parameter modifications for the simulation.",
         json_schema_extra={
             "ui_element": "block_dictionary",
-            "reference_type": ParameterModificationReference.__name__,
+            "reference_type": NeuronalManipulationReference.__name__,
             "singular_name": "Parameter Modification",
             "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             "group_order": 0,

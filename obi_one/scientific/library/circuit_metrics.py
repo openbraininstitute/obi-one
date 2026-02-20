@@ -14,10 +14,6 @@ from entitysdk.models.circuit import Circuit
 from httpx import HTTPStatusError
 from pydantic import BaseModel
 
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-)
-
 ALL_POPULATIONS = "_ALL_"
 
 
@@ -479,11 +475,6 @@ def get_circuit_metrics(  # noqa: PLR0914
         entity_id=circuit_id,
         entity_type=Circuit,
     )
-
-    simulation_options_usability = {
-        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
-        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
-    }
 
     directory_assets = [
         a for a in circuit.assets if a.is_directory and a.label.value == "sonata_circuit"

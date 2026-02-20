@@ -1,4 +1,5 @@
-from typing import Annotated
+import uuid
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -20,17 +21,15 @@ class BySectionListModification(OBIBaseModel):
 
     Example:
         ion_channel_id: "abc123"
-        variable_name: "gCa_HVAbar_Ca_HVA2"
+        variable_name: "gkbar_hh"
         section_list_modifications: {
             "somatic": 0.1,
             "axonal": [0.1, 0.2, 0.3],
         }
     """
 
-    ion_channel_id: Annotated[str, Field(min_length=1, description="ID of the ion channel")]
-    variable_name: str = Field(
-        description="Name of the RANGE variable (e.g., 'gCa_HVAbar_Ca_HVA2')"
-    )
+    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")]
+    variable_name: str = Field(description="Name of the RANGE variable (e.g., 'gkbar_hh')")
     section_list_modifications: dict[str, float | list[float]] = Field(
         default_factory=dict,
         description="Modifications per section list (e.g., {'somatic': 0.1, 'axonal': 0.2})",
@@ -38,16 +37,25 @@ class BySectionListModification(OBIBaseModel):
 
 
 class ByNeuronModification(OBIBaseModel):
-    """Modification for GLOBAL variables.
+    """Modify neuron level changes - GLOBAL and RANGE (in all SectionLists) variables of ion
+    channels.
 
-    Example:
-        ion_channel_id: "abc123"
-        channel_name: "NaTg"
-        variable_name: "ena_NaTg"
+    Example (GLOBAL):
+        ion_channel_id: uuid.UUID("...")
+        channel_name: "StochKv3"
+        variable_name: "vmin_StochKv3"
+        variable_type: "GLOBAL"
         new_value: 0.5
+
+    Example (RANGE):
+        ion_channel_id: uuid.UUID("...")
+        channel_name: "Ca_HVA2"
+        variable_name: "gCa_HVAbar_Ca_HVA2"
+        variable_type: "RANGE"
+        new_value: 0.1
     """
 
-    ion_channel_id: Annotated[str, Field(min_length=1, description="ID of the ion channel")]
+    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")]
     channel_name: Annotated[
         str,
         Field(
@@ -55,12 +63,23 @@ class ByNeuronModification(OBIBaseModel):
             description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms",
         ),
     ]
-    variable_name: str = Field(description="Name of the GLOBAL variable (e.g., 'ena_NaTg')")
-    new_value: float | list[float] = Field(description="New value(s) for the variable")
+    variable_name: str = Field(
+        description="Name of the variable (e.g., 'vmin_StochKv3' or 'gCa_HVAbar_Ca_HVA2')"
+    )
+    variable_type: Literal["RANGE", "GLOBAL"] = Field(
+        default="GLOBAL",
+        description="Variable type: 'RANGE' (section-specific) or 'GLOBAL' (neuron-wide)",
+    )
+    new_value: float | list[float] = Field(
+        description="New value(s) that applies to entire neuron (GLOBAL) or all sections (RANGE)",
+    )
 
 
 class BySectionListMechanismVariableNeuronalManipulation(Block):
-    """Set different values for a variable of an ion channel in each section list (i.e. axonal, apical, dendritic, somatic)."""
+    """Set different values for a variable of an ion channel in each section list.
+
+    Example section lists: axonal, apical, dendritic, somatic.
+    """
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -128,23 +147,37 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
     )
 
     modification: ByNeuronModification = Field(
-        title="GLOBAL Variable Modification",
-        description="Ion channel GLOBAL variable modification.",
+        title="Variable Modification",
+        description="Ion channel variable modification (RANGE or GLOBAL).",
         json_schema_extra={
-            "ui_element": "ion_channel_global_variable_modification",
+            "ui_element": "ion_channel_variable_modification",
             "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.ION_CHANNEL_GLOBAL_VARIABLES,
+            "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 
-    def config(self, _default_population_name: str, _default_node_set: str) -> dict:
-        """Generate SONATA conditions.mechanisms entry.
+    def config(self, _default_population_name: str, default_node_set: str) -> list[dict] | dict:
+        """Generate SONATA config entry.
 
         Returns:
-            Dict of {channel_name: {variable_name: value}} for conditions.mechanisms.
+            For GLOBAL: dict {channel_name: {variable_name: new_value}} for conditions.mechanisms.
+            For RANGE: list[dict] with a single conditions.modifications entry for all sections.
         """
-        return {
-            self.modification.channel_name: {
-                self.modification.variable_name: self.modification.new_value
+        if self.modification.variable_type == "GLOBAL":
+            return {
+                self.modification.channel_name: {
+                    self.modification.variable_name: self.modification.new_value
+                }
             }
-        }
+
+        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+        return [
+            {
+                "name": f"modify_{self.modification.variable_name}_all",
+                "node_set": node_set,
+                "type": "configure_all_sections",
+                "section_configure": (
+                    f"%s.{self.modification.variable_name} = {self.modification.new_value}"
+                ),
+            }
+        ]

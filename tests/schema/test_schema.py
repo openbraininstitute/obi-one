@@ -105,45 +105,63 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
 
 
 def validate_block_usability_entity_dependent(
-    schema: dict, block_schema: dict, ref: str, form: dict
+    _schema: dict, block_schema: dict, ref: str, form: dict
 ) -> None:
+    """Validate block usability entity dependent configuration."""
     block_usability_entity_dependent = block_schema.get("block_usability_entity_dependent")
-    if (
-        block_usability_entity_dependent is None
-        or type(block_usability_entity_dependent) is not bool
+    if block_usability_entity_dependent is None or not isinstance(
+        block_usability_entity_dependent, bool
     ):
-        raise ValueError(
-            f"Validation error at {ref}: 'block_usability_entity_dependent' must be defined in the block schema and must be a boolean"
+        msg = (
+            f"Validation error at {ref}: 'block_usability_entity_dependent' must be defined "
+            "in the block schema and must be a boolean"
         )
-    if block_usability_entity_dependent:
-        block_usability_property_group = block_schema.get("block_usability_property_group")
-        block_usability_property = block_schema.get("block_usability_property")
-        block_usability_false_message = block_schema.get("block_usability_false_message")
+        raise ValueError(msg)
 
-        if (
-            block_usability_property_group is None
-            or block_usability_property is None
-            or block_usability_false_message is None
-            or type(block_usability_property_group) is not str
-            or type(block_usability_property) is not str
-            or type(block_usability_false_message) is not str
-        ):
-            raise ValueError(
-                f"Validation error at {ref}: 'block_usability_property_group', 'block_usability_property', and 'block_usability_false_message' must be defined in the block schema and must be strings when 'block_usability_entity_dependent' is defined"
-            )
+    if not block_usability_entity_dependent:
+        return
 
-        schema_property_endpoints = form.get("property_endpoints")
-        print(schema)
-        if (
-            schema_property_endpoints is None
-            or type(schema_property_endpoints) is not dict
-            or schema_property_endpoints.get(block_usability_property_group) is None
-            or type(schema_property_endpoints.get(block_usability_property_group)) is not str
-            or len(schema_property_endpoints.get(block_usability_property_group)) == 0
-        ):
-            raise ValueError(
-                f"Validation error at {ref}: 'property_endpoints' must be defined in the root schema and must be a dictionary with a non-empty string value for the key specified in 'block_usability_property_group' when 'block_usability_entity_dependent' is defined"
-            )
+    block_usability_property_group = block_schema.get("block_usability_property_group")
+    block_usability_property = block_schema.get("block_usability_property")
+    block_usability_false_message = block_schema.get("block_usability_false_message")
+
+    missing_fields = [
+        field
+        for field, value in [
+            ("block_usability_property_group", block_usability_property_group),
+            ("block_usability_property", block_usability_property),
+            ("block_usability_false_message", block_usability_false_message),
+        ]
+        if value is None or not isinstance(value, str)
+    ]
+
+    if missing_fields:
+        fields_str = ", ".join(missing_fields)
+        msg = (
+            f"Validation error at {ref}: {fields_str} must be defined in the block schema "
+            "and must be strings when 'block_usability_entity_dependent' is defined"
+        )
+        raise ValueError(msg)
+
+    schema_property_endpoints = form.get("property_endpoints")
+    endpoint_value = (
+        schema_property_endpoints.get(block_usability_property_group)
+        if schema_property_endpoints
+        else None
+    )
+
+    if (
+        not isinstance(schema_property_endpoints, dict)
+        or endpoint_value is None
+        or not isinstance(endpoint_value, str)
+        or len(endpoint_value) == 0
+    ):
+        msg = (
+            f"Validation error at {ref}: 'property_endpoints' must be defined in the root schema "
+            "and must be a dictionary with a non-empty string value for the key specified in "
+            "'block_usability_property_group' when 'block_usability_entity_dependent' is defined"
+        )
+        raise ValueError(msg)
 
 
 def validate_scan_config_dependendent_block_components(schema, block_schema, ref, form):
@@ -151,14 +169,20 @@ def validate_scan_config_dependendent_block_components(schema, block_schema, ref
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    if schema.get("additionalProperties", {}).get("oneOf") is None:
+    additional = schema.get("additionalProperties", {})
+    one_of = additional.get("oneOf")
+    single_ref = additional.get("$ref")
+
+    if one_of is None and single_ref is None:
         msg = (
             f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
             "in additionalProperties"
         )
         raise ValueError(msg)
 
-    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
+    block_schemas = one_of if one_of is not None else [{"$ref": single_ref}]
+
+    for block_schema in block_schemas:
         ref = block_schema.get("$ref")
 
         if ref:

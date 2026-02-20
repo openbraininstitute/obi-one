@@ -78,9 +78,7 @@ There are two major types of such UI elements:
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
-        - [variable_modification_range](components/variable_modification_range/variable_modification_range.md)
-
-        - [variable_modification_global](components/variable_modification_global/variable_modification_global.md)
+        - [variable_modification](components/variable_modification/variable_modification.md)
 
     - Legacy block elements:
 
@@ -114,8 +112,7 @@ And the following optional property:
 - `default_block_element_labels` specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
 - ScanConfigs can optionally have the following specifed:
-    - `usability_endpoint`: For hiding blocks depending on an entity (see [block_usability_entity_dependent](components/block_usability_entity_dependent/block_usability_entity_dependent.jsonc)).
-    - `properties_endpoint`: url relative to the base url of the api, such as "/circuit-usability/{circuit_id}". For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
+    - `properties_endpoint`: dictioarny of urls relative to the base url of the api, such as `"Circuit": "/circuit-usability/{circuit_id}"`. For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md). Within the dictionary returned by any of these endpoints, a `usability` dictionary should also be defined with booleans which can be used for optionally displaying elements.
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 

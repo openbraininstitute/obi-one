@@ -1,6 +1,6 @@
 {   
     // ...
     "usability_endpoints": {
-        "Circuit": "/circuit-usability/{circuit_id}"
+        "Circuit": "/mapped-circuit-properties/{circuit_id}"
     }
 }
