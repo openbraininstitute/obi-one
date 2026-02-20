@@ -71,8 +71,8 @@ class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
-    EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
+    EVENTS_GROUP = "Events"
 
 
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
@@ -99,7 +99,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {
@@ -326,7 +325,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
             "ui_element": "block_dictionary",
             "reference_type": NeuronalManipulationReference.__name__,
             "singular_name": "Neuronal Manipulation",
-            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             "group_order": 0,
         },
     )
@@ -336,7 +335,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {
@@ -352,6 +351,21 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+    }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,
@@ -371,8 +385,8 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             "ui_element": "block_dictionary",
             "reference_type": SynapticManipulationsReference.__name__,
             "singular_name": "Synaptic Manipulation",
-            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            "group_order": 1,
+            "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            "group_order": 0,
         },
     )
 
