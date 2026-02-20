@@ -78,9 +78,7 @@ There are two major types of such UI elements:
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
-        - [variable_modification_range](components/variable_modification_range/variable_modification_range.md)
-
-        - [variable_modification_global](components/variable_modification_global/variable_modification_global.md)
+        - [variable_modification](components/variable_modification/variable_modification.md)
 
     - Legacy block elements:
 

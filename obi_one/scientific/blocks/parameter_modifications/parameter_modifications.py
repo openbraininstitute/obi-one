@@ -52,7 +52,7 @@ class ByNeuronModification(OBIBaseModel):
         channel_name: "Ca_HVA2"
         variable_name: "gCa_HVAbar_Ca_HVA2"
         variable_type: "RANGE"
-        section_list_modifications: {"somatic": 0.1, "axonal": 0.2}
+        new_value: 0.1
     """
 
     ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")]
@@ -70,13 +70,8 @@ class ByNeuronModification(OBIBaseModel):
         default="GLOBAL",
         description="Variable type: 'RANGE' (section-specific) or 'GLOBAL' (neuron-wide)",
     )
-    section_list_modifications: dict[str, float | list[float]] = Field(
-        default_factory=dict,
-        description="For RANGE: new values per section list (e.g., {'somatic': 0.1})",
-    )
-    new_value: float | list[float] | None = Field(
-        default=None,
-        description="For GLOBAL: new value(s) that applies to the entire neuron",
+    new_value: float | list[float] = Field(
+        description="New value(s) that applies to entire neuron (GLOBAL) or all sections (RANGE)",
     )
 
 
@@ -145,8 +140,8 @@ class ByNeuronNeuronalParameterModification(Block):
     """Modify ion channel variables (RANGE or GLOBAL) for specific neurons.
 
     This block handles both variable types:
-    - RANGE variables vary across section lists (e.g., conductances like gCa_HVAbar_Ca_HVA2).
-      Generates conditions.modifications entries, one per section list.
+    - RANGE variables (e.g., conductances like gCa_HVAbar_Ca_HVA2).
+      Generates a single conditions.modifications entry using configure_all_sections.
     - GLOBAL variables apply uniformly to the entire neuron (e.g., reversal potentials).
       Generates a conditions.mechanisms entry keyed by channel name.
     """
@@ -174,7 +169,7 @@ class ByNeuronNeuronalParameterModification(Block):
 
         Returns:
             For GLOBAL: dict {channel_name: {variable_name: new_value}} for conditions.mechanisms.
-            For RANGE: list[dict] of conditions.modifications entries, one per section list.
+            For RANGE: list[dict] with a single conditions.modifications entry for all sections.
         """
         if self.modification.variable_type == "GLOBAL":
             return {
@@ -184,29 +179,13 @@ class ByNeuronNeuronalParameterModification(Block):
             }
 
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
-        modifications = []
-        for section_list, value in self.modification.section_list_modifications.items():
-            if section_list == "all":
-                modifications.append(
-                    {
-                        "name": f"modify_{self.modification.variable_name}_all",
-                        "node_set": node_set,
-                        "type": "configure_all_sections",
-                        "section_configure": f"%s.{self.modification.variable_name} = {value}",
-                    }
-                )
-                continue
-
-            modifications.extend(
-                {
-                    "name": f"modify_{self.modification.variable_name}_{expanded_section_list}",
-                    "node_set": node_set,
-                    "type": "section_list",
-                    "section_configure": (
-                        f"{expanded_section_list}.{self.modification.variable_name} = {value}"
-                    ),
-                }
-                for expanded_section_list in _expand_section_list(section_list)
-            )
-
-        return modifications
+        return [
+            {
+                "name": f"modify_{self.modification.variable_name}_all",
+                "node_set": node_set,
+                "type": "configure_all_sections",
+                "section_configure": (
+                    f"%s.{self.modification.variable_name} = {self.modification.new_value}"
+                ),
+            }
+        ]
