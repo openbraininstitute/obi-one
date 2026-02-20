@@ -135,21 +135,14 @@ def mapped_circuit_properties_endpoint(
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
             db_client=db_client,
-            level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
-            level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties = {}
         mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
             circuit_metrics.names_of_nodesets
         )
-    except entitysdk.exception.EntitySDKError as err:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Internal error retrieving the circuit {circuit_id}.",
-            },
-        ) from err
+    except (entitysdk.exception.EntitySDKError, ValueError):
+        # Expected for MEModel entities or entities without proper circuit configuration
+        # Continue to try mechanism variables
+        pass
 
     # Try fetching mechanism variables (succeeds for MEModel entities).
     mechanism_variables_response = try_get_mechanism_variables(
@@ -170,23 +163,26 @@ def mapped_circuit_properties_endpoint(
             },
         )
 
-    # Add usability
-    try:
-        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
-    except entitysdk.exception.EntitySDKError as err:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Internal error retrieving the circuit {circuit_id}.",
-            },
-        ) from err
-
-    simulation_options_usability = {
-        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
-        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
-    }
-
-    mapped_circuit_properties["usability"] = simulation_options_usability
+    # Add usability (only for Circuit entities)
+    if CircuitMappedProperties.NODE_SET in mapped_circuit_properties:
+        try:
+            circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+            simulation_options_usability = {
+                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+            }
+            mapped_circuit_properties["usability"] = simulation_options_usability
+        except entitysdk.exception.EntitySDKError:
+            # If we can't get the circuit entity, set default usability
+            mapped_circuit_properties["usability"] = {
+                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+            }
+    else:
+        # For MEModel entities, set default usability
+        mapped_circuit_properties["usability"] = {
+            CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+            CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+        }
 
     return mapped_circuit_properties
