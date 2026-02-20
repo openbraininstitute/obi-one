@@ -104,68 +104,58 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
             raise ValueError(msg)
 
 
-def validate_block_usability_entity_dependent(
-    _schema: dict, block_schema: dict, ref: str, form: dict
-) -> None:
-    """Validate block usability entity dependent configuration."""
-    block_usability_entity_dependent = block_schema.get("block_usability_entity_dependent")
-    if block_usability_entity_dependent is None or not isinstance(
-        block_usability_entity_dependent, bool
-    ):
-        msg = (
-            f"Validation error at {ref}: 'block_usability_entity_dependent' must be defined "
-            "in the block schema and must be a boolean"
-        )
-        raise ValueError(msg)
+def validate_block_usability_dictionary(block_schema: dict, ref: str, form: dict) -> None:
+    block_usability_dictionary = block_schema.get("block_usability_dictionary")
+    if block_usability_dictionary is not None:
+        if type(block_usability_dictionary) is not dict:
+            msg = (
+                f"Validation error at {ref}: 'block_usability_dictionary' must be a dictionary "
+                f"if defined."
+            )
+            raise ValueError(msg)
 
-    if not block_usability_entity_dependent:
-        return
+        property_group = block_usability_dictionary.get("property_group")
+        property_value = block_usability_dictionary.get("property")
+        false_message = block_usability_dictionary.get("false_message")
 
-    block_usability_property_group = block_schema.get("block_usability_property_group")
-    block_usability_property = block_schema.get("block_usability_property")
-    block_usability_false_message = block_schema.get("block_usability_false_message")
+        if property_group is None or property_value is None or false_message is None:
+            msg = (
+                f"Validation error at {ref}: 'block_usability_dictionary' must have "
+                f"'property_group', 'property', and 'false_message' keys when defined "
+                f"in the block schema."
+            )
+            raise ValueError(msg)
 
-    missing_fields = [
-        field
-        for field, value in [
-            ("block_usability_property_group", block_usability_property_group),
-            ("block_usability_property", block_usability_property),
-            ("block_usability_false_message", block_usability_false_message),
-        ]
-        if value is None or not isinstance(value, str)
-    ]
+        if (
+            type(property_group) is not str
+            or type(property_value) is not str
+            or type(false_message) is not str
+        ):
+            msg = (
+                f"Validation error at {ref}: 'property_group', 'property', and 'false_message' "
+                f"must be strings in 'block_usability_dictionary' when defined in the block "
+                f"schema."
+            )
+            raise TypeError(msg)
 
-    if missing_fields:
-        fields_str = ", ".join(missing_fields)
-        msg = (
-            f"Validation error at {ref}: {fields_str} must be defined in the block schema "
-            "and must be strings when 'block_usability_entity_dependent' is defined"
-        )
-        raise ValueError(msg)
-
-    schema_property_endpoints = form.get("property_endpoints")
-    endpoint_value = (
-        schema_property_endpoints.get(block_usability_property_group)
-        if schema_property_endpoints
-        else None
-    )
-
-    if (
-        not isinstance(schema_property_endpoints, dict)
-        or endpoint_value is None
-        or not isinstance(endpoint_value, str)
-        or len(endpoint_value) == 0
-    ):
-        msg = (
-            f"Validation error at {ref}: 'property_endpoints' must be defined in the root schema "
-            "and must be a dictionary with a non-empty string value for the key specified in "
-            "'block_usability_property_group' when 'block_usability_entity_dependent' is defined"
-        )
-        raise ValueError(msg)
+        schema_property_endpoints = form.get("property_endpoints")
+        if (
+            schema_property_endpoints is None
+            or type(schema_property_endpoints) is not dict
+            or schema_property_endpoints.get(property_group) is None
+            or type(schema_property_endpoints.get(property_group)) is not str
+            or len(schema_property_endpoints.get(property_group)) == 0
+        ):
+            msg = (
+                f"Validation error at {ref}: 'property_endpoints' must be defined in the root "
+                f"schema and must be a dictionary with a non-empty string value for the key "
+                f"specified in 'property_group' when 'block_usability_entity_dependent' is defined"
+            )
+            raise ValueError(msg)
 
 
-def validate_scan_config_dependendent_block_components(schema, block_schema, ref, form):
-    validate_block_usability_entity_dependent(schema, block_schema, ref, form)
+def validate_scan_config_dependendent_block_components(block_schema, ref, form):
+    validate_block_usability_dictionary(block_schema, ref, form)
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
@@ -188,7 +178,7 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
-        validate_scan_config_dependendent_block_components(schema, block_schema, ref, form)
+        validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
         validate_block(block_schema, ref)
 
@@ -204,7 +194,7 @@ def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) ->
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
-        validate_scan_config_dependendent_block_components(schema, block_schema, ref, form)
+        validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
         validate_block(block_schema, ref)
 

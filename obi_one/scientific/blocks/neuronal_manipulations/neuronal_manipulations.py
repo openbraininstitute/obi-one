@@ -93,9 +93,9 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         title="RANGE Variable Modification",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
-            "ui_element": "ion_channel_range_variable_modification",
+            "ui_element": "ion_channel_variable_modification",
             "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.ION_CHANNEL_RANGE_VARIABLES,
+            "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 

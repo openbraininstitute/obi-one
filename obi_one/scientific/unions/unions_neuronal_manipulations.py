@@ -9,7 +9,8 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
 )
 
 NeuronalManipulationUnion = Annotated[
-    BySectionListMechanismVariableNeuronalManipulation | ByNeuronMechanismVariableNeuronalManipulation,
+    BySectionListMechanismVariableNeuronalManipulation
+    | ByNeuronMechanismVariableNeuronalManipulation,
     Discriminator("type"),
 ]
 

@@ -441,16 +441,6 @@ def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
-def validate_ion_channel_range_variable_modification(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
-
-
-def validate_ion_channel_global_variable_modification(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
-
-
 def validate_ion_channel_variable_modification(schema: dict, param: str, ref: str) -> None:
     validate_string(schema, "property_group", f"{param} at {ref}")
     validate_string(schema, "property", f"{param} at {ref}")
@@ -482,10 +472,6 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
             validate_model_identifier(schema, param, ref)
-        case "ion_channel_range_variable_modification":
-            validate_ion_channel_range_variable_modification(schema, param, ref)
-        case "ion_channel_global_variable_modification":
-            validate_ion_channel_global_variable_modification(schema, param, ref)
         case "ion_channel_variable_modification":
             validate_ion_channel_variable_modification(schema, param, ref)
         case _:

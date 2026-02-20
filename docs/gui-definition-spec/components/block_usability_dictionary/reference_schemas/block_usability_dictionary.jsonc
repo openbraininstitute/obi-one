@@ -1,6 +1,5 @@
 {
     // ...
-    "block_usability_entity_dependent": true,
     "block_usability_dictionary": {
         "property_group": "Circuit",
         "property": "InputResistanceBasedStimuli",

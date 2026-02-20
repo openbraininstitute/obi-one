@@ -41,8 +41,8 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
-    NeuronalManipulationUnion,
     NeuronalManipulationReference,
+    NeuronalManipulationUnion,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
