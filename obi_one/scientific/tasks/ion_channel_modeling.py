@@ -392,11 +392,11 @@ class IonChannelFittingTask(Task):
     ) -> None:
         # get the paths of the pdf figures
         paths_to_register = [
-            value
+            figpath
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
-            for key, value in d.items()
-            if key != "order"
+            for figpath in d.values()
+            if figpath[-4:] == ".pdf"
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
