@@ -37,12 +37,11 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": True,
-        "block_usability_property_group": MappedPropertiesGroup.CIRCUIT,
-        "block_usability_property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
-        "block_usability_false_message": (
-            "Electric field stimuli are not supported for this circuit."
-        ),
+        "block_usability_dictionary": {
+            "property_group": MappedPropertiesGroup.CIRCUIT,
+            "property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
+            "false_message": "Electric field stimuli are not supported for this circuit.",
+        },
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"

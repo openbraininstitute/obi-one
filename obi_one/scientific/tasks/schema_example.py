@@ -33,7 +33,6 @@ class EntityDependentBlockExample(Block):
     title: ClassVar[str] = "Entity Dependent Block Example Title"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": True,
         "block_usability_dictionary": {
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
