@@ -22,10 +22,6 @@ class Block(OBIBaseModel, extra="forbid"):
     _ref = None
     _block_name = None
 
-    json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_entity_dependent": False,
-    }
-
     @property
     def block_name(self) -> str:
         """Returns the block name."""
