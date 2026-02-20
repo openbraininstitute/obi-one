@@ -10,7 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.scan_generation_task.grid import GridScanGenerationTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
