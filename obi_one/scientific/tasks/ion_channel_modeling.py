@@ -391,12 +391,13 @@ class IonChannelFittingTask(Task):
         self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
+        figure_types = ["traces", "stimuli", "steady state", "time constant"]
         paths_to_register = [
-            figpath
+            value
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
-            for figpath in d.values()
-            if figpath[-4:] == ".pdf"
+            for key, value in d.items()
+            if key in figure_types
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
