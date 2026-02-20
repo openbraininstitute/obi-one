@@ -6,15 +6,17 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator, MappedPropertiesGroup, MappedPropertiesGroup
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
+from obi_one.scientific.tasks.generate_simulation_configs import (
+    CircuitDiscriminator,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
-)
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-    MappedPropertiesGroup,
 )
 
 
@@ -23,6 +25,7 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     EXTRACTION_TARGET = "Extraction Target"
+
 
 class EntityDependentBlockExample(Block):
     """Entity Dependent Block Example Description."""

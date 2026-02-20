@@ -42,7 +42,6 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
             "false_message": "Electric field stimuli are not supported for this circuit.",
         },
-        
     }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
