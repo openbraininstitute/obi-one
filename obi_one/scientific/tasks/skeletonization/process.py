@@ -17,16 +17,14 @@ def run_process(parameters: ProcessParameters, output_dir: Path) -> None:
     This function calls `ultraliser.skeletonize_neuron_mesh` to generate
     neuron skeletons and associated morphology files from a mesh input.
 
-    Parameters
-    ----------
-    parameters : ProcessParameters
-        Configuration parameters required for skeletonization, including:
-        - mesh_path: Path to the input neuron mesh.
-        - segment_spines: Whether to segment dendritic spines.
-        - neuron_voxel_size: Voxel size for neuron processing.
-        - spines_voxel_size: Voxel size for spine processing.
-    output_dir : Path
-        Directory where skeletonization outputs will be written.
+    Args:
+        parameters:
+            Configuration parameters required for skeletonization, including:
+            - mesh_path: Path to the input neuron mesh.
+            - segment_spines: Whether to segment dendritic spines.
+            - neuron_voxel_size: Voxel size for neuron processing.
+            - spines_voxel_size: Voxel size for spine processing.
+        output_dir: Directory where skeletonization outputs will be written.
     """
     import ultraliser  # noqa: PLC0415
 
@@ -43,30 +41,26 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
     """Collect, post-process, and organize skeletonization output files.
 
     This function:
-    1. Locates the combined morphology H5 file and renames it by appending
-       the `_with_spines` suffix.
-    2. Locates the generated SWC morphology file.
-    3. Produces complementary H5 and ASC morphology files derived from the SWC file.
-    4. Returns a structured `SkeletonizationOutputs` object containing all outputs.
+        1. Locates the combined morphology H5 file and renames it by appending
+           the `_with_spines` suffix.
+        2. Locates the generated SWC morphology file.
+        3. Produces complementary H5 and ASC morphology files derived from the SWC file.
+        4. Returns a structured `SkeletonizationOutputs` object containing all outputs.
 
-    Parameters
-    ----------
-    output_dir : Path
-        Directory where skeletonization output files were generated.
+    Args:
+        output_dir: Directory where skeletonization output files were generated.
 
     Returns:
-    -------
-    SkeletonizationOutputs
-        Object containing paths to:
-        - H5 morphology file (derived from SWC)
-        - SWC morphology file
-        - ASC morphology file
-        - Combined H5 morphology file (with spines)
+        SkeletonizationOutputs
+            Object containing paths to:
+            - H5 morphology file (derived from SWC)
+            - SWC morphology file
+            - ASC morphology file
+            - Combined H5 morphology file (with spines)
 
     Raises:
-    ------
-    OBIONEError
-        If required morphology files (.h5 or .swc) cannot be found in the output directory.
+        OBIONEError
+            If required morphology files (.h5 or .swc) cannot be found in the output directory.
     """
     if not (spiny_morph_path := find_file(output_dir, extension=".h5")):
         msg = "No combined morphology h5 file found in the output location."
