@@ -19,6 +19,7 @@ from obi_one.scientific.tasks.skeletonization.schemas import (
     Metadata,
     ProcessParameters,
     SkeletonizationInputs,
+    WorkDir,
 )
 from obi_one.scientific.tasks.skeletonization.utils import create_work_dir
 
@@ -30,7 +31,7 @@ class SkeletonizationTask(Task):
     activity_type: ClassVar[type[Activity]] = models.SkeletonizationExecution
 
     @property
-    def work_dir(self) -> Path:
+    def work_dir(self) -> WorkDir:
         """Return the current working directory layout."""
         return create_work_dir(output_dir=self.config.coordinate_output_root)
 
