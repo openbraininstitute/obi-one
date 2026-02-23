@@ -22,6 +22,7 @@ class IonChannelModelWithConductance(IonChannelModel):
         description="Conductance value (in S/cm2).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
+            "units": "S/cm2",
         }
     )
 
@@ -32,5 +33,6 @@ class IonChannelModelWithMaxPermeability(IonChannelModel):
         description="Maximum permeability value (in cm/s).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
+            "units": "cm/s",
         }
     )

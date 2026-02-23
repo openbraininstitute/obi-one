@@ -17,6 +17,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
@@ -28,6 +29,9 @@ from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
     MEModelSimulationSingleConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.ion_channel_model_simulation import (
+    IonChannelModelSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -50,6 +54,7 @@ class GenerateSimulationTask(Task):
         CircuitSimulationSingleConfig
         | MEModelSimulationSingleConfig
         | MEModelWithSynapsesCircuitSimulationSingleConfig
+        | IonChannelModelSimulationSingleConfig
     )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
@@ -72,11 +77,15 @@ class GenerateSimulationTask(Task):
         self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
 
         self._sonata_config["conditions"] = {}
-        self._sonata_config["conditions"]["extracellular_calcium"] = (
-            self.config.initialize.extracellular_calcium_concentration
-        )
+        if hasattr(self.config.initialize, "extracellular_calcium_concentration"):
+            self._sonata_config["conditions"]["extracellular_calcium"] = (
+                self.config.initialize.extracellular_calcium_concentration
+            )
+        if hasattr(self.config.initialize, "temperature"):
+            self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
         self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
+        if hasattr(self.config.initialize, "spike_location"):
+            self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         if isinstance(
@@ -90,16 +99,24 @@ class GenerateSimulationTask(Task):
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
-        if isinstance(self.config.initialize.circuit, Circuit):
+        if hasattr(self.config.initialize, "circuit"):
+            circuit = self.config.initialize.circuit
+        elif hasattr(self.config, "circuit"):
+            circuit = self.config.circuit
+        else:
+            msg = "No circuit specified in config!"
+            raise OBIONEError(msg)
+
+        if isinstance(circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
-            self._circuit = self.config.initialize.circuit
-            self._sonata_config["network"] = self.config.initialize.circuit.path
+            self._circuit = circuit
+            self._sonata_config["network"] = circuit.path
 
         elif isinstance(
-            self.config.initialize.circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+            circuit,
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID, FakeCircuitFromIonChannelModels),
         ):
-            self._circuit_id = self.config.initialize.circuit.id_str
+            self._circuit_id = circuit.id_str
 
             circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
             if self._entity_cache and db_client:
@@ -111,7 +128,7 @@ class GenerateSimulationTask(Task):
                     / self._circuit_id
                 )
 
-            self._circuit = self.config.initialize.circuit.stage_circuit(
+            self._circuit = circuit.stage_circuit(
                 db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
             )
 
@@ -373,6 +390,7 @@ class GenerateSimulationTask(Task):
         self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)
+        db_client = None  # To prevent the database to be updated. To remove before PR
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()

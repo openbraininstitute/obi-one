@@ -22,6 +22,7 @@ from obi_one.scientific.library.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
 )
+from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulation_configs import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
@@ -59,7 +60,7 @@ class BlockGroup(StrEnum):
 class IonChannelModelSimulationScanConfig(ScanConfig):
     """Form for simulating ion channel model(s)."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelSimulationSingleConfig"
+    single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
 
@@ -218,12 +219,19 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
         },
     )
 
+    @property
+    def circuit(self) -> FakeCircuitFromIonChannelModels:
+        return FakeCircuitFromIonChannelModels(
+            self.ion_channel_models
+        )
+
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.IonChannelModelSimulationCampaign:
+    # ) -> entitysdk.models.IonChannelModelSimulationCampaign:  # TODO: implement
+    ):
         """Initializes the ion channel simulation campaign in the database."""
         L.info("1. Initializing ion channel simulation campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -254,7 +262,8 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
 
     def create_campaign_generation_entity(
         self,
-        ion_channel_simulations: list[entitysdk.models.IonChannelModelSimulationConfig],
+        # ion_channel_simulations: list[entitysdk.models.IonChannelModelSimulationConfig],  # TODO: implement
+        ion_channel_simulations,  # TODO: replace with line above
         db_client: entitysdk.client.Client,
     ) -> None:
         """Register the activity generating the ion channel simulation tasks in the database."""
@@ -273,17 +282,21 @@ class IonChannelModelSimulationScanConfig(ScanConfig):
 class IonChannelModelSimulationSingleConfig(IonChannelModelSimulationScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: entitysdk.models.IonChannelModelSimulationConfig
+    # _single_entity: entitysdk.models.IonChannelModelSimulationConfig  # TODO: implement
+    _single_entity: None  # TODO: replace with line above
 
     @property
-    def single_entity(self) -> entitysdk.models.IonChannelModelSimulationConfig:
+    # def single_entity(self) -> entitysdk.models.IonChannelModelSimulationConfig:  # TODO: implement
+    def single_entity(self):  # TODO: replace with line above
         return self._single_entity
 
     def create_single_entity_with_config(
         self,
-        campaign: entitysdk.models.IonChannelModelSimulationCampaign,
+        # campaign: entitysdk.models.IonChannelModelSimulationCampaign,  # TODO: implement
+        campaign,  # TODO: replace with line above
         db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelSimulationConfig:
+    # ) -> entitysdk.models.IonChannelModelSimulationConfig:  # TODO: implement
+    ):
         """Saves the simulation config to the database."""
         L.info(f"2.{self.idx} Saving ion channel model simulation config {self.idx} to database...")
 

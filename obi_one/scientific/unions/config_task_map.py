@@ -34,6 +34,9 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
+from obi_one.scientific.tasks.ion_channel_model_simulation import (
+    IonChannelModelSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
@@ -73,6 +76,7 @@ _config_tasks_map = {
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
+    IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 
 

@@ -72,7 +72,7 @@ MEModelStimulusUnion = Annotated[
     Discriminator("type"),
 ]
 
-IonChannelStimulusUnion = Annotated[
+IonChannelModelStimulusUnion = Annotated[
     _NONRELATIVE_INJECTION_STIMULI | SEClampSomaticStimulus,
     Discriminator("type"),
 ]

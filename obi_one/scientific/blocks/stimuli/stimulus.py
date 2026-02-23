@@ -632,7 +632,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
 
 class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     """A voltage clamp injection with an arbitrary number of steps at different voltages."""
-    # We only have a simple flat voltage stimulus implemented now for simpliciry.
+    # We only have a simple flat voltage stimulus implemented now for simplicity.
     # A more complex implementation with multi-step stimulus will be implemented later.
 
     title: ClassVar[str] = "Single Electrode Voltage Clamp Somatic Stimulus"
@@ -699,6 +699,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,
         }
+        return sonata_config
 
 
 class SpikeStimulus(StimulusWithTimestamps):
