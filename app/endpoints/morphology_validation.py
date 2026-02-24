@@ -5,8 +5,8 @@ from typing import Annotated
 import morphio
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from neurom.exceptions import NeuroMError
 from neurom import load_morphology
+from neurom.exceptions import NeuroMError
 
 from app.dependencies.auth import user_verified
 from app.dependencies.file import TempDirDep
@@ -17,27 +17,37 @@ from app.services.morphology import ALLOWED_EXTENSIONS, DEFAULT_SINGLE_POINT_SOM
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
-def _validate_morphology_content(file_path: Path) -> None:
+def _check_morphology_integrity(file_path: Path) -> None:
+    """Internal helper to encapsulate logic that might raise ValueErrors.
+    This satisfies TRY301 by moving the raise out of the main try/except block.
     """
-    Attempts to load the morphology using NeuroM/MorphIO and captures
+    load_morphology(file_path)
+
+    if not morphology_service.validate_soma_diameter(file_path=file_path):
+        # EM101: Assigning string to variable; TRY003: Avoid long message in class call
+        msg = "Unrealistic soma diameter detected."
+        raise ValueError(msg)
+
+
+def _validate_morphology_content(file_path: Path) -> None:
+    """Attempts to load the morphology using NeuroM/MorphIO and captures
     specific parsing or structural errors to return to the user.
     """
     morphio.set_raise_warnings(True)
 
     try:
-        load_morphology(file_path)
-
-        if not morphology_service.validate_soma_diameter(file_path=file_path):
-            raise ValueError("Unrealistic soma diameter detected.")
+        # Business logic moved to inner function to satisfy TRY301
+        _check_morphology_integrity(file_path)
 
     except (morphio.MorphioError, NeuroMError, ValueError) as e:
+        # B904: Use 'from e' to preserve exception chaining
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Morphology validation failed: {str(e)}",
+                "detail": f"Morphology validation failed: {e!s}",
             },
-        )
+        ) from e
     finally:
         # Reset to avoid affecting other parts of the application
         morphio.set_raise_warnings(False)
