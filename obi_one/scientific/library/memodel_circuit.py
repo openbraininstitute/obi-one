@@ -45,12 +45,27 @@ def _build_mechanism_variables_by_ion_channel_response(
     for var in variables:
         channel = var.channel_name or "unknown"
         if channel not in raw:
-            channel_info = channel_mapping.channel_to_section_lists.get(channel)
-            raw[channel] = {
-                "section_lists": channel_info.section_lists if channel_info else [],
-                "entity_id": channel_info.entity_id if channel_info else None,
-                "variables": {},
-            }
+            if channel == "-":
+                # For section properties, collect all unique section lists from the model
+                all_section_lists = set()
+                for channel_info in channel_mapping.channel_to_section_lists.values():
+                    all_section_lists.update(channel_info.section_lists)
+                # If no section lists found, use defaults
+                if not all_section_lists:
+                    all_section_lists = {"somatic", "apical", "basal", "axonal"}
+
+                raw[channel] = {
+                    "section_lists": list(all_section_lists),
+                    "entity_id": None,  # Section properties don't have entity IDs
+                    "variables": {},
+                }
+            else:
+                channel_info = channel_mapping.channel_to_section_lists.get(channel)
+                raw[channel] = {
+                    "section_lists": channel_info.section_lists if channel_info else [],
+                    "entity_id": channel_info.entity_id if channel_info else None,
+                    "variables": {},
+                }
         var_entry = raw[channel]["variables"].setdefault(
             var.neuron_variable,
             {

@@ -153,6 +153,10 @@ def get_mechanism_variables(
         for var in merged
     ]
 
+    # Add section properties (cm and Ra) for all section lists
+    section_properties = _extract_section_properties(memodel, channel_mapping)
+    merged.extend(section_properties)
+
     return merged, channel_mapping
 
 
@@ -441,5 +445,59 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
 
         if neuron_block.global_:
             variables.extend(_process_neuron_block_entries(neuron_block.global_, suffix, "GLOBAL"))
+
+    return variables
+
+
+def _extract_section_properties(
+    _memodel: MEModel, channel_mapping: ChannelSectionListMapping
+) -> list[MechanismVariable]:
+    """Extract cm and Ra properties for all section lists in the MEModel.
+
+    Returns MechanismVariable objects for cm and Ra with:
+    - neuron_variable: "cm" or "Ra"
+    - channel_name: "-" (special identifier for section properties)
+    - section_list: derived from channel_mapping section lists
+    - value: None if not found in MEModel, actual value if available
+    - units: "µF/cm^2" for cm, "Ohm*cm" for Ra
+    - variable_type: "RANGE"
+    - limits: [0.0, 10.0] for cm, [10.0, 500.0] for Ra
+    """
+    variables = []
+
+    # Collect all unique section lists from the channel mapping
+    all_section_lists = set()
+    for channel_info in channel_mapping.channel_to_section_lists.values():
+        all_section_lists.update(channel_info.section_lists)
+
+    # If no section lists found, use default ones
+    if not all_section_lists:
+        all_section_lists = {"somatic", "apical", "basal", "axonal"}
+
+    # Create cm and Ra variables for each section list
+    for section_list in all_section_lists:
+        # cm and Ra variables
+        variables.extend(
+            [
+                MechanismVariable(
+                    neuron_variable="cm",
+                    channel_name="-",
+                    section_list=section_list,
+                    value=None,  # Not available in MEModel, will be null
+                    units="µF/cm^2",
+                    limits=[0.0, 10.0],
+                    variable_type="RANGE",
+                ),
+                MechanismVariable(
+                    neuron_variable="Ra",
+                    channel_name="-",
+                    section_list=section_list,
+                    value=None,  # Not available in MEModel, will be null
+                    units="Ohm*cm",
+                    limits=[10.0, 500.0],
+                    variable_type="RANGE",
+                ),
+            ]
+        )
 
     return variables

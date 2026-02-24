@@ -19,17 +19,26 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 class BySectionListModification(OBIBaseModel):
     """Modification for RANGE variables by section list.
 
-    Example:
+    Example (ion channel):
         ion_channel_id: "abc123"
         variable_name: "gkbar_hh"
         section_list_modifications: {
             "somatic": 0.1,
             "axonal": [0.1, 0.2, 0.3],
         }
+
+    Example (section property):
+        variable_name: "cm"
+        section_list_modifications: {
+            "somatic": 1.0,
+            "apical": 2.0,
+        }
     """
 
-    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")]
-    variable_name: str = Field(description="Name of the RANGE variable (e.g., 'gkbar_hh')")
+    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
+    variable_name: str = Field(
+        description="Name of the RANGE variable (e.g., 'gkbar_hh', 'cm', 'Ra')"
+    )
     section_list_modifications: dict[str, float | list[float]] = Field(
         default_factory=dict,
         description="Modifications per section list (e.g., {'somatic': 0.1, 'axonal': 0.2})",
@@ -38,33 +47,41 @@ class BySectionListModification(OBIBaseModel):
 
 class ByNeuronModification(OBIBaseModel):
     """Modify neuron level changes - GLOBAL and RANGE (in all SectionLists) variables of ion
-    channels.
+    channels and built-in section properties.
 
-    Example (GLOBAL):
+    Example (GLOBAL ion channel):
         ion_channel_id: uuid.UUID("...")
         channel_name: "StochKv3"
         variable_name: "vmin_StochKv3"
         variable_type: "GLOBAL"
         new_value: 0.5
 
-    Example (RANGE):
+    Example (RANGE ion channel):
         ion_channel_id: uuid.UUID("...")
         channel_name: "Ca_HVA2"
         variable_name: "gCa_HVAbar_Ca_HVA2"
         variable_type: "RANGE"
         new_value: 0.1
+
+    Example (section property):
+        variable_name: "cm"
+        variable_type: "RANGE"
+        new_value: 1.0
     """
 
-    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")]
-    channel_name: Annotated[
-        str,
-        Field(
-            min_length=1,
-            description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms",
-        ),
-    ]
+    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
+    channel_name: (
+        Annotated[
+            str,
+            Field(
+                min_length=1,
+                description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms",
+            ),
+        ]
+        | None
+    ) = None
     variable_name: str = Field(
-        description="Name of the variable (e.g., 'vmin_StochKv3' or 'gCa_HVAbar_Ca_HVA2')"
+        description="Name of the variable (e.g., 'vmin_StochKv3', 'gCa_HVAbar_Ca_HVA2', 'cm', 'Ra')"
     )
     variable_type: Literal["RANGE", "GLOBAL"] = Field(
         default="GLOBAL",
@@ -76,14 +93,17 @@ class ByNeuronModification(OBIBaseModel):
 
 
 class BySectionListMechanismVariableNeuronalManipulation(Block):
-    """Set values for an ion channel variable in each section type where the ion channel exists.
+    """Set values for an ion channel variable in each section list where the ion channel exists.
 
-    Example section types: axonal, apical, dendritic, somatic.
 
-    These correspond to `section lists` in the NEURON simulator nomenclature.
+    Example section lists: axonal, apical, basal and somatic.
+
+
+    These correspond to `section lists` in the NEURON simulator nomenclature:
+    https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist.
     """
 
-    title: ClassVar[str] = "Ion Channel Variable Modification by Section Type"
+    title: ClassVar[str] = "Variable Modification by Section List"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -142,7 +162,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 class ByNeuronMechanismVariableNeuronalManipulation(Block):
     """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
-    title: ClassVar[str] = "Ion Channel Variable Modification by Neuron"
+    title: ClassVar[str] = "Full Neuron Variable Modification"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -166,9 +186,28 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         """Generate SONATA config entry.
 
         Returns:
-            For GLOBAL: dict {channel_name: {variable_name: new_value}} for conditions.mechanisms.
-            For RANGE: list[dict] with a single conditions.modifications entry for all sections.
+            For GLOBAL ion channel: dict {channel_name: {variable_name: new_value}}
+            for conditions.mechanisms.
+            For RANGE ion channel: list[dict] with a single conditions.modifications
+            entry for all sections.
+            For section properties (cm, Ra): list[dict] with a single
+            conditions.modifications entry for all sections.
         """
+        # Handle section properties (cm, Ra) - always use configure_all_sections
+        if self.modification.ion_channel_id is None:
+            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+            return [
+                {
+                    "name": f"modify_{self.modification.variable_name}_all",
+                    "node_set": node_set,
+                    "type": "configure_all_sections",
+                    "section_configure": (
+                        f"%s.{self.modification.variable_name} = {self.modification.new_value}"
+                    ),
+                }
+            ]
+
+        # Handle ion channel variables (existing logic)
         if self.modification.variable_type == "GLOBAL":
             return {
                 self.modification.channel_name: {
