@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pathlib import Path
 import os
 import tempfile
+import numpy as np
+from typing import TypedDict
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
@@ -21,14 +23,34 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+import morphio
+from typing import cast
+
+import h5py
 
 from bluepysnap import Circuit as CircuitConfig
+
+
 from bluepysnap.exceptions import BluepySnapError
 from pathlib import Path
 
 router = APIRouter(
     prefix="/circuit/viz", tags=["visualization"], dependencies=[Depends(user_verified)]
 )
+
+
+PositionVector = Annotated[tuple[float, float, float], "x", "y", "z"]
+OrientationVector = Annotated[tuple[float, float, float, float], "x", "y", "z", "w"]
+
+
+class Node(TypedDict):
+    morphology_path: str  # Path to the morphology in the circuit's sonata directory
+    position: PositionVector
+    orientation: OrientationVector
+    soma_radius: float
+
+
+Nodes = list[Node]
 
 
 @router.get(
@@ -39,8 +61,10 @@ router = APIRouter(
 def circuit_nodes(
     circuit_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-):
+) -> Nodes:
     asset_id = circuit_asset_id(db_client, circuit_id)
+
+    all_nodes = []
 
     with tempfile.TemporaryDirectory() as temp_dir:
         config = download_circuit_config(db_client, circuit_id, asset_id, temp_dir)
@@ -50,26 +74,31 @@ def circuit_nodes(
                 if pop_config.get("type") != "biophysical":
                     continue
 
-                nodes_file_path = Path(node_network["nodes_file"]).resolve()
                 parent_path = Path(temp_dir).resolve()
+                nodes_file_path = Path(node_network["nodes_file"]).resolve()
                 asset_path = nodes_file_path.relative_to(parent_path)
 
-                try:
-                    db_client.download_file(
-                        entity_id=circuit_id,
-                        entity_type=Circuit,
-                        asset_id=asset_id,
-                        output_path=nodes_file_path,
-                        asset_path=asset_path,
+                morphologies_dir = (
+                    (
+                        Path(pop_config["morphologies_dir"])
+                        if "morphologies_dir" in pop_config
+                        else Path(config.config["components"]["morphologies_dir"])
                     )
-                except Exception:
-                    raise HTTPException(
-                        status_code=HTTPStatus.BAD_REQUEST,
-                        detail={
-                            "code": ApiErrorCode.INVALID_REQUEST,
-                            "detail": f"Missing file {asset_path}",
-                        },
-                    ) from None
+                    .resolve()
+                    .relative_to(parent_path)
+                )
+
+                all_nodes += get_population_nodes(
+                    pop_name,
+                    db_client,
+                    circuit_id,
+                    asset_id,
+                    parent_path,
+                    asset_path,
+                    morphologies_dir,
+                )
+
+    return all_nodes
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
@@ -120,7 +149,7 @@ def download_circuit_config(
             entity_id=circuit_id,
             entity_type=Circuit,
             asset_id=asset_id,
-            output_path=file_path,
+            output_path=file_path.resolve(),
             asset_path=circuit_config,
         )
 
@@ -143,3 +172,138 @@ def download_circuit_config(
                 "detail": "Circuit is missing a circuit__config.json asset",
             },
         ) from None
+
+
+def get_population_nodes(
+    population_name: str,
+    db_client: Client,
+    circuit_id: UUID,
+    asset_id: UUID,
+    parent_dir: Path,
+    asset_path: Path,
+    morphologies_dir: Path,
+) -> Nodes:
+    nodes_file_path = parent_dir / asset_path
+
+    try:
+        db_client.download_file(
+            entity_id=circuit_id,
+            entity_type=Circuit,
+            asset_id=asset_id,
+            output_path=nodes_file_path,
+            asset_path=asset_path,
+        )
+    except Exception:  # noqa: BLE001
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Missing file {asset_path}",
+            },
+        ) from None
+
+    try:
+        with h5py.File(nodes_file_path, "r") as f:
+            path = f"nodes/{population_name}/0"
+            pop_group = f[path]
+
+            assert isinstance(pop_group, h5py.Group), f"Path {path} is not a Group"  # noqa: S101
+            x = get_group(pop_group, "x")
+            y = get_group(pop_group, "y")
+            z = get_group(pop_group, "z")
+            qx = get_group(pop_group, "orientation_x")
+            qy = get_group(pop_group, "orientation_y")
+            qz = get_group(pop_group, "orientation_z")
+            qw = get_group(pop_group, "orientation_w")
+
+            morph_raw = get_group(pop_group, "morphology")
+            morph_files = [m.decode("utf-8") for m in morph_raw if isinstance(m, bytes)]
+
+            def morph_path(i: int) -> Path:
+                return morphologies_dir / (morph_files[i] + ".swc")
+
+            radii = []
+
+            for i in range(len(x)):
+                try:
+                    radii.append(
+                        get_soma_radius(parent_dir, db_client, circuit_id, asset_id, morph_path(i))
+                    )
+                except RuntimeError:
+                    L.warning(f"Couldn't get morphology {morph_path(i)} for {circuit_id}")
+                    radii.append(None)
+
+            return [
+                Node(
+                    position=cast("PositionVector", tuple(map(float, [x[i], y[i], z[i]]))),
+                    orientation=cast(
+                        "OrientationVector", tuple(map(float, [qx[i], qy[i], qz[i], qw[i]]))
+                    ),
+                    morphology_path=str(morphologies_dir / morph_files[i]),
+                    soma_radius=radii[i],
+                )
+                for i in range(len(x))
+            ]
+
+    except Exception:  # noqa: BLE001
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Couldn't get nodes from population {population_name}",
+            },
+        ) from None
+
+
+def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.ndarray:
+    if not isinstance(group, h5py.Group):
+        msg = "Expected a Group"
+        raise TypeError(msg)
+
+    child_group = group[key]
+
+    if not isinstance(child_group, (h5py.Group, h5py.Dataset)):
+        msg = "Expected a Group or Dataset"
+        raise TypeError(msg)
+
+    res = child_group[:]
+
+    if not isinstance(res, np.ndarray):
+        msg = "Expected the dataset to be an array"
+        raise TypeError(msg)
+
+    return res
+
+
+def get_soma_radius(
+    parent_dir: Path,
+    client: Client,
+    circuit_id: UUID,
+    asset_id: UUID,
+    morph_path: Path,
+) -> float:
+    try:
+        L.info(f"Downloading morphology {morph_path}")
+
+        output_path = parent_dir / morph_path
+
+        if not output_path.exists():
+            client.download_file(
+                entity_type=Circuit,
+                output_path=output_path,
+                entity_id=circuit_id,
+                asset_id=asset_id,
+                asset_path=morph_path,
+            )
+
+        morph = morphio.Morphology(output_path)
+        soma_diameters = morph.soma.diameters
+
+        if len(soma_diameters) == 0:
+            return 0.0
+
+        return float(np.mean(soma_diameters) / 2.0)
+
+    except Exception:  # noqa:BLE001
+        msg = f"Could not get morphology's {morph_path} soma radius from circuit {circuit_id}"
+        raise RuntimeError(msg) from None
