@@ -7,7 +7,6 @@ import morph_tool
 import morphio
 import neurom
 from fastapi import HTTPException
-from morphio import RawDataError
 from neurom.exceptions import NeuroMError
 
 from app.errors import ApiErrorCode
@@ -23,15 +22,29 @@ SOMA_RADIUS_THRESHOLD = 100.0
 L = logging.getLogger(__name__)
 
 
-def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> bool:
-    """Validate the soma diameter of the given morphology."""
+def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> None:
+    """Validate the soma diameter of the given morphology.
+
+    Raises an HTTPException if the morphology cannot be loaded or if the soma diameter is
+    outside the acceptable range.
+    """
+    morphio.set_raise_warnings(True)
     try:
         m = neurom.load_morphology(file_path)
         radius = m.soma.radius
-        return radius is not None and 0 < float(radius) <= threshold
-    except (NeuroMError, RawDataError, OSError, AttributeError) as e:
-        L.warning(f"Error validating soma diameter for {file_path}: {e!s}")
-        return False
+        if radius is None or not (0 < float(radius) <= threshold):
+            msg = "Unrealistic soma diameter detected."
+            raise ValueError(msg)
+    except (morphio.MorphioError, NeuroMError, ValueError) as e:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Morphology validation failed: {e!s}",
+            },
+        ) from e
+    finally:
+        morphio.set_raise_warnings(False)
 
 
 def convert_morphology(
