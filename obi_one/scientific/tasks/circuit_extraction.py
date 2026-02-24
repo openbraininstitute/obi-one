@@ -1125,7 +1125,8 @@ class CircuitExtractionTask(Task):
         old_base = os.path.split(self._circuit.path)[0]
 
         # Quick fix to deal with symbolic links in base circuit (not usually required)
-        alt_base = str(Path(self._circuit.path).parent.resolve())
+        # Note: .resolve() resolves symlinks!
+        alt_base = str(Path(self._circuit.path).resolve().parent)
         # > alt_base = old_base  # Alternative old base
         # > for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
         # >     alt_base = alt_base.removesuffix(_sfix)
