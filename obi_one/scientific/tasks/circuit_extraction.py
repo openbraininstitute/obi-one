@@ -1125,6 +1125,7 @@ class CircuitExtractionTask(Task):
         old_base = os.path.split(self._circuit.path)[0]
 
         # Quick fix to deal with symbolic links in base circuit (not usually required)
+        alt_base = self._circuit.path.parent
         # > alt_base = old_base  # Alternative old base
         # > for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
         # >     alt_base = alt_base.removesuffix(_sfix)
@@ -1143,8 +1144,9 @@ class CircuitExtractionTask(Task):
         L.info(f"Output circuit config after rebasing: {json.dumps(config_dict)}")
 
         # Quick fix to deal with symbolic links in base circuit
-        # > if alt_base != old_base:
-        # > self._rebase_config(config_dict, alt_base, new_base)
+        if alt_base != old_base:
+            self._rebase_config(config_dict, alt_base, new_base)
+            L.info(f"Output circuit config after alternative rebasing: {json.dumps(config_dict)}")
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
