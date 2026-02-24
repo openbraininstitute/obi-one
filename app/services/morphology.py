@@ -34,8 +34,13 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     Raises an HTTPException if the morphology cannot be loaded or if the soma diameter is
     outside the acceptable range.
     """
-    morphio.set_raise_warnings(True)
     try:
+        warning_handler = morphio.WarningHandlerCollector()
+        morphio.Morphology(file_path, warning_handler=warning_handler)
+        warnings = warning_handler.get_all()
+        if warnings:
+            msg = "; ".join(str(w.warning) for w in warnings)
+            raise morphio.MorphioError(msg)
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
     except (morphio.MorphioError, NeuroMError, ValueError) as e:
@@ -46,8 +51,6 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
                 "detail": f"Morphology validation failed: {e!s}",
             },
         ) from e
-    finally:
-        morphio.set_raise_warnings(False)
 
 
 def convert_morphology(
