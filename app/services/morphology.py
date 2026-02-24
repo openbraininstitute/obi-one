@@ -22,6 +22,12 @@ SOMA_RADIUS_THRESHOLD = 100.0
 L = logging.getLogger(__name__)
 
 
+def _check_soma_radius(radius: float | None, threshold: float) -> None:
+    if radius is None or not (0 < float(radius) <= threshold):
+        msg = "Unrealistic soma diameter detected."
+        raise ValueError(msg)
+
+
 def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> None:
     """Validate the soma diameter of the given morphology.
 
@@ -31,10 +37,7 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     morphio.set_raise_warnings(True)
     try:
         m = neurom.load_morphology(file_path)
-        radius = m.soma.radius
-        if radius is None or not (0 < float(radius) <= threshold):
-            msg = "Unrealistic soma diameter detected."
-            raise ValueError(msg)
+        _check_soma_radius(m.soma.radius, threshold)
     except (morphio.MorphioError, NeuroMError, ValueError) as e:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
