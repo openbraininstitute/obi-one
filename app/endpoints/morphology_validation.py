@@ -1,7 +1,5 @@
-from pathlib import Path
 from typing import Annotated
 
-import morphio
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 
