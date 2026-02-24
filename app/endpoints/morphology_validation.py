@@ -23,13 +23,13 @@ def _validate_morphology_content(file_path: Path) -> None:
     specific parsing or structural errors to return to the user.
     """
     morphio.set_raise_warnings(True)
-    
+
     try:
         load_morphology(file_path)
-        
+
         if not morphology_service.validate_soma_diameter(file_path=file_path):
             raise ValueError("Unrealistic soma diameter detected.")
-            
+
     except (morphio.MorphioError, NeuroMError, ValueError) as e:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
