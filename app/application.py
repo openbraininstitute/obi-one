@@ -16,9 +16,9 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.endpoints import (
-    circuit_visualization,
     circuit_connectivity,
     circuit_properties,
+    circuit_visualization,
     config_validation,
     count_scan_coordinates,
     ephys_metrics,

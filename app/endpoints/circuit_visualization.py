@@ -1,38 +1,24 @@
+import tempfile
 from http import HTTPStatus
-from typing import Annotated
+from pathlib import Path
+from typing import Annotated, TypedDict, cast
 from uuid import UUID
 
 import entitysdk.client
 import entitysdk.exception
-from entitysdk.client import Client
-from entitysdk.common import ProjectContext
-from entitysdk.models import Circuit
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pathlib import Path
-import os
-import tempfile
+import h5py
+import morphio
 import numpy as np
-from typing import TypedDict
+from bluepysnap import Circuit as CircuitConfig
+from bluepysnap.exceptions import BluepySnapError
+from entitysdk.client import Client
+from entitysdk.models import Circuit
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
 from app.logger import L
-from obi_one.scientific.library.circuit_metrics import (
-    CircuitMetricsOutput,
-    CircuitStatsLevelOfDetail,
-    get_circuit_metrics,
-)
-import morphio
-from typing import cast
-
-import h5py
-
-from bluepysnap import Circuit as CircuitConfig
-
-
-from bluepysnap.exceptions import BluepySnapError
-from pathlib import Path
 
 router = APIRouter(
     prefix="/circuit/viz", tags=["visualization"], dependencies=[Depends(user_verified)]
