@@ -1,3 +1,3 @@
 entitysdk==0.12.1
 obi_auth==1.0.0
-obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@d86ec47fe42a15d6bdcee7d39c82efe5ee0a1c16
+obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@6fef4734c01b3d28b9d5825555f12b0c1042647c
