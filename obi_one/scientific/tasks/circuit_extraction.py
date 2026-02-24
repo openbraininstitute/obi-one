@@ -784,6 +784,8 @@ class CircuitExtractionTask(Task):
         morphology_list = pop.get(properties="morphology").unique()
 
         src_morph_dirs, dest_morph_dirs = cls._get_morph_dirs(pop_name, pop, original_circuit)
+        L.info(f"Source morph dirs: {src_morph_dirs}")
+        L.info(f"Target morph dirs: {dest_morph_dirs}")
 
         if len(src_morph_dirs) == 0:
             msg = "ERROR: No morphologies of any supported format found!"
