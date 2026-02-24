@@ -1,56 +1,16 @@
-from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated
 
 import morphio
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
-from neurom import load_morphology
-from neurom.exceptions import NeuroMError
 
 from app.dependencies.auth import user_verified
 from app.dependencies.file import TempDirDep
-from app.errors import ApiErrorCode
 from app.services import file as file_service, morphology as morphology_service
 from app.services.morphology import ALLOWED_EXTENSIONS, DEFAULT_SINGLE_POINT_SOMA_BY_EXT
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
-
-
-def _check_morphology_integrity(file_path: Path) -> None:
-    """Internal helper to encapsulate logic that might raise ValueErrors.
-    This satisfies TRY301 by moving the raise out of the main try/except block.
-    """
-    load_morphology(file_path)
-
-    if not morphology_service.validate_soma_diameter(file_path=file_path):
-        # EM101: Assigning string to variable; TRY003: Avoid long message in class call
-        msg = "Unrealistic soma diameter detected."
-        raise ValueError(msg)
-
-
-def _validate_morphology_content(file_path: Path) -> None:
-    """Attempts to load the morphology using NeuroM/MorphIO and captures
-    specific parsing or structural errors to return to the user.
-    """
-    morphio.set_raise_warnings(True)
-
-    try:
-        # Business logic moved to inner function to satisfy TRY301
-        _check_morphology_integrity(file_path)
-
-    except (morphio.MorphioError, NeuroMError, ValueError) as e:
-        # B904: Use 'from e' to preserve exception chaining
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Morphology validation failed: {e!s}",
-            },
-        ) from e
-    finally:
-        # Reset to avoid affecting other parts of the application
-        morphio.set_raise_warnings(False)
 
 
 @router.post(
@@ -77,7 +37,7 @@ def validate_neuron_file(
     )
 
     # 2. Validate the file content (NeuroM loading + Soma diameter)
-    _validate_morphology_content(input_morphology)
+    morphology_service.validate_soma_diameter(file_path=input_morphology)
 
     # 3. Handle conversion logic
     if single_point_soma:

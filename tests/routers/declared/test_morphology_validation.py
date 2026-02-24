@@ -71,9 +71,7 @@ def test_validate_neuron_file_invalid_soma_diameter(client):
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
-    assert "Morphology validation failed: Unrealistic soma diameter" in get_error_detail(
-        response.json()
-    )
+    assert "Unrealistic soma diameter" in get_error_detail(response.json())
 
 
 def test_validate_neuron_file_invalid_morphology(client):
