@@ -1094,6 +1094,10 @@ class CircuitExtractionTask(Task):
         with BenchmarkTracker.section("resolve_circuit"):
             self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
+        with Path(self._circuit.path).open(encoding="utf-8") as config_file:
+            input_config_dict = json.load(config_file)
+        L.info(f"Input circuit config: {json.dumps(input_config_dict)}")
+
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
@@ -1133,10 +1137,10 @@ class CircuitExtractionTask(Task):
 
         with Path(new_circuit_path).open(encoding="utf-8") as config_file:
             config_dict = json.load(config_file)
-        L.info(f"Rebasing circuit from old_base ({old_base}) to new_pase ({new_base})")
-        L.info(f"Circuit config before rebasing: {json.dumps(config_dict)}")
+        L.info(f"Rebasing circuit from old_base ({old_base}) to new_base ({new_base})")
+        L.info(f"Output circuit config before rebasing: {json.dumps(config_dict)}")
         self._rebase_config(config_dict, old_base, new_base)
-        L.info(f"Circuit config after rebasing: {json.dumps(config_dict)}")
+        L.info(f"Output circuit config after rebasing: {json.dumps(config_dict)}")
 
         # Quick fix to deal with symbolic links in base circuit
         # > if alt_base != old_base:
