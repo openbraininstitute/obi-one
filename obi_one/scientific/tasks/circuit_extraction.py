@@ -784,8 +784,6 @@ class CircuitExtractionTask(Task):
         morphology_list = pop.get(properties="morphology").unique()
 
         src_morph_dirs, dest_morph_dirs = cls._get_morph_dirs(pop_name, pop, original_circuit)
-        L.info(f"Source morph dirs: {src_morph_dirs}")
-        L.info(f"Target morph dirs: {dest_morph_dirs}")
 
         if len(src_morph_dirs) == 0:
             msg = "ERROR: No morphologies of any supported format found!"
@@ -1094,10 +1092,6 @@ class CircuitExtractionTask(Task):
         with BenchmarkTracker.section("resolve_circuit"):
             self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
-        with Path(self._circuit.path).open(encoding="utf-8") as config_file:
-            input_config_dict = json.load(config_file)
-        L.info(f"Input circuit config: {json.dumps(input_config_dict)}")
-
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
@@ -1124,12 +1118,9 @@ class CircuitExtractionTask(Task):
 
         old_base = os.path.split(self._circuit.path)[0]
 
-        # Quick fix to deal with symbolic links in base circuit (not usually required)
+        # Fix to deal with symbolic links in the base circuit which may have been resolved
         # Note: .resolve() resolves symlinks!
         alt_base = str(Path(self._circuit.path).resolve().parent)
-        # > alt_base = old_base  # Alternative old base
-        # > for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
-        # >     alt_base = alt_base.removesuffix(_sfix)
 
         new_base = "$BASE_DIR"
         new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
@@ -1139,16 +1130,10 @@ class CircuitExtractionTask(Task):
 
         with Path(new_circuit_path).open(encoding="utf-8") as config_file:
             config_dict = json.load(config_file)
-        L.info(f"Rebasing circuit from old_base ({old_base}) to new_base ({new_base})")
-        L.info(f"Output circuit config before rebasing: {json.dumps(config_dict)}")
         self._rebase_config(config_dict, old_base, new_base)
-        L.info(f"Output circuit config after rebasing: {json.dumps(config_dict)}")
-
-        # Quick fix to deal with symbolic links in base circuit
         if alt_base != old_base:
-            L.info(f"Rebasing circuit from alt_base ({alt_base}) to new_base ({new_base})")
+            # Rebase alternative old base directory as well
             self._rebase_config(config_dict, alt_base, new_base)
-            L.info(f"Output circuit config after alternative rebasing: {json.dumps(config_dict)}")
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
