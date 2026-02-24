@@ -63,6 +63,13 @@ def test_validate_neuron_file_invalid_extension(client):
     assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
     assert "Invalid file extension" in get_error_detail(response.json())
 
+def test_validate_neuron_file_missing_extension(client):
+    files = {"file": ("neuron", BytesIO(b"data"), "text/plain")}
+    response = client.post(ROUTE, files=files)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert "Invalid file extension" in get_error_detail(response.json())
 
 def test_validate_neuron_file_invalid_soma_diameter(client):
     swc_content = b"1 1 0 0 0 150 -1\n"
