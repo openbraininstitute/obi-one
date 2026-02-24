@@ -452,14 +452,14 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
 def _extract_section_properties(
     _memodel: MEModel, channel_mapping: ChannelSectionListMapping
 ) -> list[MechanismVariable]:
-    """Extract cm and Ra properties for all section lists in the MEModel.
+    r"""Extract cm and Ra properties for all section lists in the MEModel.
 
     Returns MechanismVariable objects for cm and Ra with:
     - neuron_variable: "cm" or "Ra"
     - channel_name: "-" (special identifier for section properties)
     - section_list: derived from channel_mapping section lists
     - value: None if not found in MEModel, actual value if available
-    - units: "µF/cm^2" for cm, "Ohm*cm" for Ra
+    - units: r"$\mu$F/cm$^2$" for cm, r"$\Omega$-cm" for Ra
     - variable_type: "RANGE"
     - limits: [0.0, 10.0] for cm, [10.0, 500.0] for Ra
     """
@@ -484,7 +484,7 @@ def _extract_section_properties(
                     channel_name="-",
                     section_list=section_list,
                     value=None,  # Not available in MEModel, will be null
-                    units="µF/cm^2",
+                    units=r"$\mu$F/cm$^2$",
                     limits=[0.0, 10.0],
                     variable_type="RANGE",
                 ),
@@ -493,7 +493,7 @@ def _extract_section_properties(
                     channel_name="-",
                     section_list=section_list,
                     value=None,  # Not available in MEModel, will be null
-                    units="Ohm*cm",
+                    units=r"$\Omega$-cm",
                     limits=[10.0, 500.0],
                     variable_type="RANGE",
                 ),
