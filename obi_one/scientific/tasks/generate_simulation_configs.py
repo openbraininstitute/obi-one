@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import ConfigDict, Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -26,6 +26,9 @@ from obi_one.scientific.library.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
     _SIMULATION_TIMESTEP_MILLISECONDS,
+)
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_manipulations import (
@@ -87,21 +90,22 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-                BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-                BlockGroup.EVENTS_GROUP,
-            ],
-            "default_block_reference_labels": {
-                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            },
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+        "property_endpoints": {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+    }
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
@@ -310,20 +314,18 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-                BlockGroup.EVENTS_GROUP,
-            ],
-            "default_block_reference_labels": {
-                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            },
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+    }
 
 
 class CircuitSimulationScanConfig(SimulationScanConfig):
