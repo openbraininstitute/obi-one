@@ -193,8 +193,8 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
             For section properties (cm, Ra): list[dict] with a single
             conditions.modifications entry for all sections.
         """
-        # Handle section properties (cm, Ra) - always use configure_all_sections
-        if self.modification.ion_channel_id is None:
+        # Handle RANGE variables (including section properties)
+        if self.modification.variable_type == "RANGE":
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
             return [
                 {
