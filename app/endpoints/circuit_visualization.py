@@ -339,7 +339,8 @@ def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.
 def get_morphology(
     parent_dir: Path, client: Client, circuit_id: UUID, asset_id: UUID, morph_path: Path
 ) -> MorphologyDict:
-    output_path = (parent_dir.resolve() / morph_path).resolve()
+    parent_dir = parent_dir.resolve()
+    output_path = (parent_dir / morph_path).resolve()
 
     try:
         output_path.relative_to(parent_dir)
