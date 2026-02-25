@@ -34,7 +34,10 @@ def validate_neuron_file(
         force_lower_case=True,
     )
 
-    # 2. Handle conversion logic
+    # 2. Validate the file content ( Soma diameter)
+    morphology_service.validate_soma_diameter(file_path=input_morphology)
+
+    # 3. Handle conversion logic
     if single_point_soma:
         single_point_soma_by_ext = dict.fromkeys(DEFAULT_SINGLE_POINT_SOMA_BY_EXT, True)
     else:
@@ -45,9 +48,6 @@ def validate_neuron_file(
         output_dir=input_morphology.parent,
         single_point_soma_by_ext=single_point_soma_by_ext,
     )
-
-    # 3. Validate the file content ( Soma diameter)
-    morphology_service.validate_soma_diameter(file_path=input_morphology)
 
     # 4. Create and return the zip archive
     zip_file = temp_dir / "morph_archive.zip"
