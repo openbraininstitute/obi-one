@@ -50,46 +50,51 @@ def circuit_nodes(
 ) -> Nodes:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
-    all_nodes = []
-
     with tempfile.TemporaryDirectory() as temp_dir:
-        config = download_circuit_config(db_client, circuit_id, asset_id, temp_dir)
+        parent_path = Path(temp_dir).resolve()
+        config = download_circuit_config(db_client, circuit_id, asset_id, parent_path)
 
-        try:
-            for node_network in config.config["networks"]["nodes"]:
-                for pop_name, pop_config in node_network["populations"].items():
-                    if pop_config.get("type") != "biophysical":
-                        continue
+    return get_nodes(config, parent_path, db_client, circuit_id, asset_id)
 
-                    parent_path = Path(temp_dir).resolve()
-                    nodes_file_path = Path(node_network["nodes_file"])
-                    asset_path = nodes_file_path.relative_to(parent_path)
 
-                    morphologies_dir = (
-                        Path(pop_config["morphologies_dir"])
-                        if "morphologies_dir" in pop_config
-                        else Path(config.config["components"]["morphologies_dir"])
-                    ).relative_to(parent_path)
+def get_nodes(
+    config: CircuitConfig, parent_path: Path, db_client: Client, circuit_id: UUID, asset_id: UUID
+) -> Nodes:
+    all_nodes = []
+    try:
+        for node_network in config.config["networks"]["nodes"]:
+            for pop_name, pop_config in node_network["populations"].items():
+                if pop_config.get("type") != "biophysical":
+                    continue
 
-                    all_nodes += get_population_nodes(
-                        pop_name,
-                        db_client,
-                        circuit_id,
-                        asset_id,
-                        parent_path,
-                        asset_path,
-                        morphologies_dir,
-                    )
-        except Exception as e:  # noqa:BLE001
-            L.exception(e)
+                nodes_file_path = Path(node_network["nodes_file"])
+                asset_path = nodes_file_path.relative_to(parent_path)
 
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": ApiErrorCode.INTERNAL_ERROR,
-                    "detail": "Error while reading circuit's nodes",
-                },
-            ) from None
+                morphologies_dir = (
+                    Path(pop_config["morphologies_dir"])
+                    if "morphologies_dir" in pop_config
+                    else Path(config.config["components"]["morphologies_dir"])
+                ).relative_to(parent_path)
+
+                all_nodes += get_population_nodes(
+                    pop_name,
+                    db_client,
+                    circuit_id,
+                    asset_id,
+                    parent_path,
+                    asset_path,
+                    morphologies_dir,
+                )
+    except Exception as e:  # noqa:BLE001
+        L.exception(e)
+
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": "Error while reading circuit's nodes",
+            },
+        ) from None
 
     return all_nodes
 
@@ -131,18 +136,18 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
 
 
 def download_circuit_config(
-    client: Client, circuit_id: UUID, asset_id: UUID, directory: str
+    client: Client, circuit_id: UUID, asset_id: UUID, directory: Path
 ) -> CircuitConfig:
     circuit_config = Path("circuit_config.json")
 
     try:
-        file_path = Path(directory) / circuit_config
+        file_path = directory / circuit_config
 
         client.download_file(
             entity_id=circuit_id,
             entity_type=Circuit,
             asset_id=asset_id,
-            output_path=file_path.resolve(),
+            output_path=file_path,
             asset_path=circuit_config,
         )
 
