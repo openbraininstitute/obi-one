@@ -1,4 +1,5 @@
 import tempfile
+import urllib.parse
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, TypedDict, cast
@@ -39,6 +40,36 @@ class Node(TypedDict):
 Nodes = list[Node]
 
 
+class NeuronSectionInfo(TypedDict):
+    index: int
+    name: str
+    nseg: int
+    distance_from_soma: float
+    sec_length: float
+    xstart: list[float]
+    xend: list[float]
+    xcenter: list[float]
+    xdirection: list[float]
+    ystart: list[float]
+    yend: list[float]
+    ycenter: list[float]
+    ydirection: list[float]
+    zstart: list[float]
+    zend: list[float]
+    zcenter: list[float]
+    zdirection: list[float]
+    diam: list[float]
+    length: list[float]
+    distance: list[float]
+    segment_distance_from_soma: list[float]
+    segx: list[float]
+    neuron_section_id: int
+    neuron_segments_offset: list[int]
+
+
+MorphologyDict = dict[str, NeuronSectionInfo]
+
+
 @router.get(
     "/{circuit_id}/nodes",
     summary="Circuit nodes",
@@ -55,6 +86,34 @@ def circuit_nodes(
         config = download_circuit_config(db_client, circuit_id, asset_id, parent_path)
 
     return get_nodes(config, parent_path, db_client, circuit_id, asset_id)
+
+
+@router.get(
+    "/{circuit_id}/morphologies/{morphology_path}",
+    summary="A morphology from a circuit's sonata directory",
+    description="Returns a morphology for visualization",
+)
+def circuit_morphology(
+    circuit_id: UUID,
+    morphology_path: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> MorphologyDict:
+    asset_id = circuit_asset_id(db_client, circuit_id)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        parent_path = Path(temp_dir).resolve()
+        try:
+            return get_morphology(
+                parent_path,
+                db_client,
+                circuit_id,
+                asset_id,
+                Path(urllib.parse.unquote(morphology_path + ".swc")),
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            L.exception(e)
+            raise HTTPException(status_code=404, detail="Morphology not found") from e
 
 
 def get_nodes(
@@ -88,7 +147,7 @@ def get_nodes(
 
     except HTTPException:
         raise
-    except Exception as e:  # noqa:BLE001
+    except Exception as e:
         L.exception(e)
 
         raise HTTPException(
@@ -97,14 +156,14 @@ def get_nodes(
                 "code": ApiErrorCode.INTERNAL_ERROR,
                 "detail": "Error while reading circuit's nodes",
             },
-        ) from None
+        ) from e
     return all_nodes
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     try:
         circuit = client.get_entity(entity_id=circuit_id, entity_type=Circuit)
-    except Exception as e:  # noqa:BLE001
+    except Exception as e:
         L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
@@ -112,7 +171,7 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
                 "code": ApiErrorCode.NOT_FOUND,
                 "detail": "Circuit not found",
             },
-        ) from None
+        ) from e
 
     if circuit.scale not in {"small", "pair"}:
         raise HTTPException(
@@ -155,16 +214,16 @@ def download_circuit_config(
 
         return CircuitConfig(file_path)
 
-    except BluepySnapError:
+    except BluepySnapError as e:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Invalid circuit configuration",
             },
-        ) from None
+        ) from e
 
-    except Exception as e:  # noqa:BLE001
+    except Exception as e:
         L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
@@ -172,7 +231,7 @@ def download_circuit_config(
                 "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Circuit is missing a circuit_config.json asset",
             },
-        ) from None
+        ) from e
 
 
 def get_population_nodes(
@@ -194,15 +253,14 @@ def get_population_nodes(
             output_path=nodes_file_path,
             asset_path=asset_path,
         )
-    except Exception as e:  # noqa: BLE001
-        L.exception(e)
+    except Exception as e:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Missing file {asset_path}",
             },
-        ) from None
+        ) from e
 
     try:
         with h5py.File(nodes_file_path, "r") as f:
@@ -247,15 +305,14 @@ def get_population_nodes(
                 for i in range(len(x))
             ]
 
-    except Exception as e:  # noqa: BLE001
-        L.exception(e)
+    except Exception as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.INTERNAL_ERROR,
                 "detail": f"Couldn't get nodes from population {population_name}",
             },
-        ) from None
+        ) from e
 
 
 def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.ndarray:
@@ -276,6 +333,30 @@ def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.
         raise TypeError(msg)
 
     return res
+
+
+def get_morphology(
+    parent_dir: Path, client: Client, circuit_id: UUID, asset_id: UUID, morph_path: Path
+) -> MorphologyDict:
+    output_path = parent_dir / morph_path
+
+    if not output_path.exists():
+        try:
+            client.download_file(
+                entity_type=Circuit,
+                output_path=output_path,
+                entity_id=circuit_id,
+                asset_id=asset_id,
+                asset_path=morph_path,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=404, detail="Morphology not found") from e
+
+    try:
+        return get_morphology_data(str(output_path))
+    except Exception as e:
+        msg = f"Could not parse morphology {morph_path}"
+        raise HTTPException(status_code=500, detail=msg) from e
 
 
 def get_soma_radius(
@@ -307,7 +388,75 @@ def get_soma_radius(
 
         return float(np.mean(soma_diameters) / 2.0)
 
-    except Exception as e:  # noqa:BLE001
-        L.exception(e)
+    except Exception as e:
         msg = f"Could not get morphology's {morph_path} soma radius from circuit {circuit_id}"
-        raise RuntimeError(msg) from None
+        raise RuntimeError(msg) from e
+
+
+def get_morphology_data(swc_path: str) -> MorphologyDict:
+    """Parses an SWC file into a segment-based dictionary optimized for visualization."""
+    morphology = morphio.Morphology(swc_path)
+
+    section_start_distances: dict[int, float] = {sec.id: 0.0 for sec in morphology.sections}
+
+    def walk_tree_for_distances(section: morphio.Section, current_path_distance: float) -> None:
+        section_start_distances[section.id] = current_path_distance
+
+        points = section.points
+        vectors = np.diff(points, axis=0)
+        section_length = np.sum(np.linalg.norm(vectors, axis=1))
+
+        for child in section.children:
+            walk_tree_for_distances(child, current_path_distance + section_length)
+
+    for root_section in morphology.root_sections:
+        walk_tree_for_distances(root_section, 0.0)
+
+    morphology_data: MorphologyDict = {}
+
+    for section in morphology.sections:
+        points = section.points
+        diameters = section.diameters
+
+        starts = points[:-1]
+        ends = points[1:]
+
+        directions = ends - starts
+        segment_lengths = np.linalg.norm(directions, axis=1)
+        midpoints = (starts + ends) / 2.0
+
+        start_dist = section_start_distances[section.id]
+        cumulative_internal_lengths = np.cumsum(segment_lengths)
+        seg_distances = start_dist + np.insert(cumulative_internal_lengths[:-1], 0, 0)
+
+        section_key = f"section_{section.id}"
+        num_segments = len(segment_lengths)
+
+        morphology_data[section_key] = {
+            "index": section.id,
+            "name": section_key,
+            "nseg": num_segments,
+            "distance_from_soma": float(start_dist),
+            "sec_length": float(np.sum(segment_lengths)),
+            "xstart": starts[:, 0].tolist(),
+            "xend": ends[:, 0].tolist(),
+            "xcenter": midpoints[:, 0].tolist(),
+            "xdirection": directions[:, 0].tolist(),
+            "ystart": starts[:, 1].tolist(),
+            "yend": ends[:, 1].tolist(),
+            "ycenter": midpoints[:, 1].tolist(),
+            "ydirection": directions[:, 1].tolist(),
+            "zstart": starts[:, 2].tolist(),
+            "zend": ends[:, 2].tolist(),
+            "zcenter": midpoints[:, 2].tolist(),
+            "zdirection": directions[:, 2].tolist(),
+            "diam": diameters[:-1].tolist(),
+            "length": segment_lengths.tolist(),
+            "distance": seg_distances.tolist(),
+            "segment_distance_from_soma": seg_distances.tolist(),
+            "segx": np.linspace(0, 1, num_segments).tolist(),
+            "neuron_section_id": section.id,
+            "neuron_segments_offset": [0] * num_segments,
+        }
+
+    return morphology_data
