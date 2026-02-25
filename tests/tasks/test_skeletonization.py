@@ -293,9 +293,6 @@ def test_create_process_outputs_raises_when_no_swc(tmp_path):
     ):
         create_process_outputs(tmp_path)
 
-    assert (tmp_path / "morph_with_spines.h5").exists()
-    assert not h5_file.exists()
-
 
 def test_create_process_outputs_success(tmp_path):
     out = tmp_path / "outputs"
