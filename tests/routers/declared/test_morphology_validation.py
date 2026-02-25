@@ -87,8 +87,9 @@ def test_validate_neuron_file_invalid_morphology(client):
     files = {"file": ("invalid.swc", BytesIO(b"invalid data"), "application/octet-stream")}
     response = client.post(ROUTE, files=files)
 
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-    assert "Morphology validation failed" in get_error_detail(response.json())
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert "Failed to load and convert the file" in get_error_detail(response.json())
 
 
 def test_validate_neuron_file_asc_format(client, morphology_asc):

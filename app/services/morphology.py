@@ -42,12 +42,9 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     outside the acceptable range.
     """
     try:
-        warning_handler = morphio.WarningHandlerCollector()
-        morphio.Morphology(file_path, warning_handler=warning_handler)
-        _check_warnings(warning_handler)
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
-    except (morphio.MorphioError, NeuroMError, ValueError) as e:
+    except ( NeuroMError, ValueError) as e:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={
