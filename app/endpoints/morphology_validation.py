@@ -1,10 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from http import HTTPStatus
 
 from app.dependencies.auth import user_verified
 from app.dependencies.file import TempDirDep
+from app.errors import ApiErrorCode
 from app.services import file as file_service, morphology as morphology_service
 from app.services.morphology import ALLOWED_EXTENSIONS, DEFAULT_SINGLE_POINT_SOMA_BY_EXT
 
@@ -34,7 +36,17 @@ def validate_neuron_file(
         force_lower_case=True,
     )
 
-    # 2. Validate the file content ( Soma diameter)
+    # 2. Validate the file content (warnings and soma diameter)
+    try:
+        morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Morphology validation failed: {e!s}",
+            },
+        ) from e
     morphology_service.validate_soma_diameter(file_path=input_morphology)
 
     # 3. Handle conversion logic

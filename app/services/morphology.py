@@ -29,10 +29,12 @@ def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
         raise morphio.MorphioError(msg)
 
 
-def _load_morphio_with_warnings(file_path: Path) -> None:
+def load_morphio_morphology(file_path: Path, *, raise_warnings: bool = True) -> morphio.Morphology:
     warning_handler = morphio.WarningHandlerCollector()
-    morphio.Morphology(file_path, warning_handler=warning_handler)
-    _check_warnings(warning_handler)
+    morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
+    if raise_warnings:
+        _check_warnings(warning_handler)
+    return morphology
 
 
 def _check_soma_radius(radius: float | None, threshold: float) -> None:
@@ -48,7 +50,6 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     outside the acceptable range.
     """
     try:
-        _load_morphio_with_warnings(file_path)
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
     except (morphio.MorphioError, NeuroMError, ValueError) as e:
@@ -80,8 +81,7 @@ def convert_morphology(
         output_stem: stem of the output files. If None, use the same as the input file.
     """
     try:
-        warning_handler = morphio.WarningHandlerCollector()
-        morphio.Morphology(input_file, warning_handler=warning_handler)
+        load_morphio_morphology(input_file, raise_warnings=False)
 
         file_extension = input_file.suffix
         output_stem = output_stem or input_file.stem
