@@ -12,7 +12,7 @@ from typing import Annotated, Any, ClassVar
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from pydantic import ConfigDict, Field, StringConstraints
+from pydantic import Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -83,15 +83,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-            ]
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        "group_order": [
+            BlockGroup.SETUP,
+            BlockGroup.EQUATIONS,
+            BlockGroup.GATEEXPONENTS,
+        ]
+    }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
@@ -391,12 +389,13 @@ class IonChannelFittingTask(Task):
         self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
+        figure_types = ["traces", "stimuli", "steady state", "time constant"]
         paths_to_register = [
             value
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
             for key, value in d.items()
-            if key != "order"
+            if key in figure_types
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
