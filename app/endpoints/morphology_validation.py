@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
