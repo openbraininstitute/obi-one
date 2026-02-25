@@ -55,34 +55,41 @@ def circuit_nodes(
     with tempfile.TemporaryDirectory() as temp_dir:
         config = download_circuit_config(db_client, circuit_id, asset_id, temp_dir)
 
-        for node_network in config.config["networks"]["nodes"]:
-            for pop_name, pop_config in node_network["populations"].items():
-                if pop_config.get("type") != "biophysical":
-                    continue
+        try:
+            for node_network in config.config["networks"]["nodes"]:
+                for pop_name, pop_config in node_network["populations"].items():
+                    if pop_config.get("type") != "biophysical":
+                        continue
 
-                parent_path = Path(temp_dir).resolve()
-                nodes_file_path = Path(node_network["nodes_file"]).resolve()
-                asset_path = nodes_file_path.relative_to(parent_path)
+                    parent_path = Path(temp_dir).resolve()
+                    nodes_file_path = Path(node_network["nodes_file"])
+                    asset_path = nodes_file_path.relative_to(parent_path)
 
-                morphologies_dir = (
-                    (
+                    morphologies_dir = (
                         Path(pop_config["morphologies_dir"])
                         if "morphologies_dir" in pop_config
                         else Path(config.config["components"]["morphologies_dir"])
-                    )
-                    .resolve()
-                    .relative_to(parent_path)
-                )
+                    ).relative_to(parent_path)
 
-                all_nodes += get_population_nodes(
-                    pop_name,
-                    db_client,
-                    circuit_id,
-                    asset_id,
-                    parent_path,
-                    asset_path,
-                    morphologies_dir,
-                )
+                    all_nodes += get_population_nodes(
+                        pop_name,
+                        db_client,
+                        circuit_id,
+                        asset_id,
+                        parent_path,
+                        asset_path,
+                        morphologies_dir,
+                    )
+        except Exception as e:  # noqa:BLE001
+            L.exception(e)
+
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": "Error while reading circuit's nodes",
+                },
+            ) from None
 
     return all_nodes
 
@@ -150,12 +157,13 @@ def download_circuit_config(
             },
         ) from None
 
-    except Exception:  # noqa:BLE001
+    except Exception as e:  # noqa:BLE001
+        L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit is missing a circuit__config.json asset",
+                "detail": "Circuit is missing a circuit_config.json asset",
             },
         ) from None
 
@@ -179,7 +187,8 @@ def get_population_nodes(
             output_path=nodes_file_path,
             asset_path=asset_path,
         )
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -231,7 +240,8 @@ def get_population_nodes(
                 for i in range(len(x))
             ]
 
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -290,6 +300,7 @@ def get_soma_radius(
 
         return float(np.mean(soma_diameters) / 2.0)
 
-    except Exception:  # noqa:BLE001
+    except Exception as e:  # noqa:BLE001
+        L.exception(e)
         msg = f"Could not get morphology's {morph_path} soma radius from circuit {circuit_id}"
         raise RuntimeError(msg) from None
