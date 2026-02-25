@@ -99,6 +99,7 @@ def circuit_morphology(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> MorphologyDict:
     asset_id = circuit_asset_id(db_client, circuit_id)
+
     with tempfile.TemporaryDirectory() as temp_dir:
         parent_path = Path(temp_dir).resolve()
         try:
