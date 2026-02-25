@@ -1,12 +1,10 @@
-from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from app.dependencies.auth import user_verified
 from app.dependencies.file import TempDirDep
-from app.errors import ApiErrorCode
 from app.services import file as file_service, morphology as morphology_service
 from app.services.morphology import ALLOWED_EXTENSIONS, DEFAULT_SINGLE_POINT_SOMA_BY_EXT
 
@@ -36,20 +34,13 @@ def validate_neuron_file(
         force_lower_case=True,
     )
 
-    # 2. Validate the file content (warnings and soma diameter)
-    try:
-        morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
-    except Exception as e:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Morphology validation failed: {e!s}",
-            },
-        ) from e
+    # 2. Validate the morphology with MorphIO
+    morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
+
+    # 3. Validate soma diameter with neurom
     morphology_service.validate_soma_diameter(file_path=input_morphology)
 
-    # 3. Handle conversion logic
+    # 4. Handle conversion logic with morph-tool
     if single_point_soma:
         single_point_soma_by_ext = dict.fromkeys(DEFAULT_SINGLE_POINT_SOMA_BY_EXT, True)
     else:
@@ -61,7 +52,7 @@ def validate_neuron_file(
         single_point_soma_by_ext=single_point_soma_by_ext,
     )
 
-    # 4. Create and return the zip archive
+    # 5. Create and return the zip archive
     zip_file = temp_dir / "morph_archive.zip"
     file_service.create_zip_file(input_files=morphology, output_file=zip_file, delete_input=True)
 

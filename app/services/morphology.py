@@ -29,11 +29,24 @@ def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
         raise morphio.MorphioError(msg)
 
 
-def load_morphio_morphology(file_path: Path, *, raise_warnings: bool = True) -> morphio.Morphology:
+def load_morphio_morphology(file_path: Path, *, raise_warnings: bool) -> morphio.Morphology:
+    """Load a morphology with MorphIO and return the result.
+
+    Raises an error if it fails, or if `raise_warnings` is True and any warning is produced.
+    """
     warning_handler = morphio.WarningHandlerCollector()
-    morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
-    if raise_warnings:
-        _check_warnings(warning_handler)
+    try:
+        morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
+        if raise_warnings:
+            _check_warnings(warning_handler=warning_handler)
+    except morphio.MorphioError as e:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Morphology validation failed: {e!s}",
+            },
+        ) from e
     return morphology
 
 
@@ -52,12 +65,12 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     try:
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
-    except (morphio.MorphioError, NeuroMError, ValueError) as e:
+    except (NeuroMError, ValueError) as e:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Morphology validation failed: {e!s}",
+                "detail": f"Soma diameter validation failed: {e!s}",
             },
         ) from e
 
@@ -81,8 +94,6 @@ def convert_morphology(
         output_stem: stem of the output files. If None, use the same as the input file.
     """
     try:
-        load_morphio_morphology(input_file, raise_warnings=False)
-
         file_extension = input_file.suffix
         output_stem = output_stem or input_file.stem
         target_exts = target_exts or ALLOWED_EXTENSIONS - {file_extension}
@@ -102,7 +113,29 @@ def convert_morphology(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Failed to load and convert the file: {e!s}",
+                "detail": f"Failed to convert the file: {e!s}",
             },
         ) from e
     return output_files
+
+
+def validate_and_convert_morphology(
+    input_file: Path,
+    *,
+    output_dir: Path,
+    single_point_soma_by_ext: dict[str, bool],
+    target_exts: Iterable[str] | None = None,
+    output_stem: str | None = None,
+) -> list[Path]:
+    """Validate the morphology with MorphIO and return the morphologies converted.
+
+    Note: warnings in MorphIO are ignored!
+    """
+    load_morphio_morphology(input_file, raise_warnings=False)
+    return convert_morphology(
+        input_file,
+        output_dir=output_dir,
+        single_point_soma_by_ext=single_point_soma_by_ext,
+        target_exts=target_exts,
+        output_stem=output_stem,
+    )
