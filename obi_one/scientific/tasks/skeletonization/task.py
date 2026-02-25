@@ -46,12 +46,11 @@ class SkeletonizationTask(Task):
             selection={"label": AssetLabel.cell_surface_mesh},
             output_path=output_dir,
         ).one()
-        em_dense_reconstruction_dataset = None
-        if entity := em_cell_mesh.em_dense_reconstruction_dataset:
-            em_dense_reconstruction_dataset = db_client.get_entity(
-                entity.id,
-                entity_type=models.EMDenseReconstructionDataset,
-            )
+        # fetch the full dataset from the nested Entity
+        em_dense_reconstruction_dataset = db_client.get_entity(
+            em_cell_mesh.em_dense_reconstruction_dataset.id,
+            entity_type=models.EMDenseReconstructionDataset,
+        )
         cell_id = em_cell_mesh.dense_reconstruction_cell_id
         return SkeletonizationInputs(
             metadata=Metadata(
