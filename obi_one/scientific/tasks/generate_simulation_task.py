@@ -168,11 +168,11 @@ class GenerateSimulationTask(Task):
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
 
-        if hasattr(self.config, "parameter_modifications"):
+        if hasattr(self.config, "neuronal_manipulations"):
             # Separate RANGE (section_list) and GLOBAL (mechanisms) modifications
             range_modifications = []
             mechanisms: dict = {}
-            for modification in self.config.parameter_modifications.values():
+            for modification in self.config.neuronal_manipulations.values():
                 result = modification.config(
                     self._circuit.default_population_name,
                     DEFAULT_NODE_SET_NAME,
