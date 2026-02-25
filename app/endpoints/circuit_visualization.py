@@ -85,6 +85,9 @@ def get_nodes(
                     asset_path,
                     morphologies_dir,
                 )
+
+    except HTTPException:
+        raise
     except Exception as e:  # noqa:BLE001
         L.exception(e)
 
@@ -95,7 +98,6 @@ def get_nodes(
                 "detail": "Error while reading circuit's nodes",
             },
         ) from None
-
     return all_nodes
 
 
