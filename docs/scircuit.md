@@ -26,6 +26,7 @@ The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/
 - **Neuron Sets**: Dictionary of neuron sets defining which neurons to include
 - **Node Set**: Reference to the specific neuron set to simulate (must be biophysical)
 - **Synaptic Manipulations**: Optional modifications to synaptic properties
+- **Parameter Modifications**: Optional modifications to neuron and channel parameters (MEModel only)
 - **Simulation Parameters**: Duration, timestep, initial voltage, extracellular calcium
 - **Stimuli**: Various stimulus types that can be applied to the network
 - **Recordings**: Voltage and other electrophysiological recordings
@@ -95,6 +96,7 @@ config = CircuitSimulationSingleConfig(
     stimuli={...},
     recordings={...},
     synaptic_manipulations={...},
+    parameter_modifications={...},
     timestamps={...}
 )
 ```
@@ -144,6 +146,28 @@ Optional modifications to synaptic properties:
 - **ScaleAcetylcholineUSESynapticManipulation**: Scale acetylcholine effects
 
 Manipulations are applied as `connection_overrides` in the SONATA config.
+
+### Parameter Modifications
+
+Modifications to neuron and channel parameters for MEModel circuits:
+
+#### BySectionListNeuronalParameterModification
+Modify ion channel RANGE variables (e.g., conductances) with different values for different section lists.
+- **Neuron Set**: Target neurons for modification
+- **Variable Name**: Name of the RANGE variable (e.g., `gCa_HVAbar_Ca_HVA2`)
+- **Section List Modifications**: Dictionary mapping section lists to values (e.g., `{"somatic": 0.1, "axonal": 0.2}`)
+
+#### ByNeuronNeuronalParameterModification
+Modify ion channel GLOBAL variables that apply to the entire neuron.
+- **Neuron Set**: Target neurons for modification
+- **Variable Name**: Name of the GLOBAL variable (e.g., `ena_NaTg`)
+- **New Value**: New value for the variable
+
+Both modification types generate SONATA `conditions.modifications` entries:
+- **section_list**: Applies modification to specific section lists (RANGE variables)
+- **configure_all_sections**: Applies modification to all sections (GLOBAL variables or `all` section list)
+
+Current
 
 ### Stimuli
 

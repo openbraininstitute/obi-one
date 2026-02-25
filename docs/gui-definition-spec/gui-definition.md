@@ -78,6 +78,8 @@ There are two major types of such UI elements:
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
+        - [variable_modification](components/variable_modification/variable_modification.md)
+
     - Legacy block elements:
 
         - [neuron_ids](components/neuron_ids/neuron_ids.md)
