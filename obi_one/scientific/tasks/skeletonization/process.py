@@ -62,8 +62,16 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
         OBIONEError
             If required morphology files (.h5 or .swc) cannot be found in the output directory.
     """
-    if not (spiny_morph_path := find_file(output_dir, extension=".h5")):
+    spiny_morph_path = find_file(output_dir, extension=".h5")
+
+    if not spiny_morph_path:
         msg = "No combined morphology h5 file found in the output location."
+        raise OBIONEError(msg)
+
+    swc_path = find_file(output_dir, extension=".swc")
+
+    if not swc_path:
+        msg = "No SWC morphology file found in the output location"
         raise OBIONEError(msg)
 
     # Rename the combined morphology by adding "_with_spines" suffix
@@ -72,10 +80,6 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
             spiny_morph_path.stem + SPINY_MORPH_PATH_SUFFIX + spiny_morph_path.suffix
         )
     )
-
-    if not (swc_path := find_file(output_dir, extension=".swc")):
-        msg = "No SWC morphology file found in the output location"
-        raise OBIONEError(msg)
 
     # Produce complimentary H5 and ASC morphologies from the original SWC
     morpho = morphio.mut.Morphology(str(swc_path))
