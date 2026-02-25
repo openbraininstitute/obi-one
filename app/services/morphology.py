@@ -44,7 +44,7 @@ def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRES
     try:
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
-    except ( NeuroMError, ValueError) as e:
+    except (NeuroMError, ValueError) as e:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={
