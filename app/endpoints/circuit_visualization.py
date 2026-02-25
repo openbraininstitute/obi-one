@@ -342,8 +342,10 @@ def get_morphology(
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
 
-    if not output_path.relative_to(parent_dir):
-        raise HTTPException(status_code=400, detail="Invalid morphology path")
+    try:
+        output_path.relative_to(parent_dir)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid morphology path") from e
 
     if not output_path.exists():
         try:
