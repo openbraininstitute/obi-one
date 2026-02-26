@@ -27,14 +27,16 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
     return value
 
 
-def validate_root_element(schema: dict, element: str, ref: str, config_ref: str) -> None:
+def validate_root_element(
+    schema: dict, element: str, ref: str, config_ref: str, form: dict
+) -> None:
     match ui_element := schema.get("ui_element"):
         case "block_single":
             validate_block_single(schema, element, ref)
         case "block_dictionary":
-            validate_block_dictionary(schema, element, config_ref)
+            validate_block_dictionary(schema, element, config_ref, form)
         case "block_union":
-            validate_block_union(schema, element, config_ref)
+            validate_block_union(schema, element, config_ref, form)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
@@ -102,7 +104,61 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
             raise ValueError(msg)
 
 
-def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
+def validate_block_usability_dictionary(block_schema: dict, ref: str, form: dict) -> None:
+    block_usability_dictionary = block_schema.get("block_usability_dictionary")
+    if block_usability_dictionary is not None:
+        if type(block_usability_dictionary) is not dict:
+            msg = (
+                f"Validation error at {ref}: 'block_usability_dictionary' must be a dictionary "
+                f"if defined."
+            )
+            raise ValueError(msg)
+
+        property_group = block_usability_dictionary.get("property_group")
+        property_value = block_usability_dictionary.get("property")
+        false_message = block_usability_dictionary.get("false_message")
+
+        if property_group is None or property_value is None or false_message is None:
+            msg = (
+                f"Validation error at {ref}: 'block_usability_dictionary' must have "
+                f"'property_group', 'property', and 'false_message' keys when defined "
+                f"in the block schema."
+            )
+            raise ValueError(msg)
+
+        if (
+            type(property_group) is not str
+            or type(property_value) is not str
+            or type(false_message) is not str
+        ):
+            msg = (
+                f"Validation error at {ref}: 'property_group', 'property', and 'false_message' "
+                f"must be strings in 'block_usability_dictionary' when defined in the block "
+                f"schema."
+            )
+            raise TypeError(msg)
+
+        schema_property_endpoints = form.get("property_endpoints")
+        if (
+            schema_property_endpoints is None
+            or type(schema_property_endpoints) is not dict
+            or schema_property_endpoints.get(property_group) is None
+            or type(schema_property_endpoints.get(property_group)) is not str
+            or len(schema_property_endpoints.get(property_group)) == 0
+        ):
+            msg = (
+                f"Validation error at {ref}: 'property_endpoints' must be defined in the root "
+                f"schema and must be a dictionary with a non-empty string value for the key "
+                f"specified in 'property_group' when 'block_usability_entity_dependent' is defined"
+            )
+            raise ValueError(msg)
+
+
+def validate_scan_config_dependendent_block_components(block_schema, ref, form):
+    validate_block_usability_dictionary(block_schema, ref, form)
+
+
+def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
     if schema.get("additionalProperties", {}).get("oneOf") is None:
         msg = (
             f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
@@ -116,10 +172,12 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str) -> None:
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
 
+        validate_scan_config_dependendent_block_components(block_schema, ref, form)
+
         validate_block(block_schema, ref)
 
 
-def validate_block_union(schema: dict, key: str, config_ref: str) -> None:
+def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) -> None:
     if schema.get("oneOf") is None:
         msg = f"Validation error at {config_ref}: block_union {key} must have 'oneOf'"
         raise ValueError(msg)
@@ -129,6 +187,8 @@ def validate_block_union(schema: dict, key: str, config_ref: str) -> None:
 
         if ref:
             block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
+
+        validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
         validate_block(block_schema, ref)
 
@@ -170,7 +230,7 @@ def validate_config(form: dict, config_ref: str) -> None:
         validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
         validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")
 
-        validate_root_element(root_element_schema, root_element, ref, config_ref)
+        validate_root_element(root_element_schema, root_element, ref, config_ref, form)
 
 
 def test_schema() -> None:

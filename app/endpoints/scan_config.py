@@ -27,7 +27,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
-from obi_one.scientific.unions.aliases import SimulationsForm
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
 
@@ -105,7 +104,6 @@ def activate_scan_config_endpoints() -> None:
         (CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
-        (SimulationsForm, "generate", "save", True),
         (MorphologyMetricsScanConfig, "run", "", True),
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),

@@ -8,6 +8,10 @@ from obi_one.scientific.library.constants import (
     _MAX_EFIELD_FREQUENCY_HZ,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -31,6 +35,14 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     The stimulus is applied to all compartments of the selected Neuron Set.
     Neurons must be in a biophysical population.
     """
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "block_usability_dictionary": {
+            "property_group": MappedPropertiesGroup.CIRCUIT,
+            "property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
+            "false_message": "Electric field stimuli are not supported for this circuit.",
+        },
+    }
 
     title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
 
