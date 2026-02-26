@@ -7,8 +7,6 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
 
-import logging
-
 import entitysdk
 import neurom as nm
 import requests
