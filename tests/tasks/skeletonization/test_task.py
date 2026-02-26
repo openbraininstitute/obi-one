@@ -116,6 +116,7 @@ def test_skeletonization_task(config, httpx_mock, cell_mesh_id):  # noqa: PLR091
         "content_type": "application/obj",
         "storage_type": "aws_s3_internal",
         "size": 0,
+        "status": "created",
     }
     brain_region_payload = {
         "id": str(brain_region_id),

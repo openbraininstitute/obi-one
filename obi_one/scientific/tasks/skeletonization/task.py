@@ -77,14 +77,39 @@ class SkeletonizationTask(Task):
         *,
         db_client: entitysdk.client.Client,
         entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str,
+        execution_activity_id: str | None,
     ) -> None:
-        """Execute skeletonization task."""
+        """Execute the skeletonization task.
+
+        This method prepares inputs, runs the skeletonization process,
+        and optionally registers the outputs in the database.
+
+        Args:
+            db_client: Client used to interact with the database.
+            entity_cache: Unused parameter
+            execution_activity_id:
+                The ID of the execution activity entity.
+
+                If provided, the execution is considered *tracked*:
+                the generated outputs are registered in the database and
+                linked to the corresponding activity entity.
+
+                If ``None``, the execution is considered *local*:
+                the process runs and produces outputs on disk, but no data
+                is registered in the database and no entities are updated.
+
+        Note:
+            When ``execution_activity_id`` is ``None``, the execution runs
+            locally and does **not** register any generated resources in
+            the database.
+        """
         work_dir = self.work_dir
-        execution_activity = db_client.get_entity(
-            entity_id=execution_activity_id,
-            entity_type=self.activity_type,
-        )
+
+        if execution_activity_id is not None:
+            execution_activity = db_client.get_entity(
+                entity_id=execution_activity_id,
+                entity_type=self.activity_type,
+            )
         inputs = self._create_inputs(
             db_client=db_client,
             output_dir=work_dir.inputs,
@@ -94,14 +119,17 @@ class SkeletonizationTask(Task):
             output_dir=work_dir.outputs,
         )
         outputs = create_process_outputs(output_dir=work_dir.outputs)
-        generated_entity = register_output_resource(
-            client=db_client,
-            metadata=inputs.metadata,
-            outputs=outputs,
-        )
-        db_client.update_entity(
-            entity_id=execution_activity.id,
-            entity_type=self.activity_type,
-            attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
-        )
+
+        if execution_activity_id is not None:
+            generated_entity = register_output_resource(
+                client=db_client,
+                metadata=inputs.metadata,
+                outputs=outputs,
+            )
+            db_client.update_entity(
+                entity_id=execution_activity.id,
+                entity_type=self.activity_type,
+                attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
+            )
+
         L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
