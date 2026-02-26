@@ -350,7 +350,7 @@ SWC_TYPES = {
 }
 
 
-def get_morphology_data(swc_path: str) -> Morphology:
+def get_morphology_data(swc_path: str) -> Morphology:  # noqa: PLR0914
     """Parses an SWC file into a segment-based dictionary optimized for visualization."""
     morphology = morphio.Morphology(swc_path)
 
