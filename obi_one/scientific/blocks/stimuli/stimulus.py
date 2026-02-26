@@ -638,8 +638,10 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
 
 class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     """A voltage clamp injection with an arbitrary number of steps at different voltages.
-    
-    Warning: Maximum one SEClamp stimulus per location."""
+
+    Warning: Maximum one SEClamp stimulus per location.
+    """
+
     # We only have a simple flat voltage stimulus implemented now for simplicity.
     # A more complex implementation with multi-step stimulus will be implemented later.
 
@@ -700,9 +702,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             # the delay is used as the duration of 1st voltage at initial_voltage level
             "duration_levels": [self.timestamp_offset, self.step_duration],
             "voltage_levels": [self.step_duration],
-            "node_set": resolve_neuron_set_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,

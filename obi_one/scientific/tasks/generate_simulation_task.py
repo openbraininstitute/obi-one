@@ -67,11 +67,12 @@ class GenerateSimulationTask(Task):
     _use_generic_entitysdk_types: bool = PrivateAttr(default=False)
 
     @property
-    def entitysdk_simulation_type(self):
+    def entitysdk_simulation_type(
+        self,
+    ) -> entitysdk.models.TaskConfig | entitysdk.models.Simulation:
         if self._use_generic_entitysdk_types:
             return entitysdk.models.TaskConfig
-        else:
-            return entitysdk.models.Simulation
+        return entitysdk.models.Simulation
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -93,7 +94,9 @@ class GenerateSimulationTask(Task):
             self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
         self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
         if hasattr(self.config.initialize, "spike_location"):
-            self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
+            self._sonata_config["conditions"]["spike_location"] = (
+                self.config.initialize.spike_location
+            )
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         if isinstance(
@@ -122,7 +125,12 @@ class GenerateSimulationTask(Task):
 
         elif isinstance(
             circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID, FakeCircuitFromIonChannelModels),
+            (
+                CircuitFromID,
+                MEModelFromID,
+                MEModelWithSynapsesCircuitFromID,
+                FakeCircuitFromIonChannelModels,
+            ),
         ):
             # right now, only ion channel model simulation uses generic entitysdk types
             if isinstance(circuit, FakeCircuitFromIonChannelModels):

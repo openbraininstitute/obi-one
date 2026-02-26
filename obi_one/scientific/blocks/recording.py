@@ -164,7 +164,8 @@ class IonChannelVariableRecording(Recording):
     # variable_name has shape {"variable": str, "unit": str}
     variable_name: dict[str, str] = Field(
         title="Ion Channel Variable Name",
-        description="Name of the variable to record with its unit, grouped by ion channel model name.",
+        description="Name of the variable to record with its unit, "
+        "grouped by ion channel model name.",
         json_schema_extra={
             "ui_element": "entity_property_dropdown",
             "entity_type": EntityType.IONCHANNELMODEL,

@@ -274,7 +274,6 @@ def run_bluecellulab(
         all_traces, all_spikes = _gather_results(sim, cell_ids_for_this_rank, rank, pc)
 
         if rank == 0:
-            print("saving...")
             _save_reports_and_outputs(
                 sim, simulation_config, config_data, all_traces, all_spikes, save_nwb=save_nwb
             )

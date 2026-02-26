@@ -23,7 +23,7 @@ class IonChannelModelWithConductance(IonChannelModel):
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "S/cm2",
-        }
+        },
     )
 
 
@@ -34,5 +34,5 @@ class IonChannelModelWithMaxPermeability(IonChannelModel):
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "cm/s",
-        }
+        },
     )

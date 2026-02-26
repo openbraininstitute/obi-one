@@ -445,7 +445,6 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     )
 
 
-
 class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
@@ -503,7 +502,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             default=34.0,
             json_schema_extra={
                 "ui_element": "float_parameter_sweep",
-            }
+            },
         )
 
         v_init: float | list[float] = Field(
@@ -611,17 +610,15 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
     @property
     def circuit(self) -> FakeCircuitFromIonChannelModels:
-        return FakeCircuitFromIonChannelModels(
-            self.ion_channel_models
-        )
+        return FakeCircuitFromIonChannelModels(self.ion_channel_models)
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
-    # ) -> entitysdk.models.Campaign:  # TODO: generic campaign PR
-    ):
+        # ) -> entitysdk.models.Campaign:  # TODO: generic campaign PR
+    ) -> entitysdk.models.Entity:  # TODO: use line above when generic campaign PR is merged
         """Initializes the ion channel simulation campaign in the database."""
         L.info("1. Initializing ion channel simulation campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -649,10 +646,12 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         )
 
         return self._campaign
-    
+
     def create_campaign_generation_entity(
-        # self, simulations: list[entitysdk.models.TaskConfig], db_client: entitysdk.client.Client  # TODO: generic PR
-        self, simulations: list, db_client: entitysdk.client.Client  # use line above when generic PR is merged
+        self,
+        # simulations: list[entitysdk.models.TaskConfig]  # noqa: ERA001 TODO: generic PR
+        simulations: list,  # TODO: # use line above when generic PR is merged
+        db_client: entitysdk.client.Client,
     ) -> None:
         L.info("3. Saving completed simulation campaign generation")
 
@@ -735,16 +734,18 @@ class MEModelWithSynapsesCircuitSimulationSingleConfig(
     """Only allows single values."""
 
 
-class IonChannelModelSimulationSingleConfig(IonChannelModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin):
+class IonChannelModelSimulationSingleConfig(
+    IonChannelModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
     def create_single_entity_with_config(
         self,
         # campaign: entitysdk.models.Campaign,  # TODO: generic PR
-        campaign,  # TODO: replace with line above
+        campaign,  # noqa: ANN001 # TODO: replace with line above
         db_client: entitysdk.client.Client,
-    # ) -> entitysdk.models.TaskConfig:  # TODO: generic PR
-    ):
+        # ) -> entitysdk.models.TaskConfig:  # TODO: generic PR
+    ) -> entitysdk.models.Entity:  # TODO: replace with line above when generic PR is merged
         """Saves the simulation config to the database."""
         L.info(f"2.{self.idx} Saving ion channel model simulation config {self.idx} to database...")
 

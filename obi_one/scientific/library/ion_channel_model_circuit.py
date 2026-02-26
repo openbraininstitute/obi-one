@@ -15,10 +15,12 @@ from obi_one.scientific.unions.unions_ion_channel_model import (
 class FakeCircuitFromIonChannelModels:
     id_str: str = "fake_circuit"
 
-    def __init__(self, ion_channel_data: dict[str, IonChannelModelUnion]):
+    def __init__(self, ion_channel_data: dict[str, IonChannelModelUnion]) -> None:
+        """Initialize object."""
         self.ion_channel_data = ion_channel_data
 
-    def stage_circuit(self,
+    def stage_circuit(
+        self,
         *,
         db_client: entitysdk.client.Client = None,
         dest_dir: Path | None = None,
@@ -33,15 +35,23 @@ class FakeCircuitFromIonChannelModels:
             ion_channel_model_data_dict = {}
             for key, ic_data in self.ion_channel_data.items():
                 # ic_data: IonChannelModel Block
-                # ic_data.ion_channel_model: IonChannelModelFromID
+                # ic_data.ion_channel_model: IonChannelModelFromID  # noqa: ERA001
                 conductance = {}
-                if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(db_client=db_client):
+                if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
+                    db_client=db_client
+                ):
                     conductance = {
-                        ic_data.ion_channel_model.get_conductance_name(db_client=db_client): ic_data.conductance
+                        ic_data.ion_channel_model.get_conductance_name(
+                            db_client=db_client
+                        ): ic_data.conductance
                     }
-                elif hasattr(ic_data, "max_permeability") and ic_data.ion_channel_model.has_max_permeability(db_client=db_client):
+                elif hasattr(
+                    ic_data, "max_permeability"
+                ) and ic_data.ion_channel_model.has_max_permeability(db_client=db_client):
                     conductance = {
-                        ic_data.ion_channel_model.get_max_permeability_name(db_client=db_client): ic_data.max_permeability
+                        ic_data.ion_channel_model.get_max_permeability_name(
+                            db_client=db_client
+                        ): ic_data.max_permeability
                     }
                 ion_channel_model_data_dict[key] = {
                     "id": ic_data.ion_channel_model.id_str,
@@ -49,7 +59,9 @@ class FakeCircuitFromIonChannelModels:
                 ion_channel_model_data_dict[key].update(conductance)
 
             circuit_config_path = stage_sonata_from_config(
-                client=db_client, ion_channel_model_data=ion_channel_model_data_dict, output_dir=dest_dir
+                client=db_client,
+                ion_channel_model_data=ion_channel_model_data_dict,
+                output_dir=dest_dir,
             )
         else:
             circuit_config_path = dest_dir / "circuit_config.json"

@@ -24,7 +24,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         return list(
             itertools.chain(current_variables, non_specific_current_variables, self.concentration)
         )
-    
+
     @property
     def variables_and_units(self) -> list[str]:
         current_variables = [
@@ -74,7 +74,7 @@ def get_ion_channel_variables(
                 current=current,
                 non_specific_current=non_specific_current,
                 concentration=concentration,
-            )
+            ),
         }
 
     return output

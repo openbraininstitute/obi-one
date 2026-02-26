@@ -20,18 +20,18 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     description="Returns a dictionary of mapped ion channel properties.",
 )
 def mapped_ion_channel_properties_endpoint(
-    ion_channel_ids: List[str] = Query(..., description="List of ion channel IDs"),
+    ion_channel_ids: list[str],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     try:
         ion_channel_properties = get_ion_channel_variables(
-            ion_channel_id=ion_channel_ids,
+            ion_channel_ids=ion_channel_ids,
             db_client=db_client,
         )
         mapped_ion_channel_properties = {}
-        mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = (
-            {key: value.variables_and_units for key, value in ion_channel_properties.items()}
-        )
+        mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {
+            key: value.variables_and_units for key, value in ion_channel_properties.items()
+        }
 
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(

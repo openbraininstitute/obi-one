@@ -30,7 +30,6 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-
 _NONRELATIVE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
