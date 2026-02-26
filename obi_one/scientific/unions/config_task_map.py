@@ -14,6 +14,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -73,6 +77,7 @@ _config_tasks_map = {
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
+    CreateExtracellularRecordingArraySingleConfig: CreateExtracellularRecordingArrayTask,
 }
 
 
