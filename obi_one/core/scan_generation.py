@@ -11,6 +11,7 @@ import entitysdk
 from pydantic import PrivateAttr, ValidationError
 
 from obi_one.core.block import Block
+from obi_one.core.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
@@ -58,7 +59,7 @@ class ScanGenerationTask(Task, abc.ABC):
         for attr_name, attr_value in self.form.__dict__.items():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_name = attr_name
                 category_blocks_dict = attr_value
@@ -108,6 +109,23 @@ class ScanGenerationTask(Task, abc.ABC):
         msg = "coordinate_parameters() must be implemented by a subclass of Scan."
         raise NotImplementedError(msg)
 
+    def set_nested_single_coordinate_scan_param_value(self, single_coord_config, location_list, value):
+        if location_list == []:
+            return value
+        
+        if isinstance(single_coord_config, list) or isinstance(single_coord_config, dict) or isinstance(single_coord_config, tuple):
+            single_coord_config[location_list[0]] = self.set_nested_single_coordinate_scan_param_value(
+                single_coord_config[location_list[0]], location_list[1:], value
+            )
+            return single_coord_config
+        
+        else:
+            single_coord_config.__dict__[location_list[0]] = self.set_nested_single_coordinate_scan_param_value(
+                single_coord_config.__dict__[location_list[0]], location_list[1:], value
+            )
+            return single_coord_config
+
+
     def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
 
@@ -135,21 +153,30 @@ class ScanGenerationTask(Task, abc.ABC):
             # Change the value of the multi parameter from a list to the single value of the
             # coordinate
             for scan_param in single_coordinate_scan_params.scan_params:
-                level_0_val = single_coord_config.__dict__[scan_param.location_list[0]]
+                single_coord_config = self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config, scan_param.location_list, scan_param.value
+                )
+                # level_0_val = single_coord_config.__dict__[scan_param.location_list[0]]
 
-                # If the first level is a Block
-                if isinstance(level_0_val, Block):
-                    level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
+                # # If the first level is a Block
+                # if isinstance(level_0_val, Block):
+                #     level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
 
-                # If the first level is a category dictionary
-                if isinstance(level_0_val, dict):
-                    level_1_val = level_0_val[scan_param.location_list[1]]
-                    if isinstance(level_1_val, Block):
-                        level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
-                    else:
-                        msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
-                            {level_0_val}"
-                        raise TypeError(msg)
+                # # If the first level is a category dictionary
+                # if isinstance(level_0_val, dict):
+                #     level_1_val = level_0_val[scan_param.location_list[1]]
+                #     if isinstance(level_1_val, Block):
+                #         level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
+                #     else:
+                #         msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
+                #             {level_0_val}"
+                #         raise TypeError(msg)
+
+                # ComplexVariableHolder case
+                # 0: category name, 1: variable key, 2: list index, 3: tuple index
+                # if isinstance(level_0_val, ComplexVariableHolder):
+                #     level_1_val = level_0_val.__dict__[scan_param.location_list[1]]
+                #     level_1_val[scan_param.location_list[2]][scan_param.location_list[3]] = scan_param.value
 
             try:
                 # Cast the form to its single_config_class_name type
