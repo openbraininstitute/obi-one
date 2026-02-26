@@ -12,11 +12,11 @@ from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsSc
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationScanConfig,
+    IonChannelModelSimulationScanConfig,
     MEModelSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
-from obi_one.scientific.tasks.ion_channel_model_simulation import IonChannelModelSimulationScanConfig
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationScanConfig,
 )

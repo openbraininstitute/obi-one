@@ -631,7 +631,9 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
 
 
 class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
-    """A voltage clamp injection with an arbitrary number of steps at different voltages."""
+    """A voltage clamp injection with an arbitrary number of steps at different voltages.
+    
+    Warning: Maximum one SEClamp stimulus per location."""
     # We only have a simple flat voltage stimulus implemented now for simplicity.
     # A more complex implementation with multi-step stimulus will be implemented later.
 

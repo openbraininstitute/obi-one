@@ -24,6 +24,7 @@ from obi_one.scientific.tasks.folder_compression import (
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
+    IonChannelModelSimulationSingleConfig,
     MEModelSimulationSingleConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -33,9 +34,6 @@ from obi_one.scientific.tasks.generate_simulation_task import (
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
-)
-from obi_one.scientific.tasks.ion_channel_model_simulation import (
-    IonChannelModelSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationSingleConfig,
