@@ -53,6 +53,7 @@ class NeuronSectionInfo(TypedDict):
     segx: list[float]
     neuron_section_id: int
     neuron_segments_offset: list[int]
+    parent_index: int
 
 
 Morphology = dict[str, NeuronSectionInfo]
@@ -341,6 +342,14 @@ def get_morphology(
         raise HTTPException(status_code=500, detail=msg) from e
 
 
+SWC_TYPES = {
+    morphio.SectionType.soma: "soma",
+    morphio.SectionType.axon: "axon",
+    morphio.SectionType.basal_dendrite: "dend",
+    morphio.SectionType.apical_dendrite: "apic",
+}
+
+
 def get_morphology_data(swc_path: str) -> Morphology:
     """Parses an SWC file into a segment-based dictionary optimized for visualization."""
     morphology = morphio.Morphology(swc_path)
@@ -363,6 +372,8 @@ def get_morphology_data(swc_path: str) -> Morphology:
     morphology_data: Morphology = {}
 
     for section in morphology.sections:
+        base_name = SWC_TYPES.get(section.type, "section")
+        section_key = f"{base_name}[{section.id}]"
         points = section.points
         diameters = section.diameters
 
@@ -376,12 +387,13 @@ def get_morphology_data(swc_path: str) -> Morphology:
         start_dist = section_start_distances[section.id]
         cumulative_internal_lengths = np.cumsum(segment_lengths)
         seg_distances = start_dist + np.insert(cumulative_internal_lengths[:-1], 0, 0)
+        parent_id = section.parent.id if not section.is_root else -1
 
-        section_key = f"section_{section.id}"
         num_segments = len(segment_lengths)
 
         morphology_data[section_key] = {
             "index": section.id,
+            "parent_index": parent_id,
             "name": section_key,
             "nseg": num_segments,
             "distance_from_soma": float(start_dist),
