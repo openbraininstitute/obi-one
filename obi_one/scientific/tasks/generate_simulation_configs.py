@@ -452,19 +452,18 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "ui_enabled": True,
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-                BlockGroup.EVENTS_GROUP,
-            ],
-            "default_block_reference_labels": {
-                NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-                TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            },
-        }
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+    }
 
     class Initialize(Block):
         simulation_length: (

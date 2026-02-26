@@ -69,7 +69,8 @@ class GenerateSimulationTask(Task):
     @property
     def entitysdk_simulation_type(
         self,
-    ) -> entitysdk.models.TaskConfig | entitysdk.models.Simulation:
+        # ) -> entitysdk.models.TaskConfig | entitysdk.models.Simulation:
+    ) -> entitysdk.models.Entity:  # TODO: use line above when generic PR is merged
         if self._use_generic_entitysdk_types:
             return entitysdk.models.TaskConfig
         return entitysdk.models.Simulation
