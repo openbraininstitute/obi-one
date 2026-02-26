@@ -306,7 +306,7 @@ def download_circuit_config(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit is missing a circuit_config.json asset",
+                "detail": "Couldn't get circuit_config.json asset",
             },
         ) from e
 
