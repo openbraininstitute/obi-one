@@ -22,7 +22,7 @@ class Node(TypedDict):
     morphology_path: str  # Path to the morphology in the circuit's sonata directory
     position: PositionVector
     orientation: OrientationVector
-    soma_radius: float
+    soma_radius: float | None
 
 
 Nodes = list[Node]
