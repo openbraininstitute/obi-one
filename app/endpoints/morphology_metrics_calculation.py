@@ -240,6 +240,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     authorized_public = new_item.get("authorized_public")
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol,
+        repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
         subject=subject,
@@ -249,7 +250,6 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         legacy_id=None,
         authorized_public=authorized_public,
         published_in=new_item.get("published_in"),
-        repair_pipeline_state=repair_pipeline_state,
     )
     registered = client.register_entity(entity=morphology)
     return registered
