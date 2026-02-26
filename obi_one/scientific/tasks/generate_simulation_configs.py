@@ -763,7 +763,10 @@ class IonChannelModelSimulationSingleConfig(
                 name=f"TaskConfig {self.idx}",
                 description=f"TaskConfig {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                ion_channel_model_simulation_campaign_id=campaign.id,
+                campaign_id=campaign.id,
+                inputs=[
+                    icm.entity(db_client=db_client) for icm in self.ion_channel_models
+                ],
             )
         )
 

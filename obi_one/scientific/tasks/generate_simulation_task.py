@@ -344,7 +344,8 @@ class GenerateSimulationTask(Task):
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
-        if db_client:
+        # generic TaskConfig does not have number_neurons, so no need to update it
+        if db_client and not self._use_generic_entitysdk_types:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
                 neuron_set_definition = self._neuron_set_definitions[
                     self.config.initialize.node_set.block_name
