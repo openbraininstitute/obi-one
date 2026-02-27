@@ -124,14 +124,13 @@ def validate_config(
             mock_simulation = MagicMock(spec=entitysdk.models.Simulation)
             mock_simulation.id = uuid4()
             
-            # CircuitSimulationScanConfig should execute single config tasks
-            execute_single_config_task = True
-            
             # Patch only the write methods, keeping read methods intact
             with patch.object(db_client, 'register_entity') as mock_register, \
                 patch.object(db_client, 'upload_file', return_value=None), \
                 patch.object(db_client, 'update_entity', return_value=None), \
-                patch('entitysdk.models.SimulationGeneration', return_value=MagicMock()):
+                patch('entitysdk.models.SimulationGeneration', return_value=MagicMock()), \
+                patch('entitysdk.staging.circuit.stage_circuit', return_value=None), \
+                patch('bluepysnap.Circuit') as mock_snap_circuit:
                 
                 # Make register_entity return appropriate mocks based on what's being registered
                 def register_entity_side_effect(entity):
@@ -142,6 +141,12 @@ def validate_config(
                 
                 mock_register.side_effect = register_entity_side_effect
                 
+                # Mock bluepysnap.Circuit to avoid needing real circuit files
+                mock_circuit_instance = MagicMock()
+                mock_circuit_instance.nodes = MagicMock()
+                mock_circuit_instance.default_population_name = "default"
+                mock_snap_circuit.return_value = mock_circuit_instance
+                
                 with tempfile.TemporaryDirectory() as tdir:
                     grid_scan = GridScanGenerationTask(
                         form=form,
@@ -151,13 +156,13 @@ def validate_config(
                     # Execute with real db_client but patched write methods
                     grid_scan.execute(db_client=db_client)
                     
-                    # Also run the tasks for generated scan to match real endpoint behavior
-                    if execute_single_config_task:
-                        run_tasks_for_generated_scan(
-                            grid_scan, 
-                            db_client=db_client, 
-                            entity_cache=True
-                        )
+                    # Run full task execution to validate the complete simulation config
+                    # This validates block references and all config generation logic
+                    run_tasks_for_generated_scan(
+                        grid_scan, 
+                        db_client=db_client, 
+                        entity_cache=True
+                    )
             
     except ValidationError as e:
         # Pydantic validation error - format nicely

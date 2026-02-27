@@ -370,6 +370,7 @@ class GenerateSimulationTask(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         """Generates SONATA simulation files."""
+        # breakpoint()
         self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)

@@ -28,7 +28,10 @@ class BlockReference(OBIBaseModel, abc.ABC):
     def block(self) -> Block:
         """Returns the block associated with this reference."""
         if self._block is None:
-            msg = "Block has not been set."
+            msg = (
+                f"Block '{self.block_name}' not found in '{self.block_dict_name}'. "
+                f"Define the block before referencing it, or check for typos in the block name."
+            )
             raise ValueError(msg)
         return self._block
 
