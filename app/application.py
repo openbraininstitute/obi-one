@@ -18,6 +18,7 @@ from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
     circuit_properties,
+    circuit_visualization,
     config_validation,
     count_scan_coordinates,
     ephys_metrics,
@@ -160,6 +161,7 @@ async def version() -> dict:
     }
 
 
+app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
