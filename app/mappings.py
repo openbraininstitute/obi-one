@@ -7,6 +7,7 @@ from obp_accounting_sdk.constants import ServiceSubtype
 from app.config import settings
 from app.schemas.task import (
     BuiltinCode,
+    Capabilities,
     ClusterResources,
     MachineResources,
     PythonRepositoryCode,
@@ -49,6 +50,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+            capabilities=Capabilities(private_packages=True),
         ),
         resources=MachineResources(
             cores=16,
