@@ -24,6 +24,7 @@ from obi_one.scientific.tasks.folder_compression import (
 )
 from obi_one.scientific.tasks.generate_simulation_configs import (
     CircuitSimulationSingleConfig,
+    IonChannelModelSimulationSingleConfig,
     MEModelSimulationSingleConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -73,6 +74,7 @@ _config_tasks_map = {
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
+    IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 
 

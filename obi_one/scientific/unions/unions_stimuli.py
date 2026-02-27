@@ -24,27 +24,33 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SEClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-_INJECTION_STIMULI = (
+_NONRELATIVE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
     | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
     | OrnsteinUhlenbeckCurrentSomaticStimulus
     | OrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_RELATIVE_INJECTION_STIMULI = (
+    RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
     | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
     | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
+
+_INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _NONRELATIVE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
     PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
@@ -55,7 +61,7 @@ _FIELD_STIMULI = (
 )
 
 StimulusUnion = Annotated[
-    _INJECTION_STIMULI | _SPIKE_STIMULI,
+    _INJECTION_STIMULI | _SPIKE_STIMULI | SEClampSomaticStimulus,
     Discriminator("type"),
 ]
 
@@ -66,6 +72,11 @@ CircuitStimulusUnion = Annotated[
 
 MEModelStimulusUnion = Annotated[
     _INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+IonChannelModelStimulusUnion = Annotated[
+    _NONRELATIVE_INJECTION_STIMULI | SEClampSomaticStimulus,
     Discriminator("type"),
 ]
 

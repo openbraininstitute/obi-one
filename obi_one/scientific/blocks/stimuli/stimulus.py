@@ -49,7 +49,16 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 )
 
 
-class Stimulus(Block, ABC):
+class BaseStimulus(Block, ABC):
+    _default_node_set: str = PrivateAttr(default="All")
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+
+    @abstractmethod
+    def _generate_config(self) -> dict:
+        pass
+
+
+class StimulusWithTimestamps(BaseStimulus):
     timestamps: TimestampsReference | None = Field(
         default=None,
         title="Timestamps",
@@ -60,15 +69,8 @@ class Stimulus(Block, ABC):
         },
     )
 
-    _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
-    @abstractmethod
-    def _generate_config(self) -> dict:
-        pass
-
-
-class ContinuousStimulus(Stimulus, ABC):
+class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
@@ -126,6 +128,10 @@ class ContinuousStimulus(Stimulus, ABC):
             raise OBIONEError(msg)
 
         return self._generate_config()
+
+
+class ContinuousStimulus(ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps):
+    pass
 
 
 class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
@@ -630,7 +636,81 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
         return sonata_config
 
 
-class SpikeStimulus(Stimulus):
+class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
+    """A voltage clamp injection with an arbitrary number of steps at different voltages.
+
+    Warning: Maximum one SEClamp stimulus per location.
+    """
+
+    # We only have a simple flat voltage stimulus implemented now for simplicity.
+    # A more complex implementation with multi-step stimulus will be implemented later.
+
+    title: ClassVar[str] = "Single Electrode Voltage Clamp Somatic Stimulus"
+
+    _module: str = "seclamp"
+    _input_type: str = "voltage_clamp"
+
+    # overwrite duration to have a more accurate description for this stimulus
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Total Duration",
+        description="Time duration in milliseconds for how long the SEClamp is activated.",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    initial_voltage: float | list[float] = Field(
+        default=0.0,
+        title="Initial Voltage",
+        description="The initial voltage level in millivolts (mV).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
+    )
+
+    step_voltage: float | list[float] = Field(
+        default=0.0,
+        title="Step Voltage Amplitude",
+        description="The step voltage level in millivolts (mV).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
+    )
+
+    step_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        title="Step Duration",
+        description="The duration of the step in milliseconds (ms).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    # A duration and voltage combination will be needed for the multi-step implementation
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+        sonata_config[self.block_name] = {
+            # cannot have any delay with SEClamp, so timestamps are used in duration_levels
+            "delay": 0,
+            "duration": self.duration,
+            "voltage": self.initial_voltage,
+            # the delay is used as the duration of 1st voltage at initial_voltage level
+            "duration_levels": [self.timestamp_offset, self.step_duration],
+            "voltage_levels": [self.step_duration],
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return sonata_config
+
+
+class SpikeStimulus(StimulusWithTimestamps):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     _spike_file: Path | None = None
