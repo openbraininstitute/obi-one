@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     OUTPUT_DIR: Path = Path("../obi-output")
     ENTITYCORE_URL: str  # Required: URL to entitycore service
-    LAUNCH_SYSTEM_URL_TEMPLATE: str  # Required: URL template to launch-system service
+    LAUNCH_SYSTEM_URL: str
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
