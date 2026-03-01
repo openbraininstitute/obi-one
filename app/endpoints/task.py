@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, Response
 from app.dependencies.accounting import AccountingSessionFactoryDep
 from app.dependencies.auth import UserContextWithProjectIdDep, user_verified
 from app.dependencies.callback import CallBackUrlDep
+from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
-from app.dependencies.launchsystem import LaunchSystemClientDep
+from app.dependencies.launch_system import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import (
@@ -41,6 +42,7 @@ def task_launch_endpoint(
     ls_client: LaunchSystemClientDep,
     callback_url: CallBackUrlDep,
     user_context: UserContextWithProjectIdDep,
+    compute_cell: ComputeCellDep,
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
     project_context = db_client.project_context
@@ -72,6 +74,7 @@ def task_launch_endpoint(
             db_client=db_client,
             ls_client=ls_client,
             callback_url=callback_url,
+            compute_cell=compute_cell,
             config_id=json_model.config_id,
             project_context=project_context,
             task_definition=TASK_DEFINITIONS[json_model.task_type],
