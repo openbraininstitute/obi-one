@@ -9,7 +9,7 @@ Use it to modify a mechanism variable everywhere in the selected neuron set:
 - **GLOBAL variables** are written to `conditions.mechanisms`.
 - **RANGE variables** are written to `conditions.modifications` with `configure_all_sections`.
 
-Reference schema: [variable_modification](reference_schemas/variable_modification.json)
+Reference schema: [variable_modification_by_neuron](reference_schemas/variable_modification_by_neuron.json)
 
 ### UI design
 

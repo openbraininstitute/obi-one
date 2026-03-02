@@ -45,7 +45,7 @@
         ]
       }
     },
-    "required": ["variable_name", "section_list_modifications"]
+    "required": ["ion_channel_id", "variable_name", "section_list_modifications"]
   },
   "sonata_output": {
     "section_list_example": [

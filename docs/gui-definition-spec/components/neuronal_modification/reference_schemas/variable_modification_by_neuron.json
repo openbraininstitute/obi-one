@@ -45,12 +45,12 @@
         "description": "Replacement value."
       }
     },
-    "required": ["variable_name", "variable_type", "new_value"]
+    "required": ["ion_channel_id", "channel_name", "variable_name", "variable_type", "new_value"]
   },
   "sonata_output": {
     "global_example": {
-      "SK_E2": {
-        "vmin_SK_E2": -80.0
+      "StochKv3": {
+        "vmin_StochKv3": -80.0
       }
     },
     "range_example": [
