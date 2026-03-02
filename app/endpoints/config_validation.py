@@ -96,7 +96,6 @@ class ConfigValidationResponse(BaseModel):
     """Response body for config validation."""
 
     valid: bool
-    message: str
 
 
 @router.post(
@@ -161,7 +160,7 @@ def validate_config(
     except ValidationError as e:
         # Pydantic validation error - format nicely
         error_msg = str(e)
-        raise HTTPException(status_code=500, detail=error_msg) from e
+        raise HTTPException(status_code=500, detail=f"Error: {error_msg} Please fix the outstanding errors.") from e
         
     except Exception as e:
         # Any other error during validation
@@ -173,6 +172,6 @@ def validate_config(
         elif len(e.args) > 1:
             error_msg = str(e.args)
         
-        raise HTTPException(status_code=500, detail=error_msg) from e
+        raise HTTPException(status_code=500, detail=f"Error: {error_msg} Please fix the outstanding errors") from e
 
-    return ConfigValidationResponse(valid=True, message="ok")
+    return ConfigValidationResponse(valid=True)

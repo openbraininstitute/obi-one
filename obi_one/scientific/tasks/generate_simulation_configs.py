@@ -387,7 +387,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     stimuli: dict[str, CircuitStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
-        description="Stimuli for the simulation.",
+        description="Stimuli for the simulation. Each stimulus must have non-overlapping time intervals.",
         json_schema_extra={
             "ui_element": "block_dictionary",
             "reference_type": StimulusReference.__name__,

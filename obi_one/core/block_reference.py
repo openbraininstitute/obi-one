@@ -8,7 +8,7 @@ from obi_one.core.block import Block
 
 
 class BlockReference(OBIBaseModel, abc.ABC):
-    block_dict_name: str = Field(default="", description="Name of the parent field of the block.")
+    block_dict_name: str = Field(default="", description="Root name of the field that contains the block you are referencing. E.g. `neuron_sets` when referencing neuron_sets, or `timestamps` when referencing timestamps.")
     block_name: str = Field(description="Name of the block.")
 
     allowed_block_types: ClassVar[
