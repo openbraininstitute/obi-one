@@ -3,9 +3,14 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     OrnsteinUhlenbeckConductanceSomaticStimulus,
     OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
@@ -38,14 +43,24 @@ _INJECTION_STIMULI = (
     | OrnsteinUhlenbeckCurrentSomaticStimulus
     | OrnsteinUhlenbeckConductanceSomaticStimulus
     | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
+    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
 
 _SPIKE_STIMULI = (
     PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
 )
 
+_FIELD_STIMULI = (
+    SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
+)
+
 StimulusUnion = Annotated[
     _INJECTION_STIMULI | _SPIKE_STIMULI,
+    Discriminator("type"),
+]
+
+CircuitStimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI | _FIELD_STIMULI,
     Discriminator("type"),
 ]
 

@@ -475,6 +475,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         entity_id=circuit_id,
         entity_type=Circuit,
     )
+
     directory_assets = [
         a for a in circuit.assets if a.is_directory and a.label.value == "sonata_circuit"
     ]

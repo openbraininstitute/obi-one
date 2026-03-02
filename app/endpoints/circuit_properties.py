@@ -3,6 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.circuit import Circuit
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -15,7 +16,10 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+)
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -128,7 +132,9 @@ def mapped_circuit_properties_endpoint(
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
         mapped_circuit_properties = {}
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+        mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
+            circuit_metrics.names_of_nodesets
+        )
 
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(
@@ -138,4 +144,24 @@ def mapped_circuit_properties_endpoint(
                 "detail": f"Internal error retrieving the circuit {circuit_id}.",
             },
         ) from err
+
+    # Add usability
+    try:
+        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+            },
+        ) from err
+
+    simulation_options_usability = {
+        CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
+        CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+    }
+
+    mapped_circuit_properties["usability"] = simulation_options_usability
+
     return mapped_circuit_properties

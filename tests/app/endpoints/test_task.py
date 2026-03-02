@@ -4,6 +4,8 @@ from uuid import uuid4
 
 import pytest
 
+from app.application import app
+from app.dependencies.compute_cell import get_compute_cell
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
@@ -31,6 +33,7 @@ def test_task_launch_success(
     client,
     callbacks,
     task_type,
+    monkeypatch,
 ):
     job_id = uuid4()
     config_id = uuid4()
@@ -52,6 +55,11 @@ def test_task_launch_success(
         config_id=config_id,
         task_type=task_type,
         activity_id=activity_id,
+    )
+    monkeypatch.setitem(
+        app.dependency_overrides,
+        get_compute_cell,
+        lambda: "cell_a",
     )
     with (
         patch(

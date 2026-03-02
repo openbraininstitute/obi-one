@@ -41,6 +41,7 @@ class MachineResources(Schema):
     type: Literal[ResourcesConfigType.machine] = ResourcesConfigType.machine
     cores: int = 1
     memory: int = 2
+    compute_cell: str
     timelimit: str | None = None
 
 

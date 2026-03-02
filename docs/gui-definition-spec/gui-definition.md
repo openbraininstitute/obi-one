@@ -38,7 +38,6 @@ There are two major types of such UI elements:
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
         
-
     - Root elements must have the following properties:
         - `title`
         - `description`
@@ -109,6 +108,9 @@ Scan configs should additionally have the following property:
 And the following optional property:
 
 - `default_block_element_labels` specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
+
+- ScanConfigs can optionally have the following specifed:
+    - `properties_endpoint`: dictioarny of urls relative to the base url of the api, such as `"Circuit": "/circuit-usability/{circuit_id}"`. For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md). Within the dictionary returned by any of these endpoints, a `usability` dictionary should also be defined with booleans which can be used for optionally displaying elements.
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 

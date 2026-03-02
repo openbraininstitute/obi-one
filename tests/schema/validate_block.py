@@ -175,7 +175,7 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "entity_type", f"{param} at {ref}")
+    validate_string(schema, "property_group", f"{param} at {ref}")
     validate_string(schema, "property", f"{param} at {ref}")
 
     try:
