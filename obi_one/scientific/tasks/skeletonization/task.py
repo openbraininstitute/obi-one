@@ -13,7 +13,7 @@ from obi_one.scientific.tasks.skeletonization.constants import (
     CELL_MORPHOLOGY_PROTOCOL_DESCRIPTION,
     CELL_MORPHOLOGY_PROTOCOL_NAME,
 )
-from obi_one.scientific.tasks.skeletonization.process import create_process_outputs, run_process
+from obi_one.scientific.tasks.skeletonization.process import run_process
 from obi_one.scientific.tasks.skeletonization.registration import register_output_resource
 from obi_one.scientific.tasks.skeletonization.schemas import (
     Metadata,
@@ -33,7 +33,8 @@ class SkeletonizationTask(Task):
     @property
     def work_dir(self) -> WorkDir:
         """Return the current working directory layout."""
-        return create_work_dir(output_dir=self.config.coordinate_output_root)
+        output_dir = Path(self.config.coordinate_output_root).resolve()
+        return create_work_dir(output_dir=output_dir)
 
     def _create_inputs(self, db_client: Client, output_dir: Path) -> SkeletonizationInputs:
         """Generate all inputs for skeletonization task."""
@@ -45,6 +46,7 @@ class SkeletonizationTask(Task):
             entity_or_id=em_cell_mesh,
             selection={"label": AssetLabel.cell_surface_mesh},
             output_path=output_dir,
+            link_from_store=True,
         ).one()
         # fetch the full dataset from the nested Entity
         em_dense_reconstruction_dataset = db_client.get_entity(
@@ -114,12 +116,10 @@ class SkeletonizationTask(Task):
             db_client=db_client,
             output_dir=work_dir.inputs,
         )
-        run_process(
+        outputs = run_process(
+            work_dir=work_dir,
             parameters=inputs.parameters,
-            output_dir=work_dir.outputs,
         )
-        outputs = create_process_outputs(output_dir=work_dir.outputs)
-
         if execution_activity_id is not None:
             generated_entity = register_output_resource(
                 client=db_client,

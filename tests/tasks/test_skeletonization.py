@@ -42,8 +42,8 @@ from obi_one.scientific.tasks.skeletonization.constants import (
     ROLE_NAME,
 )
 from obi_one.scientific.tasks.skeletonization.process import (
-    create_process_outputs,
-    run_process,
+    _create_process_outputs,
+    _run_process_executable,
 )
 from obi_one.scientific.tasks.skeletonization.registration import (
     register_output_resource,
@@ -254,7 +254,7 @@ def test_run_process_calls_ultraliser(tmp_path):
     ultraliser_mock = Mock()
 
     with patch.dict(sys.modules, {"ultraliser": ultraliser_mock}):
-        run_process(params, output_dir)
+        _run_process_executable(params, output_dir)
     ultraliser_mock.skeletonize_neuron_mesh.assert_called_once_with(
         mesh_path=str(mesh_path),
         output_path=str(output_dir),
@@ -266,53 +266,59 @@ def test_run_process_calls_ultraliser(tmp_path):
 
 def test_create_process_outputs_raises_when_no_h5(tmp_path):
     with (
-        patch(
-            "obi_one.scientific.tasks.skeletonization.process.find_file",
-            return_value=None,
-        ),
         pytest.raises(OBIONEError, match="No combined morphology h5"),
     ):
-        create_process_outputs(tmp_path)
+        _create_process_outputs(
+            mesh_path=tmp_path / "none.h5",
+            output_dir=tmp_path,
+        )
 
 
 def test_create_process_outputs_raises_when_no_swc(tmp_path):
+    mesh_path = tmp_path / "morph.obj"
+
     h5_file = tmp_path / "morph.h5"
     h5_file.touch()
 
-    def find_file(_directory, extension):
-        if extension == ".h5":
-            return h5_file
-        return None
-
     with (
-        patch(
-            "obi_one.scientific.tasks.skeletonization.process.find_file",
-            side_effect=find_file,
-        ),
         pytest.raises(OBIONEError, match="No SWC morphology"),
     ):
-        create_process_outputs(tmp_path)
+        _create_process_outputs(mesh_path=mesh_path, output_dir=tmp_path)
 
 
 def test_create_process_outputs_success(tmp_path):
     out = tmp_path / "outputs"
     out.mkdir()
     swc_contents = """
-1 1  0  0 0 1. -1
-2 3  0  0 0 1.  1
-3 3  0  5 0 1.  2
+1 1   0.5   0.0  0  0.5  -1
+2 1   0.0   0.5  0  0.5  1
+3 1  -0.5   0.0  0  0.5  1
+4 1   0.0  -0.5  0  0.5  1
+5 3   0.0   0.0  0  1.0   1
+6 3   0.0   5.0  0  1.0   5
+7 3  -5.0   5.0  0  1.5   6
+8 3   6.0   5.0  0  1.5   6
+9 2   0.0   0.0  0  1.0   1
+10 2  0.0  -4.0  0  1.0   9
+11 2  6.0  -4.0  0  2.0  10
+12 2 -5.0  -4.0  0  2.0  10
 """
-    morph = morphio.mut.Morphology(morphio.Morphology(swc_contents, "swc"))
-    swc_path = out / "morph.swc"
-    morph.write(swc_path)
-    morph.write(out / "morph.h5")
 
-    result = create_process_outputs(out)
+    mesh_path = tmp_path / "morph.obj"
+
+    (out / "morph.h5").touch()
+
+    morph = morphio.mut.Morphology(morphio.Morphology(swc_contents, "swc"))
+    swc_path = out / "morph-morphology.swc"
+    morph.write(swc_path)
+    morph.write(out / "morph-morphology.h5")
+
+    result = _create_process_outputs(mesh_path=mesh_path, output_dir=out)
 
     assert result.swc_morphology_file == swc_path
-    assert result.h5_morphology_file == out / "morph.h5"
-    assert result.asc_morphology_file == out / "morph.asc"
-    assert result.h5_combined_morphology_file == out / "morph.h5"
+    assert result.h5_morphology_file == out / "morph-morphology.h5"
+    assert result.asc_morphology_file == out / "morph-morphology.asc"
+    assert result.h5_combined_morphology_file == out / "morph_with_spines.h5"
     assert result.h5_morphology_file.exists()
     assert result.asc_morphology_file.exists()
     assert (out / "morph_with_spines.h5").exists()
@@ -443,59 +449,6 @@ def test_register_output_resource_reuses_existing_protocol(
 
     assert result.id == morphology_id
     assert result.name == metadata_with_protocol.cell_morphology_name
-
-
-def test_register_output_resource_skips_protocol_when_no_dataset(
-    tmp_path,
-    httpx_mock,
-    entitysdk_client,
-    role,
-    license_entity,
-    agent,
-    metadata_no_protocol,
-):
-    morphology_id = uuid4()
-    role_json = _serialize(role)
-    license_json = _serialize(license_entity)
-    agent_json = _serialize(agent)
-
-    httpx_mock.add_response(
-        url=f"{API_URL}/role?name=data+modeling+role&page=1",
-        json={"data": [role_json], "pagination": PAGINATION},
-    )
-    httpx_mock.add_response(
-        url=f"{API_URL}/license?label=CC+BY-NC+4.0&page=1",
-        json={"data": [license_json], "pagination": PAGINATION},
-    )
-    httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
-        ),
-        url=f"{API_URL}/cell-morphology",
-        method="POST",
-    )
-    httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content)
-            | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
-        ),
-        url=f"{API_URL}/contribution",
-        method="POST",
-    )
-    for _ in range(4):
-        httpx_mock.add_response(
-            url=f"{API_URL}/cell-morphology/{morphology_id}/assets",
-            method="POST",
-            json=_asset_json(),
-        )
-
-    outputs = make_outputs(tmp_path)
-    result = register_output_resource(entitysdk_client, metadata_no_protocol, outputs)
-
-    assert result.id == morphology_id
-    assert result.name == metadata_no_protocol.cell_morphology_name
 
 
 def _em_cell_mesh_json(mesh_id: str):

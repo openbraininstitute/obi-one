@@ -346,6 +346,9 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "dependencies": (
                 "launch_scripts/launch_task_for_single_config_asset/dependencies/default.txt"
             ),
+            "capabilities": {
+                "private_packages": False,
+            },
         },
         "inputs": [
             "--entity_type CircuitExtractionConfig",

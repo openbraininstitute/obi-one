@@ -7,11 +7,22 @@ from obi_one.scientific.tasks.skeletonization.constants import SPINY_MORPH_PATH_
 from obi_one.scientific.tasks.skeletonization.schemas import (
     ProcessParameters,
     SkeletonizationOutputs,
+    WorkDir,
 )
-from obi_one.scientific.tasks.skeletonization.utils import find_file
 
 
-def run_process(parameters: ProcessParameters, output_dir: Path) -> None:
+def run_process(parameters: ProcessParameters, work_dir: WorkDir) -> SkeletonizationOutputs:
+    _run_process_executable(
+        parameters=parameters,
+        output_dir=work_dir.outputs,
+    )
+    return _create_process_outputs(
+        mesh_path=parameters.mesh_path,
+        output_dir=work_dir.outputs,
+    )
+
+
+def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> None:
     """Run neuron mesh skeletonization.
 
     This function calls `ultraliser.skeletonize_neuron_mesh` to generate
@@ -37,7 +48,7 @@ def run_process(parameters: ProcessParameters, output_dir: Path) -> None:
     )
 
 
-def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
+def _create_process_outputs(mesh_path: Path, output_dir: Path) -> SkeletonizationOutputs:
     """Collect, post-process, and organize skeletonization output files.
 
     This function:
@@ -48,6 +59,7 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
         4. Returns a structured `SkeletonizationOutputs` object containing all outputs.
 
     Args:
+        mesh_path: Input mesh path
         output_dir: Directory where skeletonization output files were generated.
 
     Returns:
@@ -62,31 +74,36 @@ def create_process_outputs(output_dir: Path) -> SkeletonizationOutputs:
         OBIONEError
             If required morphology files (.h5 or .swc) cannot be found in the output directory.
     """
-    spiny_morph_path = find_file(output_dir, extension=".h5")
+    stem_name = mesh_path.stem  # e.g. foo/bar.h5 -> bar
 
-    if not spiny_morph_path:
-        msg = "No combined morphology h5 file found in the output location."
+    spiny_morph_path = output_dir / f"{stem_name}.h5"
+
+    if not spiny_morph_path.exists():
+        msg = (
+            f"No combined morphology h5 file {spiny_morph_path.name} found in the output location."
+        )
         raise OBIONEError(msg)
 
-    swc_path = find_file(output_dir, extension=".swc")
+    swc_path = output_dir / f"{stem_name}-morphology.swc"
 
-    if not swc_path:
-        msg = "No SWC morphology file found in the output location"
+    if not swc_path.exists():
+        msg = f"No SWC morphology file {swc_path.name} found in the output location"
+        raise OBIONEError(msg)
+
+    h5_path = output_dir / f"{stem_name}-morphology.h5"
+
+    if not h5_path.exists():
+        msg = f"No HDF5 morphology file {swc_path.name} found in the output location"
         raise OBIONEError(msg)
 
     # Rename the combined morphology by adding "_with_spines" suffix
-    spiny_morph_path.rename(
-        spiny_morph_path.with_name(
-            spiny_morph_path.stem + SPINY_MORPH_PATH_SUFFIX + spiny_morph_path.suffix
-        )
+    spiny_morph_path = spiny_morph_path.rename(
+        spiny_morph_path.with_name(f"{stem_name}{SPINY_MORPH_PATH_SUFFIX}.h5")
     )
 
-    # Produce complimentary H5 and ASC morphologies from the original SWC
-    morpho = morphio.mut.Morphology(str(swc_path))
-    h5_path = swc_path.with_name(swc_path.stem + ".h5")
-    asc_path = swc_path.with_name(swc_path.stem + ".asc")
-
-    morpho.write(str(h5_path))
+    # Produce complimentary ASC morphologies from the original SWC
+    morpho = morphio.mut.Morphology(str(h5_path))
+    asc_path = swc_path.with_suffix(".asc")
     morpho.write(str(asc_path))
 
     return SkeletonizationOutputs(

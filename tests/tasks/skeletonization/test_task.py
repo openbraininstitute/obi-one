@@ -54,23 +54,26 @@ def config(info, initialize, tmpdir):
 @pytest.fixture
 def mock_ultraliser_output(tmpdir):
     contents = """
-1 1  0  0 0 1. -1
-2 3  0  0 0 1.  1
-3 3  0  5 0 1.  2
-4 3 -5  5 0 1.5 3
-5 3  6  5 0 1.5 3
-6 2  0  0 0 1.  1
-7 2  0 -4 0 1.  6
-8 2  6 -4 0 2.  7
-9 2 -5 -4 0 2.  7
+1 1   0.5   0.0  0  0.5  -1
+2 1   0.0   0.5  0  0.5  1
+3 1  -0.5   0.0  0  0.5  1
+4 1   0.0  -0.5  0  0.5  1
+5 3   0.0   0.0  0  1.0   1
+6 3   0.0   5.0  0  1.0   5
+7 3  -5.0   5.0  0  1.5   6
+8 3   6.0   5.0  0  1.5   6
+9 2   0.0   0.0  0  1.0   1
+10 2  0.0  -4.0  0  1.0   9
+11 2  6.0  -4.0  0  2.0  10
+12 2 -5.0  -4.0  0  2.0  10
 """
     outputs = Path(tmpdir) / "outputs"
     outputs.mkdir(exist_ok=True)
 
     morphology = morphio.mut.Morphology(morphio.Morphology(contents, "swc"))
-    path = outputs / "morph.swc"
-    morphology.write(path)
-    morphology.write(path.with_suffix(".h5"))
+    morphology.write(outputs / "mesh.h5")
+    morphology.write(outputs / "mesh-morphology.swc")
+    morphology.write(outputs / "mesh-morphology.h5")
 
 
 @pytest.mark.usefixtures("mock_ultraliser_output")
@@ -295,6 +298,6 @@ def test_skeletonization_task(config, httpx_mock, cell_mesh_id):  # noqa: PLR091
         url=f"http://my-url/skeletonization-execution/{activity_id}",
         method="PATCH",
     )
-    with patch("obi_one.scientific.tasks.skeletonization.task.run_process"):
+    with patch("obi_one.scientific.tasks.skeletonization.process._run_process_executable"):
         task = test_module.SkeletonizationTask(config=config)
         task.execute(db_client=client, execution_activity_id=activity_id)

@@ -24,16 +24,3 @@ def create_work_dir(output_dir: Path) -> WorkDir:
         inputs=inputs_dir,
         outputs=outputs_dir,
     )
-
-
-def find_file(directory: Path, extension: str) -> Path | None:
-    """Recursively search for the first file with the given extension.
-
-    Args:
-        directory: Root directory to search in.
-        extension: File extension to match (e.g., ".txt", ".csv").
-
-    Returns:
-        The first matching Path if found, otherwise None.
-    """
-    return next(directory.rglob(f"*{extension}"), None)
