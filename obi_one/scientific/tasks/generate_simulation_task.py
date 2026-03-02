@@ -239,9 +239,13 @@ class GenerateSimulationTask(Task):
                     )
                     != "biophysical"
                 ):
-                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
-                        '{self.config.initialize.node_set.name}' "
-                    "is not biophysical!"
+                    # Get list of biophysical populations to help user
+                    biophysical_populations = Circuit.get_node_population_names(
+                        self._circuit.sonata_circuit, incl_virtual=False, incl_point=False
+                    )
+                    biophysical_list = ", ".join(f"'{pop}'" for pop in biophysical_populations) if biophysical_populations else "none found"
+                    
+                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): '{self.config.initialize.node_set.block_name}' is not biophysical! Please list the circuit's biophysical populations first and reference the relevant one through a PredefinedNeuronSet block type. Available biophysical populations: {biophysical_list}"
                     raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
@@ -370,7 +374,6 @@ class GenerateSimulationTask(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         """Generates SONATA simulation files."""
-        # breakpoint()
         self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)

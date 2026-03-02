@@ -75,8 +75,8 @@ class AbstractNeuronSet(Block, abc.ABC):
                 return
             msg = "Must specify a node population name!"
             raise ValueError(msg)
-        if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
-            msg = f"Node population '{population}' not found in circuit '{circuit}'!"
+        if population not in (populations := Circuit.get_node_population_names(circuit.sonata_circuit)):
+            msg = f"Node population '{population}' not found in circuit '{circuit.name}'. Available node populations: {', '.join(populations)}"
             raise ValueError(msg)
 
     def add_node_set_definition_to_sonata_circuit(

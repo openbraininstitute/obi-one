@@ -114,6 +114,7 @@ def validate_config(
         # If we have a simulation config, try to instantiate a scan and run it
         if state.smc_simulation_config is not None:
             form = state.smc_simulation_config
+            
             # FastAPI already validated this when parsing the request
             # Create mock return values for write operations
             # The mock entity needs to look like a real entitysdk entity
@@ -128,9 +129,7 @@ def validate_config(
             with patch.object(db_client, 'register_entity') as mock_register, \
                 patch.object(db_client, 'upload_file', return_value=None), \
                 patch.object(db_client, 'update_entity', return_value=None), \
-                patch('entitysdk.models.SimulationGeneration', return_value=MagicMock()), \
-                patch('entitysdk.staging.circuit.stage_circuit', return_value=None), \
-                patch('bluepysnap.Circuit') as mock_snap_circuit:
+                patch('entitysdk.models.SimulationGeneration', return_value=MagicMock()):
                 
                 # Make register_entity return appropriate mocks based on what's being registered
                 def register_entity_side_effect(entity):
@@ -140,12 +139,6 @@ def validate_config(
                         return mock_entity
                 
                 mock_register.side_effect = register_entity_side_effect
-                
-                # Mock bluepysnap.Circuit to avoid needing real circuit files
-                mock_circuit_instance = MagicMock()
-                mock_circuit_instance.nodes = MagicMock()
-                mock_circuit_instance.default_population_name = "default"
-                mock_snap_circuit.return_value = mock_circuit_instance
                 
                 with tempfile.TemporaryDirectory() as tdir:
                     grid_scan = GridScanGenerationTask(

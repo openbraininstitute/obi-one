@@ -834,7 +834,14 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 timestamp_idx < len(timestamps_block.timestamps()) - 1
                 and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
             ):
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[timestamp_idx + 1]
+                msg = (
+                    f"Stimulus time intervals overlap! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
             for gid in gids:
                 spikes = []
@@ -1062,7 +1069,14 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             end_time = start_time + self.duration
 
             if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[idx + 1]
+                msg = (
+                    f"Stimulus time intervals overlap! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
 
             # Thinning with epoch-specific λ_max
