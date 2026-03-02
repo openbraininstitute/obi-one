@@ -6,6 +6,7 @@ from entitysdk import Client, models
 from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, ContentType, StainingType
 
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL, ROLE_NAME
 from obi_one.scientific.tasks.skeletonization.schemas import Metadata, SkeletonizationOutputs
 
@@ -47,25 +48,32 @@ def register_output_resource(
     # Create a cell morphology protocol if there are enough details
     protocol = None
     dset = metadata.em_dense_reconstruction_dataset
-    if dset and dset.slicing_thickness:
-        protocol = client.search_entity(
-            entity_type=models.CellMorphologyProtocol,
-            query={"name": metadata.cell_morphology_protocol_name},
-        ).one_or_none()
-        if not protocol:
-            msg = f"Creating cell morphology protocol: {metadata.cell_morphology_protocol_name}"
-            L.debug(msg)
-            protocol = client.register_entity(
-                DigitalReconstructionCellMorphologyProtocol(
-                    name=metadata.cell_morphology_protocol_name,
-                    description=metadata.cell_morphology_protocol_description,
-                    protocol_design=CellMorphologyProtocolDesign.electron_microscopy,
-                    slicing_direction=dset.slicing_direction,
-                    slicing_thickness=dset.slicing_thickness,
-                    staining_type=StainingType.other,
-                    tissue_shrinkage=dset.tissue_shrinkage,
-                )
+
+    protocol = client.search_entity(
+        entity_type=models.CellMorphologyProtocol,
+        query={"name": metadata.cell_morphology_protocol_name},
+    ).one_or_none()
+    if not protocol:
+        msg = f"Creating cell morphology protocol: {metadata.cell_morphology_protocol_name}"
+        L.debug(msg)
+        if not (dset.tissue_shrinkage or dset.slicing_direction or dset.slicing_thickness):
+            msg = (
+                f"CellMorphology protocol registration requires from "
+                f"EMDenseReconstructionDataset {dset.id} the following fields: "
+                "tissue_shrinkage, slicing_direction, sliching_thickness"
             )
+            raise OBIONEError(msg)
+        protocol = client.register_entity(
+            DigitalReconstructionCellMorphologyProtocol(
+                name=metadata.cell_morphology_protocol_name,
+                description=metadata.cell_morphology_protocol_description,
+                protocol_design=CellMorphologyProtocolDesign.electron_microscopy,
+                slicing_direction=dset.slicing_direction,
+                slicing_thickness=dset.slicing_thickness,
+                staining_type=StainingType.other,
+                tissue_shrinkage=dset.tissue_shrinkage,
+            )
+        )
     morphology = client.register_entity(
         models.CellMorphology(
             name=metadata.cell_morphology_name,
