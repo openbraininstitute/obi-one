@@ -41,7 +41,7 @@ def get_compute_cell(
     )
     data = response.json()
     compute_cell = data["data"]["virtual_lab"]["compute_cell"]
-    L.info("Resolved subdomain %s", compute_cell)
+    L.info("Retrieved comput_cell %s", compute_cell)
     return compute_cell
 
 
