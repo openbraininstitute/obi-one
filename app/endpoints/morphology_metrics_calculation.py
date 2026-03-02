@@ -29,7 +29,10 @@ from requests.exceptions import RequestException
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.services.morphology import DEFAULT_SINGLE_POINT_SOMA_BY_EXT, convert_morphology
+from app.services.morphology import (
+    DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    validate_and_convert_morphology,
+)
 
 
 class ApiErrorCode:
@@ -398,7 +401,7 @@ async def morphology_metrics_calculation(
                 converted_morphology_file1,
                 converted_morphology_file2,
             ) = await run_in_threadpool(
-                convert_morphology,
+                validate_and_convert_morphology,
                 input_file=pathlib.Path(temp_file_path),
                 output_dir=pathlib.Path(temp_file_path).parent,
                 output_stem=Path(morphology_name).stem,

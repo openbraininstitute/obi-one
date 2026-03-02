@@ -12,15 +12,11 @@ ROUTE = "/declared/test-neuron-file"
 
 
 def get_error_code(response_json: dict) -> str:
-    if isinstance(response_json.get("detail"), dict):
-        return response_json["detail"].get("code")
-    return response_json.get("code")
+    return response_json["detail"]["code"]
 
 
 def get_error_detail(response_json: dict) -> str:
-    if isinstance(response_json.get("detail"), dict):
-        return response_json["detail"].get("detail")
-    return response_json.get("detail")
+    return response_json["detail"]["detail"]
 
 
 @pytest.fixture
@@ -40,7 +36,6 @@ def test_validate_neuron_file_success(client, morphology_swc):
     assert response.status_code == HTTPStatus.OK
     assert response.headers["content-type"] == "application/zip"
 
-    # Verify zip contains converted files
     with zipfile.ZipFile(BytesIO(response.content)) as zf:
         names = zf.namelist()
         assert "input.h5" in names
@@ -75,22 +70,22 @@ def test_validate_neuron_file_missing_extension(client):
 
 
 def test_validate_neuron_file_invalid_soma_diameter(client):
-    # Create SWC with unrealistic soma radius (>100)
     swc_content = b"1 1 0 0 0 150 -1\n"
     files = {"file": ("bad.swc", BytesIO(swc_content), "application/octet-stream")}
     response = client.post(ROUTE, files=files)
 
-    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
     assert "Unrealistic soma diameter" in get_error_detail(response.json())
 
 
 def test_validate_neuron_file_invalid_morphology(client):
-    # Invalid SWC content
     files = {"file": ("invalid.swc", BytesIO(b"invalid data"), "application/octet-stream")}
     response = client.post(ROUTE, files=files)
 
-    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert "Morphology validation failed" in get_error_detail(response.json())
 
 
 def test_validate_neuron_file_asc_format(client, morphology_asc):

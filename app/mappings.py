@@ -36,6 +36,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             cores=1,
             memory=2,
             timelimit="00:10",
+            compute_cell="local",
         ),
     ),
     TaskType.circuit_simulation: TaskDefinition(

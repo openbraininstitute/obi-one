@@ -71,7 +71,7 @@ class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
-    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
+    CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
 
 

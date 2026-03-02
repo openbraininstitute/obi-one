@@ -23,6 +23,7 @@ def submit_task_job(
     project_context: entitysdk.ProjectContext,
     callback_url: str,
     callbacks: list[CallBack],
+    compute_cell: str,
 ) -> TaskLaunchInfo:
     """Creates an activity and submits a task as a job on the launch-system."""
     config = db_client.get_entity(
@@ -51,6 +52,7 @@ def submit_task_job(
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
+                compute_cell=compute_cell,
             )
         case _:
             config_asset_id = db_sdk.get_config_asset(
@@ -64,6 +66,7 @@ def submit_task_job(
                 activity_id=activity_id,
                 config_asset_id=config_asset_id,
                 callbacks=all_callbacks,
+                compute_cell=compute_cell,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,
@@ -107,10 +110,12 @@ def _circuit_simulation_job_data(
     project_id: UUID,
     callbacks: list[CallBack],
     task_definition: TaskDefinition,
+    compute_cell: str,
 ) -> dict:
+    resources = task_definition.resources.model_dump(mode="json") | {"compute_cell": compute_cell}
     return {
         "code": task_definition.code.model_dump(mode="json"),
-        "resources": task_definition.resources.model_dump(mode="json"),
+        "resources": resources,
         "inputs": [
             "--simulation-id",
             str(simulation_id),
@@ -133,10 +138,12 @@ def _generic_job_data(
     output_root: str,
     callbacks: list[CallBack],
     task_definition: TaskDefinition,
+    compute_cell: str,
 ) -> dict:
+    resources = task_definition.resources.model_dump(mode="json") | {"compute_cell": compute_cell}
     return {
         "code": task_definition.code.model_dump(mode="json"),
-        "resources": task_definition.resources.model_dump(mode="json"),
+        "resources": resources,
         "inputs": [
             f"--entity_type {task_definition.config_type_name}",
             f"--entity_id {config_id}",
