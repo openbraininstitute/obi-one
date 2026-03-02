@@ -835,8 +835,9 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
             ):
                 next_timestamp = timestamps_block.timestamps()[timestamp_idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
                 msg = (
-                    f"Stimulus time intervals overlap! "
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
                     f"Current stimulus ends at {end_time:.2f} ms "
                     f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
                     f"but next timestamp starts at {next_timestamp:.2f} ms. "
@@ -1070,8 +1071,9 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
             if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
                 next_timestamp = timestamps_block.timestamps()[idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
                 msg = (
-                    f"Stimulus time intervals overlap! "
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
                     f"Current stimulus ends at {end_time:.2f} ms "
                     f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
                     f"but next timestamp starts at {next_timestamp:.2f} ms. "
