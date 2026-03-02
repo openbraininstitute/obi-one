@@ -56,6 +56,7 @@ class ClusterResources(Schema):
     type: Literal[ResourcesConfigType.cluster] = ResourcesConfigType.cluster
     instances: int
     instance_type: str
+    compute_cell: str
     timelimit: str | None = None
 
 
