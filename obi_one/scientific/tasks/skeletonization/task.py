@@ -106,6 +106,8 @@ class SkeletonizationTask(Task):
             the database.
         """
         work_dir = self.work_dir
+        msg = f"WorkDir: {work_dir}"
+        L.info(msg)
 
         if execution_activity_id is not None:
             execution_activity = db_client.get_entity(
@@ -116,6 +118,8 @@ class SkeletonizationTask(Task):
             db_client=db_client,
             output_dir=work_dir.inputs,
         )
+        msg = f"Inputs: {inputs}"
+        L.debug(msg)
         outputs = run_process(
             work_dir=work_dir,
             parameters=inputs.parameters,
