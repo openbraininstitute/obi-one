@@ -22,15 +22,20 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
-    CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_model import (
     IonChannelModelSimulationSingleConfig,
-    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import MEModelSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
+
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,

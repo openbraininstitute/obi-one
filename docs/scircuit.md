@@ -20,7 +20,7 @@ Circuit simulations model networks of neurons with their synaptic connections, a
 
 ### CircuitSimulationSingleConfig
 
-The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation_configs.py`) is used to configure circuit simulations. It includes:
+The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation.config.base.py`) is used to configure circuit simulations. It includes:
 
 - **Circuit**: A SONATA circuit to simulate (can be `Circuit` or `CircuitFromID`)
 - **Neuron Sets**: Dictionary of neuron sets defining which neurons to include

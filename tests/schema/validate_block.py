@@ -418,6 +418,10 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
             f"a 'model identifier' object {obj}"
         )
         raise ValidationError(msg) from None
+    
+def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
+    """To do"""
+    pass
 
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
@@ -467,6 +471,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
             validate_model_identifier(schema, param, ref)
+        case "model_selector_single":
+            validate_model_selector_single(schema, param, ref)
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"

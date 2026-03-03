@@ -22,14 +22,16 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
-    CircuitSimulationSingleConfig,
-    IonChannelModelSimulationSingleConfig,
-    MEModelSimulationSingleConfig,
-    MEModelWithSynapsesCircuitSimulationSingleConfig,
-)
 from obi_one.scientific.tasks.generate_simulation_task import (
     GenerateSimulationTask,
+)
+from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_model import (
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import MEModelSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
