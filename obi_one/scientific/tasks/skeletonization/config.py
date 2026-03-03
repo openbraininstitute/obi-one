@@ -99,12 +99,12 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         db_client: entitysdk.client.Client = None,
     ) -> entitysdk.models.SkeletonizationCampaign:
         """Initializes the simulation campaign in the database."""
-        L.info("1. Initializing simulation campaign in the database...")
+        L.info("1. Initializing skeletonization campaign in the database...")
 
         if multiple_value_parameters_dictionary is None:
             multiple_value_parameters_dictionary = {}
 
-        L.info("-- Register SimulationCampaign Entity")
+        L.info("-- Register SkeletonizationCampaign Entity")
         if isinstance(
             self.initialize.cell_mesh,
             EMCellMeshFromID,
@@ -143,9 +143,9 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         skeletonization_configs: list[entitysdk.models.SkeletonizationConfig],
         db_client: entitysdk.client.Client,
     ) -> None:
-        L.info("3. Saving completed simulation campaign generation")
+        L.info("3. Saving completed skeletonization campaign generation")
 
-        L.info("-- Register SimulationGeneration Entity")
+        L.info("-- Register SkeletonizationConfigGeneration Entity")
         db_client.register_entity(
             entitysdk.models.SkeletonizationConfigGeneration(
                 start_time=datetime.now(UTC),
