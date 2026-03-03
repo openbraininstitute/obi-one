@@ -65,7 +65,7 @@ def validate_config(
             mock_simulation.id = uuid4()
 
             # Make register_entity return appropriate mocks based on what's being registered
-            def register_entity_side_effect(entity):
+            def register_entity_side_effect(entity: Any) -> MagicMock:
                 if isinstance(entity, entitysdk.models.Simulation):
                     return mock_simulation
                 return mock_entity
@@ -99,9 +99,12 @@ def validate_config(
                     or mock_upload.call_count == 0
                     or mock_update.call_count == 0
                 ):
-                    raise HTTPException(
+                    raise HTTPException(  # noqa: TRY301
                         status_code=500,
-                        detail="Validation error: Expected database operations did not occur. The validation logic may be outdated.",
+                        detail=(
+                            "Validation error: Expected database operations did not occur. "
+                            "The validation logic may be outdated."
+                        ),
                     )
 
     except Exception as e:

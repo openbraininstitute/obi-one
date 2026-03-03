@@ -33,7 +33,10 @@ class PredefinedNeuronSet(AbstractNeuronSet):
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
-            msg = f"Node set '{self.node_set}' not found in circuit '{circuit.name}'. Available node sets: {', '.join(circuit.node_sets)}"
+            msg = (
+                f"Node set '{self.node_set}' not found in circuit '{circuit.name}'. "
+                f"Available node sets: {', '.join(circuit.node_sets)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:

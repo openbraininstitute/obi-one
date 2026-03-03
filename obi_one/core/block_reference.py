@@ -10,7 +10,11 @@ from obi_one.core.block import Block
 class BlockReference(OBIBaseModel, abc.ABC):
     block_dict_name: str = Field(
         default="",
-        description="Root name of the field that contains the block you are referencing. E.g. `neuron_sets` when referencing neuron_sets, or `timestamps` when referencing timestamps.",
+        description=(
+            "Root name of the field that contains the block you are referencing. "
+            "E.g. `neuron_sets` when referencing neuron_sets, "
+            "or `timestamps` when referencing timestamps."
+        ),
     )
     block_name: str = Field(description="Name of the block.")
 
@@ -33,9 +37,12 @@ class BlockReference(OBIBaseModel, abc.ABC):
         if self._block is None:
             msg = (
                 f"Block '{self.block_name}' not found in '{self.block_dict_name}'. "
-                f"Ensure: (1) The block is defined in the configuration, (2) No typos in the block name, "
-                f"(3) The 'block_dict_name' field matches the parent field name containing the block dictionary. "
-                f"Example: If referencing a block inside the 'neuron_sets' field, set block_dict_name='neuron_sets'."
+                f"Ensure: (1) The block is defined in the configuration, "
+                f"(2) No typos in the block name, "
+                f"(3) The 'block_dict_name' field matches the parent field name "
+                f"containing the block dictionary. "
+                f"Example: If referencing a block inside the 'neuron_sets' field, "
+                f"set block_dict_name='neuron_sets'."
             )
             raise ValueError(msg)
         return self._block

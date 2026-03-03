@@ -839,9 +839,11 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 msg = (
                     f"Stimulus time intervals overlap{stimulus_name_part}! "
                     f"Current stimulus ends at {end_time:.2f} ms "
-                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
+                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
                     f"but next timestamp starts at {next_timestamp:.2f} ms. "
-                    f"To fix: reduce 'duration', reduce 'timestamp_offset', or increase spacing between timestamps."
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
                 )
                 raise ValueError(msg)
             for gid in gids:
@@ -1075,9 +1077,11 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
                 msg = (
                     f"Stimulus time intervals overlap{stimulus_name_part}! "
                     f"Current stimulus ends at {end_time:.2f} ms "
-                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + duration {self.duration:.2f} ms), "
+                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
                     f"but next timestamp starts at {next_timestamp:.2f} ms. "
-                    f"To fix: reduce 'duration', reduce 'timestamp_offset', or increase spacing between timestamps."
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
                 )
                 raise ValueError(msg)
 
