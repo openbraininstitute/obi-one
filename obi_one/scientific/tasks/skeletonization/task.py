@@ -33,8 +33,7 @@ class SkeletonizationTask(Task):
     @property
     def work_dir(self) -> WorkDir:
         """Return the current working directory layout."""
-        output_dir = Path(self.config.coordinate_output_root).resolve()
-        return create_work_dir(output_dir=output_dir)
+        return create_work_dir(output_dir=self.config.coordinate_output_root)
 
     def _create_inputs(self, db_client: Client, output_dir: Path) -> SkeletonizationInputs:
         """Generate all inputs for skeletonization task."""
