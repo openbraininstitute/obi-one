@@ -13,6 +13,8 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_NODE_SET_NAME,
+    DEFAULT_TIMESTAMPS_NAME,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
@@ -28,10 +30,6 @@ from obi_one.scientific.unions.unions_timestamps import (
 )
 
 L = logging.getLogger(__name__)
-
-
-DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
-DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 
 
 class BlockGroup(StrEnum):

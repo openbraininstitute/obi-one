@@ -23,6 +23,8 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_NODE_SET_NAME,
+    DEFAULT_TIMESTAMPS_NAME,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
@@ -47,10 +49,6 @@ from obi_one.scientific.unions.unions_timestamps import (
 )
 
 L = logging.getLogger(__name__)
-
-
-DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
-DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 
 
 class BlockGroup(StrEnum):
