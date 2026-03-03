@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import morphio
@@ -10,12 +11,16 @@ from obi_one.scientific.tasks.skeletonization.schemas import (
     WorkDir,
 )
 
+L = logging.getLogger(__name__)
+
 
 def run_process(parameters: ProcessParameters, work_dir: WorkDir) -> SkeletonizationOutputs:
+    L.info("Running executable process...")
     _run_process_executable(
         parameters=parameters,
         output_dir=work_dir.outputs,
     )
+    L.info("Collecting process outputs...")
     return _create_process_outputs(
         mesh_path=parameters.mesh_path,
         output_dir=work_dir.outputs,

@@ -37,6 +37,7 @@ class SkeletonizationTask(Task):
 
     def _create_inputs(self, db_client: Client, output_dir: Path) -> SkeletonizationInputs:
         """Generate all inputs for skeletonization task."""
+        L.info("Creating inputs...")
         em_cell_mesh = db_client.get_entity(
             entity_id=self.config.initialize.cell_mesh.id_str,
             entity_type=models.EMCellMesh,
@@ -117,13 +118,12 @@ class SkeletonizationTask(Task):
             db_client=db_client,
             output_dir=work_dir.inputs,
         )
-        msg = f"Inputs: {inputs}"
-        L.debug(msg)
         outputs = run_process(
             work_dir=work_dir,
             parameters=inputs.parameters,
         )
         if execution_activity_id is not None:
+            L.info("Registering entities...")
             generated_entity = register_output_resource(
                 client=db_client,
                 metadata=inputs.metadata,
