@@ -88,6 +88,7 @@ def task_launch_endpoint(
             accounting_session.finish()
         else:
             accounting_session.finish(exc_type=type(exc))
+        L.exception("Failed to submit task job")
         raise ApiError(
             message="Failed to submit task job",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
