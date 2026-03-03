@@ -646,11 +646,15 @@ def test_hard_coded_neuron_sets():
     neuron_set = obi.rCA1CA3Inputs()
     with pytest.raises(
         ValueError,
-        match=re.escape(f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."),
+        match=re.escape(
+            f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."
+        ),
     ):
         neuron_set_ids = neuron_set.get_neuron_ids(circuit)
     with pytest.raises(
         ValueError,
-        match=re.escape(f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."),
+        match=re.escape(
+            f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."
+        ),
     ):
         neuron_set_def = neuron_set.get_node_set_definition(circuit)
