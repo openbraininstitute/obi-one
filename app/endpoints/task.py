@@ -11,6 +11,7 @@ from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
+from app.logger import L
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import (
     TaskAccountingCreate,
