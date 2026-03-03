@@ -16,6 +16,7 @@ def create_work_dir(output_dir: Path) -> WorkDir:
     Returns:
         A WorkDir instance containing paths to the `inputs` and `outputs` directories.
     """
+    output_dir.mkdir(parents=True, exist_ok=True)
     inputs_dir = output_dir / "inputs"
     outputs_dir = output_dir / "outputs"
     inputs_dir.mkdir(exist_ok=True)
