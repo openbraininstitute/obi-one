@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from entitysdk.types import EntityType
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
@@ -16,9 +17,9 @@ class IonChannelModelWithConductance(Block):
         description="ID of the model to simulate.",
         json_schema_extra={
             "ui_element": "model_selector_single",
-            "model_selector_entity_type": "IonChannelModel",
+            "model_selector_entity_type": EntityType.ion_channel_model,
             "model_selector_property_filter": {
-                "conductance_name": not None,
+                "conductance_name__isnull": False,
             },
         },
     )
@@ -43,9 +44,9 @@ class IonChannelModelWithMaxPermeability(Block):
         description="ID of the model to simulate.",
         json_schema_extra={
             "ui_element": "model_selector_single",
-            "model_selector_entity_type": "IonChannelModel",
+            "model_selector_entity_type": EntityType.ion_channel_model,
             "model_selector_property_filter": {
-                "max_permeability_name": not None,
+                "max_permeability_name__isnull": False,
             },
         },
     )

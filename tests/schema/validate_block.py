@@ -418,10 +418,10 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
             f"a 'model identifier' object {obj}"
         )
         raise ValidationError(msg) from None
-    
+
+
 def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
     """To do"""
-    pass
 
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:

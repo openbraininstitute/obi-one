@@ -11,10 +11,6 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.unions.unions_ion_channel_model import (
-    IonChannelModelUnion,
-    IonChannelModelReference
-)
 from obi_one.scientific.from_id.ion_channel_model_from_id import (
     IonChannelModelFromID,
 )
@@ -29,6 +25,10 @@ from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFrom
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationScanConfig,
     SimulationSingleConfigMixin,
+)
+from obi_one.scientific.unions.unions_ion_channel_model import (
+    IonChannelModelReference,
+    IonChannelModelUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,

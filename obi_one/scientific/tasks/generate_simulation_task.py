@@ -27,15 +27,18 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SONATA_VERSION,
     TARGET_SIMULATOR,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+    CircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_model import (
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import MEModelSimulationSingleConfig
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+    MEModelSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
