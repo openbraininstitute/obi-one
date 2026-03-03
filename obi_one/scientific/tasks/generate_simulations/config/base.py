@@ -54,16 +54,10 @@ class BlockGroup(StrEnum):
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
-    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     EVENTS_GROUP = "Events"
     CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
-
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
-MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
-MEModelWithSynapsesCircuitDiscriminator = Annotated[
-    MEModelWithSynapsesCircuit | MEModelWithSynapsesCircuitFromID, Field(discriminator="type")
-]
 
 TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
@@ -83,7 +77,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {

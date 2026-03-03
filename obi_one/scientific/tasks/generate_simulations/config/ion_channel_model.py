@@ -1,6 +1,5 @@
 import logging
 from datetime import UTC, datetime
-from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar
 
@@ -25,6 +24,7 @@ from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFrom
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
+    BlockGroup,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
@@ -49,20 +49,6 @@ from obi_one.scientific.unions.unions_timestamps import (
 )
 
 L = logging.getLogger(__name__)
-
-
-class BlockGroup(StrEnum):
-    """Authentication and authorization errors."""
-
-    SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
-    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
-    EVENTS_GROUP = "Events"
-    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-
-
-TARGET_SIMULATOR = "NEURON"
-SONATA_VERSION = 2.4
 
 
 class IonChannelModelSimulationScanConfig(SimulationScanConfig):

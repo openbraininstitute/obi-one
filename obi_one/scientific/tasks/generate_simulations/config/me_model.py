@@ -1,20 +1,15 @@
 import logging
-from enum import StrEnum
 from typing import Annotated, ClassVar
 
 from pydantic import Field
 
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.circuit_from_id import (
-    CircuitFromID,
-    MEModelWithSynapsesCircuitFromID,
-)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
+    BlockGroup,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
@@ -32,24 +27,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-class BlockGroup(StrEnum):
-    """Authentication and authorization errors."""
-
-    SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
-    CIRUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
-    EVENTS_GROUP = "Events"
-    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
-
-
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
-MEModelWithSynapsesCircuitDiscriminator = Annotated[
-    MEModelWithSynapsesCircuit | MEModelWithSynapsesCircuitFromID, Field(discriminator="type")
-]
-
-TARGET_SIMULATOR = "NEURON"
-SONATA_VERSION = 2.4
 
 
 class MEModelSimulationScanConfig(SimulationScanConfig):
