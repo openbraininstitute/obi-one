@@ -74,7 +74,9 @@ class InhibitoryNeurons(AbstractNeuronSet):
         if _INHIBITORY_NODE_SET not in circuit.node_sets:
             msg = (
                 f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit.name}'. "
-                f"Available node sets: {', '.join(circuit.node_sets)}"
+                "Please use a different Neuron Set type "
+                "or use a PredefinedNeuronSet with one of the "
+                f"available node sets: {', '.join(circuit.node_sets)}"
             )
             raise ValueError(msg)
 
