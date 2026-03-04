@@ -2,6 +2,30 @@
 
 This module provides functionality to run simulations using different backends
 (BlueCelluLab, Neurodamus) based on the simulation requirements.
+
+NWB Export for BlueCelluLab Integration:
+    The save_results_to_nwb() function accepts recordings from BlueCelluLab and exports
+    them to NWB format. It supports:
+    - Current clamp recordings (voltage responses)
+    - Voltage clamp recordings (single or multiple current variables)
+    - Full NWB 2.x icephys hierarchy for multi-variable recordings
+    
+    For detailed data structure requirements, see:
+    - save_results_to_nwb() docstring (line ~210)
+    - docs/BLUECELLULAB_NWB_INTEGRATION.md
+    
+    Quick reference for voltage clamp with multiple currents:
+        results = {
+            "sweep_0": {
+                "time": np.array([...]),              # milliseconds
+                "stimulus_voltage": np.array([...]),  # millivolts
+                "currents": {
+                    "i_total": {"data": np.array([...]), "description": "..."},
+                    "i_k": {"data": np.array([...]), "description": "..."},
+                    "i_na": {"data": np.array([...]), "description": "..."}
+                }
+            }
+        }
 """
 
 import json
@@ -215,54 +239,184 @@ def save_results_to_nwb(
     """Save simulation results to NWB format.
 
     Supports both current clamp and voltage clamp recordings with their respective
-    stimulus waveforms.
+    stimulus waveforms. For voltage clamp, supports multiple current variables per sweep
+    using the full icephys hierarchy (IntracellularRecordingsTable, SimultaneousRecordingsTable, etc.).
 
     Args:
-        results: Dictionary with cell_id as keys and trace data as values.
-                 Each trace should contain:
-                 - time: timestamps in milliseconds
-                 - For current clamp: voltage (mV), optional stimulus_current (nA)
-                 - For voltage clamp: current (nA), stimulus_voltage (mV)
-                 - Optional: clamp_mode key to specify "current" or "voltage"
+        results: Dictionary with cell_id/sweep_id as keys and trace data as values.
+                 
+                 REQUIRED STRUCTURE FOR BLUECELLULAB INTEGRATION:
+                 
+                 For CURRENT CLAMP recordings:
+                 {
+                     "cell_id_or_sweep_id": {
+                         "time": np.array([...]),              # REQUIRED: milliseconds
+                         "voltage": np.array([...]),           # REQUIRED: millivolts
+                         "stimulus_current": np.array([...]),  # OPTIONAL: nanoamperes
+                         "clamp_mode": "current"               # OPTIONAL: auto-detected if omitted
+                     }
+                 }
+                 
+                 For VOLTAGE CLAMP with SINGLE current variable:
+                 {
+                     "cell_id_or_sweep_id": {
+                         "time": np.array([...]),              # REQUIRED: milliseconds
+                         "current": np.array([...]),           # REQUIRED: nanoamperes
+                         "stimulus_voltage": np.array([...]),  # REQUIRED: millivolts
+                         "clamp_mode": "voltage",              # OPTIONAL: auto-detected if omitted
+                         "capacitance_slow": 100.0,            # OPTIONAL: picofarads
+                         "resistance_comp_correction": 80.0    # OPTIONAL: percentage
+                     }
+                 }
+                 
+                 For VOLTAGE CLAMP with MULTIPLE current variables (RECOMMENDED):
+                 {
+                     "sweep_0": {
+                         "time": np.array([...]),              # REQUIRED: milliseconds
+                         "stimulus_voltage": np.array([...]),  # REQUIRED: millivolts
+                         "clamp_mode": "voltage",              # OPTIONAL: auto-detected if omitted
+                         "capacitance_slow": 100.0,            # OPTIONAL: picofarads
+                         "resistance_comp_correction": 80.0,   # OPTIONAL: percentage
+                         "currents": {                         # REQUIRED: dict of current variables
+                             "i_total": {
+                                 "data": np.array([...]),      # REQUIRED: nanoamperes
+                                 "description": "Total SEClamp current including all ionic and capacitive components"
+                             },
+                             "i_k": {
+                                 "data": np.array([...]),      # REQUIRED: nanoamperes
+                                 "description": "Potassium ionic current from voltage-gated K+ channels"
+                             },
+                             "i_na": {
+                                 "data": np.array([...]),      # REQUIRED: nanoamperes
+                                 "description": "Sodium ionic current from voltage-gated Na+ channels"
+                             },
+                             "i_ca": {
+                                 "data": np.array([...]),      # REQUIRED: nanoamperes
+                                 "description": "Calcium ionic current from voltage-gated Ca2+ channels"
+                             }
+                             # Add more ionic currents as needed: i_leak, i_h, etc.
+                         }
+                     },
+                     "sweep_1": {
+                         # Same structure for additional sweeps
+                     }
+                 }
+                 
+                 UNITS (all conversions handled automatically):
+                 - Time: milliseconds (ms) → converted to seconds (s)
+                 - Voltage: millivolts (mV) → converted to volts (V)
+                 - Current: nanoamperes (nA) → converted to amperes (A)
+                 
+                 VARIABLE NAMING CONVENTIONS:
+                 - Use descriptive names: i_total, i_k, i_na, i_ca, i_leak, i_h, etc.
+                 - Prefix ionic currents with "i_"
+                 - Use lowercase with underscores
+                 - The "i_" prefix will be removed in NWB series names (i_k → ik)
+                 
+                 NWB OUTPUT STRUCTURE:
+                 - Single variable: Simple IntracellularRecordingsTable pairing
+                 - Multiple variables: Full 5-level icephys hierarchy:
+                   * Level 1: IntracellularRecordingsTable (with custom columns)
+                   * Level 2: SimultaneousRecordingsTable (groups variables per sweep)
+                   * Level 3: SequentialRecordingsTable (all sweeps, stimulus_type="SEClamp")
+                   * Level 4: RepetitionsTable
+                   * Level 5: ExperimentalConditionsTable
+                 
         output_path: Path to save the NWB file
         clamp_mode: "current" or "voltage" to specify recording type.
-                   If None, auto-detects from data keys.
+                   If None, auto-detects from data keys:
+                   - "currents" dict present → voltage clamp (multi-variable)
+                   - "current" present → voltage clamp (single variable)
+                   - "voltage" present → current clamp
+                   - "clamp_mode" key in trace → use that value
 
     Examples:
         Current clamp (voltage response):
         >>> results = {
         ...     "cell_1": {
-        ...         "time": [0, 1, 2, ...],
-        ...         "voltage": [-70, -69, -68, ...],
-        ...         "stimulus_current": [0, 0.1, 0.1, ...]  # optional
+        ...         "time": np.array([0, 1, 2, ...]),
+        ...         "voltage": np.array([-70, -69, -68, ...]),
+        ...         "stimulus_current": np.array([0, 0.1, 0.1, ...])  # optional
         ...     }
         ... }
         >>> save_results_to_nwb(results, "output.nwb", clamp_mode="current")
 
-        Voltage clamp (current response):
+        Voltage clamp (single current response):
         >>> results = {
         ...     "cell_1": {
-        ...         "time": [0, 1, 2, ...],
-        ...         "current": [0.1, 0.2, 0.3, ...],
-        ...         "stimulus_voltage": [-70, -60, -60, ...]
+        ...         "time": np.array([0, 1, 2, ...]),
+        ...         "current": np.array([0.1, 0.2, 0.3, ...]),
+        ...         "stimulus_voltage": np.array([-70, -60, -60, ...])
         ...     }
         ... }
         >>> save_results_to_nwb(results, "output.nwb", clamp_mode="voltage")
+
+        Voltage clamp (multiple current variables - RECOMMENDED):
+        >>> results = {
+        ...     "sweep_0": {
+        ...         "time": np.array([0, 1, 2, ...]),
+        ...         "stimulus_voltage": np.array([-70, -60, -60, ...]),
+        ...         "currents": {
+        ...             "i_total": {
+        ...                 "data": np.array([...]),
+        ...                 "description": "Total SEClamp current"
+        ...             },
+        ...             "i_k": {
+        ...                 "data": np.array([...]),
+        ...                 "description": "K+ ionic current"
+        ...             },
+        ...             "i_na": {
+        ...                 "data": np.array([...]),
+        ...                 "description": "Na+ ionic current"
+        ...             }
+        ...         }
+        ...     }
+        ... }
+        >>> save_results_to_nwb(results, "output.nwb", clamp_mode="voltage")
+        
+    Note:
+        For BlueCelluLab integration, see docs/BLUECELLULAB_NWB_INTEGRATION.md
+        for detailed specifications and example code.
     """
     try:
         nwbfile = NWBFile(
-            session_description="Small Microcircuit Simulation results",
+            session_description="Simulation results",
             identifier=str(uuid.uuid4()),
             session_start_time=datetime.now(UTC),
             experimenter="OBI User",
             lab="Virtual Lab",
             institution="OBI",
-            experiment_description="Simulation results",
-            session_id="small_microcircuit_simulation",
+            experiment_description="Simulation results from BlueCelluLab",
+            session_id="bluecellulab_simulation",
         )
         device = nwbfile.create_device(
             name="SimulatedElectrode", description="Virtual electrode for simulation recording"
         )
+
+        # Check if we have voltage clamp with multiple variables
+        has_multi_variable_vc = False
+        for trace in results.values():
+            if "currents" in trace and isinstance(trace["currents"], dict):
+                has_multi_variable_vc = True
+                break
+
+        # For multi-variable voltage clamp, set up custom columns
+        if has_multi_variable_vc:
+            ir_table = nwbfile.get_intracellular_recordings()
+            ir_table.add_column(
+                name="variable_name",
+                description="Name of the recorded current variable (e.g., 'i_total', 'i_k', 'i_na')",
+            )
+            ir_table.add_column(
+                name="variable_unit",
+                description="Physical unit of the variable (nA before NWB conversion to amperes)",
+            )
+            ir_table.add_column(
+                name="variable_description",
+                description="Detailed description of the variable",
+            )
+
+        sim_indices = []
 
         for sweep_idx, (cell_id, trace) in enumerate(results.items()):
             sweep_num = np.uint64(sweep_idx)
@@ -284,12 +438,12 @@ def save_results_to_nwb(
             if detected_mode is None:
                 if "clamp_mode" in trace:
                     detected_mode = trace["clamp_mode"]
-                elif "current" in trace:
+                elif "currents" in trace or "current" in trace:
                     detected_mode = "voltage"
                 elif "voltage" in trace:
                     detected_mode = "current"
                 else:
-                    msg = f"Cannot determine clamp mode for {cell_id}. Provide clamp_mode parameter or include 'current' or 'voltage' in trace data."
+                    msg = f"Cannot determine clamp mode for {cell_id}. Provide clamp_mode parameter or include 'current', 'currents', or 'voltage' in trace data."
                     raise ValueError(msg)
 
             if detected_mode == "current":
@@ -334,32 +488,23 @@ def save_results_to_nwb(
                     nwbfile.add_acquisition(ccs)
 
             elif detected_mode == "voltage":
-                # Voltage clamp: current response
-                if "current" not in trace:
-                    msg = f"Voltage clamp mode requires 'current' data for {cell_id}"
-                    raise ValueError(msg)
+                # Voltage clamp: current response(s)
+                
+                # Check if we have multiple current variables
+                if "currents" in trace and isinstance(trace["currents"], dict):
+                    # Multiple current variables per sweep
+                    if not trace["currents"]:
+                        msg = f"Voltage clamp mode with 'currents' dict requires at least one current variable for {cell_id}"
+                        raise ValueError(msg)
 
-                current_data = np.array(trace["current"], dtype=float) / 1e9  # nA → A
-                vcs = VoltageClampSeries(
-                    name=f"vcs__current__{cell_id}",
-                    data=current_data,
-                    electrode=electrode,
-                    sweep_number=sweep_num,
-                    timestamps=time_data,
-                    gain=1.0,
-                    conversion=1.0,
-                    resolution=np.nan,
-                    unit="amperes",
-                    description=f"Current trace for {cell_id}",
-                    capacitance_slow=trace.get("capacitance_slow", np.nan),
-                    resistance_comp_correction=trace.get("resistance_comp_correction", np.nan),
-                )
+                    # Create stimulus (shared across all current variables)
+                    if "stimulus_voltage" not in trace:
+                        msg = f"Voltage clamp mode requires 'stimulus_voltage' data for {cell_id}"
+                        raise ValueError(msg)
 
-                # Add voltage stimulus if provided
-                if "stimulus_voltage" in trace:
                     stimulus_voltage = np.array(trace["stimulus_voltage"], dtype=float) / 1000.0  # mV → V
                     vcss = VoltageClampStimulusSeries(
-                        name=f"vcss__voltage__{cell_id}",
+                        name=f"vcss__sweep__{sweep_idx:03d}",
                         data=stimulus_voltage,
                         electrode=electrode,
                         sweep_number=sweep_num,
@@ -369,18 +514,110 @@ def save_results_to_nwb(
                         stimulus_description="SEClamp",
                         description=f"Voltage stimulus for {cell_id}",
                     )
-                    # Use IntracellularRecordingsTable to pair stimulus and response
-                    nwbfile.add_intracellular_recording(
-                        electrode=electrode,
-                        stimulus=vcss,
-                        response=vcs,
+
+                    ir_indices_this_sweep = []
+
+                    # Create a VoltageClampSeries for each current variable
+                    for var_name, var_info in trace["currents"].items():
+                        current_data = np.array(var_info["data"], dtype=float) / 1e9  # nA → A
+                        var_desc = var_info.get("description", f"Current variable {var_name}")
+                        
+                        # Generate a clean tag for the series name
+                        name_tag = var_name.replace("i_", "").replace("_", "")
+                        
+                        vcs = VoltageClampSeries(
+                            name=f"vcs__{name_tag}__sweep__{sweep_idx:03d}",
+                            data=current_data,
+                            electrode=electrode,
+                            sweep_number=sweep_num,
+                            timestamps=time_data,
+                            gain=1.0,
+                            conversion=1.0,
+                            resolution=np.nan,
+                            unit="amperes",
+                            stimulus_description="SEClamp",
+                            description=f"{var_desc} | {cell_id}",
+                            capacitance_slow=trace.get("capacitance_slow", np.nan),
+                            resistance_comp_correction=trace.get("resistance_comp_correction", np.nan),
+                        )
+
+                        # Add to IntracellularRecordingsTable with custom columns
+                        ir_idx = nwbfile.add_intracellular_recording(
+                            electrode=electrode,
+                            stimulus=vcss,
+                            response=vcs,
+                            variable_name=var_name,
+                            variable_unit="nA",
+                            variable_description=var_desc,
+                        )
+                        ir_indices_this_sweep.append(ir_idx)
+
+                    # Group all variables of this sweep in SimultaneousRecordingsTable
+                    sim_idx = nwbfile.add_icephys_simultaneous_recording(
+                        recordings=ir_indices_this_sweep,
                     )
+                    sim_indices.append(sim_idx)
+
                 else:
-                    nwbfile.add_acquisition(vcs)
+                    # Single current variable (backward compatibility)
+                    if "current" not in trace:
+                        msg = f"Voltage clamp mode requires 'current' data for {cell_id}"
+                        raise ValueError(msg)
+
+                    current_data = np.array(trace["current"], dtype=float) / 1e9  # nA → A
+                    vcs = VoltageClampSeries(
+                        name=f"vcs__current__{cell_id}",
+                        data=current_data,
+                        electrode=electrode,
+                        sweep_number=sweep_num,
+                        timestamps=time_data,
+                        gain=1.0,
+                        conversion=1.0,
+                        resolution=np.nan,
+                        unit="amperes",
+                        description=f"Current trace for {cell_id}",
+                        capacitance_slow=trace.get("capacitance_slow", np.nan),
+                        resistance_comp_correction=trace.get("resistance_comp_correction", np.nan),
+                    )
+
+                    # Add voltage stimulus if provided
+                    if "stimulus_voltage" in trace:
+                        stimulus_voltage = np.array(trace["stimulus_voltage"], dtype=float) / 1000.0  # mV → V
+                        vcss = VoltageClampStimulusSeries(
+                            name=f"vcss__voltage__{cell_id}",
+                            data=stimulus_voltage,
+                            electrode=electrode,
+                            sweep_number=sweep_num,
+                            timestamps=time_data,
+                            gain=1.0,
+                            unit="volts",
+                            stimulus_description="SEClamp",
+                            description=f"Voltage stimulus for {cell_id}",
+                        )
+                        # Use IntracellularRecordingsTable to pair stimulus and response
+                        nwbfile.add_intracellular_recording(
+                            electrode=electrode,
+                            stimulus=vcss,
+                            response=vcs,
+                        )
+                    else:
+                        nwbfile.add_acquisition(vcs)
 
             else:
                 msg = f"Invalid clamp_mode: {detected_mode}. Must be 'current' or 'voltage'."
                 raise ValueError(msg)
+
+        # Add higher-level icephys tables if we have multi-variable voltage clamp
+        if has_multi_variable_vc and sim_indices:
+            # Level 3: all sweeps in one sequential recording
+            seq_idx = nwbfile.add_icephys_sequential_recording(
+                simultaneous_recordings=sim_indices,
+                stimulus_type="SEClamp",
+            )
+            # Level 4: one repetition
+            rep_idx = nwbfile.add_icephys_repetition(sequential_recordings=[seq_idx])
+            # Level 5: one experimental condition
+            nwbfile.add_icephys_experimental_condition(repetitions=[rep_idx])
 
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
