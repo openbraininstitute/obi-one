@@ -388,7 +388,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         default_factory=dict,
         title="Stimuli",
         description=(
-            "Stimuli for the simulation. Each stimulus must have non-overlapping time intervals."
+            "Stimuli for the simulation."
         ),
         json_schema_extra={
             "ui_element": "block_dictionary",
