@@ -870,7 +870,8 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     """Spikes sent at the same time.
 
     Sent from all neurons in the source neuron set to efferently connected
-    neurons in the target neuron set.
+
+    "When using repeated timestamps (i.e. Regular Timestamps), stimulus durations should be small enough such that stimulus periods do not overlap across repetitions of the same stimulus."
     """
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
