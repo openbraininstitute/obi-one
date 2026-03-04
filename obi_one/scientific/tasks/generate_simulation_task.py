@@ -255,7 +255,7 @@ class GenerateSimulationTask(Task):
                         "Please use a different Neuron Set type. "
                         f"Available biophysical populations: {biophysical_list}. "
                         f"You may be able to reference one through a PredefinedNeuronSet block type"
-                        "In future we will support population selection for any parametric neuron set"
+                        "In future we will support population selection for any neuron set."
                     )
                     raise OBIONEError(msg)
 
