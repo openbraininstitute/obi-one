@@ -14,8 +14,8 @@ class BlockReference(OBIBaseModel, abc.ABC):
             "Name of the root level dictionary which contains the block you are referencing. "
             "E.g. `neuron_sets` when referencing a block within the neuron_sets dictionary, "
             "or `timestamps` when referencing a block within the timestamps dictionary."
-            "To reference a block at the root (i.e. a block that is not contained within a dictionary), "
-            "block_dict_name should be an empty string. "
+            "To reference a block at the root (i.e. a block that is not contained "
+            "within a dictionary), block_dict_name should be an empty string. "
         ),
     )
     block_name: str = Field(description="Name of the block.")

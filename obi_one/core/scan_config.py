@@ -139,7 +139,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         msg = (
                             f"Block '{block_reference.block_name}' not found in "
                             f"'{block_reference.block_dict_name}'. `block_dict_name` must "
-                            f"correspond to the name of the root level dictionary which contains the block you are referencing, or should be an empty string to reference a root level block."
+                            f"correspond to the name of the root level dictionary which contains "
+                            f"the block you are referencing, or should be an empty string to "
+                            f"reference a root level block."
                         )
                         raise KeyError(msg) from None
 
