@@ -1,24 +1,16 @@
 import logging
-from datetime import UTC, datetime
-from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
-import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.ion_channel_model_from_id import (
-    IonChannelModelFromID,
-)
 from obi_one.scientific.library.constants import (
-    _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
-    _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
@@ -217,99 +209,27 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     def circuit(self) -> FakeCircuitFromIonChannelModels:
         return FakeCircuitFromIonChannelModels(self.ion_channel_models)
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,
-        # ) -> entitysdk.models.Campaign:  # TODO: generic campaign PR
-    ) -> entitysdk.models.Entity:  # TODO: use line above when generic campaign PR is merged
-        """Initializes the ion channel simulation campaign in the database."""
-        L.info("1. Initializing ion channel simulation campaign in the database...")
-        if multiple_value_parameters_dictionary is None:
-            multiple_value_parameters_dictionary = {}
-
-        L.info("-- Register Campaign Entity")
-        self._campaign = db_client.register_entity(
-            entitysdk.models.Campaign(  # TODO: generic PR
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                inputs=[
-                    icm.entity(db_client=db_client) for icm in self.ion_channel_models
-                ],  # new field for generic Campaign entity
-                scan_parameters=multiple_value_parameters_dictionary,
+    @model_validator(mode="after")
+    def atleast_one_ion_channel_model_required(self) -> Self:
+        if len(self.ion_channel_models) == 0:
+            msg = (
+                "At least one ion channel model must be provided to determine entity ID "
+                "for campaign."
             )
-        )
+            raise OBIONEError(msg)
+        return self
 
-        L.info("-- Upload campaign_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=entitysdk.models.Campaign,  # TODO: generic PR
-            file_path=output_root / _SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",
-            asset_label="campaign_generation_config",
-        )
+    def entity_id_for_campaign_entity_generation(self) -> str:
+        """Determines the entity ID for the simulation campaign based on the ion channel models.
 
-        return self._campaign
-
-    def create_campaign_generation_entity(
-        self,
-        # simulations: list[entitysdk.models.TaskConfig]  # noqa: ERA001 TODO: generic PR
-        simulations: list,  # TODO: # use line above when generic PR is merged
-        db_client: entitysdk.client.Client,
-    ) -> None:
-        L.info("3. Saving completed simulation campaign generation")
-
-        L.info("-- Register TaskConfigGeneration Entity")
-        db_client.register_entity(
-            entitysdk.models.TaskConfigGeneration(
-                start_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=simulations,
-            )
-        )
+        For now, we will just use the first ion channel model to determine the entity ID.
+        In the future, we will use all ion channel models with the new generic entity types.
+        """
+        first_icm_block = self.ion_channel_models[0]
+        return first_icm_block.ion_channel_model.id_str
 
 
 class IonChannelModelSimulationSingleConfig(
     IonChannelModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
 ):
-    """Only allows single values and ensures nested attributes follow the same rule."""
-
-    def create_single_entity_with_config(
-        self,
-        # campaign: entitysdk.models.Campaign,  # TODO: generic PR
-        campaign,  # noqa: ANN001 # TODO: replace with line above
-        db_client: entitysdk.client.Client,
-        # ) -> entitysdk.models.TaskConfig:  # TODO: generic PR
-    ) -> entitysdk.models.Entity:  # TODO: replace with line above when generic PR is merged
-        """Saves the simulation config to the database."""
-        L.info(f"2.{self.idx} Saving ion channel model simulation config {self.idx} to database...")
-
-        # This loop will be useful when we support multiple recordings
-        for model in self.ion_channel_models:
-            if not isinstance(model, IonChannelModelFromID):
-                msg = (
-                    "TaskConfig can only be saved to entitycore if all input "
-                    "models are IonChannelModelFromID"
-                )
-                raise OBIONEError(msg)
-
-        L.info("-- Register TaskConfig Entity")
-        self._single_entity = db_client.register_entity(
-            entitysdk.models.TaskConfig(  # TODO: generic PR
-                name=f"TaskConfig {self.idx}",
-                description=f"TaskConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                campaign_id=campaign.id,
-                inputs=[icm.entity(db_client=db_client) for icm in self.ion_channel_models],
-            )
-        )
-
-        L.info("-- Upload IonChannelModelSimulationGenerationConfig")
-        _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.TaskConfig,
-            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",
-            asset_label="simulation_generation_config",
-        )
+    """Only allows single values."""

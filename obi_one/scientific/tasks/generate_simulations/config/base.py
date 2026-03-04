@@ -17,7 +17,6 @@ from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
@@ -29,7 +28,6 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
@@ -200,6 +198,23 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         },
     )
 
+    def entity_id_for_campaign_entity_generation(self) -> str:
+        """Determines the entity ID for the simulation campaign based on the circuit."""
+        if isinstance(self.initialize.circuit, list):
+            if len(self.initialize.circuit) != 1:
+                msg = "Only single circuit/MEModel currently supported for \
+                    simulation campaign database persistence."
+                raise OBIONEError(msg)
+            return self.initialize.circuit[0].id_str
+        if self.initialize.circuit is None:
+            msg = "Circuit must be specified to determine entity ID for simulation campaign."
+            raise OBIONEError(msg)
+        try:
+            return self.initialize.circuit.id_str
+        except AttributeError as err:
+            msg = "self.initialize.circuit must have an id_str attribute."
+            raise OBIONEError(msg) from err
+
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
@@ -212,23 +227,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             multiple_value_parameters_dictionary = {}
 
         L.info("-- Register SimulationCampaign Entity")
-        if isinstance(
-            self.initialize.circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
-        ):
-            entity_id = self.initialize.circuit.id_str
-        elif isinstance(self.initialize.circuit, list):
-            if len(self.initialize.circuit) != 1:
-                msg = "Only single circuit/MEModel currently supported for \
-                    simulation campaign database persistence."
-                raise OBIONEError(msg)
-            entity_id = self.initialize.circuit[0].id_str
 
         self._campaign = db_client.register_entity(
             entitysdk.models.SimulationCampaign(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
-                entity_id=entity_id,
+                entity_id=self.entity_id_for_campaign_entity_generation(),
                 scan_parameters=multiple_value_parameters_dictionary,
             )
         )

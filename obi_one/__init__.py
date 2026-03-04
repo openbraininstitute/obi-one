@@ -356,9 +356,6 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulations.task.task import (
-    GenerateSimulationTask,
-)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
@@ -374,6 +371,9 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model import (
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.task.task import (
+    GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
