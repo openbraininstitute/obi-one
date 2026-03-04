@@ -18,7 +18,13 @@ from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
 from neuron import h
 from pynwb import NWBHDF5IO, NWBFile
-from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
+from pynwb.icephys import (
+    CurrentClampSeries,
+    CurrentClampStimulusSeries,
+    IntracellularElectrode,
+    VoltageClampSeries,
+    VoltageClampStimulusSeries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +207,48 @@ def plot_voltage_traces(
     logger.info("Saved voltage traces plot to %s", output_path)
 
 
-def save_results_to_nwb(results: dict[str, Any], output_path: str | Path) -> None:
-    """Save simulation results to NWB format."""
+def save_results_to_nwb(
+    results: dict[str, Any],
+    output_path: str | Path,
+    clamp_mode: Literal["current", "voltage"] | None = None,
+) -> None:
+    """Save simulation results to NWB format.
+
+    Supports both current clamp and voltage clamp recordings with their respective
+    stimulus waveforms.
+
+    Args:
+        results: Dictionary with cell_id as keys and trace data as values.
+                 Each trace should contain:
+                 - time: timestamps in milliseconds
+                 - For current clamp: voltage (mV), optional stimulus_current (nA)
+                 - For voltage clamp: current (nA), stimulus_voltage (mV)
+                 - Optional: clamp_mode key to specify "current" or "voltage"
+        output_path: Path to save the NWB file
+        clamp_mode: "current" or "voltage" to specify recording type.
+                   If None, auto-detects from data keys.
+
+    Examples:
+        Current clamp (voltage response):
+        >>> results = {
+        ...     "cell_1": {
+        ...         "time": [0, 1, 2, ...],
+        ...         "voltage": [-70, -69, -68, ...],
+        ...         "stimulus_current": [0, 0.1, 0.1, ...]  # optional
+        ...     }
+        ... }
+        >>> save_results_to_nwb(results, "output.nwb", clamp_mode="current")
+
+        Voltage clamp (current response):
+        >>> results = {
+        ...     "cell_1": {
+        ...         "time": [0, 1, 2, ...],
+        ...         "current": [0.1, 0.2, 0.3, ...],
+        ...         "stimulus_voltage": [-70, -60, -60, ...]
+        ...     }
+        ... }
+        >>> save_results_to_nwb(results, "output.nwb", clamp_mode="voltage")
+    """
     try:
         nwbfile = NWBFile(
             session_description="Small Microcircuit Simulation results",
@@ -217,7 +263,10 @@ def save_results_to_nwb(results: dict[str, Any], output_path: str | Path) -> Non
         device = nwbfile.create_device(
             name="SimulatedElectrode", description="Virtual electrode for simulation recording"
         )
-        for cell_id, trace in results.items():
+
+        for sweep_idx, (cell_id, trace) in enumerate(results.items()):
+            sweep_num = np.uint64(sweep_idx)
+
             electrode = IntracellularElectrode(
                 name=f"electrode_{cell_id}",
                 description=f"Simulated electrode for {cell_id}",
@@ -226,18 +275,113 @@ def save_results_to_nwb(results: dict[str, Any], output_path: str | Path) -> Non
                 filtering="none",
             )
             nwbfile.add_icephys_electrode(electrode)
+
+            # Convert time from ms to seconds
             time_data = np.array(trace["time"], dtype=float) / 1000.0
-            voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0
-            ics = CurrentClampSeries(
-                name=f"voltage_{cell_id}",
-                data=voltage_data,
-                electrode=electrode,
-                timestamps=time_data,
-                gain=1.0,
-                unit="volts",
-                description=f"Voltage trace for {cell_id}",
-            )
-            nwbfile.add_acquisition(ics)
+
+            # Auto-detect clamp mode if not specified
+            detected_mode = clamp_mode
+            if detected_mode is None:
+                if "clamp_mode" in trace:
+                    detected_mode = trace["clamp_mode"]
+                elif "current" in trace:
+                    detected_mode = "voltage"
+                elif "voltage" in trace:
+                    detected_mode = "current"
+                else:
+                    msg = f"Cannot determine clamp mode for {cell_id}. Provide clamp_mode parameter or include 'current' or 'voltage' in trace data."
+                    raise ValueError(msg)
+
+            if detected_mode == "current":
+                # Current clamp: voltage response
+                if "voltage" not in trace:
+                    msg = f"Current clamp mode requires 'voltage' data for {cell_id}"
+                    raise ValueError(msg)
+
+                voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0  # mV → V
+                ccs = CurrentClampSeries(
+                    name=f"ccs__voltage__{cell_id}",
+                    data=voltage_data,
+                    electrode=electrode,
+                    sweep_number=sweep_num,
+                    timestamps=time_data,
+                    gain=1.0,
+                    unit="volts",
+                    description=f"Voltage trace for {cell_id}",
+                )
+
+                # Add current stimulus if provided
+                if "stimulus_current" in trace:
+                    stimulus_current = np.array(trace["stimulus_current"], dtype=float) / 1e9  # nA → A
+                    ccss = CurrentClampStimulusSeries(
+                        name=f"ccss__current__{cell_id}",
+                        data=stimulus_current,
+                        electrode=electrode,
+                        sweep_number=sweep_num,
+                        timestamps=time_data,
+                        gain=1.0,
+                        unit="amperes",
+                        stimulus_description="Current injection",
+                        description=f"Current stimulus for {cell_id}",
+                    )
+                    # Use IntracellularRecordingsTable to pair stimulus and response
+                    nwbfile.add_intracellular_recording(
+                        electrode=electrode,
+                        stimulus=ccss,
+                        response=ccs,
+                    )
+                else:
+                    nwbfile.add_acquisition(ccs)
+
+            elif detected_mode == "voltage":
+                # Voltage clamp: current response
+                if "current" not in trace:
+                    msg = f"Voltage clamp mode requires 'current' data for {cell_id}"
+                    raise ValueError(msg)
+
+                current_data = np.array(trace["current"], dtype=float) / 1e9  # nA → A
+                vcs = VoltageClampSeries(
+                    name=f"vcs__current__{cell_id}",
+                    data=current_data,
+                    electrode=electrode,
+                    sweep_number=sweep_num,
+                    timestamps=time_data,
+                    gain=1.0,
+                    conversion=1.0,
+                    resolution=np.nan,
+                    unit="amperes",
+                    description=f"Current trace for {cell_id}",
+                    capacitance_slow=trace.get("capacitance_slow", np.nan),
+                    resistance_comp_correction=trace.get("resistance_comp_correction", np.nan),
+                )
+
+                # Add voltage stimulus if provided
+                if "stimulus_voltage" in trace:
+                    stimulus_voltage = np.array(trace["stimulus_voltage"], dtype=float) / 1000.0  # mV → V
+                    vcss = VoltageClampStimulusSeries(
+                        name=f"vcss__voltage__{cell_id}",
+                        data=stimulus_voltage,
+                        electrode=electrode,
+                        sweep_number=sweep_num,
+                        timestamps=time_data,
+                        gain=1.0,
+                        unit="volts",
+                        stimulus_description="SEClamp",
+                        description=f"Voltage stimulus for {cell_id}",
+                    )
+                    # Use IntracellularRecordingsTable to pair stimulus and response
+                    nwbfile.add_intracellular_recording(
+                        electrode=electrode,
+                        stimulus=vcss,
+                        response=vcs,
+                    )
+                else:
+                    nwbfile.add_acquisition(vcs)
+
+            else:
+                msg = f"Invalid clamp_mode: {detected_mode}. Must be 'current' or 'voltage'."
+                raise ValueError(msg)
+
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with NWBHDF5IO(str(output_path), "w") as io:
