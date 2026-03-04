@@ -276,6 +276,55 @@ class CircuitExtractionTask(Task):
             raise OBIONEError(msg)
 
     @staticmethod
+    def _fix_node_sets_file(circuit_path: Path) -> None:
+        """Fixes the node sets file in case references are broken.
+
+        This could happen in compound expressions which are pointing
+        to non-existing node sets after circuit extraction.
+        """
+
+        def _find_broken_neuron_sets(nset_dict: dict) -> list:
+            """Finds compound neuron sets with broken references."""
+            broken_nsets = []
+            for nset_name, nset_def in nset_dict.items():
+                if isinstance(nset_def, list):  # Compound expression
+                    for n in nset_def:
+                        if n not in nset_dict:
+                            broken_nsets.append(nset_name)
+                            break
+            return broken_nsets
+
+        def _remove_broken_neuron_sets(nset_dict: dict) -> None:
+            """Removes neuron sets with broken references (in-place)."""
+            broken_nsets = _find_broken_neuron_sets(nset_dict)
+            if len(broken_nsets) > 0:
+                # Remove all broken neuron sets from dict
+                for nset in broken_nsets:
+                    del nset_dict[nset]
+                    L.warning(f"Node set '{nset}' broken and removed from node sets file.")
+                # Recursively check again, since removal could cause
+                # more broken neuron sets
+                _remove_broken_neuron_sets(nset_dict)
+
+        # Load node sets file
+        c = snap.Circuit(circuit_path)
+        with Path(c.config["node_sets_file"]).open(encoding="utf-8") as f:
+            nset_dict = json.load(f)
+
+        # Check if broken neuron sets
+        broken_nsets = _find_broken_neuron_sets(nset_dict)
+        if len(broken_nsets) == 0:
+            # Nothing to fix
+            return
+
+        # Remove broken neuron sets, if any
+        _remove_broken_neuron_sets(nset_dict)
+
+        # Write new node sets file
+        with Path(c.config["node_sets_file"]).open("w", encoding="utf-8") as f:
+            json.dump(nset_dict, f, indent=2)
+
+    @staticmethod
     def get_circuit_size(c: Circuit) -> (str, int, int, int):
         c_sonata = c.sonata_circuit
         num_nrn = c_sonata.nodes[c.default_population_name].size
@@ -1135,6 +1184,9 @@ class CircuitExtractionTask(Task):
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
+
+        # Check and fix the node sets file, if needed
+        CircuitExtractionTask._fix_node_sets_file(new_circuit_path)
 
         # Copy subcircuit morphologies and e-models (separately per node population)
         with BenchmarkTracker.section("copy_morph_hoc_mod"):
