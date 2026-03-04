@@ -840,7 +840,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
     """Spike times drawn from a Poisson process with a given frequency.
 
     Sent from all neurons in the source neuron set to efferently connected
-    neurons in the target neuron set.
+
+    When using repeated timestamps (i.e. Regular Timestamps), stimulus durations
+    should be small enough such that stimulus periods do not overlap across
+    repetitions of the same stimulus.
     """
 
     title: ClassVar[str] = "Poisson Spikes (Efferent)"
@@ -914,7 +917,17 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 timestamp_idx < len(timestamps_block.timestamps()) - 1
                 and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
             ):
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[timestamp_idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
+                msg = (
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
             for gid in gids:
                 spikes = []
@@ -939,7 +952,10 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     """Spikes sent at the same time.
 
     Sent from all neurons in the source neuron set to efferently connected
-    neurons in the target neuron set.
+
+    When using repeated timestamps (i.e. Regular Timestamps), stimulus durations
+    should be small enough such that stimulus periods do not overlap across
+    repetitions of the same stimulus.
     """
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
@@ -1142,7 +1158,17 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             end_time = start_time + self.duration
 
             if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
+                msg = (
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
 
             # Thinning with epoch-specific λ_max
