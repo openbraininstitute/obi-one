@@ -239,9 +239,24 @@ class GenerateSimulationTask(Task):
                     )
                     != "biophysical"
                 ):
-                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
-                        '{self.config.initialize.node_set.name}' "
-                    "is not biophysical!"
+                    # Get list of biophysical populations to help user
+                    biophysical_populations = Circuit.get_node_population_names(
+                        self._circuit.sonata_circuit, incl_virtual=False, incl_point=False
+                    )
+                    biophysical_list = (
+                        ", ".join(f"'{pop}'" for pop in biophysical_populations)
+                        if biophysical_populations
+                        else "none found"
+                    )
+
+                    msg = (
+                        f"Simulation Neuron Set (Initialize -> Neuron Set): "
+                        f"'{self.config.initialize.node_set.block_name}' is not biophysical. "
+                        "Please use a different Neuron Set type. "
+                        f"Available biophysical populations: {biophysical_list}. "
+                        f"You may be able to reference one through a PredefinedNeuronSet block type"
+                        "In future we will support population selection for any neuron set."
+                    )
                     raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(

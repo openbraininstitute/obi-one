@@ -26,7 +26,11 @@ class IDNeuronSet(AbstractNeuronSet):
     def check_neuron_ids(self, circuit: Circuit, population: str) -> None:
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
         if not all(_nid in popul_ids for _nid in self.neuron_ids.elements):
-            msg = f"Neuron ID(s) not found in population '{population}' of circuit '{circuit}'!"
+            msg = (
+                f"Neuron ID(s) not found in population '{population}' "
+                f"of circuit '{circuit.name}'. "
+                f"Available neuron ids: {', '.join(str(nid) for nid in popul_ids)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
