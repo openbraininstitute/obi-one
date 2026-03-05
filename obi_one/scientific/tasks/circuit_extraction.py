@@ -413,7 +413,7 @@ class CircuitExtractionTask(Task):
             has_spines=parent.has_spines,
             scale=scale,
             build_category=parent.build_category,
-            root_circuit_id=parent.root_circuit_id,
+            root_circuit_id=parent.root_circuit_id or parent.id,
             atlas_id=parent.atlas_id,
             contact_email=parent.contact_email,
             published_in=parent.published_in,
