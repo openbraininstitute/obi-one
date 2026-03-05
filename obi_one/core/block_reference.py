@@ -8,8 +8,17 @@ from obi_one.core.block import Block
 
 
 class BlockReference(OBIBaseModel, abc.ABC):
-    block_dict_name: str = Field(default="")
-    block_name: str = Field()
+    block_dict_name: str = Field(
+        default="",
+        description=(
+            "Name of the root level dictionary which contains the block you are referencing. "
+            "E.g. `neuron_sets` when referencing a block within the neuron_sets dictionary, "
+            "or `timestamps` when referencing a block within the timestamps dictionary."
+            "To reference a block at the root (i.e. a block that is not contained "
+            "within a dictionary), block_dict_name should be an empty string. "
+        ),
+    )
+    block_name: str = Field(description="Name of the block.")
 
     allowed_block_types: ClassVar[
         Annotated[type[OBIBaseModel] | tuple[type[OBIBaseModel], ...], Discriminator("type")]
@@ -28,7 +37,15 @@ class BlockReference(OBIBaseModel, abc.ABC):
     def block(self) -> Block:
         """Returns the block associated with this reference."""
         if self._block is None:
-            msg = "Block has not been set."
+            msg = (
+                f"Block '{self.block_name}' not found in '{self.block_dict_name}'. "
+                f"Ensure: (1) The block is defined in the configuration, "
+                f"(2) No typos in the block name, "
+                f"(3) The 'block_dict_name' field matches the parent field name "
+                f"containing the block dictionary. "
+                f"Example: If referencing a block inside the 'neuron_sets' field, "
+                f"set block_dict_name='neuron_sets'."
+            )
             raise ValueError(msg)
         return self._block
 
