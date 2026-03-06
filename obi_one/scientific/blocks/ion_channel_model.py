@@ -7,6 +7,27 @@ from obi_one.core.block import Block
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 
 
+class IonChannelModelWithoutConductance(Block):
+    """Select an ion channel model without conductance nor max permeability parameters."""
+
+    title: ClassVar[str] = "Ion channel model without conductance nor max permeability"
+
+    ion_channel_model: IonChannelModelFromID = Field(
+        title="Ion channel model",
+        description="ID of the model to simulate.",
+        json_schema_extra={
+            "ui_element": "model_selector_single",
+            "entity_query": {
+                "type": EntityType.ion_channel_model,
+                "filters": {
+                    "conductance_name__isnull": True,
+                    "max_permeability_name__isnull": True,
+                },
+            },
+        },
+    )
+
+
 class IonChannelModelWithConductance(Block):
     """Select an ion channel model with a conductance parameter."""
 
@@ -17,9 +38,11 @@ class IonChannelModelWithConductance(Block):
         description="ID of the model to simulate.",
         json_schema_extra={
             "ui_element": "model_selector_single",
-            "model_selector_entity_type": EntityType.ion_channel_model,
-            "model_selector_property_filter": {
-                "conductance_name__isnull": False,
+            "entity_query": {
+                "type": EntityType.ion_channel_model,
+                "filters": {
+                    "conductance_name__isnull": False,
+                },
             },
         },
     )
@@ -44,9 +67,11 @@ class IonChannelModelWithMaxPermeability(Block):
         description="ID of the model to simulate.",
         json_schema_extra={
             "ui_element": "model_selector_single",
-            "model_selector_entity_type": EntityType.ion_channel_model,
-            "model_selector_property_filter": {
-                "max_permeability_name__isnull": False,
+            "entity_query": {
+                "type": EntityType.ion_channel_model,
+                "filters": {
+                    "max_permeability_name__isnull": False,
+                },
             },
         },
     )

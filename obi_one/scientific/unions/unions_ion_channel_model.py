@@ -6,10 +6,13 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.ion_channel_model import (
     IonChannelModelWithConductance,
     IonChannelModelWithMaxPermeability,
+    IonChannelModelWithoutConductance,
 )
 
 IonChannelModelUnion = Annotated[
-    IonChannelModelWithConductance | IonChannelModelWithMaxPermeability,
+    IonChannelModelWithoutConductance
+    | IonChannelModelWithConductance
+    | IonChannelModelWithMaxPermeability,
     Discriminator("type"),
 ]
 
