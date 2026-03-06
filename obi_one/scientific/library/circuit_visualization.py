@@ -8,9 +8,9 @@ import morphio
 import numpy as np
 from bluepysnap import BluepySnapError, Circuit as CircuitConfig
 from entitysdk.client import Client
+from entitysdk.exception import EntitySDKError
 from entitysdk.models import Circuit
 from entitysdk.types import CircuitScale
-from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
