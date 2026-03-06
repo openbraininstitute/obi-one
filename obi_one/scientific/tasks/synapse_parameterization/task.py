@@ -1,7 +1,6 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import ClassVar
 
 import bluepysnap as snap
 import h5py
@@ -9,13 +8,9 @@ import numpy as np
 import pandas as pd
 from connectome_manipulator.model_building import model_types
 from entitysdk import Client, models, types
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
-from obi_one.core.base import OBIBaseModel
-from obi_one.core.block import Block
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 from obi_one.scientific.library.synaptome_helpers import (
     compress_output,
@@ -23,45 +18,11 @@ from obi_one.scientific.library.synaptome_helpers import (
     synaptome_description_with_physiology,
     synaptome_name_with_physiology,
 )
+from obi_one.scientific.tasks.synapse_parameterization.task import (
+    SynapseParameterizationSingleConfig,
+)
 
 L = logging.getLogger(__name__)
-
-
-class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
-    name: ClassVar[str] = "Synapse parameterization"
-    description: ClassVar[str] = (
-        "Generates a physiological parameterization of an anatomical synaptome or replaces an"
-        " existing paramterization."
-    )
-
-    class Initialize(Block):
-        synaptome: MEModelWithSynapsesCircuitFromID = Field(
-            title="Synaptome",
-            description="Synaptome (i.e., circuit of scale single) to (re-)parameterize.",
-        )
-        pathway_property: str = Field(
-            title="Pathway property",
-            description="Neuron property (e.g., 'synapse_class') by which to group neurons into"
-            " pathways between source and target neuron populations.",
-        )
-        pathway_param_dict: dict = Field(
-            title="Pathway parameters",
-            description="Synapse physiology distribution parameters for all pathways in the"
-            " ConnPropsModel format of Connectome-Manipulator.",
-        )  # TODO: This may be replaced by dedicated entities
-        random_seed: int = Field(
-            default=1,
-            title="Random seed",
-            description="Seed for drawing random values from physiological parameter"
-            " distributions.",
-        )
-        overwrite_if_exists: bool = Field(
-            title="Overwrite",
-            description="Overwrite if a parameterization exists already.",
-            default=False,
-        )
-
-    initialize: Initialize
 
 
 class SynapseParameterizationTask(Task):

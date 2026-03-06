@@ -402,10 +402,10 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
 )
-from obi_one.scientific.tasks.synapse_parameterization import (
+from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
-    SynapseParameterizationTask,
 )
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_extracellular_locations import (
