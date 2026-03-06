@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from entitysdk.client import Client
 from entitysdk.models.ion_channel_model import IonChannelModel
 
-# from entitysdk.staging.ion_channel_model import find_conductance_name # curently in PR #175
 from pydantic import BaseModel
 
 

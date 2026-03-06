@@ -9,9 +9,6 @@ from obi_one.scientific.unions.unions_ion_channel_model import (
 )
 
 
-# this class should probably be in another module. I just put it here for the time being.
-# wanted to put it in ionchannelmodelfromid, but it created circular imports
-# should create a module in library for it I guess. ion_channel_model_circuit.py or something
 class FakeCircuitFromIonChannelModels:
     id_str: str = "fake_circuit"
 

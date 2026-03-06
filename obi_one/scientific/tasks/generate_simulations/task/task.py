@@ -70,18 +70,6 @@ class GenerateSimulationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
     _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
-    # this is set in _resolve_circuit. Right now that works because it is only used afterwards
-    # but we should be careful about this if we change the order of the functions in execute
-    _use_generic_entitysdk_types: bool = PrivateAttr(default=False)
-
-    @property
-    def entitysdk_simulation_type(
-        self,
-        # ) -> entitysdk.models.TaskConfig | entitysdk.models.Simulation:
-    ) -> entitysdk.models.Entity:  # TODO: use line above when generic PR is merged
-        if self._use_generic_entitysdk_types:
-            return entitysdk.models.TaskConfig
-        return entitysdk.models.Simulation
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
@@ -141,9 +129,6 @@ class GenerateSimulationTask(Task):
                 FakeCircuitFromIonChannelModels,
             ),
         ):
-            # right now, only ion channel model simulation uses generic entitysdk types
-            if isinstance(circuit, FakeCircuitFromIonChannelModels):
-                self._use_generic_entitysdk_types = True
             self._circuit_id = circuit.id_str
 
             circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
@@ -367,8 +352,7 @@ class GenerateSimulationTask(Task):
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
-        # generic TaskConfig does not have number_neurons, so no need to update it
-        if db_client and not self._use_generic_entitysdk_types:
+        if db_client:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
                 neuron_set_definition = self._neuron_set_definitions[
                     self.config.initialize.node_set.block_name
@@ -379,7 +363,7 @@ class GenerateSimulationTask(Task):
             number_neurons = len(neuron_set_definition["node_id"])
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,
-                entity_type=self.entitysdk_simulation_type,
+                entity_type=entitysdk.models.Simulation,
                 attrs_or_entity={"number_neurons": number_neurons},
             )
 
@@ -395,7 +379,7 @@ class GenerateSimulationTask(Task):
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
-                entity_type=self.entitysdk_simulation_type,
+                entity_type=entitysdk.models.Simulation,
                 file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
                 file_content_type="application/json",
                 asset_label="custom_node_sets",
@@ -408,7 +392,7 @@ class GenerateSimulationTask(Task):
                     if spike_file is not None:
                         _ = db_client.upload_file(
                             entity_id=self.config.single_entity.id,
-                            entity_type=self.entitysdk_simulation_type,
+                            entity_type=entitysdk.models.Simulation,
                             file_path=Path(self.config.coordinate_output_root, spike_file),
                             file_content_type="application/x-hdf5",
                             asset_label="replay_spikes",
@@ -417,7 +401,7 @@ class GenerateSimulationTask(Task):
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
-                entity_type=self.entitysdk_simulation_type,
+                entity_type=entitysdk.models.Simulation,
                 file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
                 file_content_type="application/json",
                 asset_label="sonata_simulation_config",
@@ -434,7 +418,6 @@ class GenerateSimulationTask(Task):
         self._entity_cache = entity_cache
         self._initialize_sonata_simulation_config()
         self._resolve_circuit(db_client)
-        db_client = None  # To prevent the database to be updated. To remove before PR
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()
