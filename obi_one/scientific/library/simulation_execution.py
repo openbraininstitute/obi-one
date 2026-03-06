@@ -490,6 +490,10 @@ def save_results_to_nwb(
             elif detected_mode == "voltage":
                 # Voltage clamp: current response(s)
                 
+                # Calculate sampling rate from time array
+                dt_s = time_data[1] - time_data[0] if len(time_data) > 1 else 0.001
+                rate_hz = 1.0 / dt_s
+                
                 # Check if we have multiple current variables
                 if "currents" in trace and isinstance(trace["currents"], dict):
                     # Multiple current variables per sweep
@@ -508,7 +512,8 @@ def save_results_to_nwb(
                         data=stimulus_voltage,
                         electrode=electrode,
                         sweep_number=sweep_num,
-                        timestamps=time_data,
+                        starting_time=time_data[0],
+                        rate=rate_hz,
                         gain=1.0,
                         unit="volts",
                         stimulus_description="SEClamp",
@@ -530,13 +535,14 @@ def save_results_to_nwb(
                             data=current_data,
                             electrode=electrode,
                             sweep_number=sweep_num,
-                            timestamps=time_data,
+                            starting_time=time_data[0],
+                            rate=rate_hz,
                             gain=1.0,
                             conversion=1.0,
                             resolution=np.nan,
                             unit="amperes",
                             stimulus_description="SEClamp",
-                            description=f"{var_desc} | {cell_id}",
+                            description=var_name,
                             capacitance_slow=trace.get("capacitance_slow", np.nan),
                             resistance_comp_correction=trace.get("resistance_comp_correction", np.nan),
                         )
@@ -570,7 +576,8 @@ def save_results_to_nwb(
                         data=current_data,
                         electrode=electrode,
                         sweep_number=sweep_num,
-                        timestamps=time_data,
+                        starting_time=time_data[0],
+                        rate=rate_hz,
                         gain=1.0,
                         conversion=1.0,
                         resolution=np.nan,
@@ -588,7 +595,8 @@ def save_results_to_nwb(
                             data=stimulus_voltage,
                             electrode=electrode,
                             sweep_number=sweep_num,
-                            timestamps=time_data,
+                            starting_time=time_data[0],
+                            rate=rate_hz,
                             gain=1.0,
                             unit="volts",
                             stimulus_description="SEClamp",
