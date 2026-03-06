@@ -35,10 +35,9 @@ def circuit_nodes(
 ) -> Nodes:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
-    parent_path = Path(temp_dir).resolve()
-    config = download_circuit_config(db_client, circuit_id, asset_id, parent_path)
+    config = download_circuit_config(db_client, circuit_id, asset_id, temp_dir)
 
-    return get_nodes(config, parent_path, db_client, circuit_id, asset_id)
+    return get_nodes(config, temp_dir, db_client, circuit_id, asset_id)
 
 
 @router.get(
