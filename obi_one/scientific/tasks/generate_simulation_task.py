@@ -168,6 +168,27 @@ class GenerateSimulationTask(Task):
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
 
+        if hasattr(self.config, "neuronal_manipulations"):
+            # Separate RANGE (section_list) and GLOBAL (mechanisms) modifications
+            range_modifications = []
+            mechanisms: dict = {}
+            for modification in self.config.neuronal_manipulations.values():
+                result = modification.config(
+                    self._circuit.default_population_name,
+                    DEFAULT_NODE_SET_NAME,
+                )
+                if isinstance(result, list):
+                    # RANGE variables -> conditions.modifications list
+                    range_modifications.extend(result)
+                else:
+                    # GLOBAL variables -> conditions.mechanisms dict
+                    for channel, props in result.items():
+                        mechanisms.setdefault(channel, {}).update(props)
+            if range_modifications:
+                self._sonata_config["conditions"]["modifications"] = range_modifications
+            if mechanisms:
+                self._sonata_config["conditions"]["mechanisms"] = mechanisms
+
     def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
         self, block: Block
     ) -> None:
