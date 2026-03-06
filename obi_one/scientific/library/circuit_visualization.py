@@ -9,6 +9,7 @@ import numpy as np
 from bluepysnap import BluepySnapError, Circuit as CircuitConfig
 from entitysdk.client import Client
 from entitysdk.models import Circuit
+from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
@@ -72,7 +73,7 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         ) from e
 
-    if circuit.scale not in {"small", "pair"}:
+    if circuit.scale not in {CircuitScale.small, CircuitScale.pair}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
