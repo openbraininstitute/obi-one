@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
@@ -293,3 +293,18 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
                 "represents_physical_electrode": self._represents_physical_electrode,
             }
         return sonata_config
+
+
+
+
+
+
+class CalibratedCaRouPfrRelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
+    """Description"""
+
+    title: ClassVar[str] = "Title"
+
+    
+    ca: Literal[1, 2, 3]
+
+
