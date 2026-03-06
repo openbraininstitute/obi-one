@@ -30,7 +30,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_model import (
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.me_model import (
