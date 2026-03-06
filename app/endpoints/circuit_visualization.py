@@ -4,12 +4,11 @@ from typing import Annotated
 from uuid import UUID
 
 import entitysdk.client
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import TempDirDep
-from app.logger import L
 from obi_one.scientific.library.circuit_visualization import (
     Morphology,
     Nodes,
@@ -54,10 +53,9 @@ def circuit_morphology(
     temp_dir: TempDirDep,
 ) -> Morphology:
     asset_id = circuit_asset_id(db_client, circuit_id)
-    parent_path = Path(temp_dir).resolve()
 
     return get_morphology(
-        parent_path,
+        temp_dir,
         db_client,
         circuit_id,
         asset_id,
