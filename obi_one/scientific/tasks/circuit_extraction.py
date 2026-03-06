@@ -16,7 +16,7 @@ import numpy as np
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
-from entitysdk import Client, models, types
+from entitysdk import Client, MultipartUploadTransferConfig, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
@@ -472,12 +472,14 @@ class CircuitExtractionTask(Task):
             raise OBIONEError(msg)
 
         # Upload compressed file asset
+        transfer_config = MultipartUploadTransferConfig()
         compressed_asset = db_client.upload_file(
             entity_id=registered_circuit.id,
             entity_type=models.Circuit,
             file_path=compressed_file,
             file_content_type="application/gzip",
             asset_label=asset_label,
+            transfer_config=transfer_config,
         )
         L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
         return compressed_asset
