@@ -24,6 +24,7 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 )
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
+from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[
@@ -41,6 +42,7 @@ ScanConfigsUnion = Annotated[
     | MorphologyMetricsScanConfig
     | MorphologyLocationsScanConfig
     | IonChannelFittingScanConfig
+    | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig,
     Discriminator("type"),
 ]

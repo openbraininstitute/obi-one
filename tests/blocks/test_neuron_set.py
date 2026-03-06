@@ -105,7 +105,8 @@ def test_predefined_neuron_set():
     # (a) Non-existing node set --> Error
     neuron_set = obi.PredefinedNeuronSet(node_set="Layer678", sample_percentage=100)
     with pytest.raises(
-        ValueError, match=f"Node set 'Layer678' not found in circuit '{circuit_name}'!"
+        ValueError,
+        match=re.escape(f"Node set 'Layer678' not found in circuit '{circuit_name}'."),
     ):
         neuron_set_ids = neuron_set.get_neuron_ids(
             circuit, population=circuit.default_population_name
@@ -146,7 +147,8 @@ def test_combined_neuron_set():
     # (a) Non-existing node set --> Error
     neuron_set = obi.CombinedNeuronSet(node_sets=("L6_BPC", "L6_TPC:AA"))
     with pytest.raises(
-        ValueError, match=f"Node set 'L6_TPC:AA' not found in circuit '{circuit_name}'!"
+        ValueError,
+        match=re.escape(f"Node set 'L6_TPC:AA' not found in circuit '{circuit_name}'."),
     ):
         neuron_set_ids = neuron_set.get_neuron_ids(
             circuit, population=circuit.default_population_name
@@ -186,7 +188,7 @@ def test_id_neuron_set():
         ValueError,
         match=re.escape(
             f"Neuron ID(s) not found in population '{circuit.default_population_name}'"
-            f" of circuit '{circuit_name}'!"
+            f" of circuit '{circuit_name}'."
         ),
     ):
         neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
@@ -644,11 +646,15 @@ def test_hard_coded_neuron_sets():
     neuron_set = obi.rCA1CA3Inputs()
     with pytest.raises(
         ValueError,
-        match=f"Node population 'CA3_projections' not found in circuit '{circuit_name}'!",
+        match=re.escape(
+            f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."
+        ),
     ):
         neuron_set_ids = neuron_set.get_neuron_ids(circuit)
     with pytest.raises(
         ValueError,
-        match=f"Node population 'CA3_projections' not found in circuit '{circuit_name}'!",
+        match=re.escape(
+            f"Node population 'CA3_projections' not found in circuit '{circuit_name}'."
+        ),
     ):
         neuron_set_def = neuron_set.get_node_set_definition(circuit)

@@ -1,8 +1,22 @@
 from enum import StrEnum
 
 
-class CircuitPropertyType(StrEnum):
-    NODE_SET = "Circuit.NodeSet"
-    POPULATION = "Circuit.Population"
-    BIOPHYSICAL_POPULATION = "Circuit.BiophysicalPopulation"
-    VIRTUAL_POPULATION = "Circuit.VirtualPopulation"
+class EntityType(StrEnum):
+    CIRCUIT = "circuit"
+
+
+class MappedPropertiesGroup(StrEnum):
+    CIRCUIT = "Circuit"
+
+
+class CircuitMappedProperties(StrEnum):
+    NODE_SET = "NodeSet"
+    POPULATION = "Population"
+    BIOPHYSICAL_POPULATION = "BiophysicalPopulation"
+    VIRTUAL_POPULATION = "VirtualPopulation"
+    MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
+
+
+class CircuitUsability(StrEnum):
+    SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
+    SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

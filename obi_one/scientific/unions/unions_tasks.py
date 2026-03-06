@@ -14,6 +14,7 @@ from obi_one.scientific.tasks.morphology_containerization import MorphologyConta
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTask
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
+from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
@@ -24,6 +25,7 @@ TasksUnion = Annotated[
     | ElectrophysiologyMetricsTask
     | FolderCompressionTask
     | IonChannelFittingTask
+    | SkeletonizationTask
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask

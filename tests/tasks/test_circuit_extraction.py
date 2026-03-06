@@ -151,64 +151,73 @@ def test_circuit_extraction(tmp_path):
         ),
     ]
 
-    extraction_init = obi.CircuitExtractionScanConfig.Initialize(
-        circuit=circuit_list,
-        do_virtual=[False, True],
-        create_external=[False, True],
-        run_validation=False,
-    )
-    neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
+    for do_virtual in [False, True]:
+        for create_external in [False, True]:
+            scan_path = (
+                tmp_path
+                / "grid_scan"
+                / f"do_virtual={do_virtual}"
+                / f"create_external={create_external}"
+            )
+            extraction_init = obi.CircuitExtractionScanConfig.Initialize(
+                circuit=circuit_list,
+                do_virtual=do_virtual,
+                create_external=create_external,
+            )
+            neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
+            info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
 
-    circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
-        initialize=extraction_init, neuron_set=neuron_set
-    )
+            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
+                initialize=extraction_init, neuron_set=neuron_set, info=info
+            )
 
-    grid_scan = obi.GridScanGenerationTask(
-        form=circuit_extractions_scan_config,
-        output_root=tmp_path / "grid_scan",
-        coordinate_directory_option="ZERO_INDEX",
-    )
-    grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+            grid_scan = obi.GridScanGenerationTask(
+                form=circuit_extractions_scan_config,
+                output_root=scan_path,
+                coordinate_directory_option="ZERO_INDEX",
+            )
+            grid_scan.execute()
+            obi.run_tasks_for_generated_scan(grid_scan)
 
-    # Rerun --> Error since output file already exists
-    with pytest.raises(
-        ValueError, match=re.escape("Unable to synchronously create group (name already exists)")
-    ):
-        obi.run_tasks_for_generated_scan(grid_scan)
+            # Rerun --> Error since output file already exists
+            with pytest.raises(
+                ValueError,
+                match=re.escape("Unable to synchronously create group (name already exists)"),
+            ):
+                obi.run_tasks_for_generated_scan(grid_scan)
 
-    # Check extracted circuits
-    for instance in grid_scan.single_configs:
-        c_orig = instance.initialize.circuit.sonata_circuit
-        c_res = Circuit(tmp_path / "grid_scan" / str(instance.idx) / "circuit_config.json")
-        with (tmp_path / "grid_scan" / str(instance.idx) / "id_mapping.json").open(
-            encoding="utf-8"
-        ) as f:
-            id_map = json.load(f)
+            # Check extracted circuits
+            for instance in grid_scan.single_configs:
+                c_orig = instance.initialize.circuit.sonata_circuit
+                c_res = Circuit(scan_path / str(instance.idx) / "circuit_config.json")
+                with (scan_path / str(instance.idx) / "id_mapping.json").open(
+                    encoding="utf-8"
+                ) as f:
+                    id_map = json.load(f)
 
-        npop_dict, epop_dict = _get_population_ids(
-            instance.initialize.circuit,
-            instance.neuron_set,
-            with_virtual=instance.initialize.do_virtual,
-            with_external=instance.initialize.create_external,
-        )
+                npop_dict, epop_dict = _get_population_ids(
+                    instance.initialize.circuit,
+                    instance.neuron_set,
+                    with_virtual=instance.initialize.do_virtual,
+                    with_external=instance.initialize.create_external,
+                )
 
-        # Check populations
-        np.testing.assert_array_equal(
-            sorted(c_res.nodes.population_names), sorted(npop_dict.keys())
-        )
-        np.testing.assert_array_equal(
-            sorted(c_res.edges.population_names), sorted(epop_dict.keys())
-        )
+                # Check populations
+                np.testing.assert_array_equal(
+                    sorted(c_res.nodes.population_names), sorted(npop_dict.keys())
+                )
+                np.testing.assert_array_equal(
+                    sorted(c_res.edges.population_names), sorted(epop_dict.keys())
+                )
 
-        # Check nodes (incl. ID mapping)
-        _check_nodes(npop_dict, c_orig, c_res, id_map)
+                # Check nodes (incl. ID mapping)
+                _check_nodes(npop_dict, c_orig, c_res, id_map)
 
-        # Check edges
-        _check_edges(epop_dict, c_orig, c_res, id_map)
+                # Check edges
+                _check_edges(epop_dict, c_orig, c_res, id_map)
 
-        # Check morphologies
-        _check_morph(npop_dict, c_res)
+                # Check morphologies
+                _check_morph(npop_dict, c_res)
 
-        # Check HOC files
-        _check_hoc(npop_dict, c_res)
+                # Check HOC files
+                _check_hoc(npop_dict, c_res)

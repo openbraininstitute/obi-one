@@ -16,33 +16,33 @@ class PairMotifNeuronSet(NeuronSet):
     """Neuron set selection based on pair motifs of neurons."""
 
     neuron1_filter: dict | list[dict] = Field(
-        default={}, name="Neuron1 filter", description="Filter for first neuron in a pair"
+        default={}, title="Neuron1 filter", description="Filter for first neuron in a pair"
     )
     neuron2_filter: dict | list[dict] = Field(
-        default={}, name="Neuron2 filter", description="Filter for second neuron in a pair"
+        default={}, title="Neuron2 filter", description="Filter for second neuron in a pair"
     )
 
     conn_ff_filter: dict | list[dict] = Field(
         default={},
-        name="Feedforward connection filter",
+        title="Feedforward connection filter",
         description="Filter for feedforward connections from the first to the second neuron"
         " in a pair",
     )
     conn_fb_filter: dict | list[dict] = Field(
         default={},
-        name="Feedback connection filter",
+        title="Feedback connection filter",
         description="Filter for feedback connections from the second to the first neuron in a pair",
     )
 
     pair_selection: dict | list[dict] = Field(
         default={},
-        name="Selection of pairs",
+        title="Selection of pairs",
         description="Selection of pairs among all potential pairs",
     )
 
     node_set_list_op: Literal["union", "intersect"] = Field(
         default="union",
-        name="Node set list operation",
+        title="Node set list operation",
         description="Operation how to combine lists of node sets; can be 'union' or 'intersect'.",
     )
 

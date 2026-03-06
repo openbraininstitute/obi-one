@@ -26,31 +26,31 @@ class AfferentSynapsesBlock(Block, abc.ABC):
     """Base class representing the selection of afferent synapses according to specs."""
 
     random_seed: int | list[int] = Field(
-        default=0, name="Random seed", description="Seed for the random selection of synapses"
+        default=0, title="Random seed", description="Seed for the random selection of synapses"
     )
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
         default=None,
-        name="Section types",
+        title="Section types",
         description="Valid types of sections for synapses. 2: axon, 3: basal, 4: apical",
     )
     pre_synapse_class: str | list[str] | None = Field(
         default=None,
-        name="Synapse class",
+        title="Synapse class",
         description="Valid synapse classes. EXC: excitatory synapses; INH: inhibitory synapses",
     )
     consider_nan_pass: bool | list[bool] = Field(
         default=True,
-        name="Consider nan to pass",
+        title="Consider nan to pass",
         description="If False, synapses with no 'synapse_class' pass, else not.",
     )
     pre_node_populations: tuple[str, ...] | list[tuple[str, ...]] | None = Field(
         default=None,
-        name="Presynaptic populations",
+        title="Presynaptic populations",
         description="Names of presynaptic node populations to allow",
     )
     merge_multiple_syns_con: bool | list[bool] = Field(
         default=False,
-        name="Merge multiple synapses per connection",
+        title="Merge multiple synapses per connection",
         description="""
         If True, multiple synapses from the same source neuron are merged by averaging.
         In this mode, it is not individual synapses that are selected, but presynaptic neurons.
@@ -112,7 +112,7 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
 
     n: int | list[int] = Field(
         default=1,
-        name="Number of synapses",
+        title="Number of synapses",
         description="Number of synapses to pick",
     )
 
@@ -132,7 +132,7 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
 
     p: int | list[int] = Field(
         default=1.0,
-        name="Fracton of synapses",
+        title="Fracton of synapses",
         description="Fracton of synapses to pick",
     )
 
@@ -152,12 +152,12 @@ class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
 
     soma_pd_min: float | list[float] = Field(
         default=0.0,
-        name="Minimum soma path distance",
+        title="Minimum soma path distance",
         description="Minimum path distance in um to the soma for synapses",
     )
     soma_pd_max: float | list[float] = Field(
         default=1e12,
-        name="Maximum soma path distance",
+        title="Maximum soma path distance",
         description="Maximm path distance in um to the soma for synapses",
     )
 
@@ -184,12 +184,12 @@ class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynaps
 
     soma_pd_min: float | list[float] = Field(
         default=0.0,
-        name="Minimum soma path distance",
+        title="Minimum soma path distance",
         description="Minimum path distance in um to the soma for synapses",
     )
     soma_pd_max: float | list[float] = Field(
         default=1e12,
-        name="Maximum soma path distance",
+        title="Maximum soma path distance",
         description="Maximm path distance in um to the soma for synapses",
     )
 
@@ -216,11 +216,11 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
     """
 
     soma_pd_mean: float | list[float] = Field(
-        name="Mean soma path distance",
+        title="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
-        name="SD for soma path distance",
+        title="SD for soma path distance",
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
@@ -252,11 +252,11 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
     """
 
     soma_pd_mean: float | list[float] = Field(
-        name="Mean soma path distance",
+        title="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
-        name="SD for soma path distance",
+        title="SD for soma path distance",
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
@@ -288,10 +288,10 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, name="Number of clusters", description="Number of synapse clusters to find"
+        default=1, title="Number of clusters", description="Number of synapse clusters to find"
     )
     cluster_max_distance: float | list[float] = Field(
-        name="Maximum distance of synapses from cluster center",
+        title="Maximum distance of synapses from cluster center",
         description="Synapses within a cluster will be closer than this value\
             from the cluster center (in um)",
     )
@@ -325,10 +325,10 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, name="Number of clusters", description="Number of synapse clusters to find"
+        default=1, title="Number of clusters", description="Number of synapse clusters to find"
     )
     n_per_cluster: int | list[int] = Field(
-        name="Number of synapses per cluster",
+        title="Number of synapses per cluster",
         description="This number of synapses per cluster will be selected\
             by proximity to a center synapse.",
     )
@@ -364,11 +364,11 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
     """
 
     soma_pd_mean: float | list[float] = Field(
-        name="Mean soma path distance",
+        title="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
-        name="SD for soma path distance",
+        title="SD for soma path distance",
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 
@@ -402,11 +402,11 @@ class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
     """
 
     soma_pd_mean: float | list[float] = Field(
-        name="Mean soma path distance",
+        title="Mean soma path distance",
         description="Mean of a Gaussian for soma path distance in um for selecting synapses",
     )
     soma_pd_sd: float | list[float] = Field(
-        name="SD for soma path distance",
+        title="SD for soma path distance",
         description="SD of a Gaussian for soma path distance in um for selecting synapses",
     )
 

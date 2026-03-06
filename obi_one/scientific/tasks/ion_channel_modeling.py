@@ -22,6 +22,7 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -82,14 +83,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-            ]
-        }
+    json_schema_extra_additions: ClassVar[dict] = {
+        "group_order": [
+            BlockGroup.SETUP,
+            BlockGroup.EQUATIONS,
+            BlockGroup.GATEEXPONENTS,
+        ]
+    }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
@@ -135,60 +135,66 @@ class IonChannelFittingScanConfig(ScanConfig):
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 1},
     )
 
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 0},
     )
 
     minf_eq: equations_module.MInfUnion = Field(
         title=r"m_{\infty} equation",
-        reference_type=equations_module.MInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=0,
         description=(
             r"Steady state activation parameter \( m_{\infty} \) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.MInfReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 0,
+        },
     )
     mtau_eq: equations_module.MTauUnion = Field(
         title=r"\tau_m equation",
-        reference_type=equations_module.MTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=1,
         description=(
             r"Activation time constant \(\tau_m\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.MTauReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 1,
+        },
     )
     hinf_eq: equations_module.HInfUnion = Field(
         title=r"h_{\infty} equation",
-        reference_type=equations_module.HInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=2,
         description=(
             r"Steady state inactivation parameter \(h_{\infty}\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.HInfReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 2,
+        },
     )
     htau_eq: equations_module.HTauUnion = Field(
         title=r"\tau_h equation",
-        reference_type=equations_module.HTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=3,
         description=(
             r"Inactivation time constant \(\tau_h\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            "reference_type": equations_module.HTauReference.__name__,
+            "group": BlockGroup.EQUATIONS,
+            "group_order": 3,
+        },
     )
 
     gate_exponents: GateExponents = Field(
@@ -197,8 +203,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
-        group=BlockGroup.GATEEXPONENTS,
-        group_order=0,
+        json_schema_extra={"group": BlockGroup.GATEEXPONENTS, "group_order": 0},
     )
 
     def create_campaign_entity_with_config(
@@ -226,7 +231,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.IonChannelModelingCampaign,
-            file_path=output_root / "obi_one_scan.json",
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
             asset_label="campaign_generation_config",
         )
@@ -302,7 +307,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
             entity_type=entitysdk.models.IonChannelModelingConfig,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",
             asset_label="ion_channel_modeling_generation_config",
         )
@@ -310,6 +315,11 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
+
+    @property
+    def conductance_name(self) -> str:
+        """Get the conductance name for the generated ion channel model."""
+        return f"g{self.config.initialize.ion_channel_name}bar"
 
     def download_input(
         self, db_client: entitysdk.client.Client = None
@@ -379,12 +389,13 @@ class IonChannelFittingTask(Task):
         self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
+        figure_types = ["traces", "stimuli", "steady state", "time constant"]
         paths_to_register = [
             value
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
             for key, value in d.items()
-            if key != "order"
+            if key in figure_types
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
@@ -446,6 +457,8 @@ class IonChannelFittingTask(Task):
                 neuron_block=neuron_block,
                 brain_region=brain_region,
                 subject=subject,
+                conductance_name=self.conductance_name,
+                max_permeability_name=None,
             )
         )
 
@@ -466,6 +479,7 @@ class IonChannelFittingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
@@ -564,7 +578,7 @@ class IonChannelFittingTask(Task):
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",
                 temperature=recording_entity.temperature,
-                mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
+                mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,

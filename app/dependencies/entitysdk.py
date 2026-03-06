@@ -1,5 +1,8 @@
+from typing import Annotated
+
 import entitysdk.client
 import entitysdk.common
+from fastapi import Depends
 from starlette.requests import Request
 
 from app.config import settings
@@ -36,3 +39,6 @@ def get_client(
         token_manager=token_manager,
     )
     return client
+
+
+DatabaseClientDep = Annotated[entitysdk.Client, Depends(get_client)]

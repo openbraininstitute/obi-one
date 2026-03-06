@@ -5,7 +5,10 @@ from pydantic import Field
 
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
 
 L = logging.getLogger("obi-one")
 
@@ -18,13 +21,22 @@ class PredefinedNeuronSet(AbstractNeuronSet):
 
     title: ClassVar[str] = "Predefined Neuron Set"
 
-    node_set: Annotated[
-        NodeSetType, Field(min_length=1, entity_property_type=CircuitPropertyType.NODE_SET)
-    ]
+    node_set: NodeSetType = Field(
+        title="Node Set",
+        description="Name of the node set to use.",
+        json_schema_extra={
+            "ui_element": "entity_property_dropdown",
+            "property_group": MappedPropertiesGroup.CIRCUIT,
+            "property": CircuitMappedProperties.NODE_SET,
+        },
+    )
 
     def check_node_set(self, circuit: Circuit, _population: str) -> None:
         if self.node_set not in circuit.node_sets:
-            msg = f"Node set '{self.node_set}' not found in circuit '{circuit}'!"
+            msg = (
+                f"Node set '{self.node_set}' not found in circuit '{circuit.name}'. "
+                f"Available node sets: {', '.join(circuit.node_sets)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:

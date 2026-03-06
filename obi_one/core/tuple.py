@@ -6,7 +6,7 @@ from obi_one.core.base import OBIBaseModel
 class NamedTuple(OBIBaseModel):
     """Helper class to assign a name to a tuple of elements."""
 
-    name: str
+    name: str = "Default name"
     elements: tuple[NonNegativeInt, ...]
 
     def __repr__(self) -> str:

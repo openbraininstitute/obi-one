@@ -3,7 +3,17 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.stimulus import (
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -19,7 +29,7 @@ from obi_one.scientific.blocks.stimulus import (
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-StimulusUnion = Annotated[
+_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
@@ -30,23 +40,32 @@ StimulusUnion = Annotated[
     | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
     | SubthresholdCurrentClampSomaticStimulus
-    | PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-    | SinusoidalPoissonSpikeStimulus,
+    | OrnsteinUhlenbeckCurrentSomaticStimulus
+    | OrnsteinUhlenbeckConductanceSomaticStimulus
+    | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
+    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_SPIKE_STIMULI = (
+    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+)
+
+_FIELD_STIMULI = (
+    SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
+)
+
+StimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI,
+    Discriminator("type"),
+]
+
+CircuitStimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI | _FIELD_STIMULI,
     Discriminator("type"),
 ]
 
 MEModelStimulusUnion = Annotated[
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus,
+    _INJECTION_STIMULI,
     Discriminator("type"),
 ]
 
