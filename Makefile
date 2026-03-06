@@ -68,7 +68,7 @@ publish: build  ## Publish the Docker image to DockerHub
 
 test-local:  ## Run tests locally
 	@$(call load_env,test-local)
-	uv run -m pytest
+	uv run -m pytes
 	uv run -m coverage xml
 	uv run -m coverage html
 
