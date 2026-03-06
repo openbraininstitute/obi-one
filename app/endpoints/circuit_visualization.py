@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import TempDirDep
-from obi_one.scientific.library.circuit_visualization import (
+from app.services.circuit_visualization import (
     Morphology,
     Nodes,
     circuit_asset_id,
