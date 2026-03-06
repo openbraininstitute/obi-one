@@ -89,6 +89,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {
