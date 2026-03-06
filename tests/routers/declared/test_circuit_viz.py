@@ -49,14 +49,23 @@ def test_circuit_nodes(
 
     asset_id = uuid4()
 
+    mock_nodes = [
+        {
+            "morphology_path": "test_path",
+            "position": [0.1, 0.2, 0.3],
+            "orientation": [0.1, 0.2, 0.3, 0.4],
+            "soma_radius": 0.5,
+        }
+    ]
+
     mock_circuit_asset_id.return_value = asset_id
     mock_download_circuit_config.return_value = {"config": "dummy"}
-    mock_get_nodes.return_value = {"nodes_data": "dummy"}
+    mock_get_nodes.return_value = mock_nodes
 
     response = client.get(f"/circuit/viz/{str(circuit_id)}/nodes")  # noqa: RUF010
 
     assert response.status_code == 200
-    assert response.json() == {"nodes_data": "dummy"}
+    assert response.json() == mock_nodes
 
     mock_circuit_asset_id.assert_called_once_with(mock_db_client, circuit_id)
     mock_download_circuit_config.assert_called_once()
@@ -69,18 +78,17 @@ def test_circuit_morphology(
     mock_circuit_asset_id, mock_get_morphology, client, mock_db_client, tmp_path
 ):
     circuit_id = uuid4()
-    morphology_path = "layer_1/cell_A"
-    encoded_path = quote(quote(morphology_path, safe=""), safe="")
+    asset_id = uuid4()
+    morphology_path = "mock_path"
 
-    mock_circuit_asset_id.return_value = uuid4()
-    mock_get_morphology.return_value = {"morphology_data": "dummy"}
-
-    response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{encoded_path}")  # noqa: RUF010
+    mock_circuit_asset_id.return_value = asset_id
+    mock_get_morphology.return_value = {}
+    response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{morphology_path}")  # noqa: RUF010
 
     assert response.status_code == 200
-    assert response.json() == {"morphology_data": "dummy"}
+    assert response.json() == {}
 
     mock_circuit_asset_id.assert_called_once_with(mock_db_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
-        tmp_path, mock_db_client, circuit_id, "test_asset_id", Path(f"{morphology_path}.swc")
+        tmp_path, mock_db_client, circuit_id, asset_id, Path(f"{morphology_path}.swc")
     )
