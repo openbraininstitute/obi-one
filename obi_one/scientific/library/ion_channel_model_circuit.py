@@ -60,7 +60,7 @@ class FakeCircuitFromIonChannelModels:
                 ion_channel_model_data=ion_channel_model_data_dict,
                 output_dir=dest_dir,
                 # here, use the same radius as the one used in ion channel model building
-                radius=12.6157/2.,
+                radius=12.6157 / 2.0,
             )
         else:
             circuit_config_path = dest_dir / "circuit_config.json"

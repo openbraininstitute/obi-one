@@ -3,7 +3,6 @@ from collections.abc import Mapping
 
 from entitysdk.client import Client
 from entitysdk.models.ion_channel_model import IonChannelModel
-
 from pydantic import BaseModel
 
 
