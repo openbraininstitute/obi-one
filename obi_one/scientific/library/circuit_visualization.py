@@ -10,6 +10,7 @@ from bluepysnap import BluepySnapError, Circuit as CircuitConfig
 from entitysdk.client import Client
 from entitysdk.models import Circuit
 from entitysdk.types import CircuitScale
+from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
@@ -63,7 +64,7 @@ Morphology = dict[str, NeuronSectionInfo]
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     try:
         circuit = client.get_entity(entity_id=circuit_id, entity_type=Circuit)
-    except Exception as e:
+    except EntitySDKError as e:
         L.exception(e)
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
