@@ -56,18 +56,10 @@ def circuit_morphology(
     asset_id = circuit_asset_id(db_client, circuit_id)
     parent_path = Path(temp_dir).resolve()
 
-    try:
-        return get_morphology(
-            parent_path,
-            db_client,
-            circuit_id,
-            asset_id,
-            Path(urllib.parse.unquote(morphology_path + ".swc")),
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        L.exception(e)
-        raise HTTPException(
-            status_code=500, detail="There was an error retrieving the morphology"
-        ) from e
+    return get_morphology(
+        parent_path,
+        db_client,
+        circuit_id,
+        asset_id,
+        Path(urllib.parse.unquote(morphology_path + ".swc")),
+    )
