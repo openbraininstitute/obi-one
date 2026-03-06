@@ -72,7 +72,7 @@ def test_circuit_morphology(
     morphology_path = "layer_1/cell_A"
     encoded_path = quote(quote(morphology_path, safe=""), safe="")
 
-    mock_circuit_asset_id.return_value = "test_asset_id"
+    mock_circuit_asset_id.return_value = uuid4()
     mock_get_morphology.return_value = {"morphology_data": "dummy"}
 
     response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{encoded_path}")  # noqa: RUF010
