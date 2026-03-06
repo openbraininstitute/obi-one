@@ -68,4 +68,6 @@ def circuit_morphology(
         raise
     except Exception as e:
         L.exception(e)
-        raise HTTPException(status_code=404, detail="Morphology not found") from e
+        raise HTTPException(
+            status_code=500, detail="There was an error retrieving the morphology"
+        ) from e
