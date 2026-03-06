@@ -9,6 +9,8 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_NODE_SET_NAME,
+    DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
@@ -25,6 +27,9 @@ from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
 )
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+)
 
 L = logging.getLogger(__name__)
 
@@ -37,6 +42,21 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": True,
+        "group_order": [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        "default_block_reference_labels": {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+    }
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,
@@ -56,7 +76,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             "ui_element": "block_dictionary",
             "reference_type": SynapticManipulationsReference.__name__,
             "singular_name": "Synaptic Manipulation",
-            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             "group_order": 1,
         },
     )

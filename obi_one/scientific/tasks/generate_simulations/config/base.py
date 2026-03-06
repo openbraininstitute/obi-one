@@ -31,6 +31,10 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
+from obi_one.scientific.unions.unions_neuronal_manipulations import (
+    NeuronalManipulationReference,
+    NeuronalManipulationUnion,
+)
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
     RecordingUnion,
@@ -53,8 +57,8 @@ class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
-    CIRCUIT_MANIPULATIONS_GROUP = "Circuit Manipulations"
 
 
 TARGET_SIMULATOR = "NEURON"
@@ -75,7 +79,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         "group_order": [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {

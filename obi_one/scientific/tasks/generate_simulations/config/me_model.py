@@ -16,6 +16,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
+from obi_one.scientific.unions.unions_neuronal_manipulations import (
+    NeuronalManipulationReference,
+    NeuronalManipulationUnion,
+)
 from obi_one.scientific.unions.unions_stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
@@ -63,6 +67,19 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
             "reference_type": StimulusReference.__name__,
             "singular_name": "Stimulus",
             "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            "group_order": 0,
+        },
+    )
+
+    neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
+        default_factory=dict,
+        title="Neuronal Manipulations",
+        description="Neuronal manipulations for the simulation.",
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": NeuronalManipulationReference.__name__,
+            "singular_name": "Neuronal Manipulation",
+            "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             "group_order": 0,
         },
     )
