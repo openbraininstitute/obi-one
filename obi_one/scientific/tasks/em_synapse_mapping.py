@@ -110,7 +110,7 @@ def assemble_publication_links(
 class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
-    cave_token: str | None = Field(
+    _cave_token: str | None = Field(
         default=None,
         title="CAVEclient access token",
         description="""Token to authenticate access to the EM dataset with.
