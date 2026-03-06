@@ -33,6 +33,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.scan_config import ScanConfig
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -107,7 +108,7 @@ def assemble_publication_links(
     return src_pubs
 
 
-class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
+class EMSynapseMappingScanConfig(ScanConfig):
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
     _cave_token: str | None = Field(
@@ -152,8 +153,8 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
     initialize: Initialize
 
 
-# class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-#     pass
+class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
+    pass
 
 
 class EMSynapseMappingTask(Task):
