@@ -17,7 +17,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
+from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
@@ -126,7 +126,7 @@ class GenerateSimulationTask(Task):
                 CircuitFromID,
                 MEModelFromID,
                 MEModelWithSynapsesCircuitFromID,
-                FakeCircuitFromIonChannelModels,
+                CircuitFromIonChannelModels,
             ),
         ):
             self._circuit_id = circuit.id_str
