@@ -76,4 +76,23 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.ion_channel_model_simulation: TaskDefinition(
+        task_type=TaskType.ion_channel_model_simulation,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        accounting_service_subtype=ServiceSubtype.SMALL_SIM,
+        config_asset_label=AssetLabel.simulation_generation_config,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref="commit:873110b8186e5fc787163508fe491363da684ded",
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:10",
+            compute_cell="local",
+        ),
+    ),
 }

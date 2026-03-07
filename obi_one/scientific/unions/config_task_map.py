@@ -37,6 +37,9 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
+from obi_one.scientific.tasks.ion_channel_model_simulation import (
+    IonChannelModelSimulationTask,
+)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
@@ -62,6 +65,7 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.scientific.unions.aliases import Simulation
+from obi_one.types import TaskType
 
 _config_tasks_map = {
     Simulation: GenerateSimulationTask,
@@ -82,7 +86,16 @@ _config_tasks_map = {
     SkeletonizationSingleConfig: SkeletonizationTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
+_task_type_task_map = {
+    TaskType.circuit_extraction: CircuitExtractionTask,
+    TaskType.ion_channel_model_simulation: IonChannelModelSimulationTask,
+    TaskType.morphology_skeletonization: SkeletonizationTask,
+}
 
 
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[config.__class__]
+
+
+def get_task_type(task_type: TaskType) -> type:
+    return _task_type_task_map[task_type]

@@ -4,7 +4,7 @@ from uuid import UUID
 import entitysdk
 import httpx
 from entitysdk import ProjectContext
-from entitysdk.types import ExecutorType
+from entitysdk.types import ActivityStatus, ExecutorType
 
 from app.config import settings
 from app.logger import L
@@ -33,7 +33,7 @@ def submit_task_job(
     activity_id = db_sdk.create_activity(
         client=db_client,
         used=[config],
-        activity_status="pending",
+        activity_status=ActivityStatus.pending,
         activity_type=task_definition.activity_type,
     ).id
     failure_callback = _generate_failure_callback(
@@ -145,6 +145,7 @@ def _generic_job_data(
         "code": task_definition.code.model_dump(mode="json"),
         "resources": resources,
         "inputs": [
+            f"--task-type {task_definition.task_type}",
             f"--entity_type {task_definition.config_type_name}",
             f"--entity_id {config_id}",
             f"--config_asset_id {config_asset_id}",
@@ -198,9 +199,9 @@ def handle_task_failure_callback(
         entity_type=task_definition.activity_type,
     ).status
 
-    if current_status != "done":
+    if current_status != ActivityStatus.done:
         db_client.update_entity(
             entity_id=activity_id,
             entity_type=task_definition.activity_type,
-            attrs_or_entity={"status": "error"},
+            attrs_or_entity={"status": ActivityStatus.error},
         )

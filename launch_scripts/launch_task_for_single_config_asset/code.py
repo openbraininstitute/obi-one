@@ -5,16 +5,17 @@ import sys
 from functools import partial
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
+from entitysdk.types import ActivityStatus
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
-from obi_one.core.run_tasks import run_task_for_single_config_asset
+from obi_one.core.run_tasks import run_task_type
 
 L = logging.getLogger(__name__)
 
 
 def update_activity_status(
-    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: str
+    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: ActivityStatus
 ) -> None:
     if not db_client:
         return
@@ -61,7 +62,7 @@ def main() -> int:
         parser = argparse.ArgumentParser(
             description="Script to launch a task for a single configuration asset."
         )
-
+        parser.add_argument("--task-type", required=True, help="Task type")
         parser.add_argument("--entity_type", required=True, help="EntitySDK entity type as string")
         parser.add_argument("--entity_id", required=True, help="Entity ID as string")
         parser.add_argument(
@@ -122,14 +123,14 @@ def main() -> int:
             token_manager=token_manager,
             local_store=LocalAssetStore(prefix=local_store_prefix),
         )
-
-        # Update activity status
         update_activity_status(
-            db_client, args.execution_activity_type, args.execution_activity_id, "running"
+            db_client=db_client,
+            execution_activity_type=args.execution_activity_type,
+            execution_activity_id=args.execution_activity_id,
+            status=ActivityStatus.running,
         )
-
-        # Run actual task
-        run_task_for_single_config_asset(
+        run_task_type(
+            task_type=args.task_type,
             entity_type=entity_type,
             entity_id=args.entity_id,
             config_asset_id=args.config_asset_id,
@@ -140,15 +141,20 @@ def main() -> int:
         )
     except Exception as e:  # noqa: BLE001
         # Catch any error that may occur to make sure that error status is correctly set
-        L.error(f"Error launching task for single configuration asset: {e}")
+        L.exception(f"Error launching task for single configuration asset: {e}")
         update_activity_status(
-            db_client, args.execution_activity_type, args.execution_activity_id, "error"
+            db_client=db_client,
+            execution_activity_type=args.execution_activity_type,
+            execution_activity_id=args.execution_activity_id,
+            status=ActivityStatus.error,
         )
         return 1
 
-    # Task completed without error
     update_activity_status(
-        db_client, args.execution_activity_type, args.execution_activity_id, "done"
+        db_client=db_client,
+        execution_activity_type=args.execution_activity_type,
+        execution_activity_id=args.execution_activity_id,
+        status=ActivityStatis.done,
     )
 
     return 0
