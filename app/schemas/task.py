@@ -2,7 +2,6 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from entitysdk.models.activity import Activity, Entity
-from entitysdk.types import AssetLabel
 from obp_accounting_sdk.constants import ServiceSubtype
 from pydantic import Field
 
@@ -97,7 +96,6 @@ class TaskDefinition(Schema):
     config_type: type[Entity]
     activity_type: type[Activity]
     accounting_service_subtype: ServiceSubtype
-    config_asset_label: AssetLabel
     code: Code
     resources: Resources
 
