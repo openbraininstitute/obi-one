@@ -61,7 +61,7 @@ _FIELD_STIMULI = (
 )
 
 StimulusUnion = Annotated[
-    _INJECTION_STIMULI | _SPIKE_STIMULI,  # | SEClampSomaticStimulus, noqa: F401
+    _INJECTION_STIMULI | _SPIKE_STIMULI,
     Discriminator("type"),
 ]
 
