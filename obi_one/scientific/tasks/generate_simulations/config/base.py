@@ -28,6 +28,7 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
+from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
@@ -61,7 +62,28 @@ TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
-class SimulationScanConfig(ScanConfig, abc.ABC):
+class CircuitConfigMixin():
+    """Class containing methods for determining entity ID based on circuit information."""
+    def entity_id_for_campaign_entity_generation(self) -> str:
+        """Determines the entity ID for the simulation campaign based on the circuit."""
+
+        if isinstance(self.initialize.circuit, list):
+            if len(self.initialize.circuit) != 1:
+                msg = "Only single circuit/MEModel currently supported for \
+                    simulation campaign database persistence."
+                raise OBIONEError(msg)
+            return self.initialize.circuit[0].id_str
+        if self.initialize.circuit is None:
+            msg = "Circuit must be specified to determine entity ID for simulation campaign."
+            raise OBIONEError(msg)
+        try:
+            return self.initialize.circuit.id_str
+        except AttributeError as err:
+            msg = "self.initialize.circuit must have an id_str attribute."
+            raise OBIONEError(msg) from err
+
+
+class SimulationScanConfig(ScanConfig, CircuitConfigMixin, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
     single_coord_class_name: ClassVar[str]
@@ -197,28 +219,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         },
     )
 
-    def entity_id_for_campaign_entity_generation(self) -> str:
-        """Determines the entity ID for the simulation campaign based on the circuit."""
-        if hasattr(self.initialize, "circuit"):
-            circuit = self.initialize.circuit
-        elif hasattr(self, "circuit"):
-            circuit = self.circuit
-
-        if isinstance(circuit, list):
-            if len(circuit) != 1:
-                msg = "Only single circuit/MEModel currently supported for \
-                    simulation campaign database persistence."
-                raise OBIONEError(msg)
-            return circuit[0].id_str
-        if circuit is None:
-            msg = "Circuit must be specified to determine entity ID for simulation campaign."
-            raise OBIONEError(msg)
-        try:
-            return circuit.id_str
-        except AttributeError as err:
-            msg = "circuit must have an id_str attribute."
-            raise OBIONEError(msg) from err
-
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
@@ -267,7 +267,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(abc.ABC):
+class SimulationSingleConfigMixin(CircuitConfigMixin, abc.ABC):
     """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
 
     _single_entity: entitysdk.models.Simulation
@@ -293,7 +293,7 @@ class SimulationSingleConfigMixin(abc.ABC):
 
         if not isinstance(
             circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID, CircuitFromIonChannelModels),
         ):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
@@ -307,7 +307,7 @@ class SimulationSingleConfigMixin(abc.ABC):
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                entity_id=circuit.id_str,
+                entity_id=self.entity_id_for_campaign_entity_generation(),
                 simulation_campaign_id=campaign.id,
                 number_neurons=-1,
             )
