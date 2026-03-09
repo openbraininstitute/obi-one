@@ -1,36 +1,8 @@
-from abc import ABC, abstractmethod
 from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt
 
-from obi_one.core.block import Block
-
-
-class Timestamps(Block, ABC):
-    start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        description="Sart time of the timestamps in milliseconds (ms).",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
-        },
-    )
-
-    def timestamps(self) -> list:
-        return self._resolve_timestamps()
-
-    @abstractmethod
-    def _resolve_timestamps(self) -> list:
-        pass
-
-
-class SingleTimestamp(Timestamps):
-    """A single timestamp at a specified time."""
-
-    title: ClassVar[str] = "Single Timestamp"
-
-    def _resolve_timestamps(self) -> list[float]:
-        return [self.start_time]
+from obi_one.scientific.blocks.timestamps.base import Timestamps
 
 
 class RegularTimestamps(Timestamps):
