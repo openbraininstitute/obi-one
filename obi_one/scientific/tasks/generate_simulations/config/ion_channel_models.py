@@ -225,7 +225,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         For now, we will just use the first ion channel model to determine the entity ID.
         In the future, we will use all ion channel models with the new generic entity types.
         """
-        first_icm_block = list(self.ion_channel_models.values())[0]
+        first_icm_block = next(iter(self.ion_channel_models.values()))
         return first_icm_block.ion_channel_model.id_str
 
 

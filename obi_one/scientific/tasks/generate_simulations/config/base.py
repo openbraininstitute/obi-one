@@ -62,11 +62,11 @@ TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
-class CircuitConfigMixin():
+class CircuitConfigMixin:
     """Class containing methods for determining entity ID based on circuit information."""
+
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
-
         if isinstance(self.initialize.circuit, list):
             if len(self.initialize.circuit) != 1:
                 msg = "Only single circuit/MEModel currently supported for \
@@ -293,7 +293,12 @@ class SimulationSingleConfigMixin(CircuitConfigMixin, abc.ABC):
 
         if not isinstance(
             circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID, CircuitFromIonChannelModels),
+            (
+                CircuitFromID,
+                MEModelFromID,
+                MEModelWithSynapsesCircuitFromID,
+                CircuitFromIonChannelModels,
+            ),
         ):
             msg = (
                 "Simulation can only be saved to entitycore if circuit is CircuitFromID "
