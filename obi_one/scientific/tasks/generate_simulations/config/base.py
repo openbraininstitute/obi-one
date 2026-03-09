@@ -199,19 +199,24 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
-        if isinstance(self.initialize.circuit, list):
-            if len(self.initialize.circuit) != 1:
+        if hasattr(self.initialize, "circuit"):
+            circuit = self.initialize.circuit
+        elif hasattr(self, "circuit"):
+            circuit = self.circuit
+
+        if isinstance(circuit, list):
+            if len(circuit) != 1:
                 msg = "Only single circuit/MEModel currently supported for \
                     simulation campaign database persistence."
                 raise OBIONEError(msg)
-            return self.initialize.circuit[0].id_str
-        if self.initialize.circuit is None:
+            return circuit[0].id_str
+        if circuit is None:
             msg = "Circuit must be specified to determine entity ID for simulation campaign."
             raise OBIONEError(msg)
         try:
-            return self.initialize.circuit.id_str
+            return circuit.id_str
         except AttributeError as err:
-            msg = "self.initialize.circuit must have an id_str attribute."
+            msg = "circuit must have an id_str attribute."
             raise OBIONEError(msg) from err
 
     def create_campaign_entity_with_config(
@@ -281,8 +286,13 @@ class SimulationSingleConfigMixin(abc.ABC):
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
+        if hasattr(self.initialize, "circuit"):
+            circuit = self.initialize.circuit
+        elif hasattr(self, "circuit"):
+            circuit = self.circuit
+
         if not isinstance(
-            self.initialize.circuit,
+            circuit,
             (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
         ):
             msg = (
@@ -297,7 +307,7 @@ class SimulationSingleConfigMixin(abc.ABC):
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                entity_id=self.initialize.circuit.id_str,
+                entity_id=circuit.id_str,
                 simulation_campaign_id=campaign.id,
                 number_neurons=-1,
             )
