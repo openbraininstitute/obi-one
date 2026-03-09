@@ -1,2 +1,2 @@
-git+https://github.com/openbraininstitute/obi-one.git@skeletonization
+obi-one
 ultraliser
