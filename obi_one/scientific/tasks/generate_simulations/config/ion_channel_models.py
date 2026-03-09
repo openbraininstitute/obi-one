@@ -12,7 +12,7 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
-from obi_one.scientific.library.ion_channel_model_circuit import FakeCircuitFromIonChannelModels
+from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
@@ -206,8 +206,8 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     )
 
     @property
-    def circuit(self) -> FakeCircuitFromIonChannelModels:
-        return FakeCircuitFromIonChannelModels(self.ion_channel_models)
+    def circuit(self) -> CircuitFromIonChannelModels:
+        return CircuitFromIonChannelModels(self.ion_channel_models)
 
     @model_validator(mode="after")
     def atleast_one_ion_channel_model_required(self) -> Self:

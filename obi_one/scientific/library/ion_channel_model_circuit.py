@@ -9,7 +9,7 @@ from obi_one.scientific.unions.unions_ion_channel_model import (
 )
 
 
-class FakeCircuitFromIonChannelModels:
+class CircuitFromIonChannelModels:
     id_str: str = "fake_circuit"
 
     def __init__(self, ion_channel_data: dict[str, IonChannelModelUnion]) -> None:
