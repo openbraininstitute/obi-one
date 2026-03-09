@@ -16,7 +16,7 @@ from pydantic import (
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
-from obi_one.scientific.blocks.timestamps import SingleTimestamp
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -82,7 +82,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         },
     )
 
-    timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
+    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -737,7 +737,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         },
     )
 
-    timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
+    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     def config(
         self,

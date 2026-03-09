@@ -175,7 +175,6 @@ __all__ = [
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
-    "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
     "VolumetricCountNeuronSet",
@@ -306,7 +305,8 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
-from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
