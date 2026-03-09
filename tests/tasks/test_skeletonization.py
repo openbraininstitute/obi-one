@@ -480,7 +480,7 @@ def test_create_campaign_entity_with_config_single_mesh(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(campaign_id)},
+            json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
         ),
         url=f"{API_URL}/skeletonization-campaign",
         method="POST",
@@ -522,7 +522,7 @@ def test_create_campaign_generation_entity(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(campaign_id)},
+            json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
         ),
         url=f"{API_URL}/skeletonization-campaign",
         method="POST",
@@ -594,7 +594,7 @@ def test_create_single_entity_with_config(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(campaign_id)},
+            json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
         ),
         url=f"{API_URL}/skeletonization-campaign",
         method="POST",
@@ -606,6 +606,7 @@ def test_create_single_entity_with_config(
         | {
             "label": "campaign_generation_config",
             "path": _SCAN_CONFIG_FILENAME,
+            "input_meshes": [],
         },
     )
 
