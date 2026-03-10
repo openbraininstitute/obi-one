@@ -7,18 +7,27 @@ This module provides functionality to run simulations using different backends
 import json
 import logging
 import uuid
-from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Dict, Literal, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
 from neuron import h
-from pynwb import NWBHDF5IO, NWBFile
-from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
+from pynwb import H5DataIO, NWBHDF5IO, NWBFile
+from pynwb.icephys import CurrentClampSeries, IntracellularElectrode, VoltageClampStimulusSeries, VoltageClampSeries
+
+
+from bluecellulab.reports.utils import (
+    collect_local_payload,
+    collect_local_spikes,
+    gather_payload_to_rank0,
+    payload_to_cells,
+    gather_recording_sites,
+    prepare_recordings_for_reports
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,24 +62,6 @@ def _setup_file_logging() -> logging.Logger:
 
 # Type alias for simulator backends
 SimulatorBackend = Literal["bluecellulab", "neurodamus"]
-
-
-# ---- merge helpers ---------------------------------------------
-def _merge_dicts(list_of_dicts: list[dict[Any, Any]]) -> dict[Any, Any]:
-    merged: dict[Any, Any] = {}
-    for d in list_of_dicts:
-        merged.update(d)
-    return merged
-
-
-def _merge_spikes(
-    list_of_pop_dicts: list[dict[str, dict[int, list]]],
-) -> dict[str, dict[int, list]]:
-    out: dict[str, dict[int, list]] = defaultdict(dict)
-    for pop_dict in list_of_pop_dicts:
-        for pop, gid_map in pop_dict.items():
-            out[pop].update(gid_map)
-    return out
 
 
 def _raise_node_set_key_error(node_set_name: str) -> None:
@@ -168,84 +159,407 @@ def run(
         raise ValueError(err_msg)
 
 
-def plot_voltage_traces(
-    results: dict[str, Any], output_path: str | Path, max_cols: int = 3
-) -> None:
-    """Plot voltage traces for all cells in a grid of subplots and save to file."""
-    n_cells = len(results)
+def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
+    """Plot voltage traces for all cells in a grid of subplots and save to file.
+
+    Args:
+        results: Dictionary containing simulation results for each cell
+        output_path: Path where to save the plot (should include .png extension)
+        max_cols: Maximum number of columns in the subplot grid
+    """
+    plotted = []
+    for cell_id, cell_result in results.items():
+        voltage_key = None
+        for rec_key, rec in cell_result.get("recordings", {}).items():
+            if rec.get("variable_name") == "v":
+                voltage_key = rec_key
+                break
+
+        if voltage_key is not None:
+            plotted.append((cell_id, cell_result, voltage_key))
+
+    n_cells = len(plotted)
     if n_cells == 0:
         logger.warning("No voltage traces to plot")
         return
+
+    # Calculate grid size
     n_cols = min(max_cols, n_cells)
     n_rows = (n_cells + n_cols - 1) // n_cols
+
+    # Create figure with subplots
     fig, axes = plt.subplots(
         n_rows, n_cols, figsize=(15, 3 * n_rows), squeeze=False, constrained_layout=True
     )
+
+    # Flatten axes for easier iteration
     axes = axes.ravel()
-    for idx, (cell_id, trace) in enumerate(results.items()):
+
+    # Plot each cell's voltage trace in its own subplot
+    for idx, (cell_id, cell_result, voltage_key) in enumerate(plotted):
         ax = axes[idx]
-        time_ms = np.array(trace["time"])
-        voltage_mv = np.array(trace["voltage"])
+        time_s = np.asarray(cell_result["time"], dtype=float)
+        time_ms = time_s * 1000.0
+        voltage_mv = np.asarray(cell_result["recordings"][voltage_key]["values"], dtype=float)
+
         ax.plot(time_ms, voltage_mv, linewidth=1)
         ax.set_title(f"Cell {cell_id}", fontsize=10)
-        ax.grid(visible=True, alpha=0.3)
+        ax.grid(True, alpha=0.3)
+
+        # Only label bottom row x-axes
         if idx >= (n_rows - 1) * n_cols:
             ax.set_xlabel("Time (ms)", fontsize=8)
+
+        # Only label leftmost column y-axes
         if idx % n_cols == 0:
             ax.set_ylabel("mV", fontsize=8)
+
+    # Turn off unused subplots
     for idx in range(n_cells, len(axes)):
         axes[idx].axis("off")
+
+    # Add a main title
     fig.suptitle(f"Voltage Traces for {n_cells} Cells", fontsize=12)
+
+    # Save the figure
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    logger.info("Saved voltage traces plot to %s", output_path)
+    logger.info(f"Saved voltage traces plot to {output_path}")
 
 
-def save_results_to_nwb(results: dict[str, Any], output_path: str | Path) -> None:
-    """Save simulation results to NWB format."""
-    try:
-        nwbfile = NWBFile(
-            session_description="Small Microcircuit Simulation results",
-            identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now(UTC),
-            experimenter="OBI User",
-            lab="Virtual Lab",
-            institution="OBI",
-            experiment_description="Simulation results",
-            session_id="small_microcircuit_simulation",
+def _get_report_metadata(simulation_config_data: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+    reports = simulation_config_data.get("reports", {}) or {}
+    out: Dict[str, Dict[str, str]] = {}
+
+    for report_name, report_cfg in reports.items():
+        if not report_cfg.get("enabled", True):
+            continue
+        if report_cfg.get("type") != "compartment":
+            continue
+
+        variable_name = report_cfg.get("variable_name")
+        if not variable_name:
+            continue
+
+        unit = report_cfg.get("unit")
+        if unit is None:
+            unit = "mV" if variable_name == "v" else "unknown"
+
+        out[report_name] = {
+            "variable_name": variable_name,
+            "unit": unit,
+        }
+
+    return out
+
+
+def _build_nwb_results_from_cells(
+    cells: Dict[Any, Any],
+    simulation_config_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    report_meta = _get_report_metadata(simulation_config_data)
+    results: Dict[str, Any] = {}
+
+    for cell_id, cell in cells.items():
+        population = cell_id.population_name
+        gid = cell_id.id
+        out_key = f"{population}_{gid}"
+
+        try:
+            time_ms = np.asarray(cell.get_recording("neuron.h._ref_t"), dtype=float)
+        except Exception as exc:
+            logger.warning(f"Skipping {out_key}: no time recording found: {exc}")
+            continue
+
+        time_s = time_ms / 1000.0
+        recordings: Dict[str, Any] = {}
+
+        for report_name, sites in getattr(cell, "report_sites", {}).items():
+            meta = report_meta.get(report_name)
+            if meta is None:
+                continue
+
+            variable_name = meta["variable_name"]
+            unit = meta["unit"]
+
+            for site in sites:
+                rec_name = site["rec_name"]
+                section_name = site["section"]
+                segment = float(site["segx"])
+
+                try:
+                    values = np.asarray(cell.get_recording(rec_name), dtype=float)
+                except Exception as exc:
+                    logger.warning(f"Skipping recording '{rec_name}' for {out_key}: {exc}")
+                    continue
+
+                recordings[rec_name] = {
+                    "variable_name": variable_name,
+                    "section": section_name,
+                    "segment": segment,
+                    "unit": unit,
+                    "area_um2": float(site["area_um2"]),
+                    "values": values.tolist(),
+                }
+
+        results[out_key] = {
+            "time": time_s.tolist(),
+            "time_unit": "s",
+            "recordings": recordings,
+        }
+
+    return results
+
+
+def save_voltage_results_to_nwb(
+    results: Dict[str, Any],
+    execution_id: str,
+    output_path: Union[str, Path],
+):
+    """Save voltage report results to NWB format."""
+    nwbfile = NWBFile(
+        session_description="Small Microcircuit Simulation voltage results",
+        identifier=str(uuid.uuid4()),
+        session_start_time=datetime.now(timezone.utc),
+        experimenter="OBI User",
+        lab="Virtual Lab",
+        institution="OBI",
+        experiment_description="Voltage report results",
+        session_id=execution_id,
+        was_generated_by=["obi_small_scale_simulator_v1"],
+    )
+
+    # Add device and electrode
+    device = nwbfile.create_device(
+        name="SimulatedElectrode",
+        description="Virtual electrode for simulation recording",
+    )
+
+    wrote_any = False
+
+    # Add voltage traces
+    for cell_id, cell_result in results.items():
+        time = np.asarray(cell_result.get("time", []), dtype=float)
+        dt = time[1] - time[0]
+        voltage_rec = None
+        for _, rec in cell_result.get("recordings", {}).items():
+            if rec.get("variable_name") == "v":
+                voltage_rec = rec
+                break
+
+        if voltage_rec is None:
+            logger.warning(f"Skipping {cell_id}: no voltage recording found")
+            continue
+
+        voltage = np.asarray(voltage_rec.get("values", []), dtype=float)
+        n = min(len(time), len(voltage))
+        if n < 2:
+            logger.warning(f"Skipping {cell_id}: voltage/time length mismatch or too short")
+            continue
+
+        electrode = IntracellularElectrode(
+            name=f"electrode_{cell_id}",
+            description=f"Simulated electrode for {cell_id}",
+            device=device,
+            location="soma",
+            filtering="none",
         )
-        device = nwbfile.create_device(
-            name="SimulatedElectrode", description="Virtual electrode for simulation recording"
+        nwbfile.add_icephys_electrode(electrode)
+
+        voltage_data = voltage[:n] / 1000.0  # Convert mV to V
+        time_rate = 1.0 / dt
+
+        # Create current clamp series
+        ics = CurrentClampSeries(
+            name=cell_id,
+            data=H5DataIO(data=voltage_data, compression="gzip"),
+            electrode=electrode,
+            rate=time_rate,
+            gain=1.0,
+            unit="volts",
+            description=f"Voltage trace for {cell_id}",
         )
-        for cell_id, trace in results.items():
-            electrode = IntracellularElectrode(
-                name=f"electrode_{cell_id}",
-                description=f"Simulated electrode for {cell_id}",
-                device=device,
-                location="soma",
-                filtering="none",
+        nwbfile.add_acquisition(ics)
+        wrote_any = True
+
+    if not wrote_any:
+        logger.warning(f"No voltage traces found for NWB export: {output_path}")
+        return
+
+    with NWBHDF5IO(str(output_path), "w") as io:
+        io.write(nwbfile)
+
+    logger.info(f"Saved voltage results to {output_path}")
+
+
+def _has_seclamp_input(simulation_config_data: Dict[str, Any]) -> bool:
+    inputs = simulation_config_data.get("inputs", {}) or {}
+    return any(str(v.get("module", "")).lower() == "seclamp" for v in inputs.values())
+
+
+def _get_seclamp_input_def(simulation_config_data: Dict[str, Any]) -> Dict[str, Any] | None:
+    inputs = simulation_config_data.get("inputs", {}) or {}
+    for _, stim in inputs.items():
+        if str(stim.get("module", "")).lower() == "seclamp":
+            return stim
+    return None
+
+
+def _reconstruct_seclamp_command(
+    simulation_config_data: Dict[str, Any],
+    time_s: np.ndarray,
+) -> np.ndarray | None:
+    """
+    Reconstruct SEClamp command waveform in mV from SONATA input config.
+    Returns None if no seclamp input exists.
+    """
+    stim = _get_seclamp_input_def(simulation_config_data)
+    if stim is None:
+        return None
+
+    t_ms = np.asarray(time_s, dtype=float) * 1000.0
+
+    base_voltage = float(stim["voltage"])
+    duration_total = float(stim["duration"])
+
+    durations = stim.get("duration_levels")
+    voltages = stim.get("voltage_levels")
+
+    cmd = np.full_like(t_ms, fill_value=base_voltage, dtype=float)
+
+    if durations and voltages:
+        durations = [float(x) for x in durations]
+        voltages = [float(x) for x in voltages]
+
+        if len(voltages) != len(durations) - 1:
+            raise ValueError(
+                "Invalid SEClamp config: len(voltage_levels) must equal len(duration_levels) - 1"
             )
-            nwbfile.add_icephys_electrode(electrode)
-            time_data = np.array(trace["time"], dtype=float) / 1000.0
-            voltage_data = np.array(trace["voltage"], dtype=float) / 1000.0
-            ics = CurrentClampSeries(
-                name=f"voltage_{cell_id}",
-                data=voltage_data,
+
+        cumulative = np.cumsum(durations)
+
+        if durations[0] == 0 and voltages:
+            cmd[t_ms >= 0.0] = voltages[0]
+
+        for idx, level in enumerate(voltages):
+            start = cumulative[idx]
+            stop = cumulative[idx + 1] if idx + 1 < len(cumulative) else duration_total
+            cmd[(t_ms >= start) & (t_ms < stop)] = level
+
+        if voltages:
+            cmd[t_ms >= cumulative[len(voltages) - 1]] = voltages[-1]
+
+    return cmd
+
+
+def save_current_results_to_nwb(
+    results: Dict[str, Any],
+    execution_id: str,
+    output_path: Union[str, Path],
+    simulation_config_data: Dict[str, Any],
+):
+    nwbfile = NWBFile(
+        session_description="Current recordings",
+        identifier=str(uuid.uuid4()),
+        session_start_time=datetime.now(timezone.utc),
+        experimenter="OBI User",
+        lab="Virtual Lab",
+        institution="OBI",
+        experiment_description="Current recordings from simulation",
+        session_id=execution_id,
+        was_generated_by=["obi_small_scale_simulator_v1"],
+    )
+
+    device = nwbfile.create_device(
+        name="SimulatedElectrode",
+        description="Virtual electrode for simulation recording",
+    )
+
+    has_seclamp = _has_seclamp_input(simulation_config_data)
+    wrote_any = False
+
+    for cell_id, cell_result in results.items():
+        time_s = np.asarray(cell_result["time"], dtype=float)
+        if len(time_s) < 2:
+            continue
+
+        dt_s = time_s[1] - time_s[0]
+        if dt_s <= 0:
+            continue
+
+        rate_hz = 1.0 / dt_s
+
+        electrode = IntracellularElectrode(
+            name=f"electrode_{cell_id}",
+            description=f"Simulated electrode for {cell_id}",
+            device=device,
+            location="soma",
+            filtering="none",
+        )
+        nwbfile.add_icephys_electrode(electrode)
+
+        if has_seclamp:
+            cmd_mv = _reconstruct_seclamp_command(simulation_config_data, time_s)
+            if cmd_mv is not None:
+                stim_ts = VoltageClampStimulusSeries(
+                    name=f"{cell_id}__SEClamp",
+                    data=H5DataIO(data=(cmd_mv / 1000.0), compression="gzip"),
+                    electrode=electrode,
+                    rate=rate_hz,
+                    gain=1.0,
+                    unit="volts",
+                    description="SEClamp",
+                    stimulus_description="SEClamp",
+
+                )
+                nwbfile.add_stimulus(stim_ts)
+
+        for _, rec in cell_result.get("recordings", {}).items():
+            variable_name = rec["variable_name"]
+            if variable_name == "v":
+                continue
+
+            values = np.asarray(rec["values"], dtype=float)
+
+            section_name = rec["section"]
+            segment = rec["segment"]
+            area_um2 = float(rec["area_um2"])
+
+            # convert mA/cm2 -> nA
+            values_nA = values * area_um2 * 0.01
+
+            if "." in variable_name:
+                mech, var = variable_name.split(".", 1)
+                nwb_var_name = f"{var}_{mech}"
+            else:
+                nwb_var_name = variable_name
+
+            seg = f"{segment:.3f}".rstrip("0").rstrip(".")
+            location = f"{section_name}({seg})"
+
+            ts = VoltageClampSeries(
+                name=f"{cell_id}__{nwb_var_name}__{location}",
+                data=H5DataIO(data=values_nA * 1e-9, compression="gzip"),
                 electrode=electrode,
-                timestamps=time_data,
+                rate=rate_hz,
                 gain=1.0,
-                unit="volts",
-                description=f"Voltage trace for {cell_id}",
+                unit="amperes",
+                description=nwb_var_name,
+                stimulus_description="SEClamp" if has_seclamp else "unknown",
             )
-            nwbfile.add_acquisition(ics)
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with NWBHDF5IO(str(output_path), "w") as io:
-            io.write(nwbfile)
-        logger.info("Successfully saved results to %s", output_path)
-    except Exception:
-        logger.exception("Error saving results to NWB")
-        raise
+
+            nwbfile.add_acquisition(ts)
+
+            wrote_any = True
+
+    if not wrote_any:
+        logger.warning(f"No current traces found for NWB export: {output_path}")
+        return
+
+    with NWBHDF5IO(str(output_path), "w") as io:
+        io.write(nwbfile)
+
+    logger.info(f"Saved current NWB to {output_path}")
 
 
 def run_bluecellulab(
@@ -268,15 +582,53 @@ def run_bluecellulab(
     except Exception:
         logger.exception("Error during initialization")
         raise
-
+    
     try:
-        _instantiate_and_run(sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank)
-        all_traces, all_spikes = _gather_results(sim, cell_ids_for_this_rank, rank, pc)
-
+        recording_index, local_sites_index = _instantiate_and_run(sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank)
+        gathered_sites = pc.py_gather(local_sites_index, 0)
+        local_payload = collect_local_payload(
+            sim.cells,
+            cell_ids_for_this_rank,
+            recording_index,
+        )
+        local_spikes = collect_local_spikes(sim, cell_ids_for_this_rank)
+        all_payload, all_spikes = gather_payload_to_rank0(pc, local_payload, local_spikes)
         if rank == 0:
-            _save_reports_and_outputs(
-                sim, simulation_config, config_data, all_traces, all_spikes, save_nwb=save_nwb
+            all_sites_index = gather_recording_sites(gathered_sites)
+            cells_for_writer = payload_to_cells(all_payload, all_sites_index)
+
+            all_cell_results = _build_nwb_results_from_cells(
+                cells_for_writer,
+                config_data,
             )
+            report_mgr = ReportManager(sim.circuit_access.config, sim.dt)
+            report_mgr.write_all(cells=cells_for_writer, spikes_by_pop=all_spikes)
+
+            if save_nwb:
+                output_dir_str = config_data["output"]["output_dir"]
+                output_dir = Path(output_dir_str).resolve()
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                voltage_nwb_path = output_dir / "voltage_report.nwb"
+                current_nwb_path = output_dir / "current_report.nwb"
+
+                save_voltage_results_to_nwb(
+                    all_cell_results,
+                    "execution_id_test",
+                    voltage_nwb_path,
+                )
+
+                save_current_results_to_nwb(
+                    all_cell_results,
+                    "execution_id_test",
+                    current_nwb_path,
+                    config_data,
+                )
+
+                plot_path = output_dir / "voltage_traces.png"
+                plot_voltage_traces(all_cell_results, plot_path)
+                logger.info(f"Successfully saved voltage traces plot to {plot_path}")
+
     except Exception:
         logger.exception("Rank %d failed", rank)
         raise
@@ -339,85 +691,14 @@ def _instantiate_and_run(
 ) -> None:
     logger.info("Rank %d: Instantiating %d cells", rank, len(cell_ids))
     sim.instantiate_gids(cell_ids, **params)
+    recording_index, local_sites_index = prepare_recordings_for_reports(
+        sim.cells,
+        sim.circuit_access.config,
+    )
     logger.info("Rank %d: Running simulation...", rank)
     sim.run(t_stop, dt, cvode=False)
 
-
-def _gather_results(
-    sim: Any, cell_ids: list[tuple[str, int]], rank: int, pc: Any
-) -> tuple[dict[str, Any], dict[str, dict[int, list[float]]]]:
-    time_ms: Any = sim.get_time_trace()
-    if time_ms is None:
-        logger.error("Rank %d: Time trace is None", rank)
-        return {}, {}
-
-    time_s = time_ms / 1000.0
-    traces: dict[str, Any] = {}
-    spikes: dict[str, dict[int, list[float]]] = defaultdict(dict)
-
-    for pop, gid in cell_ids:
-        key = f"{pop}_{gid}"
-        voltage = sim.get_voltage_trace((pop, gid))
-        if voltage is not None:
-            traces[key] = {"time": time_s.tolist(), "voltage": voltage.tolist(), "unit": "mV"}
-        spikes[pop][gid] = _get_spikes(sim, (pop, gid))
-
-    gathered_traces = pc.py_gather(traces, 0)
-    gathered_spikes = pc.py_gather(spikes, 0)
-
-    if rank == 0:
-        return _merge_dicts(gathered_traces), _merge_spikes(gathered_spikes)  # type: ignore[name-defined]
-    return {}, {}
-
-
-def _get_spikes(sim: Any, cell_id: tuple[str, int]) -> list[float]:
-    try:
-        cell_obj = sim.cells[cell_id]
-        spikes: Any = cell_obj.get_recorded_spikes(
-            location=sim.spike_location, threshold=sim.spike_threshold
-        )
-        return list(spikes) if spikes else []
-    except (KeyError, AttributeError) as exc:
-        logger.debug("No spikes for %s: %s", cell_id, exc)
-        return []
-
-
-def _save_reports_and_outputs(
-    sim: Any,
-    simulation_config: str | Path,
-    config_data: dict[str, Any],
-    traces: dict[str, Any],
-    spikes: dict[str, dict[int, list[float]]],
-    *,
-    save_nwb: bool = False,
-) -> None:
-    report_mgr = ReportManager(sim.circuit_access.config, sim.dt)  # type: ignore[name-defined]
-    report_mgr.write_all(cells_or_traces=traces, spikes_by_pop=spikes)
-
-    if not save_nwb:
-        return
-
-    output_dir = _resolve_output_dir(simulation_config, config_data)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_path = output_dir / "results.nwb"
-    logger.info("Saving results to %s", output_path)
-    save_results_to_nwb(traces, output_path)  # type: ignore[name-defined]
-
-    plot_path = output_dir / "voltage_traces.png"
-    plot_voltage_traces(traces, plot_path)  # type: ignore[name-defined]
-
-
-def _resolve_output_dir(simulation_config: str | Path, config_data: dict[str, Any]) -> Path:
-    base_dir = Path(simulation_config).parent
-    output = config_data.get("output", {})
-    if isinstance(output, dict) and (output_dir_str := output.get("output_dir")):
-        if output_dir_str.startswith("$OUTPUT_DIR"):
-            manifest_base = config_data.get("manifest", {}).get("$OUTPUT_DIR")
-            if manifest_base:
-                return Path(manifest_base) / output_dir_str.replace("$OUTPUT_DIR/", "")
-        return Path(output_dir_str)
-    return base_dir / "output"
+    return recording_index, local_sites_index
 
 
 def _finalize(rank: int, pc: Any) -> None:
