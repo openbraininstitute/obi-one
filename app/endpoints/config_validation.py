@@ -11,7 +11,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitSimulationScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 
 router = APIRouter(
     prefix="/config-validation",
