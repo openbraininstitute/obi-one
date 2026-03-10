@@ -200,7 +200,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
-
         if isinstance(self.initialize.circuit, list):
             if len(self.initialize.circuit) != 1:
                 msg = "Only single circuit/MEModel currently supported for \
