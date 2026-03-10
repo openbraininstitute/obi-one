@@ -48,8 +48,8 @@ class IonChannelModelWithConductance(Block):
     )
 
     conductance: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        title="Conductance value (in S/cm2)",
-        description="Conductance value (in S/cm2).",
+        title="Conductance value",
+        description="Conductance value.",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "S/cm2",
@@ -77,8 +77,8 @@ class IonChannelModelWithMaxPermeability(Block):
     )
 
     max_permeability: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        title="Maximum permeability value (in cm/s)",
-        description="Maximum permeability value (in cm/s).",
+        title="Maximum permeability value",
+        description="Maximum permeability value.",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "cm/s",
