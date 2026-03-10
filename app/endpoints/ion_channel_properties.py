@@ -30,7 +30,7 @@ def mapped_ion_channel_properties_endpoint(
         )
         mapped_ion_channel_properties = {}
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {
-            key: value.variables_and_units for key, value in ion_channel_properties.items()
+            key: value.variables for key, value in ion_channel_properties.items()
         }
 
     except entitysdk.exception.EntitySDKError as err:

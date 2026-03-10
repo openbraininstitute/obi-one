@@ -1,12 +1,36 @@
 import itertools
+import uuid
 from collections.abc import Mapping
+from typing import Annotated
 
 from entitysdk.client import Client
 from entitysdk.models.ion_channel_model import IonChannelModel
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from obi_one.core.base import OBIBaseModel
+
+
+class IonChannelVariable(OBIBaseModel):
+    """Single variable of an ion channel model to be recorded.
+    
+    Contains the ion channel ID, variable name, and unit.
+
+    Example (GLOBAL ion channel):
+        ion_channel_id: uuid.UUID("...")
+        variable_name: "ik_StochKv3"
+        unit: "mA/cm2"
+    """
+    ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
+    variable_name: str = Field(
+        description="Name of the variable (e.g., 'vmin_StochKv3', 'gCa_HVAbar_Ca_HVA2', 'cm', 'Ra')"
+    )
+    unit: str = Field(
+        description="Unit of the variable (e.g., 'mA/cm2', 'mV', 'mM')",
+    )
 
 
 class IonChannelVariablesOutput(BaseModel, Mapping):
+    ion_channel_id: str | uuid.UUID
     ion_channel_suffix: str
     current: list[str]
     non_specific_current: list[str]
@@ -14,26 +38,30 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
 
     @property
     def variables(self) -> list[str]:
-        current_variables = [f"{self.ion_channel_suffix}.{current}" for current in self.current]
-        non_specific_current_variables = [
-            f"{self.ion_channel_suffix}.{non_specific_current}"
-            for non_specific_current in self.non_specific_current
-        ]
-        return list(
-            itertools.chain(current_variables, non_specific_current_variables, self.concentration)
-        )
-
-    @property
-    def variables_and_units(self) -> list[str]:
         current_variables = [
-            {"variable": f"{self.ion_channel_suffix}.{current}", "unit": "mA/cm2"}
+            IonChannelVariable(
+                ion_channel_id=self.ion_channel_id,
+                variable_name=f"{self.ion_channel_suffix}.{current}",
+                unit="mA/cm2"
+            )
             for current in self.current
         ]
         non_specific_current_variables = [
-            {"variable": f"{self.ion_channel_suffix}.{non_specific_current}", "unit": "mA/cm2"}
+            IonChannelVariable(
+                ion_channel_id=self.ion_channel_id,
+                variable_name=f"{self.ion_channel_suffix}.{non_specific_current}",
+                unit="mA/cm2"
+            )
             for non_specific_current in self.non_specific_current
         ]
-        concentration = [{{"variable": conc, "unit": "mM"}} for conc in self.concentration]
+        concentration = [
+            IonChannelVariable(
+                ion_channel_id=self.ion_channel_id,
+                variable_name=conc,
+                unit="mM"
+            )
+            for conc in self.concentration
+        ]
         return list(
             itertools.chain(current_variables, non_specific_current_variables, concentration)
         )
@@ -68,6 +96,7 @@ def get_ion_channel_variables(
         output[key] = {
             "name": ion_channel.name,
             "variables": IonChannelVariablesOutput(
+                ion_channel_id=ion_channel_id,
                 ion_channel_siffix=ion_channel.nmodl_suffix,
                 current=current,
                 non_specific_current=non_specific_current,
