@@ -7,26 +7,29 @@ This module provides functionality to run simulations using different backends
 import json
 import logging
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Union
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
-from neuron import h
-from pynwb import H5DataIO, NWBHDF5IO, NWBFile
-from pynwb.icephys import CurrentClampSeries, IntracellularElectrode, VoltageClampStimulusSeries, VoltageClampSeries
-
-
 from bluecellulab.reports.utils import (
     collect_local_payload,
     collect_local_spikes,
     gather_payload_to_rank0,
-    payload_to_cells,
     gather_recording_sites,
-    prepare_recordings_for_reports
+    payload_to_cells,
+    prepare_recordings_for_reports,
+)
+from neuron import h
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile
+from pynwb.icephys import (
+    CurrentClampSeries,
+    IntracellularElectrode,
+    VoltageClampSeries,
+    VoltageClampStimulusSeries,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,7 +162,7 @@ def run(
         raise ValueError(err_msg)
 
 
-def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], max_cols: int = 3):
+def plot_voltage_traces(results: dict[str, Any], output_path: str | Path, max_cols: int = 3):
     """Plot voltage traces for all cells in a grid of subplots and save to file.
 
     Args:
@@ -227,9 +230,9 @@ def plot_voltage_traces(results: Dict[str, Any], output_path: Union[str, Path], 
     logger.info(f"Saved voltage traces plot to {output_path}")
 
 
-def _get_report_metadata(simulation_config_data: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+def _get_report_metadata(simulation_config_data: dict[str, Any]) -> dict[str, dict[str, str]]:
     reports = simulation_config_data.get("reports", {}) or {}
-    out: Dict[str, Dict[str, str]] = {}
+    out: dict[str, dict[str, str]] = {}
 
     for report_name, report_cfg in reports.items():
         if not report_cfg.get("enabled", True):
@@ -254,11 +257,11 @@ def _get_report_metadata(simulation_config_data: Dict[str, Any]) -> Dict[str, Di
 
 
 def _build_nwb_results_from_cells(
-    cells: Dict[Any, Any],
-    simulation_config_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    cells: dict[Any, Any],
+    simulation_config_data: dict[str, Any],
+) -> dict[str, Any]:
     report_meta = _get_report_metadata(simulation_config_data)
-    results: Dict[str, Any] = {}
+    results: dict[str, Any] = {}
 
     for cell_id, cell in cells.items():
         population = cell_id.population_name
@@ -272,7 +275,7 @@ def _build_nwb_results_from_cells(
             continue
 
         time_s = time_ms / 1000.0
-        recordings: Dict[str, Any] = {}
+        recordings: dict[str, Any] = {}
 
         for report_name, sites in getattr(cell, "report_sites", {}).items():
             meta = report_meta.get(report_name)
@@ -312,15 +315,15 @@ def _build_nwb_results_from_cells(
 
 
 def save_voltage_results_to_nwb(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     execution_id: str,
-    output_path: Union[str, Path],
+    output_path: str | Path,
 ):
     """Save voltage report results to NWB format."""
     nwbfile = NWBFile(
         session_description="Small Microcircuit Simulation voltage results",
         identifier=str(uuid.uuid4()),
-        session_start_time=datetime.now(timezone.utc),
+        session_start_time=datetime.now(UTC),
         experimenter="OBI User",
         lab="Virtual Lab",
         institution="OBI",
@@ -392,12 +395,12 @@ def save_voltage_results_to_nwb(
     logger.info(f"Saved voltage results to {output_path}")
 
 
-def _has_seclamp_input(simulation_config_data: Dict[str, Any]) -> bool:
+def _has_seclamp_input(simulation_config_data: dict[str, Any]) -> bool:
     inputs = simulation_config_data.get("inputs", {}) or {}
     return any(str(v.get("module", "")).lower() == "seclamp" for v in inputs.values())
 
 
-def _get_seclamp_input_def(simulation_config_data: Dict[str, Any]) -> Dict[str, Any] | None:
+def _get_seclamp_input_def(simulation_config_data: dict[str, Any]) -> dict[str, Any] | None:
     inputs = simulation_config_data.get("inputs", {}) or {}
     for _, stim in inputs.items():
         if str(stim.get("module", "")).lower() == "seclamp":
@@ -406,11 +409,10 @@ def _get_seclamp_input_def(simulation_config_data: Dict[str, Any]) -> Dict[str, 
 
 
 def _reconstruct_seclamp_command(
-    simulation_config_data: Dict[str, Any],
+    simulation_config_data: dict[str, Any],
     time_s: np.ndarray,
 ) -> np.ndarray | None:
-    """
-    Reconstruct SEClamp command waveform in mV from SONATA input config.
+    """Reconstruct SEClamp command waveform in mV from SONATA input config.
     Returns None if no seclamp input exists.
     """
     stim = _get_seclamp_input_def(simulation_config_data)
@@ -453,15 +455,15 @@ def _reconstruct_seclamp_command(
 
 
 def save_current_results_to_nwb(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     execution_id: str,
-    output_path: Union[str, Path],
-    simulation_config_data: Dict[str, Any],
+    output_path: str | Path,
+    simulation_config_data: dict[str, Any],
 ):
     nwbfile = NWBFile(
         session_description="Current recordings",
         identifier=str(uuid.uuid4()),
-        session_start_time=datetime.now(timezone.utc),
+        session_start_time=datetime.now(UTC),
         experimenter="OBI User",
         lab="Virtual Lab",
         institution="OBI",
@@ -510,7 +512,6 @@ def save_current_results_to_nwb(
                     unit="volts",
                     description="SEClamp",
                     stimulus_description="SEClamp",
-
                 )
                 nwbfile.add_stimulus(stim_ts)
 
@@ -582,9 +583,11 @@ def run_bluecellulab(
     except Exception:
         logger.exception("Error during initialization")
         raise
-    
+
     try:
-        recording_index, local_sites_index = _instantiate_and_run(sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank)
+        recording_index, local_sites_index = _instantiate_and_run(
+            sim, cell_ids_for_this_rank, instantiate_params, t_stop, dt, rank
+        )
         gathered_sites = pc.py_gather(local_sites_index, 0)
         local_payload = collect_local_payload(
             sim.cells,

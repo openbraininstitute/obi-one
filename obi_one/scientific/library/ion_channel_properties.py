@@ -12,7 +12,7 @@ from obi_one.core.base import OBIBaseModel
 
 class IonChannelVariable(OBIBaseModel):
     """Single variable of an ion channel model to be recorded.
-    
+
     Contains the ion channel ID, variable name, and unit.
 
     Example (GLOBAL ion channel):
@@ -21,6 +21,7 @@ class IonChannelVariable(OBIBaseModel):
         variable_name: "ik_StochKv3"
         unit: "mA/cm2"
     """
+
     ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
     channel_name: (
         Annotated[
@@ -54,7 +55,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
                 ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{self.ion_channel_suffix}.{current}",
-                unit="mA/cm2"
+                unit="mA/cm2",
             )
             for current in self.current
         ]
@@ -63,7 +64,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
                 ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{self.ion_channel_suffix}.{non_specific_current}",
-                unit="mA/cm2"
+                unit="mA/cm2",
             )
             for non_specific_current in self.non_specific_current
         ]
@@ -72,7 +73,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
                 ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=conc,
-                unit="mM"
+                unit="mM",
             )
             for conc in self.concentration
         ]
