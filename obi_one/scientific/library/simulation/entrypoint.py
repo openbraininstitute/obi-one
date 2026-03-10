@@ -10,10 +10,10 @@ import uuid
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
-from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +26,7 @@ from pynwb.icephys import CurrentClampSeries, IntracellularElectrode
 from obi_one.utils.io import load_json
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class MPIProcess:
