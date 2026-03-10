@@ -31,10 +31,10 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     except EntitySDKError as e:
         L.exception(e)
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
+            status_code=HTTPStatus.BAD_REQUEST,
             detail={
-                "code": ApiErrorCode.NOT_FOUND,
-                "detail": "Circuit not found",
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": "Couldn't fetch the circuit",
             },
         ) from e
 
