@@ -420,6 +420,10 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
+    """To do"""
+
+
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
     if schema.get("type") != "boolean":
         msg = f"Validation error at {ref}: boolean_input param {param} should have type 'boolean'"
@@ -481,6 +485,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_neuron_ids(schema, param, ref)
         case "model_identifier":
             validate_model_identifier(schema, param, ref)
+        case "model_selector_single":
+            validate_model_selector_single(schema, param, ref)
         case "ion_channel_variable_modification_by_section_list":
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case "ion_channel_variable_modification_by_neuron":
