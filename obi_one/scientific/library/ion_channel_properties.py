@@ -17,10 +17,21 @@ class IonChannelVariable(OBIBaseModel):
 
     Example (GLOBAL ion channel):
         ion_channel_id: uuid.UUID("...")
+        channel_name: "StochKv3"
         variable_name: "ik_StochKv3"
         unit: "mA/cm2"
     """
     ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
+    channel_name: (
+        Annotated[
+            str,
+            Field(
+                min_length=1,
+                description="Channel suffix (e.g., 'NaTg') used as key in conditions.mechanisms",
+            ),
+        ]
+        | None
+    ) = None
     variable_name: str = Field(
         description="Name of the variable (e.g., 'vmin_StochKv3', 'gCa_HVAbar_Ca_HVA2', 'cm', 'Ra')"
     )
@@ -41,6 +52,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         current_variables = [
             IonChannelVariable(
                 ion_channel_id=self.ion_channel_id,
+                channel_name=self.ion_channel_suffix,
                 variable_name=f"{self.ion_channel_suffix}.{current}",
                 unit="mA/cm2"
             )
@@ -49,6 +61,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         non_specific_current_variables = [
             IonChannelVariable(
                 ion_channel_id=self.ion_channel_id,
+                channel_name=self.ion_channel_suffix,
                 variable_name=f"{self.ion_channel_suffix}.{non_specific_current}",
                 unit="mA/cm2"
             )
@@ -57,6 +70,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         concentration = [
             IonChannelVariable(
                 ion_channel_id=self.ion_channel_id,
+                channel_name=self.ion_channel_suffix,
                 variable_name=conc,
                 unit="mM"
             )

@@ -161,15 +161,14 @@ class IonChannelVariableRecording(Recording):
 
     title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
 
-    # RECORDABLE_VARIABLES has shape {model name: {"variable": str, "unit": str}}
-    # variable_name has shape {"variable": str, "unit": str}
+    # RECORDABLE_VARIABLES has shape {model name: [IonChannelVariable, ...]}
     variable: IonChannelVariable = Field(
         title="Ion Channel Variable Name",
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
             "ui_element": "ion_channel_recordings_dropdown",
-            "entity_type": EntityType.IONCHANNELMODEL,
+            "property_group": EntityType.IONCHANNELMODEL,
             "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
