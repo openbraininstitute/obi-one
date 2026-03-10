@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated, TypedDict, cast
+from typing import Annotated, cast
 from uuid import UUID
 
 import h5py
@@ -12,6 +12,7 @@ from entitysdk.exception import EntitySDKError
 from entitysdk.models import Circuit
 from entitysdk.types import CircuitScale
 from fastapi import HTTPException
+from pydantic import BaseModel
 
 from app.errors import ApiErrorCode
 from app.logger import L
@@ -20,7 +21,7 @@ PositionVector = Annotated[tuple[float, float, float], "x", "y", "z"]
 OrientationVector = Annotated[tuple[float, float, float, float], "x", "y", "z", "w"]
 
 
-class Node(TypedDict):
+class Node(BaseModel):
     morphology_path: str  # Path to the morphology in the circuit's sonata directory
     position: PositionVector
     orientation: OrientationVector
@@ -30,7 +31,7 @@ class Node(TypedDict):
 Nodes = list[Node]
 
 
-class NeuronSectionInfo(TypedDict):
+class NeuronSectionInfo(BaseModel):
     index: int
     name: str
     nseg: int
