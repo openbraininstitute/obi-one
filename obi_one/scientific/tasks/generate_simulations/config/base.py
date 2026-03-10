@@ -62,28 +62,7 @@ TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
-class CircuitConfigMixin:
-    """Class containing methods for determining entity ID based on circuit information."""
-
-    def entity_id_for_campaign_entity_generation(self) -> str:
-        """Determines the entity ID for the simulation campaign based on the circuit."""
-        if isinstance(self.initialize.circuit, list):
-            if len(self.initialize.circuit) != 1:
-                msg = "Only single circuit/MEModel currently supported for \
-                    simulation campaign database persistence."
-                raise OBIONEError(msg)
-            return self.initialize.circuit[0].id_str
-        if self.initialize.circuit is None:
-            msg = "Circuit must be specified to determine entity ID for simulation campaign."
-            raise OBIONEError(msg)
-        try:
-            return self.initialize.circuit.id_str
-        except AttributeError as err:
-            msg = "self.initialize.circuit must have an id_str attribute."
-            raise OBIONEError(msg) from err
-
-
-class SimulationScanConfig(ScanConfig, CircuitConfigMixin, abc.ABC):
+class SimulationScanConfig(ScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
     single_coord_class_name: ClassVar[str]
@@ -219,6 +198,24 @@ class SimulationScanConfig(ScanConfig, CircuitConfigMixin, abc.ABC):
         },
     )
 
+    def entity_id_for_campaign_entity_generation(self) -> str:
+        """Determines the entity ID for the simulation campaign based on the circuit."""
+
+        if isinstance(self.initialize.circuit, list):
+            if len(self.initialize.circuit) != 1:
+                msg = "Only single circuit/MEModel currently supported for \
+                    simulation campaign database persistence."
+                raise OBIONEError(msg)
+            return self.initialize.circuit[0].id_str
+        if self.initialize.circuit is None:
+            msg = "Circuit must be specified to determine entity ID for simulation campaign."
+            raise OBIONEError(msg)
+        try:
+            return self.initialize.circuit.id_str
+        except AttributeError as err:
+            msg = "self.initialize.circuit must have an id_str attribute."
+            raise OBIONEError(msg) from err
+
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
@@ -267,7 +264,7 @@ class SimulationScanConfig(ScanConfig, CircuitConfigMixin, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(CircuitConfigMixin, abc.ABC):
+class SimulationSingleConfigMixin(abc.ABC):
     """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
 
     _single_entity: entitysdk.models.Simulation
