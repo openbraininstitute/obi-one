@@ -15,7 +15,7 @@ Single cell simulations are configured using `MEModelSimulationSingleConfig` or 
 
 ### MEModelSimulationSingleConfig
 
-The `MEModelSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation_configs.py`) is used to configure single cell simulations. It includes:
+The `MEModelSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation.config.base.py`) is used to configure single cell simulations. It includes:
 
 - **Circuit**: A MEModel (Morphology and Electrophysiology Model) to simulate
 - **Simulation Parameters**: Duration, timestep, initial voltage, extracellular calcium concentration
