@@ -13,14 +13,11 @@ from app.dependencies.launch_system import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.mappings import TASK_DEFINITIONS
-from app.schemas.task import (
-    TaskAccountingCreate,
-    TaskAccountingInfo,
-    TaskCallBackSuccessRequest,
-    TaskLaunchInfo,
-    TaskLaunchSubmit,
-)
-from app.services import accounting as accounting_service, task as task_service
+from app.schemas.task import (TaskAccountingCreate, TaskAccountingInfo,
+                              TaskCallBackSuccessRequest, TaskLaunchInfo,
+                              TaskLaunchSubmit)
+from app.services import accounting as accounting_service
+from app.services import task as task_service
 from app.types import TaskType
 
 router = APIRouter(
@@ -59,7 +56,6 @@ def task_launch_endpoint(
     )
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,
-        service_subtype=task_definition.accounting_service_subtype,
         accounting_factory=accounting_factory,
         accounting_parameters=accounting_info.parameters,
     )

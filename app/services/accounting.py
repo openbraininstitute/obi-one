@@ -7,7 +7,8 @@ from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
-from obp_accounting_sdk.errors import BaseAccountingError, InsufficientFundsError
+from obp_accounting_sdk.errors import (BaseAccountingError,
+                                       InsufficientFundsError)
 from obp_accounting_sdk.utils import get_current_timestamp
 
 from app.config import settings
@@ -31,13 +32,12 @@ CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
 
 def make_task_reservation(
     *,
-    service_subtype: ServiceSubtype,
     user_context: UserContext,
     accounting_parameters: AccountingParameters,
     accounting_factory: AccountingSessionFactory,
 ) -> OneshotSession:
     accounting_session = accounting_factory.oneshot_session(
-        subtype=service_subtype,
+        subtype=accounting_parameters.service_subtype,
         proj_id=user_context.project_id,
         user_id=user_context.subject,
         count=accounting_parameters.count,
@@ -70,7 +70,7 @@ def make_task_reservation(
     else:
         accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
-        f"Accounting parameters reserved: subtype={service_subtype}, "
+        f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
         f"count={accounting_parameters.count}, job_id={accounting_job_id}"
     )
     return accounting_session
