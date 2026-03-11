@@ -16,12 +16,17 @@ from app.types import (
 )
 
 
+class Capabilities(Schema):
+    private_packages: bool = False
+
+
 class PythonRepositoryCode(Schema):
     type: Literal[CodeType.python_repository] = CodeType.python_repository
     location: str
     ref: str
     path: str
     dependencies: str
+    capabilities: Capabilities = Capabilities()
 
 
 class BuiltinCode(Schema):
@@ -51,6 +56,7 @@ class ClusterResources(Schema):
     type: Literal[ResourcesConfigType.cluster] = ResourcesConfigType.cluster
     instances: int
     instance_type: str
+    compute_cell: str
     timelimit: str | None = None
 
 

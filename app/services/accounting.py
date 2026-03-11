@@ -63,7 +63,12 @@ def make_task_reservation(
             details=str(ex),
         ) from ex
 
-    accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
+    # TODO: Remove once https://github.com/openbraininstitute/accounting-sdk/issues/29 is addressed
+    if settings.ACCOUNTING_DISABLED:
+        accounting_job_id = UUID(int=0)
+        accounting_session._job_id = accounting_job_id  # noqa: SLF001
+    else:
+        accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
         f"Accounting parameters reserved: subtype={service_subtype}, "
         f"count={accounting_parameters.count}, job_id={accounting_job_id}"
