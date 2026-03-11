@@ -89,6 +89,36 @@ def get_population_nodes(  # noqa: PLR0914
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
 
+        required_attrs = {
+            "x",
+            "y",
+            "z",
+            "orientation_x",
+            "orientation_y",
+            "orientation_z",
+            "orientation_w",
+            "morphology",
+        }
+        available_attrs = set(population.attribute_names)
+
+        # Download and load library only if attributes are missing
+        if not required_attrs.issubset(available_attrs):
+            csv_asset_path = asset_path.with_name("node_types.csv")
+            csv_file_path = parent_dir / csv_asset_path
+
+            if not csv_file_path.exists():
+                db_client.download_file(
+                    entity_id=circuit_id,
+                    entity_type=Circuit,
+                    asset_id=asset_id,
+                    output_path=csv_file_path,
+                    asset_path=csv_asset_path,
+                )
+
+            # Re-initialize storage with the library to execute the join operation
+            storage = libsonata.NodeStorage(str(nodes_file_path), str(csv_file_path))
+            population = storage.open_population(population_name)
+
         selection = libsonata.Selection(np.arange(population.size))
 
         x = population.get_attribute("x", selection)
