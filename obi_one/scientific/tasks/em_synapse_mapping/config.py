@@ -1,21 +1,19 @@
 import logging
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
 from entitysdk.client import Client
-from entitysdk.models import TaskConfig, TaskConfigType, TaskActivity, Entity
-from entitysdk.types import ActivityStatus, AssetLabel, EntityType, TaskConfigType
+from entitysdk.models import Entity, TaskConfig, TaskConfigType
+from entitysdk.types import AssetLabel, ContentType, EntityType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME, _COORDINATE_CONFIG_FILENAME
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -102,57 +100,28 @@ class EMSynapseMappingScanConfig(ScanConfig):
         },
     )
 
+    @property
     def input_entity_ids(self):
         return [self.initialize.spiny_neuron.id_str]
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
-    ) -> TaskConfig:
-        
-        L.info("-- Create campaign TaskConfig entity")
-        self._campaign = db_client.register_entity(
-            TaskConfig(
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                task_config_type=TaskConfigType.em_synapse_mapping__campaign,
-                meta={"scan_parameters": multiple_value_parameters_dictionary},
-                inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
-            )
-        )
+    @property
+    def campaign_name(self) -> str:
+        return self.info.campaign_name
 
-        L.info("-- Upload task_config asset for campaign TaskConfig")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=TaskConfig,
-            file_path=output_root / _SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",
-            asset_label=AssetLabel.task_config,
-        )
+    @property
+    def campaign_description(self) -> str:
+        return self.info.campaign_description
 
-        return self._campaign
+    @property
+    def campaign_task_config_type(self) -> TaskConfigType:
+        return TaskConfigType.em_synapse_mapping__campaign
 
-    def create_campaign_generation_entity(
-        self, generated: list[TaskConfig], db_client: Client
-    ) -> None:
-        L.info("3. Saving completed simulation campaign generation")
+    @property
+    def campaign_generation_task_activity_type(self) -> TaskActivityType:
+        return TaskActivityType.em_synapse_mapping__config_generation
 
-        L.info("-- Register SimulationGeneration Entity")
-        db_client.register_entity(
-            TaskActivity(
-                task_activity_type=TaskConfigType.em_synapse_mapping__config_generation,
-                status=ActivityStatus.completed,
-                start_time=datetime.now(UTC),
-                end_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=generated,
-            )
-        )
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    
     _single_entity: TaskConfig = None
 
     @property
@@ -181,7 +150,9 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 task_config_type=TaskConfigType.em_synapse_mapping__config,
-                meta={"scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()},
+                meta={
+                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()
+                },
                 inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
             )
         )
@@ -191,7 +162,7 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
             entity_id=self._campaign.id,
             entity_type=TaskConfig,
             file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",
+            file_content_type=ContentType.json,
             asset_label=AssetLabel.task_config,
         )
 

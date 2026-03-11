@@ -1,14 +1,23 @@
+import logging
 import types
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import ClassVar, get_args, get_origin
 
 import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Entity, TaskActivity, TaskConfig
+from entitysdk.types import ActivityStatus, AssetLabel, ContentType
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
+
+L = logging.getLogger(__name__)
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -37,10 +46,75 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     @property
     def campaign(
         self,
-    ) -> (
-        entitysdk.models.SimulationCampaign | None
-    ):  # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
+    ) -> entitysdk.models.Entity | None:
         return self._campaign
+
+    @property
+    def input_entity_ids(self):
+        return []
+
+    @property
+    def campaign_name(self) -> None:
+        return None
+
+    @property
+    def campaign_description(self) -> None:
+        return None
+
+    @property
+    def campaign_task_config_type(self) -> None:
+        raise NotImplementedError(
+            "Subclasses of ScanConfig must implement the campaign_task_config_type property."
+        )
+
+    @property
+    def campaign_generation_task_activity_type(self) -> None:
+        raise NotImplementedError(
+            "Subclasses of ScanConfig must implement the campaign_generation_task_activity_type property."
+        )
+
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: Client = None,
+    ) -> TaskConfig:
+        L.info("-- Create campaign TaskConfig entity")
+        self._campaign = db_client.register_entity(
+            TaskConfig(
+                name=self.campaign_name,
+                description=self.campaign_description,
+                task_config_type=self.campaign_task_config_type,
+                meta={"scan_parameters": multiple_value_parameters_dictionary},
+                inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids],
+            )
+        )
+
+        L.info("-- Upload task_config asset for campaign TaskConfig")
+        _ = db_client.upload_file(
+            entity_id=self._campaign.id,
+            entity_type=TaskConfig,
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
+            file_content_type=ContentType.json,
+            asset_label=AssetLabel.task_config,
+        )
+
+        return self._campaign
+
+    def create_campaign_generation_entity(
+        self, generated: list[TaskConfig], db_client: Client
+    ) -> None:
+        L.info("-- Register Campaign Generation TaskActivity")
+        db_client.register_entity(
+            TaskActivity(
+                task_activity_type=self.campaign_generation_task_activity_type,
+                status=ActivityStatus.completed,
+                start_time=datetime.now(UTC),
+                end_time=datetime.now(UTC),
+                used=[self._campaign],
+                generated=generated,
+            )
+        )
 
     @classmethod
     def empty_config(cls) -> "ScanConfig":

@@ -1,14 +1,15 @@
 import abc
-from typing import ClassVar
-
-from obi_one.core.base import OBIBaseModel
+import logging
 
 from entitysdk import Client
 from entitysdk.models import TaskActivity
 
+from obi_one.core.base import OBIBaseModel
+
+L = logging.getLogger(__name__)
+
 
 class Task(OBIBaseModel, abc.ABC):
-
     @staticmethod
     def _get_execution_activity(
         db_client: Client = None,
@@ -25,7 +26,6 @@ class Task(OBIBaseModel, abc.ABC):
         else:
             execution_activity = None
         return execution_activity
-    
 
     @staticmethod
     def _update_execution_activity(

@@ -22,7 +22,6 @@ from entitysdk.models import (
     EMDenseReconstructionDataset,
     Publication,
     ScientificArtifactPublicationLink,
-    TaskActivity
 )
 from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
@@ -112,12 +111,12 @@ class EMSynapseMappingTask(Task):
         *,
         db_client: Client = None,
         entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        execution_activity_id: str | None = None,
     ) -> None:
         if db_client is None:
             err_str = "Synapse lookup and mapping requires a working db_client!"
             raise ValueError(err_str)
-        
+
         # NEW
         execution_activity = EMSynapseMappingTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
@@ -276,9 +275,6 @@ class EMSynapseMappingTask(Task):
             execution_activity=execution_activity,
             generated=[registered_circuit_id],
         )
-
-
-
 
     @staticmethod
     def synapses_and_nodes_dataframes_from_EM(

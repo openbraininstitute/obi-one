@@ -90,5 +90,5 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
             capabilities=Capabilities(private_packages=False),
         ),
-    )
+    ),
 }
