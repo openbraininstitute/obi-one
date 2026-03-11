@@ -42,15 +42,6 @@ class MPIProcess:
         """Return the total number of MPI processes."""
         return int(self.parallel_context.nhost())
 
-    def finalize(self) -> None:
-        try:
-            logger.info("Rank %d: Cleaning up...", self.rank)
-            self.parallel_context.barrier()
-            self.parallel_context.done()
-        except RuntimeError:
-            logger.exception("Error during cleanup in rank %d", self.rank)
-            raise
-
 
 @contextmanager
 def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
@@ -65,6 +56,8 @@ def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
         yield process
     finally:
         process.finalize()
+        parallel_context.barrier()
+        parallel_context.done()
         h.quit()
 
 
