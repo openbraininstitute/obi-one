@@ -47,4 +47,3 @@ class IonChannelVariableRecording(Recording):
 - `ion_channel_id` (`uuid.UUID | str | None`): selected ion channel entity ID (if applicable).
 - `variable_name` (`str`): variable name to record.
 - `channel_name` (`str`): the SUFFIX of the channel in the hoc file
-- `unit` (`str`): Unit of the variable (e.g., 'mA/cm2', 'mV', 'mM').
