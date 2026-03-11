@@ -21,8 +21,9 @@ class BlockGroup(StrEnum):
 
 
 class EMSynapseMappingScanConfig(ScanConfig):
+    """Map location of afferent synapses from EM onto a spiny morphology."""
+
     name: ClassVar[str] = "Map synapse locations"
-    description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
 
     json_schema_extra_additions: ClassVar[dict] = {
         "ui_enabled": True,
@@ -39,7 +40,7 @@ class EMSynapseMappingScanConfig(ScanConfig):
             json_schema_extra={
                 "ui_element": "model_selector_single",
                 "entity_query": {
-                    "type": EntityType.cell_morphology_from_id,
+                    "type": EntityType.cell_morphology,
                     "filters": {
                         "cell_morphology_protocol": "ultraliser",
                     },
