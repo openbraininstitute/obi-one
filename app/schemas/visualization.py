@@ -1,10 +1,18 @@
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import BaseModel, Field
 
 
 class Node(BaseModel):
-    morphology_path: str  # Path to the morphology in the circuit's sonata directory
-    position: tuple[float, float, float]  # x,y, z
-    orientation: tuple[float, float, float, float]  # "x", "y", "z", "w"
+    morphology_path: Annotated[
+        str, Field(description="Path to the morphology in the circuit's sonata directory")
+    ]
+    position: Annotated[
+        tuple[float, float, float], Field(description="Position coordinates (x,y,z)")
+    ]
+    orientation: Annotated[
+        tuple[float, float, float, float], Field(description="Orientation quaternion (x, y, z, w)")
+    ]
     soma_radius: float | None
 
 
