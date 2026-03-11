@@ -10,9 +10,14 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
 from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
-from obi_one.scientific.tasks.generate_simulation_configs import (
-    CircuitSimulationScanConfig,
+from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
@@ -43,6 +48,7 @@ ScanConfigsUnion = Annotated[
     | MorphologyLocationsScanConfig
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
-    | MEModelWithSynapsesCircuitSimulationScanConfig,
+    | MEModelWithSynapsesCircuitSimulationScanConfig
+    | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

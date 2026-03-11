@@ -36,7 +36,9 @@ from obi_one.scientific.library.constants import (
     _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+    CircuitDiscriminator,
+)
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 
 L = logging.getLogger(__name__)
