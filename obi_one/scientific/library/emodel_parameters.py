@@ -25,6 +25,12 @@ _MULTILOC_MAP = {
 }
 
 
+# this can also be used in PR # 622
+def neuron_variable_name(variable_name: str, suffix: str) -> str:
+    """Construct the full neuron variable name with suffix."""
+    return f"{variable_name}_{suffix}"
+
+
 def _expand_section_list(section_list: str) -> list[str]:
     """Expand a section-list alias into concrete section lists."""
     return _MULTILOC_MAP.get(section_list, [section_list])
@@ -394,7 +400,7 @@ def _create_mechanism_variable_from_ion_channel(
     if var_name.startswith("i"):
         return None
 
-    neuron_variable = f"{var_name}_{suffix}"
+    neuron_variable = neuron_variable_name(var_name, suffix)
     limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
 
     return MechanismVariable(
