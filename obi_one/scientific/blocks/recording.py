@@ -95,7 +95,7 @@ class SomaVoltageRecording(Recording):
 
     def _generate_config(
         self,
-        db_client: entitysdk.client.Client | None = None  # noqa: ARG002
+        db_client: entitysdk.client.Client | None = None,  # noqa: ARG002
     ) -> dict:
         sonata_config = {}
 
