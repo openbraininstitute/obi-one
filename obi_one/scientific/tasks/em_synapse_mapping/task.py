@@ -107,47 +107,6 @@ def assemble_publication_links(
 class EMSynapseMappingTask(Task):
     config: EMSynapseMappingSingleConfig
 
-
-    @staticmethod
-    def _get_execution_activity(
-        db_client: Client = None,
-        execution_activity_id: str | None = None,
-    ) -> TaskActivity | None:
-        """Returns the CircuitExtractionExecution activity.
-
-        Such activity is expected to be created and managed externally.
-        """
-        if db_client and execution_activity_id:
-            execution_activity = db_client.get_entity(
-                entity_type=TaskActivity, entity_id=execution_activity_id
-            )
-        else:
-            execution_activity = None
-        return execution_activity
-
-    @staticmethod
-    def _update_execution_activity(
-        db_client: Client = None,
-        execution_activity: TaskActivity | None = None,
-        generated: list[str] | None = None,
-    ) -> TaskActivity | None:
-        """Updates a TaskActivity after task completion.
-
-        Registers only the generated circuit ID. Other updates (status,
-        end time, executor, etc) are expected to be managed externally.
-        """
-        if db_client and execution_activity and generated:
-            upd_dict = {"generated_ids": generated}
-            upd_entity = db_client.update_entity(
-                entity_id=execution_activity.id,
-                entity_type=TaskActivity,
-                attrs_or_entity=upd_dict,
-            )
-            L.info("TaskActivity UPDATED")
-        else:
-            upd_entity = None
-        return upd_entity
-
     def execute(  # NOQA: PLR0914, PLR0915
         self,
         *,
@@ -160,7 +119,7 @@ class EMSynapseMappingTask(Task):
             raise ValueError(err_str)
         
         # NEW
-        execution_activity = TaskActivity._get_execution_activity(
+        execution_activity = EMSynapseMappingTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
@@ -312,7 +271,7 @@ class EMSynapseMappingTask(Task):
         )
 
         # Update execution activity (if any)
-        self._update_execution_activity(
+        EMSynapseMappingTask._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
             generated=[registered_circuit_id],
