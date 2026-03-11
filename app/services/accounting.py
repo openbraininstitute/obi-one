@@ -7,8 +7,7 @@ from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
-from obp_accounting_sdk.errors import (BaseAccountingError,
-                                       InsufficientFundsError)
+from obp_accounting_sdk.errors import BaseAccountingError, InsufficientFundsError
 from obp_accounting_sdk.utils import get_current_timestamp
 
 from app.config import settings
@@ -91,7 +90,7 @@ def estimate_task_cost(
         task_definition=task_definition,
     )
     cost_estimate = accounting_factory.estimate_oneshot_cost(
-        subtype=accounting_parameters.accounting_service_subtype,
+        subtype=accounting_parameters.service_subtype,
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )
