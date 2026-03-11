@@ -417,6 +417,4 @@ class EMSynapseMappingTask(Task):
             db_client.register_entity(new_link)
         L.info(f"Output registered as: {existing_circuit.id}")
 
-
-# em_synapse_mapping__config
 # em_synapse_mapping__execution
