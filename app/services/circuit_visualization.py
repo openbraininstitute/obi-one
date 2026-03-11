@@ -20,8 +20,6 @@ from app.schemas.visualization import (
     NeuronSectionInfo,
     Node,
     Nodes,
-    OrientationVector,
-    PositionVector,
 )
 
 
@@ -139,11 +137,8 @@ def get_population_nodes(  # noqa: PLR0914
 
             nodes_list.append(
                 Node(
-                    position=cast("PositionVector", (float(x[i]), float(y[i]), float(z[i]))),
-                    orientation=cast(
-                        "OrientationVector",
-                        (float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
-                    ),
+                    position=(float(x[i]), float(y[i]), float(z[i])),
+                    orientation=(float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
                     morphology_path=str(morphologies_dir / m_name),
                     soma_radius=radius,
                 )

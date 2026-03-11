@@ -1,15 +1,10 @@
-from typing import Annotated
-
 from pydantic import BaseModel
-
-PositionVector = Annotated[tuple[float, float, float], "x", "y", "z"]
-OrientationVector = Annotated[tuple[float, float, float, float], "x", "y", "z", "w"]
 
 
 class Node(BaseModel):
     morphology_path: str  # Path to the morphology in the circuit's sonata directory
-    position: PositionVector
-    orientation: OrientationVector
+    position: tuple[float, float, float]  # x,y, z
+    orientation: tuple[float, float, float, float]  # "x", "y", "z", "w"
     soma_radius: float | None
 
 
