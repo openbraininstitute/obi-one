@@ -1,13 +1,14 @@
 import itertools
 import uuid
 from collections.abc import Mapping
-from typing import Annotated
+from typing import Annotated, Self
 
 from entitysdk.client import Client
 from entitysdk.models.ion_channel_model import IonChannelModel
 from pydantic import BaseModel, Field
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.exception import OBIONEError
 
 
 class IonChannelVariable(OBIBaseModel):
@@ -36,9 +37,41 @@ class IonChannelVariable(OBIBaseModel):
     variable_name: str = Field(
         description="Name of the variable (e.g., 'vmin_StochKv3', 'gCa_HVAbar_Ca_HVA2', 'cm', 'Ra')"
     )
-    unit: str = Field(
-        description="Unit of the variable (e.g., 'mA/cm2', 'mV', 'mM')",
-    )
+
+    _unit: str | None = None
+
+    @property
+    def unit(self) -> str | None:
+        return self._unit
+
+    def validate_model_and_set_unit(self, db_client: Client | None = None) -> Self:
+        """Check that the model exists, checks it has the variable name and sets the unit."""
+        # this will raise an error if the model is not present
+        model = db_client.get_entity(
+            entity_id=self.ion_channel_id,
+            entity_type=IonChannelModel,
+        )
+
+        # expects f"{current}_{ion_channel_suffix}" standard.
+        # We have to isolate the current to check its presence in the neuron block RANGE
+        # in the metadata
+        variable = self.variable_name.split("_")[0]
+
+        msg = (
+            f"Could not find variable name {variable} from {self.variable_name} "
+            f"in neuron_block.range in the entity metadata for {self.channel_name}"
+        )
+        if model.neuron_block.range is None:
+            raise OBIONEError(msg)
+        for range_dict in model.neuron_block.range:
+            if variable in range_dict:
+                self._unit = range_dict[variable]
+                break
+        else:
+            # if self._unit has not been set, raise the error
+            raise OBIONEError(msg)
+
+        return self
 
 
 class IonChannelVariablesOutput(BaseModel, Mapping):
@@ -54,7 +87,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
             IonChannelVariable(
                 ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
-                variable_name=f"{self.ion_channel_suffix}.{current}",
+                variable_name=f"{current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
             )
             for current in self.current
@@ -63,7 +96,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
             IonChannelVariable(
                 ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
-                variable_name=f"{self.ion_channel_suffix}.{non_specific_current}",
+                variable_name=f"{non_specific_current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
             )
             for non_specific_current in self.non_specific_current

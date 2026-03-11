@@ -1,6 +1,6 @@
 ## ion channel recordings dropdown
 
-ui_element: `ion_channel_recordings_dropdown`
+ui_element: `docs/gui-definition-spec/components/select_recordable_ion_channel_variable`
 
 
 This component backs `IonChannelVariableRecording`.
@@ -11,7 +11,7 @@ Reference schema: ...
 
 ### UI design
 
-<img src="design/ion_channel_recordings_dropdown.png" width="430" />
+<img src="design/docs/gui-definition-spec/components/select_recordable_ion_channel_variable.png" width="430" />
 
 Placeholder for design: it would be like the Manipulations design, but without the location (soma, axon, etc.)
 
@@ -35,15 +35,16 @@ class IonChannelVariableRecording(Recording):
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
-            "ui_element": "ion_channel_recordings_dropdown",
+            "ui_element": "docs/gui-definition-spec/components/select_recordable_ion_channel_variable",
             "property_group": EntityType.IONCHANNELMODEL,
             "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
 ```
 
-### Data model (`ByNeuronModification`)
+### Data model (`IonChannelVariable`)
 
 - `ion_channel_id` (`uuid.UUID | str | None`): selected ion channel entity ID (if applicable).
 - `variable_name` (`str`): variable name to record.
+- `channel_name` (`str`): the SUFFIX of the channel in the hoc file
 - `unit` (`str`): Unit of the variable (e.g., 'mA/cm2', 'mV', 'mM').

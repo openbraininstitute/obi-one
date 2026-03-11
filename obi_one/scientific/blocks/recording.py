@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, ClassVar, Self
 
+import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
@@ -52,6 +53,7 @@ class Recording(Block, ABC):
         population: str | None = None,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
+        db_client: entitysdk.client.Client | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
 
@@ -69,7 +71,7 @@ class Recording(Block, ABC):
             raise OBIONEError(msg)
         self._end_time = end_time
 
-        sonata_config = self._generate_config()
+        sonata_config = self._generate_config(db_client=db_client)
 
         if self._end_time <= self._start_time:
             msg = (
@@ -82,7 +84,7 @@ class Recording(Block, ABC):
         return sonata_config
 
     @abstractmethod
-    def _generate_config(self) -> dict:
+    def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
         pass
 
 
@@ -91,7 +93,10 @@ class SomaVoltageRecording(Recording):
 
     title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
 
-    def _generate_config(self) -> dict:
+    def _generate_config(
+        self,
+        db_client: entitysdk.client.Client | None = None  # noqa: ARG002
+    ) -> dict:
         sonata_config = {}
 
         sonata_config[self.block_name] = {
@@ -149,11 +154,11 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
             raise OBIONEError(msg)
         return self
 
-    def _generate_config(self) -> dict:
+    def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
         self._start_time = self.start_time
         self._end_time = self.end_time
 
-        return super()._generate_config()
+        return super()._generate_config(db_client=db_client)
 
 
 class IonChannelVariableRecording(Recording):
@@ -167,14 +172,17 @@ class IonChannelVariableRecording(Recording):
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
-            "ui_element": "ion_channel_recordings_dropdown",
+            "ui_element": "select_recordable_ion_channel_variable",
             "property_group": EntityType.IONCHANNELMODEL,
             "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
 
-    def _generate_config(self) -> dict:
+    def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
         sonata_config = {}
+
+        if db_client is not None:
+            self.variable.validate_model_and_set_unit(db_client)
 
         sonata_config[self.block_name] = {
             "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
@@ -182,9 +190,10 @@ class IonChannelVariableRecording(Recording):
             "type": "compartment",
             "compartments": "center",
             "variable_name": self.variable.variable_name,
-            "unit": self.variable.unit,
             "dt": self.dt,
             "start_time": self._start_time,
             "end_time": self._end_time,
         }
+        if self.variable.unit is not None:
+            sonata_config[self.block_name]["unit"] = self.variable.unit
         return sonata_config

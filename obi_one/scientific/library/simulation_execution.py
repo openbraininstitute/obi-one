@@ -162,7 +162,9 @@ def run(
         raise ValueError(err_msg)
 
 
-def plot_voltage_traces(results: dict[str, Any], output_path: str | Path, max_cols: int = 3):
+def plot_voltage_traces(
+    results: dict[str, Any], output_path: str | Path, max_cols: int = 3
+) -> None:
     """Plot voltage traces for all cells in a grid of subplots and save to file.
 
     Args:
@@ -207,7 +209,7 @@ def plot_voltage_traces(results: dict[str, Any], output_path: str | Path, max_co
 
         ax.plot(time_ms, voltage_mv, linewidth=1)
         ax.set_title(f"Cell {cell_id}", fontsize=10)
-        ax.grid(True, alpha=0.3)
+        ax.grid(visible=True, alpha=0.3)
 
         # Only label bottom row x-axes
         if idx >= (n_rows - 1) * n_cols:
@@ -227,7 +229,7 @@ def plot_voltage_traces(results: dict[str, Any], output_path: str | Path, max_co
     # Save the figure
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    logger.info(f"Saved voltage traces plot to {output_path}")
+    logger.info("Saved voltage traces plot to %s", output_path)
 
 
 def _get_report_metadata(simulation_config_data: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -270,8 +272,8 @@ def _build_nwb_results_from_cells(
 
         try:
             time_ms = np.asarray(cell.get_recording("neuron.h._ref_t"), dtype=float)
-        except Exception as exc:
-            logger.warning(f"Skipping {out_key}: no time recording found: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Skipping %s: no time recording found: %s", out_key, exc)
             continue
 
         time_s = time_ms / 1000.0
@@ -292,8 +294,8 @@ def _build_nwb_results_from_cells(
 
                 try:
                     values = np.asarray(cell.get_recording(rec_name), dtype=float)
-                except Exception as exc:
-                    logger.warning(f"Skipping recording '{rec_name}' for {out_key}: {exc}")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Skipping recording '%s' for %s: %s", rec_name, out_key, exc)
                     continue
 
                 recordings[rec_name] = {
@@ -318,7 +320,7 @@ def save_voltage_results_to_nwb(
     results: dict[str, Any],
     execution_id: str,
     output_path: str | Path,
-):
+) -> None:
     """Save voltage report results to NWB format."""
     nwbfile = NWBFile(
         session_description="Small Microcircuit Simulation voltage results",
@@ -345,19 +347,19 @@ def save_voltage_results_to_nwb(
         time = np.asarray(cell_result.get("time", []), dtype=float)
         dt = time[1] - time[0]
         voltage_rec = None
-        for _, rec in cell_result.get("recordings", {}).items():
+        for rec in cell_result.get("recordings", {}).values():
             if rec.get("variable_name") == "v":
                 voltage_rec = rec
                 break
 
         if voltage_rec is None:
-            logger.warning(f"Skipping {cell_id}: no voltage recording found")
+            logger.warning("Skipping %s: no voltage recording found", cell_id)
             continue
 
         voltage = np.asarray(voltage_rec.get("values", []), dtype=float)
         n = min(len(time), len(voltage))
-        if n < 2:
-            logger.warning(f"Skipping {cell_id}: voltage/time length mismatch or too short")
+        if n < 2:  # noqa: PLR2004
+            logger.warning("Skipping %s: voltage/time length mismatch or too short", cell_id)
             continue
 
         electrode = IntracellularElectrode(
@@ -386,13 +388,13 @@ def save_voltage_results_to_nwb(
         wrote_any = True
 
     if not wrote_any:
-        logger.warning(f"No voltage traces found for NWB export: {output_path}")
+        logger.warning("No voltage traces found for NWB export: %s", output_path)
         return
 
     with NWBHDF5IO(str(output_path), "w") as io:
         io.write(nwbfile)
 
-    logger.info(f"Saved voltage results to {output_path}")
+    logger.info("Saved voltage results to %s", output_path)
 
 
 def _has_seclamp_input(simulation_config_data: dict[str, Any]) -> bool:
@@ -402,7 +404,7 @@ def _has_seclamp_input(simulation_config_data: dict[str, Any]) -> bool:
 
 def _get_seclamp_input_def(simulation_config_data: dict[str, Any]) -> dict[str, Any] | None:
     inputs = simulation_config_data.get("inputs", {}) or {}
-    for _, stim in inputs.items():
+    for stim in inputs.values():
         if str(stim.get("module", "")).lower() == "seclamp":
             return stim
     return None
@@ -434,9 +436,8 @@ def _reconstruct_seclamp_command(
         voltages = [float(x) for x in voltages]
 
         if len(voltages) != len(durations) - 1:
-            raise ValueError(
-                "Invalid SEClamp config: len(voltage_levels) must equal len(duration_levels) - 1"
-            )
+            msg = "Invalid SEClamp config: len(voltage_levels) must equal len(duration_levels) - 1"
+            raise ValueError(msg)
 
         cumulative = np.cumsum(durations)
 
@@ -454,12 +455,12 @@ def _reconstruct_seclamp_command(
     return cmd
 
 
-def save_current_results_to_nwb(
+def save_current_results_to_nwb(  # noqa: PLR0914
     results: dict[str, Any],
     execution_id: str,
     output_path: str | Path,
     simulation_config_data: dict[str, Any],
-):
+) -> None:
     nwbfile = NWBFile(
         session_description="Current recordings",
         identifier=str(uuid.uuid4()),
@@ -482,7 +483,7 @@ def save_current_results_to_nwb(
 
     for cell_id, cell_result in results.items():
         time_s = np.asarray(cell_result["time"], dtype=float)
-        if len(time_s) < 2:
+        if len(time_s) < 2:  # noqa: PLR2004
             continue
 
         dt_s = time_s[1] - time_s[0]
@@ -515,7 +516,7 @@ def save_current_results_to_nwb(
                 )
                 nwbfile.add_stimulus(stim_ts)
 
-        for _, rec in cell_result.get("recordings", {}).items():
+        for rec in cell_result.get("recordings", {}).values():
             variable_name = rec["variable_name"]
             if variable_name == "v":
                 continue
@@ -527,7 +528,7 @@ def save_current_results_to_nwb(
             area_um2 = float(rec["area_um2"])
 
             # convert mA/cm2 -> nA
-            values_nA = values * area_um2 * 0.01
+            values_na = values * area_um2 * 0.01
 
             if "." in variable_name:
                 mech, var = variable_name.split(".", 1)
@@ -540,7 +541,7 @@ def save_current_results_to_nwb(
 
             ts = VoltageClampSeries(
                 name=f"{cell_id}__{nwb_var_name}__{location}",
-                data=H5DataIO(data=values_nA * 1e-9, compression="gzip"),
+                data=H5DataIO(data=values_na * 1e-9, compression="gzip"),
                 electrode=electrode,
                 rate=rate_hz,
                 gain=1.0,
@@ -554,16 +555,16 @@ def save_current_results_to_nwb(
             wrote_any = True
 
     if not wrote_any:
-        logger.warning(f"No current traces found for NWB export: {output_path}")
+        logger.warning("No current traces found for NWB export: %s", output_path)
         return
 
     with NWBHDF5IO(str(output_path), "w") as io:
         io.write(nwbfile)
 
-    logger.info(f"Saved current NWB to {output_path}")
+    logger.info("Saved current NWB to %s", output_path)
 
 
-def run_bluecellulab(
+def run_bluecellulab(  # noqa: PLR0914
     simulation_config: str | Path,
     *,
     save_nwb: bool = False,
@@ -630,7 +631,7 @@ def run_bluecellulab(
 
                 plot_path = output_dir / "voltage_traces.png"
                 plot_voltage_traces(all_cell_results, plot_path)
-                logger.info(f"Successfully saved voltage traces plot to {plot_path}")
+                logger.info("Successfully saved voltage traces plot to %s", plot_path)
 
     except Exception:
         logger.exception("Rank %d failed", rank)
