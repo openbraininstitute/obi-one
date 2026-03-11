@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
-from entitysdk.types import EntityType, AssetLabel
-from entitysdk.types import ID, TaskConfigType
+from entitysdk.types import ActivityStatus, AssetLabel, EntityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -14,7 +13,6 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-
 from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
@@ -102,23 +100,28 @@ class EMSynapseMappingScanConfig(ScanConfig):
         },
     )
 
+    def input_entity_ids(self):
+        return [self.initialize.spiny_neuron.id_str]
+
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
     ) -> entitysdk.models.TaskConfig:
+        
+        L.info("-- Create campaign TaskConfig entity")
         self._campaign = db_client.register_entity(
             entitysdk.models.TaskConfig(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 task_config_type=TaskConfigType.em_synapse_mapping__campaign,
                 meta={"scan_parameters": multiple_value_parameters_dictionary},
-                inputs=[INSERT MORPHOLOGY ENTITY HERE],
+                inputs=[entitysdk.models.Entity(id=entity_id) for entity_id in self.input_entity_ids()],
             )
         )
 
-        L.info("-- Upload campaign_generation_config")
+        L.info("-- Upload task_config asset for campaign TaskConfig")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.TaskConfig,
@@ -130,7 +133,7 @@ class EMSynapseMappingScanConfig(ScanConfig):
         return self._campaign
 
     def create_campaign_generation_entity(
-        self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
+        self, generated: list[entitysdk.models.TaskConfig], db_client: entitysdk.client.Client
     ) -> None:
         L.info("3. Saving completed simulation campaign generation")
 
@@ -138,17 +141,55 @@ class EMSynapseMappingScanConfig(ScanConfig):
         db_client.register_entity(
             entitysdk.models.TaskActivity(
                 task_activity_type=TaskConfigType.em_synapse_mapping__config_generation,
+                status=ActivityStatus.completed,
                 start_time=datetime.now(UTC),
                 end_time=datetime.now(UTC),
                 used=[self._campaign],
-                generated=[individual TaskConfig(s) somehow filled],
+                generated=generated,
             )
         )
 
-# em_synapse_mapping__config
-# em_synapse_mapping__config_generation
-# em_synapse_mapping__execution
-
-
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    pass
+    
+    _single_entity: models.CircuitExtractionConfig = None
+
+    @property
+    def single_entity(self) -> models.CircuitExtractionConfig:
+        return self._single_entity
+
+    def set_single_entity(self, entity: models.CircuitExtractionConfig) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
+
+    def create_single_entity_with_config(
+        self,
+        campaign: models.CircuitExtractionCampaign,  # noqa: ARG002
+        db_client: Client,
+    ) -> models.CircuitExtractionConfig:
+        """Saves the circuit extraction config to the database."""
+        L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
+
+        if not isinstance(self.initialize.circuit, CircuitFromID):
+            msg = "Circuit extraction can only be saved to entitycore if circuit is CircuitFromID"
+            raise OBIONEError(msg)
+
+        L.info("-- Register CircuitExtractionConfig Entity")
+        self._single_entity = db_client.register_entity(
+            models.CircuitExtractionConfig(
+                name=f"Circuit extraction {self.idx}",
+                description=f"Circuit extraction {self.idx}",
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                circuit_id=self.initialize.circuit.id_str,
+            )
+        )
+
+        L.info("-- Upload circuit_extraction_config")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=models.CircuitExtractionConfig,
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            file_content_type="application/json",
+            asset_label="circuit_extraction_config",
+        )
+
+        return self._single_entity

@@ -106,6 +106,29 @@ def assemble_publication_links(
 class EMSynapseMappingTask(Task):
     config: EMSynapseMappingSingleConfig
 
+    @staticmethod
+    def _update_execution_activity(
+        db_client: Client = None,
+        execution_activity: models.CircuitExtractionExecution | None = None,
+        circuit_id: str | None = None,
+    ) -> models.CircuitExtractionExecution | None:
+        """Updates a CircuitExtractionExecution activity after task completion.
+
+        Registers only the generated circuit ID. Other updates (status,
+        end time, executor, etc) are expected to be managed externally.
+        """
+        if db_client and execution_activity and circuit_id:
+            upd_dict = {"generated_ids": [circuit_id]}
+            upd_entity = db_client.update_entity(
+                entity_id=execution_activity.id,
+                entity_type=models.CircuitExtractionExecution,
+                attrs_or_entity=upd_dict,
+            )
+            L.info("CircuitExtractionExecution activity UPDATED")
+        else:
+            upd_entity = None
+        return upd_entity
+
     def execute(  # NOQA: PLR0914, PLR0915
         self,
         *,
@@ -116,6 +139,11 @@ class EMSynapseMappingTask(Task):
         if db_client is None:
             err_str = "Synapse lookup and mapping requires a working db_client!"
             raise ValueError(err_str)
+        
+        # NEW
+        execution_activity = CircuitExtractionTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
 
         use_me_model = isinstance(self.config.initialize.spiny_neuron, MEModelFromID)
         if use_me_model:
@@ -264,6 +292,16 @@ class EMSynapseMappingTask(Task):
             compressed_path,
         )
 
+        # Update execution activity (if any)
+        self._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            circuit_id=str(new_circuit_entity.id),
+        )
+
+
+
+
     @staticmethod
     def synapses_and_nodes_dataframes_from_EM(
         em_dataset: EMDataSetFromID, pt_root_id: int, db_client: Client, cave_version: int
@@ -378,3 +416,7 @@ class EMSynapseMappingTask(Task):
             )
             db_client.register_entity(new_link)
         L.info(f"Output registered as: {existing_circuit.id}")
+
+
+# em_synapse_mapping__config
+# em_synapse_mapping__execution
