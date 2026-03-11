@@ -107,6 +107,24 @@ def assemble_publication_links(
 class EMSynapseMappingTask(Task):
     config: EMSynapseMappingSingleConfig
 
+
+    @staticmethod
+    def _get_execution_activity(
+        db_client: Client = None,
+        execution_activity_id: str | None = None,
+    ) -> TaskActivity | None:
+        """Returns the CircuitExtractionExecution activity.
+
+        Such activity is expected to be created and managed externally.
+        """
+        if db_client and execution_activity_id:
+            execution_activity = db_client.get_entity(
+                entity_type=TaskActivity, entity_id=execution_activity_id
+            )
+        else:
+            execution_activity = None
+        return execution_activity
+
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
@@ -142,7 +160,7 @@ class EMSynapseMappingTask(Task):
             raise ValueError(err_str)
         
         # NEW
-        execution_activity = CircuitExtractionTask._get_execution_activity(
+        execution_activity = TaskActivity._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
@@ -281,7 +299,7 @@ class EMSynapseMappingTask(Task):
         }
         compressed_path = self.compress_output()
 
-        self.register_output(
+        registered_circuit_id = self.register_output(
             db_client,
             pt_root_id,
             mapped_synapses_df,
@@ -297,7 +315,7 @@ class EMSynapseMappingTask(Task):
         self._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
-            generated=[str(REGISTERED_CIRCUIT.id)],
+            generated=[registered_circuit_id],
         )
 
 
@@ -366,7 +384,7 @@ class EMSynapseMappingTask(Task):
         lst_notices: list[str],
         file_paths: dict[os.PathLike, os.PathLike],
         compressed_path: os.PathLike,
-    ) -> None:
+    ) -> str:
         license = em_dataset.license
         description = f"""Morphology skeleton with isolated spines and afferent synapses
         (Synaptome) of the neuron with pt_root_id {pt_root_id}
@@ -418,4 +436,4 @@ class EMSynapseMappingTask(Task):
             db_client.register_entity(new_link)
         L.info(f"Output registered as: {existing_circuit.id}")
 
-# em_synapse_mapping__execution
+        return str(existing_circuit.id)
