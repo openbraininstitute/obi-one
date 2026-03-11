@@ -6,7 +6,7 @@ from uuid import UUID
 import h5py
 import morphio
 import numpy as np
-from bluepysnap import BluepySnapError, Circuit as CircuitConfig
+import libsonata
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Circuit
@@ -110,49 +110,49 @@ def get_population_nodes(
         ) from e
 
     try:
-        with h5py.File(nodes_file_path, "r") as f:
-            path = f"nodes/{population_name}/0"
-            pop_group = f[path]
+        storage = libsonata.NodeStorage(str(nodes_file_path))
+        population = storage.open_population(population_name)
 
-            assert isinstance(pop_group, h5py.Group), f"Path {path} is not a Group"  # noqa: S101
-            x = get_group(pop_group, "x")
-            y = get_group(pop_group, "y")
-            z = get_group(pop_group, "z")
-            qx = get_group(pop_group, "orientation_x")
-            qy = get_group(pop_group, "orientation_y")
-            qz = get_group(pop_group, "orientation_z")
-            qw = get_group(pop_group, "orientation_w")
+        selection = libsonata.Selection(np.arange(population.size))
 
-            morph_raw = get_group(pop_group, "morphology")
-            morph_files = [m.decode("utf-8") for m in morph_raw if isinstance(m, bytes)]
+        x = population.get_attribute("x", selection)
+        y = population.get_attribute("y", selection)
+        z = population.get_attribute("z", selection)
 
-            def morph_path(i: int) -> Path:
-                return morphologies_dir / (morph_files[i] + ".swc")
+        qx = population.get_attribute("orientation_x", selection)
+        qy = population.get_attribute("orientation_y", selection)
+        qz = population.get_attribute("orientation_z", selection)
+        qw = population.get_attribute("orientation_w", selection)
 
-            radii = []
+        morph_files = population.get_attribute("morphology", selection)
 
-            for i in range(len(x)):
-                try:
-                    radii.append(
-                        get_soma_radius(parent_dir, db_client, circuit_id, asset_id, morph_path(i))
-                    )
-                except RuntimeError:
-                    L.warning(f"Couldn't get morphology {morph_path(i)} for {circuit_id}")
-                    radii.append(None)
+        nodes_list = []
+        for i in range(population.size):
+            m_name = morph_files[i]
+            m_path = morphologies_dir / f"{m_name}.swc"
 
-            return [
+            try:
+                radius = get_soma_radius(parent_dir, db_client, circuit_id, asset_id, m_path)
+            except RuntimeError:
+                L.warning(f"Couldn't get morphology {m_path} for {circuit_id}")
+                radius = None
+
+            nodes_list.append(
                 Node(
-                    position=cast("PositionVector", tuple(map(float, [x[i], y[i], z[i]]))),
+                    position=cast("PositionVector", (float(x[i]), float(y[i]), float(z[i]))),
                     orientation=cast(
-                        "OrientationVector", tuple(map(float, [qx[i], qy[i], qz[i], qw[i]]))
+                        "OrientationVector",
+                        (float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
                     ),
-                    morphology_path=str(morphologies_dir / morph_files[i]),
-                    soma_radius=radii[i],
+                    morphology_path=str(morphologies_dir / m_name),
+                    soma_radius=radius,
                 )
-                for i in range(len(x))
-            ]
+            )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        L.exception(f"Error reading population {population_name}")
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -160,6 +160,8 @@ def get_population_nodes(
                 "detail": f"Couldn't get nodes from population {population_name}",
             },
         ) from e
+
+    return nodes_list
 
 
 def get_soma_radius(
@@ -197,39 +199,39 @@ def get_soma_radius(
 
 
 def get_nodes(
-    config: CircuitConfig, parent_path: Path, db_client: Client, circuit_id: UUID, asset_id: UUID
+    config: libsonata.CircuitConfig,
+    parent_path: Path,
+    db_client: Client,
+    circuit_id: UUID,
+    asset_id: UUID,
 ) -> Nodes:
     all_nodes = []
     try:
-        for node_network in config.config["networks"]["nodes"]:
-            for pop_name, pop_config in node_network["populations"].items():
-                if pop_config.get("type") != "biophysical":
-                    continue
+        for pop_name in config.node_populations:
+            pop_properties = config.node_population_properties(pop_name)
 
-                nodes_file_path = Path(node_network["nodes_file"])
-                asset_path = nodes_file_path.relative_to(parent_path)
+            if pop_properties.type != "biophysical":
+                continue
 
-                morphologies_dir = (
-                    Path(pop_config["morphologies_dir"])
-                    if "morphologies_dir" in pop_config
-                    else Path(config.config["components"]["morphologies_dir"])
-                ).relative_to(parent_path)
+            nodes_file_path = Path(pop_properties.elements_path)
+            asset_path = nodes_file_path.relative_to(parent_path)
 
-                all_nodes += get_population_nodes(
-                    pop_name,
-                    db_client,
-                    circuit_id,
-                    asset_id,
-                    parent_path,
-                    asset_path,
-                    morphologies_dir,
-                )
+            morphologies_dir = Path(pop_properties.morphologies_dir).relative_to(parent_path)
+
+            all_nodes += get_population_nodes(
+                pop_name,
+                db_client,
+                circuit_id,
+                asset_id,
+                parent_path,
+                asset_path,
+                morphologies_dir,
+            )
 
     except HTTPException:
         raise
     except Exception as e:
         L.exception(e)
-
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -242,12 +244,11 @@ def get_nodes(
 
 def download_circuit_config(
     client: Client, circuit_id: UUID, asset_id: UUID, directory: Path
-) -> CircuitConfig:
+) -> libsonata.CircuitConfig:
     circuit_config = Path("circuit_config.json")
+    file_path = directory / circuit_config
 
     try:
-        file_path = directory / circuit_config
-
         client.download_file(
             entity_id=circuit_id,
             entity_type=Circuit,
@@ -256,14 +257,15 @@ def download_circuit_config(
             asset_path=circuit_config,
         )
 
-        return CircuitConfig(file_path)
+        return libsonata.CircuitConfig(file_path.read_text(), str(directory))
 
-    except BluepySnapError as e:
+    except libsonata.SonataError as e:
+        L.error(f"Sonata parsing error: {e}")
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Invalid circuit configuration",
+                "detail": "Invalid SONATA circuit configuration",
             },
         ) from e
 
