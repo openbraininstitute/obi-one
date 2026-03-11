@@ -1,4 +1,3 @@
-import urllib.parse
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -41,7 +40,7 @@ def circuit_nodes(
 
 
 @router.get(
-    "/{circuit_id}/morphologies/{morphology_path}",
+    "/{circuit_id}/morphologies/{morphology_path:path}",
     summary="A morphology from a circuit's sonata directory",
     description="Returns a morphology for visualization",
 )
@@ -58,5 +57,5 @@ def circuit_morphology(
         db_client,
         circuit_id,
         asset_id,
-        Path(urllib.parse.unquote(morphology_path + ".swc")),
+        Path(morphology_path + ".swc"),
     )

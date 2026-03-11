@@ -1,5 +1,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote, unquote
 from uuid import uuid4
 
 import pytest
@@ -78,7 +79,7 @@ def test_circuit_morphology(
 ):
     circuit_id = uuid4()
     asset_id = uuid4()
-    morphology_path = "mock_path"
+    morphology_path = quote("dir/mock_path", safe="")
 
     mock_circuit_asset_id.return_value = asset_id
     mock_get_morphology.return_value = {}
@@ -89,5 +90,5 @@ def test_circuit_morphology(
 
     mock_circuit_asset_id.assert_called_once_with(mock_db_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
-        tmp_path, mock_db_client, circuit_id, asset_id, Path(f"{morphology_path}.swc")
+        tmp_path, mock_db_client, circuit_id, asset_id, Path(f"{unquote(morphology_path)}.swc")
     )
