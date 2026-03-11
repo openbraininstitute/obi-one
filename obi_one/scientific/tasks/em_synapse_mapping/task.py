@@ -22,6 +22,7 @@ from entitysdk.models import (
     EMDenseReconstructionDataset,
     Publication,
     ScientificArtifactPublicationLink,
+    TaskActivity
 )
 from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
@@ -109,22 +110,22 @@ class EMSynapseMappingTask(Task):
     @staticmethod
     def _update_execution_activity(
         db_client: Client = None,
-        execution_activity: models.CircuitExtractionExecution | None = None,
-        circuit_id: str | None = None,
-    ) -> models.CircuitExtractionExecution | None:
-        """Updates a CircuitExtractionExecution activity after task completion.
+        execution_activity: TaskActivity | None = None,
+        generated: list[str] | None = None,
+    ) -> TaskActivity | None:
+        """Updates a TaskActivity after task completion.
 
         Registers only the generated circuit ID. Other updates (status,
         end time, executor, etc) are expected to be managed externally.
         """
-        if db_client and execution_activity and circuit_id:
-            upd_dict = {"generated_ids": [circuit_id]}
+        if db_client and execution_activity and generated:
+            upd_dict = {"generated_ids": generated}
             upd_entity = db_client.update_entity(
                 entity_id=execution_activity.id,
-                entity_type=models.CircuitExtractionExecution,
+                entity_type=TaskActivity,
                 attrs_or_entity=upd_dict,
             )
-            L.info("CircuitExtractionExecution activity UPDATED")
+            L.info("TaskActivity UPDATED")
         else:
             upd_entity = None
         return upd_entity
@@ -296,7 +297,7 @@ class EMSynapseMappingTask(Task):
         self._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
-            circuit_id=str(new_circuit_entity.id),
+            generated=[str(REGISTERED_CIRCUIT.id)],
         )
 
 
