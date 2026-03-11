@@ -4,9 +4,9 @@ from typing import cast
 from uuid import UUID
 
 import h5py
+import libsonata
 import morphio
 import numpy as np
-import libsonata
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Circuit
@@ -81,7 +81,7 @@ def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.
     return res
 
 
-def get_population_nodes(
+def get_population_nodes(  # noqa: PLR0914
     population_name: str,
     db_client: Client,
     circuit_id: UUID,

@@ -37,8 +37,6 @@ def circuit_nodes(
 
     config = download_circuit_config(db_client, circuit_id, asset_id, temp_dir)
 
-    
-
     return get_nodes(config, temp_dir, db_client, circuit_id, asset_id)
 
 
