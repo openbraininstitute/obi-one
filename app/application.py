@@ -21,7 +21,7 @@ from app.endpoints import (
     config_validation,
     count_scan_coordinates,
     ephys_metrics,
-    ion_channnel_properties,
+    ion_channel_properties,
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
@@ -166,7 +166,7 @@ app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
-app.include_router(ion_channnel_properties.router)
+app.include_router(ion_channel_properties.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)
