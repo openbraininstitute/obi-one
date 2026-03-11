@@ -3,12 +3,14 @@ services:
     profiles: [test]
     image: "${IMAGE_NAME}:${IMAGE_TAG}"
 #    platform: linux/amd64  # for pyflagser
+    user: root  # only for tests, needed to write in the coverage directory
     command:
     - sh
     - -cx
     - |
-      python -m pytest
+      python -m pytest && coverage xml
     volumes:
     - ./tests:/code/tests
     - ./examples:/code/examples
+    - ./.coverage:/code/.coverage
     env_file: .env.test-docker
