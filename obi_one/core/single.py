@@ -72,13 +72,13 @@ class SingleConfigMixin:
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
-    _single_entity: TaskConfig = None
+    _single_entity: Entity = None
 
     @property
-    def single_entity(self) -> TaskConfig:
+    def single_entity(self) -> Entity:
         return self._single_entity
 
-    def set_single_entity(self, entity: TaskConfig) -> None:
+    def set_single_entity(self, entity: Entity) -> None:
         """Sets the single entity attribute to the given entity."""
         self._single_entity = entity
 
