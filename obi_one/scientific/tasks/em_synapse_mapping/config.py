@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
-from entitysdk.types import EntityType
+from entitysdk.types import EntityType, AssetLabel
+from entitysdk.types import ID, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -13,6 +14,8 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+
+from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -104,23 +107,24 @@ class EMSynapseMappingScanConfig(ScanConfig):
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
-    ) -> Config:
+    ) -> entitysdk.models.TaskConfig:
         self._campaign = db_client.register_entity(
-            entitysdk.models.SimulationCampaign(
+            entitysdk.models.TaskConfig(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
-                entity_id=entity_id,
-                scan_parameters=multiple_value_parameters_dictionary,
+                task_config_type=TaskConfigType.em_synapse_mapping__campaign,
+                meta={"scan_parameters": multiple_value_parameters_dictionary},
+                inputs=[INSERT MORPHOLOGY ENTITY HERE],
             )
         )
 
         L.info("-- Upload campaign_generation_config")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
-            entity_type=entitysdk.models.SimulationCampaign,
+            entity_type=entitysdk.models.TaskConfig,
             file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",
-            asset_label="campaign_generation_config",
+            asset_label=AssetLabel.task_config,
         )
 
         return self._campaign
@@ -132,12 +136,18 @@ class EMSynapseMappingScanConfig(ScanConfig):
 
         L.info("-- Register SimulationGeneration Entity")
         db_client.register_entity(
-            entitysdk.models.SimulationGeneration(
+            entitysdk.models.TaskActivity(
+                task_activity_type=TaskConfigType.em_synapse_mapping__config_generation,
                 start_time=datetime.now(UTC),
+                end_time=datetime.now(UTC),
                 used=[self._campaign],
-                generated=simulations,
+                generated=[individual TaskConfig(s) somehow filled],
             )
         )
+
+# em_synapse_mapping__config
+# em_synapse_mapping__config_generation
+# em_synapse_mapping__execution
 
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
