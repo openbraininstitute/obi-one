@@ -26,9 +26,7 @@ class IonChannelVariableForRecording(OBIBaseModel):
 
     Example (GLOBAL ion channel):
         ion_channel_id: uuid.UUID("...")
-        channel_name: "StochKv3"
         variable_name: "ik_StochKv3"
-        unit: "mA/cm2"
     """
 
     ion_channel_id: Annotated[uuid.UUID, Field(description="ID of the ion channel")] | None = None
@@ -57,7 +55,7 @@ class IonChannelVariableForRecording(OBIBaseModel):
 
         msg = (
             f"Could not find variable name {variable} from {self.variable_name} "
-            f"in neuron_block.range in the entity metadata for {self.channel_name}"
+            f"in neuron_block.range in the entity metadata for {model.name}"
         )
         if model.neuron_block.range is None:
             raise OBIONEError(msg)
