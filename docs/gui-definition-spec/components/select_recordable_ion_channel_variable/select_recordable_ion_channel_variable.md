@@ -30,7 +30,7 @@ The variable picker is populated from mapped ion channel models properties using
 class IonChannelVariableRecording(Recording):
     title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
 
-    variable: IonChannelVariable = Field(
+    variable: IonChannelVariableForRecording = Field(
         title="Ion Channel Variable Name",
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
@@ -42,8 +42,7 @@ class IonChannelVariableRecording(Recording):
     )
 ```
 
-### Data model (`IonChannelVariable`)
+### Data model (`IonChannelVariableForRecording`)
 
 - `ion_channel_id` (`uuid.UUID | str | None`): selected ion channel entity ID (if applicable).
 - `variable_name` (`str`): variable name to record.
-- `channel_name` (`str`): the SUFFIX of the channel in the hoc file
