@@ -20,8 +20,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.services import accounting as accounting_service
-from app.services import task as task_service
+from app.services import accounting as accounting_service, task as task_service
 from app.types import TaskType
 
 router = APIRouter(
