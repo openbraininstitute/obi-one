@@ -1,11 +1,13 @@
 import uuid
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
+import entitysdk
 from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
-from obi_one.scientific.library.emodel_parameters import _expand_section_list
+from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.emodel_parameters import _expand_section_list, neuron_variable_name
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
@@ -83,13 +85,38 @@ class ByNeuronModification(OBIBaseModel):
     variable_name: str = Field(
         description="Name of the variable (e.g., 'vmin_StochKv3', 'gCa_HVAbar_Ca_HVA2', 'cm', 'Ra')"
     )
-    variable_type: Literal["RANGE", "GLOBAL"] = Field(
-        default="GLOBAL",
-        description="Variable type: 'RANGE' (section-specific) or 'GLOBAL' (neuron-wide)",
-    )
     new_value: float | list[float] = Field(
         description="New value(s) that applies to entire neuron (GLOBAL) or all sections (RANGE)",
     )
+
+    def variable_type(self, db_client: entitysdk.client.Client | None = None) -> str:
+        """Determine variable type (RANGE or GLOBAL) based on presence of ion_channel_id and channel_name."""
+        if db_client is None:
+            # TODO: what should be the behavior when we do not have the client?
+            return "RANGE"
+
+        model = db_client.get_entity(
+            entity_id=self.ion_channel_id,
+            entity_type=entitysdk.models.ion_channel_model.IonChannelModel,
+        )
+
+        if model.neuron_block.range is not None:
+            if self.variable_name in [
+                neuron_variable_name(var_name, model.nmodl_suffix)
+                for entry in model.neuron_block.range
+                for var_name in entry
+            ]:
+                return "RANGE"
+        if model.neuron_block.global_ is not None:
+            if self.variable_name in [
+                neuron_variable_name(var_name, model.nmodl_suffix)
+                for entry in model.neuron_block.global_
+                for var_name in entry
+            ]:
+                return "GLOBAL"
+
+        msg = f"Variable {self.variable_name} not found in RANGE or GLOBAL entries of neuron block metadata for ion channel {model.name}"
+        raise OBIONEError(msg)
 
 
 class BySectionListMechanismVariableNeuronalManipulation(Block):
@@ -123,7 +150,12 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict]:
+    def config(
+        self,
+        _default_population_name: str,
+        default_node_set: str,
+        db_client: entitysdk.client.Client | None,
+    ) -> list[dict]:
         """Generate SONATA conditions.modifications entries for each section list.
 
         Returns:
@@ -182,7 +214,12 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict] | dict:
+    def config(
+        self,
+        _default_population_name: str,
+        default_node_set: str,
+        db_client: entitysdk.client.Client | None,
+    ) -> list[dict] | dict:
         """Generate SONATA config entry.
 
         Returns:
@@ -194,7 +231,8 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
             conditions.modifications entry for all sections.
         """
         # Handle RANGE variables (including section properties)
-        if self.modification.variable_type == "RANGE":
+        variable_type = self.modification.variable_type(db_client)
+        if variable_type == "RANGE":
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
             return [
                 {
@@ -208,7 +246,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
             ]
 
         # Handle ion channel variables (existing logic)
-        if self.modification.variable_type == "GLOBAL":
+        if variable_type == "GLOBAL":
             return {
                 self.modification.channel_name: {
                     self.modification.variable_name: self.modification.new_value

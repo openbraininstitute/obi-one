@@ -186,7 +186,9 @@ class GenerateSimulationTask(Task):
                 )
             )
 
-    def _add_sonata_simulation_config_manipulations(self) -> None:
+    def _add_sonata_simulation_config_manipulations(
+        self, db_client: entitysdk.client.Client | None
+    ) -> None:
         if hasattr(self.config, "synaptic_manipulations"):
             # Generate list of synaptic manipulation configs (executed in the order in the list)
             # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
@@ -206,6 +208,7 @@ class GenerateSimulationTask(Task):
                 result = modification.config(
                     self._circuit.default_population_name,
                     DEFAULT_NODE_SET_NAME,
+                    db_client,
                 )
                 if isinstance(result, list):
                     # RANGE variables -> conditions.modifications list
@@ -443,7 +446,7 @@ class GenerateSimulationTask(Task):
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports()
-        self._add_sonata_simulation_config_manipulations()
+        self._add_sonata_simulation_config_manipulations(db_client)
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
