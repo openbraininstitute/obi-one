@@ -1,30 +1,31 @@
+import logging
+from datetime import UTC, datetime
+from enum import StrEnum
+from pathlib import Path
 from typing import ClassVar
 
+import entitysdk
+from entitysdk.types import EntityType
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 
-from enum import StrEnum
+L = logging.getLogger(__name__)
+
 
 class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
     SETUP_BLOCK_GROUP = "Setup"
 
+
 class EMSynapseMappingScanConfig(ScanConfig):
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
-    # _cave_token: str | None = Field(
-    #     default=None,
-    #     title="CAVEclient access token",
-    #     description="""Token to authenticate access to the EM dataset with.
-    #     If a token is stored in a secrets file, this does not need to be provided.
-    #     See: https://caveclient.readthedocs.io/en/latest/guide/authentication.html""",
-    # )
 
     json_schema_extra_additions: ClassVar[dict] = {
         "ui_enabled": True,
@@ -34,34 +35,48 @@ class EMSynapseMappingScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        spiny_neuron: CellMorphologyFromID | MEModelFromID = Field(
+        spiny_neuron: CellMorphologyFromID = Field(  # | MEModelFromID
             title="EM skeletonized morphology",
             description="""A neuron morphology with spines obtained from an electron-microscopy
             datasets through the skeletonization task.""",
-        )
-        pt_root_id: int | None = Field(
-            title="Neuron identifier within the EM dense reconstruction dataset.",
-            description="""Neurons in an EM dataset are uniquely identified by a number,
-            often called 'pt_root_id'. Please provide that identifier.
-            Otherwise, it will be inferred from the provenance of the `spiny_neuron` entity.""",
-            default=None,
+            json_schema_extra={
+                "ui_element": "model_selector_single",
+                "entity_query": {
+                    "type": EntityType.cell_morphology_from_id,
+                    "filters": {
+                        "cell_morphology_protocol": "ultraliser",
+                    },
+                },
+            },
         )
         edge_population_name: str = Field(
+            default="afferent_synapses",
+            min_length=1,
             title="Edge population name",
             description="Name of the edge population to write the synapse information into",
-            default="synaptome_afferents",
+            json_schema_extra={
+                "ui_element": "string_input",
+            },
         )
         node_population_pre: str = Field(
+            default="afferent_neurons",
+            min_length=1,
             title="Presynaptic node population name",
             description="""Name of the node population to write the information about the
             innervating neurons into""",
-            default="synaptome_afferent_neurons",
+            json_schema_extra={
+                "ui_element": "string_input",
+            },
         )
         node_population_post: str = Field(
+            default="biophysical_neuron",
+            min_length=1,
             title="Postsynaptic node population name",
             description="""Name of the node population to write the information about the
             synaptome neuron into""",
-            default="biophysical_neuron",
+            json_schema_extra={
+                "ui_element": "string_input",
+            },
         )
 
     info: Info = Field(  # type: ignore[]
@@ -84,14 +99,12 @@ class EMSynapseMappingScanConfig(ScanConfig):
         },
     )
 
-
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: entitysdk.client.Client = None,
     ) -> Config:
-
         self._campaign = db_client.register_entity(
             entitysdk.models.SimulationCampaign(
                 name=self.info.campaign_name,

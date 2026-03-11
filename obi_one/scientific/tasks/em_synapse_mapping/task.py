@@ -167,6 +167,7 @@ class EMSynapseMappingTask(Task):
         )
 
         cave_version = source_mesh_entity.release_version
+
         em_dataset = EMDataSetFromID(
             id_str=str(source_dataset.id), auth_token=self.config.cave_token
         )
@@ -299,10 +300,8 @@ class EMSynapseMappingTask(Task):
     def resolve_provenance(
         self, db_client: Client, morph_from_id: CellMorphologyFromID
     ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
-        pt_root_id = self.config.initialize.pt_root_id
         source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
-        if pt_root_id is None:
-            pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
+        pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
         source_dataset = db_client.get_entity(
             entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,
             entity_type=EMDenseReconstructionDataset,
