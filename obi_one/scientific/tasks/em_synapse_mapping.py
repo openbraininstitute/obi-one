@@ -24,6 +24,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.blocks.cave.optional_user_cave_token import OptionalUserCaveToken
 from obi_one.scientific.library.map_em_synapses import (
     map_afferents_to_spiny_morphology,
     write_edges,
@@ -85,7 +86,7 @@ def plot_mapping_stats(
     return fig
 
 
-class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
+class EMSynapseMappingScanConfig(OBIBaseModel, SingleConfigMixin):
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "Map location of afferent synapses from EM onto a spiny morphology"
     cave_token: str | None = Field(
@@ -126,8 +127,12 @@ class EMSynapseMappingSingleConfig(OBIBaseModel, SingleConfigMixin):
             synaptome neuron into""",
             default="biophysical_neuron",
         )
+    
 
     initialize: Initialize
+
+    optional_user_cave_token: OptionalUserCaveToken = Field(
+        
 
 
 # class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
