@@ -1,11 +1,8 @@
 import logging
 from enum import StrEnum
-from pathlib import Path
 from typing import ClassVar
 
-from entitysdk.client import Client
-from entitysdk.models import Entity, TaskConfig, TaskConfigType
-from entitysdk.types import AssetLabel, ContentType, EntityType, TaskActivityType, TaskConfigType
+from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -13,7 +10,6 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -101,7 +97,7 @@ class EMSynapseMappingScanConfig(ScanConfig):
     )
 
     @property
-    def input_entity_ids(self):
+    def input_entity_ids(self) -> list[str]:
         return [self.initialize.spiny_neuron.id_str]
 
     @property
@@ -122,48 +118,6 @@ class EMSynapseMappingScanConfig(ScanConfig):
 
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    _single_entity: TaskConfig = None
-
     @property
-    def single_entity(self) -> TaskConfig:
-        return self._single_entity
-
-    def set_single_entity(self, entity: TaskConfig) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
-
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,
-        db_client: Client,
-    ) -> TaskConfig:
-        """Saves the circuit extraction config to the database."""
-        L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
-
-        # if not isinstance(self.initialize.circuit, CircuitFromID):
-        #     msg = "Circuit extraction can only be saved to entitycore if circuit is CircuitFromID"
-        #     raise OBIONEError(msg)
-
-        L.info(f"-- Register TaskConfig type: {TaskConfigType.em_synapse_mapping__config}")
-        self._single_entity = db_client.register_entity(
-            TaskConfig(
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                task_config_type=TaskConfigType.em_synapse_mapping__config,
-                meta={
-                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()
-                },
-                inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
-            )
-        )
-
-        L.info("-- Upload task_config asset for campaign TaskConfig")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=TaskConfig,
-            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type=ContentType.json,
-            asset_label=AssetLabel.task_config,
-        )
-
-        return self._single_entity
+    def single_task_config_type(self) -> TaskConfigType:
+        return TaskConfigType.em_synapse_mapping__config

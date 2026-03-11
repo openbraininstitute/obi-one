@@ -50,7 +50,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         return self._campaign
 
     @property
-    def input_entity_ids(self):
+    def input_entity_ids(self) -> list[str]:
         return []
 
     @property
@@ -63,15 +63,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> None:
-        raise NotImplementedError(
-            "Subclasses of ScanConfig must implement the campaign_task_config_type property."
-        )
+        msg = "Subclasses of ScanConfig must implement the campaign_task_config_type property."
+        raise NotImplementedError(msg)
 
     @property
     def campaign_generation_task_activity_type(self) -> None:
-        raise NotImplementedError(
-            "Subclasses of ScanConfig must implement the campaign_generation_task_activity_type property."
+        msg = (
+            "Subclasses of ScanConfig must implement the "
+            "campaign_generation_task_activity_type property."
         )
+        raise NotImplementedError(msg)
 
     def create_campaign_entity_with_config(
         self,
