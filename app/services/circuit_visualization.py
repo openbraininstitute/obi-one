@@ -2,7 +2,6 @@ from http import HTTPStatus
 from pathlib import Path
 from uuid import UUID
 
-import h5py
 import libsonata
 import morphio
 import numpy as np
@@ -56,26 +55,6 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
         )
 
     return asset.id
-
-
-def get_group(group: h5py.Group | h5py.Dataset | h5py.Datatype, key: str) -> np.ndarray:
-    if not isinstance(group, h5py.Group):
-        msg = "Expected a Group"
-        raise TypeError(msg)
-
-    child_group = group[key]
-
-    if not isinstance(child_group, (h5py.Group, h5py.Dataset)):
-        msg = "Expected a Group or Dataset"
-        raise TypeError(msg)
-
-    res = child_group[:]
-
-    if not isinstance(res, np.ndarray):
-        msg = "Expected the dataset to be an array"
-        raise TypeError(msg)
-
-    return res
 
 
 def get_population_nodes(  # noqa: PLR0914
