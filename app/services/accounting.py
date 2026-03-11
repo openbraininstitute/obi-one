@@ -7,8 +7,7 @@ from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
-from obp_accounting_sdk.errors import (BaseAccountingError,
-                                       InsufficientFundsError)
+from obp_accounting_sdk.errors import BaseAccountingError, InsufficientFundsError
 from obp_accounting_sdk.utils import get_current_timestamp
 
 from app.config import settings
