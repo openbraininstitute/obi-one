@@ -8,9 +8,6 @@ from entitysdk.models import TaskActivity
 
 
 class Task(OBIBaseModel, abc.ABC):
-    # json_schema_extra_additions: ClassVar[dict] = {
-    #     "ui_enabled": False,
-    # }
 
     @staticmethod
     def _get_execution_activity(
