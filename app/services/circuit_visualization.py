@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from pathlib import Path
-from typing import cast
 from uuid import UUID
 
 import h5py
