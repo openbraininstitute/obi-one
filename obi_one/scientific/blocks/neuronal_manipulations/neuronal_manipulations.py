@@ -90,7 +90,7 @@ class ByNeuronModification(OBIBaseModel):
     )
 
     def variable_type(self, db_client: entitysdk.client.Client | None = None) -> str:
-        """Determine variable type (RANGE or GLOBAL) based on presence of ion_channel_id and channel_name."""
+        """Determine variable type (RANGE or GLOBAL) based on ion channel model metadata."""
         if db_client is None:
             # TODO: what should be the behavior when we do not have the client?
             return "RANGE"
@@ -101,21 +101,26 @@ class ByNeuronModification(OBIBaseModel):
         )
 
         if model.neuron_block.range is not None:
-            if self.variable_name in [
+            range_variables = [
                 neuron_variable_name(var_name, model.nmodl_suffix)
                 for entry in model.neuron_block.range
                 for var_name in entry
-            ]:
+            ]
+            if self.variable_name in range_variables:
                 return "RANGE"
         if model.neuron_block.global_ is not None:
-            if self.variable_name in [
+            global_variables = [
                 neuron_variable_name(var_name, model.nmodl_suffix)
                 for entry in model.neuron_block.global_
                 for var_name in entry
-            ]:
+            ]
+            if self.variable_name in global_variables:
                 return "GLOBAL"
 
-        msg = f"Variable {self.variable_name} not found in RANGE or GLOBAL entries of neuron block metadata for ion channel {model.name}"
+        msg = (
+            f"Variable {self.variable_name} not found in RANGE or GLOBAL entries "
+            f"of neuron block metadata for ion channel {model.name}"
+        )
         raise OBIONEError(msg)
 
 
@@ -154,7 +159,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         self,
         _default_population_name: str,
         default_node_set: str,
-        db_client: entitysdk.client.Client | None,
+        db_client: entitysdk.client.Client | None,  # noqa: ARG002
     ) -> list[dict]:
         """Generate SONATA conditions.modifications entries for each section list.
 
