@@ -119,15 +119,12 @@ def get_ion_channel_variables(
         # some ion channels can have the same name,
         # so we add the index to differentiate them in the output
         key = f"{i + 1}: {ion_channel.name}"
-        output[key] = {
-            "name": ion_channel.name,
-            "variables": IonChannelVariablesOutput(
-                ion_channel_id=ion_channel_id,
-                ion_channel_suffix=ion_channel.nmodl_suffix,
-                current=current,
-                non_specific_current=non_specific_current,
-                concentration=concentration,
-            ),
-        }
+        output[key] = IonChannelVariablesOutput(
+            ion_channel_id=ion_channel_id,
+            ion_channel_suffix=ion_channel.nmodl_suffix,
+            current=current,
+            non_specific_current=non_specific_current,
+            concentration=concentration,
+        )
 
     return output

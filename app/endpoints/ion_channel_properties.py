@@ -29,9 +29,9 @@ def mapped_ion_channel_properties_endpoint(
             db_client=db_client,
         )
         mapped_ion_channel_properties = {}
-        mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {
-            key: value.variables for key, value in ion_channel_properties.items()
-        }
+        mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = (
+            ion_channel_properties
+        )
 
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(

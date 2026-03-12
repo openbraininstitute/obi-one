@@ -459,9 +459,7 @@ def validate_ion_channel_variable_modification_by_neuron(
     validate_string(schema, "property", f"{param} at {ref}")
 
 
-def validate_select_recordable_ion_channel_variable(
-    schema: dict, param: str, ref: str
-) -> None:
+def validate_select_recordable_ion_channel_variable(schema: dict, param: str, ref: str) -> None:
     validate_string(schema, "property_group", f"{param} at {ref}")
     validate_string(schema, "property", f"{param} at {ref}")
 
