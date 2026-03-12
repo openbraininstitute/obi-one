@@ -203,12 +203,13 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.82"
+version = "2.6.85"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "efel" },
     { name = "h5py" },
+    { name = "libsonata" },
     { name = "matplotlib" },
     { name = "neo" },
     { name = "networkx" },
@@ -220,9 +221,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/b2/bd5798579642eca18d3e6f4782a9041942b2fba9ee9eddc834a04bc86afa/bluecellulab-2.6.82.tar.gz", hash = "sha256:262b20ab0b0597ad2f613e813e1679b9694e1ffd63f29bd069b9cda370bfd96d", size = 541217, upload-time = "2026-02-27T10:21:44.523Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/99/e8073c95e40a8aeb0288daefa87e5e686eb151239169207446c8323b3838/bluecellulab-2.6.85.tar.gz", hash = "sha256:ce85f79449a60a984199463099395980045885fd7109c2e8081292a5d8930019", size = 547924, upload-time = "2026-03-11T16:45:23.34Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/e5/c1cc75ce380f1972783be0ac4e65df2e94fe080468cde224af9bc51c2c95/bluecellulab-2.6.82-py3-none-any.whl", hash = "sha256:dbf187849edc521cdb42d649fb82bfe92e4999cb2dac25989370d34e1a892cb4", size = 163225, upload-time = "2026-02-27T10:21:42.842Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/f0/931f4f8ff60067496f9e1f8246f971dbef70bee2a199351a391f4442b0c5/bluecellulab-2.6.85-py3-none-any.whl", hash = "sha256:cdd470ae0b2cbea53da3730126bea4cb1aba303d1ed2e460e8080dfcf6c491bd", size = 170605, upload-time = "2026-03-11T16:45:21.863Z" },
 ]
 
 [[package]]
@@ -1519,16 +1520,16 @@ wheels = [
 
 [[package]]
 name = "libsonata"
-version = "0.1.33"
+version = "0.1.34"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/75/81b8fdcaa155998f375f76c68a60d392ba54f97c135cc64d51dbfc78a830/libsonata-0.1.33.tar.gz", hash = "sha256:2adbd23e86a88de8ac821361cf1bb5c0996d1aabc50138673a6c59fc695e1d96", size = 1181972, upload-time = "2026-01-14T09:55:32.385Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/8f/b32a05fa124a711bb32d80d596392c361dad967254c4efc043f63d07c7b9/libsonata-0.1.34.tar.gz", hash = "sha256:a9015e42da17d08a473c47cb6104deb06d1280e065af956d00ac95894295c323", size = 1185106, upload-time = "2026-02-13T09:20:17.615Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/35/d97fa7c1350cef484356219b6418ce22d43fa5bdf310565654fc3935d6e0/libsonata-0.1.33-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:ed7c811d3ee034804604e698d859302475bcfda826e8f25b244acd6c842e96a5", size = 2057011, upload-time = "2026-01-14T09:55:17.155Z" },
-    { url = "https://files.pythonhosted.org/packages/bd/02/069468b069bb1f277baed29da604cd62f6acd6628c19d24af09fb08a9878/libsonata-0.1.33-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b5220a038755109d23f14c67a1d31cb23dce0b1a7b7e8521abcb9c6c2fab371a", size = 1775489, upload-time = "2026-01-14T09:55:18.727Z" },
-    { url = "https://files.pythonhosted.org/packages/05/fa/2bc6c015dfc07fc9fc0bb2f5be18752d654e01592dd2625ced814a3a83ac/libsonata-0.1.33-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:2e73ff37aebf54c715c7942ffe4ffc03597560bb5798f990649fe6561adcca0c", size = 2446022, upload-time = "2026-01-14T09:55:20.197Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/f4/eca05a0028d2901d2e7bc3f99b1cad90c0c8569ed4ccb825739fbad99c11/libsonata-0.1.34-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:70c52fac3e30fbc0f605c75422a339239a95acd3c6fcfd51e87167f6c25761c5", size = 2065323, upload-time = "2026-02-13T09:19:59.931Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/9e/907f3cfd7d651f76705c5c69b61ee3f3126c8ce108f04d16239a5dd88050/libsonata-0.1.34-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f07e64ce2b7310f43541851e287012c11bc9f5caa3865e76b47dba879796274c", size = 1783528, upload-time = "2026-02-13T09:20:02.2Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/06/6e0f51926e25b35019411906a9ac1449bb6becf8654db9ffdb87609fa401/libsonata-0.1.34-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:666bb96a0fe04353e5046c3c37a495554cf31388754eb1ce9bce85967ef68e10", size = 2455684, upload-time = "2026-02-13T09:20:04.307Z" },
 ]
 
 [[package]]
@@ -2163,7 +2164,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.82" },
+    { name = "bluecellulab", specifier = ">=2.6.85" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.51" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
