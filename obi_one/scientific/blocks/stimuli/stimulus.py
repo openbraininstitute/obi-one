@@ -691,7 +691,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration": self.duration,
             "voltage": self.initial_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
-            # no need to use duration since the SEClamp will keep the last value until it is off
+            # no need to set duration for step voltage since the SEClamp maintain the voltage
+            #  until the clamp is off
             "duration_levels": [self.timestamp_offset],
             "voltage_levels": [self.step_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
