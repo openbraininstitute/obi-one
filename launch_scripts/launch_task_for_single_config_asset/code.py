@@ -140,7 +140,7 @@ def main() -> int:
         )
     except Exception as e:  # noqa: BLE001
         # Catch any error that may occur to make sure that error status is correctly set
-        L.error(f"Error launching task for single configuration asset: {e}")
+        L.exception(f"Error launching task for single configuration asset: {e}")
         update_activity_status(
             db_client, args.execution_activity_type, args.execution_activity_id, "error"
         )
