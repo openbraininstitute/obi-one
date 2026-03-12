@@ -20,7 +20,7 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     description="Returns a dictionary of mapped ion channel properties.",
 )
 def mapped_ion_channel_properties_endpoint(
-    ion_channel_ids: list[str],
+    ion_channel_ids: Annotated[list[str], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     try:
