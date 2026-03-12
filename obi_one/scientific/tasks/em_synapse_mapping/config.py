@@ -118,6 +118,6 @@ class EMSynapseMappingScanConfig(ScanConfig):
 
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    _single_task_config_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.em_synapse_mapping__config
+    _single_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.em_synapse_mapping__config
     )

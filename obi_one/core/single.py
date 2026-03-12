@@ -73,6 +73,15 @@ class SingleConfigMixin:
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
     _single_task_config_type: ClassVar[TaskActivityType] = None
+    _single_entity: Entity = None
+
+    @property
+    def single_entity(self) -> Entity:
+        return self._single_entity
+
+    def set_single_entity(self, entity: Entity) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
 
     @property
     def single_task_config_type(self) -> TaskActivityType:

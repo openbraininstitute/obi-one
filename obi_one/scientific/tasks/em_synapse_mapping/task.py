@@ -1,31 +1,12 @@
 import json
 import logging
-import os
 import shutil
-import subprocess  # NOQA: S404
 from pathlib import Path
 
 import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
 from entitysdk import Client
-from entitysdk._server_schemas import (
-    AssetLabel,  # NOQA: PLC2701
-    CircuitBuildCategory,  # NOQA: PLC2701
-    CircuitScale,  # NOQA: PLC2701
-    ContentType,  # NOQA: PLC2701
-    PublicationType,  # NOQA: PLC2701
-)
 from entitysdk.downloaders.memodel import download_memodel
-from entitysdk.models import (
-    Circuit,
-    EMCellMesh,
-    EMDenseReconstructionDataset,
-    Publication,
-    ScientificArtifactPublicationLink,
-)
-from matplotlib import pyplot as plt
 from morph_spines import load_morphology_with_spines
-from voxcell import CellCollection
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
@@ -37,70 +18,20 @@ from obi_one.scientific.library.map_em_synapses import (
     write_nodes,
 )
 from obi_one.scientific.library.map_em_synapses._defaults import (
-    default_node_spec_for,
     sonata_config_for,
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
     _STR_POST_NODE,
     _STR_PRE_NODE,
 )
-from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
-    assemble_collection_from_specs,
-)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
+from obi_one.scientific.tasks.em_synapse_mapping.provenance import (
+    resolve_provenance,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
 L = logging.getLogger(__name__)
-
-
-def plot_mapping_stats(
-    mapped_synapses_df: pandas.DataFrame,
-    mesh_res: float,
-    plt_max_dist: float = 3.0,
-    nbins: int = 99,
-) -> plt.Figure:
-    dbins = numpy.linspace(0, plt_max_dist, nbins)
-    w = numpy.mean(numpy.diff(dbins))
-
-    frst_dist = numpy.maximum(mapped_synapses_df["distance"], 0.0)
-    sec_dist = mapped_synapses_df["competing_distance"]
-
-    fig = plt.figure(figsize=(2.5, 4))
-    ax = fig.add_subplot(2, 1, 1)
-
-    ax.bar(
-        dbins[1:],
-        numpy.histogram(frst_dist, bins=dbins)[0],
-        width=w,
-        label="Dist.: Nearest structure",
-    )
-    ax.bar(
-        dbins[1:],
-        numpy.histogram(sec_dist, bins=dbins)[0],
-        width=w,
-        label="Dist.: Second nearest structure",
-    )
-    ymx = ax.get_ylim()[1] * 0.85
-    ax.plot([mesh_res, mesh_res], [0, ymx], color="black", label="Mesh resolution")
-    ax.set_ylabel("Synapse count")
-    ax.set_frame_on(False)
-    plt.legend()
-    return fig
-
-
-def assemble_publication_links(
-    db_client: Client,
-    em_dataset: EMDenseReconstructionDataset,
-    lst_notices: list[str],  # NOQA: ARG001
-) -> list[Publication]:
-    src_links = db_client.search_entity(
-        entity_type=ScientificArtifactPublicationLink,
-        query={"scientific_artifact__id": em_dataset.id},
-    ).all()
-    src_pubs = [
-        _x.publication for _x in src_links if _x.publication_type != PublicationType.application
-    ]
-    # TODO: Parse DOIs out of the lst_notices. Create publications for them.
-    return src_pubs
 
 
 class EMSynapseMappingTask(Task):
@@ -167,7 +98,7 @@ class EMSynapseMappingTask(Task):
                 )
 
         L.info("Resolving skeleton provenance...")
-        pt_root_id, source_mesh_entity, source_dataset = self.resolve_provenance(
+        pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(
             db_client, morph_from_id
         )
 
@@ -255,7 +186,7 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_h5: str(out_root / fn_morphology_out_h5),
             fn_morphology_out_swc: str(out_root / fn_morphology_out_swc),
         }
-        compressed_path = self.compress_output()
+        compressed_path = compress_output(self.config.coordinate_output_root)
 
         registered_circuit_id = self.register_output(
             db_client,
@@ -275,121 +206,3 @@ class EMSynapseMappingTask(Task):
             execution_activity=execution_activity,
             generated=[registered_circuit_id],
         )
-
-    @staticmethod
-    def synapses_and_nodes_dataframes_from_EM(
-        em_dataset: EMDataSetFromID, pt_root_id: int, db_client: Client, cave_version: int
-    ) -> tuple[pandas.DataFrame, CellCollection, CellCollection, list]:
-        # SYNAPSES
-        syns, syns_notice = em_dataset.synapse_info_df(
-            pt_root_id, cave_version, col_location="post_pt_position", db_client=db_client
-        )
-        # NODES
-        pre_pt_root_to_sonata = (
-            syns["pre_pt_root_id"]
-            .drop_duplicates()
-            .reset_index(drop=True)
-            .reset_index()
-            .set_index("pre_pt_root_id")
-        )
-        post_pt_root_to_sonata = (
-            syns["post_pt_root_id"]
-            .drop_duplicates()
-            .reset_index(drop=True)
-            .reset_index()
-            .set_index("post_pt_root_id")
-        )
-        node_spec = default_node_spec_for(em_dataset, db_client)
-        coll_pre, nodes_notice = assemble_collection_from_specs(
-            em_dataset, db_client, cave_version, node_spec, pre_pt_root_to_sonata
-        )
-        coll_post, _ = assemble_collection_from_specs(
-            em_dataset, db_client, cave_version, node_spec, post_pt_root_to_sonata
-        )
-
-        return syns, coll_pre, coll_post, [syns_notice, *nodes_notice]
-
-    @staticmethod
-    def resolve_provenance(
-        db_client: Client, morph_from_id: CellMorphologyFromID
-    ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
-        source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
-        pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
-        source_dataset = db_client.get_entity(
-            entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,
-            entity_type=EMDenseReconstructionDataset,
-        )
-        return pt_root_id, source_mesh_entity, source_dataset
-
-    def compress_output(self) -> os.PathLike:
-        out_root = self.config.coordinate_output_root
-        Path(out_root / "sonata.tar").write_bytes(
-            subprocess.check_output(["tar", "-c", str(out_root)])  # NOQA: S607, S603
-        )
-        subprocess.check_call(["gzip", "-1", str(out_root / "sonata.tar")])  # NOQA: S607, S603
-        return str(out_root / "sonata.tar.gz")
-
-    @staticmethod
-    def register_output(
-        db_client: Client,
-        pt_root_id: int,
-        mapped_synapses_df: pandas.DataFrame,
-        syn_pre_post_df: pandas.DataFrame,
-        source_dataset: EMCellMesh,
-        em_dataset: EMDenseReconstructionDataset,
-        lst_notices: list[str],
-        file_paths: dict[os.PathLike, os.PathLike],
-        compressed_path: os.PathLike,
-    ) -> str:
-        license = em_dataset.license
-        description = f"""Morphology skeleton with isolated spines and afferent synapses
-        (Synaptome) of the neuron with pt_root_id {pt_root_id}
-        in dataset {source_dataset.name}.\n"""
-        description += "Used tables with the following notice texts:\n"
-        for notice in lst_notices:
-            description += str(notice) + "\n"
-
-        circ_entity = Circuit(
-            name=f"Afferent-synaptome-{pt_root_id}",
-            description=description,
-            number_neurons=1,
-            number_synapses=len(mapped_synapses_df),
-            number_connections=len(syn_pre_post_df["pre_node_id"].drop_duplicates()),
-            scale=CircuitScale.single,
-            build_category=CircuitBuildCategory.em_reconstruction,
-            subject=source_dataset.subject,
-            has_morphologies=True,
-            has_electrical_cell_models=False,
-            has_spines=True,
-            brain_region=source_dataset.brain_region,
-            experiment_date=source_dataset.experiment_date,
-            license=license,
-        )
-        existing_circuit = db_client.register_entity(circ_entity)
-
-        db_client.upload_directory(
-            entity_id=existing_circuit.id,
-            entity_type=Circuit,
-            name="sonata_synaptome",
-            paths=file_paths,
-            label=AssetLabel.sonata_circuit,
-        )
-
-        db_client.upload_file(
-            entity_id=existing_circuit.id,
-            entity_type=Circuit,
-            file_path=compressed_path,
-            file_content_type=ContentType.application_gzip,
-            asset_label=AssetLabel.compressed_sonata_circuit,
-        )
-
-        for publication in assemble_publication_links(db_client, em_dataset, lst_notices):
-            new_link = ScientificArtifactPublicationLink(
-                scientific_artifact=existing_circuit,
-                publication=publication,
-                publication_type=PublicationType.component_source,
-            )
-            db_client.register_entity(new_link)
-        L.info(f"Output registered as: {existing_circuit.id}")
-
-        return str(existing_circuit.id)
