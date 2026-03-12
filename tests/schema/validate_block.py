@@ -459,6 +459,13 @@ def validate_ion_channel_variable_modification_by_neuron(
     validate_string(schema, "property", f"{param} at {ref}")
 
 
+def validate_select_recordable_ion_channel_variable(
+    schema: dict, param: str, ref: str
+) -> None:
+    validate_string(schema, "property_group", f"{param} at {ref}")
+    validate_string(schema, "property", f"{param} at {ref}")
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get("ui_element"):
         case "string_input":
@@ -491,6 +498,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case "ion_channel_variable_modification_by_neuron":
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
+        case "select_recordable_ion_channel_variable":
+            validate_select_recordable_ion_channel_variable(schema, param, ref)
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"
