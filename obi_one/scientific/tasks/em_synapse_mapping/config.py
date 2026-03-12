@@ -39,6 +39,18 @@ class EMSynapseMappingScanConfig(ScanConfig):
         TaskActivityType.em_synapse_mapping__config_generation
     )
 
+    @property
+    def input_entity_ids(self) -> list[str]:
+        return [self.initialize.spiny_neuron.id_str]
+
+    @property
+    def campaign_name(self) -> str:
+        return self.info.campaign_name
+
+    @property
+    def campaign_description(self) -> str:
+        return self.info.campaign_description
+
     class Initialize(Block):
         spiny_neuron: CellMorphologyFromID = Field(  # | MEModelFromID
             title="EM skeletonized morphology",
@@ -84,7 +96,7 @@ class EMSynapseMappingScanConfig(ScanConfig):
             },
         )
 
-    info: Info = Field(  # type: ignore[]
+    info: Info = Field(
         title="Info",
         description="Information about ...",
         json_schema_extra={
@@ -104,28 +116,8 @@ class EMSynapseMappingScanConfig(ScanConfig):
         },
     )
 
-    @property
-    def input_entity_ids(self) -> list[str]:
-        return [self.initialize.spiny_neuron.id_str]
-
-    @property
-    def campaign_name(self) -> str:
-        return self.info.campaign_name
-
-    @property
-    def campaign_description(self) -> str:
-        return self.info.campaign_description
-
-    @property
-    def campaign_task_config_type(self) -> TaskConfigType:
-        return TaskConfigType.em_synapse_mapping__campaign
-
-    @property
-    def campaign_generation_task_activity_type(self) -> TaskActivityType:
-        return TaskActivityType.em_synapse_mapping__config_generation
-
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    @property
-    def single_task_config_type(self) -> TaskConfigType:
-        return TaskConfigType.em_synapse_mapping__config
+    _single_task_config_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.em_synapse_mapping__config
+    )

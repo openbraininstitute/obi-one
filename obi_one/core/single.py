@@ -3,11 +3,11 @@ import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import AssetLabel, ContentType
+from entitysdk.types import AssetLabel, ContentType, TaskActivityType
 from pydantic import Field, field_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -72,13 +72,23 @@ class SingleConfigMixin:
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
+    _single_task_config_type: ClassVar[TaskActivityType] = None
+
+    @property
+    def single_task_config_type(self) -> TaskActivityType:
+        return self._single_task_config_type
+
     def create_single_entity_with_config(
         self,
         campaign: TaskConfig,  # noqa: ARG002
         db_client: Client,
     ) -> TaskConfig:
-        """Saves the circuit extraction config to the database."""
-        L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
+        if self._single_task_config_type is None:
+            msg = (
+                "single_task_config_type must be defined in the subclass"
+                "for Tasks which use TaskActivity execution activities."
+            )
+            raise ValueError(msg)
 
         L.info(f"-- Register TaskConfig type: {self.single_task_config_type}")
         self._single_entity = db_client.register_entity(
