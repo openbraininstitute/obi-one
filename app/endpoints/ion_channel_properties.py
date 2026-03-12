@@ -2,8 +2,9 @@ from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
+from entitysdk.common import ProjectContext
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
@@ -15,18 +16,20 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 @router.get(
-    "/mapped-ion-channel-properties/",
+    "/mapped-ion-channel-properties",
     summary="Mapped ion channel properties",
     description="Returns a dictionary of mapped ion channel properties.",
 )
 def mapped_ion_channel_properties_endpoint(
     ion_channel_ids: Annotated[list[str], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    project_context: Annotated[ProjectContext | None, Header(alias="project-context")] = None,
 ) -> dict:
     try:
         ion_channel_properties = get_ion_channel_variables(
             ion_channel_ids=ion_channel_ids,
             db_client=db_client,
+            project_context=project_context,
         )
         mapped_ion_channel_properties = {}
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {

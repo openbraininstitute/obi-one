@@ -3,7 +3,9 @@ import uuid
 from collections.abc import Mapping
 from typing import Annotated
 
+from click import UUID
 from entitysdk.client import Client
+from entitysdk.common import ProjectContext
 from entitysdk.models.ion_channel_model import IonChannelModel
 from pydantic import BaseModel, Field
 
@@ -46,6 +48,15 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
     non_specific_current: list[str]
     concentration: list[str]
 
+    def __getitem__(self, key: str):
+        return self.model_dump()[key]
+
+    def __len__(self) -> int:
+        return len(self.model_fields)
+
+    def __iter__(self):
+        return iter(self.model_dump())
+
     @property
     def variables(self) -> list[str]:
         current_variables = [
@@ -83,12 +94,14 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
 def get_ion_channel_variables(
     ion_channel_ids: list[str],
     db_client: Client,
+    project_context: ProjectContext | None = None,
 ) -> IonChannelVariablesOutput:
     output = {}
     for i, ion_channel_id in enumerate(ion_channel_ids):
         ion_channel = db_client.get_entity(
-            entity_id=ion_channel_id,
+            entity_id=UUID(ion_channel_id),
             entity_type=IonChannelModel,
+            project_context=project_context,
         )
         non_specific_current = [
             var_name
@@ -110,7 +123,7 @@ def get_ion_channel_variables(
             "name": ion_channel.name,
             "variables": IonChannelVariablesOutput(
                 ion_channel_id=ion_channel_id,
-                ion_channel_siffix=ion_channel.nmodl_suffix,
+                ion_channel_suffix=ion_channel.nmodl_suffix,
                 current=current,
                 non_specific_current=non_specific_current,
                 concentration=concentration,
@@ -118,3 +131,4 @@ def get_ion_channel_variables(
         }
 
     return output
+ 
