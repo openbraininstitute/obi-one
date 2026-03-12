@@ -7,6 +7,7 @@ class TaskType(StrEnum):
     circuit_extraction = auto()
     circuit_simulation = auto()
     morphology_skeletonization = auto()
+    ion_channel_model_simulation = auto()
 
 
 class CallBackEvent(StrEnum):
