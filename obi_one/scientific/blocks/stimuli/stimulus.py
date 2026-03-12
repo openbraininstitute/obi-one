@@ -681,16 +681,6 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         },
     )
 
-    step_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=200,
-        title="Step Duration",
-        description="The duration of the step in milliseconds (ms).",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
-        },
-    )
-
     # A duration and voltage combination will be needed for the multi-step implementation
 
     def _generate_config(self) -> dict:
@@ -701,7 +691,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration": self.duration,
             "voltage": self.initial_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
-            "duration_levels": [self.timestamp_offset, self.step_duration],
+            # no need to use duration since the SEClamp will keep the last value until it is off
+            "duration_levels": [self.timestamp_offset],
             "voltage_levels": [self.step_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
