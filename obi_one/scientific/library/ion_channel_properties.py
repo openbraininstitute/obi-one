@@ -1,11 +1,10 @@
 import itertools
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Annotated
 
 from click import UUID
 from entitysdk.client import Client
-from entitysdk.common import ProjectContext
 from entitysdk.models.ion_channel_model import IonChannelModel
 from pydantic import BaseModel, Field
 
@@ -48,13 +47,16 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
     non_specific_current: list[str]
     concentration: list[str]
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> str | uuid.UUID | list[str]:
+        """Get item by key."""
         return self.model_dump()[key]
 
     def __len__(self) -> int:
+        """Length."""
         return len(self.model_fields)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
+        """Iterable."""
         return iter(self.model_dump())
 
     @property
@@ -129,4 +131,3 @@ def get_ion_channel_variables(
         }
 
     return output
- 

@@ -2,9 +2,8 @@ from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
-from entitysdk.common import ProjectContext
 import entitysdk.exception
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
