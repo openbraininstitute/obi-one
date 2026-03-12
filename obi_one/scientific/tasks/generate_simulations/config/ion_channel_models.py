@@ -65,7 +65,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
         "property_endpoints": {
-            MappedPropertiesGroup.ION_CHANNEL_MODEL: "/mapped-ion-channel-properties/",
+            MappedPropertiesGroup.ION_CHANNEL_MODEL: "/mapped-ion-channel-properties",
         },
     }
 
