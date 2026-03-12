@@ -32,6 +32,13 @@ class EMSynapseMappingScanConfig(ScanConfig):
         ],
     }
 
+    _campaign_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.em_synapse_mapping__campaign
+    )
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.em_synapse_mapping__config_generation
+    )
+
     class Initialize(Block):
         spiny_neuron: CellMorphologyFromID = Field(  # | MEModelFromID
             title="EM skeletonized morphology",

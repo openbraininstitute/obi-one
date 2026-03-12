@@ -7,7 +7,13 @@ from typing import ClassVar, get_args, get_origin
 import entitysdk
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskActivity, TaskConfig
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    ContentType,
+    TaskActivityType,
+    TaskConfigType,
+)
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -41,7 +47,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     _block_mapping: dict = None
 
-    _campaign: None = None
+    _campaign: Entity = None
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
 
     @property
     def campaign(
@@ -55,24 +63,21 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_name(self) -> None:
-        return None
+        msg = "You must define a campaign_name property for your ScanConfig subclass."
+        raise NotImplementedError(msg)
 
     @property
     def campaign_description(self) -> None:
-        return None
+        msg = "You must define a campaign_description property for your ScanConfig subclass."
+        raise NotImplementedError(msg)
 
     @property
     def campaign_task_config_type(self) -> None:
-        msg = "Subclasses of ScanConfig must implement the campaign_task_config_type property."
-        raise NotImplementedError(msg)
+        return self._campaign_task_config_type
 
     @property
     def campaign_generation_task_activity_type(self) -> None:
-        msg = (
-            "Subclasses of ScanConfig must implement the "
-            "campaign_generation_task_activity_type property."
-        )
-        raise NotImplementedError(msg)
+        return self._campaign_generation_task_activity_type
 
     def create_campaign_entity_with_config(
         self,
@@ -80,6 +85,10 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: Client = None,
     ) -> TaskConfig:
+        if self.campaign_task_config_type is None:
+            msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
+            raise NotImplementedError(msg)
+
         L.info("-- Create campaign TaskConfig entity")
         self._campaign = db_client.register_entity(
             TaskConfig(
@@ -105,6 +114,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     def create_campaign_generation_entity(
         self, generated: list[TaskConfig], db_client: Client
     ) -> None:
+        if self.campaign_generation_task_activity_type is None:
+            msg = (
+                "campaign_generation_task_activity_type must be defined to create "
+                "generic campaign generation TaskActivity."
+            )
+            raise NotImplementedError(msg)
+
         L.info("-- Register Campaign Generation TaskActivity")
         db_client.register_entity(
             TaskActivity(

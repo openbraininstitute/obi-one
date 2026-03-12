@@ -72,19 +72,9 @@ class SingleConfigMixin:
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
 
-    _single_entity: Entity = None
-
-    @property
-    def single_entity(self) -> Entity:
-        return self._single_entity
-
-    def set_single_entity(self, entity: Entity) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
-
     def create_single_entity_with_config(
         self,
-        campaign: TaskConfig,
+        campaign: TaskConfig,  # noqa: ARG002
         db_client: Client,
     ) -> TaskConfig:
         """Saves the circuit extraction config to the database."""
@@ -97,7 +87,7 @@ class SingleConfigMixin:
                 description=self.campaign_description,
                 task_config_type=self.single_task_config_type,
                 meta={
-                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()
+                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()  # noqa: E501
                 },
                 inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
             )

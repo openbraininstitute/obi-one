@@ -309,8 +309,9 @@ class EMSynapseMappingTask(Task):
 
         return syns, coll_pre, coll_post, [syns_notice, *nodes_notice]
 
+    @staticmethod
     def resolve_provenance(
-        self, db_client: Client, morph_from_id: CellMorphologyFromID
+        db_client: Client, morph_from_id: CellMorphologyFromID
     ) -> tuple[int, EMCellMesh, EMDenseReconstructionDataset]:
         source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
         pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
