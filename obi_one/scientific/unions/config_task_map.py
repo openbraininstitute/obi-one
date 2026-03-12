@@ -62,6 +62,7 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.scientific.unions.aliases import Simulation
+from obi_one.scientific.tasks.ion_channel_model_simulation import IonChannelModelSimulationExecutionConfig, IonChannelModelSimulationTask
 
 _config_tasks_map = {
     Simulation: GenerateSimulationTask,
@@ -81,6 +82,7 @@ _config_tasks_map = {
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+    IonChannelModelSimulationExecutionConfig: IonChannelModelSimulationTask,
 }
 
 
