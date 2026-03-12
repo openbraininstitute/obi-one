@@ -23,13 +23,11 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 def mapped_ion_channel_properties_endpoint(
     ion_channel_ids: Annotated[list[str], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    project_context: Annotated[ProjectContext | None, Header(alias="project-context")] = None,
 ) -> dict:
     try:
         ion_channel_properties = get_ion_channel_variables(
             ion_channel_ids=ion_channel_ids,
             db_client=db_client,
-            project_context=project_context,
         )
         mapped_ion_channel_properties = {}
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {

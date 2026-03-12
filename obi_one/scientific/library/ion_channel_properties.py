@@ -94,14 +94,12 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
 def get_ion_channel_variables(
     ion_channel_ids: list[str],
     db_client: Client,
-    project_context: ProjectContext | None = None,
 ) -> IonChannelVariablesOutput:
     output = {}
     for i, ion_channel_id in enumerate(ion_channel_ids):
         ion_channel = db_client.get_entity(
             entity_id=UUID(ion_channel_id),
             entity_type=IonChannelModel,
-            project_context=project_context,
         )
         non_specific_current = [
             var_name
