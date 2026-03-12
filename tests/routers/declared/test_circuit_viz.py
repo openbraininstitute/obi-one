@@ -1,10 +1,14 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-from urllib.parse import quote, unquote
-from uuid import uuid4
 from typing import cast
+from unittest.mock import MagicMock, patch
+from urllib.parse import quote, unquote
+from uuid import UUID, uuid4
 
+import libsonata
 import pytest
+from entitysdk.models import Asset, Circuit
+from entitysdk.models.asset import AssetLabel, ContentType, StorageType
+from entitysdk.models.circuit import CircuitBuildCategory, CircuitScale
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -12,17 +16,13 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
-from app.services.circuit_visualization import circuit_asset_id
-from entitysdk.models import Circuit, Asset
-from entitysdk.models.asset import AssetLabel, StorageType, ContentType
-from entitysdk.models.circuit import CircuitScale, CircuitBuildCategory
-from entitysdk.exception import EntitySDKError
-from app.errors import ApiErrorCode
-from uuid import UUID
-
-
-from fastapi import HTTPException
-from http import HTTPStatus
+from app.schemas.visualization import NeuronSectionInfo, Node
+from app.services.circuit_visualization import (
+    circuit_asset_id,
+    download_circuit_config,
+    get_morphology,
+    get_nodes,
+)
 
 ROUTER_MODULE = "app.endpoints.circuit_visualization"
 
@@ -131,7 +131,7 @@ def test_circuit_dict():
     }
 
 
-def test_circuit_asset_id_success(mock_client, test_circuit_dict, test_asset_dict):
+def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
     test_circuit = Circuit(
         **test_circuit_dict, assets=[Asset(**test_asset_dict)], scale=CircuitScale.small
     )
@@ -146,40 +146,87 @@ def test_circuit_asset_id_success(mock_client, test_circuit_dict, test_asset_dic
     mock_client.get_entity.assert_called_once_with(entity_id=test_circuit.id, entity_type=Circuit)
 
 
-def test_circuit_asset_id_sdk_error(mock_client):
-    circuit_id = uuid4()
-    mock_client.get_entity.side_effect = EntitySDKError("Fetch failed")
-
-    with pytest.raises(HTTPException) as exc_info:
-        circuit_asset_id(mock_client, circuit_id)
-
-    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
-
-    assert exc_info.value.detail["code"] == ApiErrorCode.INVALID_REQUEST
-    assert exc_info.value.detail["detail"] == "Couldn't fetch the circuit"
+@pytest.fixture
+def test_circuit_dir():
+    return Path("./examples/data/tiny_circuits/nbS1-O1-E2Sst-maxNsyn-HEX0-L5").resolve()
 
 
-def test_circuit_asset_id_invalid_scale(mock_client, test_circuit_dict, test_asset_dict):
-    test_circuit = Circuit(
-        **test_circuit_dict, assets=[Asset(**test_asset_dict)], scale=CircuitScale.microcircuit
+@pytest.fixture
+def test_sonata_config(test_circuit_dir):
+    return libsonata.CircuitConfig(
+        (test_circuit_dir / "circuit_config.json").read_text(), str(test_circuit_dir)
     )
 
-    mock_client.get_entity.return_value = test_circuit
 
-    with pytest.raises(HTTPException) as exc_info:
-        circuit_asset_id(mock_client, cast("UUID", test_circuit.id))
+def test_download_circuit_config(mock_client, test_circuit_dir):
+    circuit_id = uuid4()
+    asset_id = uuid4()
 
-    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
-    assert exc_info.value.detail["detail"] == "Circuit's scale should be 'small' or 'pair'"
+    result = download_circuit_config(mock_client, circuit_id, asset_id, test_circuit_dir)
+
+    mock_client.download_file.assert_called_once_with(
+        entity_id=circuit_id,
+        entity_type=Circuit,
+        asset_id=asset_id,
+        output_path=test_circuit_dir / "circuit_config.json",
+        asset_path=Path("circuit_config.json"),
+    )
+
+    assert isinstance(result, libsonata.CircuitConfig)
 
 
-def test_circuit_asset_id_missing_asset(mock_client, test_circuit_dict):
-    test_circuit = Circuit(**test_circuit_dict, assets=[], scale=CircuitScale.small)
+def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
+    test_nodes = [
+        Node(
+            morphology_path="morphologies/swc/dend-rp090908_c2_axon-vd110623_idA",
+            position=(3927.1862191305954, -1398.4124233327566, -2409.039000858357),
+            orientation=(
+                0.6971569742455114,
+                0.5621838947816346,
+                0.2816537095884868,
+                0.3443727770658415,
+            ),
+            soma_radius=7.279230117797852,
+        ),
+        Node(
+            morphology_path="morphologies/swc/rp110127_L5-2_idD_-_Clone_1",
+            position=(3821.770720831846, -1368.8353733057893, -2569.5086101559486),
+            orientation=(
+                0.6809097129262709,
+                0.5799801735168897,
+                0.31893356942594736,
+                0.3134746233161566,
+            ),
+            soma_radius=4.823882102966309,
+        ),
+    ]
 
-    mock_client.get_entity.return_value = test_circuit
+    nodes = get_nodes(
+        test_sonata_config,
+        test_circuit_dir,
+        mock_client,
+        circuit_id=uuid4(),
+        asset_id=uuid4(),
+    )
 
-    with pytest.raises(HTTPException) as exc_info:
-        circuit_asset_id(mock_client, cast("UUID", test_circuit.id))
+    assert nodes == test_nodes
 
-    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
-    assert exc_info.value.detail["detail"] == "Circuit is missing a sonata_circuit asset"
+
+def test_get_morphology(mock_client, test_circuit_dir):
+    morphology = get_morphology(
+        test_circuit_dir,
+        mock_client,
+        uuid4(),
+        uuid4(),
+        Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA" + ".swc"),
+    )
+
+    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
+
+    axon_0 = morphology["axon[0]"]
+
+    assert axon_0.nseg == 80
+    assert axon_0.distance_from_soma == 0.0
+    assert axon_0.sec_length == 126.4417724609375
+    assert len(axon_0.xstart) == 80
+    assert len(axon_0.xend) == 80
