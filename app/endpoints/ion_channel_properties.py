@@ -3,7 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
