@@ -49,7 +49,6 @@ def test_make_task_reservation_success(user_context_user_1, accounting_parameter
             return FakeSession()
 
     session = test_module.make_task_reservation(
-        service_subtype=ServiceSubtype.SMALL_SIM,
         user_context=user_context_user_1,
         accounting_parameters=accounting_parameters,
         accounting_factory=FakeFactory(),
@@ -69,7 +68,6 @@ def test_make_task_reservation_insufficient_funds(user_context_user_1, accountin
 
     with pytest.raises(ApiError) as exc:
         test_module.make_task_reservation(
-            service_subtype=ServiceSubtype.SMALL_SIM,
             user_context=user_context_user_1,
             accounting_parameters=accounting_parameters,
             accounting_factory=FakeFactory(),
@@ -94,7 +92,6 @@ def test_make_task_reservation__generic_accounting_error(
 
     with pytest.raises(ApiError) as exc:
         test_module.make_task_reservation(
-            service_subtype=ServiceSubtype.SMALL_SIM,
             user_context=user_context_user_1,
             accounting_parameters=accounting_parameters,
             accounting_factory=FakeFactory(),
