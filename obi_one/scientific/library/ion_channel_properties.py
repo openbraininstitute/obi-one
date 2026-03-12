@@ -86,7 +86,7 @@ def get_ion_channel_variables(
 ) -> IonChannelVariablesOutput:
     output = {}
     for i, ion_channel_id in enumerate(ion_channel_ids):
-        ion_channel = db_client.search_entity(
+        ion_channel = db_client.get_entity(
             entity_id=ion_channel_id,
             entity_type=IonChannelModel,
         )
