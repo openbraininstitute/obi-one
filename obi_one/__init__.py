@@ -35,6 +35,7 @@ __all__ = [
     "CircuitFromID",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
+    "CircuitStimulusUnion",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -43,6 +44,7 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
+    "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
@@ -53,6 +55,8 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "DelayedInterNeuronSetSynapticManipulation",
+    "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -67,6 +71,7 @@ __all__ = [
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
     "GenerateSimulationTask",
+    "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -74,18 +79,23 @@ __all__ = [
     "Info",
     "InhibitoryNeurons",
     "IntRange",
+    "InterNeuronSetSynapticManipulation",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
+    "IonChannelModelSimulationScanConfig",
+    "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
+    "MEModelStimulusUnion",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
+    "ModSpecificVariableInterNeuronSetSynapticManipulation",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
@@ -155,6 +165,7 @@ __all__ = [
     "SkeletonizationScanConfig",
     "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
+    "SpatiallyUniformElectricFieldStimulus",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -162,12 +173,13 @@ __all__ = [
     "SynapticMgManipulation",
     "Task",
     "TasksUnion",
+    "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
-    "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
+    "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
@@ -253,6 +265,10 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     OrnsteinUhlenbeckConductanceSomaticStimulus,
     OrnsteinUhlenbeckCurrentSomaticStimulus,
@@ -274,7 +290,23 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
-from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.blocks.synaptic_manipulations.base import (
+    DelayedInterNeuronSetSynapticManipulation,
+    GlobalVariableInterNeuronSetSynapticManipulation,
+    InterNeuronSetSynapticManipulation,
+    ModSpecificVariableInterNeuronSetSynapticManipulation,
+    WeightChangeDelayedInterNeuronSetSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
@@ -324,15 +356,23 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulation_task import (
+from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
@@ -369,10 +409,6 @@ from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
-from obi_one.scientific.unions.unions_manipulations import (
-    ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
@@ -380,7 +416,12 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
+from obi_one.scientific.unions.unions_stimuli import (
+    CircuitStimulusUnion,
+    MEModelStimulusUnion,
+    StimulusReference,
+    StimulusUnion,
+)
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion

@@ -155,6 +155,7 @@ def test_submit_task_job__success(
         project_context=project_context,
         callback_url=callback_url,
         callbacks=[],
+        compute_cell="cell_a",
     )
     assert res.task_type == task_type
     assert res.config_id == config_id
@@ -256,6 +257,7 @@ def test_submit_task_job__failure(
             project_context=project_context,
             callback_url=callback_url,
             callbacks=[],
+            compute_cell="cell_a",
         )
 
 
@@ -268,6 +270,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
         project_id=PROJECT_ID,
         callbacks=callbacks,
         task_definition=task_definition,
+        compute_cell="cell_a",
     )
 
     assert res == {
@@ -276,6 +279,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "instances": 1,
             "instance_type": "small",
             "timelimit": "00:10",
+            "compute_cell": "cell_a",
         },
         "inputs": [
             "--simulation-id",
@@ -323,16 +327,28 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         entity_cache=True,
         output_root="/foo",
         callbacks=callbacks,
+        compute_cell="cell_b",
     )
 
     assert res == {
-        "resources": {"type": "machine", "cores": 1, "memory": 2, "timelimit": "00:10"},
+        "resources": {
+            "type": "machine",
+            "cores": 1,
+            "memory": 2,
+            "timelimit": "00:10",
+            "compute_cell": "cell_b",
+        },
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute/obi-one.git",
             "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
-            "dependencies": "launch_scripts/launch_task_for_single_config_asset/requirements.txt",
+            "dependencies": (
+                "launch_scripts/launch_task_for_single_config_asset/dependencies/default.txt"
+            ),
+            "capabilities": {
+                "private_packages": False,
+            },
         },
         "inputs": [
             "--entity_type CircuitExtractionConfig",

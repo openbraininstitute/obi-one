@@ -10,11 +10,11 @@ from app.dependencies.auth import UserContextDep
 def get_client(
     user_context: UserContextDep,
 ) -> httpx.Client:
-    api_url = settings.LAUNCH_SYSTEM_URL
     token = user_context.token.credentials
-    client = httpx.Client(base_url=api_url, headers={"Authorization": f"Bearer {token}"})
-
-    return client
+    return httpx.Client(
+        base_url=settings.LAUNCH_SYSTEM_URL,
+        headers={"Authorization": f"Bearer {token}"},
+    )
 
 
 LaunchSystemClientDep = Annotated[httpx.Client, Depends(get_client)]

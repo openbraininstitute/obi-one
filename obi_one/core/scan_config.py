@@ -131,9 +131,20 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                 block_reference = block_attr_value
 
                 if block_reference.block_dict_name and block_reference.block_name:
-                    block_reference.block = self.__dict__[block_reference.block_dict_name][
-                        block_reference.block_name
-                    ]
+                    try:
+                        block_reference.block = self.__dict__[block_reference.block_dict_name][
+                            block_reference.block_name
+                        ]
+                    except KeyError:
+                        msg = (
+                            f"Block '{block_reference.block_name}' not found in "
+                            f"'{block_reference.block_dict_name}'. `block_dict_name` must "
+                            f"correspond to the name of the root level dictionary which contains "
+                            f"the block you are referencing, or should be an empty string to "
+                            f"reference a root level block."
+                        )
+                        raise KeyError(msg) from None
+
                 elif not block_reference.block_dict_name and block_reference.block_name:
                     # If the block_dict_name is empty, we assume the block_name
                     # is a direct reference to a Block instance

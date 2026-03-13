@@ -5,12 +5,18 @@ from typing import Annotated, ClassVar, Self
 import h5py
 import numpy as np
 import pandas as pd
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
+from pydantic import (
+    Field,
+    NonNegativeFloat,
+    PositiveFloat,
+    PrivateAttr,
+    model_validator,
+)
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
-from obi_one.scientific.blocks.timestamps import SingleTimestamp
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -43,7 +49,16 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 )
 
 
-class Stimulus(Block, ABC):
+class BaseStimulus(Block, ABC):
+    _default_node_set: str = PrivateAttr(default="All")
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+
+    @abstractmethod
+    def _generate_config(self) -> dict:
+        pass
+
+
+class StimulusWithTimestamps(BaseStimulus):
     timestamps: TimestampsReference | None = Field(
         default=None,
         title="Timestamps",
@@ -54,15 +69,8 @@ class Stimulus(Block, ABC):
         },
     )
 
-    _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
 
-    @abstractmethod
-    def _generate_config(self) -> dict:
-        pass
-
-
-class SomaticStimulus(Stimulus, ABC):
+class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
@@ -74,7 +82,7 @@ class SomaticStimulus(Stimulus, ABC):
         },
     )
 
-    timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
+    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -122,7 +130,11 @@ class SomaticStimulus(Stimulus, ABC):
         return self._generate_config()
 
 
-class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
+class ContinuousStimulus(ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps):
+    pass
+
+
+class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
     title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
@@ -162,7 +174,7 @@ class ConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
@@ -203,7 +215,7 @@ class RelativeConstantCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class LinearCurrentClampSomaticStimulus(SomaticStimulus):
+class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
     title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
@@ -255,7 +267,7 @@ class LinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
@@ -309,7 +321,7 @@ class RelativeLinearCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
     title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
@@ -360,7 +372,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
@@ -414,7 +426,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
+class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
@@ -483,7 +495,7 @@ class MultiPulseCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
+class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
@@ -549,7 +561,7 @@ class SinusoidalCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
+class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
     title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
@@ -592,7 +604,7 @@ class SubthresholdCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
+class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
@@ -624,7 +636,74 @@ class HyperpolarizingCurrentClampSomaticStimulus(SomaticStimulus):
         return sonata_config
 
 
-class SpikeStimulus(Stimulus):
+class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
+    """A voltage clamp injection with an arbitrary number of steps at different voltages.
+
+    Warning: Maximum one SEClamp stimulus per location.
+    """
+
+    # We only have a simple flat voltage stimulus implemented now for simplicity.
+    # A more complex implementation with multi-step stimulus will be implemented later.
+
+    title: ClassVar[str] = "Single Electrode Voltage Clamp Somatic Stimulus"
+
+    _module: str = "seclamp"
+    _input_type: str = "voltage_clamp"
+
+    # overwrite duration to have a more accurate description for this stimulus
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Total Duration",
+        description="Time duration in milliseconds for how long the SEClamp is activated.",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    initial_voltage: float | list[float] = Field(
+        default=0.0,
+        title="Initial Voltage",
+        description="The initial voltage level in millivolts (mV).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
+    )
+
+    step_voltage: float | list[float] = Field(
+        default=0.0,
+        title="Step Voltage Amplitude",
+        description="The step voltage level in millivolts (mV).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
+    )
+
+    # A duration and voltage combination will be needed for the multi-step implementation
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+        sonata_config[self.block_name] = {
+            # cannot have any delay with SEClamp, so timestamps are used in duration_levels
+            "delay": 0,
+            "duration": self.duration,
+            "voltage": self.initial_voltage,
+            # the delay is used as the duration of 1st voltage at initial_voltage level
+            # no need to set duration for step voltage since the SEClamp maintain the voltage
+            #  until the clamp is off
+            "duration_levels": [self.timestamp_offset],
+            "voltage_levels": [self.step_voltage],
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return sonata_config
+
+
+class SpikeStimulus(StimulusWithTimestamps):
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
     _spike_file: Path | None = None
@@ -651,7 +730,7 @@ class SpikeStimulus(Stimulus):
         },
     )
 
-    timestamp_offset: float | list[float] | None = _TIMESTAMPS_OFFSET_FIELD
+    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     def config(
         self,
@@ -754,7 +833,10 @@ class PoissonSpikeStimulus(SpikeStimulus):
     """Spike times drawn from a Poisson process with a given frequency.
 
     Sent from all neurons in the source neuron set to efferently connected
-    neurons in the target neuron set.
+
+    When using repeated timestamps (i.e. Regular Timestamps), stimulus durations
+    should be small enough such that stimulus periods do not overlap across
+    repetitions of the same stimulus.
     """
 
     title: ClassVar[str] = "Poisson Spikes (Efferent)"
@@ -828,7 +910,17 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 timestamp_idx < len(timestamps_block.timestamps()) - 1
                 and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
             ):
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[timestamp_idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
+                msg = (
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
             for gid in gids:
                 spikes = []
@@ -853,7 +945,10 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     """Spikes sent at the same time.
 
     Sent from all neurons in the source neuron set to efferently connected
-    neurons in the target neuron set.
+
+    When using repeated timestamps (i.e. Regular Timestamps), stimulus durations
+    should be small enough such that stimulus periods do not overlap across
+    repetitions of the same stimulus.
     """
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
@@ -1056,7 +1151,17 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             end_time = start_time + self.duration
 
             if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
-                msg = "Stimulus time intervals overlap!"
+                next_timestamp = timestamps_block.timestamps()[idx + 1]
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
+                msg = (
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
                 raise ValueError(msg)
 
             # Thinning with epoch-specific λ_max
