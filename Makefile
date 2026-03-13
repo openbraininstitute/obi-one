@@ -24,19 +24,17 @@ endef
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
-install-connectivity:  ## Create a virtual environment with core + science + notebooks + connectivity dependencies
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra science --extra notebooks --extra connectivity
+install:  ## Default installation (for running tasks and local scripts)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
 
-install-notebooks:  ## Create a virtual environment with core + science + notebooks dependencies
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra science --extra notebooks
+install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
 
-install-science:  ## Create a virtual environment with core + science dependencies (for tasks and local scripts)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra science
+install-notebooks:  ## Install with notebooks dependencies (for running notebooks locally)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks
 
-install-service:  ## Create a virtual environment with core + science + service dependencies
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra science --extra service
-
-install: install-science  ## Alias for install-science (default: core + science)
+install-service:  ## Install with service dependencies (for running as a service)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service
 
 install-all:  ## Install all dependencies (for production/deployment)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all
