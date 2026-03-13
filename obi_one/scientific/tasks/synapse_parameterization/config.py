@@ -9,6 +9,17 @@ from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
+from obi_one.scientific.blocks.synaptic_parameterization.synaptic_parameterization import (
+    OriginalSynapseParameterization,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    NeuronSetUnion,
+    NeuronSetReference,
+)
+from obi_one.scientific.unions.unions_synaptic_parameterizations import (
+    SynapticParameterizationUnion,
+    SynapticParameterizationReference,
+)
 
 L = logging.getLogger(__name__)
 
@@ -17,6 +28,8 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
+    SYNAPSE_PARAMETERS = "Synapse parameters"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP="Circuit components"
 
 
 class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
@@ -36,27 +49,6 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             title="Synaptome",
             description="Synaptome (i.e., circuit of scale single) to (re-)parameterize.",
         )
-        pathway_property: str = Field(
-            title="Pathway property",
-            description="Neuron property (e.g., 'synapse_class') by which to group neurons into"
-            " pathways between source and target neuron populations.",
-        )
-        pathway_param_dict: dict = Field(
-            title="Pathway parameters",
-            description="Synapse physiology distribution parameters for all pathways in the"
-            " ConnPropsModel format of Connectome-Manipulator.",
-        )  # TODO: This may be replaced by dedicated entities
-        random_seed: int = Field(
-            default=1,
-            title="Random seed",
-            description="Seed for drawing random values from physiological parameter"
-            " distributions.",
-        )
-        overwrite_if_exists: bool = Field(
-            title="Overwrite",
-            description="Overwrite if a parameterization exists already.",
-            default=False,
-        )
 
     info: Info = Field(
         title="Info",
@@ -74,5 +66,29 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             "ui_element": "block_single",
             "group": BlockGroup.SETUP,
             "group_order": 1,
+        },
+    )
+
+    synapse_parameterizations: dict[str, OriginalSynapseParameterization] = Field(
+        default_factory=dict,
+        description="Parameterizations...",
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": SynapticParameterizationReference.__name__,
+            "singular_name": "Synaptic Parameterization",
+            "group": BlockGroup.SYNAPSE_PARAMETERS,
+            "group_order": 0,
+        },
+    )
+
+    neuron_sets: dict[str, NeuronSetUnion] = Field(
+        default_factory=dict,
+        description="Neuron sets for the simulation.",
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": NeuronSetReference.__name__,
+            "singular_name": "Neuron Set",
+            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            "group_order": 0,
         },
     )
