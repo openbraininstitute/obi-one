@@ -9,6 +9,7 @@ from connectome_manipulator.model_building import model_types
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 L = logging.getLogger(__name__)
 
@@ -138,7 +139,41 @@ class OriginalSynapseParameterization(SynapseParameterization):
             self._parameterize_edge_file(edge)
 
 
-class ExponentialSynapseParameterization(SynapseParameterization):
+class TsodyksMarkramSynapseParameterization(SynapseParameterization):
+    source_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Source)",
+        description="Source neuron set to simulate",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": True,
+        },
+    )
+
+    targeted_neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Target)",
+        description="Target neuron set to simulate",
+        json_schema_extra={
+            "ui_element": "reference",
+            "reference_type": NeuronSetReference.__name__,
+            "supports_virtual": True,
+        },
+    )
+
+    u_hill_coefficient: float = Field(
+        default=1.0,
+        title="Hill coefficient for u",
+        description=(
+            "Hill coefficient for the steady-state utilization of synaptic efficacy (u) as a "
+            "function of presynaptic firing rate. A value of 1 corresponds to a standard Hill "
+            "function, while higher values lead to a steeper increase of u with firing rate."
+        ),
+    )
+
+    parameter_distribution: dict = Field()
+
     def go_for_it(self, circ: snap.Circuit) -> Never:
-        msg = "Exponential synapse parameterization not implemented yet!"
+        msg = "New synapse parameterization not implemented yet!"
         raise NotImplementedError(msg)
