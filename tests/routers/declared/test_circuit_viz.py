@@ -234,7 +234,7 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
     assert nodes == test_nodes
 
 
-def test_get_nodes_2(test_sonata_config_alternate, mock_client, test_circuit_dir_alternate):
+def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_circuit_dir_alternate):
     test_nodes = [
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
