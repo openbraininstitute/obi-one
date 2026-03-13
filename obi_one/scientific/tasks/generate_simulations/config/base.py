@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -263,18 +263,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(abc.ABC):
+class SimulationSingleConfigMixin(BaseModel):
     """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
-
-    _single_entity: entitysdk.models.Simulation
-
-    @property
-    def single_entity(self) -> entitysdk.models.Simulation:
-        return self._single_entity
-
-    def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
 
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client

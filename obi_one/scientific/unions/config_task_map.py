@@ -14,6 +14,8 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -80,6 +82,7 @@ _config_tasks_map = {
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
+    EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 

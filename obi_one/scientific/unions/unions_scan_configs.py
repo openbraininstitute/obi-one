@@ -8,6 +8,7 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
 from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
@@ -36,6 +37,7 @@ ScanConfigsUnion = Annotated[
     CircuitSimulationScanConfig
     | SimulationsForm  # Alias for backward compatibility
     | CircuitExtractionScanConfig
+    | EMSynapseMappingScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig
     | ContributeMorphologyScanConfig
