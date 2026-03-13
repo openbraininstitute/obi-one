@@ -10,9 +10,9 @@ from obi_one.scientific.blocks.ion_channel_model import (
 )
 
 IonChannelModelUnion = Annotated[
-    IonChannelModelWithoutConductance
-    | IonChannelModelWithConductance
-    | IonChannelModelWithMaxPermeability,
+    IonChannelModelWithConductance
+    | IonChannelModelWithMaxPermeability
+    | IonChannelModelWithoutConductance,
     Discriminator("type"),
 ]
 
