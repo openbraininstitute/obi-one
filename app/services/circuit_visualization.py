@@ -1,7 +1,7 @@
+import json
 from http import HTTPStatus
 from pathlib import Path
 from uuid import UUID
-import json
 
 import libsonata
 import morphio
@@ -305,7 +305,12 @@ def download_circuit_config(
 
 
 def get_morphology(
-    parent_dir: Path, client: Client, circuit_id: UUID, asset_id: UUID, morph_path: Path
+    parent_dir: Path,
+    client: Client,
+    circuit_id: UUID,
+    asset_id: UUID,
+    morph_path: Path,
+    morph_name: str,
 ) -> Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
@@ -326,7 +331,12 @@ def get_morphology(
             raise HTTPException(status_code=404, detail="Morphology not found") from e
 
     try:
-        return get_morphology_data(str(output_path))
+        if output_path.suffix.lower() == ".h5":
+            morph = morphio.Collection(output_path).load(morph_name)
+        else:
+            morph = morphio.Morphology(output_path)
+
+        return get_morphology_data(morph)
     except Exception as e:
         msg = f"Could not parse morphology {morph_path}"
         raise HTTPException(status_code=500, detail=msg) from e
@@ -340,10 +350,8 @@ SWC_TYPES = {
 }
 
 
-def get_morphology_data(swc_path: str) -> Morphology:  # noqa: PLR0914
-    """Parses an SWC file into a segment-based dictionary optimized for visualization."""
-    morphology = morphio.Morphology(swc_path)
-
+def get_morphology_data(morphology) -> Morphology:  # noqa: PLR0914, ANN001
+    """Parses an morphology filefile into a segment-based dictionary optimized for visualization."""
     section_start_distances: dict[int, float] = {sec.id: 0.0 for sec in morphology.sections}
 
     def walk_tree_for_distances(section: morphio.Section, current_path_distance: float) -> None:

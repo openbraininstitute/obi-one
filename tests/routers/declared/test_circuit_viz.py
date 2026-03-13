@@ -93,17 +93,23 @@ def test_circuit_morphology(
     circuit_id = uuid4()
     asset_id = uuid4()
     morphology_path = quote("dir/mock_path.swc", safe="")
+    name = "name"
 
     mock_circuit_asset_id.return_value = asset_id
     mock_get_morphology.return_value = {}
-    response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{morphology_path}")  # noqa: RUF010
+    response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{morphology_path}/{name}")  # noqa: RUF010
 
     assert response.status_code == 200
     assert response.json() == {}
 
     mock_circuit_asset_id.assert_called_once_with(mock_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
-        tmp_path, mock_client, circuit_id, asset_id, Path(f"{unquote(morphology_path)}")
+        tmp_path,
+        mock_client,
+        circuit_id,
+        asset_id,
+        Path(f"{unquote(morphology_path)}"),
+        name,
     )
 
 
@@ -370,6 +376,7 @@ def test_get_morphology(mock_client, test_circuit_dir):
         uuid4(),
         uuid4(),
         Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc"),
+        "dend-rp090908_c2_axon-vd110623_idA",
     )
 
     assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
@@ -381,3 +388,24 @@ def test_get_morphology(mock_client, test_circuit_dir):
     assert axon_0.sec_length == 126.4417724609375
     assert len(axon_0.xstart) == 80
     assert len(axon_0.xend) == 80
+
+
+def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
+    morphology = get_morphology(
+        test_circuit_dir_alternate,
+        mock_client,
+        uuid4(),
+        uuid4(),
+        Path("morphologies/merged-morphologies.h5"),
+        "rp110125_L5-2_idF_-_Scale_x1.000_y1.025_z1.000",
+    )
+
+    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
+
+    axon_0 = morphology["axon[0]"]
+
+    assert axon_0.nseg == 20
+    assert axon_0.distance_from_soma == 0.0
+    assert axon_0.sec_length == 39.374610900878906
+    assert len(axon_0.xstart) == 20
+    assert len(axon_0.xend) == 20

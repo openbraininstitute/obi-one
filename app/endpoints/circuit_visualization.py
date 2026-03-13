@@ -40,22 +40,19 @@ def circuit_nodes(
 
 
 @router.get(
-    "/{circuit_id}/morphologies/{morphology_path:path}",
+    "/{circuit_id}/morphologies/{morphology_file:path}/{morphology_name:path}",
     summary="A morphology from a circuit's sonata directory",
     description="Returns a morphology for visualization",
 )
 def circuit_morphology(
     circuit_id: UUID,
-    morphology_path: str,
+    morphology_file: str,
+    morphology_name: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     temp_dir: TempDirDep,
 ) -> Morphology:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
     return get_morphology(
-        temp_dir,
-        db_client,
-        circuit_id,
-        asset_id,
-        Path(morphology_path),
+        temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), morphology_name
     )
