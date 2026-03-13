@@ -57,5 +57,5 @@ def circuit_morphology(
         db_client,
         circuit_id,
         asset_id,
-        Path(morphology_path + ".swc"),
+        Path(morphology_path),
     )

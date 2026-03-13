@@ -92,7 +92,7 @@ def test_circuit_morphology(
 ):
     circuit_id = uuid4()
     asset_id = uuid4()
-    morphology_path = quote("dir/mock_path", safe="")
+    morphology_path = quote("dir/mock_path.swc", safe="")
 
     mock_circuit_asset_id.return_value = asset_id
     mock_get_morphology.return_value = {}
@@ -103,7 +103,7 @@ def test_circuit_morphology(
 
     mock_circuit_asset_id.assert_called_once_with(mock_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
-        tmp_path, mock_client, circuit_id, asset_id, Path(f"{unquote(morphology_path)}.swc")
+        tmp_path, mock_client, circuit_id, asset_id, Path(f"{unquote(morphology_path)}")
     )
 
 
@@ -222,7 +222,7 @@ def test_get_morphology(mock_client, test_circuit_dir):
         mock_client,
         uuid4(),
         uuid4(),
-        Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA" + ".swc"),
+        Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc"),
     )
 
     assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
