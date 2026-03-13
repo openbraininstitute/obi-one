@@ -12,6 +12,9 @@ from obi_one.scientific.library.constants import (
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
@@ -60,6 +63,9 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         "default_block_reference_labels": {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+        },
+        "property_endpoints": {
+            MappedPropertiesGroup.ION_CHANNEL_MODEL: "/mapped-ion-channel-properties",
         },
     }
 

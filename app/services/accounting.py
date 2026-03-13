@@ -31,13 +31,12 @@ CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
 
 def make_task_reservation(
     *,
-    service_subtype: ServiceSubtype,
     user_context: UserContext,
     accounting_parameters: AccountingParameters,
     accounting_factory: AccountingSessionFactory,
 ) -> OneshotSession:
     accounting_session = accounting_factory.oneshot_session(
-        subtype=service_subtype,
+        subtype=accounting_parameters.service_subtype,
         proj_id=user_context.project_id,
         user_id=user_context.subject,
         count=accounting_parameters.count,
@@ -70,7 +69,7 @@ def make_task_reservation(
     else:
         accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
-        f"Accounting parameters reserved: subtype={service_subtype}, "
+        f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
         f"count={accounting_parameters.count}, job_id={accounting_job_id}"
     )
     return accounting_session
@@ -91,7 +90,7 @@ def estimate_task_cost(
         task_definition=task_definition,
     )
     cost_estimate = accounting_factory.estimate_oneshot_cost(
-        subtype=task_definition.accounting_service_subtype,
+        subtype=accounting_parameters.service_subtype,
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )

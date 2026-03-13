@@ -3,7 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
@@ -15,12 +15,12 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 @router.get(
-    "/mapped-ion-channel-properties/",
+    "/mapped-ion-channel-properties",
     summary="Mapped ion channel properties",
     description="Returns a dictionary of mapped ion channel properties.",
 )
 def mapped_ion_channel_properties_endpoint(
-    ion_channel_ids: list[str],
+    ion_channel_ids: Annotated[list[str], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     try:
@@ -30,7 +30,7 @@ def mapped_ion_channel_properties_endpoint(
         )
         mapped_ion_channel_properties = {}
         mapped_ion_channel_properties[IonChannelPropertyType.RECORDABLE_VARIABLES] = {
-            key: value.variables_and_units for key, value in ion_channel_properties.items()
+            key: value.variables for key, value in ion_channel_properties.items()
         }
 
     except entitysdk.exception.EntitySDKError as err:

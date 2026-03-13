@@ -8,6 +8,7 @@ class EntityType(StrEnum):
 
 class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
+    ION_CHANNEL_MODEL = "IonChannelModel"
 
 
 class CircuitMappedProperties(StrEnum):
