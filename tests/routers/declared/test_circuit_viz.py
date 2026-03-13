@@ -63,7 +63,8 @@ def test_circuit_nodes(
 
     mock_nodes = [
         {
-            "morphology_path": "test_path",
+            "morphology_file": "test_file",
+            "morphology_name": "test_name",
             "position": [0.1, 0.2, 0.3],
             "orientation": [0.1, 0.2, 0.3, 0.4],
             "soma_radius": 0.5,
@@ -148,6 +149,7 @@ def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
 
 @pytest.fixture
 def test_circuit_dir():
+    # return Path("./examples/data/tiny_circuits/N_10__top_nodes_dim6").resolve()
     return Path("./examples/data/tiny_circuits/nbS1-O1-E2Sst-maxNsyn-HEX0-L5").resolve()
 
 
@@ -178,7 +180,8 @@ def test_download_circuit_config(mock_client, test_circuit_dir):
 def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
     test_nodes = [
         Node(
-            morphology_path="morphologies/swc/dend-rp090908_c2_axon-vd110623_idA",
+            morphology_file="morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc",
+            morphology_name="dend-rp090908_c2_axon-vd110623_idA",
             position=(3927.1862191305954, -1398.4124233327566, -2409.039000858357),
             orientation=(
                 0.6971569742455114,
@@ -189,7 +192,8 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
             soma_radius=7.279230117797852,
         ),
         Node(
-            morphology_path="morphologies/swc/rp110127_L5-2_idD_-_Clone_1",
+            morphology_file="morphologies/swc/rp110127_L5-2_idD_-_Clone_1.swc",
+            morphology_name="rp110127_L5-2_idD_-_Clone_1",
             position=(3821.770720831846, -1368.8353733057893, -2569.5086101559486),
             orientation=(
                 0.6809097129262709,

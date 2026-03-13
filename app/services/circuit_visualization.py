@@ -1,6 +1,7 @@
 from http import HTTPStatus
 from pathlib import Path
 from uuid import UUID
+import json
 
 import libsonata
 import morphio
@@ -64,7 +65,7 @@ def get_population_nodes(  # noqa: PLR0914
     asset_id: UUID,
     parent_dir: Path,
     asset_path: Path,
-    morphologies_dir: Path,
+    morphologies_path: Path,
 ) -> Nodes:
     nodes_file_path = parent_dir / asset_path
 
@@ -105,19 +106,27 @@ def get_population_nodes(  # noqa: PLR0914
         nodes_list = []
         for i in range(population.size):
             m_name = morph_files[i]
-            m_path = morphologies_dir / f"{m_name}.swc"
+            morphologies_path_str = str(morphologies_path)
+            m_file = (
+                morphologies_path
+                if morphologies_path_str.endswith((".h5", ".asc"))
+                else morphologies_path / f"{m_name}.swc"
+            )
 
             try:
-                radius = get_soma_radius(parent_dir, db_client, circuit_id, asset_id, m_path)
+                radius = get_soma_radius(
+                    parent_dir, db_client, circuit_id, asset_id, m_file, m_name
+                )
             except RuntimeError:
-                L.warning(f"Couldn't get morphology {m_path} for {circuit_id}")
+                L.warning(f"Couldn't get morphology {m_name} for {circuit_id}")
                 radius = None
 
             nodes_list.append(
                 Node(
                     position=(float(x[i]), float(y[i]), float(z[i])),
                     orientation=(float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
-                    morphology_path=str(morphologies_dir / m_name),
+                    morphology_file=str(m_file),
+                    morphology_name=m_name,
                     soma_radius=radius,
                 )
             )
@@ -142,12 +151,13 @@ def get_soma_radius(
     client: Client,
     circuit_id: UUID,
     asset_id: UUID,
-    morph_path: Path,
+    morph_file: Path,
+    morph_name: str,
 ) -> float:
     try:
-        L.info(f"Downloading morphology {morph_path}")
+        L.info(f"Downloading morphology {morph_file}")
 
-        output_path = parent_dir / morph_path
+        output_path = parent_dir / morph_file
 
         if not output_path.exists():
             client.download_file(
@@ -155,7 +165,7 @@ def get_soma_radius(
                 output_path=output_path,
                 entity_id=circuit_id,
                 asset_id=asset_id,
-                asset_path=morph_path,
+                asset_path=morph_file,
             )
 
         morph = morphio.Morphology(output_path)
@@ -167,8 +177,45 @@ def get_soma_radius(
         return float(np.mean(soma_diameters) / 2.0)
 
     except Exception as e:
-        msg = f"Could not get morphology's {morph_path} soma radius from circuit {circuit_id}"
+        msg = f"Could not get morphology's {morph_file} soma radius from circuit {circuit_id}"
         raise RuntimeError(msg) from e
+
+
+def resolve_morph_path(
+    population_name: str, config: libsonata.CircuitConfig, parent_path: Path
+) -> Path:
+    pop_properties = config.node_population_properties(population_name)
+    if pop_properties.morphologies_dir:
+        return Path(pop_properties.morphologies_dir)
+
+    # config doesn't expose the alternate_morphologies, so we need to get from the json
+    expanded_config = json.loads(config.expanded_json)
+    nodes = expanded_config.get("networks", {}).get("nodes", [])
+    pop = next(
+        (
+            node["populations"][population_name]
+            for node in nodes
+            if population_name in node.get("populations", {})
+        ),
+        {},
+    )
+
+    alternate_morphologies = pop.get("alternate_morphologies", {})
+    path = next(iter(alternate_morphologies.values()), "")
+    if path:
+        return parent_path / Path(path)
+
+    if config.morphologies_dir:
+        return Path(config.morphologies_dir)
+
+    alternate_morphologies = expanded_config.get("alternate_morphologies", {})
+    path = next(iter(alternate_morphologies.values()), "")
+
+    if path:
+        return parent_path / Path(path)
+
+    m = "No morphologies found"
+    raise ValueError(m)
 
 
 def get_nodes(
@@ -189,7 +236,7 @@ def get_nodes(
             nodes_file_path = Path(pop_properties.elements_path)
             asset_path = nodes_file_path.relative_to(parent_path)
 
-            morphologies_dir = Path(pop_properties.morphologies_dir).relative_to(parent_path)
+            morph_path = resolve_morph_path(pop_name, config, parent_path).relative_to(parent_path)
 
             all_nodes += get_population_nodes(
                 pop_name,
@@ -198,7 +245,7 @@ def get_nodes(
                 asset_id,
                 parent_path,
                 asset_path,
-                morphologies_dir,
+                morph_path,
             )
 
     except HTTPException:

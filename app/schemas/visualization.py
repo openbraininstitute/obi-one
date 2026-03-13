@@ -4,9 +4,10 @@ from pydantic import BaseModel, Field
 
 
 class Node(BaseModel):
-    morphology_path: Annotated[
-        str, Field(description="Path to the morphology in the circuit's sonata directory")
+    morphology_file: Annotated[
+        str, Field(description="Path to the morphology file in the circuit's sonata directory")
     ]
+    morphology_name: str
     position: Annotated[
         tuple[float, float, float], Field(description="Position coordinates (x,y,z)")
     ]
