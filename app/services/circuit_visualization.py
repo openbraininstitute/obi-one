@@ -155,8 +155,6 @@ def get_soma_radius(
     morph_name: str,
 ) -> float:
     try:
-        L.info(f"Downloading morphology {morph_file}")
-
         output_path = parent_dir / morph_file
 
         if not output_path.exists():
@@ -168,7 +166,13 @@ def get_soma_radius(
                 asset_path=morph_file,
             )
 
-        morph = morphio.Morphology(output_path)
+        ext = output_path.suffix.lower()
+
+        if ext == ".h5":
+            morph = morphio.Collection(output_path).load(morph_name)
+        else:
+            morph = morphio.Morphology(output_path)
+
         soma_diameters = morph.soma.diameters
 
         if len(soma_diameters) == 0:
@@ -177,7 +181,7 @@ def get_soma_radius(
         return float(np.mean(soma_diameters) / 2.0)
 
     except Exception as e:
-        msg = f"Could not get morphology's {morph_file} soma radius from circuit {circuit_id}"
+        msg = f"Could not get morphology '{morph_name}' soma radius from circuit {circuit_id}"
         raise RuntimeError(msg) from e
 
 

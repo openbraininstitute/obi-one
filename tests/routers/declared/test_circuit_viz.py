@@ -149,14 +149,26 @@ def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
 
 @pytest.fixture
 def test_circuit_dir():
-    # return Path("./examples/data/tiny_circuits/N_10__top_nodes_dim6").resolve()
     return Path("./examples/data/tiny_circuits/nbS1-O1-E2Sst-maxNsyn-HEX0-L5").resolve()
+
+
+@pytest.fixture
+def test_circuit_dir_alternate():
+    return Path("./examples/data/tiny_circuits/N_10__top_nodes_dim6").resolve()
 
 
 @pytest.fixture
 def test_sonata_config(test_circuit_dir):
     return libsonata.CircuitConfig(
         (test_circuit_dir / "circuit_config.json").read_text(), str(test_circuit_dir)
+    )
+
+
+@pytest.fixture
+def test_sonata_config_alternate(test_circuit_dir_alternate):
+    return libsonata.CircuitConfig(
+        (test_circuit_dir_alternate / "circuit_config.json").read_text(),
+        str(test_circuit_dir_alternate),
     )
 
 
@@ -208,6 +220,141 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
     nodes = get_nodes(
         test_sonata_config,
         test_circuit_dir,
+        mock_client,
+        circuit_id=uuid4(),
+        asset_id=uuid4(),
+    )
+
+    assert nodes == test_nodes
+
+
+def test_get_nodes_2(test_sonata_config_alternate, mock_client, test_circuit_dir_alternate):
+    test_nodes = [
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="mtC181200C_idA_-_Scale_x1.000_y0.975_z1.000_-_Clone_0",
+            position=(4426.676667727606, -1365.7203027217056, -1999.5555466483297),
+            orientation=(
+                0.5088851188368478,
+                0.6512700087505278,
+                0.5606842175110329,
+                0.05016492562075268,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-mtC090401A_idB_axon-rp101228_L5-1_idA_-_Scale_x1.000_y1.025_z1.000",
+            position=(3704.5844822609142, -1105.6184845061598, -2859.4254479996994),
+            orientation=(
+                0.43894370320376735,
+                0.6528279568750848,
+                0.6162888771434368,
+                -0.03649800062123188,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-vd110330_idA_axon-tkb051205a4_ch3_cl_b_yw_60x_1_-_Scale_x1.000_y1.025_z1.000_-_Clone_1",
+            position=(3592.5738932426484, -1084.0571344719174, -2963.7682802129993),
+            orientation=(
+                0.5453807827684773,
+                -0.06941405345372872,
+                -0.5252529464233355,
+                0.6495004489941254,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-tkb060118b1_ch1_cc1_b_yw_60x_1_axon-rp110127_L5-3_idC_-_Scale_x1.000_y1.050_z1.000_-_Clone_1",
+            position=(3627.3627856735347, -1087.1811025554398, -2897.810749201675),
+            orientation=(
+                0.5340070226377953,
+                0.6482925192961682,
+                0.5368122164342657,
+                0.07991216105872467,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-Fluo18_lower_axon-rp110127_L5-3_idC_-_Scale_x1.000_y0.975_z1.000_-_Clone_0",
+            position=(3537.776870743046, -1029.4458799141767, -2890.7837929060715),
+            orientation=(
+                0.31411801457818556,
+                -0.31968204150274276,
+                -0.6904054402710065,
+                0.56786758430315,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-Fluo18_lower_axon-rp110127_L5-3_idC",
+            position=(3592.6762765323256, -1025.0781011626223, -2898.148158944562),
+            orientation=(
+                0.6868891274225365,
+                0.13568614438905097,
+                -0.32009903295331554,
+                0.6382078078117599,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-rat_20140925_RH2_cell2_axon-rp110125_L5-2_idF_-_Clone_4",
+            position=(3639.4116185895655, -1055.0788533427767, -2834.3996988783433),
+            orientation=(
+                0.7517287337945563,
+                0.323507268816347,
+                -0.0958330582657927,
+                0.5666241988779213,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-Fluo58_right_axon-rp110125_L5-2_idF_-_Clone_3",
+            position=(3624.2011280185725, -1018.365265296854, -2890.523731834551),
+            orientation=(
+                0.6743863023409975,
+                0.10624927962170909,
+                -0.3583901187021639,
+                0.6367658349906609,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="dend-tkb060523a2_ch5_cc2_n_nb_60x_1_axon-rp110125_L5-2_idF_-_Scale_x1.000_y1.050_z1.000_-_Clone_0",
+            position=(3547.9258902260062, -1083.9810048266381, -2933.0711491645975),
+            orientation=(
+                0.6223943449583735,
+                0.02224562016431142,
+                -0.4287869416570199,
+                0.6544250685997304,
+            ),
+            soma_radius=0.0,
+        ),
+        Node(
+            morphology_file="morphologies/merged-morphologies.h5",
+            morphology_name="rp110125_L5-2_idF_-_Scale_x1.000_y1.025_z1.000",
+            position=(3663.108873689509, -1035.5517517738954, -2810.0420159102864),
+            orientation=(
+                0.6303434351321736,
+                0.6158241138719361,
+                0.4206509456244123,
+                0.21559359105711814,
+            ),
+            soma_radius=0.0,
+        ),
+    ]
+
+    nodes = get_nodes(
+        test_sonata_config_alternate,
+        test_circuit_dir_alternate,
         mock_client,
         circuit_id=uuid4(),
         asset_id=uuid4(),
