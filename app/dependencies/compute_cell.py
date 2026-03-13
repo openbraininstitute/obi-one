@@ -22,6 +22,9 @@ def get_compute_cell(
     placeholder with ``cell-a`` or ``cell-b`` depending on the ``compute_cell``
     property.
     """
+    if settings.VIRTUAL_LAB_DISABLED:
+        return "local"
+
     if not user_context.virtual_lab_id:
         L.error("No virtual lab ID found")
         raise ApiError(

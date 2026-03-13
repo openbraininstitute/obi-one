@@ -10,23 +10,33 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
-from obi_one.scientific.blocks.timestamps import SingleTimestamp
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
     TARGET_SIMULATOR,
+)
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -50,6 +60,7 @@ class GenerateSimulationTask(Task):
         CircuitSimulationSingleConfig
         | MEModelSimulationSingleConfig
         | MEModelWithSynapsesCircuitSimulationSingleConfig
+        | IonChannelModelSimulationSingleConfig
     )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
@@ -72,11 +83,17 @@ class GenerateSimulationTask(Task):
         self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
 
         self._sonata_config["conditions"] = {}
-        self._sonata_config["conditions"]["extracellular_calcium"] = (
-            self.config.initialize.extracellular_calcium_concentration
-        )
+        if hasattr(self.config.initialize, "extracellular_calcium_concentration"):
+            self._sonata_config["conditions"]["extracellular_calcium"] = (
+                self.config.initialize.extracellular_calcium_concentration
+            )
+        if hasattr(self.config.initialize, "temperature"):
+            self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
         self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        self._sonata_config["conditions"]["spike_location"] = self.config.initialize.spike_location
+        if hasattr(self.config.initialize, "spike_location"):
+            self._sonata_config["conditions"]["spike_location"] = (
+                self.config.initialize.spike_location
+            )
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
         if isinstance(
@@ -90,16 +107,29 @@ class GenerateSimulationTask(Task):
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
-        if isinstance(self.config.initialize.circuit, Circuit):
+        if hasattr(self.config.initialize, "circuit"):
+            circuit = self.config.initialize.circuit
+        elif hasattr(self.config, "circuit"):
+            circuit = self.config.circuit
+        else:
+            msg = "No circuit specified in config!"
+            raise OBIONEError(msg)
+
+        if isinstance(circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
-            self._circuit = self.config.initialize.circuit
-            self._sonata_config["network"] = self.config.initialize.circuit.path
+            self._circuit = circuit
+            self._sonata_config["network"] = circuit.path
 
         elif isinstance(
-            self.config.initialize.circuit,
-            (CircuitFromID, MEModelFromID, MEModelWithSynapsesCircuitFromID),
+            circuit,
+            (
+                CircuitFromID,
+                MEModelFromID,
+                MEModelWithSynapsesCircuitFromID,
+                CircuitFromIonChannelModels,
+            ),
         ):
-            self._circuit_id = self.config.initialize.circuit.id_str
+            self._circuit_id = circuit.id_str
 
             circuit_dest_dir = self.config.coordinate_output_root / "sonata_circuit"
             if self._entity_cache and db_client:
@@ -111,7 +141,7 @@ class GenerateSimulationTask(Task):
                     / self._circuit_id
                 )
 
-            self._circuit = self.config.initialize.circuit.stage_circuit(
+            self._circuit = circuit.stage_circuit(
                 db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
             )
 
@@ -144,7 +174,9 @@ class GenerateSimulationTask(Task):
                 )
             )
 
-    def _add_sonata_simulation_config_reports(self) -> None:
+    def _add_sonata_simulation_config_reports(
+        self, db_client: entitysdk.client.Client | None
+    ) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
             self._sonata_config["reports"].update(
@@ -153,6 +185,7 @@ class GenerateSimulationTask(Task):
                     self._circuit.default_population_name,
                     self.config.initialize.simulation_length,
                     DEFAULT_NODE_SET_NAME,
+                    db_client,
                 )
             )
 
@@ -167,6 +200,27 @@ class GenerateSimulationTask(Task):
             ]
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
+
+        if hasattr(self.config, "neuronal_manipulations"):
+            # Separate RANGE (section_list) and GLOBAL (mechanisms) modifications
+            range_modifications = []
+            mechanisms: dict = {}
+            for modification in self.config.neuronal_manipulations.values():
+                result = modification.config(
+                    self._circuit.default_population_name,
+                    DEFAULT_NODE_SET_NAME,
+                )
+                if isinstance(result, list):
+                    # RANGE variables -> conditions.modifications list
+                    range_modifications.extend(result)
+                else:
+                    # GLOBAL variables -> conditions.mechanisms dict
+                    for channel, props in result.items():
+                        mechanisms.setdefault(channel, {}).update(props)
+            if range_modifications:
+                self._sonata_config["conditions"]["modifications"] = range_modifications
+            if mechanisms:
+                self._sonata_config["conditions"]["mechanisms"] = mechanisms
 
     def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
         self, block: Block
@@ -239,9 +293,24 @@ class GenerateSimulationTask(Task):
                     )
                     != "biophysical"
                 ):
-                    msg = f"Simulation Neuron Set (Initialize -> Neuron Set): \
-                        '{self.config.initialize.node_set.name}' "
-                    "is not biophysical!"
+                    # Get list of biophysical populations to help user
+                    biophysical_populations = Circuit.get_node_population_names(
+                        self._circuit.sonata_circuit, incl_virtual=False, incl_point=False
+                    )
+                    biophysical_list = (
+                        ", ".join(f"'{pop}'" for pop in biophysical_populations)
+                        if biophysical_populations
+                        else "none found"
+                    )
+
+                    msg = (
+                        f"Simulation Neuron Set (Initialize -> Neuron Set): "
+                        f"'{self.config.initialize.node_set.block_name}' is not biophysical. "
+                        "Please use a different Neuron Set type. "
+                        f"Available biophysical populations: {biophysical_list}. "
+                        f"You may be able to reference one through a PredefinedNeuronSet block type"
+                        "In future we will support population selection for any neuron set."
+                    )
                     raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
@@ -376,7 +445,7 @@ class GenerateSimulationTask(Task):
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()
-        self._add_sonata_simulation_config_reports()
+        self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._update_simulation_number_neurons(db_client)

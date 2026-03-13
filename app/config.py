@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
+    VIRTUAL_LAB_DISABLED: bool = False
 
     SUBDOMAIN_PLACEHOLDER: str = "cell-X"
 

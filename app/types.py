@@ -6,6 +6,7 @@ class TaskType(StrEnum):
 
     circuit_extraction = auto()
     circuit_simulation = auto()
+    morphology_skeletonization = auto()
 
 
 class CallBackEvent(StrEnum):

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
 
+from app.config import settings
 from app.dependencies.accounting import AccountingSessionFactoryDep
 from app.dependencies.auth import UserContextWithProjectIdDep, user_verified
 from app.dependencies.callback import CallBackUrlDep
@@ -10,6 +11,7 @@ from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
+from app.logger import L
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import (
     TaskAccountingCreate,
@@ -57,7 +59,6 @@ def task_launch_endpoint(
     )
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,
-        service_subtype=task_definition.accounting_service_subtype,
         accounting_factory=accounting_factory,
         accounting_parameters=accounting_info.parameters,
     )
@@ -81,7 +82,13 @@ def task_launch_endpoint(
             callbacks=accounting_callbacks,
         )
     except Exception as exc:
-        accounting_session.finish(exc_type=type(exc))
+        # TODO: Remove once
+        # https://github.com/openbraininstitute/accounting-sdk/issues/29 is addressed
+        if settings.ACCOUNTING_DISABLED:
+            accounting_session.finish()
+        else:
+            accounting_session.finish(exc_type=type(exc))
+        L.exception("Failed to submit task job")
         raise ApiError(
             message="Failed to submit task job",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,

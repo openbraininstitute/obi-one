@@ -59,7 +59,7 @@ dependencies = [
     # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
     # Add an upper bound only if automatic upgrades must be prevented.
-    "entitysdk",
+    "entitysdk>=0.12.2",
     "obi-auth>=1.0.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",
@@ -69,7 +69,7 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
-    "bluecellulab>=2.6.82",
+    "bluecellulab>=2.6.87",
     # OBI NOTEBOOK
     "obi_notebook",
     "morph_spines",
@@ -217,6 +217,7 @@ source_pkgs = [
     "app",
     "obi_one",
 ]
+data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
@@ -225,3 +226,9 @@ fail_under = 30
 omit = [
     "__main__.py",
 ]
+
+[tool.coverage.xml]
+output = ".coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = ".coverage/html_report"

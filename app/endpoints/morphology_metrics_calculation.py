@@ -156,6 +156,7 @@ NEW_ENTITY_DEFAULTS = {
     "brain_region_id": None,
     "subject_id": None,
     "cell_morphology_protocol_id": None,
+    "repair_pipeline_state": None,
 }
 
 
@@ -231,6 +232,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
     morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
+    repair_pipeline_state = new_item.get("repair_pipeline_state")
 
     license = _get_entity("license", License)
     name = new_item.get("name")
@@ -238,6 +240,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     authorized_public = new_item.get("authorized_public")
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol,
+        repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
         subject=subject,
@@ -248,7 +251,6 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         authorized_public=authorized_public,
         published_in=new_item.get("published_in"),
     )
-
     registered = client.register_entity(entity=morphology)
     return registered
 
@@ -381,6 +383,7 @@ async def morphology_metrics_calculation(
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
+
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
     single_point_soma_by_ext = (
