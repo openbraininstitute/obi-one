@@ -14,7 +14,6 @@ from pydantic import (
 
 from obi_one.scientific.blocks.distributions.base import Distribution
 
-
 class FloatConstantDistribution(Distribution):
     """A single float value."""
 
@@ -26,6 +25,10 @@ class FloatConstantDistribution(Distribution):
         description="The constant value of the distribution.",
         ui_element="float_parameter_sweep",
     )
+
+    def sample(self, n: int = 1):
+        """Sample n values from the distribution."""
+        return [self.value] * n
 
 
 class IntConstantDistribution(Distribution):
@@ -39,6 +42,10 @@ class IntConstantDistribution(Distribution):
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",
     )
+
+    def sample(self, n: int = 1):
+        """Sample n values from the distribution."""
+        return [self.value] * n
 
 
 class PositiveFloatConstantDistribution(Distribution):

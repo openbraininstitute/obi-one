@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+import numpy as np
 from pydantic import (
     Field,
     NegativeFloat,
@@ -59,6 +60,12 @@ class FloatUniformDistribution(UniformDistribution):
         },
     )
 
+    def sample(self, n: int = 1) -> list[float]:
+        """Sample n values from the uniform distribution."""
+        rng = np.random.default_rng(self.random_seed)
+        samples = rng.uniform(low=self.low, high=self.high, size=n)
+        return samples.tolist()
+
 
 class IntUniformDistribution(UniformDistribution):
     """Values sampled from a uniform distribution of integers."""
@@ -74,8 +81,14 @@ class IntUniformDistribution(UniformDistribution):
         },
     )
 
+    def sample(self, n: int = 1) -> list[int]:
+        """Sample n values from the uniform distribution."""
+        rng = np.random.default_rng(self.random_seed)
+        samples = rng.integers(low=self.low, high=self.high, size=n)
+        return samples.tolist()
 
-class PositiveFloatUniformDistribution(UniformDistribution):
+
+class PositiveFloatUniformDistribution(FloatUniformDistribution):
     """Values sampled from a uniform distribution of positive floats."""
 
     value: PositiveFloat | list[PositiveFloat] = Field(
@@ -88,7 +101,7 @@ class PositiveFloatUniformDistribution(UniformDistribution):
     )
 
 
-class PositiveIntUniformDistribution(UniformDistribution):
+class PositiveIntUniformDistribution(IntUniformDistribution):
     """Values sampled from a uniform distribution of positive integers."""
 
     title: ClassVar[str] = "Uniform Positive Integers"
@@ -102,7 +115,7 @@ class PositiveIntUniformDistribution(UniformDistribution):
     )
 
 
-class NegativeFloatUniformDistribution(UniformDistribution):
+class NegativeFloatUniformDistribution(FloatUniformDistribution):
     """Values sampled from a uniform distribution of negative floats."""
 
     title: ClassVar[str] = "Uniform Negative Floats"
@@ -116,7 +129,7 @@ class NegativeFloatUniformDistribution(UniformDistribution):
     )
 
 
-class NegativeIntUniformDistribution(UniformDistribution):
+class NegativeIntUniformDistribution(IntUniformDistribution):
     """Values sampled from a uniform distribution of negative integers."""
 
     title: ClassVar[str] = "Uniform Negative Integers"
@@ -130,7 +143,7 @@ class NegativeIntUniformDistribution(UniformDistribution):
     )
 
 
-class NonNegativeFloatUniformDistribution(UniformDistribution):
+class NonNegativeFloatUniformDistribution(FloatUniformDistribution):
     """Values sampled from a uniform distribution of non-negative floats."""
 
     title: ClassVar[str] = "Uniform Non-Negative Floats"
@@ -144,7 +157,7 @@ class NonNegativeFloatUniformDistribution(UniformDistribution):
     )
 
 
-class NonNegativeIntUniformDistribution(UniformDistribution):
+class NonNegativeIntUniformDistribution(IntUniformDistribution):
     """Values sampled from a uniform distribution of non-negative integers."""
 
     title: ClassVar[str] = "Uniform Non-Negative Integers"
@@ -158,7 +171,7 @@ class NonNegativeIntUniformDistribution(UniformDistribution):
     )
 
 
-class NonPositiveFloatUniformDistribution(UniformDistribution):
+class NonPositiveFloatUniformDistribution(FloatUniformDistribution):
     """Values sampled from a uniform distribution of non-positive floats."""
 
     title: ClassVar[str] = "Uniform Non-Positive Floats"
@@ -172,7 +185,7 @@ class NonPositiveFloatUniformDistribution(UniformDistribution):
     )
 
 
-class NonPositiveIntUniformDistribution(UniformDistribution):
+class NonPositiveIntUniformDistribution(IntUniformDistribution):
     """Values sampled from a uniform distribution of non-positive integers."""
 
     title: ClassVar[str] = "Uniform Non-Positive Integers"
