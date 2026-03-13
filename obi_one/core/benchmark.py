@@ -20,6 +20,22 @@ class BenchmarkTracker:
     _benchmarks: ClassVar[dict] = {}
     _process = psutil.Process()
     _start_time: ClassVar[float | None] = None
+    _enabled: ClassVar[bool] = True  # Global flag to enable/disable benchmarking
+
+    @classmethod
+    def enable(cls) -> None:
+        """Enable benchmarking."""
+        cls._enabled = True
+
+    @classmethod
+    def disable(cls) -> None:
+        """Disable benchmarking (all section() calls become no-ops)."""
+        cls._enabled = False
+
+    @classmethod
+    def is_enabled(cls) -> bool:
+        """Check if benchmarking is enabled."""
+        return cls._enabled
 
     @classmethod
     def reset(cls) -> None:
@@ -30,6 +46,8 @@ class BenchmarkTracker:
     @classmethod
     def start_tracking(cls) -> None:
         """Start tracking overall execution time."""
+        if not cls._enabled:
+            return
         cls._start_time = time.perf_counter()
         L.info("[BENCHMARK] Started tracking overall execution time")
 
@@ -47,6 +65,11 @@ class BenchmarkTracker:
                 # code to benchmark
                 process_data()
         """
+        # If benchmarking is disabled, just yield without doing anything
+        if not cls._enabled:
+            yield
+            return
+
         # Get memory info before (RSS from process)
         mem_info_before = cls._process.memory_info()
         mem_before_mb = mem_info_before.rss / 1024 / 1024
@@ -110,6 +133,9 @@ class BenchmarkTracker:
         Args:
             output_path: Optional path to save the benchmark results as JSON file
         """
+        if not cls._enabled:
+            return
+
         if not cls._benchmarks:
             L.info("No benchmark data collected.")
             return

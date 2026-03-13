@@ -40,6 +40,10 @@ from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_ci
 from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 
+# Toggle benchmarking on/off (uncomment one line)
+BenchmarkTracker.enable()  # Enable benchmarking (default)
+# BenchmarkTracker.disable()  # Disable benchmarking  # noqa: ERA001
+
 L = logging.getLogger(__name__)
 _RUN_VALIDATION = False
 
@@ -1006,7 +1010,7 @@ class CircuitExtractionTask(Task):
         return output_file
 
     @staticmethod
-    def _generate_additional_circuit_assets(  # noqa: C901
+    def _generate_additional_circuit_assets(  # noqa: C901, PLR0915
         db_client: Client,
         new_circuit_path: Path,
         new_circuit_entity: models.Circuit,
@@ -1122,7 +1126,7 @@ class CircuitExtractionTask(Task):
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Circuit visualization registration failed: {e}")
 
-    def execute(
+    def execute(  # noqa: PLR0915
         self,
         *,
         db_client: Client = None,
@@ -1149,7 +1153,9 @@ class CircuitExtractionTask(Task):
                 self._circuit, self._circuit.default_population_name
             )
             sonata_circuit = self._circuit.sonata_circuit
-            add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+            add_node_set_to_circuit(
+                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+            )
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
@@ -1254,7 +1260,9 @@ class CircuitExtractionTask(Task):
             self._cleanup_temp_dir()
 
         # Print and save benchmark summary
-        benchmark_dir = new_circuit_path.parent.parent / (new_circuit_path.parent.name + "__BENCHMARK__")
+        benchmark_dir = new_circuit_path.parent.parent / (
+            new_circuit_path.parent.name + "__BENCHMARK__"
+        )
         benchmark_file = benchmark_dir / "benchmark_results.json"
         BenchmarkTracker.print_summary(output_path=benchmark_file)
 
