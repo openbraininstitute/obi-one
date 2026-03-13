@@ -12,6 +12,10 @@ from obi_one.scientific.blocks.synaptic_parameterization.synaptic_parameterizati
     OriginalSynapseParameterization,
 )
 from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
+from obi_one.scientific.unions.unions_distributions import (
+    SynapticParameterizationDistributionReference,
+    SynapticParameterizationDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
@@ -77,6 +81,18 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             "singular_name": "Synaptic Parameterization",
             "group": BlockGroup.SYNAPSE_PARAMETERS,
             "group_order": 0,
+        },
+    )
+
+    distributions: dict[str, SynapticParameterizationDistributionsUnion] = Field(
+        default_factory=dict,
+        description="Distributions for synapse parameterization.",
+        json_schema_extra={
+            "ui_element": "block_dictionary",
+            "reference_type": SynapticParameterizationDistributionReference.__name__,
+            "singular_name": "Synaptic Parameterization Distribution",
+            "group": BlockGroup.SYNAPSE_PARAMETERS,
+            "group_order": 1,
         },
     )
 
