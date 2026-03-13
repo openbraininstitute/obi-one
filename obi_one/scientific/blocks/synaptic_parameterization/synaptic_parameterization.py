@@ -1,28 +1,27 @@
-from obi_one.core.block import Block
-from pydantic import Field
-from connectome_manipulator.model_building import model_types
-
 import logging
+from typing import Never
 
 import bluepysnap as snap
 import h5py
 import numpy as np
 import pandas as pd
 from connectome_manipulator.model_building import model_types
+from pydantic import Field
+
+from obi_one.core.block import Block
 
 L = logging.getLogger(__name__)
 
 
 class SynapseParameterization(Block):
-
     overwrite_if_exists: bool = Field(
         title="Overwrite",
         description="Overwrite if a parameterization exists already.",
         default=False,
     )
 
-class OriginalSynapseParameterization(SynapseParameterization):
 
+class OriginalSynapseParameterization(SynapseParameterization):
     pathway_property: str = Field(
         title="Pathway property",
         description="Neuron property (e.g., 'synapse_class') by which to group neurons into"
@@ -36,8 +35,7 @@ class OriginalSynapseParameterization(SynapseParameterization):
     random_seed: int = Field(
         default=1,
         title="Random seed",
-        description="Seed for drawing random values from physiological parameter"
-        " distributions.",
+        description="Seed for drawing random values from physiological parameter distributions.",
     )
 
     def _wrap_get_model_output(
@@ -109,31 +107,21 @@ class OriginalSynapseParameterization(SynapseParameterization):
                 else:
                     edge_grp["0"].create_dataset(col, data=new_values)
 
-    def go_for_it(self, circ):
+    def go_for_it(self, circ: snap.Circuit) -> None:
         pathway_property = self.pathway_property
         if pathway_property not in circ.nodes.property_names:
             msg = f"Unknown pathway property '{pathway_property}'!"
             raise ValueError(msg)
         type_values = circ.nodes.property_values(pathway_property)
-        if not all(
-            _t in self.pathway_param_dict.get("src_types", [])
-            for _t in type_values
-        ):
+        if not all(_t in self.pathway_param_dict.get("src_types", []) for _t in type_values):
             msg = f"Source type(s) missing in pathway parameter dict! Must contain: {type_values}"
             raise ValueError(msg)
-        if not all(
-            _t in self.pathway_param_dict.get("tgt_types", [])
-            for _t in type_values
-        ):
+        if not all(_t in self.pathway_param_dict.get("tgt_types", []) for _t in type_values):
             msg = f"Target type(s) missing in pathway parameter dict! Must contain: {type_values}"
             raise ValueError(msg)
-        
-    
 
         # Initialize pathway parameter model
-        self._pathway_model = model_types.ConnPropsModel(
-            **self.pathway_param_dict
-        )
+        self._pathway_model = model_types.ConnPropsModel(**self.pathway_param_dict)
         model_str = str(self._pathway_model)
         model_str = model_str.replace("M-types:", f"'{pathway_property}' pathways:")
         L.info(model_str)
@@ -151,6 +139,6 @@ class OriginalSynapseParameterization(SynapseParameterization):
 
 
 class ExponentialSynapseParameterization(SynapseParameterization):
-
-    def go_for_it(self, circ):
-        raise NotImplementedError("Exponential synapse parameterization not implemented yet!")
+    def go_for_it(self, circ: snap.Circuit) -> Never:
+        msg = "Exponential synapse parameterization not implemented yet!"
+        raise NotImplementedError(msg)

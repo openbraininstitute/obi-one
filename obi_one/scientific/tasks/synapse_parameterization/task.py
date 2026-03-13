@@ -2,10 +2,6 @@ import logging
 import shutil
 from pathlib import Path
 
-import bluepysnap as snap
-import h5py
-import numpy as np
-import pandas as pd
 from connectome_manipulator.model_building import model_types
 from entitysdk import Client, models, types
 from pydantic import PrivateAttr
@@ -85,8 +81,6 @@ class SynapseParameterizationTask(Task):
 
         for syn_parameterization in self.config.synapse_parameterizations.values():
             syn_parameterization.go_for_it(circ=circ)
-
-        
 
         # Register (re-)parameterized synaptome
         L.info("Registering the output...")

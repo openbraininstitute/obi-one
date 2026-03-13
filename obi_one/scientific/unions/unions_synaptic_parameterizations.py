@@ -4,13 +4,12 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.synaptic_parameterization.synaptic_parameterization import (
-    OriginalSynapseParameterization,
     ExponentialSynapseParameterization,
+    OriginalSynapseParameterization,
 )
 
 SynapticParameterizationUnion = Annotated[
-    OriginalSynapseParameterization
-    | ExponentialSynapseParameterization,
+    OriginalSynapseParameterization | ExponentialSynapseParameterization,
     Discriminator("type"),
 ]
 

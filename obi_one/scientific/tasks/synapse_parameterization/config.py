@@ -8,16 +8,15 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.blocks.synaptic_parameterization.synaptic_parameterization import (
     OriginalSynapseParameterization,
 )
+from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetUnion,
     NeuronSetReference,
+    NeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_parameterizations import (
-    SynapticParameterizationUnion,
     SynapticParameterizationReference,
 )
 
@@ -29,7 +28,7 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     SYNAPSE_PARAMETERS = "Synapse parameters"
-    CIRCUIT_COMPONENTS_BLOCK_GROUP="Circuit components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
 
 
 class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
