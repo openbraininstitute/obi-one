@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import (
     Field,
     NegativeFloat,
@@ -14,99 +16,127 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class FloatConstantDistribution(Distribution):
-    """Constant distribution."""
+    """A single float value."""
 
-    value: float = Field(
+    title: ClassVar[str] = "Constant Float"
+
+    value: float | list[float] = Field(
+        default=1.0,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="float_parameter_sweep",
     )
 
 
-class IntegerConstantDistribution(Distribution):
-    """Constant distribution."""
+class IntConstantDistribution(Distribution):
+    """A single integer value."""
 
-    value: int = Field(
+    title: ClassVar[str] = "Constant Integer"
+
+    value: int | list[int] = Field(
+        default=1,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",
     )
 
 
-class PositiveConstantDistribution(Distribution):
-    """Constant distribution."""
+class PositiveFloatConstantDistribution(Distribution):
+    """A single positive float value."""
 
-    value: PositiveFloat = Field(
+    title: ClassVar[str] = "Constant Positive Float"
+
+    value: PositiveFloat | list[PositiveFloat] = Field(
+        default=1.0,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="float_parameter_sweep",
     )
 
 
-class NonNegativeConstantDistribution(Distribution):
-    """Constant distribution."""
+class PositiveIntConstantDistribution(Distribution):
+    """A single positive integer value."""
 
-    value: NonNegativeFloat = Field(
-        title="Value",
-        description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
-    )
+    title: ClassVar[str] = "Constant Positive Integer"
 
-
-class NegativeConstantDistribution(Distribution):
-    """Constant distribution."""
-
-    value: NegativeFloat = Field(
-        title="Value",
-        description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
-    )
-
-
-class NonPositiveConstantDistribution(Distribution):
-    """Constant distribution."""
-
-    value: NonPositiveFloat = Field(
-        title="Value",
-        description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
-    )
-
-
-class PositiveIntegerConstantDistribution(Distribution):
-    """Constant distribution."""
-
-    value: PositiveInt = Field(
+    value: PositiveInt | list[PositiveInt] = Field(
+        default=1,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",
     )
 
 
-class NonNegativeIntegerConstantDistribution(Distribution):
-    """Constant distribution."""
+class NegativeFloatConstantDistribution(Distribution):
+    """A single negative float value."""
 
-    value: NonNegativeInt = Field(
+    title: ClassVar[str] = "Constant Negative Float"
+
+    value: NegativeFloat | list[NegativeFloat] = Field(
+        default=-1.0,
+        title="Value",
+        description="The constant value of the distribution.",
+        ui_element="float_parameter_sweep",
+    )
+
+
+class NegativeIntConstantDistribution(Distribution):
+    """A single negative integer value."""
+
+    title: ClassVar[str] = "Constant Negative Integer"
+
+    value: NegativeInt | list[NegativeInt] = Field(
+        default=-1,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",
     )
 
 
-class NegativeIntegerConstantDistribution(Distribution):
-    """Constant distribution."""
+class NonNegativeFloatConstantDistribution(Distribution):
+    """A single non-negative float value."""
 
-    value: NegativeInt = Field(
+    title: ClassVar[str] = "Constant Non-Negative Float"
+
+    value: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=1.0,
+        title="Value",
+        description="The constant value of the distribution.",
+        ui_element="float_parameter_sweep",
+    )
+
+
+class NonNegativeIntConstantDistribution(Distribution):
+    """A single non-negative integer value."""
+
+    value: NonNegativeInt | list[NonNegativeInt] = Field(
+        default=1,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",
     )
 
 
-class NonPositiveIntegerConstantDistribution(Distribution):
-    """Constant distribution."""
+class NonPositiveFloatConstantDistribution(Distribution):
+    """A single non-positive float value."""
 
-    value: NonPositiveInt = Field(
+    title: ClassVar[str] = "Constant Non-Positive Float"
+
+    value: NonPositiveFloat | list[NonPositiveFloat] = Field(
+        default=-1.0,
+        title="Value",
+        description="The constant value of the distribution.",
+        ui_element="float_parameter_sweep",
+    )
+
+
+class NonPositiveIntConstantDistribution(Distribution):
+    """A single non-positive integer value."""
+
+    title: ClassVar[str] = "Constant Non-Positive Integer"
+
+    value: NonPositiveInt | list[NonPositiveInt] = Field(
+        default=-1,
         title="Value",
         description="The constant value of the distribution.",
         ui_element="int_parameter_sweep",

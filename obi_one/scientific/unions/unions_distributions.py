@@ -5,60 +5,59 @@ from pydantic import Discriminator
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
-    IntegerConstantDistribution,
-    NegativeConstantDistribution,
-    NegativeIntegerConstantDistribution,
-    NonNegativeConstantDistribution,
-    NonNegativeIntegerConstantDistribution,
-    NonPositiveConstantDistribution,
-    NonPositiveIntegerConstantDistribution,
-    PositiveConstantDistribution,
-    PositiveIntegerConstantDistribution,
+    IntConstantDistribution,
+    NegativeFloatConstantDistribution,
+    NegativeIntConstantDistribution,
+    NonNegativeFloatConstantDistribution,
+    NonNegativeIntConstantDistribution,
+    NonPositiveFloatConstantDistribution,
+    NonPositiveIntConstantDistribution,
+    PositiveFloatConstantDistribution,
+    PositiveIntConstantDistribution,
 )
-
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
-    IntegerUniformDistribution,
-    NonPositiveIntegerUniformDistribution,
-    PositiveUniformDistribution,
-    NonNegativeUniformDistribution,
-    NegativeUniformDistribution,
-    NonPositiveUniformDistribution,
-    PositiveIntegerUniformDistribution,
-    NonNegativeIntegerUniformDistribution,
-    NegativeIntegerUniformDistribution,
+    IntUniformDistribution,
+    NegativeFloatUniformDistribution,
+    NegativeIntUniformDistribution,
+    NonNegativeFloatUniformDistribution,
+    NonNegativeIntUniformDistribution,
+    NonPositiveFloatUniformDistribution,
+    NonPositiveIntUniformDistribution,
+    PositiveFloatUniformDistribution,
+    PositiveIntUniformDistribution,
 )
 
 _CONSTANT_DISTRIBUTIONS = (
     FloatConstantDistribution
-    | IntegerConstantDistribution
-    | PositiveConstantDistribution
-    | NonNegativeConstantDistribution
-    | NegativeConstantDistribution
-    | NonPositiveConstantDistribution
-    | PositiveIntegerConstantDistribution
-    | NonNegativeIntegerConstantDistribution
-    | NegativeIntegerConstantDistribution
-    | NonPositiveIntegerConstantDistribution
+    | IntConstantDistribution
+    | PositiveFloatConstantDistribution
+    | PositiveIntConstantDistribution
+    | NegativeFloatConstantDistribution
+    | NegativeIntConstantDistribution
+    | NonNegativeFloatConstantDistribution
+    | NonNegativeIntConstantDistribution
+    | NonPositiveFloatConstantDistribution
+    | NonPositiveIntConstantDistribution
 )
 
 _UNIFORM_DISTRIBUTIONS = (
     FloatUniformDistribution
-    | IntegerUniformDistribution
-    | PositiveUniformDistribution
-    | NonNegativeUniformDistribution
-    | NegativeUniformDistribution
-    | NonPositiveUniformDistribution
-    | PositiveIntegerUniformDistribution
-    | NonNegativeIntegerUniformDistribution
-    | NegativeIntegerUniformDistribution
-    | NonPositiveIntegerUniformDistribution
+    | IntUniformDistribution
+    | PositiveFloatUniformDistribution
+    | PositiveIntUniformDistribution
+    | NegativeFloatUniformDistribution
+    | NegativeIntUniformDistribution
+    | NonNegativeFloatUniformDistribution
+    | NonNegativeIntUniformDistribution
+    | NonPositiveFloatUniformDistribution
+    | NonPositiveIntUniformDistribution
 )
 
 _SYNAPTIC_PARAMETERIZATION_DISTRIBUTIONS = _CONSTANT_DISTRIBUTIONS | _UNIFORM_DISTRIBUTIONS
 
 
-SynapticParameterizationDistributionsUnion = Annotated[
+SynapticParameterizationDistributionUnion = Annotated[
     _SYNAPTIC_PARAMETERIZATION_DISTRIBUTIONS,
     Discriminator("type"),
 ]
@@ -67,4 +66,4 @@ SynapticParameterizationDistributionsUnion = Annotated[
 class SynapticParameterizationDistributionReference(BlockReference):
     """A reference to a SynapticParameterizationDistribution block."""
 
-    allowed_block_types: ClassVar[Any] = SynapticParameterizationDistributionsUnion
+    allowed_block_types: ClassVar[Any] = SynapticParameterizationDistributionUnion
