@@ -17,7 +17,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.core.schema import UIElement
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 class IonChannelVariableForRecording(OBIBaseModel):
@@ -94,8 +94,8 @@ class Recording(Block, ABC):
         title="Neuron Set",
         description="Neuron set to record from.",
         json_schema_extra={
-            "ui_element": UIElement.REFERENCE,
-            "reference_type": NeuronSetReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
         },
     )
 
@@ -111,8 +111,8 @@ class Recording(Block, ABC):
         title="Timestep",
         description="Interval between recording time steps in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
         },
     )
 
@@ -193,8 +193,8 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         default=0.0,
         description="Recording start time in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
         },
     )
 
@@ -202,8 +202,8 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         default=100.0,
         description="Recording end time in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
         },
     )
 
@@ -243,9 +243,9 @@ class IonChannelVariableRecording(Recording):
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
-            "ui_element": UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE,
-            "property_group": EntityType.IONCHANNELMODEL,
-            "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
+            SchemaKey.UI_ELEMENT: UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE,
+            SchemaKey.PROPERTY_GROUP: EntityType.IONCHANNELMODEL,
+            SchemaKey.PROPERTY: IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
 

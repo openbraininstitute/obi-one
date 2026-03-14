@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Discriminator
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.schema import SchemaKey
 
 
 class IonChannelEquation(Block, ABC):
@@ -23,7 +24,7 @@ class SigFitMInf(IonChannelEquation):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "latex_equation": r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
+            SchemaKey.LATEX_EQUATION: r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
         }
     )
 
@@ -34,7 +35,7 @@ class SigFitMTau(IonChannelEquation):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "latex_equation": (
+            SchemaKey.LATEX_EQUATION: (
                 r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
                 r"\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
                 r"( 1 - \frac{1.}{ 1. + e^{ \frac{v - v_{break}}{3.} } } ) \cdot "
@@ -50,7 +51,7 @@ class ThermoFitMTau(IonChannelEquation):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "latex_equation": (
+            SchemaKey.LATEX_EQUATION: (
                 r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
             )
         }
@@ -65,7 +66,7 @@ class ThermoFitMTauV2(IonChannelEquation):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "latex_equation": (
+            SchemaKey.LATEX_EQUATION: (
                 r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } }"
                 r" + e^{ \frac{v - v_2}{k / (1 - \delta)} } }"
             ),
@@ -78,7 +79,7 @@ class BellFitMTau(IonChannelEquation):
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
     model_config = ConfigDict(
-        json_schema_extra={"latex_equation": r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"}
+        json_schema_extra={SchemaKey.LATEX_EQUATION: r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"}
     )
 
 
@@ -88,7 +89,7 @@ class SigFitHInf(IonChannelEquation):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "latex_equation": r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
+            SchemaKey.LATEX_EQUATION: r"( 1 - A ) + \frac{A}{ 1 + e^{ \frac{v - v_{half}}{k} } }"
         }
     )
 
@@ -98,7 +99,7 @@ class SigFitHTau(IonChannelEquation):
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
     model_config = ConfigDict(
-        json_schema_extra={"latex_equation": r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"}
+        json_schema_extra={SchemaKey.LATEX_EQUATION: r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"}
     )
 
 

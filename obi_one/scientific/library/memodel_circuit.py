@@ -14,6 +14,7 @@ from obi_one.scientific.library.emodel_parameters import (
     MechanismVariable,
     get_mechanism_variables,
 )
+from obi_one.core.schema import SchemaKey
 
 L = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ def _build_mechanism_variables_by_ion_channel_response(
         var_entry = raw[channel]["variables"].setdefault(
             var.neuron_variable,
             {
-                "units": var.units,
+                SchemaKey.UNITS: var.units,
                 "limits": var.limits,
                 "variable_type": var.variable_type,
                 "section_lists_original_values": {},

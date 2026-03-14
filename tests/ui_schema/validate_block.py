@@ -6,7 +6,7 @@ from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
-from obi_one.core.schema import UIElement
+from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger()
 
@@ -27,7 +27,7 @@ def resolve_ref(openapi_schema: dict, ref: str) -> dict:
 
 def validate_hidden_refs_not_required(schema: dict, ref: str) -> None:
     for key, param_schema in schema["properties"].items():
-        if param_schema.get("ui_hidden") and key in schema.get("required", []):
+        if param_schema.get(SchemaKey.UI_HIDDEN) and key in schema.get("required", []):
             msg = (
                 f"The hidden reference {key} is marked as required in the schema"
                 f" but shouldn't be\n\n In {ref}"
@@ -176,8 +176,8 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
     try:
         validate_string_param(schema, param, ref)
@@ -190,9 +190,9 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "reference_type", f"{param} at {ref}")
+    validate_string(schema, SchemaKey.REFERENCE_TYPE, f"{param} at {ref}")
 
-    reference_type = schema.get("reference_type")
+    reference_type = schema.get(SchemaKey.REFERENCE_TYPE)
 
     schema_union = schema.get("anyOf", [])
 
@@ -317,9 +317,9 @@ def validate_dictionary_by_enum_key(
 
 
 def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_list: list) -> None:
-    description_by_key = schema.get("description_by_key")
-    latex_by_key = schema.get("latex_by_key")
-    title_by_key = schema.get("title_by_key")
+    description_by_key = schema.get(SchemaKey.DESCRIPTION_BY_KEY)
+    latex_by_key = schema.get(SchemaKey.LATEX_BY_KEY)
+    title_by_key = schema.get(SchemaKey.TITLE_BY_KEY)
 
     # Make sure at least one of description_by_key or latex_by_key exists
     if description_by_key is None and latex_by_key is None:
@@ -337,9 +337,9 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
         raise ValidationError(msg) from None
 
     # Validate title_by_key, description_by_key, latex_by_key dictionaries
-    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, "description_by_key")
-    validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, "latex_by_key")
-    validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, "title_by_key")
+    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, SchemaKey.DESCRIPTION_BY_KEY)
+    validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, SchemaKey.LATEX_BY_KEY)
+    validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, SchemaKey.TITLE_BY_KEY)
 
 
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
@@ -449,24 +449,24 @@ def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
 def validate_ion_channel_variable_modification_by_section_list(
     schema: dict, param: str, ref: str
 ) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
 def validate_ion_channel_variable_modification_by_neuron(
     schema: dict, param: str, ref: str
 ) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
 def validate_select_recordable_ion_channel_variable(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, "property_group", f"{param} at {ref}")
-    validate_string(schema, "property", f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
-    match ui_element := schema.get("ui_element"):
+    match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
@@ -513,7 +513,7 @@ def validate_block(schema: dict, ref: str) -> None:
     validate_string(schema, "description", ref)
 
     for param, param_schema in schema.get("properties", {}).items():
-        if param_schema.get("ui_hidden"):
+        if param_schema.get(SchemaKey.UI_HIDDEN):
             continue
 
         if param == "type":

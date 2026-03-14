@@ -9,7 +9,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
-from obi_one.core.schema import UIElement
+from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger("obi-one")
 
@@ -26,9 +26,9 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         title="Node Set",
         description="Name of the node set to use.",
         json_schema_extra={
-            "ui_element": UIElement.ENTITY_PROPERTY_DROPDOWN,
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.NODE_SET,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_SET,
         },
     )
 

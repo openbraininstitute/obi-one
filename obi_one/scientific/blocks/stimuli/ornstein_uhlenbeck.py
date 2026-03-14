@@ -13,7 +13,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
-from obi_one.core.schema import UIElement
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
@@ -29,8 +29,8 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -39,8 +39,8 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Mean Amplitude",
         description="The mean value of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
-            "units": "nA",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -49,8 +49,8 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="The standard deviation of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
-            "units": "nA",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -91,8 +91,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -101,8 +101,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Mean Amplitude",
         description="The mean value of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
-            "units": "μS",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "μS",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -111,8 +111,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="The standard deviation of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
-            "units": "μS",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "μS",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -121,8 +121,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
-            "units": "mV",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -164,8 +164,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -174,8 +174,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Mean Percentage of Threshold Current",
         description="Signal mean as percentage of a cell's threshold current.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -184,8 +184,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's threshold current.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -219,10 +219,10 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_dictionary": {
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-            "false_message": "Input resistance based stimuli are not supported for this circuit.",
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            SchemaKey.FALSE_MESSAGE: "Input resistance based stimuli are not supported for this circuit.",
         },
     }
 
@@ -234,8 +234,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -244,8 +244,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Mean Percentage of Cells' Input Conductance",
         description="Signal mean as percentage of a cell's input conductance.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -256,8 +256,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's input conductance.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -266,8 +266,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
-            "units": "mV",
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 

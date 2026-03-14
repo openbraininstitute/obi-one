@@ -12,7 +12,7 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.core.schema import UIElement
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
@@ -49,8 +49,8 @@ class AbstractNeuronSet(Block, abc.ABC):
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
         json_schema_extra={
-            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "%",
         },
     )
 
@@ -59,7 +59,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         title="Sample Seed",
         description="Seed for random sampling.",
         json_schema_extra={
-            "ui_element": UIElement.INT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
