@@ -252,11 +252,11 @@ class TestCheckAnnotationArguments:
         assert result == {"ge": 0, "le": 10}
 
     def test_ge_and_gt_raises(self):
-        with pytest.raises(OBIONEError, match="Only one of ge or gt can be provided."):
+        with pytest.raises(OBIONEError, match="Only one of ge or gt can be provided"):
             check_annotation_arguments_and_create_kwargs(ge=0, gt=0, le=None, lt=None)
 
     def test_le_and_lt_raises(self):
-        with pytest.raises(OBIONEError, match="Only one of le or lt can be provided."):
+        with pytest.raises(OBIONEError, match="Only one of le or lt can be provided"):
             check_annotation_arguments_and_create_kwargs(ge=None, gt=None, le=10, lt=10)
 
     def test_all_none(self):
