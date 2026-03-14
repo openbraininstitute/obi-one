@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
@@ -23,6 +24,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
@@ -42,6 +44,14 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+        NeuronSetReference,
+        SynapticManipulationsReference,
+        StimulusReference,
+    ]
 
     json_schema_extra_additions: ClassVar[dict] = {
         "ui_enabled": True,

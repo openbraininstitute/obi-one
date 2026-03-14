@@ -8,7 +8,6 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -186,7 +185,8 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     def single_coord_scan_default_subpath(self) -> str:
         return self.single_coord_class_name + "/"
 
-    _all_block_reference_types: list[type[BlockReference]] = []
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = []
+
     @property
     def all_block_reference_types(self) -> list[type[BlockReference]]:
         return self._all_block_reference_types

@@ -9,11 +9,11 @@ import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -88,7 +88,10 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         },
     }
 
-    _all_block_reference_types: list[type[BlockReference]] = [NeuronSetReference, TimestampsReference, RecordingReference]
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+    ]
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
