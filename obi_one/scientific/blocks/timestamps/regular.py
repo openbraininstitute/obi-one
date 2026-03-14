@@ -2,8 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt
 
-from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.timestamps.base import Timestamps
 
 
 class RegularTimestamps(Timestamps):

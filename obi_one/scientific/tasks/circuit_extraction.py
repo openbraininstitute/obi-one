@@ -25,6 +25,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -40,7 +41,6 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger(__name__)
 _RUN_VALIDATION = False

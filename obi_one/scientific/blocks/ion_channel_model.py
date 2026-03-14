@@ -4,8 +4,8 @@ from entitysdk.types import EntityType
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
-from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 
 
 class IonChannelModelWithConductance(Block):

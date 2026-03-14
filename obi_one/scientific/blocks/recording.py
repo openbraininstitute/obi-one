@@ -10,6 +10,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
@@ -17,7 +18,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 
 class IonChannelVariableForRecording(OBIBaseModel):

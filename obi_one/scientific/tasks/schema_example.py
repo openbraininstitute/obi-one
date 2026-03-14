@@ -6,6 +6,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
@@ -18,7 +19,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 
 class BlockGroup(StrEnum):

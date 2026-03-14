@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
@@ -18,7 +19,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger(__name__)
 

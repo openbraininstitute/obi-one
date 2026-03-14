@@ -11,8 +11,8 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )

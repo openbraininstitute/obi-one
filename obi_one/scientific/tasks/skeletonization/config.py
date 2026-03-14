@@ -14,10 +14,10 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger(__name__)
 
@@ -60,7 +60,10 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             default=0.1,
             title="Neuron Voxel Size",
             description="Neuron reconstruction resolution in micrometers.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP, SchemaKey.UNITS: "μm"},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: "μm",
+            },
         )
 
         spines_voxel_size: (
@@ -70,7 +73,10 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             default=0.1,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP, SchemaKey.UNITS: "μm"},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: "μm",
+            },
         )
 
     info: Info = Field(

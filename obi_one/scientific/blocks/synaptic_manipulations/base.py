@@ -3,12 +3,12 @@ from abc import ABC
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,

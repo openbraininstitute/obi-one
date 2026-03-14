@@ -127,7 +127,9 @@ def validate_numeric_single_and_list_types(
 
 
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
-    validate_numeric_single_and_list_types(schema, param, ref, "number", UIElement.FLOAT_PARAMETER_SWEEP)
+    validate_numeric_single_and_list_types(
+        schema, param, ref, "number", UIElement.FLOAT_PARAMETER_SWEEP
+    )
     test_value = determine_minimum_valid_numeric_value(schema)
 
     try:
@@ -152,7 +154,9 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
-    validate_numeric_single_and_list_types(schema, param, ref, "integer", UIElement.INT_PARAMETER_SWEEP)
+    validate_numeric_single_and_list_types(
+        schema, param, ref, "integer", UIElement.INT_PARAMETER_SWEEP
+    )
     test_value = determine_minimum_valid_numeric_value(schema)
     try:
         validate(test_value, schema)
@@ -337,7 +341,9 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
         raise ValidationError(msg) from None
 
     # Validate title_by_key, description_by_key, latex_by_key dictionaries
-    validate_dictionary_by_enum_key(param, ref, enum_list, description_by_key, SchemaKey.DESCRIPTION_BY_KEY)
+    validate_dictionary_by_enum_key(
+        param, ref, enum_list, description_by_key, SchemaKey.DESCRIPTION_BY_KEY
+    )
     validate_dictionary_by_enum_key(param, ref, enum_list, latex_by_key, SchemaKey.LATEX_BY_KEY)
     validate_dictionary_by_enum_key(param, ref, enum_list, title_by_key, SchemaKey.TITLE_BY_KEY)
 

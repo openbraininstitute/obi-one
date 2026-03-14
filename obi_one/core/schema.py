@@ -34,7 +34,9 @@ class UIElement(StrEnum):
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
-    ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = "ion_channel_variable_modification_by_section_list"
+    ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
+        "ion_channel_variable_modification_by_section_list"
+    )
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     NEURON_IDS = "neuron_ids"

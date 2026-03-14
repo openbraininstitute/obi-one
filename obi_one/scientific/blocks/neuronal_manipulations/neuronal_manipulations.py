@@ -5,6 +5,7 @@ from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.emodel_parameters import _expand_section_list
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
@@ -14,7 +15,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 
 class BySectionListModification(OBIBaseModel):

@@ -79,7 +79,9 @@ class BellFitMTau(IonChannelEquation):
     title: ClassVar[str] = r"Bell equation for \tau_m"
 
     model_config = ConfigDict(
-        json_schema_extra={SchemaKey.LATEX_EQUATION: r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"}
+        json_schema_extra={
+            SchemaKey.LATEX_EQUATION: r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
+        }
     )
 
 
@@ -99,7 +101,9 @@ class SigFitHTau(IonChannelEquation):
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
 
     model_config = ConfigDict(
-        json_schema_extra={SchemaKey.LATEX_EQUATION: r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"}
+        json_schema_extra={
+            SchemaKey.LATEX_EQUATION: r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
+        }
     )
 
 

@@ -16,6 +16,7 @@ from pydantic import (
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
@@ -34,7 +35,6 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI

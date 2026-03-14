@@ -8,13 +8,13 @@ from entitysdk.models import MEModel
 from pydantic import BaseModel, model_validator
 
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.emodel_parameters import (
     ChannelSectionListMapping,
     MechanismVariable,
     get_mechanism_variables,
 )
-from obi_one.core.schema import SchemaKey
 
 L = logging.getLogger(__name__)
 

@@ -12,6 +12,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -40,7 +41,6 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger(__name__)
 

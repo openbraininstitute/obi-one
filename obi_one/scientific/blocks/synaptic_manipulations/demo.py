@@ -2,11 +2,11 @@ from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
     GlobalVariableInterNeuronSetSynapticManipulation,
     ModSpecificVariableInterNeuronSetSynapticManipulation,
 )
-from obi_one.core.schema import SchemaKey, UIElement
 
 
 class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulation):
@@ -21,7 +21,10 @@ class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulati
         default=2.4,
         title="Extracellular Magnesium Concentration",
         description="Extracellular magnesium concentration in millimoles (mM).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP, SchemaKey.UNITS: "mM"},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: "mM",
+        },
     )
 
     def _get_synapse_configure(self) -> str:

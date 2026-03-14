@@ -1,7 +1,9 @@
 import logging
 from collections import defaultdict
 from typing import Any
+
 from obi_one.core.schema import SchemaKey, UIElement
+
 from .validate_block import (
     openapi_schema,
     resolve_ref,

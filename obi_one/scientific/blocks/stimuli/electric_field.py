@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar, Self
 import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_EFIELD_FREQUENCY_HZ,
@@ -21,7 +22,6 @@ from obi_one.scientific.unions.unions_timestamps import (
 )
 
 from .stimulus import ContinuousStimulus
-from obi_one.core.schema import SchemaKey, UIElement
 
 _RAMP_QAULIFIER_DESCRIPTION = (
     "The duration does not include the ramp up and ramp down times, "

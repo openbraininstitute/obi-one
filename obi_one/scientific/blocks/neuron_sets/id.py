@@ -3,10 +3,10 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger("obi-one")
 
