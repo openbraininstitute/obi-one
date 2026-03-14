@@ -25,6 +25,7 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusReference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.core.schema import UIElement
     TimestampsReference,
 )
 
@@ -45,14 +46,14 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
             title="ME Model",
             description="ME Model to simulate.",
-            json_schema_extra={"ui_element": "model_identifier"},
+            json_schema_extra={"ui_element": UIElement.MODEL_IDENTIFIER},
         )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },
@@ -63,7 +64,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         title="Stimuli",
         description="Stimuli for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "reference_type": StimulusReference.__name__,
             "singular_name": "Stimulus",
             "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -76,7 +77,7 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         title="Neuronal Manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "reference_type": NeuronalManipulationReference.__name__,
             "singular_name": "Neuronal Manipulation",
             "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,

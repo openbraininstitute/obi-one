@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
+from obi_one.core.schema import UIElement
 
 
 class IonChannelModelWithConductance(Block):
@@ -16,7 +17,7 @@ class IonChannelModelWithConductance(Block):
         title="Ion channel model",
         description="ID of the model to simulate.",
         json_schema_extra={
-            "ui_element": "model_selector_single",
+            "ui_element": UIElement.MODEL_SELECTOR_SINGLE,
             "entity_query": {
                 "type": EntityType.ion_channel_model,
                 "filters": {
@@ -30,7 +31,7 @@ class IonChannelModelWithConductance(Block):
         title="Conductance value",
         description="Conductance value.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
             "units": "S/cm2",
         },
     )
@@ -45,7 +46,7 @@ class IonChannelModelWithMaxPermeability(Block):
         title="Ion channel model",
         description="ID of the model to simulate.",
         json_schema_extra={
-            "ui_element": "model_selector_single",
+            "ui_element": UIElement.MODEL_SELECTOR_SINGLE,
             "entity_query": {
                 "type": EntityType.ion_channel_model,
                 "filters": {
@@ -59,7 +60,7 @@ class IonChannelModelWithMaxPermeability(Block):
         title="Maximum permeability value",
         description="Maximum permeability value.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
             "units": "cm/s",
         },
     )
@@ -74,7 +75,7 @@ class IonChannelModelWithoutConductance(Block):
         title="Ion channel model",
         description="ID of the model to simulate.",
         json_schema_extra={
-            "ui_element": "model_selector_single",
+            "ui_element": UIElement.MODEL_SELECTOR_SINGLE,
             "entity_query": {
                 "type": EntityType.ion_channel_model,
                 "filters": {

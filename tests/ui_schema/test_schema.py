@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import Any
 
 from .validate_block import (
+from obi_one.core.schema import UIElement
     openapi_schema,
     resolve_ref,
     validate_block,
@@ -31,11 +32,11 @@ def validate_root_element(
     schema: dict, element: str, ref: str, config_ref: str, form: dict
 ) -> None:
     match ui_element := schema.get("ui_element"):
-        case "block_single":
+        case UIElement.BLOCK_SINGLE:
             validate_block_single(schema, element, ref)
-        case "block_dictionary":
+        case UIElement.BLOCK_DICTIONARY:
             validate_block_dictionary(schema, element, config_ref, form)
-        case "block_union":
+        case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
         case _:
             msg = (

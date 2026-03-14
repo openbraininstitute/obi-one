@@ -3,6 +3,7 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
+from obi_one.core.schema import UIElement
     GlobalVariableInterNeuronSetSynapticManipulation,
     ModSpecificVariableInterNeuronSetSynapticManipulation,
 )
@@ -20,7 +21,7 @@ class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulati
         default=2.4,
         title="Extracellular Magnesium Concentration",
         description="Extracellular magnesium concentration in millimoles (mM).",
-        json_schema_extra={"ui_element": "float_parameter_sweep", "units": "mM"},
+        json_schema_extra={"ui_element": UIElement.FLOAT_PARAMETER_SWEEP, "units": "mM"},
     )
 
     def _get_synapse_configure(self) -> str:
@@ -47,7 +48,7 @@ class ScaleAcetylcholineUSESynapticManipulation(GlobalVariableInterNeuronSetSyna
         default=0.7050728631217412,
         title="Scale U_SE (ACh)",
         description="Scale the U_SE (ACh) parameter of the Tsodyks-Markram synaptic model.",
-        json_schema_extra={"ui_element": "float_parameter_sweep"},
+        json_schema_extra={"ui_element": UIElement.FLOAT_PARAMETER_SWEEP},
     )
 
     def _get_synapse_configure(self) -> str:

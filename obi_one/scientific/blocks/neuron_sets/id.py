@@ -6,6 +6,7 @@ from pydantic import Field
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.core.schema import UIElement
 
 L = logging.getLogger("obi-one")
 
@@ -19,7 +20,7 @@ class IDNeuronSet(AbstractNeuronSet):
         title="ID Neuronset",
         description="List of neuron IDs to include in the neuron set.",
         json_schema_extra={
-            "ui_element": "neuron_ids",
+            "ui_element": UIElement.NEURON_IDS,
         },
     )
 

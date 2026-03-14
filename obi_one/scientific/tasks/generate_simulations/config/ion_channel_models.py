@@ -39,6 +39,7 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusReference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.core.schema import UIElement
     TimestampsReference,
     TimestampsUnion,
 )
@@ -94,7 +95,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
                 "units": "ms",
             },
         )
@@ -104,7 +105,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             description="Temperature of the simulation.",
             default=34.0,
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
             },
         )
 
@@ -113,7 +114,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
                 "units": "mV",
             },
         )
@@ -122,7 +123,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Random Seed",
             description="Random seed for the simulation.",
             json_schema_extra={
-                "ui_element": "int_parameter_sweep",
+                "ui_element": UIElement.INT_PARAMETER_SWEEP,
             },
         )
         _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
@@ -137,7 +138,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 2,
         },
@@ -147,7 +148,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Info",
         description="Information about the ion channel model simulation campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 0,
         },
@@ -159,7 +160,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Ion Channel Models",
         description="Ion channel models and their conductance / max permeability.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
             "singular_name": "Ion Channel Model",
@@ -174,7 +175,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Stimuli",
         description="Stimuli for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             "group_order": 0,
             "singular_name": "Stimulus",
@@ -190,7 +191,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Recordings",
         description="Recordings for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             "group_order": 1,
             "singular_name": "Recording",
@@ -203,7 +204,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Timestamps",
         description="Timestamps for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "group": BlockGroup.EVENTS_GROUP,
             "group_order": 0,
             "singular_name": "Timestamps",

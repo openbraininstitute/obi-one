@@ -14,6 +14,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.core.schema import UIElement
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
@@ -61,12 +62,12 @@ class SchemaExampleScanConfig(ScanConfig):
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
-                "ui_element": "model_identifier",
+                "ui_element": UIElement.MODEL_IDENTIFIER,
             },
         )
         example_boolean_input: bool = Field(
             json_schema_extra={
-                "ui_element": "boolean_input",
+                "ui_element": UIElement.BOOLEAN_INPUT,
             },
             default=True,
             title="Include Virtual Populations",
@@ -77,7 +78,7 @@ class SchemaExampleScanConfig(ScanConfig):
 
         temp_option_remove_string_selection: Literal["A", "B", "C"] = Field(
             json_schema_extra={
-                "ui_element": "string_selection",
+                "ui_element": UIElement.STRING_SELECTION,
             },
             title="Option",
             description="Option description.",
@@ -88,7 +89,7 @@ class SchemaExampleScanConfig(ScanConfig):
             title="Constant",
             description="Constant description.",
             json_schema_extra={
-                "ui_element": "string_constant",
+                "ui_element": UIElement.STRING_CONSTANT,
             },
         )
 
@@ -97,7 +98,7 @@ class SchemaExampleScanConfig(ScanConfig):
             description="Option description.",
             default="A",
             json_schema_extra={
-                "ui_element": "string_selection_enhanced",
+                "ui_element": UIElement.STRING_SELECTION_ENHANCED,
                 "description_by_key": {
                     "A": "Description for option A.",
                     "B": "Description for option B.",
@@ -116,7 +117,7 @@ class SchemaExampleScanConfig(ScanConfig):
             title="Constant",
             description="Constant description.",
             json_schema_extra={
-                "ui_element": "string_constant_enhanced",
+                "ui_element": UIElement.STRING_CONSTANT_ENHANCED,
                 "description_by_key": {
                     "A": "Description for option A.",
                 },
@@ -133,7 +134,7 @@ class SchemaExampleScanConfig(ScanConfig):
         title="Info",
         description="Information about the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP,
             "group_order": 0,
         },
@@ -142,7 +143,7 @@ class SchemaExampleScanConfig(ScanConfig):
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP,
             "group_order": 1,
         },
@@ -152,7 +153,7 @@ class SchemaExampleScanConfig(ScanConfig):
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
         json_schema_extra={
-            "ui_element": "block_union",
+            "ui_element": UIElement.BLOCK_UNION,
             "group": BlockGroup.EXTRACTION_TARGET,
             "group_order": 0,
         },
@@ -162,7 +163,7 @@ class SchemaExampleScanConfig(ScanConfig):
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "singular_name": "Neuron Set",
             "reference_type": NeuronSetReference.__name__,
             "group": BlockGroup.EXTRACTION_TARGET,
@@ -175,7 +176,7 @@ class SchemaExampleScanConfig(ScanConfig):
         description="Example block which is only usable for certain circuits based on the value of"
         " the CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI property for that circuit.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.EXTRACTION_TARGET,
             "group_order": 2,
         },

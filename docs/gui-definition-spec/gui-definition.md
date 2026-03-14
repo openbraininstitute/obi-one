@@ -16,7 +16,7 @@ file_name: str = Field(min_length=1,
                         title="title",
                         description="description",
                         json_schema_extra={
-                            "ui_element": "string_input",
+                            "ui_element": UIElement.STRING_INPUT,
                         })
 ```
 
@@ -51,7 +51,7 @@ There are two major types of such UI elements:
             title="Title",
             description="Description",
             json_schema_extra={
-                "ui_element": "block_single",
+                "ui_element": UIElement.BLOCK_SINGLE,
                 "group": "Group 1", # Must be present in its parent's config `group_order` array,
                 "group_order": 0 # Unique within the group.
             }
@@ -94,7 +94,7 @@ There are two major types of such UI elements:
 
     - As for root UI elements these properties are specified in the Field definition of the variable, along with the string `ui_element` specifying the type:
         ```py
-        field: str = Field(ui_element="string_input",
+        field: str = Field(ui_element=UIElement.STRING_INPUT,
                             min_length=1,
                             title="title",
                             description="description")

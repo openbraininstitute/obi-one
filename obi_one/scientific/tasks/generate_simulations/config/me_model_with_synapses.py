@@ -15,6 +15,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.core.schema import UIElement
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
 )
@@ -38,7 +39,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "reference_type": NeuronSetReference.__name__,
             "singular_name": "Neuron Set",
             "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
@@ -52,14 +53,14 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         ) = Field(
             title="MEModel With Synapses",
             description="MEModel with synapses to simulate.",
-            json_schema_extra={"ui_element": "model_identifier"},
+            json_schema_extra={"ui_element": UIElement.MODEL_IDENTIFIER},
         )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 1,
         },

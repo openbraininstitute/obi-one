@@ -9,6 +9,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.core.schema import UIElement
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
@@ -28,7 +29,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             "supports_virtual": True,
-            "ui_element": "reference",
+            "ui_element": UIElement.REFERENCE,
             "reference_type": NeuronSetReference.__name__,
         },
     )
@@ -39,7 +40,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             "supports_virtual": False,
-            "ui_element": "reference",
+            "ui_element": UIElement.REFERENCE,
             "reference_type": NeuronSetReference.__name__,
         },
     )
@@ -106,7 +107,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         title="Timestamps",
         description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
-            "ui_element": "reference",
+            "ui_element": UIElement.REFERENCE,
             "reference_type": TimestampsReference.__name__,
         },
     )
@@ -117,7 +118,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         description="An optional offset of the manipulation relative to each "
         "timestamp in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
             "units": "ms",
         },
     )

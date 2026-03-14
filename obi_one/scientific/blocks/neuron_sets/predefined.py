@@ -6,6 +6,7 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
+from obi_one.core.schema import UIElement
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
@@ -25,7 +26,7 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         title="Node Set",
         description="Name of the node set to use.",
         json_schema_extra={
-            "ui_element": "entity_property_dropdown",
+            "ui_element": UIElement.ENTITY_PROPERTY_DROPDOWN,
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.NODE_SET,
         },

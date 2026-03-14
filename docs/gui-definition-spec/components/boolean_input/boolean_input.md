@@ -17,7 +17,7 @@ class Block:
                        title="title",
                        description="description",
                        json_schema_extra={
-                            "ui_element": "boolean_input",
+                            "ui_element": UIElement.BOOLEAN_INPUT,
                             "group": "Group 1", # Must be present in its parent's config `group_order` array,
                             "group_order": 0, # Unique within the group.
                         } 

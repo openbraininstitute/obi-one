@@ -43,7 +43,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         title="Ion channel variable manipulations by neuron",
         description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
         json_schema_extra={
-            "ui_element": "ion_channel_variable_modification_by_neuron",
+            "ui_element": UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },

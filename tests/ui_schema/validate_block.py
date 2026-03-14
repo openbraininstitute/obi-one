@@ -6,6 +6,7 @@ from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
+from obi_one.core.schema import UIElement
 
 L = logging.getLogger()
 
@@ -126,7 +127,7 @@ def validate_numeric_single_and_list_types(
 
 
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
-    validate_numeric_single_and_list_types(schema, param, ref, "number", "float_parameter_sweep")
+    validate_numeric_single_and_list_types(schema, param, ref, "number", UIElement.FLOAT_PARAMETER_SWEEP)
     test_value = determine_minimum_valid_numeric_value(schema)
 
     try:
@@ -151,7 +152,7 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
-    validate_numeric_single_and_list_types(schema, param, ref, "integer", "int_parameter_sweep")
+    validate_numeric_single_and_list_types(schema, param, ref, "integer", UIElement.INT_PARAMETER_SWEEP)
     test_value = determine_minimum_valid_numeric_value(schema)
     try:
         validate(test_value, schema)
@@ -466,37 +467,37 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get("ui_element"):
-        case "string_input":
+        case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
-        case "boolean_input":
+        case UIElement.BOOLEAN_INPUT:
             validate_boolean_input(schema, param, ref)
-        case "float_parameter_sweep":
+        case UIElement.FLOAT_PARAMETER_SWEEP:
             validate_float_param_sweep(schema, param, ref)
-        case "int_parameter_sweep":
+        case UIElement.INT_PARAMETER_SWEEP:
             validate_int_param_sweep(schema, param, ref)
-        case "entity_property_dropdown":
+        case UIElement.ENTITY_PROPERTY_DROPDOWN:
             validate_entity_property_dropdown(schema, param, ref)
-        case "reference":
+        case UIElement.REFERENCE:
             validate_reference(schema, param, ref)
-        case "string_selection":
+        case UIElement.STRING_SELECTION:
             validate_string_selection(schema, param, ref)
-        case "string_selection_enhanced":
+        case UIElement.STRING_SELECTION_ENHANCED:
             validate_string_selection_enhanced(schema, param, ref)
-        case "string_constant":
+        case UIElement.STRING_CONSTANT:
             validate_string_constant(schema, param, ref)
-        case "string_constant_enhanced":
+        case UIElement.STRING_CONSTANT_ENHANCED:
             validate_string_constant_enhanced(schema, param, ref)
-        case "neuron_ids":
+        case UIElement.NEURON_IDS:
             validate_neuron_ids(schema, param, ref)
-        case "model_identifier":
+        case UIElement.MODEL_IDENTIFIER:
             validate_model_identifier(schema, param, ref)
-        case "model_selector_single":
+        case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
-        case "ion_channel_variable_modification_by_section_list":
+        case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
-        case "ion_channel_variable_modification_by_neuron":
+        case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
-        case "select_recordable_ion_channel_variable":
+        case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case _:
             msg = (

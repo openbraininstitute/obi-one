@@ -13,7 +13,7 @@ class Block:
         description="Option description.",
         default="A",
         json_schema_extra={
-            "ui_element": "string_selection
+            "ui_element": UIElement.STRING_SELECTION,
         }
     )
 ```
@@ -48,7 +48,7 @@ When any of these three dictionaries are included, they should have valid string
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
-        ui_element="string_selection_enhanced",
+        ui_element=UIElement.STRING_SELECTION_ENHANCED,
         title="Option",
         description="Option description.",
         default="A",

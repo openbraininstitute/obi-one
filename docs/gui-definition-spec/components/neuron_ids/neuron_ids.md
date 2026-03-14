@@ -14,6 +14,6 @@ class Block:
                                                     min_length=1, 
                                                     title="neuron ids", 
                                                     description="description",
-                                                    json_schema_extra={"ui_element": "neuron_ids"})
+                                                    json_schema_extra={"ui_element": UIElement.NEURON_IDS})
 
 ```

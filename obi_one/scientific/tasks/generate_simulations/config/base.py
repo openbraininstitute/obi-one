@@ -37,6 +37,7 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingUnion,
 )
 from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.core.schema import UIElement
     TimestampsReference,
     TimestampsUnion,
 )
@@ -92,7 +93,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         title="Timestamps",
         description="Timestamps for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "reference_type": TimestampsReference.__name__,
             "singular_name": "Timestamps",
             "group": BlockGroup.EVENTS_GROUP,
@@ -103,7 +104,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         default_factory=dict,
         description="Recordings for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
+            "ui_element": UIElement.BLOCK_DICTIONARY,
             "reference_type": RecordingReference.__name__,
             "singular_name": "Recording",
             "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
@@ -137,7 +138,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
                 "units": "ms",
             },
         )
@@ -151,7 +152,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
             ),
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
                 "units": "mM",
             },
         )
@@ -160,7 +161,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
                 "units": "mV",
             },
         )
@@ -169,7 +170,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Random Seed",
             description="Random seed for the simulation.",
             json_schema_extra={
-                "ui_element": "int_parameter_sweep",
+                "ui_element": UIElement.INT_PARAMETER_SWEEP,
             },
         )
 
@@ -192,7 +193,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         title="Info",
         description="Information about the simulation campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": BlockGroup.SETUP_BLOCK_GROUP,
             "group_order": 0,
         },

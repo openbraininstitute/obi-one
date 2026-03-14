@@ -11,6 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.core.schema import UIElement
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
@@ -117,7 +118,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         title="Ion channel variable manipulations by section type",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
-            "ui_element": "ion_channel_variable_modification_by_section_list",
+            "ui_element": UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
@@ -176,7 +177,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         title="Ion channel variable manipulations by neuron",
         description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
         json_schema_extra={
-            "ui_element": "ion_channel_variable_modification_by_neuron",
+            "ui_element": UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
             "property_group": MappedPropertiesGroup.CIRCUIT,
             "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },

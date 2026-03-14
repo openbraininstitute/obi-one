@@ -3,6 +3,7 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.scientific.blocks.synaptic_manipulations.base import InterNeuronSetSynapticManipulation
+from obi_one.core.schema import UIElement
 
 
 class SetSpontaneousMinisRate0HzSynapticManipulation(InterNeuronSetSynapticManipulation):
@@ -28,7 +29,7 @@ class SetSpontaneousMinisRateSynapticManipulation(InterNeuronSetSynapticManipula
         description="Set the spontaneous minis rate in Hz.",
         json_schema_extra={
             "units": "Hz",
-            "ui_element": "float_parameter_sweep",
+            "ui_element": UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 

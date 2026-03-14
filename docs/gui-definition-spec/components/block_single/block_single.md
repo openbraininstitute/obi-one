@@ -17,7 +17,7 @@ class Info(Block):
         title="campaign name",
         description="Name of the campaign."
         json_schema_extra={
-            "ui_element": "string_input",
+            "ui_element": UIElement.STRING_INPUT,
         }        
     )
 
@@ -27,7 +27,7 @@ class Config:
         title="Title",
         description="Description",
         json_schema_extra={
-            "ui_element": "block_single",
+            "ui_element": UIElement.BLOCK_SINGLE,
             "group": "Group 1", # Must be present in its parent's config `group_order` array,
             "group_order": 0, # Unique within the group.
         }        

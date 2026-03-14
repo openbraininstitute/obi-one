@@ -22,7 +22,7 @@ class Block:
         description="Name of the node set to use.",
         min_length=1,
         json_schema_extra={
-                            "ui_element": "entity_property_dropdown",
+                            "ui_element": UIElement.ENTITY_PROPERTY_DROPDOWN,
                             "property_group": EntityType.CIRCUIT,
                             "property": CircuitPropertyType.NODE_SET,
                             "group": "Group 1", # Must be present in its parent's config `group_order` array,
