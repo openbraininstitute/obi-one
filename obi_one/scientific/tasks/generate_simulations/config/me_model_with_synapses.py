@@ -15,10 +15,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 from obi_one.scientific.unions.unions_neuron_sets import (
-from obi_one.core.schema import UIElement
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
 )
+from obi_one.core.schema import UIElement
 
 L = logging.getLogger(__name__)
 

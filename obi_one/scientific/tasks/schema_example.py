@@ -14,11 +14,11 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-from obi_one.core.schema import UIElement
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
+from obi_one.core.schema import UIElement
 
 
 class BlockGroup(StrEnum):

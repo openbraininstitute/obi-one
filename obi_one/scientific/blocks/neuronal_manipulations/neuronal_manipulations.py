@@ -11,10 +11,10 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-from obi_one.core.schema import UIElement
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.core.schema import UIElement
 
 
 class BySectionListModification(OBIBaseModel):

@@ -14,10 +14,10 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
-from obi_one.core.schema import UIElement
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.core.schema import UIElement
 
 
 class IonChannelVariableForRecording(OBIBaseModel):

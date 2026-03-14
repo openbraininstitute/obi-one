@@ -37,10 +37,10 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingUnion,
 )
 from obi_one.scientific.unions.unions_timestamps import (
-from obi_one.core.schema import UIElement
     TimestampsReference,
     TimestampsUnion,
 )
+from obi_one.core.schema import UIElement
 
 L = logging.getLogger(__name__)
 

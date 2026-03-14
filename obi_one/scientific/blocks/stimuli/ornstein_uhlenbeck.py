@@ -11,9 +11,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
-from obi_one.core.schema import UIElement
     resolve_timestamps_ref_to_timestamps_block,
 )
+from obi_one.core.schema import UIElement
 
 
 class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):

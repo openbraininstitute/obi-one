@@ -31,10 +31,10 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
-from obi_one.core.schema import UIElement
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
+from obi_one.core.schema import UIElement
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI

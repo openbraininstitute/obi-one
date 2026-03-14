@@ -3,10 +3,10 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
-from obi_one.core.schema import UIElement
     GlobalVariableInterNeuronSetSynapticManipulation,
     ModSpecificVariableInterNeuronSetSynapticManipulation,
 )
+from obi_one.core.schema import UIElement
 
 
 class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulation):

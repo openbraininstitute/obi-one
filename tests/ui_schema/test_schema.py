@@ -1,9 +1,8 @@
 import logging
 from collections import defaultdict
 from typing import Any
-
-from .validate_block import (
 from obi_one.core.schema import UIElement
+from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
