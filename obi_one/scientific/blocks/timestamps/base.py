@@ -4,6 +4,7 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 
 class Timestamps(Block, ABC):
@@ -12,7 +13,7 @@ class Timestamps(Block, ABC):
         description="Sart time of the timestamps in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 

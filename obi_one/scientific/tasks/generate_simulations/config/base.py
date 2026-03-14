@@ -13,6 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -139,7 +140,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: "ms",
+                SchemaKey.UNITS: Units.MILLISECONDS,
             },
         )
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -153,7 +154,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             ),
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: "mM",
+                SchemaKey.UNITS: Units.MILLIMOLAR,
             },
         )
         v_init: float | list[float] = Field(
@@ -162,7 +163,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: "mV",
+                SchemaKey.UNITS: Units.MILLIVOLTS,
             },
         )
         random_seed: int | list[int] = Field(

@@ -4,6 +4,7 @@ from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -119,7 +120,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         "timestamp in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 

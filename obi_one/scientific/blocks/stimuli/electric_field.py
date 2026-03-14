@@ -4,6 +4,7 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_EFIELD_FREQUENCY_HZ,
@@ -71,7 +72,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         + _RAMP_QAULIFIER_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -84,7 +85,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="Ramp Up (Duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -97,7 +98,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="Ramp Down (Duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -107,7 +108,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="X amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -117,7 +118,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="Y amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -127,7 +128,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="Z amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -211,7 +212,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         title="Frequency",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -221,7 +222,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         title="Phase",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "°",
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
 
@@ -233,7 +234,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         title="X peak amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -243,7 +244,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         title="Y peak amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -253,7 +254,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         title="Z peak amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "V/m",
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 

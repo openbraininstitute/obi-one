@@ -11,6 +11,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
@@ -112,7 +113,7 @@ class Recording(Block, ABC):
         description="Interval between recording time steps in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -194,7 +195,7 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         description="Recording start time in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -203,7 +204,7 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         description="Recording end time in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 

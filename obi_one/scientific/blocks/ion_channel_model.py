@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 
 
@@ -32,7 +33,7 @@ class IonChannelModelWithConductance(Block):
         description="Conductance value.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "S/cm2",
+            SchemaKey.UNITS: Units.SIEMENS_PER_CM2,
         },
     )
 
@@ -61,7 +62,7 @@ class IonChannelModelWithMaxPermeability(Block):
         description="Maximum permeability value.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "cm/s",
+            SchemaKey.UNITS: Units.CENTIMETERS_PER_SECOND,
         },
     )
 

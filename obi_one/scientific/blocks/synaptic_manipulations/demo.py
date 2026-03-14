@@ -3,6 +3,7 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
     GlobalVariableInterNeuronSetSynapticManipulation,
     ModSpecificVariableInterNeuronSetSynapticManipulation,
@@ -23,7 +24,7 @@ class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulati
         description="Extracellular magnesium concentration in millimoles (mM).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "mM",
+            SchemaKey.UNITS: Units.MILLIMOLAR,
         },
     )
 

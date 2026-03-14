@@ -17,6 +17,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
@@ -45,7 +46,7 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
     description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
     json_schema_extra={
         SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        SchemaKey.UNITS: "ms",
+        SchemaKey.UNITS: Units.MILLISECONDS,
     },
 )
 
@@ -91,7 +92,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -149,7 +150,7 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
 
@@ -190,7 +191,7 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
                     activates.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "%",
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -231,7 +232,7 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         "Given in nanoamps.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     amplitude_end: float | list[float] = Field(
@@ -241,7 +242,7 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         "the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
 
@@ -285,7 +286,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Percentage of Threshold Current (Start)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "%",
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
     percentage_of_threshold_current_end: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -295,7 +296,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Percentage of Threshold Current (End)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "%",
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -336,7 +337,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Mean Amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -346,7 +347,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Variance",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA^2",
+            SchemaKey.UNITS: Units.MILLIAMPS_SQUARED,
         },
     )
 
@@ -390,7 +391,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         title="Percentage of Threshold Current (Mean)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "%",
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -400,7 +401,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         title="Variance",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA^2",
+            SchemaKey.UNITS: Units.MILLIAMPS_SQUARED,
         },
     )
 
@@ -444,7 +445,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     width: (
@@ -456,7 +457,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Pulse Width",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
     frequency: (
@@ -468,7 +469,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Pulse Frequency",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -510,7 +511,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Maximum Amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "nA",
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     frequency: (
@@ -522,7 +523,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Frequency",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
     dt: (
@@ -534,7 +535,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Timestep",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -579,7 +580,7 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Percentage Below Threshold",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "%",
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -658,7 +659,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         description="Time duration in milliseconds for how long the SEClamp is activated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -668,7 +669,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         description="The initial voltage level in millivolts (mV).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "mV",
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -678,7 +679,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         description="The step voltage level in millivolts (mV).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "mV",
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -827,7 +828,7 @@ class SpikeStimulus(StimulusWithTimestamps):
                 "timestamps", data=spike_df_sorted["t"].values, dtype=np.float64
             )
             pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
-            ts.attrs[SchemaKey.UNITS] = "ms"
+            ts.attrs[SchemaKey.UNITS] = Units.MILLISECONDS
 
 
 class PoissonSpikeStimulus(SpikeStimulus):
@@ -853,7 +854,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
     frequency: (
@@ -865,7 +866,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         description="Mean frequency (Hz) of the Poisson input.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
     random_seed: int | list[int] = Field(
@@ -1018,7 +1019,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Time duration of the stimulus in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "ms",
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -1032,7 +1033,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1046,7 +1047,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         "Minimum Rate.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1059,7 +1060,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "Hz",
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1069,7 +1070,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Phase offset (degrees) of the sinusoid.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: "°",
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
 
