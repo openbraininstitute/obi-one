@@ -21,7 +21,7 @@ class CircuitFromId(OBIBaseModel):
 class Block:
     circuit: Circuit | CircuitFromId = Field( # Other elements in the union other than `CircuitFromId` not required.
             title="Circuit", description="Circuit to simulate.",
-            json_schema_extra={"ui_element": UIElement.MODEL_IDENTIFIER} 
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER} 
         )
 ```
 

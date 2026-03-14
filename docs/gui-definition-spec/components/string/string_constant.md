@@ -12,7 +12,7 @@ class Block:
         title="Constant",
         description="Constant description.",
         json_schema_extra={
-            "ui_element": UIElement.STRING_CONSTANT
+            SchemaKey.UI_ELEMENT: UIElement.STRING_CONSTANT
         }
     )
 ```

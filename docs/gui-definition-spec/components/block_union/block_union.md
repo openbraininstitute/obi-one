@@ -17,9 +17,9 @@ class Config:
         title="Neuron set",
         description="Neuron set for the simulation.",
         json_schema_extra={
-            "ui_element": UIElement.BLOCK_UNION,
-            "group": "Group 1", # Must be present in its parent's config `group_order` array,
-            "group_order": 0, # Unique within the group.
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: "Group 1", # Must be present in its parent's config `group_order` array,
+            SchemaKey.GROUP_ORDER: 0, # Unique within the group.
         }   
     )
 

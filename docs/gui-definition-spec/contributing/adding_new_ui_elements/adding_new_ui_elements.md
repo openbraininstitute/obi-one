@@ -10,8 +10,8 @@ For example the following would be an incorrect use of `UIElement` since the res
 # ❌ Wrong use of UIElement
 
 class Block:
-    field_A: int | list[int] = Field(json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP, ...})
-    field_B: float | list[float] = Field(json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP, ...})
+    field_A: int | list[int] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP, ...})
+    field_B: float | list[float] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP, ...})
 ```
 
 ```jsonc
@@ -37,14 +37,14 @@ In such cases either make them consistent or create separate `UIElement`s.
 ```py
 # ✅ Consistent types
 class Block:
-    field_A: int | list[int] = Field(json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP, ...})
-    field_B: int | list[int] = Field(json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP, ...})
+    field_A: int | list[int] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP, ...})
+    field_B: int | list[int] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP, ...})
 
 ```
 
 ```py
 # ✅ Separate UIElements
 class Block:
-    field_A: int | list[int] = Field(json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP, ...})
-    field_B: float | list[float] = Field(json_schema_extra={"ui_element": UIElement.FLOAT_PARAMETER_SWEEP, ...})
+    field_A: int | list[int] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP, ...})
+    field_B: float | list[float] = Field(json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP, ...})
 ```

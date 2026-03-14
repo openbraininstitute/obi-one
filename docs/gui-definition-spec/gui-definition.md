@@ -1,5 +1,24 @@
 # Specification for JSONSchema GUI definition
 
+
+## Naming Convention
+
+All schema keys and UI element identifiers use **lowercase with underscores** (e.g. `ui_element`, `block_single`, `string_input`).
+
+In obi-one, the [`SchemaKey` and `UIElement` enums](../../obi_one/core/schema.py) provide constants for referencing these strings in Python code. For example:
+
+```py
+from obi_one.core.schema import SchemaKey, UIElement
+
+json_schema_extra={
+    SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,  # produces "ui_element": "string_input"
+}
+```
+
+These enums should be used in obi-one rather than raw strings to avoid typos.
+
+
+
 ## ScanConfigs
 
 ScanConfigs intended for the UI require the `ui_enabled` (boolean) property. Setting this to `true` triggers the validation in continuous integration; only configs complying with the specification can be integrated into the UI. The ScanConfig is considered valid if its schema is valid and the schemas of all its elements are valid.
@@ -8,19 +27,20 @@ The schema can be tested locally with the command:
 `make test-schema`
 
 
-
 ## UI Elements
-Scan configs are composed of multiple UI elements, each corresponding to a variable in the Python definition of the ScanConfig. For example, there is a UI element for specifying a user-defined string:
+ScanConfigs are composed of multiple UI elements, each corresponding to a single variable in the Python definition of the ScanConfig. For example, there is a UI element for specifying a user-defined string:
 ```py
 file_name: str = Field(min_length=1,
                         title="title",
                         description="description",
                         json_schema_extra={
-                            "ui_element": UIElement.STRING_INPUT,
+                            "SchemaKey.UI_ELEMENT": UIElement.STRING_INPUT,
                         })
 ```
 
-The `ui_element` specified in the `json_schema_extra` dictionary of the Field definition identifies the UI element which should be displayed for user to enter this parameter. Each `ui_element` identifier corresponds to a strict reference schema. Schema validation checks that the definition of the parameter fits with what is expected and required for a `string_input`. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
+The `ui_element` specified in the `json_schema_extra` dictionary of the Field definition identifies the UI element which should be displayed in the user inteface for the user to enter a value of this parameter. 
+
+Each `ui_element` identifier corresponds to a strict reference schema. Schema validation checks that the definition of the parameter fits with what is expected and required for a `string_input`. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
 
 All ui_elements must contain a `title` and a `description`.
 
@@ -48,12 +68,12 @@ There are two major types of such UI elements:
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
         info: Info = Field(
-            title="Title",
-            description="Description",
+            title="Example title",
+            description="Example description",
             json_schema_extra={
-                "ui_element": UIElement.BLOCK_SINGLE,
-                "group": "Group 1", # Must be present in its parent's config `group_order` array,
-                "group_order": 0 # Unique within the group.
+                "SchemaKey.UI_ELEMENT": UIElement.BLOCK_SINGLE,
+                "SchemaKey.GROUP": "Group 1", # Must be present in its parent's config `group_order` array,
+                "SchemaKey.GROUP_ORDER": 0 # Unique within the group.
             }
         )
         ```

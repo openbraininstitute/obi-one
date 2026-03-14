@@ -48,7 +48,7 @@ class Block:
             default=1,
             title="Random seed"
             description="Random seed for the simulation.",
-            json_schema_extra={"ui_element": UIElement.INT_PARAMETER_SWEEP})
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP})
         )
 
 ```

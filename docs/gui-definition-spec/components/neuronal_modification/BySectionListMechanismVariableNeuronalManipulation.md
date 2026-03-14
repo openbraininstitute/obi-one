@@ -36,16 +36,16 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
-        json_schema_extra={"ui_hidden": True},
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     modification: BySectionListModification = Field(
         title="Ion channel variable manipulations by section type",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
-            "ui_element": UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 ```

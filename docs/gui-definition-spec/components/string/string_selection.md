@@ -13,7 +13,7 @@ class Block:
         description="Option description.",
         default="A",
         json_schema_extra={
-            "ui_element": UIElement.STRING_SELECTION,
+            SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
         }
     )
 ```
@@ -53,17 +53,17 @@ class Block:
         description="Option description.",
         default="A",
         json_schema_extra={
-            "title_by_key": {
+            SchemaKey.TITLE_BY_KEY: {
                 "A": r"A_{Title}",
                 "B": r"B_{Title}",
                 "C": r"C_{Title}",
             },
-            "description_by_key": {
+            SchemaKey.DESCRIPTION_BY_KEY: {
                 "A": "Description for option A.",
                 "B": "Description for option B.",
                 "C": "Description for option C.",
             },
-            "latex_by_key": {
+            SchemaKey.LATEX_BY_KEY: {
                 "A": r"A_{latex}",
                 "B": r"B_{latex}",
                 "C": r"C_{latex}",
