@@ -63,7 +63,6 @@ class IntRange(ParametericMultiValue):
     end: int
     _values: list[int] | None = None
 
-    # @model_validator(mode="after")
     @property
     def values(self) -> list[int]:
         if self._values is None:

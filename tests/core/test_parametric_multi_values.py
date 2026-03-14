@@ -27,10 +27,6 @@ class TestIntRange:
         r = IntRange(start=0, step=3, end=10)
         assert r.values == [0, 3, 6, 9]
 
-    def test_single_value(self):
-        r = IntRange(start=5, step=1, end=5)
-        assert r.values == [5]
-
     def test_single_value_large_step(self):
         r = IntRange(start=0, step=100, end=50)
         assert r.values == [0]
@@ -45,7 +41,7 @@ class TestIntRange:
 
     def test_start_equals_end_raises(self):
         with pytest.raises(ValidationError, match="start must be < end"):
-            IntRange(start=5, step=1, end=4)
+            IntRange(start=5, step=1, end=5)
 
     def test_step_must_be_positive(self):
         with pytest.raises(ValidationError):
@@ -256,11 +252,11 @@ class TestCheckAnnotationArguments:
         assert result == {"ge": 0, "le": 10}
 
     def test_ge_and_gt_raises(self):
-        with pytest.raises(OBIONEError, match="Only one of ge or gt"):
+        with pytest.raises(OBIONEError, match="Only one of ge or gt can be provided."):
             check_annotation_arguments_and_create_kwargs(ge=0, gt=0, le=None, lt=None)
 
     def test_le_and_lt_raises(self):
-        with pytest.raises(OBIONEError, match="Only one of le or lt"):
+        with pytest.raises(OBIONEError, match="Only one of le or lt can be provided."):
             check_annotation_arguments_and_create_kwargs(ge=None, gt=None, le=10, lt=10)
 
     def test_all_none(self):

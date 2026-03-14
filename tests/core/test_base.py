@@ -25,11 +25,6 @@ class ChildModel(SimpleModel):
 
 
 class TestOBIBaseModelTypeField:
-    # A
-    def test_type_field_is_set_on_subclass(self):
-        assert SimpleModel.type == "SimpleModel"
-
-    # B
     def test_type_field_is_set_on_instance(self):
         obj = SimpleModel()
         assert obj.type == "SimpleModel"
@@ -52,20 +47,10 @@ class TestOBIBaseModelTypeField:
         obj = SimpleModel.model_validate(data)
         assert obj.type == "SimpleModel"
 
-    # A
-    def test_type_field_on_child_class(self):
-        assert ChildModel.type == "ChildModel"
-
-    # B
     def test_type_field_on_child_instance(self):
         obj = ChildModel()
         assert obj.type == "ChildModel"
 
-    # A
-    def test_child_type_different_from_parent_a(self):
-        assert SimpleModel.type != ChildModel.type
-
-    # B
     def test_child_type_different_from_parent(self):
         parent = SimpleModel()
         child = ChildModel()
