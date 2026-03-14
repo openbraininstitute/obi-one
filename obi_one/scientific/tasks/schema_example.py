@@ -4,6 +4,7 @@ from typing import ClassVar, Literal
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.scientific.library.entity_property_types import (
@@ -13,10 +14,20 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
+from obi_one.scientific.unions.unions_manipulations import (
+    SynapticManipulationsReference,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
+)
+from obi_one.scientific.unions.unions_recordings import RecordingReference
+from obi_one.scientific.unions.unions_stimuli import (
+    StimulusReference,
+)
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
 )
 
 
@@ -55,6 +66,14 @@ class SchemaExampleScanConfig(ScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
+
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+        NeuronSetReference,
+        SynapticManipulationsReference,
+        StimulusReference,
+    ]
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(

@@ -8,7 +8,6 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -186,6 +185,12 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     def single_coord_scan_default_subpath(self) -> str:
         return self.single_coord_class_name + "/"
 
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = []
+
+    @property
+    def all_block_reference_types(self) -> list[type[BlockReference]]:
+        return self._all_block_reference_types
+
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
         reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
@@ -194,9 +199,18 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
+        if not len(self.all_block_reference_types):
+            msg = (
+                "_all_block_reference_types is empty for the ScanConfig despite an"
+                "attempt to add a block to a block dictionary. Make sure that"
+                "_all_block_reference_types class variable is a list of all BlockReference types"
+                "used in the ScanConfig."
+            )
+            raise OBIONEError(msg)
+
         # Find the class in AllReferenceTypes whose name matches reference_type_name
         reference_type = next(
-            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
+            (cls for cls in self.all_block_reference_types if cls.__name__ == reference_type_name),
             None,
         )
         if reference_type is None:
