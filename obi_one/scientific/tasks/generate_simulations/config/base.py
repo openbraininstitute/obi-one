@@ -13,6 +13,7 @@ from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -86,6 +87,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
+
+    _all_block_reference_types: list[type[BlockReference]] = [NeuronSetReference, TimestampsReference, RecordingReference]
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
