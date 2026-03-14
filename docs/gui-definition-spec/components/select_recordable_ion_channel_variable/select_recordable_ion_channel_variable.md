@@ -35,9 +35,9 @@ class IonChannelVariableRecording(Recording):
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
-            "ui_element": "docs/gui-definition-spec/components/select_recordable_ion_channel_variable",
-            "property_group": EntityType.IONCHANNELMODEL,
-            "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
+            SchemaKey.UI_ELEMENT: "docs/gui-definition-spec/components/select_recordable_ion_channel_variable",
+            SchemaKey.PROPERTY_GROUP: EntityType.IONCHANNELMODEL,
+            SchemaKey.PROPERTY: IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
 ```
