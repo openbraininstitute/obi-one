@@ -1,11 +1,8 @@
-import pytest
-
 from obi_one.core.block import Block
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig, get_all_annotations
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
-    FolderCompressionSingleConfig,
 )
 
 
@@ -49,15 +46,14 @@ class TestScanConfigClassVars:
         assert "Add a description" in ScanConfig.description
 
     def test_default_single_coord_class_name(self):
-        assert ScanConfig.single_coord_class_name == ""
+        assert not ScanConfig.single_coord_class_name
 
     def test_folder_compression_name(self):
         assert FolderCompressionScanConfig.name == "Folder Compression"
 
     def test_folder_compression_single_coord(self):
         assert (
-            FolderCompressionScanConfig.single_coord_class_name
-            == "FolderCompressionSingleConfig"
+            FolderCompressionScanConfig.single_coord_class_name == "FolderCompressionSingleConfig"
         )
 
 
@@ -65,7 +61,7 @@ class TestScanConfigCreation:
     def test_folder_compression_creation(self):
         config = FolderCompressionScanConfig(
             initialize=FolderCompressionScanConfig.Initialize(
-                folder_path=NamedPath(name="test", path="/tmp/test"),
+                folder_path=NamedPath(name="test", path="/data/test"),
             )
         )
         assert config.initialize.folder_path.name == "test"
@@ -107,10 +103,7 @@ class TestSingleCoordScanDefaultSubpath:
                 folder_path=NamedPath(name="t", path="/t"),
             )
         )
-        assert (
-            config.single_coord_scan_default_subpath
-            == "FolderCompressionSingleConfig/"
-        )
+        assert config.single_coord_scan_default_subpath == "FolderCompressionSingleConfig/"
 
 
 class TestBlockMapping:

@@ -1,5 +1,3 @@
-import pytest
-
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.task import Task
 

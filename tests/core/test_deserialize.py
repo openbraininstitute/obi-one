@@ -11,7 +11,7 @@ from obi_one.core.path import NamedPath
 
 def make_named_path_dict():
     """Create a serialized NamedPath dict (a simple OBIBaseModel)."""
-    obj = NamedPath(name="test_path", path="/tmp/test")
+    obj = NamedPath(name="test_path", path="/data/test")
     return json.loads(obj.model_dump_json())
 
 
@@ -21,7 +21,7 @@ class TestDeserializeObiObjectFromJsonData:
         obj = deserialize_obi_object_from_json_data(data)
         assert isinstance(obj, NamedPath)
         assert obj.name == "test_path"
-        assert obj.path == "/tmp/test"
+        assert obj.path == "/data/test"
 
     def test_preserves_type_field(self):
         data = make_named_path_dict()

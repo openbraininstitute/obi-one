@@ -1,5 +1,7 @@
 import pytest
+from pydantic import Field, ValidationError
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.parametric_multi_values import IntRange
 
@@ -11,7 +13,7 @@ class SimpleBlock(Block):
 
 class MultiValueBlock(Block):
     single_val: int = 1
-    list_val: list[int] = [10, 20, 30]
+    list_val: list[int] = Field(default=[10, 20, 30])
     another_single: str = "hello"
 
 
@@ -31,8 +33,6 @@ class TestBlockCreation:
         assert block.type == "SimpleBlock"
 
     def test_block_inherits_obi_base_model(self):
-        from obi_one.core.base import OBIBaseModel
-
         assert issubclass(Block, OBIBaseModel)
 
 
@@ -114,7 +114,7 @@ class TestMultipleValueParameters:
 
     def test_resets_on_each_call(self):
         block = MultiValueBlock()
-        params1 = block.multiple_value_parameters(category_name="cat1")
+        block.multiple_value_parameters(category_name="cat1")
         params2 = block.multiple_value_parameters(category_name="cat2")
         # Locations should reflect the most recent call
         assert all(p.location_list[0] == "cat2" for p in params2)
@@ -143,8 +143,6 @@ class TestEnforceNoMultiParam:
 
 class TestBlockExtraForbid:
     def test_extra_fields_rejected(self):
-        from pydantic import ValidationError
-
         with pytest.raises(ValidationError):
             SimpleBlock(value=1, name="ok", unknown="bad")
 
@@ -175,7 +173,7 @@ class TestBlockMultipleValueParametersEdgeCases:
         """An empty list is still a list, so it's a multi-value param."""
 
         class EmptyListBlock(Block):
-            items: list[int] = []
+            items: list[int] = Field(default=[])
 
         block = EmptyListBlock()
         params = block.multiple_value_parameters(category_name="cat")
@@ -183,7 +181,6 @@ class TestBlockMultipleValueParametersEdgeCases:
         assert params[0].values == []
 
     def test_none_field_not_detected(self):
-
         class NullableBlock(Block):
             opt: int | None = None
 
@@ -196,7 +193,7 @@ class TestBlockMultipleValueParametersEdgeCases:
 
         class MixedBlock(Block):
             single: int = 1
-            multi: list[int] = [1, 2]
+            multi: list[int] = Field(default=[1, 2])
             range_val: IntRange = IntRange(start=0, step=1, end=2)
 
         block = MixedBlock()

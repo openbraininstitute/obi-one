@@ -27,9 +27,9 @@ class TestIntRange:
         r = IntRange(start=0, step=3, end=10)
         assert r.values == [0, 3, 6, 9]
 
-    def test_single_value(self):                                                
-        r = IntRange(start=5, step=1, end=5)                                    
-        assert r.values == [5]   
+    def test_single_value(self):
+        r = IntRange(start=5, step=1, end=5)
+        assert r.values == [5]
 
     def test_single_value_large_step(self):
         r = IntRange(start=0, step=100, end=50)
@@ -229,8 +229,9 @@ class TestNonNegativeFloatRange:
 
 class TestMaxNCoordinates:
     def test_exceeds_max_raises(self):
+        r = IntRange(start=0, step=1, end=100)
         with pytest.raises(PydanticCustomError, match="exceeds maximum"):
-            IntRange(start=0, step=1, end=100).values
+            _ = r.values
 
 
 class TestCheckAnnotationArguments:
@@ -263,9 +264,7 @@ class TestCheckAnnotationArguments:
             check_annotation_arguments_and_create_kwargs(ge=None, gt=None, le=10, lt=10)
 
     def test_all_none(self):
-        result = check_annotation_arguments_and_create_kwargs(
-            ge=None, gt=None, le=None, lt=None
-        )
+        result = check_annotation_arguments_and_create_kwargs(ge=None, gt=None, le=None, lt=None)
         assert result == {}
 
 

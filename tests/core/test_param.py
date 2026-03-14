@@ -16,7 +16,7 @@ class TestNestedParamShort:
         assert nested_param_short(["block", "value"]) == "block.value"
 
     def test_empty_list(self):
-        assert nested_param_short([]) == ""
+        assert not nested_param_short([])
 
 
 class TestScanParamLocationStr:
@@ -27,9 +27,7 @@ class TestScanParamLocationStr:
         assert param.location_str == "stimuli.stim_1.amplitude"
 
     def test_location_str_from_single_value(self):
-        param = SingleValueScanParam(
-            location_list=["initialize", "dt"], value=0.025
-        )
+        param = SingleValueScanParam(location_list=["initialize", "dt"], value=0.025)
         assert param.location_str == "initialize.dt"
 
 
@@ -40,9 +38,7 @@ class TestMultiValueScanParam:
         assert param.location_list == []
 
     def test_with_values(self):
-        param = MultiValueScanParam(
-            location_list=["a", "b"], values=[1, 2, 3]
-        )
+        param = MultiValueScanParam(location_list=["a", "b"], values=[1, 2, 3])
         assert param.values == [1, 2, 3]
         assert param.location_list == ["a", "b"]
 
@@ -71,17 +67,13 @@ class TestSingleValueScanParam:
 
 class TestScanParamSerialization:
     def test_multi_value_model_dump(self):
-        param = MultiValueScanParam(
-            location_list=["a", "b"], values=[1, 2, 3]
-        )
+        param = MultiValueScanParam(location_list=["a", "b"], values=[1, 2, 3])
         dump = param.model_dump()
         assert dump["location_list"] == ["a", "b"]
         assert dump["values"] == [1, 2, 3]
 
     def test_single_value_model_dump(self):
-        param = SingleValueScanParam(
-            location_list=["x"], value=42
-        )
+        param = SingleValueScanParam(location_list=["x"], value=42)
         dump = param.model_dump()
         assert dump["location_list"] == ["x"]
         assert dump["value"] == 42
@@ -92,4 +84,4 @@ class TestNestedParamShortEdgeCases:
         assert nested_param_short([0, 1, 2]) == "0.1.2"
 
     def test_single_empty_string(self):
-        assert nested_param_short([""]) == ""
+        assert not nested_param_short([""])

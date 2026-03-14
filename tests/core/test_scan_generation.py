@@ -8,19 +8,17 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_generation import (
     CoupledScanGenerationTask,
     GridScanGenerationTask,
-    ScanGenerationTask,
 )
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
-    FolderCompressionSingleConfig,
 )
 
 
 def make_config(**init_kwargs):
     """Helper to create a FolderCompressionScanConfig."""
     defaults = {
-        "folder_path": NamedPath(name="test", path="/tmp/test"),
+        "folder_path": NamedPath(name="test", path="/data/test"),
     }
     defaults.update(init_kwargs)
     return FolderCompressionScanConfig(
@@ -97,7 +95,7 @@ class TestMultipleValueParameters:
         scan = make_grid_scan(config)
         d = scan.multiple_value_parameters_dictionary
         assert len(d) == 1
-        values = list(d.values())[0]
+        values = next(iter(d.values()))
         assert values == ["gz", "bz2"]
 
 
@@ -174,14 +172,14 @@ class TestCreateSingleConfigs:
     def test_no_multi_values(self, tmp_path):
         config = make_config()
         scan = make_grid_scan(config, output_root=tmp_path)
-        coords = scan.coordinate_parameters()
+        scan.coordinate_parameters()
         singles = scan.create_single_configs()
         assert len(singles) == 1
 
     def test_with_multi_values(self, tmp_path):
         config = make_config(file_format=["gz", "bz2"])
         scan = make_grid_scan(config, output_root=tmp_path)
-        coords = scan.coordinate_parameters()
+        scan.coordinate_parameters()
         singles = scan.create_single_configs()
         assert len(singles) == 2
 

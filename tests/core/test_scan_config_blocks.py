@@ -12,7 +12,6 @@ from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.scan_config import ScanConfig
 
-
 # --- Test fixtures: minimal concrete types ---
 
 
@@ -85,7 +84,7 @@ class ConfigWithRefBlock(ScanConfig):
         json_schema_extra={"reference_type": "TestRef"},
     )
 
-    ref_holder: RefHolder = Field(default_factory=lambda: RefHolder())
+    ref_holder: RefHolder = Field(default_factory=RefHolder)
 
 
 # --- Tests ---
@@ -176,9 +175,7 @@ class TestFillBlockReferences:
     def test_block_reference_in_dict_block_resolved(self):
         """A block inside a dict that has a BlockReference pointing to another dict block."""
         # RefHolder is a root block, but the reference targets a dict block.
-        holder = RefHolder(
-            ref_field=TestRef(block_dict_name="blocks", block_name="target_block")
-        )
+        holder = RefHolder(ref_field=TestRef(block_dict_name="blocks", block_name="target_block"))
         config = ConfigWithRefBlock(
             initialize=ConfigWithRefBlock.Initialize(),
             blocks={"target_block": BlockTypeA(val_a=99)},
@@ -189,9 +186,7 @@ class TestFillBlockReferences:
         assert config.ref_holder.ref_field.block is config.blocks["target_block"]
 
     def test_block_reference_bad_dict_name_raises(self):
-        holder = RefHolder(
-            ref_field=TestRef(block_dict_name="nonexistent_dict", block_name="x")
-        )
+        holder = RefHolder(ref_field=TestRef(block_dict_name="nonexistent_dict", block_name="x"))
         with pytest.raises(KeyError):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
@@ -200,9 +195,7 @@ class TestFillBlockReferences:
             )
 
     def test_block_reference_bad_block_name_raises(self):
-        holder = RefHolder(
-            ref_field=TestRef(block_dict_name="blocks", block_name="missing")
-        )
+        holder = RefHolder(ref_field=TestRef(block_dict_name="blocks", block_name="missing"))
         with pytest.raises(KeyError, match="missing"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),

@@ -41,7 +41,7 @@ class TestSingleValidationOutput:
             name="Test",
             passed=False,
         )
-        assert output.validation_details == ""
+        assert not output.validation_details
         assert output.assets == []
 
     def test_with_assets(self):

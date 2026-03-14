@@ -1,11 +1,12 @@
 import json
+import logging
 from pathlib import Path
 
 import pytest
 
 from obi_one.core.param import SingleValueScanParam
 from obi_one.core.path import NamedPath
-from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
+from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
@@ -19,11 +20,11 @@ class TestSingleCoordinateScanParamsEmpty:
 
     def test_empty_nested_param_name_and_value_subpath(self):
         scp = SingleCoordinateScanParams()
-        assert scp.nested_param_name_and_value_subpath == Path(".")
+        assert scp.nested_param_name_and_value_subpath == Path()
 
     def test_empty_nested_param_value_subpath(self):
         scp = SingleCoordinateScanParams()
-        assert scp.nested_param_value_subpath == Path(".")
+        assert scp.nested_param_value_subpath == Path()
 
 
 class TestSingleCoordinateScanParamsWithParams:
@@ -31,12 +32,8 @@ class TestSingleCoordinateScanParamsWithParams:
     def scan_params(self):
         return SingleCoordinateScanParams(
             scan_params=[
-                SingleValueScanParam(
-                    location_list=["initialize", "file_format"], value="gz"
-                ),
-                SingleValueScanParam(
-                    location_list=["initialize", "file_name"], value="out"
-                ),
+                SingleValueScanParam(location_list=["initialize", "file_format"], value="gz"),
+                SingleValueScanParam(location_list=["initialize", "file_name"], value="out"),
             ]
         )
 
@@ -58,7 +55,7 @@ class TestSingleCoordinateScanParamsWithParams:
 
 class TestSingleConfigMixinEnforcement:
     def test_single_config_rejects_list_in_block(self):
-        with pytest.raises(Exception):
+        with pytest.raises(TypeError, match="must not be a list"):
             FolderCompressionSingleConfig(
                 initialize=FolderCompressionScanConfig.Initialize(
                     folder_path=[
@@ -71,7 +68,7 @@ class TestSingleConfigMixinEnforcement:
     def test_single_config_accepts_single_values(self):
         config = FolderCompressionSingleConfig(
             initialize=FolderCompressionScanConfig.Initialize(
-                folder_path=NamedPath(name="test", path="/tmp/test"),
+                folder_path=NamedPath(name="test", path="/data/test"),
                 file_format="gz",
                 file_name="output",
             )
@@ -107,40 +104,30 @@ class TestInitializeCoordinateOutputRoot:
         )
         config.single_coordinate_scan_params = SingleCoordinateScanParams(
             scan_params=[
-                SingleValueScanParam(
-                    location_list=["initialize", "file_format"], value="gz"
-                ),
+                SingleValueScanParam(location_list=["initialize", "file_format"], value="gz"),
             ]
         )
         config.idx = 0
         return config
 
     def test_name_equals_value_option(self, single_config, tmp_path):
-        single_config.initialize_coordinate_output_root(
-            tmp_path, "NAME_EQUALS_VALUE"
-        )
+        single_config.initialize_coordinate_output_root(tmp_path, "NAME_EQUALS_VALUE")
         assert single_config.scan_output_root == tmp_path
         assert single_config.coordinate_output_root.exists()
         assert "initialize.file_format=gz" in str(single_config.coordinate_output_root)
 
     def test_value_option(self, single_config, tmp_path):
-        single_config.initialize_coordinate_output_root(
-            tmp_path, "VALUE"
-        )
+        single_config.initialize_coordinate_output_root(tmp_path, "VALUE")
         assert "gz" in str(single_config.coordinate_output_root)
 
     def test_zero_index_option(self, single_config, tmp_path):
-        single_config.initialize_coordinate_output_root(
-            tmp_path, "ZERO_INDEX"
-        )
+        single_config.initialize_coordinate_output_root(tmp_path, "ZERO_INDEX")
         assert single_config.coordinate_output_root == tmp_path / "0"
         assert single_config.coordinate_output_root.exists()
 
     def test_invalid_option_raises(self, single_config, tmp_path):
         with pytest.raises(ValueError, match="Invalid coordinate_directory_option"):
-            single_config.initialize_coordinate_output_root(
-                tmp_path, "INVALID"
-            )
+            single_config.initialize_coordinate_output_root(tmp_path, "INVALID")
 
 
 class TestSingleConfigMixinSerialize:
@@ -185,15 +172,11 @@ class TestSingleConfigMixinSerialize:
 
 class TestSingleCoordinateScanParamsDisplay:
     def test_display_no_params(self, caplog):
-        import logging
-
         with caplog.at_level(logging.INFO):
             scp = SingleCoordinateScanParams()
             scp.display_parameters()
 
     def test_display_with_params(self, caplog):
-        import logging
-
         scp = SingleCoordinateScanParams(
             scan_params=[
                 SingleValueScanParam(location_list=["a", "b"], value=1),

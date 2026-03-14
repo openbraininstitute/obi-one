@@ -38,7 +38,7 @@ class TestBlockReferenceCreation:
 
     def test_default_block_dict_name(self):
         ref = TestReference(block_name="test")
-        assert ref.block_dict_name == ""
+        assert not ref.block_dict_name
 
 
 class TestBlockReferenceBlock:
@@ -100,15 +100,11 @@ class TestBlockReferenceSerialization:
 class TestBlockReferenceErrorMessages:
     def test_unset_block_error_includes_name_and_dict(self):
         ref = TestReference(block_dict_name="neuron_sets", block_name="missing_block")
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="missing_block") as exc_info:
             _ = ref.block
-        error_msg = str(exc_info.value)
-        assert "missing_block" in error_msg
-        assert "neuron_sets" in error_msg
+        assert "neuron_sets" in str(exc_info.value)
 
     def test_unset_block_error_mentions_troubleshooting(self):
         ref = TestReference(block_dict_name="ns", block_name="x")
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="block_dict_name"):
             _ = ref.block
-        error_msg = str(exc_info.value)
-        assert "block_dict_name" in error_msg

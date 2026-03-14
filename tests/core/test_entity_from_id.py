@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 

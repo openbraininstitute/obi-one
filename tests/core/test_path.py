@@ -4,9 +4,9 @@ from obi_one.core.path import NamedPath
 
 class TestNamedPath:
     def test_creation(self):
-        np = NamedPath(name="my_file", path="/tmp/test.txt")
+        np = NamedPath(name="my_file", path="/data/test.txt")
         assert np.name == "my_file"
-        assert np.path == "/tmp/test.txt"
+        assert np.path == "/data/test.txt"
 
     def test_repr_returns_name(self):
         np = NamedPath(name="circuit_config", path="/data/circuit.json")

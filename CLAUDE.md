@@ -80,7 +80,8 @@ The core uses a **block-based compositional pattern**:
 - **100 char line length**
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
 - **Pydantic v2** for all data models
-- Tests are less strict on linting (annotations, docstrings, magic values, assert, private access all allowed)
+- Tests are less strict on linting (annotations, docstrings, magic values, assert, private access, class-based test methods all allowed)
+- Use `Field(default=[...])` for mutable defaults on Pydantic model fields in tests to avoid RUF012
 - Coverage minimum: 30%, measured on both `app/` and `obi_one/`
 - Output files from examples should go in `obi-output/` outside the repo
 
@@ -89,7 +90,9 @@ The core uses a **block-based compositional pattern**:
 - **pytest** with `pytest-cov`, `pytest-freezer` (time), `pytest-httpx` (HTTP mocking)
 - Test paths: `tests/` and `examples/`
 - Tests mirror source structure: `tests/core/`, `tests/scientific/`, `tests/app/`, `tests/tasks/`
+- Tests use class-based organization (`class TestFoo:` with `def test_*` methods)
 - Env vars for testing loaded from `.env.test-local`
+- Always run `make format` before committing test files
 
 ## Dependencies
 

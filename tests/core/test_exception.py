@@ -16,8 +16,9 @@ class TestOBIONEError:
         assert issubclass(OBIONEError, Exception)
 
     def test_raise_and_catch(self):
-        with pytest.raises(OBIONEError, match="test error"):
-            raise OBIONEError("test error")
+        msg = "test error"
+        with pytest.raises(OBIONEError, match=msg):
+            raise OBIONEError(msg)
 
 
 class TestConfigValidationError:
@@ -29,8 +30,9 @@ class TestConfigValidationError:
         assert str(err) == "invalid config"
 
     def test_catchable_as_obi_one_error(self):
+        msg = "bad config"
         with pytest.raises(OBIONEError):
-            raise ConfigValidationError("bad config")
+            raise ConfigValidationError(msg)
 
 
 class TestProtocolNotFoundError:
