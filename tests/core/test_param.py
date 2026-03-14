@@ -67,3 +67,29 @@ class TestSingleValueScanParam:
     def test_with_none_value(self):
         param = SingleValueScanParam(location_list=["opt"], value=None)
         assert param.value is None
+
+
+class TestScanParamSerialization:
+    def test_multi_value_model_dump(self):
+        param = MultiValueScanParam(
+            location_list=["a", "b"], values=[1, 2, 3]
+        )
+        dump = param.model_dump()
+        assert dump["location_list"] == ["a", "b"]
+        assert dump["values"] == [1, 2, 3]
+
+    def test_single_value_model_dump(self):
+        param = SingleValueScanParam(
+            location_list=["x"], value=42
+        )
+        dump = param.model_dump()
+        assert dump["location_list"] == ["x"]
+        assert dump["value"] == 42
+
+
+class TestNestedParamShortEdgeCases:
+    def test_numeric_elements(self):
+        assert nested_param_short([0, 1, 2]) == "0.1.2"
+
+    def test_single_empty_string(self):
+        assert nested_param_short([""]) == ""

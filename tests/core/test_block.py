@@ -139,3 +139,66 @@ class TestEnforceNoMultiParam:
         block = MultiValueBlock()
         with pytest.raises(TypeError, match="list_val"):
             block.enforce_no_multi_param()
+
+
+class TestBlockExtraForbid:
+    def test_extra_fields_rejected(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SimpleBlock(value=1, name="ok", unknown="bad")
+
+
+class TestBlockSerialization:
+    def test_model_dump(self):
+        block = SimpleBlock(value=42, name="test")
+        dump = block.model_dump()
+        assert dump["value"] == 42
+        assert dump["name"] == "test"
+        assert dump["type"] == "SimpleBlock"
+
+    def test_model_dump_json_round_trip(self):
+        block = SimpleBlock(value=7, name="round_trip")
+        json_str = block.model_dump_json()
+        restored = SimpleBlock.model_validate_json(json_str)
+        assert restored.value == 7
+        assert restored.name == "round_trip"
+
+    def test_multiple_value_block_serializes_lists(self):
+        block = MultiValueBlock(list_val=[1, 2])
+        dump = block.model_dump()
+        assert dump["list_val"] == [1, 2]
+
+
+class TestBlockMultipleValueParametersEdgeCases:
+    def test_empty_list_still_detected(self):
+        """An empty list is still a list, so it's a multi-value param."""
+
+        class EmptyListBlock(Block):
+            items: list[int] = []
+
+        block = EmptyListBlock()
+        params = block.multiple_value_parameters(category_name="cat")
+        assert len(params) == 1
+        assert params[0].values == []
+
+    def test_none_field_not_detected(self):
+
+        class NullableBlock(Block):
+            opt: int | None = None
+
+        block = NullableBlock()
+        params = block.multiple_value_parameters(category_name="cat")
+        assert len(params) == 0
+
+    def test_mixed_fields(self):
+        """Block with a mix of single, list, and range fields."""
+
+        class MixedBlock(Block):
+            single: int = 1
+            multi: list[int] = [1, 2]
+            range_val: IntRange = IntRange(start=0, step=1, end=2)
+
+        block = MixedBlock()
+        params = block.multiple_value_parameters(category_name="cat")
+        assert len(params) == 2  # multi and range_val

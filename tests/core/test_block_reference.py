@@ -75,3 +75,40 @@ class TestBlockReferenceAllowedTypes:
     def test_single_type_reference(self):
         union_type = SingleTypeReference.allowed_block_types_union()
         assert isinstance(BlockA(val=1), union_type)
+
+    def test_unrelated_block_not_in_union(self):
+        union_type = TestReference.allowed_block_types_union()
+        assert not isinstance(UnrelatedBlock(val=0.0), union_type)
+
+
+class TestBlockReferenceSerialization:
+    def test_model_dump(self):
+        ref = TestReference(block_dict_name="stimuli", block_name="stim_1")
+        dump = ref.model_dump()
+        assert dump["block_dict_name"] == "stimuli"
+        assert dump["block_name"] == "stim_1"
+        assert dump["type"] == "TestReference"
+
+    def test_json_round_trip(self):
+        ref = TestReference(block_dict_name="ns", block_name="target")
+        json_str = ref.model_dump_json()
+        restored = TestReference.model_validate_json(json_str)
+        assert restored.block_dict_name == "ns"
+        assert restored.block_name == "target"
+
+
+class TestBlockReferenceErrorMessages:
+    def test_unset_block_error_includes_name_and_dict(self):
+        ref = TestReference(block_dict_name="neuron_sets", block_name="missing_block")
+        with pytest.raises(ValueError) as exc_info:
+            _ = ref.block
+        error_msg = str(exc_info.value)
+        assert "missing_block" in error_msg
+        assert "neuron_sets" in error_msg
+
+    def test_unset_block_error_mentions_troubleshooting(self):
+        ref = TestReference(block_dict_name="ns", block_name="x")
+        with pytest.raises(ValueError) as exc_info:
+            _ = ref.block
+        error_msg = str(exc_info.value)
+        assert "block_dict_name" in error_msg

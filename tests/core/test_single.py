@@ -181,3 +181,67 @@ class TestSingleConfigMixinSerialize:
         assert keys[0] == "obi_one_version"
         assert keys[1] == "type"
         assert keys[2] == "idx"
+
+
+class TestSingleCoordinateScanParamsDisplay:
+    def test_display_no_params(self, caplog):
+        import logging
+
+        with caplog.at_level(logging.INFO):
+            scp = SingleCoordinateScanParams()
+            scp.display_parameters()
+
+    def test_display_with_params(self, caplog):
+        import logging
+
+        scp = SingleCoordinateScanParams(
+            scan_params=[
+                SingleValueScanParam(location_list=["a", "b"], value=1),
+                SingleValueScanParam(location_list=["c"], value=2),
+            ]
+        )
+        with caplog.at_level(logging.INFO):
+            scp.display_parameters()
+
+
+class TestSingleCoordinateScanParamsDictionaryRepresentation:
+    def test_empty(self):
+        scp = SingleCoordinateScanParams()
+        assert scp.dictionary_representaiton() == {}
+
+    def test_single_param(self):
+        scp = SingleCoordinateScanParams(
+            scan_params=[
+                SingleValueScanParam(location_list=["x", "y"], value=42),
+            ]
+        )
+        d = scp.dictionary_representaiton()
+        assert d == {"x.y": 42}
+
+    def test_multiple_params(self):
+        scp = SingleCoordinateScanParams(
+            scan_params=[
+                SingleValueScanParam(location_list=["a"], value=1),
+                SingleValueScanParam(location_list=["b"], value=2),
+            ]
+        )
+        d = scp.dictionary_representaiton()
+        assert d == {"a": 1, "b": 2}
+
+
+class TestInitializeCoordinateOutputRootDefaults:
+    def test_default_option_is_name_equals_value(self, tmp_path):
+        config = FolderCompressionSingleConfig(
+            initialize=FolderCompressionScanConfig.Initialize(
+                folder_path=NamedPath(name="t", path="/t"),
+            )
+        )
+        config.single_coordinate_scan_params = SingleCoordinateScanParams(
+            scan_params=[
+                SingleValueScanParam(location_list=["x"], value="v"),
+            ]
+        )
+        config.idx = 0
+        # Default option
+        config.initialize_coordinate_output_root(tmp_path)
+        assert config.coordinate_output_root.exists()
