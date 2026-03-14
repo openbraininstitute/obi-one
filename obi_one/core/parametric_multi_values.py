@@ -35,7 +35,7 @@ class ParametericMultiValue(OBIBaseModel):
 
     def __len__(self) -> int:
         """Length operator."""
-        return len(self._values)
+        return len(self.values)
 
     @classmethod
     def check_n_less_equal_max(cls, n: int, max_n: int) -> None:
