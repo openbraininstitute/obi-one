@@ -828,7 +828,7 @@ class SpikeStimulus(StimulusWithTimestamps):
                 "timestamps", data=spike_df_sorted["t"].values, dtype=np.float64
             )
             pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
-            ts.attrs[SchemaKey.UNITS] = Units.MILLISECONDS
+            ts.attrs["units"] = "ms"
 
 
 class PoissonSpikeStimulus(SpikeStimulus):
