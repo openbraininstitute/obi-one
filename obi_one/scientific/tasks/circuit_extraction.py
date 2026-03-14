@@ -21,14 +21,13 @@ from PIL import Image
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.core.constants import _SCAN_CONFIG_FILENAME
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
