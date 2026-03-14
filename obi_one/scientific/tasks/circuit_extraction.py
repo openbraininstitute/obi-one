@@ -28,12 +28,12 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.constants import _SCAN_CONFIG_FILENAME
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _MAX_SMALL_MICROCIRCUIT_SIZE,
     _NEURON_PAIR_SIZE,
-    _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (

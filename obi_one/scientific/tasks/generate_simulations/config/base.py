@@ -10,7 +10,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
-from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
@@ -23,7 +23,6 @@ from obi_one.scientific.library.constants import (
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
-    _SCAN_CONFIG_FILENAME,
     _SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
