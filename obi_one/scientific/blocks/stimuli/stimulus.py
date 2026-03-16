@@ -651,16 +651,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
-    # overwrite duration to have a more accurate description for this stimulus
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-        title="Total Duration",
-        description="Time duration in milliseconds for how long the SEClamp is activated.",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
-        },
-    )
+    neuron_set: NeuronSetReference | None = None
 
     dur1: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
