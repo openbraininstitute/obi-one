@@ -46,7 +46,7 @@ def test_register_simulation_results_registers_entity_and_uploads_files(
     )
 
     mock_client.register_entity.assert_called_once()
-    call_args, call_kwargs = mock_client.register_entity.call_args
+    call_args, _ = mock_client.register_entity.call_args
     assert len(call_args) == 1
     entity_arg = call_args[0]
     assert entity_arg.simulation_id == simulation_metadata.simulation_id
@@ -70,4 +70,3 @@ def test_register_simulation_results_registers_entity_and_uploads_files(
             file_content_type=expected_content_type,
             asset_label=test_module.AssetLabel.voltage_report,
         )
-
