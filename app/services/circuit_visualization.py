@@ -156,45 +156,6 @@ def get_population_nodes(  # noqa: PLR0914
     return nodes_list
 
 
-def get_soma_radius(
-    parent_dir: Path,
-    client: Client,
-    circuit_id: UUID,
-    asset_id: UUID,
-    morph_file: Path,
-    morph_name: str,
-) -> float:
-    try:
-        output_path = parent_dir / morph_file
-
-        if not output_path.exists():
-            client.download_file(
-                entity_type=Circuit,
-                output_path=output_path,
-                entity_id=circuit_id,
-                asset_id=asset_id,
-                asset_path=morph_file,
-            )
-
-        ext = output_path.suffix.lower()
-
-        if ext == ".h5":
-            morph = morphio.Collection(output_path).load(morph_name)
-        else:
-            morph = morphio.Morphology(output_path)
-
-        soma_diameters = morph.soma.diameters
-
-        if len(soma_diameters) == 0:
-            return 0.0
-
-        return float(np.mean(soma_diameters) / 2.0)
-
-    except Exception as e:
-        msg = f"Could not get morphology '{morph_name}' soma radius from circuit {circuit_id}"
-        raise RuntimeError(msg) from e
-
-
 def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
