@@ -282,6 +282,19 @@ def download_circuit_config(
         ) from e
 
 
+def load_morphology(output_path: Path, morph_name: str) -> morphio.Morphology:
+    if output_path.suffix.lower() == ".h5":
+        # Try to load as collection
+        try:
+            collection = morphio.Collection(output_path.as_posix())
+            return collection.load(morph_name)
+        except morphio.MorphioError:
+            pass
+
+    # Default to loading as a single morphology file
+    return morphio.Morphology(output_path)
+
+
 def get_morphology(
     parent_dir: Path,
     client: Client,
@@ -309,9 +322,7 @@ def get_morphology(
             raise HTTPException(status_code=404, detail="Morphology not found") from e
 
     try:
-        if output_path.suffix.lower() == ".h5":
-            return morphio.Collection(output_path).load(morph_name)
-        return morphio.Morphology(output_path)
+        return load_morphology(output_path, morph_name)
 
     except Exception as e:
         msg = f"Could not parse morphology {morph_path}"
