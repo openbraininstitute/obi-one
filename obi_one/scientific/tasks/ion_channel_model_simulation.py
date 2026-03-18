@@ -10,6 +10,7 @@ from entitysdk.staging.simulation import stage_simulation
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.scientific.library.simulation.process import compile_mechanisms, run_simulation
 from obi_one.scientific.library.simulation.registration import register_simulation_results
 from obi_one.scientific.library.simulation.schemas import SimulationMetadata
@@ -17,8 +18,13 @@ from obi_one.scientific.library.simulation.staging import (
     get_simulation_parameters,
     stage_ion_channel_models_as_circuit,
 )
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationSingleConfig,
+)
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
+
+import json
 
 L = logging.getLogger(__name__)
 
@@ -45,6 +51,21 @@ class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMix
 class IonChannelModelSimulationExecutionTask(Task):
     config: IonChannelModelSimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
+
+    def get_generation_single_config(self, db_client: entitysdk.client.Client) -> IonChannelModelSimulationSingleConfig:
+        
+        for asset in self.config.single_entity:
+            if asset.label == "simulation_generation_config":
+                config_asset_id = asset.id
+                break
+
+        json_str = db_client.download_content(
+            entity_id=self.config.single_entity, entity_type=entitysdk.models.Simulation, asset_id=config_asset_id, asset_label="simulation_generation_config"
+        ).decode(encoding="utf-8")
+
+        json_dict = json.loads(json_str)
+        single_config = deserialize_obi_object_from_json_data(json_dict)
+        return single_config
 
     def execute(
         self,
@@ -89,16 +110,16 @@ class IonChannelModelSimulationExecutionTask(Task):
                 entity_type=self.activity_type,
             )
 
+        generation_single_config = self.get_generation_single_config(db_client)
+
         staged_circuit = stage_ion_channel_models_as_circuit(
             client=db_client,
-            ion_channel_models=self.config.ion_channel_models,
+            ion_channel_models=generation_single_config.ion_channel_models,
             output_dir=create_dir(data_dir / "circuit"),
         )
         libnrnmech_path = compile_mechanisms(staged_circuit)
-        simulation_entity = db_client.get_entity(
-            entity_id=simulation_entity.id,
-            entity_type=models.Simulation,
-        )
+        simulation_entity = self.config.single_entity
+        
         simulation_metadata = SimulationMetadata(
             simulation_id=simulation_entity.id,
         )
