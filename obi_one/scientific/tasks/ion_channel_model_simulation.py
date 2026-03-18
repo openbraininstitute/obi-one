@@ -18,14 +18,36 @@ from obi_one.scientific.library.simulation.staging import (
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
+from obi_one.core.scan_config import ScanConfig
+from obi_one.core.single import SingleConfigMixin
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationTask(Task):
-    config: IonChannelModelSimulationSingleConfig
+class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
+    
+    
+
+    _single_entity: entitysdk.models.Simulation
+
+    """
+    THESE TWO FUNCTIONS ARE ABSTRACTED TO THE SINGLE CONFIG MIXIN IN THIS PR:
+    https://github.com/openbraininstitute/obi-one/pull/619
+
+    So can be removed in the near future
+    """
+    @property
+    def single_entity(self) -> entitysdk.models.Simulation:
+        return self._single_entity
+
+    def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
+
+class IonChannelModelSimulationExecutionTask(Task):
+    config: IonChannelModelSimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
 
     def execute(
@@ -35,9 +57,9 @@ class IonChannelModelSimulationTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None,
     ) -> None:
-        """Execute the skeletonization task.
+        """Execute the ion channel model simulation task.
 
-        This method prepares inputs, runs the skeletonization process,
+        This method prepares inputs, runs the simulation process,
         and optionally registers the outputs in the database.
 
         Args:

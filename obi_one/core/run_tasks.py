@@ -107,7 +107,6 @@ def run_task_type(
     else:
         single_config = get_task_type_single_config(task_type)(single_entity=entity, scan_output_root=scan_output_root)
 
-    
     single_config.set_single_entity(entity)
 
     task_cls = get_task_type(task_type)
