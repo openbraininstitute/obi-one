@@ -8,14 +8,14 @@ import pytest
 def _install_stub_modules(monkeypatch):
     matplotlib = ModuleType("matplotlib")
     pyplot = ModuleType("matplotlib.pyplot")
-    pyplot.subplots = lambda *args, **kwargs: (SimpleNamespace(), [[SimpleNamespace()]])
-    pyplot.savefig = lambda *args, **kwargs: None
-    pyplot.close = lambda *args, **kwargs: None
+    pyplot.subplots = lambda *_args, **_kwargs: (SimpleNamespace(), [[SimpleNamespace()]])
+    pyplot.savefig = lambda *_args, **_kwargs: None
+    pyplot.close = lambda *_args, **_kwargs: None
     monkeypatch.setitem(sys.modules, "matplotlib", matplotlib)
     monkeypatch.setitem(sys.modules, "matplotlib.pyplot", pyplot)
 
     numpy = ModuleType("numpy")
-    numpy.array = lambda x, **kwargs: x
+    numpy.array = lambda x, **_kwargs: x
     monkeypatch.setitem(sys.modules, "numpy", numpy)
 
     bluecellulab = ModuleType("bluecellulab")
@@ -30,8 +30,8 @@ def _install_stub_modules(monkeypatch):
 
     neuron = ModuleType("neuron")
     neuron.h = SimpleNamespace(
-        nrn_load_dll=lambda *args, **kwargs: None,
-        nrnmpi_init=lambda *args, **kwargs: None,
+        nrn_load_dll=lambda *_args, **_kwargs: None,
+        nrnmpi_init=lambda *_args, **_kwargs: None,
         ParallelContext=lambda: SimpleNamespace(
             id=lambda: 0,
             nhost=lambda: 1,
@@ -189,4 +189,3 @@ def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
     assert called["simulator"] == "bluecellulab"
     assert called["libnrnmech_path"] == "lib.so"
     assert called["save_nwb"] is True
-
