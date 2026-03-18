@@ -146,8 +146,8 @@ def _generic_job_data(
         "resources": resources,
         "inputs": [
             f"--task-type {task_definition.task_type}",
-            f"--entity_type {task_definition.config_type_name}",
-            f"--entity_id {config_id}",
+            f"--config_type {task_definition.config_type_name}",
+            f"--config_id {config_id}",
             f"--config_asset_id {config_asset_id}",
             f"--entity_cache {entity_cache}",
             f"--scan_output_root {output_root}",

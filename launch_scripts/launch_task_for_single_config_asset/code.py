@@ -63,8 +63,8 @@ def main() -> int:
             description="Script to launch a task for a single configuration asset."
         )
         parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument("--entity_type", required=True, help="EntitySDK entity type as string")
-        parser.add_argument("--entity_id", required=True, help="Entity ID as string")
+        parser.add_argument("--config_type", required=True, help="EntitySDK entity type as string")
+        parser.add_argument("--config_id", required=True, help="Entity ID as string")
         parser.add_argument(
             "--config_asset_id", required=True, help="Configuration Asset ID as string"
         )
