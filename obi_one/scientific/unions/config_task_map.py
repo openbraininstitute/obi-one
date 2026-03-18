@@ -68,7 +68,6 @@ from obi_one.scientific.unions.aliases import Simulation
 from obi_one.types import TaskType
 
 _config_tasks_map = {
-    Simulation: GenerateSimulationTask,
     CircuitSimulationSingleConfig: GenerateSimulationTask,
     CircuitExtractionSingleConfig: CircuitExtractionTask,
     MEModelSimulationSingleConfig: GenerateSimulationTask,

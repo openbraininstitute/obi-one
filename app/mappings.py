@@ -65,7 +65,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,  # May be overridden by circuit scale
-        config_asset_label=AssetLabel.sonata_simulation_config,
+        config_asset_label=None,
         code=BuiltinCode(
             script=BuiltinScript.circuit_simulation,
         ),
