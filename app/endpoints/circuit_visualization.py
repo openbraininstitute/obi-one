@@ -14,6 +14,7 @@ from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
     get_morphology,
+    get_morphology_data,
     get_nodes,
 )
 
@@ -53,6 +54,7 @@ def circuit_morphology(
 ) -> Morphology:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
-    return get_morphology(
+    morphology = get_morphology(
         temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), morphology_name
     )
+    return get_morphology_data(morphology)

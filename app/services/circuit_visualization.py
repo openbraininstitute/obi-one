@@ -1,4 +1,3 @@
-import json
 from http import HTTPStatus
 from pathlib import Path
 from uuid import UUID
@@ -8,7 +7,7 @@ import morphio
 import numpy as np
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Circuit, Entity
+from entitysdk.models import Circuit
 from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 
@@ -96,7 +95,7 @@ def get_population_nodes(  # noqa: PLR0914
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
 
-        selection = libsonata.Selection(np.arange(population.size))
+        selection = libsonata.Selection([(0, population.size)])
 
         x = population.get_attribute("x", selection)
         y = population.get_attribute("y", selection)
@@ -120,9 +119,14 @@ def get_population_nodes(  # noqa: PLR0914
             )
 
             try:
-                radius = get_soma_radius(
-                    parent_dir, db_client, circuit_id, asset_id, m_file, m_name
-                )
+                morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
+
+                soma_diameters = morph.soma.diameters
+                radius = float(np.mean(soma_diameters) / 2.0) if len(soma_diameters) > 0 else 0.0
+
+                if len(soma_diameters) == 0:
+                    radius = 0.0
+
             except RuntimeError:
                 L.warning(f"Couldn't get morphology {m_name} for {circuit_id}")
                 radius = None
@@ -192,37 +196,27 @@ def get_soma_radius(
 
 
 def resolve_morph_path(
-    population_name: str, config: libsonata.CircuitConfig, parent_path: Path
+    population_name: str,
+    config: libsonata.CircuitConfig,
 ) -> Path:
     pop_properties = config.node_population_properties(population_name)
     if pop_properties.morphologies_dir:
         return Path(pop_properties.morphologies_dir)
 
-    # config doesn't expose the alternate_morphologies, so we need to get from the json
-    expanded_config = json.loads(config.expanded_json)
-    nodes = expanded_config.get("networks", {}).get("nodes", [])
-    pop = next(
-        (
-            node["populations"][population_name]
-            for node in nodes
-            if population_name in node.get("populations", {})
-        ),
-        {},
-    )
+    alternate_morphologies: dict = pop_properties.alternate_morphology_formats
 
-    alternate_morphologies = pop.get("alternate_morphologies", {})
-    path = next(iter(alternate_morphologies.values()), "")
+    path: str = next(iter(alternate_morphologies.values()), "")
     if path:
-        return parent_path / Path(path)
+        return Path(path)
 
     if config.morphologies_dir:
         return Path(config.morphologies_dir)
 
-    alternate_morphologies = expanded_config.get("alternate_morphologies", {})
+    alternate_morphologies = config.alternate_morphologies
     path = next(iter(alternate_morphologies.values()), "")
 
     if path:
-        return parent_path / Path(path)
+        return Path(path)
 
     m = "No morphologies found"
     raise ValueError(m)
@@ -246,7 +240,7 @@ def get_nodes(
             nodes_file_path = Path(pop_properties.elements_path)
             asset_path = nodes_file_path.relative_to(parent_path)
 
-            morph_path = resolve_morph_path(pop_name, config, parent_path).relative_to(parent_path)
+            morph_path = resolve_morph_path(pop_name, config).relative_to(parent_path)
 
             all_nodes += get_population_nodes(
                 pop_name,
@@ -338,11 +332,9 @@ def get_morphology(
 
     try:
         if output_path.suffix.lower() == ".h5":
-            morph = morphio.Collection(output_path).load(morph_name)
-        else:
-            morph = morphio.Morphology(output_path)
+            return morphio.Collection(output_path).load(morph_name)
+        return morphio.Morphology(output_path)
 
-        return get_morphology_data(morph)
     except Exception as e:
         msg = f"Could not parse morphology {morph_path}"
         raise HTTPException(status_code=500, detail=msg) from e

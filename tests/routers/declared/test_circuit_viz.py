@@ -21,6 +21,7 @@ from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
     get_morphology,
+    get_morphology_data,
     get_nodes,
 )
 
@@ -86,9 +87,15 @@ def test_circuit_nodes(
 
 
 @patch(f"{ROUTER_MODULE}.get_morphology")
+@patch(f"{ROUTER_MODULE}.get_morphology_data")
 @patch(f"{ROUTER_MODULE}.circuit_asset_id")
 def test_circuit_morphology(
-    mock_circuit_asset_id, mock_get_morphology, client, mock_client, tmp_path
+    mock_circuit_asset_id,
+    mock_get_morphology_data,
+    mock_get_morphology,
+    client,
+    mock_client,
+    tmp_path,
 ):
     circuit_id = uuid4()
     asset_id = uuid4()
@@ -96,7 +103,7 @@ def test_circuit_morphology(
     name = "name"
 
     mock_circuit_asset_id.return_value = asset_id
-    mock_get_morphology.return_value = {}
+    mock_get_morphology_data.return_value = {}
     response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{morphology_path}/{name}")  # noqa: RUF010
 
     assert response.status_code == 200
@@ -371,7 +378,7 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
 
 
 def test_get_morphology(mock_client, test_circuit_dir):
-    morphology = get_morphology(
+    morph_raw = get_morphology(
         test_circuit_dir,
         mock_client,
         uuid4(),
@@ -379,6 +386,8 @@ def test_get_morphology(mock_client, test_circuit_dir):
         Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc"),
         "dend-rp090908_c2_axon-vd110623_idA",
     )
+
+    morphology = get_morphology_data(morph_raw)
 
     assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
 
@@ -392,7 +401,7 @@ def test_get_morphology(mock_client, test_circuit_dir):
 
 
 def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
-    morphology = get_morphology(
+    morph_raw = get_morphology(
         test_circuit_dir_alternate,
         mock_client,
         uuid4(),
@@ -400,6 +409,8 @@ def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
         Path("morphologies/merged-morphologies.h5"),
         "rp110125_L5-2_idF_-_Scale_x1.000_y1.025_z1.000",
     )
+
+    morphology = get_morphology_data(morph_raw)
 
     assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
 
