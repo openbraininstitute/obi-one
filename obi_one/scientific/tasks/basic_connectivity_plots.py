@@ -1,4 +1,7 @@
-import contextlib
+"""Task to generate basic connectivity plots and stats from a ConnectivityMatrix object.
+
+Requires: pip install obi-one[connectivity]
+"""
 import logging
 from pathlib import Path
 from typing import ClassVar, Self
@@ -15,23 +18,33 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.library.basic_connectivity_plots_helpers import (
-    compute_global_connectivity,
-    connection_probability_pathway,
-    connection_probability_within_pathway,
-    plot_connection_probability_pathway_stats,
-    plot_connection_probability_stats,
-    plot_network_legends,
-    plot_node_stats,
-    plot_node_table,
-    plot_small_network,
-    plot_smallMC,
-    plot_smallMC_network_stats,
-)
 
-with contextlib.suppress(ImportError):  # Try to import connalysis
+# Since there are some scientific modules importing this module, but not necessarily using its
+# classes, we protect the imports without crashing at load time. In any case, if the
+# BasicConnectivityPlotsScanConfig class is used, it will crash at execute() at runtime.
+
+try:  # Connectivity helpers (optional)
+    from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+        compute_global_connectivity,
+        connection_probability_pathway,
+        connection_probability_within_pathway,
+        plot_connection_probability_pathway_stats,
+        plot_connection_probability_stats,
+        plot_network_legends,
+        plot_node_stats,
+        plot_node_table,
+        plot_small_network,
+        plot_smallMC,
+        plot_smallMC_network_stats,
+    )
+except ImportError:
+    pass
+
+try:  # Connalysis (optional)
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
+except ImportError:
+    pass
 
 L = logging.getLogger(__name__)
 
@@ -362,10 +375,18 @@ class BasicConnectivityPlotsTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
+        # Check for connectivity helper functions
+        if "compute_global_connectivity" not in globals():
+            msg = (
+                "Connectivity plotting requires connectome-analysis (connalysis). "
+                "Install with: pip install obi-one[connectivity]"
+            )
+            raise ValueError(msg)
+        
         if "node_degree" not in globals() or "ER_model" not in globals():
             msg = (
-                "Import of 'node_degree' or 'ER_model' failed. You probably need to install"
-                " connalysis locally."
+                "Connectivity plotting requires connectome-analysis (connalysis). "
+                "Install with: pip install obi-one[connectivity]"
             )
             raise ValueError(msg)
 

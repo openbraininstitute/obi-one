@@ -1,4 +1,3 @@
-import contextlib
 import logging
 from typing import Annotated, Literal, Self
 
@@ -13,8 +12,11 @@ L = logging.getLogger("obi-one")
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
-with contextlib.suppress(ImportError):  # Try to import connalysis
+# Don't fail at import time if connalysis is not installed. It will only fail at runtime if used.
+try:  # Connalysis (optional)
     from obi_one.scientific.library.simplex_extractors import simplex_submat
+except ImportError:
+    pass
 
 
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
@@ -94,8 +96,8 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
         if "simplex_submat" not in globals():
             msg = (
-                "Import of 'simplex_submat' failed. You probably need to install connalysis"
-                " locally."
+                "Import of 'simplex_submat' failed. You probably need connectome-analysis "
+                "(connalysis). Install with: pip install obi-one[connectivity]"
             )
             raise ValueError(msg)
 
@@ -199,8 +201,8 @@ class SimplexNeuronSet(PropertyNeuronSet):
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
         if "simplex_submat" not in globals():
             msg = (
-                "Import of 'simplex_submat' failed. You probably need to install connalysis"
-                " locally."
+                "Import of 'simplex_submat' failed. You probably need connectome-analysis "
+                "(connalysis). Install with: pip install obi-one[connectivity]"
             )
             raise ValueError(msg)
 

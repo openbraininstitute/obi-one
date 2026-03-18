@@ -1,14 +1,24 @@
 """Helper function to extract nodes in simplices in a matrix
+
+Requires: pip install obi-one[connectivity]
+
 Author: Daniela Egas Santander
-Last updated: 06.2024.
 """
 
 import logging
 
 import numpy as np
 import pandas as pd
-from connalysis.network.topology import list_simplices_by_dimension
 from scipy import sparse
+
+# Connectivity dependencies (optional) - check for connalysis
+try:
+    from connalysis.network.topology import list_simplices_by_dimension
+except ImportError as e:
+    raise ImportError(
+        "Simplex extraction requires connectome-analysis (connalysis). "
+        "Install with: pip install obi-one[connectivity]"
+    ) from e
 
 L = logging.getLogger(__name__)
 
