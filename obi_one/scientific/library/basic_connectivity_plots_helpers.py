@@ -25,10 +25,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 try:
     import networkx as nx
 except ImportError as e:
-    msg = (
-        "Connectivity plotting requires networkx. "
-        "Install with: pip install obi-one[connectivity]"
-    )
+    msg = "Connectivity plotting requires networkx. Install with: pip install obi-one[connectivity]"
     raise ImportError(msg) from e
 
 # Connectivity dependencies (optional) - check for connalysis
