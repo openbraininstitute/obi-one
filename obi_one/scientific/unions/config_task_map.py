@@ -97,12 +97,14 @@ _task_type_single_config_map = {
     TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
 }
 
+
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[config.__class__]
 
 
 def get_task_type(task_type: TaskType) -> type:
     return _task_type_task_map[task_type]
+
 
 def get_task_type_single_config(task_type: TaskType) -> type:
     return _task_type_single_config_map[task_type]

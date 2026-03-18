@@ -7,6 +7,8 @@ from entitysdk import models
 from entitysdk.models.activity import Activity
 from entitysdk.staging.simulation import stage_simulation
 
+from obi_one.core.scan_config import ScanConfig
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.simulation.process import compile_mechanisms, run_simulation
 from obi_one.scientific.library.simulation.registration import register_simulation_results
@@ -15,11 +17,6 @@ from obi_one.scientific.library.simulation.staging import (
     get_simulation_parameters,
     stage_ion_channel_models_as_circuit,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
-    IonChannelModelSimulationSingleConfig,
-)
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleConfigMixin
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
 
@@ -27,9 +24,6 @@ L = logging.getLogger(__name__)
 
 
 class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
-    
-    
-
     _single_entity: entitysdk.models.Simulation
 
     """
@@ -38,6 +32,7 @@ class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMix
 
     So can be removed in the near future
     """
+
     @property
     def single_entity(self) -> entitysdk.models.Simulation:
         return self._single_entity
@@ -45,6 +40,7 @@ class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMix
     def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
         """Sets the single entity attribute to the given entity."""
         self._single_entity = entity
+
 
 class IonChannelModelSimulationExecutionTask(Task):
     config: IonChannelModelSimulationExecutionSingleConfig

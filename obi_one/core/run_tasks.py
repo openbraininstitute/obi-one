@@ -7,9 +7,11 @@ import entitysdk
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.scan_generation import ScanGenerationTask
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.unions.config_task_map import get_configs_task_type, get_task_type, get_task_type_single_config
-
-_task_type_single_config_map
+from obi_one.scientific.unions.config_task_map import (
+    get_configs_task_type,
+    get_task_type,
+    get_task_type_single_config,
+)
 from obi_one.types import TaskType
 
 
@@ -105,7 +107,9 @@ def run_task_type(
         single_config = deserialize_obi_object_from_json_data(json_dict)
 
     else:
-        single_config = get_task_type_single_config(task_type)(single_entity=entity, scan_output_root=scan_output_root)
+        single_config = get_task_type_single_config(task_type)(
+            single_entity=entity, scan_output_root=scan_output_root
+        )
 
     single_config.set_single_entity(entity)
 
