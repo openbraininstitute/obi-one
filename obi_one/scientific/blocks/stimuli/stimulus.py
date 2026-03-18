@@ -92,7 +92,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
-        alias="step_duration",  # allow loading legacy resources
     )
 
     _represents_physical_electrode: bool = PrivateAttr(default=False)
@@ -660,7 +659,6 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
-        alias="step_duration",
     )
 
     initial_voltage: float | list[float] = Field(
@@ -856,7 +854,6 @@ class PoissonSpikeStimulus(SpikeStimulus):
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
-        alias="step_duration",
     )
     frequency: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
