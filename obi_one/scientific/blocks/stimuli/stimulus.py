@@ -92,6 +92,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
+        alias="step_duration",  # allow loading legacy resources
     )
 
     _represents_physical_electrode: bool = PrivateAttr(default=False)
