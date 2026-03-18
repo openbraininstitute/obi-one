@@ -56,6 +56,35 @@ def test_run_simulation(mock_collect, mock_run, tmp_path):
 
 
 @patch("obi_one.scientific.library.simulation.process.run_and_log")
+@patch("obi_one.scientific.library.simulation.process.entrypoint")
+def test_run_simulation_executable(mock_entrypoint, mock_run_and_log, tmp_path):
+    mock_entrypoint.__file__ = str(tmp_path / "entry.py")
+    parameters = SimulationParameters(
+        number_of_cells=4,
+        config_file=tmp_path / "config.json",
+        libnrnmech_path=tmp_path / "libnrnmech.so",
+        stop_time=0.1,
+    )
+    test_module._run_simulation_executable(parameters, SimulationBackend.bluecellulab)
+    mock_run_and_log.assert_called_once()
+    call_cmd = mock_run_and_log.call_args[0][0]
+    assert call_cmd == [
+        "mpiexec",
+        "-n",
+        "2",
+        "python",
+        str(tmp_path / "entry.py"),
+        "--config",
+        str(parameters.config_file),
+        "--libnrnmech-path",
+        str(parameters.libnrnmech_path),
+        "--simulation-backend",
+        "bluecellulab",
+        "--save-nwb",
+    ]
+
+
+@patch("obi_one.scientific.library.simulation.process.run_and_log")
 def test_compile_mechanisms(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
