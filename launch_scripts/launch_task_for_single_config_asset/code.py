@@ -103,7 +103,7 @@ def main() -> int:
 
     try:
         # Get entity type
-        entity_type = getattr(models, args.entity_type)
+        config_type = getattr(models, args.config_type)
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
@@ -131,8 +131,8 @@ def main() -> int:
         )
         run_task_type(
             task_type=args.task_type,
-            entity_type=entity_type,
-            entity_id=args.entity_id,
+            entity_type=config_type,
+            entity_id=args.config_id,
             config_asset_id=args.config_asset_id,
             scan_output_root=args.scan_output_root,
             db_client=db_client,
