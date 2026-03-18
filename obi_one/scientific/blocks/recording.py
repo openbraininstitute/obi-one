@@ -59,12 +59,29 @@ class IonChannelVariableForRecording(OBIBaseModel):
         )
         if model.neuron_block.range is None:
             raise OBIONEError(msg)
+        non_specific_current = [
+            var_name
+            for nonspecific in model.neuron_block.nonspecific or []
+            for var_name in nonspecific
+        ]
+        write = [
+            var_name
+            for useion in model.neuron_block.useion or []
+            for var_name in useion.write or []
+        ]
+        available_variables = set(non_specific_current + write)
         for range_dict in model.neuron_block.range:
             if variable in range_dict:
                 self._unit = range_dict[variable]
                 break
         else:
-            # if self._unit has not been set, raise the error
+            # some metadata are missing the full range data,
+            # so for those check WRITE and NONSPECIFIC_CURRENT
+            # unfortunately, we won't have the unit for those
+            # TODO: fix the metadata for all models and remove this fallback
+            if variable in available_variables:
+                return self
+            # if we cannot find the variable, raise error
             raise OBIONEError(msg)
 
         return self
