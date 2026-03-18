@@ -20,6 +20,8 @@ from app.schemas.circuit_visualization import (
     Nodes,
 )
 
+MAX_NODES = 10
+
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     try:
@@ -63,6 +65,17 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     return asset.id
 
 
+def check_node_limit(total_nodes: int, population_size: int) -> None:
+    if total_nodes + population_size > MAX_NODES:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": "Circuit has too many nodes for visualization (limit: 10)",
+            },
+        )
+
+
 def get_population_nodes(  # noqa: PLR0914
     population_name: str,
     db_client: Client,
@@ -71,6 +84,7 @@ def get_population_nodes(  # noqa: PLR0914
     parent_dir: Path,
     asset_path: Path,
     morphologies_path: Path,
+    total_nodes: int,
 ) -> Nodes:
     nodes_file_path = parent_dir / asset_path
 
@@ -94,6 +108,8 @@ def get_population_nodes(  # noqa: PLR0914
     try:
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
+
+        check_node_limit(total_nodes, population.size)
 
         selection = libsonata.Selection([(0, population.size)])
 
@@ -211,6 +227,7 @@ def get_nodes(
                 parent_path,
                 asset_path,
                 morph_path,
+                len(all_nodes),
             )
 
     except HTTPException:
