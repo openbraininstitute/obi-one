@@ -34,7 +34,7 @@ router = APIRouter(
 
 import json
 import numpy as np
-from app.schemas.task import TaskDefinition
+from app.schemas.task import TaskDefinition, MachineResources
 from app.utils import db_sdk
 from obi_one import deserialize_obi_object_from_json_data
 DISK_SPACE_LIMIT_GB = 20
@@ -55,7 +55,7 @@ def get_required_cpu_memory_combo(mem_gb_required: float) -> (int, int):
     msg = "No CPU/memory combination found!"
     raise ValueError(msg)
 
-def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep, task_definition: TaskDefinition) -> None:
+def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep, task_definition: TaskDefinition) -> TaskDefinition:
     """Updates the machine resources in the task definition (in-place)."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
@@ -106,7 +106,7 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep,
             ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
 
             # Estimate time limit
-            time_h = np.ceil(input_size_neurons * 5e-6)
+            time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
 
             # Estimate disk space
             sbio = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_biophys_node_populations])
@@ -117,20 +117,30 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep,
                 input_size_synapses = sbio
             output_size_synapses = (output_size_neurons / nbio) * input_size_synapses
             output_size_gb = output_size_synapses * 2e-7
-            if outout_size_gb + DISK_SPACE_LIMIT_GB:
+            if output_size_gb > DISK_SPACE_LIMIT_GB:
                 msg = "Not enough disk space!"
                 raise ValueError(msg)
 
             # Update resources
-            task_definition.resources=MachineResources(
-                cores=ncpu,
-                memory=mem_gb,
-                timelimit=f"{time_h:02d}:00",
-                compute_cell=task_definition.resources.compute_cell,
+            task_definition = TaskDefinition(
+                task_type=task_definition.task_type,
+                config_type=task_definition.config_type,
+                activity_type=task_definition.activity_type,
+                accounting_service_subtype=task_definition.accounting_service_subtype,
+                config_asset_label=task_definition.config_asset_label,
+                code=task_definition.code,
+                resources=MachineResources(
+                    cores=ncpu,
+                    memory=mem_gb,
+                    timelimit=f"{time_h:02d}:00",
+                    compute_cell=task_definition.resources.compute_cell,
+                ),
             )
+
         case _:
             # Nothing to update
             pass
+    return task_definition
 
 
 @router.post(
@@ -174,7 +184,7 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
-        update_resources(
+        task_definition = update_resources(
             json_model=json_model,
             db_client=db_client,
             task_definition=task_definition
