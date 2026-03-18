@@ -6,4 +6,4 @@ for circuit analysis, morphology validation, task execution, and more.
 Requires: make install-service
 """
 
-from app import _check_service_deps
+from app import _check_service_deps as _check_service_deps
