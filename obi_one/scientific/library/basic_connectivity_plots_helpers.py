@@ -1,4 +1,4 @@
-"""Basic functions to compute network stats and for plotting
+"""Basic functions to compute network stats and for plotting.
 
 Requires: pip install obi-one[connectivity]
 
@@ -25,20 +25,22 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 try:
     import networkx as nx
 except ImportError as e:
-    raise ImportError(
+    msg = (
         "Connectivity plotting requires networkx. "
         "Install with: pip install obi-one[connectivity]"
-    ) from e
+    )
+    raise ImportError(msg) from e
 
 # Connectivity dependencies (optional) - check for connalysis
 try:
     from connalysis.network.classic import connection_probability_within, density
     from connalysis.network.topology import node_degree, rc_submatrix
 except ImportError as e:
-    raise ImportError(
+    msg = (
         "Connectivity plotting requires connectome-analysis (connalysis). "
         "Install with: pip install obi-one[connectivity]"
-    ) from e
+    )
+    raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
 
@@ -1197,7 +1199,7 @@ def plot_node_table(  # noqa: PLR0914
         "synapse_class": "Syn-class",
     }
     df = conn.vertices[col_sel]
-    df = df.copy().rename(columns={_col: col_lbl_map[_col] for _col in col_sel})
+    df = df.copy().rename(columns={col: col_lbl_map[col] for col in col_sel})
     if not skip_color_column:
         df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 

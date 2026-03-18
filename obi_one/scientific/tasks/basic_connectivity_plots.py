@@ -2,6 +2,7 @@
 
 Requires: pip install obi-one[connectivity]
 """
+import contextlib
 import logging
 from pathlib import Path
 from typing import ClassVar, Self
@@ -23,7 +24,7 @@ from obi_one.core.task import Task
 # classes, we protect the imports without crashing at load time. In any case, if the
 # BasicConnectivityPlotsScanConfig class is used, it will crash at execute() at runtime.
 
-try:  # Connectivity helpers (optional)
+with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     from obi_one.scientific.library.basic_connectivity_plots_helpers import (
         compute_global_connectivity,
         connection_probability_pathway,
@@ -37,14 +38,10 @@ try:  # Connectivity helpers (optional)
         plot_smallMC,
         plot_smallMC_network_stats,
     )
-except ImportError:
-    pass
 
-try:  # Connalysis (optional)
+with contextlib.suppress(ImportError):  # Connalysis (optional)
     from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
-except ImportError:
-    pass
 
 L = logging.getLogger(__name__)
 
@@ -375,15 +372,8 @@ class BasicConnectivityPlotsTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
-        # Check for connectivity helper functions
-        if "compute_global_connectivity" not in globals():
-            msg = (
-                "Connectivity plotting requires connectome-analysis (connalysis). "
-                "Install with: pip install obi-one[connectivity]"
-            )
-            raise ValueError(msg)
-        
-        if "node_degree" not in globals() or "ER_model" not in globals():
+        # Check for connectivity dependencies
+        if "compute_global_connectivity" not in globals() or "node_degree" not in globals():
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
                 "Install with: pip install obi-one[connectivity]"

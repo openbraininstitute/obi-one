@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from typing import Annotated, Literal, Self
 
@@ -13,10 +14,8 @@ CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
 # Don't fail at import time if connalysis is not installed. It will only fail at runtime if used.
-try:  # Connalysis (optional)
+with contextlib.suppress(ImportError):  # Connalysis (optional)
     from obi_one.scientific.library.simplex_extractors import simplex_submat
-except ImportError:
-    pass
 
 
 class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
