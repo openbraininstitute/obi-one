@@ -16,7 +16,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
-from app.schemas.visualization import NeuronSectionInfo, Node
+from app.schemas.circuit_visualization import NeuronSectionInfo, Node
 from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
@@ -146,6 +146,7 @@ def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
     expected_asset_id = test_circuit.assets[0].id
 
     mock_client.get_entity.return_value = test_circuit
+    mock_client.select_assets.return_value.one.return_value = test_circuit.assets[0]
 
     result = circuit_asset_id(mock_client, cast("UUID", test_circuit.id))
 

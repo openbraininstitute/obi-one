@@ -8,13 +8,13 @@ import morphio
 import numpy as np
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Circuit
+from entitysdk.models import Circuit, Entity
 from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.visualization import (
+from app.schemas.circuit_visualization import (
     Morphology,
     NeuronSectionInfo,
     Node,
@@ -44,16 +44,22 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         )
 
-    asset = next((a for a in circuit.assets if a.label == "sonata_circuit"), None)
+    try:
+        asset = client.select_assets(
+            circuit,
+            selection={
+                "label": "sonata_circuit",
+            },
+        ).one()
 
-    if asset is None:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Circuit is missing a sonata_circuit asset",
             },
-        )
+        ) from e
 
     return asset.id
 
@@ -106,10 +112,10 @@ def get_population_nodes(  # noqa: PLR0914
         nodes_list = []
         for i in range(population.size):
             m_name = morph_files[i]
-            morphologies_path_str = str(morphologies_path)
+
             m_file = (
                 morphologies_path
-                if morphologies_path_str.endswith((".h5", ".asc"))
+                if morphologies_path.suffix in {".h5", ".asc"}
                 else morphologies_path / f"{m_name}.swc"
             )
 
