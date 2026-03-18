@@ -190,6 +190,16 @@ def number_of_edges_from_h5(h5: h5py.File, population_name: str) -> int:
     return len(h5["edges"][population_name]["source_node_id"])
 
 
+def source_name_from_h5(h5: h5py.File, population_name: str) -> str:
+    attrs = dict(h5["edges"][population_name]["source_node_id"].attrs)
+    return attrs.get("node_population")
+
+
+def target_name_from_h5(h5: h5py.File, population_name: str) -> str:
+    attrs = dict(h5["edges"][population_name]["target_node_id"].attrs)
+    return attrs.get("node_population")
+
+
 def list_of_node_properties_from_h5(h5: h5py.File, population_name: str) -> list[str]:
     return [_k for _k in h5["nodes"][population_name]["0"] if not _k.startswith("@")]
 
@@ -381,6 +391,8 @@ def properties_from_edges_files(
                 properties_dict[edgepop]["property_list"] = list_of_edge_properties_from_h5(
                     h5, edgepop
                 )
+                properties_dict[edgepop]["source_name"] = source_name_from_h5(h5, edgepop)
+                properties_dict[edgepop]["target_name"] = target_name_from_h5(h5, edgepop)
                 if (
                     level_of_detail_specs.get(edgepop, default_lod)
                     > CircuitStatsLevelOfDetail.basic
@@ -406,6 +418,8 @@ class CircuitMetricsEdgePopulation(BaseModel):
     number_of_edges: int
     name: str
     population_type: EdgePopulationType
+    source_name: str | None = None
+    target_name: str | None = None
     property_names: list[str]
     property_stats: dict[str, dict[str, float]] | None
     degree_stats: dict[DegreeTypes, dict[str, float]] | None
@@ -555,6 +569,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 number_of_edges=edge_props[edgepop]["number_of_edges"],
                 name=edgepop,
                 population_type=EdgePopulationType.chemical,
+                source_name=edge_props[edgepop]["source_name"],
+                target_name=edge_props[edgepop]["target_name"],
                 property_names=edge_props[edgepop]["property_list"],
                 property_stats=edge_props[edgepop]["property_stats"],
                 degree_stats=edge_props[edgepop]["degrees"],
@@ -568,6 +584,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 number_of_edges=edge_props[edgepop]["number_of_edges"],
                 name=edgepop,
                 population_type=EdgePopulationType.electrical,
+                source_name=edge_props[edgepop]["source_name"],
+                target_name=edge_props[edgepop]["target_name"],
                 property_names=edge_props[edgepop]["property_list"],
                 property_stats=edge_props[edgepop]["property_stats"],
                 degree_stats=edge_props[edgepop]["degrees"],
