@@ -55,7 +55,6 @@ def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
     try:
         yield process
     finally:
-        process.finalize()
         parallel_context.barrier()
         parallel_context.done()
         h.quit()
