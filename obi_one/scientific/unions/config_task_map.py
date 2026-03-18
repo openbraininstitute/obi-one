@@ -91,6 +91,11 @@ _task_type_task_map = {
     TaskType.ion_channel_model_simulation: IonChannelModelSimulationTask,
     TaskType.morphology_skeletonization: SkeletonizationTask,
 }
+_task_type_single_config_map = {
+    TaskType.circuit_extraction: CircuitExtractionSingleConfig,
+    TaskType.ion_channel_model_simulation: IonChannelModelSimulationSingleConfig,
+    TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
+}
 
 
 def get_configs_task_type(config: object) -> type:
@@ -99,3 +104,6 @@ def get_configs_task_type(config: object) -> type:
 
 def get_task_type(task_type: TaskType) -> type:
     return _task_type_task_map[task_type]
+
+def get_task_type_single_config(task_type: TaskType) -> type:
+    return _task_type_single_config_map[task_type]

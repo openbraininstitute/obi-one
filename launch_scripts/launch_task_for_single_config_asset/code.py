@@ -40,7 +40,7 @@ def main() -> int:
     python launch_task_for_single_config_asset.py
         --entity_type Simulation
         --entity_id babb299c-782a-41f1-b782-bc4c5da45462
-        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8
+        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8 (Optional, only if task accepts a config asset)
         --execution_activity_type SimulationExecution
         --execution_activity_id b6759d3d-001d-49b3-b57f-84303415fe0a
         --entity_cache True
@@ -66,7 +66,7 @@ def main() -> int:
         parser.add_argument("--config_type", required=True, help="EntitySDK entity type as string")
         parser.add_argument("--config_id", required=True, help="Entity ID as string")
         parser.add_argument(
-            "--config_asset_id", required=True, help="Configuration Asset ID as string"
+            "--config_asset_id", required=False, help="Configuration Asset ID as string"
         )
         parser.add_argument(
             "--execution_activity_type",
