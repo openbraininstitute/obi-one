@@ -23,11 +23,114 @@ from app.schemas.task import (
 from app.services import accounting as accounting_service, task as task_service
 from app.types import TaskType
 
+from obi_one.scientific.library.circuit_metrics import CircuitStatsLevelOfDetail, get_circuit_metrics
+
+
 router = APIRouter(
     prefix="/declared/task",
     tags=["declared"],
     dependencies=[Depends(user_verified)],
 )
+
+import json
+import numpy as np
+from app.schemas.task import TaskDefinition
+from app.utils import db_sdk
+from obi_one import deserialize_obi_object_from_json_data
+DISK_SPACE_LIMIT_GB = 20
+
+def get_required_cpu_memory_combo(mem_gb_required: float) -> (int, int):
+    # From launch-system
+    CPU_MEMORY_COMBINATIONS: dict[int, set[int]] = {
+        1: {2, 4, 6, 8},
+        2: {4, 8, 12, 16},
+        4: {8, 16, 24, 30},
+        8: {16, 32, 48, 60},
+        16: {32, 64, 96, 120},
+    }
+    for ncpu, mem_values in CPU_MEMORY_COMBINATIONS.items():
+        for mem in sorted(mem_values):
+            if mem > mem_gb_required:
+                return (ncpu, mem)
+    msg = "No CPU/memory combination found!"
+    raise ValueError(msg)
+
+def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep, task_definition: TaskDefinition) -> None:
+    """Updates the machine resources in the task definition (in-place)."""
+    match task_definition.task_type:
+        case TaskType.circuit_extraction:
+            # Get extraction config
+            config = db_client.get_entity(
+                entity_id=json_model.config_id,
+                entity_type=task_definition.config_type,
+            )
+            config_asset_id = db_sdk.get_config_asset(
+                client=db_client,
+                config=config,
+                asset_label=task_definition.config_asset_label,
+            ).id
+
+            json_str = db_client.download_content(
+                entity_id=json_model.config_id,
+                entity_type=task_definition.config_type,
+                asset_id=config_asset_id
+            ).decode(encoding="utf-8")
+
+            json_dict = json.loads(json_str)
+            single_config = deserialize_obi_object_from_json_data(json_dict)
+
+            # Get parent circuit metrics
+            level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
+            level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
+            circuit_metrics = get_circuit_metrics(
+                circuit_id=config.circuit_id,
+                db_client=db_client,
+                level_of_detail_nodes=level_of_detail_nodes_dict,
+                level_of_detail_edges=level_of_detail_edges_dict,
+            )
+
+            # Get output circuit size
+            # TODO: Requires resolving the neuron set based in the circuit
+            # > output_size_neurons = len(single_config.neuron_set.get_neuron_ids(circuit))
+            output_size_neurons = 0  # Disable for now
+
+            # Estimate memory based on number of input neurons
+            nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])
+            nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])
+            if single_config.initialize.do_virtual:
+                input_size_neurons = nbio + nvirt
+            else:
+                input_size_neurons = nbio
+
+            mem_gb_required = 1 + 55e-6 * input_size_neurons
+            ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
+
+            # Estimate time limit
+            time_h = np.ceil(input_size_neurons * 5e-6)
+
+            # Estimate disk space
+            sbio = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_biophys_node_populations])
+            svirt = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_virtual_node_populations])
+            if single_config.initialize.do_virtual:
+                input_size_synapses = sbio + svirt
+            else:
+                input_size_synapses = sbio
+            output_size_synapses = (output_size_neurons / nbio) * input_size_synapses
+            output_size_gb = output_size_synapses * 2e-7
+            if outout_size_gb + DISK_SPACE_LIMIT_GB:
+                msg = "Not enough disk space!"
+                raise ValueError(msg)
+
+            # Update resources
+            task_definition.resources=MachineResources(
+                cores=ncpu,
+                memory=mem_gb,
+                timelimit=f"{time_h:02d}:00",
+                compute_cell=task_definition.resources.compute_cell,
+            )
+        case _:
+            # Nothing to update
+            pass
 
 
 @router.post(
@@ -71,6 +174,13 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
+        update_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition
+        )
+        # TODO: Check if resource update has to be done before calling the accounting service!
+
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -78,7 +188,7 @@ def task_launch_endpoint(
             compute_cell=compute_cell,
             config_id=json_model.config_id,
             project_context=project_context,
-            task_definition=TASK_DEFINITIONS[json_model.task_type],
+            task_definition=task_definition,
             callbacks=accounting_callbacks,
         )
     except Exception as exc:
