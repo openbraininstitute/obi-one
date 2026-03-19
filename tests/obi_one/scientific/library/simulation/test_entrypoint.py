@@ -189,3 +189,132 @@ def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
     assert called["simulator"] == "bluecellulab"
     assert called["libnrnmech_path"] == "lib.so"
     assert called["save_nwb"] is True
+
+
+def test_resolve_output_dir_defaults_to_config_parent(test_module, tmp_path):
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+    out = test_module._resolve_output_dir(cfg, {"run": {}})
+    assert out == tmp_path / "output"
+
+
+def test_resolve_output_dir_uses_output_dir(test_module, tmp_path):
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+    out = test_module._resolve_output_dir(cfg, {"output": {"output_dir": str(tmp_path / "x")}})
+    assert out == tmp_path / "x"
+
+
+def test_resolve_output_dir_expands_manifest_output_dir(test_module, tmp_path):
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+    out = test_module._resolve_output_dir(
+        cfg,
+        {
+            "output": {"output_dir": "$OUTPUT_DIR/results"},
+            "manifest": {"$OUTPUT_DIR": str(tmp_path / "base")},
+        },
+    )
+    assert out == tmp_path / "base" / "results"
+
+
+def test_load_simulation_config(test_module, monkeypatch):
+    def fake_load_json(_path):
+        return {"run": {"tstop": 10.0, "dt": 0.1}}
+
+    monkeypatch.setattr(test_module, "load_json", fake_load_json)
+    data, t_stop, dt = test_module._load_simulation_config("x.json")
+    assert data["run"]["tstop"] == 10.0
+    assert t_stop == 10.0
+    assert dt == 0.1
+
+
+def test_distribute_cells_splits_ids_across_ranks(test_module, monkeypatch, tmp_path):
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+
+    def fake_load_json(path):
+        if str(path).endswith("cfg.json"):
+            return {"node_sets_file": "nodes.json", "node_set": "All"}
+        return {"All": {"population": "popA", "node_id": list(range(10))}}
+
+    monkeypatch.setattr(test_module, "load_json", fake_load_json)
+    rank0 = test_module._distribute_cells(fake_load_json(cfg), cfg, 0, 3)
+    rank1 = test_module._distribute_cells(fake_load_json(cfg), cfg, 1, 3)
+    rank2 = test_module._distribute_cells(fake_load_json(cfg), cfg, 2, 3)
+    all_gids = [gid for _pop, gid in rank0 + rank1 + rank2]
+    assert sorted(all_gids) == list(range(10))
+
+
+def test_distribute_cells_missing_nodeset_raises(test_module, monkeypatch, tmp_path):
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+
+    def fake_load_json(path):
+        if str(path).endswith("cfg.json"):
+            return {"node_sets_file": "nodes.json", "node_set": "Missing"}
+        return {"All": {"population": "popA", "node_id": [1]}}
+
+    monkeypatch.setattr(test_module, "load_json", fake_load_json)
+    with pytest.raises(KeyError, match="Node set 'Missing' not found"):
+        test_module._distribute_cells(fake_load_json(cfg), cfg, 0, 1)
+
+
+def test_get_spikes_returns_empty_on_missing(test_module):
+    sim = SimpleNamespace(cells={}, spike_location="soma", spike_threshold=0.0)
+    assert test_module._get_spikes(sim, ("pop", 1)) == []
+
+
+def test_gather_results_rank_zero_merges(test_module):
+    class _Time:
+        def __truediv__(self, other):
+            return self
+
+        @staticmethod
+        def tolist():
+            return [0.0, 0.001]
+
+    class _Volt:
+        def __init__(self, cell_id):
+            self.cell_id = cell_id
+
+        @staticmethod
+        def tolist():
+            return [-80.0, -79.0]
+
+    class _PC:
+        @staticmethod
+        def py_gather(obj, root):
+            assert root == 0
+            return [obj]
+
+    sim = SimpleNamespace(
+        get_time_trace=_Time,
+        get_voltage_trace=_Volt,
+        cells={("popA", 1): SimpleNamespace(get_recorded_spikes=lambda **_kwargs: [0.1])},
+        spike_location="soma",
+        spike_threshold=0.0,
+    )
+    traces, spikes = test_module._gather_results(sim, [("popA", 1)], 0, _PC())
+    assert "popA_1" in traces
+    assert spikes["popA"][1] == [0.1]
+
+
+def test_gather_results_rank_nonzero_returns_empty(test_module):
+    class _Time:
+        def __truediv__(self, other):
+            return self
+
+        @staticmethod
+        def tolist():
+            return [0.0]
+
+    class _PC:
+        @staticmethod
+        def py_gather(obj, root):  # noqa :ARG004
+            return [obj]
+
+    sim = SimpleNamespace(get_time_trace=_Time, get_voltage_trace=lambda _cid: None, cells={})
+    traces, spikes = test_module._gather_results(sim, [], 1, _PC())
+    assert traces == {}
+    assert spikes == {}
