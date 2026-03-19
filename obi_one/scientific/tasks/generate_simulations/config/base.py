@@ -9,6 +9,7 @@ import entitysdk
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
@@ -263,8 +264,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(BaseModel):
-    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
+class SimulationSingleConfigMixin(SingleConfigMixin):
+    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig.
+
+    Inherits from SingleConfigMixin and overrides create_single_entity_with_config
+    to register a Simulation entity instead of a generic TaskConfig.
+    """
 
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client

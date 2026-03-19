@@ -92,9 +92,9 @@ class SingleConfigMixin:
         campaign: TaskConfig,  # noqa: ARG002
         db_client: Client,
     ) -> TaskConfig:
-        if self._single_task_config_type is None:
+        if self.single_task_config_type is None:
             msg = (
-                "single_task_config_type must be defined in the subclass"
+                "single_task_config_type must be defined in the subclass "
                 "for Tasks which use TaskActivity execution activities."
             )
             raise ValueError(msg)
