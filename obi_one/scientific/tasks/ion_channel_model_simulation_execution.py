@@ -23,8 +23,8 @@ from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models imp
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.types import SimulationBackend
-from obi_one.utils.filesystem import create_dir
 from obi_one.utils import db_sdk
+from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
@@ -55,7 +55,6 @@ class IonChannelModelSimulationExecutionTask(Task):
     def get_generation_single_config(
         self, db_client: entitysdk.client.Client
     ) -> IonChannelModelSimulationSingleConfig:
-
         config_asset = db_sdk.get_entity_asset_by_label(
             client=db_client,
             config=self.config.single_entity,
