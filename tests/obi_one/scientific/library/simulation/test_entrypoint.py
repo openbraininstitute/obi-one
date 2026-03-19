@@ -60,27 +60,6 @@ def test_module(monkeypatch):
     return importlib.reload(module)
 
 
-def test_merge_dicts(test_module):
-    assert test_module._merge_dicts([{"a": 1}, {"b": 2}, {"a": 3}]) == {"a": 3, "b": 2}
-
-
-def test_merge_spikes(test_module):
-    merged = test_module._merge_spikes(
-        [
-            {"pop1": {1: [0.1], 2: [0.2]}},
-            {"pop1": {3: [0.3]}, "pop2": {4: [0.4]}},
-        ]
-    )
-    assert merged["pop1"][1] == [0.1]
-    assert merged["pop1"][3] == [0.3]
-    assert merged["pop2"][4] == [0.4]
-
-
-def test_raise_node_set_key_error(test_module):
-    with pytest.raises(KeyError, match="Node set 'Foo' not found"):
-        test_module._raise_node_set_key_error("Foo")
-
-
 def test_get_instantiate_gids_params_defaults(test_module):
     params = test_module.get_instantiate_gids_params({"run": {}})
     assert params["add_stimuli"] is False

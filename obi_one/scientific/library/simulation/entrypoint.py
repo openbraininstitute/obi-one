@@ -6,7 +6,6 @@ This module provides functionality to run simulations using different backends
 
 import argparse
 import logging
-from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -25,10 +24,6 @@ from bluecellulab.reports.utils import (
 )
 from neuron import h
 
-from obi_one.scientific.library.simulation.reporting import (
-    save_current_results_to_nwb,
-    save_voltage_results_to_nwb,
-)
 from obi_one.utils.io import load_json
 
 logger = logging.getLogger(__name__)
@@ -60,9 +55,14 @@ def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
 
     try:
         yield process
-    finally:
-        parallel_context.barrier()
+    except Exception:
+        logger.exception("Rank %d failed", process.rank)
         h.quit()
+        return
+
+    logger.info("Rank %d: Cleaning up...", process.rank)
+    parallel_context.barrier()
+    h.quit()
 
 
 def _setup_mpi_logging(rank: int) -> None:
@@ -83,25 +83,6 @@ def _setup_mpi_logging(rank: int) -> None:
 
 # Type alias for simulator backends
 SimulatorBackend = Literal["bluecellulab", "neurodamus"]
-
-
-def _merge_dicts(list_of_dicts: list[dict]) -> dict:
-    return {k: v for d in list_of_dicts for k, v in d.items()}
-
-
-def _merge_spikes(
-    list_of_pop_dicts: list[dict[str, dict[int, list]]],
-) -> dict[str, dict[int, list]]:
-    out: dict[str, dict[int, list]] = defaultdict(dict)
-    for pop_dict in list_of_pop_dicts:
-        for pop, gid_map in pop_dict.items():
-            out[pop].update(gid_map)
-    return out
-
-
-def _raise_node_set_key_error(node_set_name: str) -> None:
-    err_msg = f"Node set '{node_set_name}' not found in node sets file"
-    raise KeyError(err_msg)
 
 
 def get_instantiate_gids_params(simulation_config_data: dict[str, Any]) -> dict[str, Any]:
@@ -167,7 +148,6 @@ def run(
     simulator: SimulatorBackend,
     *,
     libnrnmech_path: Path,
-    save_nwb: bool,
 ) -> None:
     """Run the simulation with the specified backend.
 
@@ -177,7 +157,6 @@ def run(
         simulation_config: Path to the simulation configuration file
         simulator: Which simulator to use. Must be one of: 'bluecellulab' or 'neurodamus'.
         libnrnmech_path: Path to mechanisms shared object
-        save_nwb: Whether to save results in NWB format.
 
     Raises:
         ValueError: If the requested backend is not implemented.
@@ -185,13 +164,10 @@ def run(
     logger.info("Starting simulation with %s backend", simulator)
     simulator = simulator.lower()
     if simulator == "bluecellulab":
-        run_bluecellulab(
-            simulation_config=simulation_config, libnrnmech_path=libnrnmech_path, save_nwb=save_nwb
-        )
+        run_bluecellulab(simulation_config=simulation_config, libnrnmech_path=libnrnmech_path)
     elif simulator == "neurodamus":
         run_neurodamus(
             simulation_config=simulation_config,
-            save_nwb=save_nwb,
         )
     else:
         err_msg = f"Unsupported backend: {simulator}"
@@ -202,7 +178,6 @@ def run_bluecellulab(
     simulation_config: str | Path,
     *,
     libnrnmech_path: str,
-    save_nwb: bool = False,
 ) -> None:
     """Run a simulation using BlueCelluLab backend."""
     with neuron_mpi_process(libnrnmech_path=libnrnmech_path) as process:
@@ -232,8 +207,6 @@ def run_bluecellulab(
                         f"{param}: {value}" for param, value in instantiate_params.items() if value
                     ),
                 )
-
-            if process.rank == 0:
                 logger.info("Running BlueCelluLab simulation with %d MPI processes", process.size)
                 logger.info(
                     "Total cells: %d, Cells per rank: ~%d",
@@ -258,30 +231,25 @@ def run_bluecellulab(
                 sim.circuit_access.config,
             )
 
+            logger.info("Rank %d: Running simulation...", process.rank)
             sim.run(t_stop, v_init, cvode=False)
 
-            gathered_sites = process.parallel_context.py_gather(local_sites_index, 0)
-
-            local_payload = collect_local_payload(
-                sim.cells,
-                cell_ids_for_this_rank,
-                recording_index,
-            )
-            local_spikes = collect_local_spikes(sim, cell_ids_for_this_rank)
-
-            all_payload, all_spikes = gather_payload_to_rank0(
-                process.parallel_context, local_payload, local_spikes
+            logger.info("Rank %d: Gathering results...", process.rank)
+            gathered_sites, all_payload, all_spikes = _gather_results(
+                sim=sim,
+                process=process,
+                recording_index=recording_index,
+                cell_ids_for_this_rank=cell_ids_for_this_rank,
+                local_sites_index=local_sites_index,
             )
 
             if process.rank == 0:
+                logger.info("Rank %d: Writing reports and ouputs...", process.rank)
                 _save_reports_and_outputs(
                     sim=sim,
-                    simulation_config=simulation_config,
-                    config_data=config_data,
                     gathered_sites=gathered_sites,
                     all_payload=all_payload,
                     all_spikes=all_spikes,
-                    save_nwb=save_nwb,
                 )
         except RuntimeError:
             logger.exception("Rank %d failed", process.rank)
@@ -292,7 +260,7 @@ def run_bluecellulab(
 
 def _distribute_cells(
     config_data: dict[str, Any], simulation_config: str | Path, rank: int, size: int
-) -> list[tuple[str, int]]:
+) -> tuple[int, list[tuple[str, int]]]:
     base_dir = Path(simulation_config).parent
     node_sets_file = base_dir / config_data["node_sets_file"]
 
@@ -300,7 +268,8 @@ def _distribute_cells(
 
     node_set_name = config_data.get("node_set", "All")
     if node_set_name not in node_set_data:
-        _raise_node_set_key_error(node_set_name)
+        err_msg = f"Node set '{node_set_name}' not found in node sets file"
+        raise KeyError(err_msg)
 
     population: str = node_set_data[node_set_name]["population"]
     all_node_ids: list[int] = node_set_data[node_set_name]["node_id"]
@@ -319,157 +288,44 @@ def _distribute_cells(
     return num_nodes, [(population, i) for i in rank_node_ids]
 
 
+def _gather_results(
+    *,
+    sim: Any,
+    cell_ids_for_this_rank: Any,
+    process: MPIProcess,
+    recording_index: Any,
+    local_sites_index: Any,
+) -> tuple[Any, Any, Any]:
+    gathered_sites = process.parallel_context.py_gather(local_sites_index, 0)
+
+    local_payload = collect_local_payload(
+        sim.cells,
+        cell_ids_for_this_rank,
+        recording_index,
+    )
+    local_spikes = collect_local_spikes(sim, cell_ids_for_this_rank)
+    all_payload, all_spikes = gather_payload_to_rank0(
+        process.parallel_context, local_payload, local_spikes
+    )
+
+    return gathered_sites, all_payload, all_spikes
+
+
 def _save_reports_and_outputs(
     sim: Any,
-    simulation_config: str | Path,
-    config_data: dict[str, Any],
-    gathered_sites,
-    all_payload,
-    all_spikes,
-    *,
-    save_nwb: bool = False,
+    gathered_sites: list[Any],
+    all_payload: list[dict[Any, Any]],
+    all_spikes: dict[str, dict[int, list[float]]],
 ) -> None:
     all_sites_index = gather_recording_sites(gathered_sites)
     cells_for_writer = payload_to_cells(all_payload, all_sites_index)
-
-    all_cell_results = _build_nwb_results_from_cells(
-        cells_for_writer,
-        simulation_config_data,
-    )
-
     report_mgr = ReportManager(sim.circuit_access.config, sim.dt)  # type: ignore[name-defined]
     report_mgr.write_all(cells=cells_for_writer, spikes_by_pop=all_spikes)
 
-    if not save_nwb:
-        return
 
-    output_dir = _resolve_output_dir(simulation_config, config_data)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    voltage_nwb_path = output_dir / "voltage_report.nwb"
-    current_nwb_path = output_dir / "current_report.nwb"
-
-    save_voltage_results_to_nwb(
-        all_cell_results,
-        execution_id,
-        voltage_nwb_path,
-    )
-
-    save_current_results_to_nwb(
-        all_cell_results,
-        execution_id,
-        current_nwb_path,
-        simulation_config_data,
-    )
-
-    # Save voltage traces plot
-    plot_path = output_dir / "voltage_traces.png"
-    plot_voltage_traces(all_cell_results, plot_path)
-
-
-def _resolve_output_dir(simulation_config: str | Path, config_data: dict[str, Any]) -> Path:
-    # TODO: Can't this be fetched from sim's libsonata config?
-    base_dir = Path(simulation_config).parent
-    output = config_data.get("output", {})
-    if isinstance(output, dict) and (output_dir_str := output.get("output_dir")):
-        if output_dir_str.startswith("$OUTPUT_DIR"):
-            manifest_base = config_data.get("manifest", {}).get("$OUTPUT_DIR")
-            if manifest_base:
-                return Path(manifest_base) / output_dir_str.replace("$OUTPUT_DIR/", "")
-        return Path(output_dir_str)
-    return base_dir / "output"
-
-
-def _build_nwb_results_from_cells(
-    cells: dict[Any, Any],
-    simulation_config_data: dict[str, Any],
-) -> dict[str, Any]:
-    report_meta = _get_report_metadata(simulation_config_data)
-    results: dict[str, Any] = {}
-
-    for cell_id, cell in cells.items():
-        population = cell_id.population_name
-        gid = cell_id.id
-        out_key = f"{population}_{gid}"
-
-        try:
-            time_ms = np.asarray(cell.get_recording("neuron.h._ref_t"), dtype=float)
-        except Exception as exc:
-            logger.warning(f"Skipping {out_key}: no time recording found: {exc}")
-            continue
-
-        time_s = time_ms / 1000.0
-        recordings: Dict[str, Any] = {}
-
-        for report_name, sites in getattr(cell, "report_sites", {}).items():
-            meta = report_meta.get(report_name)
-            if meta is None:
-                continue
-
-            variable_name = meta["variable_name"]
-            unit = meta["unit"]
-
-            for site in sites:
-                rec_name = site["rec_name"]
-                section_name = site["section"]
-                segment = float(site["segx"])
-
-                try:
-                    values = np.asarray(cell.get_recording(rec_name), dtype=float)
-                except Exception as exc:
-                    logger.warning(f"Skipping recording '{rec_name}' for {out_key}: {exc}")
-                    continue
-
-                recordings[rec_name] = {
-                    "variable_name": variable_name,
-                    "section": section_name,
-                    "segment": segment,
-                    "unit": unit,
-                    "area_um2": site["area_um2"],
-                    "values": values.tolist(),
-                }
-
-        results[out_key] = {
-            "time": time_s.tolist(),
-            "time_unit": "s",
-            "recordings": recordings,
-        }
-
-    return results
-
-
-def _get_report_metadata(simulation_config_data: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
-    reports = simulation_config_data.get("reports", {}) or {}
-    out: Dict[str, Dict[str, str]] = {}
-
-    for report_name, report_cfg in reports.items():
-        if not report_cfg.get("enabled", True):
-            continue
-        if report_cfg.get("type") != "compartment":
-            continue
-
-        variable_name = report_cfg.get("variable_name")
-        if not variable_name:
-            continue
-
-        unit = report_cfg.get("unit")
-        if unit is None:
-            unit = "mV" if variable_name == "v" else "unknown"
-
-        out[report_name] = {
-            "variable_name": variable_name,
-            "unit": unit,
-        }
-
-        out["__default_voltage__"] = {
-            "variable_name": "v",
-            "unit": "mV",
-        }
-
-    return out
-
-
-def run_neurodamus() -> None:
+def run_neurodamus(
+    simulation_config: str | Path,  # noqa: ARG001
+) -> None:
     """Run simulation using Neurodamus backend."""
     logger.warning(
         "Neurodamus backend is not yet implemented. Please use BlueCelluLab backend for now."
@@ -508,7 +364,6 @@ def main() -> None:
 
     # Run the simulation
     run(
-        save_nwb=args.save_nwb,
         simulation_config=args.config,
         simulator=args.simulation_backend,
         libnrnmech_path=args.libnrnmech_path,
