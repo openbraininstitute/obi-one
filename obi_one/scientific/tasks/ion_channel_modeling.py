@@ -605,7 +605,7 @@ class IonChannelFittingTask(Task):
                 mod_filepath=output_name,
                 figure_filepaths=figure_paths_dict,
                 db_client=db_client,
-                range=range_vars,
+                range_vars=range_vars,
             )
 
         except Exception as e:
