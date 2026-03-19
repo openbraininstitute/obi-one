@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from entitysdk import models
-from entitysdk.types import AssetLabel
 from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.config import settings
@@ -84,7 +83,9 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,
-        config_asset_label=get_task_type_config_asset_label(TaskType.ion_channel_model_simulation_execution),
+        config_asset_label=get_task_type_config_asset_label(
+            TaskType.ion_channel_model_simulation_execution
+        ),
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref="commit:f0e3a06f869af212ab7392a39ba1a0a536f0e03f",

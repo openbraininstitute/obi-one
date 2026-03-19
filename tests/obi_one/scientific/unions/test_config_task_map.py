@@ -8,7 +8,10 @@ from obi_one.types import TaskType
     ("task_type", "task_class"),
     [
         (TaskType.circuit_extraction, test_module.CircuitExtractionTask),
-        (TaskType.ion_channel_model_simulation_execution, test_module.IonChannelModelSimulationExecutionTask),
+        (
+            TaskType.ion_channel_model_simulation_execution,
+            test_module.IonChannelModelSimulationExecutionTask,
+        ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationTask),
     ],
 )

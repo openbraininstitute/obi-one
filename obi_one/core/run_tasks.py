@@ -10,8 +10,8 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.unions.config_task_map import (
     get_configs_task_type,
     get_task_type,
-    get_task_type_single_config,
     get_task_type_config_asset_label,
+    get_task_type_single_config,
 )
 from obi_one.types import TaskType
 from obi_one.utils import db_sdk
@@ -98,13 +98,13 @@ def run_task_type(
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)
 
     config_asset_label = get_task_type_config_asset_label(task_type)
-    
+
     if config_asset_label is not None:
         config_asset_id = db_sdk.get_config_asset(
-                client=db_client,
-                config=entity,
-                asset_label=config_asset_label,
-            ).id
+            client=db_client,
+            config=entity,
+            asset_label=config_asset_label,
+        ).id
 
         json_str = db_client.download_content(
             entity_id=entity_id, entity_type=entity_type, asset_id=config_asset_id

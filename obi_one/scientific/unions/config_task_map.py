@@ -1,3 +1,5 @@
+from entitysdk.types import AssetLabel
+
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
@@ -38,6 +40,7 @@ from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_model_simulation_execution import (
+    IonChannelModelSimulationExecutionSingleConfig,
     IonChannelModelSimulationExecutionTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
@@ -65,7 +68,6 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.types import TaskType
-from entitysdk.types import AssetLabel
 
 _config_tasks_map = {
     CircuitSimulationSingleConfig: GenerateSimulationTask,
@@ -92,7 +94,7 @@ _task_type_task_map = {
 }
 _task_type_single_config_map = {
     TaskType.circuit_extraction: CircuitExtractionSingleConfig,
-    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationSingleConfig,
+    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionSingleConfig,
     TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
 }
 _task_type_config_asset_label_map = {
@@ -101,6 +103,7 @@ _task_type_config_asset_label_map = {
     TaskType.circuit_simulation: None,
     TaskType.ion_channel_model_simulation_execution: None,
 }
+
 
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[config.__class__]
@@ -112,6 +115,7 @@ def get_task_type(task_type: TaskType) -> type:
 
 def get_task_type_single_config(task_type: TaskType) -> type:
     return _task_type_single_config_map[task_type]
+
 
 def get_task_type_config_asset_label(task_type: TaskType) -> AssetLabel | None:
     return _task_type_config_asset_label_map[task_type]

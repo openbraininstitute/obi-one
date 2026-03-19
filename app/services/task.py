@@ -55,11 +55,6 @@ def submit_task_job(
                 compute_cell=compute_cell,
             )
         case _:
-            config_asset_id = db_sdk.get_config_asset(
-                client=db_client,
-                config=config,
-                asset_label=task_definition.config_asset_label,
-            ).id
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
