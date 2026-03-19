@@ -28,8 +28,7 @@ L = logging.getLogger(__name__)
 
 try:
     from ion_channel_builder.create_model.main import extract_all_equations
-    from ion_channel_builder.io.write_output import get_range_params_with_units
-    from ion_channel_builder.io.write_output import write_vgate_output
+    from ion_channel_builder.io.write_output import get_range_params_with_units, write_vgate_output
     from ion_channel_builder.run_model.run_model import run_ion_channel_model
 except ImportError:
 
@@ -414,7 +413,11 @@ class IonChannelFittingTask(Task):
             self.register_json(db_client, model_id, json_path)
 
     def save(
-        self, mod_filepath: Path, figure_filepaths: dict[Path], db_client: entitysdk.client.Client, range: list[dict[str, str | None]]
+        self,
+        mod_filepath: Path,
+        figure_filepaths: dict[Path],
+        db_client: entitysdk.client.Client,
+        range_vars: list[dict[str, str | None]],
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
@@ -426,7 +429,7 @@ class IonChannelFittingTask(Task):
         )
         neuron_block = entitysdk.models.NeuronBlock(
             **{"global": [{"celsius": "degree C"}]},
-            range=range,
+            range=range_vars,
             useion=[useion],
             nonspecific=[],
         )
@@ -572,7 +575,7 @@ class IonChannelFittingTask(Task):
             # Get recording entity to access temperature
             recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
 
-            mech_suffix=self.config.initialize.ion_channel_name
+            mech_suffix = self.config.initialize.ion_channel_name
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
                 mech_suffix=mech_suffix,
@@ -586,7 +589,7 @@ class IonChannelFittingTask(Task):
             )
 
             # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
-            range = [
+            range_vars = [
                 {f"g{mech_suffix}bar": "S/cm2"},
                 {f"g{mech_suffix}": "S/cm2"},
                 {"ik": "mA/cm2"},
@@ -595,11 +598,14 @@ class IonChannelFittingTask(Task):
                 {"hInf": None},
                 {"hTau": "ms"},
             ]
-            range += get_range_params_with_units(eq_names)
+            range_vars += get_range_params_with_units(eq_names)
 
             # register the mod file and figures to the platform
             model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client, range=range
+                mod_filepath=output_name,
+                figure_filepaths=figure_paths_dict,
+                db_client=db_client,
+                range=range_vars,
             )
 
         except Exception as e:
