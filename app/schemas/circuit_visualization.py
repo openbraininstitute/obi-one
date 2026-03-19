@@ -21,6 +21,10 @@ Nodes = list[Node]
 
 
 class NeuronSectionInfo(BaseModel):
+    """Follows the interface defined in
+    https://github.com/openbraininstitute/core-web-app/blob/3c09493d1b786aa2c7573305e4410841ef269e05/src/services/bluenaas-single-cell/types.ts.
+    """
+
     index: int
     name: str
     nseg: int
