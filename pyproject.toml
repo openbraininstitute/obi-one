@@ -91,6 +91,7 @@ service = [
     "pyjwt>=2.10.1",
     # FAST API SERVICE
     "fastapi",
+    "python-multipart",
     "starlette",
     "uvicorn",
     # HTTP CLIENT
