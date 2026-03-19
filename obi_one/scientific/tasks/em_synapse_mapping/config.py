@@ -15,7 +15,7 @@ L = logging.getLogger(__name__)
 
 
 class BlockGroup(StrEnum):
-    """Authentication and authorization errors."""
+    """"""
 
     SETUP_BLOCK_GROUP = "Setup"
 
