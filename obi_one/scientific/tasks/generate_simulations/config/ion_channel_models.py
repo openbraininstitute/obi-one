@@ -156,6 +156,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     # contains models and their conductances
     ion_channel_models: dict[str, IonChannelModelUnion] = Field(
         default_factory=dict,
+        min_length=1,
         title="Ion Channel Models",
         description="Ion channel models and their conductance / max permeability.",
         json_schema_extra={
