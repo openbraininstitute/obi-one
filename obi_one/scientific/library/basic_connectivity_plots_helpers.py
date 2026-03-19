@@ -24,7 +24,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 # Connectivity dependencies (optional) - check for networkx
 try:
     import networkx as nx
-except ImportError as e:
+except ImportError as e:  # pragma: no cover
     msg = "Connectivity plotting requires networkx. Install with: pip install obi-one[connectivity]"
     raise ImportError(msg) from e
 
@@ -32,7 +32,7 @@ except ImportError as e:
 try:
     from connalysis.network.classic import connection_probability_within, density
     from connalysis.network.topology import node_degree, rc_submatrix
-except ImportError as e:
+except ImportError as e:  # pragma: no cover
     msg = (
         "Connectivity plotting requires connectome-analysis (connalysis). "
         "Install with: pip install obi-one[connectivity]"

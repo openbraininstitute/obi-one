@@ -19,10 +19,10 @@ _missing = []
 for _module_name, _package_name in _SERVICE_MODULES:
     try:
         __import__(_module_name)
-    except ImportError:
+    except ImportError:  # pragma: no cover
         _missing.append(_package_name)
 
-if _missing:
+if _missing:  # pragma: no cover
     _msg = (
         f"Service dependencies not satisfied. "
         f"Missing {len(_missing)} package(s): {', '.join(_missing)}. "

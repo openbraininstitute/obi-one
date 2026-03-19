@@ -14,7 +14,7 @@ from scipy import sparse
 # Connectivity dependencies (optional) - check for connalysis
 try:
     from connalysis.network.topology import list_simplices_by_dimension
-except ImportError as e:
+except ImportError as e:  # pragma: no cover
     msg = (
         "Simplex extraction requires connectome-analysis (connalysis). "
         "Install with: pip install obi-one[connectivity]"

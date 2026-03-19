@@ -374,7 +374,9 @@ class BasicConnectivityPlotsTask(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         # Check for connectivity dependencies
-        if "compute_global_connectivity" not in globals() or "node_degree" not in globals():
+        if (  # pragma: no cover
+            "compute_global_connectivity" not in globals() or "node_degree" not in globals()
+        ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
                 "Install with: pip install obi-one[connectivity]"

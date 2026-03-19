@@ -93,7 +93,7 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():
+        if "simplex_submat" not in globals():  # pragma: no cover
             msg = (
                 "Import of 'simplex_submat' failed. You probably need connectome-analysis "
                 "(connalysis). Install with: pip install obi-one[connectivity]"
@@ -198,7 +198,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():
+        if "simplex_submat" not in globals():  # pragma: no cover
             msg = (
                 "Import of 'simplex_submat' failed. You probably need connectome-analysis "
                 "(connalysis). Install with: pip install obi-one[connectivity]"
