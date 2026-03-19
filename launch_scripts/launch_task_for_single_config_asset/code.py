@@ -40,7 +40,6 @@ def main() -> int:
     python launch_task_for_single_config_asset.py
         --entity_type Simulation
         --entity_id babb299c-782a-41f1-b782-bc4c5da45462
-        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8 (Optional, only if task requires config asset to be downloaded and added to obi-one task constructor)
         --execution_activity_type SimulationExecution
         --execution_activity_id b6759d3d-001d-49b3-b57f-84303415fe0a
         --entity_cache True
@@ -65,9 +64,6 @@ def main() -> int:
         parser.add_argument("--task-type", required=True, help="Task type")
         parser.add_argument("--config_type", required=True, help="EntitySDK entity type as string")
         parser.add_argument("--config_id", required=True, help="Entity ID as string")
-        parser.add_argument(
-            "--config_asset_id", required=False, help="Configuration Asset ID as string"
-        )
         parser.add_argument(
             "--execution_activity_type",
             required=False,
@@ -133,7 +129,6 @@ def main() -> int:
             task_type=args.task_type,
             entity_type=config_type,
             entity_id=args.config_id,
-            config_asset_id=args.config_asset_id,
             scan_output_root=args.scan_output_root,
             db_client=db_client,
             entity_cache=args.entity_cache,

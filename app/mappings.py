@@ -14,6 +14,9 @@ from app.schemas.task import (
     TaskDefinition,
 )
 from app.types import BuiltinScript, TaskType
+from obi_one.scientific.unions.config_task_map import (
+    get_task_type_config_asset_label,
+)
 
 APP_TAG = f"tag:{settings.APP_VERSION.split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "code.py")
@@ -26,7 +29,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.CircuitExtractionConfig,
         activity_type=models.CircuitExtractionExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
-        config_asset_label=AssetLabel.circuit_extraction_config,
+        config_asset_label=get_task_type_config_asset_label(TaskType.circuit_extraction),
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -45,7 +48,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.SkeletonizationConfig,
         activity_type=models.SkeletonizationExecution,
         accounting_service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
-        config_asset_label=AssetLabel.skeletonization_config,
+        config_asset_label=get_task_type_config_asset_label(TaskType.morphology_skeletonization),
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -65,7 +68,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,  # May be overridden by circuit scale
-        config_asset_label=None,
+        config_asset_label=get_task_type_config_asset_label(TaskType.circuit_simulation),
         code=BuiltinCode(
             script=BuiltinScript.circuit_simulation,
         ),
@@ -81,7 +84,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,
-        config_asset_label=None,
+        config_asset_label=get_task_type_config_asset_label(TaskType.ion_channel_model_simulation_execution),
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref="commit:f0e3a06f869af212ab7392a39ba1a0a536f0e03f",
