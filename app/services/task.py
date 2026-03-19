@@ -1,9 +1,9 @@
 import json
-import numpy as np
 from uuid import UUID
 
 import entitysdk
 import httpx
+import numpy as np
 from entitysdk import ProjectContext
 from entitysdk.types import ExecutorType
 
@@ -14,7 +14,10 @@ from app.schemas.task import MachineResources, TaskDefinition, TaskLaunchInfo, T
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils import db_sdk
 from obi_one import deserialize_obi_object_from_json_data
-from obi_one.scientific.library.circuit_metrics import CircuitStatsLevelOfDetail, get_circuit_metrics
+from obi_one.scientific.library.circuit_metrics import (
+    CircuitStatsLevelOfDetail,
+    get_circuit_metrics,
+)
 
 
 def submit_task_job(
@@ -209,10 +212,10 @@ def handle_task_failure_callback(
         )
 
 
-def _get_required_cpu_memory_combo(mem_gb_required: float) -> (int, int):
+def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
     """Returns the required CPU/memory combination."""
     # From launch-system
-    CPU_MEMORY_COMBINATIONS: dict[int, set[int]] = {
+    cpu_memory_combinations: dict[int, set[int]] = {
         1: {2, 4, 6, 8},
         2: {4, 8, 12, 16},
         4: {8, 16, 24, 30},
@@ -221,27 +224,35 @@ def _get_required_cpu_memory_combo(mem_gb_required: float) -> (int, int):
     }
 
     max_mem = 0
-    for ncpu, mem_values in CPU_MEMORY_COMBINATIONS.items():
+    for ncpu, mem_values in cpu_memory_combinations.items():
         for mem in sorted(mem_values):
-            if mem > max_mem:
-                max_mem = mem
+            max_mem = max(max_mem, mem)
             if mem > mem_gb_required:
                 return (ncpu, mem)
-    msg = f"No CPU/memory combination found (required: {mem_gb_required:.1f} GB, available: {max_mem:.1f} GB)!"
+    msg = (
+        f"No CPU/memory combination found"
+        f" (required: {mem_gb_required:.1f} GB, available: {max_mem:.1f} GB)!"
+    )
     raise ValueError(msg)
 
 
 def _check_available_disk_space(disk_space_gb_required: float) -> None:
     """Checks if the required disk space is available."""
     # From launch-system
-    DISK_SPACE_LIMIT_GB = 20
+    disk_space_limit_gb = 20
 
-    if disk_space_gb_required > DISK_SPACE_LIMIT_GB:
-        msg = f"Not enough disk space (required: {disk_space_gb_required:.1f} GB, available: {DISK_SPACE_LIMIT_GB:.1f} GB)!"
+    if disk_space_gb_required > disk_space_limit_gb:
+        msg = (
+            f"Not enough disk space"
+            f" (required: {disk_space_gb_required:.1f} GB,"
+            f" available: {disk_space_limit_gb:.1f} GB)!"
+        )
         raise ValueError(msg)
 
 
-def update_resources(json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition) -> TaskDefinition:
+def update_resources(  # noqa: PLR0914
+    json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
+) -> TaskDefinition:
     """Updates the machine resources in the task definition."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
@@ -259,7 +270,7 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: entitysdk.Client, 
             json_str = db_client.download_content(
                 entity_id=json_model.config_id,
                 entity_type=task_definition.config_type,
-                asset_id=config_asset_id
+                asset_id=config_asset_id,
             ).decode(encoding="utf-8")
 
             json_dict = json.loads(json_str)
@@ -276,12 +287,13 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: entitysdk.Client, 
             )
 
             # Estimate memory based on the number of input neurons
-            nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])
-            nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])
-            if single_config.initialize.do_virtual:
-                input_size_neurons = nbio + nvirt
-            else:
-                input_size_neurons = nbio
+            nbio = np.sum(
+                [npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations]
+            )
+            nvirt = np.sum(
+                [npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations]
+            )
+            input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio
 
             mem_gb_required = 1 + 55e-6 * input_size_neurons
             ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
@@ -290,12 +302,21 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: entitysdk.Client, 
             time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
 
             # Estimate disk space based in the number of input synapses
-            sbio = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_biophys_node_populations])
-            svirt = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_virtual_node_populations])
-            if single_config.initialize.do_virtual:
-                input_size_synapses = sbio + svirt
-            else:
-                input_size_synapses = sbio
+            sbio = np.sum(
+                [
+                    epop.number_of_edges
+                    for epop in circuit_metrics.chemical_edge_populations
+                    if epop.source_name in circuit_metrics.names_of_biophys_node_populations
+                ]
+            )
+            svirt = np.sum(
+                [
+                    epop.number_of_edges
+                    for epop in circuit_metrics.chemical_edge_populations
+                    if epop.source_name in circuit_metrics.names_of_virtual_node_populations
+                ]
+            )
+            input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio
             output_size_synapses = input_size_synapses  # Using maximum output count
             output_size_gb = 1 + output_size_synapses * 1.85e-7
             _check_available_disk_space(output_size_gb)

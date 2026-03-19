@@ -23,7 +23,6 @@ from app.schemas.task import (
 from app.services import accounting as accounting_service, task as task_service
 from app.types import TaskType
 
-
 router = APIRouter(
     prefix="/declared/task",
     tags=["declared"],
@@ -73,9 +72,7 @@ def task_launch_endpoint(
     )
     try:
         task_definition = task_service.update_resources(
-            json_model=json_model,
-            db_client=db_client,
-            task_definition=task_definition
+            json_model=json_model, db_client=db_client, task_definition=task_definition
         )
 
         return task_service.submit_task_job(
