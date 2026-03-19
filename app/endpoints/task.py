@@ -59,7 +59,6 @@ def task_launch_endpoint(
     )
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,
-        service_subtype=task_definition.accounting_service_subtype,
         accounting_factory=accounting_factory,
         accounting_parameters=accounting_info.parameters,
     )

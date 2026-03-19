@@ -174,7 +174,9 @@ class GenerateSimulationTask(Task):
                 )
             )
 
-    def _add_sonata_simulation_config_reports(self) -> None:
+    def _add_sonata_simulation_config_reports(
+        self, db_client: entitysdk.client.Client | None
+    ) -> None:
         self._sonata_config["reports"] = {}
         for recording in self.config.recordings.values():
             self._sonata_config["reports"].update(
@@ -183,6 +185,7 @@ class GenerateSimulationTask(Task):
                     self._circuit.default_population_name,
                     self.config.initialize.simulation_length,
                     DEFAULT_NODE_SET_NAME,
+                    db_client,
                 )
             )
 
@@ -442,7 +445,7 @@ class GenerateSimulationTask(Task):
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._add_sonata_simulation_config_inputs()
-        self._add_sonata_simulation_config_reports()
+        self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._update_simulation_number_neurons(db_client)

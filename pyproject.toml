@@ -69,7 +69,7 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
-    "bluecellulab>=2.6.82",
+    "bluecellulab>=2.6.87",
     # OBI NOTEBOOK
     "obi_notebook",
     "morph_spines",
@@ -215,6 +215,7 @@ source_pkgs = [
     "app",
     "obi_one",
 ]
+data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
@@ -223,3 +224,9 @@ fail_under = 30
 omit = [
     "__main__.py",
 ]
+
+[tool.coverage.xml]
+output = ".coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = ".coverage/html_report"
