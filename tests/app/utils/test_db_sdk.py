@@ -41,9 +41,9 @@ def mock_entity_with_assets():
     return config
 
 
-def test_get_config_asset(client, mock_entity_with_assets):
+def test_get_entity_asset_by_label(client, mock_entity_with_assets):
     """Test successful retrieval of config asset"""
-    result = test_module.get_config_asset(
+    result = test_module.get_entity_asset_by_label(
         client=client,
         config=mock_entity_with_assets,
         asset_label=AssetLabel.morphology,

@@ -56,7 +56,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         self, db_client: entitysdk.client.Client
     ) -> IonChannelModelSimulationSingleConfig:
 
-        config_asset = db_sdk.get_config_asset(
+        config_asset = db_sdk.get_entity_asset_by_label(
             client=db_client,
             config=self.config.single_entity,
             asset_label="simulation_generation_config",

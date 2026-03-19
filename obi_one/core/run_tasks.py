@@ -100,7 +100,7 @@ def run_task_type(
     config_asset_label = get_task_type_config_asset_label(task_type)
 
     if config_asset_label is not None:
-        config_asset_id = db_sdk.get_config_asset(
+        config_asset_id = db_sdk.get_entity_asset_by_label(
             client=db_client,
             config=entity,
             asset_label=config_asset_label,
