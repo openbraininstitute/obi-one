@@ -76,8 +76,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.ion_channel_model_simulation: TaskDefinition(
-        task_type=TaskType.ion_channel_model_simulation,
+    TaskType.ion_channel_model_simulation_execution: TaskDefinition(
+        task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,

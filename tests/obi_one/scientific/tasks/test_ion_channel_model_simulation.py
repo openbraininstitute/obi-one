@@ -12,7 +12,7 @@ from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models imp
     IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.ion_channel_model_simulation import IonChannelModelSimulationTask
+from obi_one.scientific.tasks.ion_channel_model_simulation_execution import IonChannelModelSimulationTask
 
 
 @pytest.fixture
@@ -46,12 +46,12 @@ def db_client():
     return MagicMock()
 
 
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.run_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.get_simulation_parameters")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.stage_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.compile_mechanisms")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.stage_ion_channel_models_as_circuit")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.create_dir")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.run_simulation")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.get_simulation_parameters")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_simulation")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.compile_mechanisms")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_ion_channel_models_as_circuit")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.create_dir")
 def test_execute_local_does_not_register(
     mock_create_dir,
     mock_stage_circuit,
@@ -96,13 +96,13 @@ def test_execute_local_does_not_register(
     db_client.update_entity.assert_not_called()
 
 
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.register_simulation_results")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.run_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.get_simulation_parameters")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.stage_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.compile_mechanisms")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.stage_ion_channel_models_as_circuit")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation.create_dir")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.register_simulation_results")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.run_simulation")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.get_simulation_parameters")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_simulation")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.compile_mechanisms")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_ion_channel_models_as_circuit")
+@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.create_dir")
 def test_execute_tracked_registers_and_updates_activity(
     mock_create_dir,
     mock_stage_circuit,

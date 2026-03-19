@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import ClassVar
@@ -7,10 +8,10 @@ from entitysdk import models
 from entitysdk.models.activity import Activity
 from entitysdk.staging.simulation import stage_simulation
 
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.scientific.library.simulation.process import compile_mechanisms, run_simulation
 from obi_one.scientific.library.simulation.registration import register_simulation_results
 from obi_one.scientific.library.simulation.schemas import SimulationMetadata
@@ -23,8 +24,6 @@ from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models imp
 )
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
-
-import json
 
 L = logging.getLogger(__name__)
 
@@ -52,15 +51,19 @@ class IonChannelModelSimulationExecutionTask(Task):
     config: IonChannelModelSimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
 
-    def get_generation_single_config(self, db_client: entitysdk.client.Client) -> IonChannelModelSimulationSingleConfig:
-        
+    def get_generation_single_config(
+        self, db_client: entitysdk.client.Client
+    ) -> IonChannelModelSimulationSingleConfig:
         for asset in self.config.single_entity:
             if asset.label == "simulation_generation_config":
                 config_asset_id = asset.id
                 break
 
         json_str = db_client.download_content(
-            entity_id=self.config.single_entity, entity_type=entitysdk.models.Simulation, asset_id=config_asset_id, asset_label="simulation_generation_config"
+            entity_id=self.config.single_entity,
+            entity_type=entitysdk.models.Simulation,
+            asset_id=config_asset_id,
+            asset_label="simulation_generation_config",
         ).decode(encoding="utf-8")
 
         json_dict = json.loads(json_str)
@@ -119,7 +122,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         )
         libnrnmech_path = compile_mechanisms(staged_circuit)
         simulation_entity = self.config.single_entity
-        
+
         simulation_metadata = SimulationMetadata(
             simulation_id=simulation_entity.id,
         )
