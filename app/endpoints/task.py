@@ -89,12 +89,7 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep,
                 level_of_detail_edges=level_of_detail_edges_dict,
             )
 
-            # Get output circuit size
-            # TODO: Requires resolving the neuron set based in the circuit
-            # > output_size_neurons = len(single_config.neuron_set.get_neuron_ids(circuit))
-            output_size_neurons = 0  # Disable for now
-
-            # Estimate memory based on number of input neurons
+            # Estimate memory based on the number of input neurons
             nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])
             nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])
             if single_config.initialize.do_virtual:
@@ -105,17 +100,17 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep,
             mem_gb_required = 1 + 55e-6 * input_size_neurons
             ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
 
-            # Estimate time limit
+            # Estimate time limit based on the number input neurons
             time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
 
-            # Estimate disk space
+            # Estimate disk space based in the number of input synapses
             sbio = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_biophys_node_populations])
             svirt = np.sum([epop.number_of_edges for epop in circuit_metrics.chemical_edge_populations if epop.source_name in circuit_metrics.names_of_virtual_node_populations])
             if single_config.initialize.do_virtual:
                 input_size_synapses = sbio + svirt
             else:
                 input_size_synapses = sbio
-            output_size_synapses = (output_size_neurons / nbio) * input_size_synapses
+            output_size_synapses = input_size_synapses  # Using maximum output count
             output_size_gb = 1 + output_size_synapses * 1.85e-7
             if output_size_gb > DISK_SPACE_LIMIT_GB:
                 msg = "Not enough disk space!"
