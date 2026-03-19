@@ -154,7 +154,7 @@ def main() -> int:
         db_client=db_client,
         execution_activity_type=args.execution_activity_type,
         execution_activity_id=args.execution_activity_id,
-        status=ActivityStatis.done,
+        status=ActivityStatus.done,
     )
 
     return 0
