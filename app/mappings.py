@@ -84,7 +84,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_asset_label=AssetLabel.simulation_generation_config,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="commit:00551ca46617376d208ebfb37f7ae5dfb84ee0fe",
+            ref="commit:f0e3a06f869af212ab7392a39ba1a0a536f0e03f",
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
