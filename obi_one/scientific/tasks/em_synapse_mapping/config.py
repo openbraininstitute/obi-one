@@ -15,8 +15,6 @@ L = logging.getLogger(__name__)
 
 
 class BlockGroup(StrEnum):
-    """"""
-
     SETUP_BLOCK_GROUP = "Setup"
 
 
@@ -118,6 +116,4 @@ class EMSynapseMappingScanConfig(ScanConfig):
 
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.em_synapse_mapping__config
-    )
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config

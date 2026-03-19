@@ -5,6 +5,7 @@ from entitysdk.models import (
     EMCellMesh,
     EMDenseReconstructionDataset,
 )
+
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 
 L = logging.getLogger(__name__)
