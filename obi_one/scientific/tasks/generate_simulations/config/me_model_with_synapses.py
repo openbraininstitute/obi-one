@@ -3,7 +3,6 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-
 from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
