@@ -28,23 +28,37 @@ def register_simulation_results(
             simulation_id=simulation_metadata.simulation_id,
         )
     )
-    L.info(f"Registered simulation result {simulation_result.id}")
+    L.info(f"SimulationResult: Registered entity {simulation_result.id}")
 
-    client.upload_file(
+    asset = client.upload_file(
         entity_id=simulation_result.id,
         entity_type=type(simulation_result),
         file_path=simulation_results.spike_report_file,
         file_content_type=ContentType.application_x_hdf5,
         asset_label=AssetLabel.spike_report,
     )
+    L.info(
+        "SimulationResult: Attached Asset(id=%s, path=%s, content_type=%s, label=%s)",
+        asset.id,
+        asset.path,
+        asset.content_type,
+        asset.label,
+    )
 
     for path in simulation_results.voltage_report_files:
-        client.upload_file(
+        asset = client.upload_file(
             entity_id=simulation_result.id,
             entity_type=type(simulation_result),
             file_path=path,
             file_content_type=EXTENSION_TO_CONTENT_TYPE[path.suffix],
             asset_label=AssetLabel.voltage_report,
+        )
+        L.info(
+            "SimulationResult: Attached Asset(id=%s, path=%s, content_type=%s, label=%s)",
+            asset.id,
+            asset.path,
+            asset.content_type,
+            asset.label,
         )
 
     return simulation_result
