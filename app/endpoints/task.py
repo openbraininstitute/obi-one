@@ -116,7 +116,7 @@ def update_resources(json_model: TaskLaunchSubmit, db_client: DatabaseClientDep,
             else:
                 input_size_synapses = sbio
             output_size_synapses = (output_size_neurons / nbio) * input_size_synapses
-            output_size_gb = output_size_synapses * 2e-7
+            output_size_gb = 1 + output_size_synapses * 1.85e-7
             if output_size_gb > DISK_SPACE_LIMIT_GB:
                 msg = "Not enough disk space!"
                 raise ValueError(msg)
