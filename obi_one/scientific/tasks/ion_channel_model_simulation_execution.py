@@ -24,6 +24,7 @@ from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models imp
 )
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -54,15 +55,17 @@ class IonChannelModelSimulationExecutionTask(Task):
     def get_generation_single_config(
         self, db_client: entitysdk.client.Client
     ) -> IonChannelModelSimulationSingleConfig:
-        for asset in self.config.single_entity:
-            if asset.label == "simulation_generation_config":
-                config_asset_id = asset.id
-                break
+
+        config_asset = db_sdk.get_config_asset(
+            client=db_client,
+            config=self.config.single_entity,
+            asset_label="simulation_generation_config",
+        )
 
         json_str = db_client.download_content(
             entity_id=self.config.single_entity,
             entity_type=entitysdk.models.Simulation,
-            asset_id=config_asset_id,
+            asset_id=config_asset.id,
             asset_label="simulation_generation_config",
         ).decode(encoding="utf-8")
 
