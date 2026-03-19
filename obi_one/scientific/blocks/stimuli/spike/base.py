@@ -1,10 +1,11 @@
 from abc import abstractmethod
+from collections import defaultdict
 from pathlib import Path
+from typing import Self
 
 import h5py
 import numpy as np
-import pandas as pd
-from pydantic import Field, NonNegativeFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.stimuli.stimulus import (
@@ -28,6 +29,17 @@ class SpikeStimulus(StimulusWithTimestamps):
     _input_type: str = "spikes"
     _spike_file: Path | None = None
     _simulation_length: float | None = None
+    _gids: list[int] | None = None
+    _source_node_population: str | None = None
+    _resolved_timestamps: list[float] | None = None
+
+    @property
+    def resolved_timestamps(self) -> list[float]:
+        if self._resolved_timestamps is None:
+            msg = "Timestamps must be resolved before accessing. Call generate_spikes first."
+            raise ValueError(msg)
+        return self._resolved_timestamps
+
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Source)",
@@ -117,45 +129,92 @@ class SpikeStimulus(StimulusWithTimestamps):
         simulation_length: NonNegativeFloat,
         source_node_population: str | None = None,
     ) -> None:
-        msg = "Subclasses should implement this method."
-        raise NotImplementedError(msg)
+        self._simulation_length = simulation_length
+        self._gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        self._source_node_population = self.source_neuron_set.block.get_population(
+            source_node_population
+        )
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+        self._resolved_timestamps = timestamps_block.timestamps()
+
+        self._pre_generate_validation()
+
+        spikes_by_gid = self.generate_spikes_by_gid()
+
+        self._spike_file = f"{self.block_name}_spikes.h5"
+        self.write_spike_file(
+            spikes_by_gid, spike_file_path / self._spike_file, self._source_node_population
+        )
+
+    def _pre_generate_validation(self) -> None:
+        pass
+
+    @abstractmethod
+    def generate_spikes_by_gid(self) -> dict[int, list[float]]:
+        pass
 
     @staticmethod
     def write_spike_file(
-        gid_spike_map: dict, spike_file: Path, source_node_population: str | None = None
+        spikes_by_gid: dict[int, list[float]],
+        spike_file: Path,
+        source_node_population: str | None = None,
     ) -> None:
         """Writes SONATA output spike trains to file.
 
         Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
         """
-        # IMPORTANT: Convert SONATA node IDs (0-based) to NEURON cell IDs (1-based)!!
-        # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
-        gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
-
         out_path = Path(spike_file).parent
         if not out_path.exists():
             out_path.mkdir(parents=True)
 
-        time_list = []
-        gid_list = []
-        for gid, spike_times in gid_spike_map.items():
-            if spike_times is not None:
-                for t in spike_times:
-                    time_list.append(t)
-                    gid_list.append(gid)
-        spike_df = pd.DataFrame(np.array([time_list, gid_list]).T, columns=["t", "gid"])
-        spike_df = spike_df.astype({"t": float, "gid": int})
-        """
-        # plt.figure()
-        # plt.scatter(spike_df["t"], spike_df["gid"], s=1)
-        # plt.savefig("/Users/james/Documents/obi/code/obi-one/obi_one/scientific/spike_raster.png")
-        # plt.close()
-        """
-        spike_df_sorted = spike_df.sort_values(by=["t", "gid"])  # Sort by time
+        times = []
+        gids = []
+        for gid, spike_times in spikes_by_gid.items():
+            times.extend(spike_times)
+            gids.extend([gid] * len(spike_times))
+
+        sort_idx = np.argsort(times, kind="stable")
+        sorted_times = np.array(times, dtype=np.float64)[sort_idx]
+        sorted_gids = np.array(gids, dtype=np.uint64)[sort_idx]
+
         with h5py.File(spike_file, "w") as f:
             pop = f.create_group(f"/spikes/{source_node_population}")
-            ts = pop.create_dataset(
-                "timestamps", data=spike_df_sorted["t"].values, dtype=np.float64
-            )
-            pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
+            ts = pop.create_dataset("timestamps", data=sorted_times)
+            pop.create_dataset("node_ids", data=sorted_gids)
             ts.attrs["units"] = "ms"
+
+
+class ExtendedSpikeStimulus(SpikeStimulus):
+    """Base class for spike stimuli with a duration, where stimulus epochs must not overlap."""
+
+    @model_validator(mode="after")
+    def validate_no_overlap(self) -> Self:
+        if self._resolved_timestamps is None:
+            return self
+        for idx, t in enumerate(self.resolved_timestamps[:-1]):
+            end_time = t + self.timestamp_offset + self.duration
+            next_timestamp = self.resolved_timestamps[idx + 1]
+            if end_time >= next_timestamp:
+                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
+                msg = (
+                    f"Stimulus time intervals overlap{stimulus_name_part}! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {t:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
+                    f"duration {self.duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
+                raise ValueError(msg)
+        return self
+
+    def _pre_generate_validation(self) -> None:
+        self.validate_no_overlap()
+
+
+class InstantaneousSpikeStimulus(SpikeStimulus):
+    """Base class for spike stimuli without a duration."""
+
+    pass

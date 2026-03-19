@@ -1,4 +1,4 @@
-from pathlib import Path
+from collections import defaultdict
 from typing import Annotated, ClassVar, Self
 
 import numpy as np
@@ -9,15 +9,11 @@ from pydantic import (
     model_validator,
 )
 
-from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.blocks.stimuli.spike.base import ExtendedSpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_POISSON_SPIKE_LIMIT,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
-)
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
 )
 
 
@@ -30,7 +26,7 @@ def _draw_inhomogeneous_poisson_interval_ms(rng: np.random.Generator, lam_max_hz
     return rng.exponential(1.0 / lam_max_hz) * 1000.0
 
 
-class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
+class SinusoidalPoissonSpikeStimulus(ExtendedSpikeStimulus):
     """Spike times drawn from an inhomogeneous Poisson process with sinusoidal rate.
 
     Sinusoid defined by a minimum and maximum rate.
@@ -40,9 +36,6 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
     """
 
     title: ClassVar[str] = "Sinusoidal Poisson Spikes (Efferent)"
-
-    _module: str = "synapse_replay"
-    _input_type: str = "spikes"
 
     # --- timing ---
     duration: (
@@ -151,28 +144,13 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
         return max(0.0, lam)
 
-    def generate_spikes(  # noqa: C901, PLR0914
-        self,
-        circuit: Circuit,
-        spike_file_path: Path,
-        simulation_length: NonNegativeFloat,
-        source_node_population: str | None = None,
-    ) -> None:
-        self._simulation_length = simulation_length
+    def generate_spikes_by_gid(self) -> dict[int, list[float]]:  # noqa: C901, PLR0914
         rng = np.random.default_rng(self.random_seed)
 
-        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        n_timestamps = len(timestamps_block.timestamps())
-
         # Upper-bound on expected spikes to guard against pathological params
-        # Use the per-epoch maximum rate (baseline + amplitude, clipped >=0)
-        total_expected = 0.0
-        total_expected += (self.duration * n_timestamps / 1000.0) * self.maximum_rate * len(gids)
+        total_expected = (
+            (self.duration * len(self.resolved_timestamps) / 1000.0) * self.maximum_rate * len(self._gids)
+        )
         if total_expected > _MAX_POISSON_SPIKE_LIMIT:
             msg = (
                 f"Sinusoidal Poisson input exceeds maximum allowed number of spikes "
@@ -180,64 +158,35 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             )
             raise ValueError(msg)
 
-        gid_spike_map: dict[int, list[float]] = {}
+        spikes_by_gid: dict[int, list[float]] = defaultdict(list)
+        lam_max_hz = self.maximum_rate
+        phase_rad = np.deg2rad(self.phase_degrees)
 
-        # Iterate epochs (non-overlapping enforced, like the original)
-        for idx, t0 in enumerate(timestamps_block.timestamps()):
+        for t0 in self.resolved_timestamps:
             start_time = t0 + self.timestamp_offset
             end_time = start_time + self.duration
 
-            if idx < n_timestamps - 1 and not end_time < timestamps_block.timestamps()[idx + 1]:
-                next_timestamp = timestamps_block.timestamps()[idx + 1]
-                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
-                msg = (
-                    f"Stimulus time intervals overlap{stimulus_name_part}! "
-                    f"Current stimulus ends at {end_time:.2f} ms "
-                    f"(timestamp {t0:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
-                    f"duration {self.duration:.2f} ms), "
-                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
-                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
-                    f"or increase spacing between timestamps."
-                )
-                raise ValueError(msg)
-
-            # Thinning with epoch-specific λ_max
-            lam_max_hz = self.maximum_rate
-
-            for gid in gids:
-                spikes = []
+            for gid in self._gids:
                 t = start_time
                 while t < end_time:
-                    # 1) Draw candidate from homogeneous process with λ_max
                     dt_ms = _draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)
                     if not np.isfinite(dt_ms):
-                        break  # no spikes possible with current λ_max (i.e., λ_max==0)
+                        break
                     t_candidate = t + dt_ms
                     if t_candidate >= end_time:
                         break
 
-                    # 2) Accept with probability λ(t_candidate)/λ_max
+                    # Accept with probability λ(t_candidate)/λ_max
                     lam_tc = self._lambda_t_ms(
                         t_candidate,
                         self.minimum_rate,
                         self.maximum_rate,
                         self.modulation_frequency_hz,
-                        np.deg2rad(self.phase_degrees),
+                        phase_rad,
                     )
-                    if lam_max_hz > 0.0:
-                        accept_prob = lam_tc / lam_max_hz
-                        if rng.uniform() <= accept_prob:
-                            spikes.append(t_candidate)
+                    if lam_max_hz > 0.0 and rng.uniform() <= lam_tc / lam_max_hz:
+                        spikes_by_gid[gid].append(t_candidate)
 
-                    # 3) Move time forward regardless of accept/reject
                     t = t_candidate
 
-                if gid in gid_spike_map:
-                    gid_spike_map[gid] += spikes
-                else:
-                    gid_spike_map[gid] = spikes
-
-        self._spike_file = f"{self.block_name}_spikes.h5"
-        self.write_spike_file(
-            gid_spike_map, spike_file_path / self._spike_file, source_node_population
-        )
+        return spikes_by_gid
