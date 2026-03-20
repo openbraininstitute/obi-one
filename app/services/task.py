@@ -12,12 +12,12 @@ from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
 from app.types import CallBackAction, CallBackEvent, TaskType
-from app.utils import db_sdk
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.utils import db_sdk
 
 
 def submit_task_job(

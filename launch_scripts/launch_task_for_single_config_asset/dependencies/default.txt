@@ -1,1 +1,2 @@
-obi-one[connectivity]
+obi_auth==1.0.0
+obi-one
