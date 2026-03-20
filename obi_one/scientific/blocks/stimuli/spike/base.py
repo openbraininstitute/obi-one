@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from collections import defaultdict
 from pathlib import Path
 from typing import Self
 
@@ -9,8 +8,8 @@ from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.stimuli.stimulus import (
-    StimulusWithTimestamps,
     _TIMESTAMPS_OFFSET_FIELD,
+    StimulusWithTimestamps,
 )
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
@@ -86,8 +85,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-
-        # HERE
+        """
         source_node_set = resolve_neuron_set_ref_to_node_set(
             self.targeted_neuron_set, self._default_node_set
         )
@@ -95,7 +93,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         target_node_set = resolve_neuron_set_ref_to_node_set(
             self.targeted_neuron_set, self._default_node_set
         )
-
+        """
 
         return self._generate_config()
 
@@ -216,5 +214,3 @@ class ExtendedSpikeStimulus(SpikeStimulus):
 
 class InstantaneousSpikeStimulus(SpikeStimulus):
     """Base class for spike stimuli without a duration."""
-
-    pass

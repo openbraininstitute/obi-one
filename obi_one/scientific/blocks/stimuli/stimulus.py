@@ -693,5 +693,3 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return sonata_config
-
-

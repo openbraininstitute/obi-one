@@ -54,7 +54,9 @@ def make_validated_stimulus(
 
     # Add a dummy recording so validation passes
     rec = obi.TimeWindowSomaVoltageRecording(
-        neuron_set=target_ns.ref, start_time=0.0, end_time=sim_length,
+        neuron_set=target_ns.ref,
+        start_time=0.0,
+        end_time=sim_length,
     )
     sc.add(rec, name="rec")
 
@@ -80,8 +82,9 @@ def generate_spikes_for_stim(validated_config, tmp_path: Path):
         # (config() also calls _generate_config which requires _spike_file)
         stim._default_node_set = node_set_name
         stim._default_timestamps = obi.SingleTimestamp(start_time=0.0)
-        stim.generate_spikes(circuit, tmp_path, simulation_length=sim_length,
-                             source_node_population=pop)
+        stim.generate_spikes(
+            circuit, tmp_path, simulation_length=sim_length, source_node_population=pop
+        )
 
     first_name = next(iter(validated_config.stimuli))
     first_stim = validated_config.stimuli[first_name]
