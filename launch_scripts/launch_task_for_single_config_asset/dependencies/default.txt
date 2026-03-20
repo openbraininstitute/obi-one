@@ -1,3 +1,2 @@
-entitysdk==0.12.4
 obi_auth==1.0.0
 obi-one
