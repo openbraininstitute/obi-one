@@ -4,6 +4,8 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
+from obi_one.types import SimulationBackend
+
 
 def _install_stub_modules(monkeypatch):
     matplotlib = ModuleType("matplotlib")
@@ -94,7 +96,7 @@ def test_run_dispatches_backend(test_module, monkeypatch):
 
     test_module.run(
         simulation_config="cfg.json",
-        simulator="BlueCelluLab",
+        simulator=SimulationBackend.bluecellulab,
         libnrnmech_path="lib.so",
     )
     assert "blue" in called
@@ -103,7 +105,7 @@ def test_run_dispatches_backend(test_module, monkeypatch):
 
     test_module.run(
         simulation_config="cfg.json",
-        simulator="neurodamus",
+        simulator=SimulationBackend.neurodamus,
         libnrnmech_path="lib.so",
     )
     assert "neuro" in called

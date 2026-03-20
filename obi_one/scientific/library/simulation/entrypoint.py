@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
@@ -24,6 +24,7 @@ from bluecellulab.reports.utils import (
 )
 from neuron import h
 
+from obi_one.types import SimulationBackend
 from obi_one.utils.io import load_json
 
 logger = logging.getLogger(__name__)
@@ -79,10 +80,6 @@ def _setup_mpi_logging(rank: int) -> None:
     # Avoid duplicate handlers if imported multiple times
     logger.handlers.clear()
     logger.addHandler(handler)
-
-
-# Type alias for simulator backends
-SimulatorBackend = Literal["bluecellulab", "neurodamus"]
 
 
 def get_instantiate_gids_params(simulation_config_data: dict[str, Any]) -> dict[str, Any]:
@@ -145,7 +142,7 @@ def get_instantiate_gids_params(simulation_config_data: dict[str, Any]) -> dict[
 
 def run(
     simulation_config: str | Path,
-    simulator: SimulatorBackend,
+    simulator: SimulationBackend,
     *,
     libnrnmech_path: Path,
 ) -> None:
@@ -162,16 +159,16 @@ def run(
         ValueError: If the requested backend is not implemented.
     """
     logger.info("Starting simulation with %s backend", simulator)
-    simulator = simulator.lower()
-    if simulator == "bluecellulab":
-        run_bluecellulab(simulation_config=simulation_config, libnrnmech_path=libnrnmech_path)
-    elif simulator == "neurodamus":
-        run_neurodamus(
-            simulation_config=simulation_config,
-        )
-    else:
-        err_msg = f"Unsupported backend: {simulator}"
-        raise ValueError(err_msg)
+    match simulator:
+        case SimulationBackend.bluecellulab:
+            run_bluecellulab(simulation_config=simulation_config, libnrnmech_path=libnrnmech_path)
+        case SimulationBackend.neurodamus:
+            run_neurodamus(
+                simulation_config=simulation_config,
+            )
+        case _:
+            err_msg = f"Unsupported backend: {simulator}"
+            raise ValueError(err_msg)
 
 
 def run_bluecellulab(
