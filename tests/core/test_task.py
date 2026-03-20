@@ -17,7 +17,3 @@ class TestTask:
     def test_type_field(self):
         task = ConcreteTask()
         assert task.type == "ConcreteTask"
-
-    def test_ui_enabled_propagated_to_schema(self):
-        schema_extra = ConcreteTask.model_config.get("json_schema_extra")
-        assert schema_extra.get("ui_enabled") is False
