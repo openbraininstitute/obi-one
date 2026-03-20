@@ -10,7 +10,7 @@ from entitysdk.types import ExecutorType
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import MachineResources, TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
+from app.schemas.task import TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils import db_sdk
 from obi_one import deserialize_obi_object_from_json_data
@@ -322,20 +322,10 @@ def update_resources(  # noqa: PLR0914
             _check_available_disk_space(output_size_gb)
 
             # Update resources
-            task_definition = TaskDefinition(
-                task_type=task_definition.task_type,
-                config_type=task_definition.config_type,
-                activity_type=task_definition.activity_type,
-                accounting_service_subtype=task_definition.accounting_service_subtype,
-                config_asset_label=task_definition.config_asset_label,
-                code=task_definition.code,
-                resources=MachineResources(
-                    cores=ncpu,
-                    memory=mem_gb,
-                    timelimit=f"{time_h:02d}:00",
-                    compute_cell=task_definition.resources.compute_cell,
-                ),
+            updated_resources = task_definition.resources.model_copy(
+                update={"cores": ncpu, "memory": mem_gb, "timelimit": f"{time_h:02d}:00"}
             )
+            task_definition = task_definition.model_copy(update={"resources": updated_resources})
 
         case _:
             # Don't update anything
