@@ -17,6 +17,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.unions.config_task_map import get_task_type_config_asset_label
 from obi_one.utils import db_sdk
 
 
@@ -257,7 +258,7 @@ def update_resources(  # noqa: PLR0914
             config_asset_id = db_sdk.get_entity_asset_by_label(
                 client=db_client,
                 config=config,
-                asset_label=task_definition.config_asset_label,
+                asset_label=get_task_type_config_asset_label(task_definition.task_type),
             ).id
 
             json_str = db_client.download_content(

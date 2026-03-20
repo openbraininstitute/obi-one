@@ -352,7 +352,8 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
             "dependencies": (
-                "launch_scripts/launch_task_for_single_config_asset/dependencies/default.txt"
+                "launch_scripts/launch_task_for_single_config_asset/dependencies"
+                "/circuit_extraction.txt"
             ),
             "capabilities": {
                 "private_packages": False,
@@ -574,6 +575,10 @@ def _run_update_resources(db_client, circuit_metrics, do_virtual):
         patch(
             "app.services.task.deserialize_obi_object_from_json_data",
             return_value=fake_config,
+        ),
+        patch(
+            "app.services.task.get_task_type_config_asset_label",
+            return_value="circuit_extraction_config",
         ),
         patch("app.services.task.db_sdk.get_entity_asset_by_label") as mock_get_asset,
     ):
