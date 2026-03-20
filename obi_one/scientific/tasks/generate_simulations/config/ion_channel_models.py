@@ -16,7 +16,6 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationScanConfig,
@@ -25,9 +24,6 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions.unions_ion_channel_model import (
     IonChannelModelReference,
     IonChannelModelUnion,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     IonChannelModelRecordingUnion,
@@ -60,7 +56,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         "default_block_reference_labels": {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
         "property_endpoints": {
