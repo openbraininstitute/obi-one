@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from obi_one.scientific.unions import config_task_map as test_module
 from obi_one.types import TaskType
