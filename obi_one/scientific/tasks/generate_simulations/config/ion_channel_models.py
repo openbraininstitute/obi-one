@@ -4,6 +4,7 @@ from typing import Annotated, ClassVar, Self
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
@@ -65,6 +66,13 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             MappedPropertiesGroup.ION_CHANNEL_MODEL: "/mapped-ion-channel-properties",
         },
     }
+
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+        IonChannelModelReference,
+        StimulusReference,
+    ]
 
     class Initialize(Block):
         simulation_length: (

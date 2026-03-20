@@ -3,7 +3,11 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+<<<<<<< HEAD
+from obi_one.core.block_reference import BlockReference
+=======
 from obi_one.core.schema import SchemaKey, UIElement
+>>>>>>> main
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -17,6 +21,7 @@ from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
 )
+from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
@@ -37,6 +42,13 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+        NeuronalManipulationReference,
+        StimulusReference,
+    ]
 
     class Initialize(SimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(

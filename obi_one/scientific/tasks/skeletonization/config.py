@@ -11,6 +11,7 @@ from entitysdk.types import AssetLabel, ContentType
 from pydantic import ConfigDict, Field, PositiveFloat
 
 from obi_one.core.block import Block
+from obi_one.core.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
@@ -18,7 +19,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 

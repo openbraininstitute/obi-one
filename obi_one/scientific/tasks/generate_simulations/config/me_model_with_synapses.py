@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -19,6 +20,12 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
 )
+from obi_one.scientific.unions.unions_recordings import (
+    RecordingReference,
+)
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+)
 
 L = logging.getLogger(__name__)
 
@@ -34,6 +41,12 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+
+    _all_block_reference_types: ClassVar[list[type[BlockReference]]] = [
+        TimestampsReference,
+        RecordingReference,
+        NeuronSetReference,
+    ]
 
     neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
         default_factory=dict,
