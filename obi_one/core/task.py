@@ -6,6 +6,4 @@ from obi_one.core.schema import SchemaKey
 
 
 class Task(OBIBaseModel, abc.ABC):
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: False,
-    }
+    pass
