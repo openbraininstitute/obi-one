@@ -575,7 +575,7 @@ def _run_update_resources(db_client, circuit_metrics, do_virtual):
             "app.services.task.deserialize_obi_object_from_json_data",
             return_value=fake_config,
         ),
-        patch("app.services.task.db_sdk.get_config_asset") as mock_get_asset,
+        patch("app.services.task.db_sdk.get_entity_asset_by_label") as mock_get_asset,
     ):
         mock_get_asset.return_value = SimpleNamespace(id=uuid4())
         return test_module.update_resources(

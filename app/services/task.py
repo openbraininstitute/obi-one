@@ -254,7 +254,7 @@ def update_resources(  # noqa: PLR0914
                 entity_id=json_model.config_id,
                 entity_type=task_definition.config_type,
             )
-            config_asset_id = db_sdk.get_config_asset(
+            config_asset_id = db_sdk.get_entity_asset_by_label(
                 client=db_client,
                 config=config,
                 asset_label=task_definition.config_asset_label,
