@@ -5,7 +5,7 @@ tags:
 
 # Small Circuit Simulations
 
-Small circuit simulations in OBI-one simulate networks of interconnected neurons using SONATA circuit format. A "small circuit" is defined as a circuit containing up to 20 biophysical neurons.
+Small circuit simulations in OBI-ONE simulate networks of interconnected neurons using SONATA circuit format. A "small circuit" is defined as a circuit containing up to 20 biophysical neurons.
 
 ## Overview
 
@@ -20,7 +20,7 @@ Circuit simulations model networks of neurons with their synaptic connections, a
 
 ### CircuitSimulationSingleConfig
 
-The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation.config.base.py`) is used to configure circuit simulations. It includes:
+The `CircuitSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulations/config/base.py`) is used to configure circuit simulations. It includes:
 
 - **Circuit**: A SONATA circuit to simulate (can be `Circuit` or `CircuitFromID`)
 - **Neuron Sets**: Dictionary of neuron sets defining which neurons to include
@@ -43,7 +43,7 @@ The `Circuit` class (`obi_one/scientific/library/circuit.py`) represents a SONAT
 
 ### GenerateSimulationTask
 
-The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulation_task.py`) handles circuit simulation configuration:
+The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulations/task/task.py`) handles circuit simulation configuration:
 
 1. **Resolves the circuit**: Loads circuit from path or entity database
 2. **Initializes SONATA config**: Sets up simulation parameters (duration, timestep, conditions)
@@ -166,8 +166,6 @@ Modify ion channel GLOBAL variables that apply to the entire neuron.
 Both modification types generate SONATA `conditions.modifications` entries:
 - **section_list**: Applies modification to specific section lists (RANGE variables)
 - **configure_all_sections**: Applies modification to all sections (GLOBAL variables or `all` section list)
-
-Current
 
 ### Stimuli
 
