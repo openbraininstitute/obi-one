@@ -90,6 +90,7 @@ class TemporaryAsset:
                 asset_id=self._asset_id,
                 output_path=temp_file_path,
                 asset_path=self._remote_path,
+                link_from_store=True,
             )
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
@@ -510,6 +511,7 @@ def get_circuit_metrics(  # noqa: PLR0914
             asset_id=asset_id,
             output_path=temp_file_path,
             asset_path="circuit_config.json",
+            link_from_store=True,
         )
 
         # Read the file and load JSON
