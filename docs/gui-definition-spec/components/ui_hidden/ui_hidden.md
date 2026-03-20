@@ -9,7 +9,7 @@ class Block:
     field: str = Field(default="hidden input",  # Default must be present if ui_hidden==True
                         title="title",
                         description="description",
-                        json_schema_extra={"ui_element": "string_input",
-                                            "ui_hidden": True}
+                        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+                                            SchemaKey.UI_HIDDEN: True}
                         )
 ```

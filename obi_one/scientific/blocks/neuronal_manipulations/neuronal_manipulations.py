@@ -5,6 +5,7 @@ from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.emodel_parameters import _expand_section_list
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
@@ -110,16 +111,16 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
-        json_schema_extra={"ui_hidden": True},
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     modification: BySectionListModification = Field(
         title="Ion channel variable manipulations by section type",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
-            "ui_element": "ion_channel_variable_modification_by_section_list",
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 
@@ -169,16 +170,16 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
-        json_schema_extra={"ui_hidden": True},
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     modification: ByNeuronModification = Field(
         title="Ion channel variable manipulations by neuron",
         description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
         json_schema_extra={
-            "ui_element": "ion_channel_variable_modification_by_neuron",
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 
