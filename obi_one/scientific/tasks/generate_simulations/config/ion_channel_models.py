@@ -6,7 +6,6 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
-from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.constants import (
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
@@ -231,6 +230,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
 
 class IonChannelModelSimulationSingleConfig(
-    IonChannelModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+    IonChannelModelSimulationScanConfig, SimulationSingleConfigMixin
 ):
     """Only allows single values."""

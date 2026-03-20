@@ -12,6 +12,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -263,18 +264,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(abc.ABC):
-    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
+class SimulationSingleConfigMixin(SingleConfigMixin):
+    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig.
 
-    _single_entity: entitysdk.models.Simulation
-
-    @property
-    def single_entity(self) -> entitysdk.models.Simulation:
-        return self._single_entity
-
-    def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
+    Inherits from SingleConfigMixin and overrides create_single_entity_with_config
+    to register a Simulation entity instead of a generic TaskConfig.
+    """
 
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client

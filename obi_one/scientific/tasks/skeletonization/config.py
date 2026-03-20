@@ -156,16 +156,6 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
 
 class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
-    _single_entity: entitysdk.models.SkeletonizationConfig
-
-    @property
-    def single_entity(self) -> entitysdk.models.SkeletonizationConfig:
-        return self._single_entity
-
-    def set_single_entity(self, entity: entitysdk.models.SkeletonizationConfig) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
-
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SkeletonizationCampaign, db_client: entitysdk.client.Client
     ) -> entitysdk.models.SkeletonizationConfig:

@@ -3,13 +3,17 @@ import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
+from entitysdk.client import Client
+from entitysdk.models import Entity, TaskConfig
+from entitysdk.types import AssetLabel, ContentType, TaskActivityType
 from pydantic import Field, field_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -67,6 +71,57 @@ class SingleConfigMixin:
     obi_one_version: str | None = None
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None
+
+    _single_task_config_type: ClassVar[TaskActivityType] = None
+    _single_entity: Entity = None
+
+    @property
+    def single_entity(self) -> Entity:
+        return self._single_entity
+
+    def set_single_entity(self, entity: Entity) -> None:
+        """Sets the single entity attribute to the given entity."""
+        self._single_entity = entity
+
+    @property
+    def single_task_config_type(self) -> TaskActivityType:
+        return self._single_task_config_type
+
+    def create_single_entity_with_config(
+        self,
+        campaign: TaskConfig,  # noqa: ARG002
+        db_client: Client,
+    ) -> TaskConfig:
+        if self.single_task_config_type is None:
+            msg = (
+                "single_task_config_type must be defined in the subclass "
+                "for Tasks which use TaskActivity execution activities."
+            )
+            raise ValueError(msg)
+
+        L.info(f"-- Register TaskConfig type: {self.single_task_config_type}")
+        self._single_entity = db_client.register_entity(
+            TaskConfig(
+                name=self.campaign_name,
+                description=self.campaign_description,
+                task_config_type=self.single_task_config_type,
+                meta={
+                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()  # noqa: E501
+                },
+                inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
+            )
+        )
+
+        L.info("-- Upload task_config asset for campaign TaskConfig")
+        _ = db_client.upload_file(
+            entity_id=self.single_entity.id,
+            entity_type=TaskConfig,
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            file_content_type=ContentType.json,
+            asset_label=AssetLabel.task_config,
+        )
+
+        return self._single_entity
 
     @field_validator("*", mode="before")
     @classmethod

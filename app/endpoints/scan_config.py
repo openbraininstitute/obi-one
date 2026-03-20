@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
 )
@@ -119,6 +120,7 @@ def activate_scan_config_endpoints() -> None:
         (CircuitExtractionScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
+        (EMSynapseMappingScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
