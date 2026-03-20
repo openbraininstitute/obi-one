@@ -41,11 +41,11 @@ def test_make_task_reservation_success(user_context_user_1, accounting_parameter
     class FakeSession:
         _job_id = uuid4()
 
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             return None
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     session = test_module.make_task_reservation(
@@ -59,11 +59,11 @@ def test_make_task_reservation_success(user_context_user_1, accounting_parameter
 
 def test_make_task_reservation_insufficient_funds(user_context_user_1, accounting_parameters):
     class FakeSession:
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             raise InsufficientFundsError
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     with pytest.raises(ApiError) as exc:
@@ -82,12 +82,12 @@ def test_make_task_reservation__generic_accounting_error(
     user_context_user_1, accounting_parameters
 ):
     class FakeSession:
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             msg = "Internal accounting error"
             raise BaseAccountingError(msg)
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     with pytest.raises(ApiError) as exc:
@@ -103,7 +103,7 @@ def test_make_task_reservation__generic_accounting_error(
 
 def test_estimate_task_cost(project_context, accounting_parameters, task_definition):
     class FakeFactory:
-        def estimate_oneshot_cost(self, **_kwargs):  # noqa: PLR6301
+        def estimate_oneshot_cost(self, **_kwargs):
             return 100.0
 
     with patch(

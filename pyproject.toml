@@ -173,6 +173,7 @@ builtins-ignorelist = ["license"]
     "ERA001", # Found commented-out code
     "PLC2701", # Private name import from external module
     "PLR2004", # magic value (constant) used in comparison (i.e. expected == 3)
+    "PLR6301", # Method could be a function (class-based test organization)
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
