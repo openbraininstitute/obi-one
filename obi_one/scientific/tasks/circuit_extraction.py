@@ -16,7 +16,7 @@ import numpy as np
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
-from entitysdk import Client, models, types
+from entitysdk import Client, MultipartUploadTransferConfig, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
@@ -41,6 +41,11 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.tools.benchmark import BenchmarkTracker
+
+# Toggle benchmarking on/off (uncomment one line)
+BenchmarkTracker.enable()  # Enable benchmarking (default)
+# BenchmarkTracker.disable()  # Disable benchmarking  # noqa: ERA001
 
 L = logging.getLogger(__name__)
 _RUN_VALIDATION = False
@@ -278,6 +283,55 @@ class CircuitExtractionTask(Task):
             raise OBIONEError(msg)
 
     @staticmethod
+    def _fix_node_sets_file(circuit_path: Path) -> None:
+        """Fixes the node sets file in case references are broken.
+
+        This could happen in compound expressions which are pointing
+        to non-existing node sets after circuit extraction.
+        """
+
+        def _find_broken_neuron_sets(nset_dict: dict) -> list:
+            """Finds compound neuron sets with broken references."""
+            broken_nsets = []
+            for nset_name, nset_def in nset_dict.items():
+                if isinstance(nset_def, list):  # Compound expression
+                    for n in nset_def:
+                        if n not in nset_dict:
+                            broken_nsets.append(nset_name)
+                            break
+            return broken_nsets
+
+        def _remove_broken_neuron_sets(nset_dict: dict) -> None:
+            """Removes neuron sets with broken references (in-place)."""
+            broken_nsets = _find_broken_neuron_sets(nset_dict)
+            if len(broken_nsets) > 0:
+                # Remove all broken neuron sets from dict
+                for nset in broken_nsets:
+                    del nset_dict[nset]
+                    L.warning(f"Node set '{nset}' broken and removed from node sets file.")
+                # Recursively check again, since removal could cause
+                # more broken neuron sets
+                _remove_broken_neuron_sets(nset_dict)
+
+        # Load node sets file
+        c = snap.Circuit(circuit_path)
+        with Path(c.config["node_sets_file"]).open(encoding="utf-8") as f:
+            nset_dict = json.load(f)
+
+        # Check if broken neuron sets
+        broken_nsets = _find_broken_neuron_sets(nset_dict)
+        if len(broken_nsets) == 0:
+            # Nothing to fix
+            return
+
+        # Remove broken neuron sets, if any
+        _remove_broken_neuron_sets(nset_dict)
+
+        # Write new node sets file
+        with Path(c.config["node_sets_file"]).open("w", encoding="utf-8") as f:
+            json.dump(nset_dict, f, indent=2)
+
+    @staticmethod
     def get_circuit_size(c: Circuit) -> (str, int, int, int):
         c_sonata = c.sonata_circuit
         num_nrn = c_sonata.nodes[c.default_population_name].size
@@ -300,7 +354,13 @@ class CircuitExtractionTask(Task):
             ]
         else:
             # Default case: Only include intrinsic synapse & connections
-            edge_pops = [c.default_edge_population_name]
+            try:
+                default_epop = c.default_edge_population_name
+            except ValueError as e:
+                default_epop = None
+                L.warning(e)
+                # TODO: May erroneously lead to 0 synapses
+            edge_pops = [] if default_epop is None else [default_epop]
 
         num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
         num_conn = np.sum(
@@ -360,7 +420,7 @@ class CircuitExtractionTask(Task):
             has_spines=parent.has_spines,
             scale=scale,
             build_category=parent.build_category,
-            root_circuit_id=parent.root_circuit_id,
+            root_circuit_id=parent.root_circuit_id or parent.id,
             atlas_id=parent.atlas_id,
             contact_email=parent.contact_email,
             published_in=parent.published_in,
@@ -419,12 +479,14 @@ class CircuitExtractionTask(Task):
             raise OBIONEError(msg)
 
         # Upload compressed file asset
+        transfer_config = MultipartUploadTransferConfig()
         compressed_asset = db_client.upload_file(
             entity_id=registered_circuit.id,
             entity_type=models.Circuit,
             file_path=compressed_file,
             file_content_type="application/gzip",
             asset_label=asset_label,
+            transfer_config=transfer_config,
         )
         L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
         return compressed_asset
@@ -951,7 +1013,7 @@ class CircuitExtractionTask(Task):
         return output_file
 
     @staticmethod
-    def _generate_additional_circuit_assets(  # noqa: C901
+    def _generate_additional_circuit_assets(  # noqa: C901, PLR0915
         db_client: Client,
         new_circuit_path: Path,
         new_circuit_entity: models.Circuit,
@@ -959,10 +1021,11 @@ class CircuitExtractionTask(Task):
         """Generate and register additional circuit assets."""
         # Compressed circuit asset
         try:
-            compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
-                circuit_path=new_circuit_path,
-                circuit_name=new_circuit_entity.name if new_circuit_entity else None,
-            )
+            with BenchmarkTracker.section("run_circuit_folder_compression"):
+                compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
+                    circuit_path=new_circuit_path,
+                    circuit_name=new_circuit_entity.name if new_circuit_entity else None,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit compression failed: {e}")
@@ -970,24 +1033,26 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and compressed_circuit:
             try:
-                CircuitExtractionTask._add_compressed_circuit_asset(
-                    db_client=db_client,
-                    compressed_file=compressed_circuit,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_compressed_circuit_asset"):
+                    CircuitExtractionTask._add_compressed_circuit_asset(
+                        db_client=db_client,
+                        compressed_file=compressed_circuit,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Compressed circuit registration failed: {e}")
 
         # Connectivity matrix asset
         try:
-            (
-                matrix_dir,
-                matrix_config,
-                edge_population,
-            ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
-                circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("run_connectivity_matrix_extraction"):
+                (
+                    matrix_dir,
+                    matrix_config,
+                    edge_population,
+                ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
+                    circuit_path=new_circuit_path
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity matrix extraction failed: {e}")
@@ -995,22 +1060,24 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and matrix_dir:
             try:
-                CircuitExtractionTask._add_connectivity_matrix_asset(
-                    db_client=db_client,
-                    matrix_dir=matrix_dir,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_matrix_asset"):
+                    CircuitExtractionTask._add_connectivity_matrix_asset(
+                        db_client=db_client,
+                        matrix_dir=matrix_dir,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity matrix registration failed: {e}")
 
         # Connectivity plots asset
         try:
-            plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
-                circuit_path=new_circuit_path,
-                matrix_config=matrix_config,
-                edge_population=edge_population,
-            )
+            with BenchmarkTracker.section("run_basic_connectivity_plots"):
+                plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
+                    circuit_path=new_circuit_path,
+                    matrix_config=matrix_config,
+                    edge_population=edge_population,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity plots generation failed: {e}")
@@ -1018,30 +1085,32 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and plot_dir and plot_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=plot_dir,
-                    plot_files=plot_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_plot_assets"):
+                    CircuitExtractionTask._add_image_assets(
+                        db_client=db_client,
+                        plot_dir=plot_dir,
+                        plot_files=plot_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity plots registration failed: {e}")
 
         # Overview & sim designer visualizations
         try:
-            viz_dir = new_circuit_path.parent.with_name(
-                new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
-            )
-            viz_files = []
-            viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "circuit_visualization.png"
-            )
-            viz_files.append(viz_path.name)
-            sim_viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "simulation_designer_image.png"
-            )
-            viz_files.append(sim_viz_path.name)
+            with BenchmarkTracker.section("generate_overview_figures"):
+                viz_dir = new_circuit_path.parent.with_name(
+                    new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
+                )
+                viz_files = []
+                viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "circuit_visualization.png"
+                )
+                viz_files.append(viz_path.name)
+                sim_viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "simulation_designer_image.png"
+                )
+                viz_files.append(sim_viz_path.name)
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit visualization generation failed: {e}")
@@ -1049,59 +1118,67 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and viz_dir and viz_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=viz_dir,
-                    plot_files=viz_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_overview_figure_assets"):
+                    CircuitExtractionTask._add_image_assets(
+                        db_client=db_client,
+                        plot_dir=viz_dir,
+                        plot_files=viz_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Circuit visualization registration failed: {e}")
 
-    def execute(
+    def execute(  # noqa: PLR0915
         self,
         *,
         db_client: Client = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
+        # Start benchmark tracking
+        BenchmarkTracker.start_tracking()
+
         # Get execution activity (expected to be created and managed externally)
         execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         # Resolve parent circuit (local path or staging from ID)
-        self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        with BenchmarkTracker.section("resolve_circuit"):
+            self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
-        nset_name = self.config.neuron_set.__class__.__name__
-        nset_def = self.config.neuron_set.get_node_set_definition(
-            self._circuit, self._circuit.default_population_name
-        )
-        sonata_circuit = self._circuit.sonata_circuit
-        add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+        with BenchmarkTracker.section("add_node_set"):
+            nset_name = self.config.neuron_set.__class__.__name__
+            nset_def = self.config.neuron_set.get_node_set_definition(
+                self._circuit, self._circuit.default_population_name
+            )
+            sonata_circuit = self._circuit.sonata_circuit
+            add_node_set_to_circuit(
+                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+            )
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
-        split_population.split_subcircuit(
-            self.config.coordinate_output_root,
-            nset_name,
-            sonata_circuit,
-            self.config.initialize.do_virtual,
-            self.config.initialize.create_external,
-        )
+        with BenchmarkTracker.section("split_subcircuit"):
+            split_population.split_subcircuit(
+                self.config.coordinate_output_root,
+                nset_name,
+                sonata_circuit,
+                self.config.initialize.do_virtual,
+                self.config.initialize.create_external,
+            )
 
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
         old_base = os.path.split(self._circuit.path)[0]
 
-        # Quick fix to deal with symbolic links in base circuit (not usually required)
-        # > alt_base = old_base  # Alternative old base
-        # > for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
-        # >     alt_base = alt_base.removesuffix(_sfix)
+        # Fix to deal with symbolic links in the base circuit which may have been resolved
+        # Note: .resolve() resolves symlinks!
+        alt_base = str(Path(self._circuit.path).resolve().parent)
 
         new_base = "$BASE_DIR"
         new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
@@ -1112,49 +1189,55 @@ class CircuitExtractionTask(Task):
         with Path(new_circuit_path).open(encoding="utf-8") as config_file:
             config_dict = json.load(config_file)
         self._rebase_config(config_dict, old_base, new_base)
-
-        # Quick fix to deal with symbolic links in base circuit
-        # > if alt_base != old_base:
-        # > self._rebase_config(config_dict, alt_base, new_base)
+        if alt_base != old_base:
+            # Rebase alternative old base directory as well
+            self._rebase_config(config_dict, alt_base, new_base)
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
 
+        # Check and fix the node sets file, if needed
+        CircuitExtractionTask._fix_node_sets_file(new_circuit_path)
+
         # Copy subcircuit morphologies and e-models (separately per node population)
-        original_circuit = self._circuit.sonata_circuit
-        new_circuit = snap.Circuit(new_circuit_path)
-        for pop_name, pop in new_circuit.nodes.items():
-            if pop.config["type"] == "biophysical":
-                # Copying morphologies of any (supported) format
-                if "morphology" in pop.property_names:
-                    self._copy_morphologies(pop_name, pop, original_circuit)
+        with BenchmarkTracker.section("copy_morph_hoc_mod"):
+            original_circuit = self._circuit.sonata_circuit
+            new_circuit = snap.Circuit(new_circuit_path)
+            for pop_name, pop in new_circuit.nodes.items():
+                if pop.config["type"] == "biophysical":
+                    # Copying morphologies of any (supported) format
+                    if "morphology" in pop.property_names:
+                        self._copy_morphologies(pop_name, pop, original_circuit)
 
-                # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
-                if "biophysical_neuron_models_dir" in pop.config:
-                    self._copy_hoc_files(pop_name, pop, original_circuit)
+                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                    if "biophysical_neuron_models_dir" in pop.config:
+                        self._copy_hoc_files(pop_name, pop, original_circuit)
 
-        # Copy .mod files, if any
-        self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
+            # Copy .mod files, if any
+            self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
 
         # Run circuit validation
         if _RUN_VALIDATION:
-            self._run_validation(new_circuit_path)
+            with BenchmarkTracker.section("run_validation"):
+                self._run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. folder asset and linked entities
         new_circuit_entity = None
         if db_client and self._circuit_entity:
-            new_circuit_entity = self._create_circuit_entity(
-                db_client=db_client, circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("register_circuit_entity"):
+                new_circuit_entity = self._create_circuit_entity(
+                    db_client=db_client, circuit_path=new_circuit_path
+                )
 
             # Register circuit folder asset
-            self._add_circuit_folder_asset(
-                db_client=db_client,
-                circuit_path=new_circuit_path,
-                registered_circuit=new_circuit_entity,
-            )
+            with BenchmarkTracker.section("register_circuit_folder_asset"):
+                self._add_circuit_folder_asset(
+                    db_client=db_client,
+                    circuit_path=new_circuit_path,
+                    registered_circuit=new_circuit_entity,
+                )
 
             # Derivation link
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
@@ -1176,7 +1259,15 @@ class CircuitExtractionTask(Task):
         )
 
         # Clean-up
-        self._cleanup_temp_dir()
+        with BenchmarkTracker.section("cleanup"):
+            self._cleanup_temp_dir()
+
+        # Print and save benchmark summary
+        benchmark_dir = new_circuit_path.parent.parent / (
+            new_circuit_path.parent.name + "__BENCHMARK__"
+        )
+        benchmark_file = benchmark_dir / "benchmark_results.json"
+        BenchmarkTracker.print_summary(output_path=benchmark_file)
 
         if new_circuit_entity:
             return str(new_circuit_entity.id)

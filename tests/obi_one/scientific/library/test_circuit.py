@@ -6,8 +6,9 @@ from obi_one.scientific.library import circuit as test_module
 
 
 class _FakePopulation:
-    def __init__(self, pop_type: str, node_ids=None, source=None, target=None):
+    def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):
         self.type = pop_type
+        self.name = name
         self._node_ids = node_ids or []
         self.source = source
         self.target = target
@@ -70,18 +71,18 @@ def fake_snap_circuit(monkeypatch):
             populations={
                 "e_bio": _FakePopulation(
                     "edges",
-                    source=_FakePopulation("biophysical"),
-                    target=_FakePopulation("biophysical"),
+                    source=_FakePopulation("biophysical", name="bio"),
+                    target=_FakePopulation("biophysical", name="bio"),
                 ),
                 "e_point": _FakePopulation(
                     "edges",
-                    source=_FakePopulation("point_neuron"),
-                    target=_FakePopulation("biophysical"),
+                    source=_FakePopulation("point_neuron", name="point"),
+                    target=_FakePopulation("biophysical", name="bio"),
                 ),
                 "e_virt": _FakePopulation(
                     "edges",
-                    source=_FakePopulation("virtual"),
-                    target=_FakePopulation("biophysical"),
+                    source=_FakePopulation("virtual", name="virt"),
+                    target=_FakePopulation("biophysical", name="bio"),
                 ),
             }
         )
@@ -187,6 +188,18 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         staticmethod(fake_get_edge_pop_names),
     )
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) is None
+
+    # Add fake edge populations "a" and "b" both intrinsic to "bio" (default node pop)
+    c.edges._pops["a"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["b"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
 
     def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
         return ["a", "b"]

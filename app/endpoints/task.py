@@ -71,6 +71,10 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
+        task_definition = task_service.update_resources(
+            json_model=json_model, db_client=db_client, task_definition=task_definition
+        )
+
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -78,7 +82,7 @@ def task_launch_endpoint(
             compute_cell=compute_cell,
             config_id=json_model.config_id,
             project_context=project_context,
-            task_definition=TASK_DEFINITIONS[json_model.task_type],
+            task_definition=task_definition,
             callbacks=accounting_callbacks,
         )
     except Exception as exc:
