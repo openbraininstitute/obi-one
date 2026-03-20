@@ -5,7 +5,7 @@ import entitysdk
 import httpx
 import numpy as np
 from entitysdk import ProjectContext
-from entitysdk.types import ExecutorType
+from entitysdk.types import ActivityStatus, ExecutorType
 
 from app.config import settings
 from app.logger import L
@@ -39,7 +39,7 @@ def submit_task_job(
     activity_id = db_sdk.create_activity(
         client=db_client,
         used=[config],
-        activity_status="pending",
+        activity_status=ActivityStatus.pending,
         activity_type=task_definition.activity_type,
     ).id
     failure_callback = _generate_failure_callback(
@@ -61,16 +61,10 @@ def submit_task_job(
                 compute_cell=compute_cell,
             )
         case _:
-            config_asset_id = db_sdk.get_config_asset(
-                client=db_client,
-                config=config,
-                asset_label=task_definition.config_asset_label,
-            ).id
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
                 activity_id=activity_id,
-                config_asset_id=config_asset_id,
                 callbacks=all_callbacks,
                 compute_cell=compute_cell,
                 task_definition=task_definition,
@@ -139,7 +133,6 @@ def _generic_job_data(
     activity_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
-    config_asset_id: UUID,
     entity_cache: bool,
     output_root: str,
     callbacks: list[CallBack],
@@ -151,9 +144,9 @@ def _generic_job_data(
         "code": task_definition.code.model_dump(mode="json"),
         "resources": resources,
         "inputs": [
-            f"--entity_type {task_definition.config_type_name}",
-            f"--entity_id {config_id}",
-            f"--config_asset_id {config_asset_id}",
+            f"--task-type {task_definition.task_type}",
+            f"--config_entity_type {task_definition.config_type_name}",
+            f"--config_entity_id {config_id}",
             f"--entity_cache {entity_cache}",
             f"--scan_output_root {output_root}",
             f"--virtual_lab_id {virtual_lab_id}",
@@ -204,11 +197,11 @@ def handle_task_failure_callback(
         entity_type=task_definition.activity_type,
     ).status
 
-    if current_status != "done":
+    if current_status != ActivityStatus.done:
         db_client.update_entity(
             entity_id=activity_id,
             entity_type=task_definition.activity_type,
-            attrs_or_entity={"status": "error"},
+            attrs_or_entity={"status": ActivityStatus.error},
         )
 
 
