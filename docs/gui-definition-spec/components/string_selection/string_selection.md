@@ -48,11 +48,11 @@ When any of these three dictionaries are included, they should have valid string
 ```py
 class Block:
     field: Literal["A", "B", "C"] = Field(
-        ui_element=UIElement.STRING_SELECTION_ENHANCED,
         title="Option",
         description="Option description.",
         default="A",
         json_schema_extra={
+            SchemaKey.UI_ELEMENT=UIElement.STRING_SELECTION_ENHANCED,
             SchemaKey.TITLE_BY_KEY: {
                 "A": r"A_{Title}",
                 "B": r"B_{Title}",
@@ -69,7 +69,6 @@ class Block:
                 "C": r"C_{latex}",
             }
         }
-        
     )
 ```
 

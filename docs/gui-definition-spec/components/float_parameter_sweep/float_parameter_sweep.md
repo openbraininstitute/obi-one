@@ -17,13 +17,15 @@ Reference schema [float_parameter_sweep](reference_schemas/float_parameter_sweep
 class Block:
 
     extracellular_calcium_concentration:  NonNegativeFloat | list[NonNegativeFloat] = Field( # The single value must come first in the union
-            ui_element=UIElement.FLOAT_PARAMETER_SWEEP,
             default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
                 "Extracellular calcium concentration",
             ),
-            units="mM",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT=UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS="mM"
+            }
         )
 
 ```

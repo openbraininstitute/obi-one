@@ -114,10 +114,12 @@ There are two major types of such UI elements:
 
     - As for root UI elements these properties are specified in the Field definition of the variable, along with the string `ui_element` specifying the type:
         ```py
-        field: str = Field(ui_element=UIElement.STRING_INPUT,
-                            min_length=1,
+        field: str = Field(min_length=1,
                             title="title",
-                            description="description")
+                            description="description", 
+                            json_schema_extra={
+                                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+                            })
         ```
 
     
