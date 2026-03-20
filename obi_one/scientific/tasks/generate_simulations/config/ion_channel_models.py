@@ -59,7 +59,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
