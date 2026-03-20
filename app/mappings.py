@@ -79,7 +79,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         accounting_service_subtype=ServiceSubtype.SMALL_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="commit:b03d0060cbac2a0c07f07d64f3a82ca8016bfa64",
+            ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
