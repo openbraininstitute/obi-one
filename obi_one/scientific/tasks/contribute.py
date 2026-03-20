@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 
@@ -145,7 +146,7 @@ class ContributeMorphologyScanConfig(ScanConfig):
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "group_order": [
+        SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.ASSET_BLOCK_GROUP,
             BlockGroup.CONTRIBUTOR_BLOCK_GROUP,

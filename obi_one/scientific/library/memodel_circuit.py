@@ -8,6 +8,7 @@ from entitysdk.models import MEModel
 from pydantic import BaseModel, model_validator
 
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.emodel_parameters import (
     ChannelSectionListMapping,
@@ -69,7 +70,7 @@ def _build_mechanism_variables_by_ion_channel_response(
         var_entry = raw[channel]["variables"].setdefault(
             var.neuron_variable,
             {
-                "units": var.units,
+                SchemaKey.UNITS: var.units,
                 "limits": var.limits,
                 "variable_type": var.variable_type,
                 "section_lists_original_values": {},
