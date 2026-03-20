@@ -650,7 +650,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Steps Somatic Stimulus"
 
-    _module: str = "seclamp_3_steps"
+    _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
     dur1: NonNegativeFloat | list[NonNegativeFloat] = Field(
