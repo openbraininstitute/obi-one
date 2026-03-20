@@ -20,7 +20,6 @@ from entitysdk import Client, MultipartUploadTransferConfig, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
-from obi_one.tools.benchmark import BenchmarkTracker
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
@@ -41,6 +40,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.tools.benchmark import BenchmarkTracker
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)
