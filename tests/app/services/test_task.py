@@ -351,8 +351,8 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         },
         "inputs": [
             "--task-type circuit_extraction",
-            "--config_type CircuitExtractionConfig",
-            f"--config_id {config_id}",
+            "--config_entity_type CircuitExtractionConfig",
+            f"--config_entity_id {config_id}",
             "--entity_cache True",
             "--scan_output_root /foo",
             f"--virtual_lab_id {VIRTUAL_LAB_ID}",

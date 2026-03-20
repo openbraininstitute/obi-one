@@ -139,8 +139,8 @@ def _generic_job_data(
         "resources": resources,
         "inputs": [
             f"--task-type {task_definition.task_type}",
-            f"--config_type {task_definition.config_type_name}",
-            f"--config_id {config_id}",
+            f"--config_entity_type {task_definition.config_type_name}",
+            f"--config_entity_id {config_id}",
             f"--entity_cache {entity_cache}",
             f"--scan_output_root {output_root}",
             f"--virtual_lab_id {virtual_lab_id}",

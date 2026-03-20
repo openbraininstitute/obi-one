@@ -62,8 +62,8 @@ def main() -> int:
             description="Script to launch a task for a single configuration asset."
         )
         parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument("--config_type", required=True, help="EntitySDK entity type as string")
-        parser.add_argument("--config_id", required=True, help="Entity ID as string")
+        parser.add_argument("--config_entity_type", required=True, help="EntitySDK entity type as string")
+        parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
         parser.add_argument(
             "--execution_activity_type",
             required=False,
@@ -99,7 +99,7 @@ def main() -> int:
 
     try:
         # Get entity type
-        config_type = getattr(models, args.config_type)
+        config_entity_type = getattr(models, args.config_entity_type)
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
@@ -127,8 +127,8 @@ def main() -> int:
         )
         run_task_type(
             task_type=args.task_type,
-            entity_type=config_type,
-            entity_id=args.config_id,
+            entity_type=config_entity_type,
+            entity_id=args.config_entity_id,
             scan_output_root=args.scan_output_root,
             db_client=db_client,
             entity_cache=args.entity_cache,
