@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -25,9 +26,9 @@ class PredefinedNeuronSet(AbstractNeuronSet):
         title="Node Set",
         description="Name of the node set to use.",
         json_schema_extra={
-            "ui_element": "entity_property_dropdown",
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitMappedProperties.NODE_SET,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_SET,
         },
     )
 

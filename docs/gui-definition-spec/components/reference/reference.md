@@ -19,8 +19,8 @@ class Block:
     node_set: NeuronSetReference | None = Field(default=None, #Must be present
                                                 title="Neuron Set",
                                                 description="Neuron set to simulate.",
-                                                json_schema_extra={"ui_element": "reference",
-                                                                    "reference_type": "NeuronSetReference"}
+                                                json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                                                                    SchemaKey.REFERENCE_TYPE: "NeuronSetReference"}
                                                 )
 ```
 

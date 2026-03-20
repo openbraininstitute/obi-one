@@ -8,6 +8,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -76,9 +77,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
                         field_info.json_schema_extra
-                        and "reference_type" in field_info.json_schema_extra
+                        and SchemaKey.REFERENCE_TYPE in field_info.json_schema_extra
                     ):
-                        reference_type = field_info.json_schema_extra["reference_type"]
+                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPE]
                     else:
                         msg = (
                             f"Attribute '{attr_name}' does not have a 'reference_type'"
@@ -116,7 +117,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
-                            "reference_type": reference_type,
+                            SchemaKey.REFERENCE_TYPE: reference_type,
                         }
 
         return self._block_mapping
@@ -193,7 +194,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
+        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
 
         if name in self.__dict__.get(block_dict_name):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"

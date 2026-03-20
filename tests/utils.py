@@ -4,7 +4,7 @@ from pathlib import Path
 from httpx import Headers
 from starlette.testclient import TestClient
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent / "test_data"
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 CIRCUIT_DIR = EXAMPLES_DIR / "data" / "tiny_circuits"
 MATRIX_DIR = EXAMPLES_DIR / "data" / "connectivity_matrices"

@@ -26,6 +26,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -65,8 +66,8 @@ class CircuitExtractionScanConfig(ScanConfig):
     _campaign: models.CircuitExtractionCampaign = None
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": True,
-        "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
     }
 
     class Initialize(Block):
@@ -74,7 +75,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
-                "ui_element": "model_identifier",
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             },
         )
         do_virtual: bool = Field(
@@ -84,7 +85,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
             json_schema_extra={
-                "ui_element": "boolean_input",
+                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
             },
         )
         create_external: bool = Field(
@@ -94,7 +95,7 @@ class CircuitExtractionScanConfig(ScanConfig):
             " set, but which target the cells contained therein, into a new external population"
             " of virtual neurons (together with their connectivity onto the specified neuron set).",
             json_schema_extra={
-                "ui_element": "boolean_input",
+                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
             },
         )
 
@@ -102,18 +103,18 @@ class CircuitExtractionScanConfig(ScanConfig):
         title="Info",
         description="Information about the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
@@ -121,9 +122,9 @@ class CircuitExtractionScanConfig(ScanConfig):
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
         json_schema_extra={
-            "ui_element": "block_union",
-            "group": BlockGroup.EXTRACTION_TARGET,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

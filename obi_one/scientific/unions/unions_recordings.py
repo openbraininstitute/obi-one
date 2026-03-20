@@ -15,7 +15,7 @@ _SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
 RecordingUnion = Annotated[_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
 IonChannelModelRecordingUnion = Annotated[
-    _SOMA_VOLTAGE_RECORDINGS | IonChannelVariableRecording,
+    IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS,
     Discriminator("type"),
 ]
 

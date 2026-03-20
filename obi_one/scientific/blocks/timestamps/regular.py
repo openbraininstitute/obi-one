@@ -2,6 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt
 
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.base import Timestamps
 
 
@@ -14,8 +16,8 @@ class RegularTimestamps(Timestamps):
         default=10.0,
         description="Interval between timestamps in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -23,7 +25,7 @@ class RegularTimestamps(Timestamps):
         default=10,
         description="Number of timestamps to generate.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
