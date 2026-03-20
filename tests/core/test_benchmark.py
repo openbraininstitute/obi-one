@@ -120,9 +120,9 @@ def test_print_summary_to_file(tmp_path):
 
 
 def test_section_exception_still_records():
-    with pytest.raises(ValueError, match="boom"):
-        with BenchmarkTracker.section("failing"):
-            raise ValueError("boom")
+    msg = "boom"
+    with pytest.raises(ValueError, match=msg), BenchmarkTracker.section("failing"):
+        raise ValueError(msg)
 
     assert "failing" in BenchmarkTracker._benchmarks
     assert BenchmarkTracker._benchmarks["failing"]["duration_s"] >= 0
