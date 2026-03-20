@@ -7,7 +7,7 @@ class Units(StrEnum):
     HERTZ = "Hz"
     MICROMETERS = "μm"
     MICROSIEMENS = "μS"
-    MILLIAMPS_SQUARED = "nA^2"
+    NANOAMPS_SQUARED = "nA^2"
     MILLIMOLAR = "mM"
     MILLISECONDS = "ms"
     MILLIVOLTS = "mV"

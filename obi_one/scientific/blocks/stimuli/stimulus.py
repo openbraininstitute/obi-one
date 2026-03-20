@@ -347,7 +347,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         title="Variance",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIAMPS_SQUARED,
+            SchemaKey.UNITS: Units.NANOAMPS_SQUARED,
         },
     )
 
@@ -401,7 +401,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         title="Variance",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIAMPS_SQUARED,
+            SchemaKey.UNITS: Units.NANOAMPS_SQUARED,
         },
     )
 
