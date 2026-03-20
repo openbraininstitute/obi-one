@@ -74,6 +74,8 @@ class StimulusWithTimestamps(BaseStimulus):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
+
+class StimulusWithDuration(BaseStimulus):
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
@@ -133,7 +135,9 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         return self._generate_config()
 
 
-class ContinuousStimulus(ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps):
+class ContinuousStimulus(
+    ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps, StimulusWithDuration
+):
     pass
 
 
