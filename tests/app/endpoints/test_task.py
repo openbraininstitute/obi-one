@@ -78,6 +78,11 @@ def test_task_launch_success(
             autospec=True,
         ),
         patch(
+            "app.services.task.update_resources",
+            return_value=task_definition,
+            autospec=True,
+        ),
+        patch(
             "app.services.task.submit_task_job",
             return_value=task_launch_info,
             autospec=True,
