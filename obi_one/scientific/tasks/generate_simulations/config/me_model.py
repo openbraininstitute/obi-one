@@ -8,14 +8,10 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
@@ -94,7 +90,6 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
