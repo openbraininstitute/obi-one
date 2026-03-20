@@ -74,17 +74,6 @@ class StimulusWithTimestamps(BaseStimulus):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
-    neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set",
-        description="Neuron set to which the stimulus is applied.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
-        },
-    )
-
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
@@ -97,6 +86,17 @@ class StimulusWithTimestamps(BaseStimulus):
 
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Neuron set to which the stimulus is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
+        },
+    )
+
     _represents_physical_electrode: bool = PrivateAttr(default=False)
     """Default is False. If True, the signal will be implemented \
     using a NEURON IClamp mechanism. The IClamp produce an \
