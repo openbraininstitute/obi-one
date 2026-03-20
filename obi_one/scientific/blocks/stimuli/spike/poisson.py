@@ -1,0 +1,88 @@
+from collections import defaultdict
+from typing import Annotated, ClassVar
+
+import numpy as np
+from pydantic import Field, NonNegativeFloat
+
+from obi_one.core.exception import OBIONEError
+from obi_one.scientific.blocks.stimuli.spike.base import ExtendedSpikeStimulus
+from obi_one.scientific.library.constants import (
+    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    _MAX_POISSON_SPIKE_LIMIT,
+    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    _MIN_NON_NEGATIVE_FLOAT_VALUE,
+)
+
+
+class PoissonSpikeStimulus(ExtendedSpikeStimulus):
+    """Spike times drawn from a Poisson process with a given frequency.
+
+    Sent from all neurons in the source neuron set to efferently connected
+
+    When using repeated self.resolved_timestamps (i.e. Regular Timestamps), stimulus durations
+    should be small enough such that stimulus periods do not overlap across
+    repetitions of the same stimulus.
+    """
+
+    title: ClassVar[str] = "Poisson Spikes (Efferent)"
+
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration in milliseconds for how long input is activated.",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+    frequency: (
+        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+    ) = Field(
+        default=1.0,
+        title="Frequency",
+        description="Mean frequency (Hz) of the Poisson input.",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "Hz",
+        },
+    )
+    random_seed: int | list[int] = Field(
+        default=0,
+        title="Random Seed",
+        description="Seed for the random number generator to ensure "
+        "reproducibility of the spike generation.",
+        json_schema_extra={
+            "ui_element": "int_parameter_sweep",
+        },
+    )
+
+    def generate_spikes_by_gid(self) -> dict[int, list[float]]:
+        rng = np.random.default_rng(self.random_seed)
+
+        if (
+            self.duration * 1e-3 * len(self._gids) * self.frequency * len(self.resolved_timestamps)
+            > _MAX_POISSON_SPIKE_LIMIT
+        ):
+            msg = (
+                f"Poisson input exceeds maximum allowed nunmber of spikes "
+                f"({_MAX_POISSON_SPIKE_LIMIT})!"
+            )
+            raise OBIONEError(msg)
+
+        spikes_by_gid: dict[int, list[float]] = defaultdict(list)
+        for timestamp_t in self.resolved_timestamps:
+            start_time = timestamp_t + self.timestamp_offset
+            end_time = start_time + self.duration
+            for gid in self._gids:
+                t = start_time
+                while t < end_time:
+                    # Draw next spike time from exponential distribution
+                    interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                    t += interval
+                    if t < end_time:
+                        spikes_by_gid[gid].append(t)
+        return spikes_by_gid
