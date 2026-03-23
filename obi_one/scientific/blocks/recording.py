@@ -10,6 +10,8 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
@@ -93,8 +95,8 @@ class Recording(Block, ABC):
         title="Neuron Set",
         description="Neuron set to record from.",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
         },
     )
 
@@ -110,8 +112,8 @@ class Recording(Block, ABC):
         title="Timestep",
         description="Interval between recording time steps in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -192,8 +194,8 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         default=0.0,
         description="Recording start time in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -201,8 +203,8 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         default=100.0,
         description="Recording end time in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -242,9 +244,9 @@ class IonChannelVariableRecording(Recording):
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={
-            "ui_element": "select_recordable_ion_channel_variable",
-            "property_group": EntityType.IONCHANNELMODEL,
-            "property": IonChannelPropertyType.RECORDABLE_VARIABLES,
+            SchemaKey.UI_ELEMENT: UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE,
+            SchemaKey.PROPERTY_GROUP: EntityType.IONCHANNELMODEL,
+            SchemaKey.PROPERTY: IonChannelPropertyType.RECORDABLE_VARIABLES,
         },
     )
 

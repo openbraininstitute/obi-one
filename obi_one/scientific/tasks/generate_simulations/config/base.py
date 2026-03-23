@@ -13,6 +13,8 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -73,17 +75,17 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
     _campaign: entitysdk.models.SimulationCampaign = None
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": True,
-        "group_order": [
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
-        "default_block_reference_labels": {
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
-        "property_endpoints": {
+        SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
@@ -93,22 +95,22 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         title="Timestamps",
         description="Timestamps for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": TimestampsReference.__name__,
-            "singular_name": "Timestamps",
-            "group": BlockGroup.EVENTS_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,
         description="Recordings for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": RecordingReference.__name__,
-            "singular_name": "Recording",
-            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -138,8 +140,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
-                "units": "ms",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLISECONDS,
             },
         )
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -152,8 +154,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
                 "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
             ),
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
-                "units": "mM",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIMOLAR,
             },
         )
         v_init: float | list[float] = Field(
@@ -161,8 +163,8 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
-                "units": "mV",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
             },
         )
         random_seed: int | list[int] = Field(
@@ -170,7 +172,7 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
             title="Random Seed",
             description="Random seed for the simulation.",
             json_schema_extra={
-                "ui_element": "int_parameter_sweep",
+                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
 
@@ -193,9 +195,9 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         title="Info",
         description="Information about the simulation campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

@@ -14,7 +14,9 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
@@ -38,8 +40,8 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [
+            SchemaKey.UI_ENABLED: True,
+            SchemaKey.GROUP_ORDER: [
                 BlockGroup.SETUP_BLOCK_GROUP,
             ],
         }
@@ -49,7 +51,7 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
             title="EM Cell Mesh",
             description="EM cell mesh to use for skeletonization.",
-            json_schema_extra={"ui_element": "model_identifier"},
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
 
         neuron_voxel_size: (
@@ -59,7 +61,10 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             default=0.1,
             title="Neuron Voxel Size",
             description="Neuron reconstruction resolution in micrometers.",
-            json_schema_extra={"ui_element": "float_parameter_sweep", "units": "μm"},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MICROMETERS,
+            },
         )
 
         spines_voxel_size: (
@@ -69,16 +74,19 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
             default=0.1,
             title="Spine Voxel Size",
             description="Spine reconstruction resolution in micrometers.",
-            json_schema_extra={"ui_element": "float_parameter_sweep", "units": "μm"},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MICROMETERS,
+            },
         )
 
     info: Info = Field(
         title="Info",
         description="Information about the skeletonization campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -86,9 +94,9 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

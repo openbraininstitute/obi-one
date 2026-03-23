@@ -23,10 +23,10 @@ class EntityDependentBlockExample(Block):
     title: ClassVar[str] = "Example block title"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_dictionary": {
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-            "false_message": "This example block is not available for this circuit.",
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            SchemaKey.FALSE_MESSAGE: "This example block is not available for this circuit.",
         }
     }
 ```
@@ -34,7 +34,7 @@ class EntityDependentBlockExample(Block):
 And the required entry in the parent ScanConfig if `block_usability_dictionary` is specified:
 ```py
 json_schema_extra_additions: ClassVar[dict] = {
-    "property_endpoints": {UsabilityGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}"},
+    SchemaKey.PROPERTY_ENDPOINTS: {UsabilityGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}"},
 }
 ```
 

@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
@@ -19,7 +20,7 @@ class IDNeuronSet(AbstractNeuronSet):
         title="ID Neuronset",
         description="List of neuron IDs to include in the neuron set.",
         json_schema_extra={
-            "ui_element": "neuron_ids",
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_IDS,
         },
     )
 
