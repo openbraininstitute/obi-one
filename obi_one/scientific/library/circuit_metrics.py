@@ -6,6 +6,7 @@ from enum import IntEnum, StrEnum, auto
 from pathlib import Path
 
 import h5py
+import libsonata
 import numpy as np
 import pandas as pd
 from entitysdk.client import Client
@@ -192,13 +193,11 @@ def number_of_edges_from_h5(h5: h5py.File, population_name: str) -> int:
 
 
 def source_name_from_h5(h5: h5py.File, population_name: str) -> str:
-    attrs = dict(h5["edges"][population_name]["source_node_id"].attrs)
-    return attrs.get("node_population")
+    return libsonata.EdgeStorage(h5.filename).open_population(population_name).source
 
 
 def target_name_from_h5(h5: h5py.File, population_name: str) -> str:
-    attrs = dict(h5["edges"][population_name]["target_node_id"].attrs)
-    return attrs.get("node_population")
+    return libsonata.EdgeStorage(h5.filename).open_population(population_name).target
 
 
 def list_of_node_properties_from_h5(h5: h5py.File, population_name: str) -> list[str]:
