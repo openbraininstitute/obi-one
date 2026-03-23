@@ -88,23 +88,15 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         if self.campaign_task_config_type is None:
             msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
             raise NotImplementedError(msg)
-        # L.info("-- Create campaign TaskConfig entity")
-        # self._campaign = db_client.register_entity(
-        #     TaskConfig(
-        #         name=self.campaign_name,
-        #         description=self.campaign_description,
-        #         task_config_type=self.campaign_task_config_type,
-        #         meta={"scan_parameters": multiple_value_parameters_dictionary},
-        #         inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids],
-        #     )
-        # )
 
-        USE HERE: db_sdk.register_campaign_task_config_entity
-
-        _ = db_sdk.upload_task_config_asset(
+        self._campaign, _ = db_sdk.register_campaign_task_config_entity_and_upload_asset(
             client=db_client,
-            entity=self._campaign,
-            file_path=output_root / _SCAN_CONFIG_FILENAME,
+            campaign_name=self.campaign_name,
+            campaign_description=self.campaign_description,
+            campaign_task_config_type=self.campaign_task_config_type,
+            multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
+            input_entity_ids=self.input_entity_ids,
+            task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
         )
 
         return self._campaign

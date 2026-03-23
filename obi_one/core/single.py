@@ -7,13 +7,14 @@ from typing import Any, ClassVar
 
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import AssetLabel, ContentType, TaskActivityType
+from entitysdk.types import TaskActivityType
 from pydantic import Field, field_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
 from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -99,26 +100,15 @@ class SingleConfigMixin:
             )
             raise ValueError(msg)
 
-        L.info(f"-- Register TaskConfig type: {self.single_task_config_type}")
-        self._single_entity = db_client.register_entity(
-            TaskConfig(
-                name=self.campaign_name,
-                description=self.campaign_description,
-                task_config_type=self.single_task_config_type,
-                meta={
-                    "scan_parameters": self.single_coordinate_scan_params.dictionary_representaiton()  # noqa: E501
-                },
-                inputs=[Entity(id=entity_id) for entity_id in self.input_entity_ids()],
-            )
-        )
-
-        L.info("-- Upload task_config asset for campaign TaskConfig")
-        _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=TaskConfig,
-            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type=ContentType.json,
-            asset_label=AssetLabel.task_config,
+        L.info(f"-- Register TaskConfig type: {self.single_task_config_type} and task_config asset")
+        self._single_entity, _ = db_sdk.register_coordinate_task_config_entity_and_upload_asset(
+            client=db_client,
+            name=self.campaign_name,
+            description=self.campaign_description,
+            task_config_type=self.single_task_config_type,
+            multiple_value_parameters_dictionary=self.single_coordinate_scan_params.dictionary_representaiton(),
+            input_entity_ids=self.input_entity_ids(),
+            task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
         )
 
         return self._single_entity
