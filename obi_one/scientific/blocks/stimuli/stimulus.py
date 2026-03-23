@@ -657,60 +657,63 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
-    dur1: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
-        title="Duration of 1st Voltage Level",
-        description="Time duration in milliseconds for the 1st Voltage level of the SEClamp.",
+        title="Level 1 Duration",
+        description="Time duration in milliseconds for the 1st Voltage level "
+            "of the SEClamp (aka dur1).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
     )
 
-    step1_v: float | list[float] = Field(
+    level1_voltage: float | list[float] = Field(
         default=-80.0,
-        title="Amplitude of 1st Voltage Level",
-        description="Amplitude of the 1st voltage level in millivolts (mV).",
+        title="Level 1 Voltage",
+        description="Amplitude of the 1st voltage level in millivolts of the SEClamp (aka amp1).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
         },
     )
 
-    dur2: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
-        title="Duration of 2nd Voltage Level",
-        description="Time duration in milliseconds for the 2nd Voltage level of the SEClamp.",
+        title="Level 2 Duration",
+        description="Time duration in milliseconds for the 2nd Voltage level "
+            "of the SEClamp (aka dur2).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
     )
 
-    step2_v: float | list[float] = Field(
+    level2_voltage: float | list[float] = Field(
         default=0.0,
-        title="Amplitude of 2nd Voltage Level",
-        description="Amplitude of the 2nd voltage level in millivolts (mV).",
+        title="Level two Voltage",
+        description="Amplitude of the 2nd voltage level in millivolts of the SEClamp (aka amp2).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
         },
     )
 
-    dur3: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
-        title="Duration of 3rd Voltage Level",
-        description="Time duration in milliseconds for the 3rd Voltage level of the SEClamp.",
+        title="Level 3 Duration",
+        description="Time duration in milliseconds for the 3rd Voltage level "
+            "of the SEClamp (aka dur3).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
         },
     )
 
-    step3_v: float | list[float] = Field(
+    level3_voltage: float | list[float] = Field(
         default=-80.0,
-        title="Amplitude of 3rd Voltage Level",
-        description="Amplitude of the 3rd voltage level in millivolts (mV).",
+        title="Level 3 Voltage",
+        description="Amplitude of the 3rd voltage level in millivolts of the SEClamp (aka amp3).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
@@ -725,13 +728,13 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": self.dur1 + self.dur2 + self.dur3,
-            "voltage": self.step1_v,
+            "duration": self.level1_duration + self.level2_duration + self.level3_duration,
+            "voltage": self.level1_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
             # no need to set duration for step voltage since the SEClamp maintain the voltage
             #  until the clamp is off
-            "duration_levels": [0, self.dur1, self.dur2],
-            "voltage_levels": [self.step1_v, self.step2_v, self.step3_v],
+            "duration_levels": [0, self.level1_duration, self.level2_duration],
+            "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
