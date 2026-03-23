@@ -2,8 +2,9 @@ import logging
 from typing import Annotated, Never
 
 import bluepysnap as snap
+import numpy as np
 from connectome_manipulator.model_building import model_types
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_parameterization.base import SynapseParameterization
@@ -68,7 +69,23 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
         },
     )
 
-    _prop_cov: dict = PrivateAttr(default_factory=dict)
+    gsyn_distribution_shared_within: bool = Field(
+        default=False,
+        title="g_syn Distribution Shared Within",
+        description="Whether the synaptic conductance (g_syn) is shared within the synapses"
+        " between the source and target neuron sets.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN,
+        },
+    )
+
+    @property
+    def cov_mat(self) -> dict:
+        return []
+
+    @property
+    def cov_dict(self) -> dict:
+        return {}
 
     def go_for_it(self, circ: snap.Circuit) -> Never:
         source_node_set = self.source_neuron_set.resolve(circ)
@@ -84,15 +101,36 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
                         "shared_within": self.u_hill_coefficient_shared_within,
                     }
                 }
-            }
+            },
+            "gsyn": {
+                source_node_set: {
+                    target_node_set: {
+                        "type": "gamma",
+                        "mean": 0.5,
+                        "std": 0.25,
+                        "shared_within": self.gsyn_distribution_shared_within,
+                    }
+                }
+            },
         }
 
         model1 = model_types.ConnPropsModel(
             src_types=[source_node_set],
             tgt_types=[target_node_set],
             prop_stats=stats_dict,
-            prop_cov=self._prop_cov,
+            prop_cov=self.cov_dict,
         )
+
+        # Set random seed
+        np.random.seed(self.random_seed)  # noqa: NPY002
+        # TODO: Fix legacy np.random in connectome-manipulator code
+
+        # Run parameterization
+        edge_pop_names = circ.edges.population_names
+        L.info(f"Running synapse parameterization for {len(edge_pop_names)} edge population(s)...")
+        for edge_pop in edge_pop_names:
+            edge = circ.edges[edge_pop]
+            self._parameterize_edge_file(edge)
 
 
 CORRELATION_COEFFICIENT_FIELD = (
@@ -116,10 +154,26 @@ CORRELATION_COEFFICIENT_FIELD = (
 
 
 class CorrelatedTsodyksMarkramSynapseParameterization(TsodyksMarkramSynapseParameterization):
-    u_hill_coefficient_and_b_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
-        title="Correlation between U Hill Coefficient and b",
-        description="Correlation coefficient between the Hill coefficient and X",
+    u_hill_coefficient_and_gsyn_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
+        title="Correlation between U Hill Coefficient and g_syn",
+        description="Correlation coefficient between the Hill coefficient and g_syn",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
+
+    @property
+    def cov_mat(self) -> dict:
+        return np.array(
+            [
+                [1.0, self.u_hill_coefficient_and_gsyn_correlation],
+                [self.u_hill_coefficient_and_gsyn_correlation, 1.0],
+            ]
+        )
+
+    @property
+    def cov_dict(self) -> dict:
+        return {
+            "props": ["u_hill_coefficient", "gsyn"],
+            "cov_mat": {self.source_neuron_set: {self.target_neuron_set: self.cov_mat}},
+        }
