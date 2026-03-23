@@ -11,9 +11,6 @@ from typing import ClassVar
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
-import h5py
-import numpy as np
-from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
 from PIL import Image
@@ -30,8 +27,6 @@ from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
-    _MAX_SMALL_MICROCIRCUIT_SIZE,
-    _NEURON_PAIR_SIZE,
     _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
@@ -39,9 +34,8 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.utils import db_sdk, task as task_utils
+from obi_one.utils import circuit as circuit_utils, db_sdk, task as task_utils
 from obi_one.utils.benchmark import BenchmarkTracker
-from obi_one.utils.filesystem import filter_extension
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)
@@ -282,102 +276,6 @@ class CircuitExtractionTask(Task):
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
-    @staticmethod
-    def _fix_node_sets_file(circuit_path: Path) -> None:
-        """Fixes the node sets file in case references are broken.
-
-        This could happen in compound expressions which are pointing
-        to non-existing node sets after circuit extraction.
-        """
-
-        def _find_broken_neuron_sets(nset_dict: dict) -> list:
-            """Finds compound neuron sets with broken references."""
-            broken_nsets = []
-            for nset_name, nset_def in nset_dict.items():
-                if isinstance(nset_def, list):  # Compound expression
-                    for n in nset_def:
-                        if n not in nset_dict:
-                            broken_nsets.append(nset_name)
-                            break
-            return broken_nsets
-
-        def _remove_broken_neuron_sets(nset_dict: dict) -> None:
-            """Removes neuron sets with broken references (in-place)."""
-            broken_nsets = _find_broken_neuron_sets(nset_dict)
-            if len(broken_nsets) > 0:
-                # Remove all broken neuron sets from dict
-                for nset in broken_nsets:
-                    del nset_dict[nset]
-                    L.warning(f"Node set '{nset}' broken and removed from node sets file.")
-                # Recursively check again, since removal could cause
-                # more broken neuron sets
-                _remove_broken_neuron_sets(nset_dict)
-
-        # Load node sets file
-        c = snap.Circuit(circuit_path)
-        with Path(c.config["node_sets_file"]).open(encoding="utf-8") as f:
-            nset_dict = json.load(f)
-
-        # Check if broken neuron sets
-        broken_nsets = _find_broken_neuron_sets(nset_dict)
-        if len(broken_nsets) == 0:
-            # Nothing to fix
-            return
-
-        # Remove broken neuron sets, if any
-        _remove_broken_neuron_sets(nset_dict)
-
-        # Write new node sets file
-        with Path(c.config["node_sets_file"]).open("w", encoding="utf-8") as f:
-            json.dump(nset_dict, f, indent=2)
-
-    @staticmethod
-    def get_circuit_size(c: Circuit) -> (str, int, int, int):
-        c_sonata = c.sonata_circuit
-        num_nrn = c_sonata.nodes[c.default_population_name].size
-        if num_nrn == 1:
-            scale = types.CircuitScale.single
-        elif num_nrn == _NEURON_PAIR_SIZE:
-            scale = types.CircuitScale.pair
-        elif num_nrn <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            scale = types.CircuitScale.small
-        else:
-            scale = types.CircuitScale.microcircuit
-        # TODO: Add support for other scales as well
-        # https://github.com/openbraininstitute/obi-one/issues/463
-
-        if scale == types.CircuitScale.single:
-            # Special case: Include extrinsic synapses & connections
-            edge_pops = Circuit.get_edge_population_names(c_sonata, incl_virtual=True)
-            edge_pops = [
-                e for e in edge_pops if c_sonata.edges[e].target.name == c.default_population_name
-            ]
-        else:
-            # Default case: Only include intrinsic synapse & connections
-            try:
-                default_epop = c.default_edge_population_name
-            except ValueError as e:
-                default_epop = None
-                L.warning(e)
-                # TODO: May erroneously lead to 0 synapses
-            edge_pops = [] if default_epop is None else [default_epop]
-
-        num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
-        num_conn = np.sum(
-            [
-                len(
-                    list(
-                        c_sonata.edges[e].iter_connections(
-                            target={"population": c_sonata.edges[e].target.name}
-                        )
-                    )
-                )
-                for e in edge_pops
-            ]
-        ).astype(int)
-
-        return scale, num_nrn, num_syn, num_conn
-
     def _create_circuit_entity(self, db_client: Client, circuit_path: Path) -> models.Circuit:
         """Register a new Circuit entity of the extracted SONATA circuit (w/o assets)."""
         parent = self._circuit_entity  # Parent circuit entity
@@ -402,7 +300,7 @@ class CircuitExtractionTask(Task):
 
         # Get counts
         c = Circuit(name=circuit_name, path=str(circuit_path))
-        scale, num_nrn, num_syn, num_conn = CircuitExtractionTask.get_circuit_size(c)
+        scale, num_nrn, num_syn, num_conn = circuit_utils.get_circuit_size(c)
 
         # Create circuit model
         circuit_model = models.Circuit(
@@ -445,158 +343,6 @@ class CircuitExtractionTask(Task):
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
-
-    @classmethod
-    def _rebase_config(cls, config_dict: dict, old_base: str, new_base: str) -> None:
-        old_base = str(Path(old_base).resolve())
-        for key, value in config_dict.items():
-            if isinstance(value, str):
-                if value == old_base:
-                    config_dict[key] = ""
-                else:
-                    config_dict[key] = value.replace(old_base, new_base)
-            elif isinstance(value, dict):
-                cls._rebase_config(value, old_base, new_base)
-            elif isinstance(value, list):
-                for _v in value:
-                    cls._rebase_config(_v, old_base, new_base)
-
-    @staticmethod
-    def _copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
-        mod_folder = "mod"
-        source_dir = Path(os.path.split(circuit_path)[0]) / mod_folder
-        if Path(source_dir).exists():
-            L.info("Copying mod files")
-            dest_dir = Path(output_root) / mod_folder
-            shutil.copytree(source_dir, dest_dir)
-
-    @staticmethod
-    def _run_validation(circuit_path: str) -> None:
-        errors = snap.circuit_validation.validate(circuit_path, skip_slow=True)
-        if len(errors) > 0:
-            msg = f"Circuit validation error(s) found: {errors}"
-            raise ValueError(msg)
-        L.info("No validation errors found!")
-
-    @classmethod
-    def _get_morph_dirs(
-        cls, pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> (dict, dict):
-        src_morph_dirs = {}
-        dest_morph_dirs = {}
-        for _morph_ext in ["swc", "asc", "h5"]:
-            try:
-                morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
-                    _morph_ext
-                )
-                # TODO: Should not use private function!! But required to get path
-                #       even if h5 container.
-            except BluepySnapError:
-                # Morphology folder for given extension not defined in config
-                continue
-
-            if not Path(morph_folder).exists():
-                # Morphology folder/container does not exist
-                continue
-
-            if (
-                Path(morph_folder).is_dir()
-                and len(filter_extension(Path(morph_folder).iterdir(), _morph_ext)) == 0
-            ):
-                # Morphology folder does not contain morphologies
-                continue
-
-            dest_morph_dirs[_morph_ext] = pop.morph._get_morphology_base(_morph_ext)  # noqa: SLF001
-            # TODO: Should not use private function!!
-            src_morph_dirs[_morph_ext] = morph_folder
-        return src_morph_dirs, dest_morph_dirs
-
-    @classmethod
-    def _copy_morphologies(
-        cls, pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> None:
-        L.info(f"Copying morphologies for population '{pop_name}' ({pop.size})")
-        morphology_list = pop.get(properties="morphology").unique()
-
-        src_morph_dirs, dest_morph_dirs = cls._get_morph_dirs(pop_name, pop, original_circuit)
-
-        if len(src_morph_dirs) == 0:
-            msg = "ERROR: No morphologies of any supported format found!"
-            raise ValueError(msg)
-        for _morph_ext, _src_dir in src_morph_dirs.items():
-            if _morph_ext == "h5" and Path(_src_dir).is_file():
-                # TODO: If there is only one neuron extracted, consider removing
-                #       the container
-                # https://github.com/openbraininstitute/obi-one/issues/387
-
-                # Copy containerized morphologies into new container
-                L.info(f"Copying {len(morphology_list)} containerized .{_morph_ext} morphologies")
-                Path(os.path.split(dest_morph_dirs[_morph_ext])[0]).mkdir(
-                    parents=True, exist_ok=True
-                )
-                src_container = _src_dir
-                dest_container = dest_morph_dirs[_morph_ext]
-                with (
-                    h5py.File(src_container) as f_src,
-                    h5py.File(dest_container, "a") as f_dest,
-                ):
-                    skip_counter = 0
-                    for morphology_name in morphology_list:
-                        if morphology_name in f_dest:
-                            skip_counter += 1
-                        else:
-                            f_src.copy(
-                                f_src[morphology_name],
-                                f_dest,
-                                name=morphology_name,
-                            )
-                L.info(
-                    f"Copied {len(morphology_list) - skip_counter} morphologies into"
-                    f" container ({skip_counter} already existed)"
-                )
-            else:
-                # Copy morphology files
-                L.info(f"Copying {len(morphology_list)} .{_morph_ext} morphologies")
-                Path(dest_morph_dirs[_morph_ext]).mkdir(parents=True, exist_ok=True)
-                for morphology_name in morphology_list:
-                    src_file = Path(_src_dir) / f"{morphology_name}.{_morph_ext}"
-                    dest_file = (
-                        Path(dest_morph_dirs[_morph_ext]) / f"{morphology_name}.{_morph_ext}"
-                    )
-                    if not Path(src_file).exists():
-                        msg = f"ERROR: Morphology '{src_file}' missing!"
-                        raise ValueError(msg)
-                    if not Path(dest_file).exists():
-                        # Copy only, if not yet existing (could happen for shared
-                        # morphologies among populations)
-                        shutil.copyfile(src_file, dest_file)
-
-    @staticmethod
-    def _copy_hoc_files(
-        pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> None:
-        hoc_file_list = [
-            _hoc.split(":")[-1] + ".hoc" for _hoc in pop.get(properties="model_template").unique()
-        ]
-        L.info(
-            f"Copying {len(hoc_file_list)} biophysical neuron models (.hoc) for"
-            f" population '{pop_name}' ({pop.size})"
-        )
-
-        source_dir = original_circuit.nodes[pop_name].config["biophysical_neuron_models_dir"]
-        dest_dir = pop.config["biophysical_neuron_models_dir"]
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
-
-        for _hoc_file in hoc_file_list:
-            src_file = Path(source_dir) / _hoc_file
-            dest_file = Path(dest_dir) / _hoc_file
-            if not Path(src_file).exists():
-                msg = f"ERROR: HOC file '{src_file}' missing!"
-                raise ValueError(msg)
-            if not Path(dest_file).exists():
-                # Copy only, if not yet existing (could happen for shared hoc files
-                # among populations)
-                shutil.copyfile(src_file, dest_file)
 
     @staticmethod
     def _get_execution_activity(
@@ -865,16 +611,16 @@ class CircuitExtractionTask(Task):
 
         with Path(new_circuit_path).open(encoding="utf-8") as config_file:
             config_dict = json.load(config_file)
-        self._rebase_config(config_dict, old_base, new_base)
+        circuit_utils.rebase_config(config_dict, old_base, new_base)
         if alt_base != old_base:
             # Rebase alternative old base directory as well
-            self._rebase_config(config_dict, alt_base, new_base)
+            circuit_utils.rebase_config(config_dict, alt_base, new_base)
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
 
         # Check and fix the node sets file, if needed
-        CircuitExtractionTask._fix_node_sets_file(new_circuit_path)
+        circuit_utils.fix_node_sets_file(new_circuit_path)
 
         # Copy subcircuit morphologies and e-models (separately per node population)
         with BenchmarkTracker.section("copy_morph_hoc_mod"):
@@ -884,19 +630,21 @@ class CircuitExtractionTask(Task):
                 if pop.config["type"] == "biophysical":
                     # Copying morphologies of any (supported) format
                     if "morphology" in pop.property_names:
-                        self._copy_morphologies(pop_name, pop, original_circuit)
+                        circuit_utils.copy_morphologies(pop_name, pop, original_circuit)
 
                     # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
                     if "biophysical_neuron_models_dir" in pop.config:
-                        self._copy_hoc_files(pop_name, pop, original_circuit)
+                        circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
 
             # Copy .mod files, if any
-            self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
+            circuit_utils.copy_mod_files(
+                self._circuit.path, self.config.coordinate_output_root, "mod"
+            )
 
         # Run circuit validation
         if _RUN_VALIDATION:
             with BenchmarkTracker.section("run_validation"):
-                self._run_validation(new_circuit_path)
+                circuit_utils.run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
