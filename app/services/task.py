@@ -43,7 +43,7 @@ def submit_task_job(
                 entity_id=config_id,
                 entity_type=task_definition.config_type,
             )
-            activity_id = db_sdk.create_generic_activity(
+            activity_id = db_sdk.create_activity(
                 client=db_client,
                 used=[config],
                 activity_status=ActivityStatus.pending,
