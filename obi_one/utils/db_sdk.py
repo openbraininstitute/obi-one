@@ -1,12 +1,13 @@
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskActivity
+from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
-from entitysdk.types import ActivityStatus, AssetLabel, ExecutorType, TaskActivityType
+from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 L = logging.getLogger(__name__)
 
@@ -103,21 +104,19 @@ def get_activity_status(
     ).status
 
 
-
 def upload_task_config_asset(
     *,
     client: Client,
     entity: Entity,
+    file_path: Path,
 ) -> Asset:
     """Uploads the given task configuration as an asset and returns it."""
-
     L.info("-- Upload task_config asset for campaign TaskConfig")
-    _ = client.upload_file(
-            entity_id=entity.id,
-            entity_type=TaskConfig,
-            file_path=file_path,
-            file_content_type=ContentType.json,
-            asset_label=AssetLabel.task_config,
-        )
+    asset = client.upload_file(
+        entity_id=entity.id,
+        entity_type=TaskConfig,
+        file_path=file_path,
+        file_content_type=ContentType.json,
+        asset_label=AssetLabel.task_config,
+    )
     return asset
-)

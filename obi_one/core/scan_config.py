@@ -9,14 +9,11 @@ from entitysdk.client import Client
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.types import (
     ActivityStatus,
-    AssetLabel,
-    ContentType,
     TaskActivityType,
     TaskConfigType,
 )
 from pydantic import model_validator
 
-from obi_one.utils import db_sdk
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -24,6 +21,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
