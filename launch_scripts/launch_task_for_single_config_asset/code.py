@@ -81,11 +81,10 @@ def main() -> int:
         return 1
 
     try:
-        # Get entity type
         # TODO: Remove once legacy tasks are moved to generic configs/activities
         if args.config_entity_type in TaskConfigType:
-            config_entity_type = TaskConfigType
-            execution_activity_type = TaskActivityType
+            config_entity_type = models.TaskConfig
+            execution_activity_type = models.TaskActivity
         else:
             config_entity_type = getattr(models, args.config_entity_type)
             execution_activity_type = getattr(models, args.execution_activity_type)
