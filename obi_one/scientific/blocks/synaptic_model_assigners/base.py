@@ -16,6 +16,6 @@ class SynapseModelAssigner(Block):
         title="Random seed",
         description="Seed for drawing random values from physiological parameter distributions.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INTEGER,
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )

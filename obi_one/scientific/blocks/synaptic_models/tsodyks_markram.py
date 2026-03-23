@@ -1,25 +1,19 @@
 import logging
-import pandas import pd
-import h5py
-from typing import Annotated, Never
+from typing import Annotated
 
-import bluepysnap as snap
 import numpy as np
-from connectome_manipulator.model_building import model_types
 from pydantic import Field
 
+from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.synaptic_parameterization.base import SynapseParameterization
 from obi_one.scientific.unions.unions_distributions import (
     SynapticParameterizationDistributionReference,
 )
 
 L = logging.getLogger(__name__)
 
-from obi_one.core.block import Block
 
-class TsodyksMarkramSynapseParameterization(Block):
-
+class TsodyksMarkramSynapticModel(Block):
     u_hill_coefficient_distribution: SynapticParameterizationDistributionReference = Field(
         title="U Hill Coefficient Distribution",
         description="Distribution of the Hill coefficient for the steady-state utilization"
@@ -37,7 +31,7 @@ class TsodyksMarkramSynapseParameterization(Block):
         " efficacy (u) is shared within the synapses between the source and target"
         " neuron sets.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN,
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
 
@@ -56,7 +50,7 @@ class TsodyksMarkramSynapseParameterization(Block):
         description="Whether the synaptic conductance (g_syn) is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN,
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
 
@@ -72,7 +66,7 @@ class TsodyksMarkramSynapseParameterization(Block):
         d = self.u_hill_coefficient_distribution.resolve()
         d["shared_within"] = self.u_hill_coefficient_shared_within
         return d
-    
+
     def gsyn_dict(self) -> dict:
         d = self.gsyn_distribution.resolve()
         d["shared_within"] = self.gsyn_distribution_shared_within
@@ -83,6 +77,7 @@ class TsodyksMarkramSynapseParameterization(Block):
             "u_hill_coefficient": self.u_hill_coefficient_dict(),
             "gsyn": self.gsyn_dict(),
         }
+
 
 CORRELATION_COEFFICIENT_FIELD = (
     Annotated[
@@ -104,7 +99,7 @@ CORRELATION_COEFFICIENT_FIELD = (
 )
 
 
-class CorrelatedTsodyksMarkramSynapseParameterization(TsodyksMarkramSynapseParameterization):
+class CorrelatedTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     u_hill_coefficient_and_gsyn_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
         title="Correlation between U Hill Coefficient and g_syn",
         description="Correlation coefficient between the Hill coefficient and g_syn",

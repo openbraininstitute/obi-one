@@ -1,24 +1,23 @@
 import logging
-import pandas import pd
-import h5py
-from typing import Annotated, Never
 
 import bluepysnap as snap
+import h5py
 import numpy as np
+import pandas as pd
 from connectome_manipulator.model_building import model_types
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_model_assigners.base import SynapseModelAssigner
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_synaptic_models import (
     SynapticModelReference,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 L = logging.getLogger(__name__)
 
+
 class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
-    
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Source)",
@@ -63,26 +62,26 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         )
         mdl["_index"] = idx
         return mdl
-    
+
     def _parameterize_edge_file(self, edge: snap.edges.EdgePopulation) -> None:
-    #     # Get pathway source/target values
-    #     pathway_property = self.pathway_property
-    #     if pathway_property not in edge.source.property_names:
-    #         msg = (
-    #             f"Pathway property '{pathway_property}' not found in source nodes:"
-    #             f" Skipping edge population '{edge.name}'!"
-    #         )
-    #         L.warning(msg)
-    #         return
-    #     if pathway_property not in edge.target.property_names:
-    #         msg = (
-    #             f"Pathway property '{pathway_property}' not found in target nodes:"
-    #             f" Skipping edge population '{edge.name}'!"
-    #         )
-    #         L.warning(msg)
-    #         return
-    #     cls_src = edge.source.get(properties=pathway_property)
-    #     cls_tgt = edge.target.get(properties=pathway_property)
+        # Get pathway source/target values
+        pathway_property = self.pathway_property
+        if pathway_property not in edge.source.property_names:
+            msg = (
+                f"Pathway property '{pathway_property}' not found in source nodes:"
+                f" Skipping edge population '{edge.name}'!"
+            )
+            L.warning(msg)
+            return
+        if pathway_property not in edge.target.property_names:
+            msg = (
+                f"Pathway property '{pathway_property}' not found in target nodes:"
+                f" Skipping edge population '{edge.name}'!"
+            )
+            L.warning(msg)
+            return
+        cls_src = edge.source.get(properties=pathway_property)
+        cls_tgt = edge.target.get(properties=pathway_property)
 
         # Open edge file
         edge_prefix = f"edges/{edge.name}"
@@ -120,17 +119,15 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
                 else:
                     edge_grp["0"].create_dataset(col, data=new_values)
 
-    def go_for_it(self) -> None:
+    def assign_synaptic_model(self, circ: snap.Circuit) -> None:
         source_node_set = self.source_neuron_set.resolve(circ)
         target_node_set = self.target_neuron_set.resolve(circ)
 
         prop_stats = {}
         for param_name, param_dict in self.synaptic_model.block.parameter_dictionaries().items:
-            prop_stats[param_name] = {source_node_set: {
-                    target_node_set: param_dict
-                }}
+            prop_stats[param_name] = {source_node_set: {target_node_set: param_dict}}
 
-        model1 = model_types.ConnPropsModel(
+        self._pathway_model = model_types.ConnPropsModel(
             src_types=[source_node_set],
             tgt_types=[target_node_set],
             prop_stats=prop_stats,

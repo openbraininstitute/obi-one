@@ -1,16 +1,11 @@
-from typing import Annotated, Any, ClassVar
-
-from pydantic import Discriminator
+from typing import Any, ClassVar
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
     InterNeuronSetSynapticModelAssigner,
 )
 
-SynapticModelAssignerUnion = Annotated[
-    InterNeuronSetSynapticModelAssigner,
-    Discriminator("type"),
-]
+SynapticModelAssignerUnion = InterNeuronSetSynapticModelAssigner
 
 
 class SynapticModelAssignerReference(BlockReference):

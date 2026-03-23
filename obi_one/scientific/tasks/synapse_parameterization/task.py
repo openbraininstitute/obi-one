@@ -23,6 +23,7 @@ L = logging.getLogger(__name__)
 
 class SynapseParameterizationTask(Task):
     config: SynapseParameterizationSingleConfig
+
     _synaptome: MEModelWithSynapsesCircuit | None = PrivateAttr(default=None)
     _synaptome_entity: models.Circuit | None = PrivateAttr(default=None)
     _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
@@ -78,6 +79,9 @@ class SynapseParameterizationTask(Task):
 
         # Check parameters
         circ = self._synaptome.sonata_circuit
+
+        for syn_model_assigner in self.config.synapse_model_assigners.values():
+            syn_model_assigner.assign_synaptic_model(circ=circ)
 
         for syn_parameterization in self.config.synapse_parameterizations.values():
             syn_parameterization.go_for_it(circ=circ)
