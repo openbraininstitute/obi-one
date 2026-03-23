@@ -203,12 +203,13 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.82"
+version = "2.6.87"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "efel" },
     { name = "h5py" },
+    { name = "libsonata" },
     { name = "matplotlib" },
     { name = "neo" },
     { name = "networkx" },
@@ -220,9 +221,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/b2/bd5798579642eca18d3e6f4782a9041942b2fba9ee9eddc834a04bc86afa/bluecellulab-2.6.82.tar.gz", hash = "sha256:262b20ab0b0597ad2f613e813e1679b9694e1ffd63f29bd069b9cda370bfd96d", size = 541217, upload-time = "2026-02-27T10:21:44.523Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/b3/7a92f8efa0067b1c320a2560f9c746dd195f8dca4ac449b288a1d01c04f6/bluecellulab-2.6.87.tar.gz", hash = "sha256:7d00f3ad38b1d16043ca77e029984c9d6a282ec2772f7c9eac840c91e6664c08", size = 548055, upload-time = "2026-03-12T16:28:05.364Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/e5/c1cc75ce380f1972783be0ac4e65df2e94fe080468cde224af9bc51c2c95/bluecellulab-2.6.82-py3-none-any.whl", hash = "sha256:dbf187849edc521cdb42d649fb82bfe92e4999cb2dac25989370d34e1a892cb4", size = 163225, upload-time = "2026-02-27T10:21:42.842Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/19/5859d4f1653ec769a056be721b4c511213d0690e3b02c46535d51ad9d087/bluecellulab-2.6.87-py3-none-any.whl", hash = "sha256:45ac9de4f36a0a1289f469584b9a3a7a9c8df5395057e6e9012fe4542c38b166", size = 170747, upload-time = "2026-03-12T16:28:03.465Z" },
 ]
 
 [[package]]
@@ -842,14 +843,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.12.3"
+version = "0.12.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/b1/6f78f3d81efed415fea6d2b06345d1276a8ae85cc4b4668a9d8f1839a318/entitysdk-0.12.3.tar.gz", hash = "sha256:327e1633aec7b8ac239b5f4427d55fba0bab09e06e8d0648798bced2f9a3a4da", size = 77990, upload-time = "2026-03-06T12:37:37.081Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3e/f7/62c210268ada848956b0b8db457093dda2264d58412fd5bae7aa02b5192b/entitysdk-0.12.4.tar.gz", hash = "sha256:3eadde0819d5e43b2dbdcd65faf2f747a4fc59c9980a8da944dd24634d129547", size = 78022, upload-time = "2026-03-12T16:30:07.594Z" }
 
 [[package]]
 name = "executing"
@@ -1519,16 +1520,16 @@ wheels = [
 
 [[package]]
 name = "libsonata"
-version = "0.1.33"
+version = "0.1.34"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/75/81b8fdcaa155998f375f76c68a60d392ba54f97c135cc64d51dbfc78a830/libsonata-0.1.33.tar.gz", hash = "sha256:2adbd23e86a88de8ac821361cf1bb5c0996d1aabc50138673a6c59fc695e1d96", size = 1181972, upload-time = "2026-01-14T09:55:32.385Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/8f/b32a05fa124a711bb32d80d596392c361dad967254c4efc043f63d07c7b9/libsonata-0.1.34.tar.gz", hash = "sha256:a9015e42da17d08a473c47cb6104deb06d1280e065af956d00ac95894295c323", size = 1185106, upload-time = "2026-02-13T09:20:17.615Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/35/d97fa7c1350cef484356219b6418ce22d43fa5bdf310565654fc3935d6e0/libsonata-0.1.33-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:ed7c811d3ee034804604e698d859302475bcfda826e8f25b244acd6c842e96a5", size = 2057011, upload-time = "2026-01-14T09:55:17.155Z" },
-    { url = "https://files.pythonhosted.org/packages/bd/02/069468b069bb1f277baed29da604cd62f6acd6628c19d24af09fb08a9878/libsonata-0.1.33-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b5220a038755109d23f14c67a1d31cb23dce0b1a7b7e8521abcb9c6c2fab371a", size = 1775489, upload-time = "2026-01-14T09:55:18.727Z" },
-    { url = "https://files.pythonhosted.org/packages/05/fa/2bc6c015dfc07fc9fc0bb2f5be18752d654e01592dd2625ced814a3a83ac/libsonata-0.1.33-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:2e73ff37aebf54c715c7942ffe4ffc03597560bb5798f990649fe6561adcca0c", size = 2446022, upload-time = "2026-01-14T09:55:20.197Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/f4/eca05a0028d2901d2e7bc3f99b1cad90c0c8569ed4ccb825739fbad99c11/libsonata-0.1.34-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:70c52fac3e30fbc0f605c75422a339239a95acd3c6fcfd51e87167f6c25761c5", size = 2065323, upload-time = "2026-02-13T09:19:59.931Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/9e/907f3cfd7d651f76705c5c69b61ee3f3126c8ce108f04d16239a5dd88050/libsonata-0.1.34-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f07e64ce2b7310f43541851e287012c11bc9f5caa3865e76b47dba879796274c", size = 1783528, upload-time = "2026-02-13T09:20:02.2Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/06/6e0f51926e25b35019411906a9ac1449bb6becf8654db9ffdb87609fa401/libsonata-0.1.34-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:666bb96a0fe04353e5046c3c37a495554cf31388754eb1ce9bce85967ef68e10", size = 2455684, upload-time = "2026-02-13T09:20:04.307Z" },
 ]
 
 [[package]]
@@ -1822,6 +1823,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/47/dd32fa426cc72114383ac549964eecb20ecfd886d1e5ccf5340b55b02f57/mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f", size = 508106, upload-time = "2023-03-07T16:47:11.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c", size = 536198, upload-time = "2023-03-07T16:47:09.197Z" },
+]
+
+[[package]]
 name = "msgpack"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1963,19 +1973,20 @@ wheels = [
 
 [[package]]
 name = "neuron"
-version = "8.2.7"
+version = "9.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "find-libpython" },
     { name = "numpy" },
     { name = "packaging" },
-    { name = "pyreadline3", marker = "sys_platform == 'win32'" },
     { name = "setuptools" },
+    { name = "sympy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/45/26a87553e7a1dde05fb9aebe98715498b6273fd0ed08f5a82ad550ee5379/neuron-8.2.7-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:d2044fde04ea2c07884cd4d047e19bd3686abe4cf2fb1b4b6aebab5890763727", size = 14027049, upload-time = "2025-05-22T23:49:04.288Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/d0/a22eceadcb655aa03a8a37f6e109e0880a7d00978713f0f5ded8042cfb5f/neuron-8.2.7-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6834f6d0981634fed4fee002873f139f738d20b606ff74bbd475c1ce7fe414db", size = 13232523, upload-time = "2025-05-22T17:43:11.118Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/69/5a8d498fd3096726768ab875b0e9a633cfdb68f976a6d520b6158b07ed7c/neuron-8.2.7-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:df6374137d6218e817645d37c06c8d0cd4a3afc910de70ffd63b7a4a2f57d633", size = 14926180, upload-time = "2025-05-22T23:49:08.907Z" },
+    { url = "https://files.pythonhosted.org/packages/75/a9/eb32f4ffc0390809cf137427c85670d3ebde27e4880547ee2ebb4a7c1f6e/neuron-9.0.1-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:c16ab4978b3519aea2aa0246ce94ce6a5812a13fb7a6d871e380d89ae9fe3e0d", size = 21982564, upload-time = "2025-11-17T00:20:27.86Z" },
+    { url = "https://files.pythonhosted.org/packages/29/82/35703c8beae35d9cffd750499908d6180fa5a629c39bd75176ef8e615188/neuron-9.0.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:32f8d426c50e263e36df3e5ad7120676dc0f4091f430702830e8f8cfab22971d", size = 21458748, upload-time = "2025-11-17T00:20:30.908Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/c1/e82d299e862951354f0a16ecda1117777ab761af987b27f6be5813381658/neuron-9.0.1-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4917ab32474860431da7b92d6b93979023a3379e4a2b96ac76c30bec98117727", size = 17405394, upload-time = "2025-11-17T00:20:33.998Z" },
+    { url = "https://files.pythonhosted.org/packages/da/e2/f0a20aaad661081466d12761d19e65c2c0ee50383cd013d531065289c894/neuron-9.0.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e59ed594cf6a61a500f1a4aac7b9ab95173d5f5860a17424a612f40cc34eeb88", size = 18108189, upload-time = "2025-11-17T00:20:37.151Z" },
 ]
 
 [[package]]
@@ -2162,7 +2173,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.82" },
+    { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.51" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
@@ -2624,15 +2635,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f3/91/9c6ee907786a473bf81c5f53cf703ba0957b23ab84c264080fb5a450416f/pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc", size = 6851574, upload-time = "2026-01-21T03:57:59.36Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d", size = 122781, upload-time = "2026-01-21T03:57:55.912Z" },
-]
-
-[[package]]
-name = "pyreadline3"
-version = "3.5.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/49/4cea918a08f02817aabae639e3d0ac046fef9f9180518a3ad394e22da148/pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7", size = 99839, upload-time = "2024-09-19T02:40:10.062Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/dc/491b7661614ab97483abf2056be1deee4dc2490ecbf7bff9ab5cdbac86e1/pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6", size = 83178, upload-time = "2024-09-19T02:40:08.598Z" },
 ]
 
 [[package]]
@@ -3160,6 +3162,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "sympy"
+version = "1.14.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mpmath" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
 ]
 
 [[package]]

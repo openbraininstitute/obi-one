@@ -3,18 +3,15 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationScanConfig,
     SimulationSingleConfigMixin,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
@@ -45,16 +42,16 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
             title="ME Model",
             description="ME Model to simulate.",
-            json_schema_extra={"ui_element": "model_identifier"},
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
 
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -63,11 +60,11 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         title="Stimuli",
         description="Stimuli for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": StimulusReference.__name__,
-            "singular_name": "Stimulus",
-            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Stimulus",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -76,24 +73,23 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
         title="Neuronal Manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": NeuronalManipulationReference.__name__,
-            "singular_name": "Neuronal Manipulation",
-            "group": BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: NeuronalManipulationReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": True,
-        "group_order": [
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
-        "default_block_reference_labels": {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }

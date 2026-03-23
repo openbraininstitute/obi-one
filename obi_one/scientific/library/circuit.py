@@ -1,8 +1,12 @@
+from pathlib import Path
+
 import bluepysnap as snap
 import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+
+CIRCUIT_MOD_DIR = "mod"
 
 
 class Circuit(OBIBaseModel):
@@ -31,6 +35,11 @@ class Circuit(OBIBaseModel):
     def __str__(self) -> str:
         """Returns the name as a string representation."""
         return self.name
+
+    @property
+    def directory(self) -> Path:
+        """Return circuit directory."""
+        return Path(self.path).parent
 
     @property
     def sonata_circuit(self) -> snap.Circuit:
@@ -124,3 +133,19 @@ class Circuit(OBIBaseModel):
     def default_edge_population_name(self) -> str:
         """Returns the default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
+
+    @property
+    def mechanisms_dir(self) -> Path:
+        # TODO: There should be only ONE convention for output dir of mechs
+        if type(self).__name__ == "Circuit":
+            path = self.directory / CIRCUIT_MOD_DIR
+        else:
+            path = self.directory / "mechanisms"
+
+        if not path.exists():
+            msg = f"{path} does not exist."
+            raise FileNotFoundError(msg)
+        if not path.is_dir():
+            msg = f"{path} is not a mechanisms directory."
+            raise NotADirectoryError(msg)
+        return path

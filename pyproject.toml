@@ -69,7 +69,7 @@ dependencies = [
     # CONNECTOME-UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
-    "bluecellulab>=2.6.82",
+    "bluecellulab>=2.6.87",
     # OBI NOTEBOOK
     "obi_notebook",
     "morph_spines",
@@ -172,6 +172,7 @@ builtins-ignorelist = ["license"]
     "ERA001", # Found commented-out code
     "PLC2701", # Private name import from external module
     "PLR2004", # magic value (constant) used in comparison (i.e. expected == 3)
+    "PLR6301", # Method could be a function (class-based test organization)
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
@@ -215,6 +216,7 @@ source_pkgs = [
     "app",
     "obi_one",
 ]
+data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
@@ -223,3 +225,9 @@ fail_under = 30
 omit = [
     "__main__.py",
 ]
+
+[tool.coverage.xml]
+output = ".coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = ".coverage/html_report"

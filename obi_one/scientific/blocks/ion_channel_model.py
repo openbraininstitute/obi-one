@@ -4,28 +4,9 @@ from entitysdk.types import EntityType
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-
-
-class IonChannelModelWithoutConductance(Block):
-    """Select an ion channel model without conductance nor max permeability parameters."""
-
-    title: ClassVar[str] = "Ion channel model without conductance nor max permeability"
-
-    ion_channel_model: IonChannelModelFromID = Field(
-        title="Ion channel model",
-        description="ID of the model to simulate.",
-        json_schema_extra={
-            "ui_element": "model_selector_single",
-            "entity_query": {
-                "type": EntityType.ion_channel_model,
-                "filters": {
-                    "conductance_name__isnull": True,
-                    "max_permeability_name__isnull": True,
-                },
-            },
-        },
-    )
 
 
 class IonChannelModelWithConductance(Block):
@@ -37,10 +18,10 @@ class IonChannelModelWithConductance(Block):
         title="Ion channel model",
         description="ID of the model to simulate.",
         json_schema_extra={
-            "ui_element": "model_selector_single",
-            "entity_query": {
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
                 "type": EntityType.ion_channel_model,
-                "filters": {
+                SchemaKey.FILTERS: {
                     "conductance_name__isnull": False,
                 },
             },
@@ -51,8 +32,8 @@ class IonChannelModelWithConductance(Block):
         title="Conductance value",
         description="Conductance value.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "S/cm2",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.SIEMENS_PER_CM2,
         },
     )
 
@@ -66,10 +47,10 @@ class IonChannelModelWithMaxPermeability(Block):
         title="Ion channel model",
         description="ID of the model to simulate.",
         json_schema_extra={
-            "ui_element": "model_selector_single",
-            "entity_query": {
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
                 "type": EntityType.ion_channel_model,
-                "filters": {
+                SchemaKey.FILTERS: {
                     "max_permeability_name__isnull": False,
                 },
             },
@@ -80,7 +61,28 @@ class IonChannelModelWithMaxPermeability(Block):
         title="Maximum permeability value",
         description="Maximum permeability value.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "cm/s",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.CENTIMETERS_PER_SECOND,
+        },
+    )
+
+
+class IonChannelModelWithoutConductance(Block):
+    """Select an ion channel model without conductance nor max permeability parameters."""
+
+    title: ClassVar[str] = "Ion channel model without conductance nor max permeability"
+
+    ion_channel_model: IonChannelModelFromID = Field(
+        title="Ion channel model",
+        description="ID of the model to simulate.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": EntityType.ion_channel_model,
+                SchemaKey.FILTERS: {
+                    "conductance_name__isnull": True,
+                    "max_permeability_name__isnull": True,
+                },
+            },
         },
     )

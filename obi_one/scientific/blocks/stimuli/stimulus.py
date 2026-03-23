@@ -16,6 +16,8 @@ from pydantic import (
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
@@ -43,8 +45,8 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
     title="Timestamp Offset",
     description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
     json_schema_extra={
-        "ui_element": "float_parameter_sweep",
-        "units": "ms",
+        SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        SchemaKey.UNITS: Units.MILLISECONDS,
     },
 )
 
@@ -64,8 +66,8 @@ class StimulusWithTimestamps(BaseStimulus):
         title="Timestamps",
         description="Timestamps at which the stimulus is applied.",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": TimestampsReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
         },
     )
 
@@ -76,9 +78,9 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": False,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
         },
     )
 
@@ -89,8 +91,8 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -147,8 +149,8 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The injected current. Given in nanoamps.",
         title="Amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
 
@@ -188,8 +190,8 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The percentage of a cell's threshold current to inject when the stimulus \
                     activates.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -229,8 +231,8 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The amount of current initially injected when the stimulus activates. "
         "Given in nanoamps.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     amplitude_end: float | list[float] = Field(
@@ -239,8 +241,8 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         description="If given, current is interpolated such that current reaches this value when "
         "the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
 
@@ -283,8 +285,8 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         "when the stimulus activates.",
         title="Percentage of Threshold Current (Start)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
     percentage_of_threshold_current_end: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -293,8 +295,8 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         "that the percentage reaches this value when the stimulus concludes.",
         title="Percentage of Threshold Current (End)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -334,8 +336,8 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The mean value of current to inject. Given in nanoamps (nA).",
         title="Mean Amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -344,8 +346,8 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
                     normal distribution.",
         title="Variance",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA^2",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS_SQUARED,
         },
     )
 
@@ -388,8 +390,8 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
                     threshold current.",
         title="Percentage of Threshold Current (Mean)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
     variance: NonNegativeFloat | list[NonNegativeFloat] = Field(
@@ -398,8 +400,8 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
                     normal distribution.",
         title="Variance",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA^2",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS_SQUARED,
         },
     )
 
@@ -442,8 +444,8 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         "Given in nanoamps (nA).",
         title="Amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     width: (
@@ -454,8 +456,8 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
     frequency: (
@@ -466,8 +468,8 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The frequency of pulse trains. Given in Hertz (Hz).",
         title="Pulse Frequency",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -508,8 +510,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
         title="Maximum Amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "nA",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
     frequency: (
@@ -520,8 +522,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         description="The frequency of the waveform. Given in Hertz (Hz).",
         title="Frequency",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
     dt: (
@@ -532,8 +534,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         description="Timestep of generated signal in milliseconds (ms).",
         title="Timestep",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -577,8 +579,8 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
                                 threshold current.",
         title="Percentage Below Threshold",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "%",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
@@ -656,8 +658,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Total Duration",
         description="Time duration in milliseconds for how long the SEClamp is activated.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -666,8 +668,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Initial Voltage",
         description="The initial voltage level in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -676,18 +678,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Step Voltage Amplitude",
         description="The step voltage level in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "mV",
-        },
-    )
-
-    step_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=200,
-        title="Step Duration",
-        description="The duration of the step in milliseconds (ms).",
-        json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -701,7 +693,9 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration": self.duration,
             "voltage": self.initial_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
-            "duration_levels": [self.timestamp_offset, self.step_duration],
+            # no need to set duration for step voltage since the SEClamp maintain the voltage
+            #  until the clamp is off
+            "duration_levels": [self.timestamp_offset],
             "voltage_levels": [self.step_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
@@ -721,9 +715,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -732,9 +726,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -859,8 +853,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
     frequency: (
@@ -871,8 +865,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
         title="Frequency",
         description="Mean frequency (Hz) of the Poisson input.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
     random_seed: int | list[int] = Field(
@@ -881,7 +875,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         description="Seed for the random number generator to ensure "
         "reproducibility of the spike generation.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -1024,8 +1018,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Duration",
         description="Time duration of the stimulus in milliseconds.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -1038,8 +1032,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Minimum Rate",
         description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1052,8 +1046,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Maximum rate of the stimulus in Hz. Must be greater than or equal to "
         "Minimum Rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1065,8 +1059,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Modulation Frequency",
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -1075,8 +1069,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Phase Offset",
         description="Phase offset (degrees) of the sinusoid.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "°",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
 
@@ -1085,7 +1079,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Random Seed",
         description="Seed for the random number generator to ensure reproducibility.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
