@@ -63,7 +63,7 @@ def update_activity_status(
     client: Client,
     activity_id: UUID,
     activity_type: type[Activity],
-    status: str,
+    status: ActivityStatus,
 ) -> Activity:
     """Updates the activity by setting a new status."""
     return client.update_entity(
