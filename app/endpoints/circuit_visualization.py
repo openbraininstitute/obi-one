@@ -26,7 +26,7 @@ router = APIRouter(
 @router.get(
     "/{circuit_id}/nodes",
     summary="Circuit nodes",
-    description="Returns a list of nodes for visualization",
+    description="Returns a list of all biophysical nodes for visualization",
 )
 def circuit_nodes(
     circuit_id: UUID,
