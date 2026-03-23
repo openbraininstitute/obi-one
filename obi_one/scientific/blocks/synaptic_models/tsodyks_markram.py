@@ -34,6 +34,15 @@ class TsodyksMarkramSynapticModel(Block):
         },
     )
 
+    conductance_scale_factor_distribution: AllDistributionsReference = Field(
+        title="Conductance Scale Factor Distribution",
+        description="Distribution of the conductance scale factor that multiplies the synaptic conductance (g_syn) to allow for fitting of synaptic conductance values that are outside of the range of the conductance distribution.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+        },
+    )
+
     fascilitation_time: AllDistributionsReference = Field(
         title="Fascilitation Time Distribution",
         description="Fascilitation Time Distribution",
@@ -103,6 +112,16 @@ class TsodyksMarkramSynapticModel(Block):
         },
     )
 
+    conductance_scale_factor_distribution_shared_within: bool = Field(
+        default=False,
+        title="Conductance Scale Factor Distribution Shared Within",
+        description="Whether the conductance scale factor distribution is shared within the synapses"
+        " between the source and target neuron sets.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
+
     fascilitation_time_shared_within: bool = Field(
         default=False,
         title="Fascilitation Time Distribution Shared Within",
@@ -143,6 +162,15 @@ class TsodyksMarkramSynapticModel(Block):
         },
     )
 
+    usyn_shared_within: bool = Field(
+        default=False,
+        title="Usyn Distribution Shared Within",
+        description="Whether the utilization of synaptic efficacy (usyn) for the first spike in a spike train is shared within the synapses between the source and target neuron sets.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
+
     @property
     def cov_mat(self) -> dict:
         return []
@@ -150,6 +178,10 @@ class TsodyksMarkramSynapticModel(Block):
     @property
     def cov_dict(self) -> dict:
         return {}
+    
+    @property
+    def synapse_type_id(self) -> int:
+        return 113 # 128, 130, 114, 123 are other values in edges files
 
     def u_hill_coefficient_dict(self) -> dict:
         d = self.u_hill_coefficient_distribution.resolve()
@@ -161,6 +193,11 @@ class TsodyksMarkramSynapticModel(Block):
         d["shared_within"] = self.conductance_distribution_shared_within
         return d
     
+    def conductance_scale_factor_distribution_dict(self) -> dict:
+        d = self.conductance_scale_factor_distribution.resolve()
+        d["shared_within"] = self.conductance_scale_factor_distribution_shared_within
+        return d
+
     def fascilitation_time_dict(self) -> dict:
         d = self.fascilitation_time.resolve()
         d["shared_within"] = self.fascilitation_time_shared_within
@@ -180,16 +217,24 @@ class TsodyksMarkramSynapticModel(Block):
         d = self.decay_time.resolve()
         d["shared_within"] = self.decay_time_shared_within
         return d
+    
+    def usyn_dict(self) -> dict:
+        d = self.usyn.resolve()
+        d["shared_within"] = self.usyn_shared_within
+        return d
 
 
     def parameter_dictionaries(self) -> dict:
         return {
             "u_hill_coefficient": self.u_hill_coefficient_dict(),
             "conductance": self.conductance_distribution_dict(),
+            "conductance_scale_factor": self.conductance_scale_factor_distribution_dict(),
             "fascilitation_time": self.fascilitation_time_dict(),
             "depression_time": self.depression_time_dict(),
             "n_rrp_vesicles": self.n_rrp_vesicles_dict(),
             "decay_time": self.decay_time_dict(),
+            "usyn": self.usyn_dict(),
+            "synapse_type_id": self.synapse_type_id,
         }
 
 
