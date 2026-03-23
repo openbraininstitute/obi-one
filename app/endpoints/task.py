@@ -71,9 +71,10 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
-        task_definition = task_service.update_resources(
+        updated_resources = task_service.estimate_task_resources(
             json_model=json_model, db_client=db_client, task_definition=task_definition
         )
+        task_definition = task_definition.model_copy(update={"resources": updated_resources})
 
         return task_service.submit_task_job(
             db_client=db_client,

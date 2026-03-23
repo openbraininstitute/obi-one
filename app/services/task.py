@@ -10,7 +10,7 @@ from entitysdk.types import ActivityStatus, ExecutorType
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
+from app.schemas.task import Resources, TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.scientific.library.circuit_metrics import (
@@ -244,10 +244,11 @@ def _check_available_disk_space(disk_space_gb_required: float) -> None:
         raise ValueError(msg)
 
 
-def update_resources(  # noqa: PLR0914
+def estimate_task_resources(  # noqa: PLR0914
     json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
-) -> TaskDefinition:
+) -> Resources:
     """Updates the machine resources in the task definition."""
+    resources = task_definition.resources
     match task_definition.task_type:
         case TaskType.circuit_extraction:
             # Get extraction config
@@ -316,12 +317,11 @@ def update_resources(  # noqa: PLR0914
             _check_available_disk_space(output_size_gb)
 
             # Update resources
-            updated_resources = task_definition.resources.model_copy(
+            resources = task_definition.resources.model_copy(
                 update={"cores": ncpu, "memory": mem_gb, "timelimit": f"{time_h:02d}:00"}
             )
-            task_definition = task_definition.model_copy(update={"resources": updated_resources})
 
         case _:
             # Don't update anything
             pass
-    return task_definition
+    return resources

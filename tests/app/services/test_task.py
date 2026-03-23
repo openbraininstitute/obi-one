@@ -558,8 +558,8 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
     )
 
 
-def _run_update_resources(db_client, circuit_metrics, do_virtual):
-    """Run update_resources for circuit_extraction with mocked dependencies."""
+def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
+    """Run estimate_task_resources for circuit_extraction with mocked dependencies."""
     task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
     fake_config = SimpleNamespace(initialize=SimpleNamespace(do_virtual=do_virtual))
@@ -583,14 +583,14 @@ def _run_update_resources(db_client, circuit_metrics, do_virtual):
         patch("app.services.task.db_sdk.get_entity_asset_by_label") as mock_get_asset,
     ):
         mock_get_asset.return_value = SimpleNamespace(id=uuid4())
-        return test_module.update_resources(
+        return test_module.estimate_task_resources(
             json_model=json_model,
             db_client=db_client,
             task_definition=task_definition,
         )
 
 
-# Formulas in update_resources:
+# Formulas in estimate_task_resources:
 #   input_neurons = (nbio + nvirt) if do_virtual else nbio
 #   mem_gb_required = 1 + 55e-6 * input_neurons
 #   time_h = ceil(input_neurons * 5e-6)
@@ -629,15 +629,15 @@ def _run_update_resources(db_client, circuit_metrics, do_virtual):
         "large_without_virtual",
     ],
 )
-def test_update_resources_allocation(
+def test_estimate_task_resources_allocation(
     db_client, nbio, nvirt, sbio, svirt, do_virtual, exp_cores, exp_mem, exp_time
 ):
     metrics = _make_circuit_metrics(nbio, nvirt, sbio, svirt)
-    result = _run_update_resources(db_client, metrics, do_virtual)
+    result = _run_estimate_task_resources(db_client, metrics, do_virtual)
 
-    assert result.resources.cores == exp_cores
-    assert result.resources.memory == exp_mem
-    assert result.resources.timelimit == exp_time
+    assert result.cores == exp_cores
+    assert result.memory == exp_mem
+    assert result.timelimit == exp_time
 
 
 @pytest.mark.parametrize(
@@ -652,10 +652,10 @@ def test_update_resources_allocation(
     ],
     ids=["too_many_synapses_with_virtual", "too_many_synapses_without_virtual"],
 )
-def test_update_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
+def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
     with pytest.raises(ValueError, match="Not enough disk space"):
-        _run_update_resources(db_client, metrics, do_virtual)
+        _run_estimate_task_resources(db_client, metrics, do_virtual)
 
 
 @pytest.mark.parametrize(
@@ -666,21 +666,21 @@ def test_update_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     ],
     ids=["under_limit_without_virtual"],
 )
-def test_update_resources_disk_ok_without_virtual(db_client, sbio, svirt, do_virtual):
+def test_estimate_task_resources_disk_ok_without_virtual(db_client, sbio, svirt, do_virtual):
     """With do_virtual=False, virtual synapses are excluded and disk check passes."""
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
-    result = _run_update_resources(db_client, metrics, do_virtual)
-    assert result.resources.cores >= 1
+    result = _run_estimate_task_resources(db_client, metrics, do_virtual)
+    assert result.cores >= 1
 
 
-def test_update_resources_passthrough(db_client):
-    """Non-circuit_extraction tasks should return task_definition unchanged."""
+def test_estimate_task_resources_passthrough(db_client):
+    """Non-circuit_extraction tasks should return resources unchanged."""
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
 
-    result = test_module.update_resources(
+    result = test_module.estimate_task_resources(
         json_model=json_model,
         db_client=db_client,
         task_definition=task_definition,
     )
-    assert result is task_definition
+    assert result is task_definition.resources
