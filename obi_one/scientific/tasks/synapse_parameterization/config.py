@@ -4,9 +4,9 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.info import Info
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
@@ -38,7 +38,7 @@ class BlockGroup(StrEnum):
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
 
 
-class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
+class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
     name: ClassVar[str] = "Synapse parameterization"
     description: ClassVar[str] = (
         "Generates a physiological parameterization of an anatomical synaptome or replaces an"
@@ -122,3 +122,7 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
+
+class SynapseParameterizationSingleConfig(SynapseParameterizationScanConfig, SingleConfigMixin):
+    pass

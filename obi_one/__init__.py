@@ -53,6 +53,7 @@ __all__ = [
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
     "ContributeSubjectSingleConfig",
+    "CorrelatedTsodyksMarkramSynapticModel",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
@@ -67,7 +68,9 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatConstantDistribution",
     "FloatRange",
+    "FloatUniformDistribution",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
@@ -80,8 +83,11 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntConstantDistribution",
     "IntRange",
+    "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterNeuronSetSynapticModelAssigner",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -114,12 +120,24 @@ __all__ = [
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
+    "NegativeFloatConstantDistribution",
+    "NegativeFloatUniformDistribution",
+    "NegativeIntConstantDistribution",
+    "NegativeIntUniformDistribution",
     "NeuronPropertyFilter",
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "NonNegativeFloatConstantDistribution",
     "NonNegativeFloatRange",
+    "NonNegativeFloatUniformDistribution",
+    "NonNegativeIntConstantDistribution",
     "NonNegativeIntRange",
+    "NonNegativeIntUniformDistribution",
+    "NonPositiveFloatConstantDistribution",
+    "NonPositiveFloatUniformDistribution",
+    "NonPositiveIntConstantDistribution",
+    "NonPositiveIntUniformDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -132,8 +150,12 @@ __all__ = [
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
+    "PositiveFloatConstantDistribution",
     "PositiveFloatRange",
+    "PositiveFloatUniformDistribution",
+    "PositiveIntConstantDistribution",
     "PositiveIntRange",
+    "PositiveIntUniformDistribution",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -171,16 +193,24 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapseParameterizationScanConfig",
     "SynapseParameterizationSingleConfig",
     "SynapseParameterizationTask",
     "SynapseSetUnion",
     "SynapticMgManipulation",
+    "SynapticModelAssignerReference",
+    "SynapticModelAssignerUnion",
+    "SynapticParameterizationDistributionReference",
+    "SynapticParameterizationDistributionReference",
+    "SynapticParameterizationDistributionUnion",
+    "SynapticParameterizationDistributionUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "TsodyksMarkramSynapticModel",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
@@ -225,6 +255,30 @@ from obi_one.scientific.blocks.afferent_synapses import (
     PathDistanceWeightedNumberOfSynapses,
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
+)
+from obi_one.scientific.blocks.distributions.constant import (
+    FloatConstantDistribution,
+    IntConstantDistribution,
+    NegativeFloatConstantDistribution,
+    NegativeIntConstantDistribution,
+    NonNegativeFloatConstantDistribution,
+    NonNegativeIntConstantDistribution,
+    NonPositiveFloatConstantDistribution,
+    NonPositiveIntConstantDistribution,
+    PositiveFloatConstantDistribution,
+    PositiveIntConstantDistribution,
+)
+from obi_one.scientific.blocks.distributions.uniform import (
+    FloatUniformDistribution,
+    IntUniformDistribution,
+    NegativeFloatUniformDistribution,
+    NegativeIntUniformDistribution,
+    NonNegativeFloatUniformDistribution,
+    NonNegativeIntUniformDistribution,
+    NonPositiveFloatUniformDistribution,
+    NonPositiveIntUniformDistribution,
+    PositiveFloatUniformDistribution,
+    PositiveIntUniformDistribution,
 )
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
@@ -308,6 +362,13 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
+    InterNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    CorrelatedTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -413,11 +474,16 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
     SynapseParameterizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.unions_distributions import (
+    SynapticParameterizationDistributionReference,
+    SynapticParameterizationDistributionUnion,
+)
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
@@ -435,6 +501,10 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+    SynapticModelAssignerUnion,
+)
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
