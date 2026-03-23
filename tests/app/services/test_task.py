@@ -5,7 +5,7 @@ from uuid import uuid4
 import entitysdk
 import httpx
 import pytest
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
@@ -63,14 +63,16 @@ def callbacks(activity_id):
 
 
 @pytest.mark.parametrize(
-    ("task_type", "config_route", "config_response", "activity_route"),
+    ("task_type", "config_route", "config_response", "activity_route", "activity_response"),
     [
         (
             TaskType.circuit_extraction,
-            "circuit-extraction-config",
+            "task-config",
             {
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
+                "task_config_type": TaskConfigType.circuit_extraction__config,
+                "meta": {},
                 "assets": [
                     {
                         "id": str(ASSET_ID),
@@ -84,7 +86,10 @@ def callbacks(activity_id):
                     },
                 ],
             },
-            "circuit-extraction-execution",
+            "task-activity",
+            {
+                "task_activity_type": TaskActivityType.circuit_extraction__execution,
+            },
         ),
         (
             TaskType.circuit_simulation,
@@ -95,6 +100,7 @@ def callbacks(activity_id):
                 "scan_parameters": {},
             },
             "simulation-execution",
+            {},
         ),
     ],
 )
@@ -103,6 +109,7 @@ def test_submit_task_job__success(
     config_route,
     config_response,
     activity_route,
+    activity_response,
     db_client,
     ls_client,
     project_context,
@@ -121,7 +128,7 @@ def test_submit_task_job__success(
     httpx_mock.add_callback(
         lambda request: httpx.Response(
             status_code=200,
-            json=json.loads(request.content) | {"id": str(activity_id)},
+            json=json.loads(request.content) | activity_response | {"id": str(activity_id)},
         ),
         url=f"http://my-url/{activity_route}",
         method="POST",
@@ -142,6 +149,7 @@ def test_submit_task_job__success(
                 "start_time": datetime.now(UTC).isoformat(),
                 "status": "pending",
             }
+            | activity_response
             | json.loads(request.content),
         ),
         url=f"http://my-url/{activity_route}/{activity_id}",
@@ -164,11 +172,11 @@ def test_submit_task_job__success(
 
 
 @pytest.mark.parametrize(
-    ("task_type", "config_route", "config_response", "activity_route"),
+    ("task_type", "config_route", "config_response", "activity_route", "activity_response"),
     [
         (
             TaskType.circuit_extraction,
-            "circuit-extraction-config",
+            "task-config",
             {
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
@@ -184,8 +192,13 @@ def test_submit_task_job__success(
                         "content_type": "application/json",
                     },
                 ],
+                "task_config_type": TaskConfigType.circuit_extraction__config,
+                "meta": {},
             },
-            "circuit-extraction-execution",
+            "task-activity",
+            {
+                "task_activity_type": TaskActivityType.circuit_extraction__execution,
+            },
         ),
         (
             TaskType.circuit_simulation,
@@ -196,6 +209,7 @@ def test_submit_task_job__success(
                 "scan_parameters": {},
             },
             "simulation-execution",
+            {},
         ),
     ],
 )
@@ -204,6 +218,7 @@ def test_submit_task_job__failure(
     config_route,
     config_response,
     activity_route,
+    activity_response,
     db_client,
     ls_client,
     project_context,
@@ -221,7 +236,7 @@ def test_submit_task_job__failure(
     httpx_mock.add_callback(
         lambda request: httpx.Response(
             status_code=200,
-            json=json.loads(request.content) | {"id": str(activity_id)},
+            json=json.loads(request.content) | activity_response | {"id": str(activity_id)},
         ),
         url=f"http://my-url/{activity_route}",
         method="POST",
@@ -242,6 +257,7 @@ def test_submit_task_job__failure(
                 "start_time": datetime.now(UTC).isoformat(),
                 "status": "pending",
             }
+            | activity_response
             | json.loads(request.content),
         ),
         url=f"http://my-url/{activity_route}/{activity_id}",
@@ -351,13 +367,13 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         },
         "inputs": [
             "--task-type circuit_extraction",
-            "--config_entity_type CircuitExtractionConfig",
+            "--config_entity_type circuit_extraction__config",
             f"--config_entity_id {config_id}",
             "--entity_cache True",
             "--scan_output_root /foo",
             f"--virtual_lab_id {VIRTUAL_LAB_ID}",
             f"--project_id {PROJECT_ID}",
-            "--execution_activity_type CircuitExtractionExecution",
+            "--execution_activity_type circuit_extraction__execution",
             f"--execution_activity_id {activity_id}",
         ],
         "project_id": PROJECT_ID,
@@ -399,13 +415,19 @@ def test_generate_failure_callback(project_context, activity_id):
 
 
 @pytest.mark.parametrize(
-    ("task_type", "activity_route"),
+    ("task_type", "activity_route", "activity_response"),
     [
-        (TaskType.circuit_extraction, "circuit-extraction-execution"),
-        (TaskType.circuit_simulation, "simulation-execution"),
+        (
+            TaskType.circuit_extraction,
+            "task-activity",
+            {"task_activity_type": TaskActivityType.circuit_extraction__execution},
+        ),
+        (TaskType.circuit_simulation, "simulation-execution", {}),
     ],
 )
-def test_handle_task_failure_callback(db_client, task_type, activity_route, httpx_mock):
+def test_handle_task_failure_callback(
+    db_client, task_type, activity_route, activity_response, httpx_mock
+):
     activity_id = uuid4()
     activity_payload = {
         "id": str(activity_id),
@@ -415,12 +437,12 @@ def test_handle_task_failure_callback(db_client, task_type, activity_route, http
     httpx_mock.add_response(
         url=f"http://my-url/{activity_route}/{activity_id}",
         method="GET",
-        json=activity_payload,
+        json=activity_payload | activity_response,
     )
     httpx_mock.add_callback(
         lambda request: httpx.Response(
             status_code=200,
-            json=activity_payload | json.loads(request.content),
+            json=activity_payload | activity_response | json.loads(request.content),
         ),
         url=f"http://my-url/{activity_route}/{activity_id}",
         method="PATCH",
@@ -433,13 +455,19 @@ def test_handle_task_failure_callback(db_client, task_type, activity_route, http
 
 
 @pytest.mark.parametrize(
-    ("task_type", "activity_route"),
+    ("task_type", "activity_route", "activity_response"),
     [
-        (TaskType.circuit_extraction, "circuit-extraction-execution"),
-        (TaskType.circuit_simulation, "simulation-execution"),
+        (
+            TaskType.circuit_extraction,
+            "task-activity",
+            {"task_activity_type": TaskActivityType.circuit_extraction__execution},
+        ),
+        (TaskType.circuit_simulation, "simulation-execution", {}),
     ],
 )
-def test_handle_task_failure_callback__do_nothing(db_client, task_type, activity_route, httpx_mock):
+def test_handle_task_failure_callback__do_nothing(
+    db_client, task_type, activity_route, activity_response, httpx_mock
+):
     activity_id = uuid4()
 
     activity_payload = {
@@ -450,7 +478,7 @@ def test_handle_task_failure_callback__do_nothing(db_client, task_type, activity
     httpx_mock.add_response(
         url=f"http://my-url/{activity_route}/{activity_id}",
         method="GET",
-        json=activity_payload,
+        json=activity_payload | activity_response,
     )
     test_module.handle_task_failure_callback(
         activity_id=activity_id,
