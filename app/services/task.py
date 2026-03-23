@@ -26,6 +26,7 @@ def submit_task_job(
     compute_cell: str,
 ) -> TaskLaunchInfo:
     """Creates an activity and submits a task as a job on the launch-system."""
+    # TODO: Remove once simulations are migrated to generic configs
     if isinstance(task_definition, TaskDefinitionLegacy):
         config_type = task_definition.config_type
         config = db_client.get_entity(entity_id=config_id, entity_type=config_type)
