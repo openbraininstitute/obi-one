@@ -3,10 +3,10 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from entitysdk import Client
-from entitysdk.models import Entity
+from entitysdk.models import Entity, TaskActivity
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
-from entitysdk.types import AssetLabel, ExecutorType
+from entitysdk.types import ActivityStatus, AssetLabel, ExecutorType, TaskActivityType
 
 L = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def create_activity(
     *,
     client: Client,
     activity_type: type[Activity],
-    activity_status: str = "created",  # TODO: Use ActivityStatus when available
+    activity_status: ActivityStatus = ActivityStatus.created,
     used: list[Entity],
 ) -> Activity:
     """Creates and registers an activity of the given type."""
@@ -35,12 +35,30 @@ def create_activity(
     return activity
 
 
+def create_generic_activity(
+    *,
+    client: Client,
+    activity_type: TaskActivityType,
+    used: list[Entity],
+    activity_status: ActivityStatus = ActivityStatus.created,
+) -> TaskActivity:
+    activity = TaskActivity(
+        start_time=datetime.now(UTC),
+        used=used,
+        status=activity_status,
+        task_activity_type=activity_type,
+    )
+    activity = client.register_entity(activity)
+    L.info(f"Task activity {activity.id} of type '{activity_type.__name__}' created")
+    return activity
+
+
 def update_activity_status(
     *,
     client: Client,
     activity_id: UUID,
     activity_type: type[Activity],
-    status: str,
+    status: ActivityStatus,
 ) -> Activity:
     """Updates the activity by setting a new status."""
     return client.update_entity(

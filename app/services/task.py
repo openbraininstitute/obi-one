@@ -3,13 +3,13 @@ from uuid import UUID
 
 import entitysdk
 import httpx
-from entitysdk import ProjectContext
+from entitysdk import ProjectContext, models
 from entitysdk.types import ActivityStatus, ExecutorType
 
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskDefinition, TaskLaunchInfo
+from app.schemas.task import TaskDefinition, TaskDefinitionLegacy, TaskLaunchInfo
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
 
@@ -26,16 +26,30 @@ def submit_task_job(
     compute_cell: str,
 ) -> TaskLaunchInfo:
     """Creates an activity and submits a task as a job on the launch-system."""
-    config = db_client.get_entity(
-        entity_id=config_id,
-        entity_type=task_definition.config_type,
-    )
-    activity_id = db_sdk.create_activity(
-        client=db_client,
-        used=[config],
-        activity_status=ActivityStatus.pending,
-        activity_type=task_definition.activity_type,
-    ).id
+    match task_definition:
+        case TaskDefinition():
+            config = db_client.get_entity(
+                entity_id=config_id,
+                entity_type=models.TaskConfig,
+            )
+            activity_id = db_sdk.create_generic_activity(
+                client=db_client,
+                used=[config],
+                activity_status=ActivityStatus.pending,
+                activity_type=task_definition.task_activity_type,
+            ).id
+        case TaskDefinitionLegacy():
+            config = db_client.get_entity(
+                entity_id=config_id,
+                entity_type=task_definition.config_type,
+            )
+            activity_id = db_sdk.create_generic_activity(
+                client=db_client,
+                used=[config],
+                activity_status=ActivityStatus.pending,
+                activity_type=task_definition.activity_type,
+            ).id
+
     failure_callback = _generate_failure_callback(
         activity_id=activity_id,
         task_type=task_definition.task_type,
