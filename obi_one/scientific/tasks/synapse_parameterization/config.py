@@ -23,6 +23,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_synaptic_parameterizations import (
     SynapticParameterizationReference,
 )
+from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": True,
-        "group_order": [BlockGroup.SETUP],
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP],
     }
 
     class Initialize(Block):
@@ -57,18 +58,18 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
         title="Info",
         description="Information about the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -76,11 +77,11 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
         default_factory=dict,
         description="Parameterizations...",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": SynapticParameterizationReference.__name__,
-            "singular_name": "Synaptic Parameterization",
-            "group": BlockGroup.SYNAPSE_PARAMETERS,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: SynapticParameterizationReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
+            SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -88,11 +89,11 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
         default_factory=dict,
         description="Distributions for synapse parameterization.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": SynapticParameterizationDistributionReference.__name__,
-            "singular_name": "Synaptic Parameterization Distribution",
-            "group": BlockGroup.SYNAPSE_PARAMETERS,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
+            SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -100,10 +101,10 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "reference_type": NeuronSetReference.__name__,
-            "singular_name": "Neuron Set",
-            "group": BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )

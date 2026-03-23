@@ -11,6 +11,11 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.unions.unions_distributions import (
+    SynapticParameterizationDistributionReference,
+)
+
 L = logging.getLogger(__name__)
 
 
@@ -145,9 +150,9 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -156,23 +161,24 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
         },
     )
 
-    u_hill_coefficient: float = Field(
-        default=1.0,
-        title="Hill coefficient for u",
-        description=(
-            "Hill coefficient for the steady-state utilization of synaptic efficacy (u) as a "
-            "function of presynaptic firing rate. A value of 1 corresponds to a standard Hill "
-            "function, while higher values lead to a steeper increase of u with firing rate."
-        ),
+    u_hill_coefficient_distribution: SynapticParameterizationDistributionReference = Field(
+        title="U Hill Coefficient Distribution",
+        description="Distribution of the Hill coefficient for the steady-state utilization of synaptic efficacy (u).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+        },
     )
 
-    parameter_distribution: dict = Field()
+    # "Hill coefficient for the steady-state utilization of synaptic efficacy (u) as a "
+    # "function of presynaptic firing rate. A value of 1 corresponds to a standard Hill "
+    # "function, while higher values lead to a steeper increase of u with firing rate."
 
     def go_for_it(self, circ: snap.Circuit) -> Never:
         msg = "New synapse parameterization not implemented yet!"
