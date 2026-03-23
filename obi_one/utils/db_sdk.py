@@ -104,6 +104,28 @@ def get_activity_status(
     ).status
 
 
+def register_campaign_task_config_entity(
+    *,
+    client: Client,
+    campaign_name: str,
+    campaign_description: str,
+    campaign_task_config_type: str,
+    multiple_value_parameters_dictionary: dict,
+    input_entity_ids: list[UUID],
+) -> TaskConfig:
+    """Registers a TaskConfig entity for the given campaign and returns it."""
+    L.info("-- Create campaign TaskConfig entity")
+    _campaign_task_config = client.register_entity(
+        TaskConfig(
+            name=campaign_name,
+            description=campaign_description,
+            task_config_type=campaign_task_config_type,
+            meta={"scan_parameters": multiple_value_parameters_dictionary},
+            inputs=[Entity(id=entity_id) for entity_id in input_entity_ids],
+        )
+    )
+    return _campaign_task_config
+
 def upload_task_config_asset(
     *,
     client: Client,
