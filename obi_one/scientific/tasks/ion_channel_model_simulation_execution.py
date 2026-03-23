@@ -32,6 +32,7 @@ L = logging.getLogger(__name__)
 class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
     pass
 
+
 class IonChannelModelSimulationExecutionTask(Task):
     config: IonChannelModelSimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
