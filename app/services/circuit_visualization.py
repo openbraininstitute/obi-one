@@ -282,17 +282,17 @@ def download_circuit_config(
         ) from e
 
 
-def load_morphology(output_path: Path, morph_name: str) -> morphio.Morphology:
-    if output_path.suffix.lower() == ".h5":
+def load_morphology(path: Path, morph_name: str) -> morphio.Morphology:
+    if path.suffix.lower() == ".h5":
         # Try to load as collection
         try:
-            collection = morphio.Collection(output_path.as_posix())
+            collection = morphio.Collection(path.as_posix())
             return collection.load(morph_name)
         except morphio.MorphioError:
             pass
 
     # Default to loading as a single morphology file
-    return morphio.Morphology(output_path)
+    return morphio.Morphology(path)
 
 
 def get_morphology(
