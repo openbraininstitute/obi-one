@@ -13,33 +13,12 @@ from obi_one.scientific.blocks.synaptic_parameterization.base import SynapsePara
 from obi_one.scientific.unions.unions_distributions import (
     SynapticParameterizationDistributionReference,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 L = logging.getLogger(__name__)
 
+from obi_one.core.block import Block
 
-class TsodyksMarkramSynapseParameterization(SynapseParameterization):
-    source_neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set (Source)",
-        description="Source neuron set to simulate",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
-        },
-    )
-
-    targeted_neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set (Target)",
-        description="Target neuron set to simulate",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
-        },
-    )
+class TsodyksMarkramSynapseParameterization(Block):
 
     u_hill_coefficient_distribution: SynapticParameterizationDistributionReference = Field(
         title="U Hill Coefficient Distribution",
@@ -88,75 +67,6 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
     @property
     def cov_dict(self) -> dict:
         return {}
-    
-    def _wrap_get_model_output(
-        self, cls_src: pd.Series, cls_tgt: pd.Series, row: pd.Series
-    ) -> pd.DataFrame:
-        src_type = cls_src[row["source"]]
-        tgt_type = cls_tgt[row["target"]]
-        idx = row["index"]
-
-        mdl = self._pathway_model.get_model_output(
-            src_type=src_type, tgt_type=tgt_type, n_syn=len(idx)
-        )
-        mdl["_index"] = idx
-        return mdl
-    
-    def _parameterize_edge_file(self, edge: snap.edges.EdgePopulation) -> None:
-    #     # Get pathway source/target values
-    #     pathway_property = self.pathway_property
-    #     if pathway_property not in edge.source.property_names:
-    #         msg = (
-    #             f"Pathway property '{pathway_property}' not found in source nodes:"
-    #             f" Skipping edge population '{edge.name}'!"
-    #         )
-    #         L.warning(msg)
-    #         return
-    #     if pathway_property not in edge.target.property_names:
-    #         msg = (
-    #             f"Pathway property '{pathway_property}' not found in target nodes:"
-    #             f" Skipping edge population '{edge.name}'!"
-    #         )
-    #         L.warning(msg)
-    #         return
-    #     cls_src = edge.source.get(properties=pathway_property)
-    #     cls_tgt = edge.target.get(properties=pathway_property)
-
-        # Open edge file
-        edge_prefix = f"edges/{edge.name}"
-        with h5py.File(edge.h5_filepath, "a") as h5:
-            edge_grp = h5[edge_prefix]
-
-            # Get connectivity
-            src_ids = edge_grp["source_node_id"]
-            tgt_ids = edge_grp["target_node_id"]
-            src_tgt_df = pd.DataFrame(
-                {"source": src_ids, "target": tgt_ids, "index": range(len(src_ids))}
-            )
-            src_tgt_df = src_tgt_df.groupby(["source", "target"])["index"].apply(list).reset_index()
-
-            # Draw values
-            drawn_values = [
-                self._wrap_get_model_output(cls_src, cls_tgt, src_tgt_df.iloc[i])
-                for i in range(len(src_tgt_df))
-            ]
-            new_props = pd.concat(drawn_values, axis=0).set_index("_index", drop=True).sort_index()
-            for col in new_props.columns:
-                new_values = new_props[col].to_numpy()
-                if col in edge_grp["0"]:
-                    msg = (
-                        f"Synapse property '{col}' already exists in edge population"
-                        f" '{edge.name}': "
-                    )
-                    if self.overwrite_if_exists:
-                        msg += "Re-parameterizing synapses."
-                        L.info(msg)
-                        edge_grp["0"][col][...] = new_values
-                    else:
-                        msg += "Choose 'overwrite' to re-parameterize synapses!"
-                        raise ValueError(msg)
-                else:
-                    edge_grp["0"].create_dataset(col, data=new_values)
 
     def u_hill_coefficient_dict(self) -> dict:
         d = self.u_hill_coefficient_distribution.resolve()

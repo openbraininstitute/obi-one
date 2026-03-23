@@ -18,9 +18,13 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_synaptic_parameterizations import (
-    SynapticParameterizationReference,
-    SynapticParameterizationUnion,
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+    SynapticModelAssignerUnion,
+)
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion,
 )
 
 L = logging.getLogger(__name__)
@@ -71,15 +75,27 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
         },
     )
 
-    synapse_parameterizations: dict[str, SynapticParameterizationUnion] = Field(
+    synapse_model_assigners: dict[str, SynapticModelAssignerUnion] = Field(
         default_factory=dict,
         description="Parameterizations...",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticParameterizationReference.__name__,
+            SchemaKey.REFERENCE_TYPE: SynapticModelAssignerReference.__name__,
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    synaptic_models: dict[str, SynapticModelUnion] = Field(
+        default_factory=dict,
+        description="Synaptic models for synapse parameterization.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Synaptic Model",
+            SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -91,7 +107,7 @@ class SynapseParameterizationSingleConfig(OBIBaseModel, SingleConfigMixin):
             SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 

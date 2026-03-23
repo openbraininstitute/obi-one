@@ -4,7 +4,7 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 
 
-class SynapseParameterization(Block):
+class SynapseModelAssigner(Block):
     overwrite_if_exists: bool = Field(
         title="Overwrite",
         description="Overwrite if a parameterization exists already.",
