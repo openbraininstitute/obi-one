@@ -121,4 +121,29 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
                     edge_grp["0"].create_dataset(col, data=new_values)
 
     def go_for_it(self) -> None:
-        pass
+        source_node_set = self.source_neuron_set.resolve(circ)
+        target_node_set = self.target_neuron_set.resolve(circ)
+
+        prop_stats = {}
+        for param_name, param_dict in self.synaptic_model.block.parameter_dictionaries().items:
+            prop_stats[param_name] = {source_node_set: {
+                    target_node_set: param_dict
+                }}
+
+        model1 = model_types.ConnPropsModel(
+            src_types=[source_node_set],
+            tgt_types=[target_node_set],
+            prop_stats=prop_stats,
+            prop_cov=self.synaptic_model.cov_dict,
+        )
+
+        # Set random seed
+        np.random.seed(self.random_seed)  # noqa: NPY002
+        # TODO: Fix legacy np.random in connectome-manipulator code
+
+        # Run parameterization
+        edge_pop_names = circ.edges.population_names
+        L.info(f"Running synapse parameterization for {len(edge_pop_names)} edge population(s)...")
+        for edge_pop in edge_pop_names:
+            edge = circ.edges[edge_pop]
+            self._parameterize_edge_file(edge)

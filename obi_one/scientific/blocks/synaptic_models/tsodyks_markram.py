@@ -78,38 +78,11 @@ class TsodyksMarkramSynapseParameterization(Block):
         d["shared_within"] = self.gsyn_distribution_shared_within
         return d
 
-
-    def go_for_it(self, circ: snap.Circuit) -> Never:
-        source_node_set = self.source_neuron_set.resolve(circ)
-        target_node_set = self.target_neuron_set.resolve(circ)
-
-        prop_stats = {
-            "u_hill_coefficient": {source_node_set: {
-                    target_node_set: self.u_hill_coefficient_dict()
-                }},
-            "gsyn": {source_node_set: {
-                    target_node_set: self.gsyn_dict()
-                }},
+    def parameter_dictionaries(self) -> dict:
+        return {
+            "u_hill_coefficient": self.u_hill_coefficient_dict(),
+            "gsyn": self.gsyn_dict(),
         }
-
-        model1 = model_types.ConnPropsModel(
-            src_types=[source_node_set],
-            tgt_types=[target_node_set],
-            prop_stats=prop_stats,
-            prop_cov=self.cov_dict,
-        )
-
-        # Set random seed
-        np.random.seed(self.random_seed)  # noqa: NPY002
-        # TODO: Fix legacy np.random in connectome-manipulator code
-
-        # Run parameterization
-        edge_pop_names = circ.edges.population_names
-        L.info(f"Running synapse parameterization for {len(edge_pop_names)} edge population(s)...")
-        for edge_pop in edge_pop_names:
-            edge = circ.edges[edge_pop]
-            self._parameterize_edge_file(edge)
-
 
 CORRELATION_COEFFICIENT_FIELD = (
     Annotated[
