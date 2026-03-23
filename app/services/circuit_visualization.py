@@ -143,8 +143,8 @@ def get_population_nodes(  # noqa: PLR0914
                 if len(soma_diameters) == 0:
                     radius = 0.0
 
-            except RuntimeError:
-                L.warning(f"Couldn't get morphology {m_name} for {circuit_id}")
+            except Exception as e:  # noqa: BLE001
+                L.warning(e.__cause__)
                 radius = None
 
             nodes_list.append(
