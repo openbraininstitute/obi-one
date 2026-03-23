@@ -10,6 +10,15 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.path import NamedPath
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE
+from obi_one.scientific.tasks.basic_connectivity_plots import (
+    BasicConnectivityPlotsScanConfig,
+)
+from obi_one.scientific.tasks.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtractionScanConfig,
+)
+from obi_one.scientific.tasks.folder_compression import (
+    FolderCompressionScanConfig,
+)
 
 L = logging.getLogger(__name__)
 
@@ -19,9 +28,6 @@ def run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Pat
     # Import here to avoid circular import
     from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
     from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
-        FolderCompressionScanConfig,
-    )
 
     # Set up circuit folder compression
     folder_path = NamedPath(
@@ -62,9 +68,6 @@ def run_connectivity_matrix_extraction(circuit_path: Path) -> tuple[Path, Path, 
     # Import here to avoid circular import
     from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
     from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # noqa: PLC0415
-        ConnectivityMatrixExtractionScanConfig,
-    )
 
     # Set up connectivity matrix extraction
     circuit = Circuit(
@@ -106,9 +109,6 @@ def run_basic_connectivity_plots(
     # Import here to avoid circular import
     from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
     from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
-        BasicConnectivityPlotsScanConfig,
-    )
 
     # Find the connectivity matrix file
     if not matrix_config.exists():
