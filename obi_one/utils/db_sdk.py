@@ -6,7 +6,7 @@ from entitysdk import Client
 from entitysdk.models import Entity, TaskActivity
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
-from entitysdk.types import AssetLabel, ExecutorType, TaskActivityType
+from entitysdk.types import ActivityStatus, AssetLabel, ExecutorType, TaskActivityType
 
 L = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def create_activity(
     *,
     client: Client,
     activity_type: type[Activity],
-    activity_status: str = "created",  # TODO: Use ActivityStatus when available
+    activity_status: ActivityStatus = ActivityStatus.created,
     used: list[Entity],
 ) -> Activity:
     """Creates and registers an activity of the given type."""
@@ -40,7 +40,7 @@ def create_generic_activity(
     client: Client,
     config: list[Entity],
     task_activity_type: TaskActivityType,
-    activity_status: str = "created",  # TODO: Use ActivityStatus when available
+    activity_status: ActivityStatus = ActivityStatus.created,
 ) -> Activity:
     """Creates and registers a generic task activity."""
     activity = TaskActivity(
