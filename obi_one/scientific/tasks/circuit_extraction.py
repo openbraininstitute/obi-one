@@ -41,6 +41,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 from obi_one.utils import db_sdk, task as task_utils
 from obi_one.utils.benchmark import BenchmarkTracker
+from obi_one.utils.filesystem import filter_extension
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)
@@ -445,10 +446,6 @@ class CircuitExtractionTask(Task):
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
 
-    @staticmethod
-    def _filter_ext(file_list: list, ext: str) -> list:
-        return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
-
     @classmethod
     def _rebase_config(cls, config_dict: dict, old_base: str, new_base: str) -> None:
         old_base = str(Path(old_base).resolve())
@@ -504,7 +501,7 @@ class CircuitExtractionTask(Task):
 
             if (
                 Path(morph_folder).is_dir()
-                and len(cls._filter_ext(Path(morph_folder).iterdir(), _morph_ext)) == 0
+                and len(filter_extension(Path(morph_folder).iterdir(), _morph_ext)) == 0
             ):
                 # Morphology folder does not contain morphologies
                 continue
