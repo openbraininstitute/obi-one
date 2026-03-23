@@ -42,6 +42,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
 from obi_one.utils.benchmark import BenchmarkTracker
+from obi_one.utils.io import convert_image_to_webp
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)
@@ -522,23 +523,6 @@ class CircuitExtractionTask(Task):
         return matrix_asset
 
     @staticmethod
-    def convert_image_to_webp(
-        image_path: Path, *, overwrite: bool = False, quality: int = 80, method: int = 6
-    ) -> Path:
-        """Converts an image file (e.g., .png) to .webp format."""
-        if not image_path.exists():
-            msg = f"Input file '{image_path}' does not exist!"
-            raise OBIONEError(msg)
-        output_path = image_path.with_suffix(".webp")
-        if not overwrite and output_path.exists():
-            msg = f"Output file '{output_path}' already exists!"
-            raise OBIONEError(msg)
-        with Image.open(image_path) as img:
-            image = img.convert("RGBA")
-            image.save(output_path, "webp", quality=quality, method=method)
-        return output_path
-
-    @staticmethod
     def _add_image_assets(
         db_client: Client, plot_dir: Path, plot_files: list, registered_circuit: models.Circuit
     ) -> list[models.Asset]:
@@ -572,7 +556,7 @@ class CircuitExtractionTask(Task):
                 continue
             asset_label, fmt = asset_label_map[file_path.stem]
             if fmt == "webp":
-                file_path = CircuitExtractionTask.convert_image_to_webp(image_path=file_path)
+                file_path = convert_image_to_webp(image_path=file_path)
             if "." + fmt != file_path.suffix:
                 msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
                 raise OBIONEError(msg)
