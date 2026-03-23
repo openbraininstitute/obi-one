@@ -16,6 +16,7 @@ from entitysdk.types import (
 )
 from pydantic import model_validator
 
+from obi_one.utils import db_sdk
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -101,13 +102,10 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             )
         )
 
-        L.info("-- Upload task_config asset for campaign TaskConfig")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=TaskConfig,
+        _ = db_sdk.upload_task_config_asset(
+            client=db_client,
+            entity=self._campaign,
             file_path=output_root / _SCAN_CONFIG_FILENAME,
-            file_content_type=ContentType.json,
-            asset_label=AssetLabel.task_config,
         )
 
         return self._campaign

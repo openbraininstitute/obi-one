@@ -101,3 +101,23 @@ def get_activity_status(
         entity_id=activity_id,
         entity_type=activity_type,
     ).status
+
+
+
+def upload_task_config_asset(
+    *,
+    client: Client,
+    entity: Entity,
+) -> Asset:
+    """Uploads the given task configuration as an asset and returns it."""
+
+    L.info("-- Upload task_config asset for campaign TaskConfig")
+    _ = client.upload_file(
+            entity_id=entity.id,
+            entity_type=TaskConfig,
+            file_path=file_path,
+            file_content_type=ContentType.json,
+            asset_label=AssetLabel.task_config,
+        )
+    return asset
+)
