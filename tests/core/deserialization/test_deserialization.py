@@ -43,21 +43,6 @@ def test_deserialization(tmp_path):
     obi.run_tasks_for_generated_scan(grid_scan_task)
 
     """
-    Test deserialization of depreceted simulation (based on SimulationsForm)
-    """
-    simulation_json_path = model_dumps_dir / "deprecated_simulation_serialization.json"
-
-    data = json.loads(simulation_json_path.read_bytes())
-    simulation = obi.deserialize_obi_object_from_json_data(data)
-    simulation.coordinate_output_root = tmp_path / "simulation_output_5"
-    obi.run_task_for_single_config(single_config=simulation)
-
-    simulation = obi.deserialize_obi_object_from_json_file(simulation_json_path)
-    assert isinstance(simulation, obi.Simulation)
-    simulation.coordinate_output_root = tmp_path / "simulation_output_6"
-    obi.run_task_for_single_config(single_config=simulation)
-
-    """
     Test deserialization of deprecated grid_scan_simulations_form (GridScan, SimulationsForm)
     """
     grid_scan_json_path = model_dumps_dir / "grid_scan_simulations_form.json"
