@@ -12,6 +12,7 @@ from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskDefinition, TaskLaunchInfo
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
+from obi_one.scientific.unions.config_task_map import get_generic_activity_task_activity_type
 
 
 def submit_task_job(
@@ -30,12 +31,22 @@ def submit_task_job(
         entity_id=config_id,
         entity_type=task_definition.config_type,
     )
-    activity_id = db_sdk.create_activity(
-        client=db_client,
-        used=[config],
-        activity_status=ActivityStatus.pending,
-        activity_type=task_definition.activity_type,
-    ).id
+    
+    if task_definition.activity_type == entitysdk.models.TaskActivity:
+        activity_id = db_sdk.create_generic_activity(
+            client=db_client,
+            used=[config],
+            activity_status=ActivityStatus.pending,
+            task_activity_type=get_generic_activity_task_activity_type(task_definition.task_type),
+        ).id
+    else:
+        activity_id = db_sdk.create_activity(
+            client=db_client,
+            used=[config],
+            activity_status=ActivityStatus.pending,
+            activity_type=task_definition.activity_type,
+        ).id
+    
     failure_callback = _generate_failure_callback(
         activity_id=activity_id,
         task_type=task_definition.task_type,

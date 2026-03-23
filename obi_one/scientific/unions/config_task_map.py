@@ -70,6 +70,7 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.types import TaskType
+from entitysdk.types import TaskActivityType
 
 _config_tasks_map = {
     CircuitSimulationSingleConfig: GenerateSimulationTask,
@@ -110,6 +111,10 @@ _task_type_config_asset_label_map = {
     TaskType.em_synapse_mapping: AssetLabel.task_config,
 }
 
+_generic_activity_task_activity_type_map = {
+    TaskType.em_synapse_mapping: TaskActivityType.em_synapse_mapping__execution,
+}
+
 
 def get_configs_task_type(config: object) -> type:
     return _config_tasks_map[config.__class__]
@@ -125,3 +130,6 @@ def get_task_type_single_config(task_type: TaskType) -> type:
 
 def get_task_type_config_asset_label(task_type: TaskType) -> AssetLabel | None:
     return _task_type_config_asset_label_map[task_type]
+
+def get_generic_activity_task_activity_type(task_type: TaskType) -> TaskActivityType | None:
+    return _generic_activity_task_activity_type_map.get(task_type, None)
