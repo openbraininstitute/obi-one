@@ -28,42 +28,82 @@ from obi_one.scientific.blocks.distributions.uniform import (
     PositiveIntUniformDistribution,
 )
 
-_CONSTANT_DISTRIBUTIONS = (
-    FloatConstantDistribution
-    | IntConstantDistribution
-    | PositiveFloatConstantDistribution
-    | PositiveIntConstantDistribution
-    | NegativeFloatConstantDistribution
-    | NegativeIntConstantDistribution
-    | NonNegativeFloatConstantDistribution
-    | NonNegativeIntConstantDistribution
-    | NonPositiveFloatConstantDistribution
-    | NonPositiveIntConstantDistribution
+# ATOMIC FLOAT DISTRIBUTIONS
+_ALL_UNBOUNDED_FLOAT_DISTRIBUTIONS = FloatConstantDistribution | FloatUniformDistribution
+
+_ALL_NON_NEGATIVE_FLOAT_DISTRIBUTIONS = (
+    NonNegativeFloatConstantDistribution | NonNegativeFloatUniformDistribution
 )
 
-_UNIFORM_DISTRIBUTIONS = (
-    FloatUniformDistribution
-    | IntUniformDistribution
-    | PositiveFloatUniformDistribution
-    | PositiveIntUniformDistribution
-    | NegativeFloatUniformDistribution
-    | NegativeIntUniformDistribution
-    | NonNegativeFloatUniformDistribution
-    | NonNegativeIntUniformDistribution
-    | NonPositiveFloatUniformDistribution
-    | NonPositiveIntUniformDistribution
+_ALL_POSITIVE_FLOAT_DISTRIBUTIONS = (
+    PositiveFloatConstantDistribution | PositiveFloatUniformDistribution
 )
 
-_SYNAPTIC_PARAMETERIZATION_DISTRIBUTIONS = _CONSTANT_DISTRIBUTIONS | _UNIFORM_DISTRIBUTIONS
+_ALL_NON_POSITIVE_FLOAT_DISTRIBUTIONS = (
+    NonPositiveFloatConstantDistribution | NonPositiveFloatUniformDistribution
+)
+
+_ALL_NEGATIVE_FLOAT_DISTRIBUTIONS = (
+    NegativeFloatConstantDistribution | NegativeFloatUniformDistribution
+)
+
+# ATOMIC INT DISTRIBUTIONS
+_ALL_UNBOUNDED_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution
+
+_ALL_NON_NEGATIVE_INT_DISTRIBUTIONS = (
+    NonNegativeIntConstantDistribution | NonNegativeIntUniformDistribution
+)
+
+_ALL_POSITIVE_INT_DISTRIBUTIONS = PositiveIntConstantDistribution | PositiveIntUniformDistribution
+
+_ALL_NON_POSITIVE_INT_DISTRIBUTIONS = (
+    NonPositiveIntConstantDistribution | NonPositiveIntUniformDistribution
+)
+
+_ALL_NEGATIVE_INT_DISTRIBUTIONS = NegativeIntConstantDistribution | NegativeIntUniformDistribution
 
 
-SynapticParameterizationDistributionUnion = Annotated[
-    _SYNAPTIC_PARAMETERIZATION_DISTRIBUTIONS,
+# COMBINED DISTRIBUTIONS
+_ALL_FLOAT_DISTRIBUTIONS = (
+    _ALL_UNBOUNDED_FLOAT_DISTRIBUTIONS
+    | _ALL_NON_NEGATIVE_FLOAT_DISTRIBUTIONS
+    | _ALL_POSITIVE_FLOAT_DISTRIBUTIONS
+    | _ALL_NON_POSITIVE_FLOAT_DISTRIBUTIONS
+    | _ALL_NEGATIVE_FLOAT_DISTRIBUTIONS
+)
+
+_ALL_INT_DISTRIBUTIONS = (
+    _ALL_UNBOUNDED_INT_DISTRIBUTIONS
+    | _ALL_NON_NEGATIVE_INT_DISTRIBUTIONS
+    | _ALL_POSITIVE_INT_DISTRIBUTIONS
+    | _ALL_NON_POSITIVE_INT_DISTRIBUTIONS
+    | _ALL_NEGATIVE_INT_DISTRIBUTIONS
+)
+
+_ALL_DISTRIBUTIONS = _ALL_FLOAT_DISTRIBUTIONS | _ALL_INT_DISTRIBUTIONS
+
+
+# COMPATIBLE COMBINED DISTRIBUTIONS
+_ALL_NON_NEGATIVE_FLOAT_COMPATIBLE_DISTRIBUTIONS = (
+    _ALL_NON_NEGATIVE_FLOAT_DISTRIBUTIONS | _ALL_POSITIVE_FLOAT_DISTRIBUTIONS
+)
+
+_ALL_POSITIVE_FLOAT_COMPATIBLE_DISTRIBUTIONS = _ALL_POSITIVE_FLOAT_DISTRIBUTIONS
+
+_ALL_NON_POSITIVE_FLOAT_COMPATIBLE_DISTRIBUTIONS = (
+    _ALL_NON_POSITIVE_FLOAT_DISTRIBUTIONS | _ALL_NEGATIVE_FLOAT_DISTRIBUTIONS
+)
+
+_ALL_NEGATIVE_FLOAT_COMPATIBLE_DISTRIBUTIONS = _ALL_NEGATIVE_FLOAT_DISTRIBUTIONS
+
+
+AllDistributionsUnion = Annotated[
+    _ALL_DISTRIBUTIONS,
     Discriminator("type"),
 ]
 
 
-class SynapticParameterizationDistributionReference(BlockReference):
-    """A reference to a SynapticParameterizationDistribution block."""
+class AllDistributionsReference(BlockReference):
+    """A reference to a Distribution block."""
 
-    allowed_block_types: ClassVar[Any] = SynapticParameterizationDistributionUnion
+    allowed_block_types: ClassVar[Any] = AllDistributionsUnion

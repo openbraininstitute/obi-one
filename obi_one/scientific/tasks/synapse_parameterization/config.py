@@ -11,8 +11,8 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.unions.unions_distributions import (
-    SynapticParameterizationDistributionReference,
-    SynapticParameterizationDistributionUnion,
+    AllDistributionsReference,
+    AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -99,12 +99,12 @@ class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
         },
     )
 
-    distributions: dict[str, SynapticParameterizationDistributionUnion] = Field(
+    distributions: dict[str, AllDistributionsUnion] = Field(
         default_factory=dict,
         description="Distributions for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 2,

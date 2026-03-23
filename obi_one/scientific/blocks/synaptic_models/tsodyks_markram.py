@@ -7,20 +7,20 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.unions.unions_distributions import (
-    SynapticParameterizationDistributionReference,
+    AllDistributionsReference,
 )
 
 L = logging.getLogger(__name__)
 
 
 class TsodyksMarkramSynapticModel(Block):
-    u_hill_coefficient_distribution: SynapticParameterizationDistributionReference = Field(
+    u_hill_coefficient_distribution: AllDistributionsReference = Field(
         title="U Hill Coefficient Distribution",
         description="Distribution of the Hill coefficient for the steady-state utilization"
         " of synaptic efficacy (u).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
         },
     )
 
@@ -35,12 +35,12 @@ class TsodyksMarkramSynapticModel(Block):
         },
     )
 
-    gsyn_distribution: SynapticParameterizationDistributionReference = Field(
+    gsyn_distribution: AllDistributionsReference = Field(
         title="g_syn Distribution",
         description="Distribution of synaptic conductance (g_syn).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
         },
     )
 

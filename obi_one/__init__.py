@@ -21,6 +21,9 @@ from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllDistributionsReference",
+    "AllDistributionsReference",
+    "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
@@ -200,10 +203,6 @@ __all__ = [
     "SynapticMgManipulation",
     "SynapticModelAssignerReference",
     "SynapticModelAssignerUnion",
-    "SynapticParameterizationDistributionReference",
-    "SynapticParameterizationDistributionReference",
-    "SynapticParameterizationDistributionUnion",
-    "SynapticParameterizationDistributionUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
@@ -481,8 +480,8 @@ from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParame
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_distributions import (
-    SynapticParameterizationDistributionReference,
-    SynapticParameterizationDistributionUnion,
+    AllDistributionsReference,
+    AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
