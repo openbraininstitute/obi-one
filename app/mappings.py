@@ -96,11 +96,11 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.TaskActivity,
         accounting_service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
         code=PythonRepositoryCode(
-                location=settings.OBI_ONE_REPO,
-                ref=APP_TAG,
-                path=OBI_ONE_CODE_PATH,
-                dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            ),
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
         resources=MachineResources(
             cores=1,
             memory=2,
@@ -109,8 +109,3 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
     ),
 }
-
-
-
-
-

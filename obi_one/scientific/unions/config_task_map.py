@@ -1,4 +1,4 @@
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, TaskActivityType
 
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
@@ -70,7 +70,6 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.types import TaskType
-from entitysdk.types import TaskActivityType
 
 _config_tasks_map = {
     CircuitSimulationSingleConfig: GenerateSimulationTask,
@@ -131,5 +130,6 @@ def get_task_type_single_config(task_type: TaskType) -> type:
 def get_task_type_config_asset_label(task_type: TaskType) -> AssetLabel | None:
     return _task_type_config_asset_label_map[task_type]
 
+
 def get_generic_activity_task_activity_type(task_type: TaskType) -> TaskActivityType | None:
-    return _generic_activity_task_activity_type_map.get(task_type, None)
+    return _generic_activity_task_activity_type_map.get(task_type)

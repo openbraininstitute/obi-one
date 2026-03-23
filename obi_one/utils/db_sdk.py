@@ -34,6 +34,7 @@ def create_activity(
     L.info(f"Activity {activity.id} of type '{activity_type.__name__}' created")
     return activity
 
+
 def create_generic_activity(
     *,
     client: Client,
@@ -50,8 +51,12 @@ def create_generic_activity(
         authorized_public=False,
     )
     activity = client.register_entity(activity)
-    L.info(f"Generic task activity {activity.id} of type '{TaskActivity.__name__}' of task_activity_type '{task_activity_type}' created")
+    L.info(
+        f"Generic task activity {activity.id} of type '{TaskActivity.__name__}' of"
+        f" task_activity_type '{task_activity_type}' created"
+    )
     return activity
+
 
 def update_activity_status(
     *,
