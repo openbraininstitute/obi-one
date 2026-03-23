@@ -12,7 +12,9 @@ from pydantic import (
     PositiveInt,
 )
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.distributions.base import Distribution
+
 
 class FloatConstantDistribution(Distribution):
     """A single float value."""
@@ -23,10 +25,12 @@ class FloatConstantDistribution(Distribution):
         default=1.0,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
-    def sample(self, n: int = 1):
+    def sample(self, n: int = 1) -> list[float]:
         """Sample n values from the distribution."""
         return [self.value] * n
 
@@ -40,10 +44,12 @@ class IntConstantDistribution(Distribution):
         default=1,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="int_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
-    def sample(self, n: int = 1):
+    def sample(self, n: int = 1) -> list[int]:
         """Sample n values from the distribution."""
         return [self.value] * n
 
@@ -57,7 +63,9 @@ class PositiveFloatConstantDistribution(Distribution):
         default=1.0,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -70,7 +78,9 @@ class PositiveIntConstantDistribution(Distribution):
         default=1,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="int_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -83,7 +93,9 @@ class NegativeFloatConstantDistribution(Distribution):
         default=-1.0,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -96,7 +108,9 @@ class NegativeIntConstantDistribution(Distribution):
         default=-1,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="int_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -109,18 +123,24 @@ class NonNegativeFloatConstantDistribution(Distribution):
         default=1.0,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
 
 class NonNegativeIntConstantDistribution(Distribution):
     """A single non-negative integer value."""
 
+    title: ClassVar[str] = "Constant Non-Negative Integer"
+
     value: NonNegativeInt | list[NonNegativeInt] = Field(
         default=1,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="int_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -133,7 +153,9 @@ class NonPositiveFloatConstantDistribution(Distribution):
         default=-1.0,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="float_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
 
@@ -146,5 +168,7 @@ class NonPositiveIntConstantDistribution(Distribution):
         default=-1,
         title="Value",
         description="The constant value of the distribution.",
-        ui_element="int_parameter_sweep",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )

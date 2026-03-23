@@ -1,5 +1,4 @@
 import logging
-from typing import Never
 
 import bluepysnap as snap
 import h5py
@@ -8,23 +7,9 @@ import pandas as pd
 from connectome_manipulator.model_building import model_types
 from pydantic import Field
 
-from obi_one.core.block import Block
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
-
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.unions.unions_distributions import (
-    SynapticParameterizationDistributionReference,
-)
+from obi_one.scientific.blocks.synaptic_parameterization.base import SynapseParameterization
 
 L = logging.getLogger(__name__)
-
-
-class SynapseParameterization(Block):
-    overwrite_if_exists: bool = Field(
-        title="Overwrite",
-        description="Overwrite if a parameterization exists already.",
-        default=False,
-    )
 
 
 class OriginalSynapseParameterization(SynapseParameterization):
@@ -142,44 +127,3 @@ class OriginalSynapseParameterization(SynapseParameterization):
         for edge_pop in edge_pop_names:
             edge = circ.edges[edge_pop]
             self._parameterize_edge_file(edge)
-
-
-class TsodyksMarkramSynapseParameterization(SynapseParameterization):
-    source_neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set (Source)",
-        description="Source neuron set to simulate",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
-        },
-    )
-
-    targeted_neuron_set: NeuronSetReference | None = Field(
-        default=None,
-        title="Neuron Set (Target)",
-        description="Target neuron set to simulate",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
-        },
-    )
-
-    u_hill_coefficient_distribution: SynapticParameterizationDistributionReference = Field(
-        title="U Hill Coefficient Distribution",
-        description="Distribution of the Hill coefficient for the steady-state utilization of synaptic efficacy (u).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
-        },
-    )
-
-    # "Hill coefficient for the steady-state utilization of synaptic efficacy (u) as a "
-    # "function of presynaptic firing rate. A value of 1 corresponds to a standard Hill "
-    # "function, while higher values lead to a steeper increase of u with firing rate."
-
-    def go_for_it(self, circ: snap.Circuit) -> Never:
-        msg = "New synapse parameterization not implemented yet!"
-        raise NotImplementedError(msg)

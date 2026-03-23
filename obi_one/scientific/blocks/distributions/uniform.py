@@ -13,6 +13,7 @@ from pydantic import (
     PositiveInt,
 )
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.distributions.base import Distribution
 
 
@@ -24,7 +25,7 @@ class UniformDistribution(Distribution):
         title="Low",
         description="The lower bound of the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
     high: float | list[float] = Field(
@@ -32,7 +33,7 @@ class UniformDistribution(Distribution):
         title="High",
         description="The upper bound of the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -41,7 +42,7 @@ class UniformDistribution(Distribution):
         title="Random seed",
         description=("Seed for drawing random values from the uniform distribution."),
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -56,7 +57,7 @@ class FloatUniformDistribution(UniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -77,7 +78,7 @@ class IntUniformDistribution(UniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -96,7 +97,7 @@ class PositiveFloatUniformDistribution(FloatUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -110,7 +111,7 @@ class PositiveIntUniformDistribution(IntUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -124,7 +125,7 @@ class NegativeFloatUniformDistribution(FloatUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -138,7 +139,7 @@ class NegativeIntUniformDistribution(IntUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -152,7 +153,7 @@ class NonNegativeFloatUniformDistribution(FloatUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -166,7 +167,7 @@ class NonNegativeIntUniformDistribution(IntUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -180,7 +181,7 @@ class NonPositiveFloatUniformDistribution(FloatUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -194,6 +195,6 @@ class NonPositiveIntUniformDistribution(IntUniformDistribution):
         title="Value",
         description="The value sampled from the uniform distribution.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
