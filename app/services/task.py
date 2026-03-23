@@ -203,7 +203,7 @@ def handle_task_failure_callback(
 def estimate_task_resources(
     json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
 ) -> Resources:
-    """Updates the machine resources in the task definition."""
+    """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
             return circuit_extraction.estimate_task_resources(
