@@ -19,8 +19,8 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_parameterizations import (
-    SynapticParameterizationUnion,
     SynapticParameterizationReference,
+    SynapticParameterizationUnion,
 )
 
 L = logging.getLogger(__name__)

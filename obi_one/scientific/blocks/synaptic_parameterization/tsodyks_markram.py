@@ -2,7 +2,8 @@ import logging
 from typing import Annotated, Never
 
 import bluepysnap as snap
-from pydantic import Field
+from connectome_manipulator.model_building import model_types
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_parameterization.base import SynapseParameterization
@@ -47,9 +48,51 @@ class TsodyksMarkramSynapseParameterization(SynapseParameterization):
         },
     )
 
+    u_hill_coefficient_shared_within: bool = Field(
+        default=False,
+        title="U Hill Coefficient Shared Within",
+        description="Whether the Hill coefficient for the steady-state utilization of synaptic"
+        " efficacy (u) is shared within the synapses between the source and target"
+        " neuron sets.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN,
+        },
+    )
+
+    gsyn_distribution: SynapticParameterizationDistributionReference = Field(
+        title="g_syn Distribution",
+        description="Distribution of synaptic conductance (g_syn).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: SynapticParameterizationDistributionReference.__name__,
+        },
+    )
+
+    _prop_cov: dict = PrivateAttr(default_factory=dict)
+
     def go_for_it(self, circ: snap.Circuit) -> Never:
-        msg = "New synapse parameterization not implemented yet!"
-        raise NotImplementedError(msg)
+        source_node_set = self.source_neuron_set.resolve(circ)
+        target_node_set = self.target_neuron_set.resolve(circ)
+
+        stats_dict = {
+            "u_hill_coefficient": {
+                source_node_set: {
+                    target_node_set: {
+                        "type": "gamma",
+                        "mean": 1.0,
+                        "std": 0.5,
+                        "shared_within": self.u_hill_coefficient_shared_within,
+                    }
+                }
+            }
+        }
+
+        model1 = model_types.ConnPropsModel(
+            src_types=[source_node_set],
+            tgt_types=[target_node_set],
+            prop_stats=stats_dict,
+            prop_cov=self._prop_cov,
+        )
 
 
 CORRELATION_COEFFICIENT_FIELD = (
