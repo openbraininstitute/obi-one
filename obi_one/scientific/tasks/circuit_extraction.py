@@ -16,7 +16,7 @@ import numpy as np
 from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
-from entitysdk import Client, MultipartUploadTransferConfig, models, types
+from entitysdk import Client, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
@@ -41,8 +41,8 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.utils import db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
-from obi_one.utils.io import convert_image_to_webp
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)
@@ -431,145 +431,6 @@ class CircuitExtractionTask(Task):
         registered_circuit = db_client.register_entity(circuit_model)
         L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
         return registered_circuit
-
-    @staticmethod
-    def _add_circuit_folder_asset(
-        db_client: Client, circuit_path: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload a circuit folder directory asset to a registered circuit entity."""
-        asset_label = "sonata_circuit"
-        circuit_folder = circuit_path.parent
-        if not circuit_folder.is_dir():
-            msg = "Circuit folder does not exist!"
-            raise OBIONEError(msg)
-
-        # Collect circuit files
-        circuit_files = {
-            str(path.relative_to(circuit_folder)): path
-            for path in circuit_folder.rglob("*")
-            if path.is_file()
-        }
-        L.info(f"{len(circuit_files)} files in '{circuit_folder}'")
-        if "circuit_config.json" not in circuit_files:
-            msg = "Circuit config file not found in circuit folder!"
-            raise OBIONEError(msg)
-        if "node_sets.json" not in circuit_files:
-            msg = "Node sets file not found in circuit folder!"
-            raise OBIONEError(msg)
-
-        # Upload asset
-        directory_asset = db_client.upload_directory(
-            label=asset_label,
-            name=asset_label,
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            paths=circuit_files,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
-        return directory_asset
-
-    @staticmethod
-    def _add_compressed_circuit_asset(
-        db_client: Client, compressed_file: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload a compressed circuit file asset to a registered circuit entity."""
-        asset_label = "compressed_sonata_circuit"
-
-        if not compressed_file.exists():
-            msg = f"Compressed circuit file '{compressed_file}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Upload compressed file asset
-        transfer_config = MultipartUploadTransferConfig()
-        compressed_asset = db_client.upload_file(
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            file_path=compressed_file,
-            file_content_type="application/gzip",
-            asset_label=asset_label,
-            transfer_config=transfer_config,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
-        return compressed_asset
-
-    @staticmethod
-    def _add_connectivity_matrix_asset(
-        db_client: Client, matrix_dir: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload connectivity matrix directory asset to a registered circuit entity."""
-        asset_label = "circuit_connectivity_matrices"
-
-        if not matrix_dir.is_dir():
-            msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Collect matrix files
-        matrix_files = {
-            str(path.relative_to(matrix_dir)): path
-            for path in matrix_dir.rglob("*")
-            if path.is_file()
-        }
-        L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
-
-        # Upload directory asset
-        matrix_asset = db_client.upload_directory(
-            label=asset_label,
-            name=asset_label,
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            paths=matrix_files,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
-        return matrix_asset
-
-    @staticmethod
-    def _add_image_assets(
-        db_client: Client, plot_dir: Path, plot_files: list, registered_circuit: models.Circuit
-    ) -> list[models.Asset]:
-        """Upload connectivity plot assets to a registered circuit entity.
-
-        Note: Image files will be converted to .webp, if needed.
-        """
-        asset_label_map = {
-            "node_stats": ("node_stats", "webp"),
-            "small_adj_and_stats": ("network_stats_a", "webp"),
-            "small_network_in_2D": ("network_stats_b", "webp"),
-            "network_global_stats": ("network_stats_a", "webp"),
-            "network_pathway_stats": ("network_stats_b", "webp"),
-            "circuit_visualization": ("circuit_visualization", "webp"),
-            "simulation_designer_image": ("simulation_designer_image", "png"),
-        }
-        if not plot_dir.is_dir():
-            msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Upload image file assets (incl. conversion to .webp format if needed)
-        plot_assets = []
-        for file in plot_files:
-            file_path = plot_dir / file
-            if not file_path.is_file():
-                msg = f"Connectivity plot '{file_path.name}' does not exist!"
-                raise OBIONEError(msg)
-            if file_path.stem not in asset_label_map:
-                msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
-                L.warning(msg)
-                continue
-            asset_label, fmt = asset_label_map[file_path.stem]
-            if fmt == "webp":
-                file_path = convert_image_to_webp(image_path=file_path)
-            if "." + fmt != file_path.suffix:
-                msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
-                raise OBIONEError(msg)
-            plot_asset = db_client.upload_file(
-                entity_id=registered_circuit.id,
-                entity_type=models.Circuit,
-                file_path=file_path,
-                file_content_type=f"image/{fmt}",
-                asset_label=asset_label,
-            )
-            L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
-            plot_assets.append(plot_asset)
-        return plot_assets
 
     @staticmethod
     def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
@@ -1018,8 +879,8 @@ class CircuitExtractionTask(Task):
         if db_client and new_circuit_entity and compressed_circuit:
             try:
                 with BenchmarkTracker.section("add_compressed_circuit_asset"):
-                    CircuitExtractionTask._add_compressed_circuit_asset(
-                        db_client=db_client,
+                    db_sdk.add_compressed_circuit_asset(
+                        client=db_client,
                         compressed_file=compressed_circuit,
                         registered_circuit=new_circuit_entity,
                     )
@@ -1045,8 +906,8 @@ class CircuitExtractionTask(Task):
         if db_client and new_circuit_entity and matrix_dir:
             try:
                 with BenchmarkTracker.section("add_connectivity_matrix_asset"):
-                    CircuitExtractionTask._add_connectivity_matrix_asset(
-                        db_client=db_client,
+                    db_sdk.add_connectivity_matrix_asset(
+                        client=db_client,
                         matrix_dir=matrix_dir,
                         registered_circuit=new_circuit_entity,
                     )
@@ -1070,8 +931,8 @@ class CircuitExtractionTask(Task):
         if db_client and new_circuit_entity and plot_dir and plot_files:
             try:
                 with BenchmarkTracker.section("add_connectivity_plot_assets"):
-                    CircuitExtractionTask._add_image_assets(
-                        db_client=db_client,
+                    db_sdk.add_image_assets(
+                        client=db_client,
                         plot_dir=plot_dir,
                         plot_files=plot_files,
                         registered_circuit=new_circuit_entity,
@@ -1103,8 +964,8 @@ class CircuitExtractionTask(Task):
         if db_client and new_circuit_entity and viz_dir and viz_files:
             try:
                 with BenchmarkTracker.section("add_overview_figure_assets"):
-                    CircuitExtractionTask._add_image_assets(
-                        db_client=db_client,
+                    db_sdk.add_image_assets(
+                        client=db_client,
                         plot_dir=viz_dir,
                         plot_files=viz_files,
                         registered_circuit=new_circuit_entity,
@@ -1217,8 +1078,8 @@ class CircuitExtractionTask(Task):
 
             # Register circuit folder asset
             with BenchmarkTracker.section("register_circuit_folder_asset"):
-                self._add_circuit_folder_asset(
-                    db_client=db_client,
+                db_sdk.add_circuit_folder_asset(
+                    client=db_client,
                     circuit_path=new_circuit_path,
                     registered_circuit=new_circuit_entity,
                 )
