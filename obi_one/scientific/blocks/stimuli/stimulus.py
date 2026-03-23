@@ -689,7 +689,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level2_voltage: float | list[float] = Field(
         default=0.0,
-        title="Level two Voltage",
+        title="Level 2 Voltage",
         description="Amplitude 2 of SEClamp stimulus (in mV)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
@@ -710,7 +710,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level3_voltage: float | list[float] = Field(
         default=-80.0,
         title="Level 3 Voltage",
-        description="Amplitude 3 of SEClamp stimulus (in mV)",
+        description="Amplitude 3 of  SEClamp stimulus (in mV)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
