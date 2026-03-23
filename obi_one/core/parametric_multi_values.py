@@ -35,7 +35,7 @@ class ParametericMultiValue(OBIBaseModel):
 
     def __len__(self) -> int:
         """Length operator."""
-        return len(self._values)
+        return len(self.values)
 
     @classmethod
     def check_n_less_equal_max(cls, n: int, max_n: int) -> None:
@@ -63,7 +63,6 @@ class IntRange(ParametericMultiValue):
     end: int
     _values: list[int] | None = None
 
-    # @model_validator(mode="after")
     @property
     def values(self) -> list[int]:
         if self._values is None:
@@ -201,10 +200,10 @@ def check_annotation_arguments_and_create_kwargs(ge: type, gt: type, le: type, l
     """Check that only one of ge/gt and le/lt are provided and create Field kwargs."""
     field_kwargs = {}
 
-    if ge and gt:
+    if ge is not None and gt is not None:
         msg = "Only one of ge or gt can be provided."
         raise OBIONEError(msg)
-    if le and lt:
+    if le is not None and lt is not None:
         msg = "Only one of le or lt can be provided."
         raise OBIONEError(msg)
 

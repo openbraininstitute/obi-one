@@ -6,7 +6,9 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
@@ -17,7 +19,6 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationScanConfig,
@@ -26,9 +27,6 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions.unions_ion_channel_model import (
     IonChannelModelReference,
     IonChannelModelUnion,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     IonChannelModelRecordingUnion,
@@ -54,17 +52,16 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": True,
-        "group_order": [
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
-        "default_block_reference_labels": {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
-        "property_endpoints": {
+        SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.ION_CHANNEL_MODEL: "/mapped-ion-channel-properties",
         },
     }
@@ -94,8 +91,8 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
-                "units": "ms",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLISECONDS,
             },
         )
 
@@ -104,7 +101,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             description="Temperature of the simulation.",
             default=34.0,
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             },
         )
 
@@ -113,8 +110,8 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Initial Voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
-                "ui_element": "float_parameter_sweep",
-                "units": "mV",
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
             },
         )
         random_seed: int | list[int] = Field(
@@ -122,7 +119,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             title="Random Seed",
             description="Random seed for the simulation.",
             json_schema_extra={
-                "ui_element": "int_parameter_sweep",
+                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
         _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
@@ -137,9 +134,9 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Initialization",
         description="Parameters for initializing the simulation.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 2,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
@@ -147,9 +144,9 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Info",
         description="Information about the ion channel model simulation campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -159,11 +156,11 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Ion Channel Models",
         description="Ion channel models and their conductance / max permeability.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "group": BlockGroup.SETUP_BLOCK_GROUP,
-            "group_order": 1,
-            "singular_name": "Ion Channel Model",
-            "reference_type": IonChannelModelReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.SINGULAR_NAME: "Ion Channel Model",
+            SchemaKey.REFERENCE_TYPE: IonChannelModelReference.__name__,
         },
     )
 
@@ -174,11 +171,11 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Stimuli",
         description="Stimuli for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            "group_order": 0,
-            "singular_name": "Stimulus",
-            "reference_type": StimulusReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.SINGULAR_NAME: "Stimulus",
+            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
         },
     )
     # can we have recording union depending on what model we choose?
@@ -190,11 +187,11 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Recordings",
         description="Recordings for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "group": BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            "group_order": 1,
-            "singular_name": "Recording",
-            "reference_type": RecordingReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
         },
     )
 
@@ -203,11 +200,11 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         title="Timestamps",
         description="Timestamps for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "group": BlockGroup.EVENTS_GROUP,
-            "group_order": 0,
-            "singular_name": "Timestamps",
-            "reference_type": TimestampsReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
         },
     )
 

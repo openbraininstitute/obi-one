@@ -1823,6 +1823,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/47/dd32fa426cc72114383ac549964eecb20ecfd886d1e5ccf5340b55b02f57/mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f", size = 508106, upload-time = "2023-03-07T16:47:11.061Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c", size = 536198, upload-time = "2023-03-07T16:47:09.197Z" },
+]
+
+[[package]]
 name = "msgpack"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1964,19 +1973,20 @@ wheels = [
 
 [[package]]
 name = "neuron"
-version = "8.2.7"
+version = "9.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "find-libpython" },
     { name = "numpy" },
     { name = "packaging" },
-    { name = "pyreadline3", marker = "sys_platform == 'win32'" },
     { name = "setuptools" },
+    { name = "sympy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/45/26a87553e7a1dde05fb9aebe98715498b6273fd0ed08f5a82ad550ee5379/neuron-8.2.7-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:d2044fde04ea2c07884cd4d047e19bd3686abe4cf2fb1b4b6aebab5890763727", size = 14027049, upload-time = "2025-05-22T23:49:04.288Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/d0/a22eceadcb655aa03a8a37f6e109e0880a7d00978713f0f5ded8042cfb5f/neuron-8.2.7-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6834f6d0981634fed4fee002873f139f738d20b606ff74bbd475c1ce7fe414db", size = 13232523, upload-time = "2025-05-22T17:43:11.118Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/69/5a8d498fd3096726768ab875b0e9a633cfdb68f976a6d520b6158b07ed7c/neuron-8.2.7-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:df6374137d6218e817645d37c06c8d0cd4a3afc910de70ffd63b7a4a2f57d633", size = 14926180, upload-time = "2025-05-22T23:49:08.907Z" },
+    { url = "https://files.pythonhosted.org/packages/75/a9/eb32f4ffc0390809cf137427c85670d3ebde27e4880547ee2ebb4a7c1f6e/neuron-9.0.1-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:c16ab4978b3519aea2aa0246ce94ce6a5812a13fb7a6d871e380d89ae9fe3e0d", size = 21982564, upload-time = "2025-11-17T00:20:27.86Z" },
+    { url = "https://files.pythonhosted.org/packages/29/82/35703c8beae35d9cffd750499908d6180fa5a629c39bd75176ef8e615188/neuron-9.0.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:32f8d426c50e263e36df3e5ad7120676dc0f4091f430702830e8f8cfab22971d", size = 21458748, upload-time = "2025-11-17T00:20:30.908Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/c1/e82d299e862951354f0a16ecda1117777ab761af987b27f6be5813381658/neuron-9.0.1-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4917ab32474860431da7b92d6b93979023a3379e4a2b96ac76c30bec98117727", size = 17405394, upload-time = "2025-11-17T00:20:33.998Z" },
+    { url = "https://files.pythonhosted.org/packages/da/e2/f0a20aaad661081466d12761d19e65c2c0ee50383cd013d531065289c894/neuron-9.0.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e59ed594cf6a61a500f1a4aac7b9ab95173d5f5860a17424a612f40cc34eeb88", size = 18108189, upload-time = "2025-11-17T00:20:37.151Z" },
 ]
 
 [[package]]
@@ -2628,15 +2638,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyreadline3"
-version = "3.5.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/49/4cea918a08f02817aabae639e3d0ac046fef9f9180518a3ad394e22da148/pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7", size = 99839, upload-time = "2024-09-19T02:40:10.062Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/dc/491b7661614ab97483abf2056be1deee4dc2490ecbf7bff9ab5cdbac86e1/pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6", size = 83178, upload-time = "2024-09-19T02:40:08.598Z" },
-]
-
-[[package]]
 name = "pyright"
 version = "1.1.408"
 source = { registry = "https://pypi.org/simple" }
@@ -3161,6 +3162,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "sympy"
+version = "1.14.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mpmath" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
 ]
 
 [[package]]
