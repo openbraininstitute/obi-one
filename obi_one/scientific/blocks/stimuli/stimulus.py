@@ -652,7 +652,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     # We only have a simple flat voltage stimulus implemented now for simplicity.
     # A more complex implementation with multi-step stimulus will be implemented later.
 
-    title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Steps Somatic Stimulus"
+    title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Levels Somatic Stimulus"
 
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
@@ -660,7 +660,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 1 Duration",
-        description="Duration 1 (dur1) of NEURON SEClamp stimulus (in ms)",
+        description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -670,7 +670,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level1_voltage: float | list[float] = Field(
         default=-80.0,
         title="Level 1 Voltage",
-        description="Amplitude 1 (amp1) of NEURON SEClamp stimulus (in mV)",
+        description="Amplitude 1 of SEClamp stimulus (in mV)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
@@ -680,7 +680,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
         title="Level 2 Duration",
-        description="Duration 2 (dur2) of NEURON SEClamp stimulus (in ms)",
+        description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -690,7 +690,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level2_voltage: float | list[float] = Field(
         default=0.0,
         title="Level two Voltage",
-        description="Amplitude 2 (amp2) of NEURON SEClamp stimulus (in mV)",
+        description="Amplitude 2 of SEClamp stimulus (in mV)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
@@ -700,7 +700,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 3 Duration",
-        description="Duration 3 (dur3) of NEURON SEClamp stimulus (in ms)",
+        description="Duration 3 of SEClamp stimulus (in ms)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -710,7 +710,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     level3_voltage: float | list[float] = Field(
         default=-80.0,
         title="Level 3 Voltage",
-        description="Amplitude 3 (amp3) of NEURON SEClamp stimulus (in mV)",
+        description="Amplitude 3 of SEClamp stimulus (in mV)",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "mV",
