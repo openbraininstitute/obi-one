@@ -661,7 +661,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 1 Duration",
         description="Time duration in milliseconds for the 1st Voltage level "
-            "of the SEClamp (aka dur1).",
+        "of the SEClamp (aka dur1).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -682,7 +682,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
         title="Level 2 Duration",
         description="Time duration in milliseconds for the 2nd Voltage level "
-            "of the SEClamp (aka dur2).",
+        "of the SEClamp (aka dur2).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
@@ -703,7 +703,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 3 Duration",
         description="Time duration in milliseconds for the 3rd Voltage level "
-            "of the SEClamp (aka dur3).",
+        "of the SEClamp (aka dur3).",
         json_schema_extra={
             "ui_element": "float_parameter_sweep",
             "units": "ms",
