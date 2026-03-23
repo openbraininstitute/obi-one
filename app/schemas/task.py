@@ -103,12 +103,12 @@ class TaskDefinition(Schema):
     @property
     def config_type_name(self) -> str:
         """Return the name of the config class."""
-        return self.config_type.__name__
+        return self.config_type
 
     @property
     def activity_type_name(self) -> str:
         """Return the name of the activity class."""
-        return self.activity_type.__name__
+        return self.activity_type
 
 
 class TaskDefinitionLegacy(Schema):
