@@ -41,7 +41,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.tools.benchmark import BenchmarkTracker
+from obi_one.utils.benchmark import BenchmarkTracker
 
 # Toggle benchmarking on/off (uncomment one line)
 BenchmarkTracker.enable()  # Enable benchmarking (default)

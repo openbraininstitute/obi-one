@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from obi_one.tools.benchmark import BenchmarkTracker
+from obi_one.utils.benchmark import BenchmarkTracker
 
 
 @pytest.fixture(autouse=True)
@@ -78,7 +78,7 @@ def test_print_summary_logs_json(caplog):
     with BenchmarkTracker.section("summarized"):
         time.sleep(0.02)
 
-    with caplog.at_level("INFO", logger="obi_one.tools.benchmark"):
+    with caplog.at_level("INFO", logger="obi_one.utils.benchmark"):
         BenchmarkTracker.print_summary()
 
     summary_lines = [r.message for r in caplog.records if "[BENCHMARK SUMMARY]" in r.message]
@@ -94,13 +94,13 @@ def test_print_summary_logs_json(caplog):
 
 def test_print_summary_disabled(caplog):
     BenchmarkTracker.disable()
-    with caplog.at_level("INFO", logger="obi_one.tools.benchmark"):
+    with caplog.at_level("INFO", logger="obi_one.utils.benchmark"):
         BenchmarkTracker.print_summary()
     assert not any("[BENCHMARK SUMMARY]" in r.message for r in caplog.records)
 
 
 def test_print_summary_no_data(caplog):
-    with caplog.at_level("INFO", logger="obi_one.tools.benchmark"):
+    with caplog.at_level("INFO", logger="obi_one.utils.benchmark"):
         BenchmarkTracker.print_summary()
     assert any("No benchmark data" in r.message for r in caplog.records)
 
