@@ -1,12 +1,12 @@
-import importlib
 import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 
+from obi_one.scientific.library.simulation import entrypoint as test_module
 from obi_one.types import SimulationBackend
 
-
+"""
 def _install_stub_modules(monkeypatch):
     matplotlib = ModuleType("matplotlib")
     pyplot = ModuleType("matplotlib.pyplot")
@@ -60,16 +60,17 @@ def test_module(monkeypatch):
     _install_stub_modules(monkeypatch)
     module = importlib.import_module("obi_one.scientific.library.simulation.entrypoint")
     return importlib.reload(module)
+"""
 
 
-def test_get_instantiate_gids_params_defaults(test_module):
+def test_get_instantiate_gids_params_defaults():
     params = test_module.get_instantiate_gids_params({"run": {}})
     assert params["add_stimuli"] is False
     assert params["add_synapses"] is False
     assert params["add_projections"] is False
 
 
-def test_get_instantiate_gids_params_sets_flags(test_module):
+def test_get_instantiate_gids_params_sets_flags():
     params = test_module.get_instantiate_gids_params(
         {
             "inputs": {"i1": {"module": "noise"}},
@@ -82,7 +83,7 @@ def test_get_instantiate_gids_params_sets_flags(test_module):
     assert params["add_projections"] is True
 
 
-def test_run_dispatches_backend(test_module, monkeypatch):
+def test_run_dispatches_backend(monkeypatch):
     called = {}
 
     def fake_blue(**kwargs):
@@ -111,7 +112,7 @@ def test_run_dispatches_backend(test_module, monkeypatch):
     assert "neuro" in called
 
 
-def test_run_unsupported_backend_raises(test_module):
+def test_run_unsupported_backend_raises():
     with pytest.raises(ValueError, match="Unsupported backend"):
         test_module.run(
             simulation_config="cfg.json",
@@ -120,7 +121,7 @@ def test_run_unsupported_backend_raises(test_module):
         )
 
 
-def test_main_raises_if_config_missing(test_module, monkeypatch):
+def test_main_raises_if_config_missing(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
@@ -138,7 +139,7 @@ def test_main_raises_if_config_missing(test_module, monkeypatch):
         test_module.main()
 
 
-def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
+def test_main_calls_run_when_config_exists(monkeypatch, tmp_path):
     config_path = tmp_path / "cfg.json"
     config_path.write_text("{}")
     called = {}
@@ -167,7 +168,7 @@ def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
     assert called["libnrnmech_path"] == "lib.so"
 
 
-def test_distribute_cells_splits_ids_across_ranks(test_module, monkeypatch, tmp_path):
+def test_distribute_cells_splits_ids_across_ranks(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
@@ -185,7 +186,7 @@ def test_distribute_cells_splits_ids_across_ranks(test_module, monkeypatch, tmp_
     assert sorted(all_gids) == list(range(10))
 
 
-def test_distribute_cells_missing_nodeset_raises(test_module, monkeypatch, tmp_path):
+def test_distribute_cells_missing_nodeset_raises(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
@@ -199,7 +200,7 @@ def test_distribute_cells_missing_nodeset_raises(test_module, monkeypatch, tmp_p
         test_module._distribute_cells(fake_load_json(cfg), cfg, 0, 1)
 
 
-def test_gather_results_collects_and_gathers(test_module, monkeypatch):
+def test_gather_results_collects_and_gathers(monkeypatch):
     calls = {}
 
     def fake_collect_local_payload(cells, cell_ids, recording_index):
