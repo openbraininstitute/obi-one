@@ -57,8 +57,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     ) -> entitysdk.models.Entity | None:
         return self._campaign
 
-    @property
-    def input_entity_ids(self) -> list[str]:
+    def input_entities(self, db_client: Client) -> list[Entity]:
         return []
 
     @property
@@ -95,7 +94,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             description=self.campaign_description,
             task_config_type=self.campaign_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-            input_entity_ids=self.input_entity_ids,
+            input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
         )
 

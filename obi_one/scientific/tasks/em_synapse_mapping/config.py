@@ -3,6 +3,8 @@ from enum import StrEnum
 from typing import ClassVar
 
 from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
+from entitysdk.models import Entity
+from entitysdk.client import Client
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -37,9 +39,8 @@ class EMSynapseMappingScanConfig(ScanConfig):
         TaskActivityType.em_synapse_mapping__config_generation
     )
 
-    @property
-    def input_entity_ids(self) -> list[str]:
-        return [self.initialize.spiny_neuron.id_str]
+    def input_entities(self, db_client: Client) -> list[Entity]:
+        return [self.initialize.spiny_neuron.entity(db_client=db_client)]
 
     @property
     def campaign_name(self) -> str:

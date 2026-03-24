@@ -106,7 +106,7 @@ class SingleConfigMixin:
             description=self.campaign_description,
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=self.single_coordinate_scan_params.dictionary_representaiton(),
-            input_entity_ids=self.input_entity_ids(),
+            input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
         )
 
