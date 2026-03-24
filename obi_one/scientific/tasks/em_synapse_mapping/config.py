@@ -8,8 +8,8 @@ from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
