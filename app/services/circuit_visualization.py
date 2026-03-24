@@ -186,15 +186,6 @@ def resolve_morph_path(
     if path:
         return Path(path)
 
-    if config.morphologies_dir:
-        return Path(config.morphologies_dir)
-
-    alternate_morphologies = config.alternate_morphologies
-    path = next(iter(alternate_morphologies.values()), "")
-
-    if path:
-        return Path(path)
-
     m = "No morphologies found"
     raise ValueError(m)
 

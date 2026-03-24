@@ -23,6 +23,7 @@ from app.services.circuit_visualization import (
     get_morphology,
     get_morphology_data,
     get_nodes,
+    resolve_morph_path,
 )
 
 ROUTER_MODULE = "app.endpoints.circuit_visualization"
@@ -421,3 +422,10 @@ def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
     assert axon_0.sec_length == 39.374610900878906
     assert len(axon_0.xstart) == 20
     assert len(axon_0.xend) == 20
+
+
+def test_morphology_dir_fallback():
+    config_path = Path("./examples/data/circuit_configs/circuit_config.json").resolve()
+    config = libsonata.CircuitConfig(config_path.read_text(), "./examples/data/circuit_configs")
+    path = resolve_morph_path("S1nonbarrel_neurons", config)
+    assert path == Path("./examples/data/circuit_configs/test_dir").absolute()
