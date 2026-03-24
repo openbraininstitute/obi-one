@@ -6,7 +6,7 @@ from typing import ClassVar, get_args, get_origin
 
 import entitysdk
 from entitysdk.client import Client
-from entitysdk.models import Entity, TaskActivity, TaskConfig
+from entitysdk.models import Entity, TaskConfig
 from entitysdk.types import (
     ActivityStatus,
     TaskActivityType,
@@ -111,16 +111,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             )
             raise NotImplementedError(msg)
 
-        L.info("-- Register Campaign Generation TaskActivity")
-        db_client.register_entity(
-            TaskActivity(
-                task_activity_type=self.campaign_generation_task_activity_type,
-                status=ActivityStatus.completed,
-                start_time=datetime.now(UTC),
-                end_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=generated,
-            )
+        db_sdk.create_generic_activity(
+            client=db_client,
+            activity_type=self.campaign_generation_task_activity_type,
+            used=[self._campaign],
+            generated=generated,
+            activity_status=ActivityStatus.completed,
+            end_time=datetime.now(UTC),
         )
 
     @classmethod
