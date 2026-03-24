@@ -6,62 +6,6 @@ import pytest
 from obi_one.scientific.library.simulation import entrypoint as test_module
 from obi_one.types import SimulationBackend
 
-"""
-def _install_stub_modules(monkeypatch):
-    matplotlib = ModuleType("matplotlib")
-    pyplot = ModuleType("matplotlib.pyplot")
-    pyplot.subplots = lambda *_args, **_kwargs: (SimpleNamespace(), [[SimpleNamespace()]])
-    pyplot.savefig = lambda *_args, **_kwargs: None
-    pyplot.close = lambda *_args, **_kwargs: None
-    monkeypatch.setitem(sys.modules, "matplotlib", matplotlib)
-    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", pyplot)
-
-    numpy = ModuleType("numpy")
-    numpy.array = lambda x, **_kwargs: x
-    monkeypatch.setitem(sys.modules, "numpy", numpy)
-
-    bluecellulab = ModuleType("bluecellulab")
-    bluecellulab.CircuitSimulation = object
-    monkeypatch.setitem(sys.modules, "bluecellulab", bluecellulab)
-
-    bluecellulab_reports = ModuleType("bluecellulab.reports")
-    bluecellulab_reports_manager = ModuleType("bluecellulab.reports.manager")
-    bluecellulab_reports_manager.ReportManager = object
-    monkeypatch.setitem(sys.modules, "bluecellulab.reports", bluecellulab_reports)
-    monkeypatch.setitem(sys.modules, "bluecellulab.reports.manager", bluecellulab_reports_manager)
-
-    neuron = ModuleType("neuron")
-    neuron.h = SimpleNamespace(
-        nrn_load_dll=lambda *_args, **_kwargs: None,
-        nrnmpi_init=lambda *_args, **_kwargs: None,
-        ParallelContext=lambda: SimpleNamespace(
-            id=lambda: 0,
-            nhost=lambda: 1,
-            barrier=lambda: None,
-            done=lambda: None,
-        ),
-        quit=lambda: None,
-    )
-    monkeypatch.setitem(sys.modules, "neuron", neuron)
-
-    pynwb = ModuleType("pynwb")
-    pynwb.NWBHDF5IO = object
-    pynwb.NWBFile = object
-    monkeypatch.setitem(sys.modules, "pynwb", pynwb)
-
-    pynwb_icephys = ModuleType("pynwb.icephys")
-    pynwb_icephys.CurrentClampSeries = object
-    pynwb_icephys.IntracellularElectrode = object
-    monkeypatch.setitem(sys.modules, "pynwb.icephys", pynwb_icephys)
-
-
-@pytest.fixture
-def test_module(monkeypatch):
-    _install_stub_modules(monkeypatch)
-    module = importlib.import_module("obi_one.scientific.library.simulation.entrypoint")
-    return importlib.reload(module)
-"""
-
 
 def test_get_instantiate_gids_params_defaults():
     params = test_module.get_instantiate_gids_params({"run": {}})
