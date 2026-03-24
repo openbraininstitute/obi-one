@@ -94,8 +94,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
-        config_type=models.TaskConfig,
-        activity_type=models.TaskActivity,
+        config_type=TaskConfigType.em_synapse_mapping__config,
+        activity_type=TaskActivityType.em_synapse_mapping__execution,
         accounting_service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
