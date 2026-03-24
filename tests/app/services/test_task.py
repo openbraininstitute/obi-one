@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import entitysdk
@@ -9,7 +10,7 @@ from entitysdk.types import AssetLabel
 
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
-from app.schemas.task import TaskLaunchSubmit, TaskType
+from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
 from app.services import task as test_module
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
@@ -471,3 +472,26 @@ def test_estimate_task_resources_passthrough(db_client):
         task_definition=task_definition,
     )
     assert result is task_definition.resources
+
+
+def test_estimate_task_resources_circuit_extraction(db_client):
+    """Circuit extraction tasks should delegate to circuit_extraction.estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
+    expected = MachineResources(cores=4, memory=16, timelimit="02:00", compute_cell="local")
+
+    with patch(
+        "app.services.circuit_extraction.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+        )
+
+    assert result is expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model, db_client=db_client, task_definition=task_definition
+    )
