@@ -13,7 +13,7 @@ from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.circuit_visualization import Morphology, NeuronSectionInfo, Node, Nodes, MorphPath
+from app.schemas.circuit_visualization import Morphology, MorphPath, NeuronSectionInfo, Node, Nodes
 
 MAX_NODES = 10
 

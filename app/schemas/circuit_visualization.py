@@ -1,7 +1,7 @@
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
-from pathlib import Path
 
 
 class Node(BaseModel):
