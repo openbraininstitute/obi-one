@@ -118,7 +118,7 @@ def _evaluate_accounting_parameters(
         case TaskType.circuit_extraction:
             return AccountingParameters(
                 count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+                service_subtype=ServiceSubtype.SMALL_SIM,
             )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(
