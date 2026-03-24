@@ -111,9 +111,9 @@ def get_activity_status(
 def register_task_config_entity(
     *,
     client: Client,
-    campaign_name: str,
-    campaign_description: str,
-    campaign_task_config_type: str,
+    name: str,
+    description: str,
+    task_config_type: str,
     multiple_value_parameters_dictionary: dict,
     input_entity_ids: list[UUID],
 ) -> TaskConfig:
@@ -121,9 +121,9 @@ def register_task_config_entity(
     L.info("-- Create campaign TaskConfig entity")
     campaign_task_config = client.register_entity(
         TaskConfig(
-            name=campaign_name,
-            description=campaign_description,
-            task_config_type=campaign_task_config_type,
+            name=name,
+            description=description,
+            task_config_type=task_config_type,
             meta={"scan_parameters": multiple_value_parameters_dictionary},
             inputs=[Entity(id=entity_id) for entity_id in input_entity_ids],
         )
@@ -149,34 +149,7 @@ def upload_task_config_asset(
     return asset
 
 
-def register_campaign_task_config_entity_and_upload_asset(
-    *,
-    client: Client,
-    campaign_name: str,
-    campaign_description: str,
-    campaign_task_config_type: str,
-    multiple_value_parameters_dictionary: dict,
-    input_entity_ids: list[UUID],
-    task_config_file_path: Path,
-) -> tuple[TaskConfig, Asset]:
-    """Registers a TaskConfig entity for the given campaign, uploads the task config asset."""
-    task_config_entity = register_task_config_entity(
-        client=client,
-        campaign_name=campaign_name,
-        campaign_description=campaign_description,
-        campaign_task_config_type=campaign_task_config_type,
-        multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-        input_entity_ids=input_entity_ids,
-    )
-    asset = upload_task_config_asset(
-        client=client,
-        entity=task_config_entity,
-        file_path=task_config_file_path,
-    )
-    return task_config_entity, asset
-
-
-def register_coordinate_task_config_entity_and_upload_asset(
+def register_task_config_with_asset(
     *,
     client: Client,
     name: str,
@@ -189,9 +162,9 @@ def register_coordinate_task_config_entity_and_upload_asset(
     """Registers a TaskConfig entity for the given campaign, uploads the task config asset."""
     task_config_entity = register_task_config_entity(
         client=client,
-        campaign_name=name,
-        campaign_description=description,
-        campaign_task_config_type=task_config_type,
+        name=name,
+        description=description,
+        task_config_type=task_config_type,
         multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
         input_entity_ids=input_entity_ids,
     )

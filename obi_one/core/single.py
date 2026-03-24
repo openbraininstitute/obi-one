@@ -101,7 +101,7 @@ class SingleConfigMixin:
             raise ValueError(msg)
 
         L.info(f"-- Register TaskConfig type: {self.single_task_config_type} and task_config asset")
-        self._single_entity, _ = db_sdk.register_coordinate_task_config_entity_and_upload_asset(
+        self._single_entity, _ = db_sdk.register_task_config_with_asset(
             client=db_client,
             name=self.campaign_name,
             description=self.campaign_description,
