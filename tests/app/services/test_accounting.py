@@ -207,7 +207,7 @@ def test_evaluate_accounting_parameters(db_client, accounting_parameters):
         config_id=config_id,
         task_definition=circuit_extraction_definition,
     )
-    assert res.service_subtype == circuit_extraction_definition.accounting_service_subtype
+    assert res.service_subtype == ServiceSubtype.SMALL_CIRCUIT_SIM
     assert res.count == 1
 
     circuit_simulation_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
@@ -223,17 +223,17 @@ def test_evaluate_accounting_parameters(db_client, accounting_parameters):
             task_definition=circuit_simulation_definition,
         )
 
-        assert res.service_subtype == circuit_simulation_definition.accounting_service_subtype
+        assert res.service_subtype == ServiceSubtype.SMALL_SIM
         assert res.count == accounting_parameters.count
 
 
-def test_generate_accounting_callbacks():
+def test_generate_accounting_callbacks(accounting_parameters):
     job_id = uuid4()
 
     res = test_module.generate_accounting_callbacks(
         task_type=TaskType.circuit_extraction,
         accounting_job_id=job_id,
-        count=11,
+        accounting_parameters=accounting_parameters,
         project_id=PROJECT_ID,
         virtual_lab_id=VIRTUAL_LAB_ID,
         callback_url="my-callback",
