@@ -16,6 +16,7 @@ from entitysdk import Client, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
+from obi_one.config import settings
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
@@ -37,12 +38,12 @@ from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuron
 from obi_one.utils import circuit as circuit_utils, db_sdk, task as task_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
-# Toggle benchmarking on/off (uncomment one line)
-BenchmarkTracker.enable()  # Enable benchmarking (default)
-# BenchmarkTracker.disable()  # Disable benchmarking  # noqa: ERA001
+if settings.circuit_extraction.benchmarking_enabled:
+    BenchmarkTracker.enable()
+else:
+    BenchmarkTracker.disable()
 
 L = logging.getLogger(__name__)
-_RUN_VALIDATION = False
 
 
 class BlockGroup(StrEnum):
@@ -642,7 +643,7 @@ class CircuitExtractionTask(Task):
             )
 
         # Run circuit validation
-        if _RUN_VALIDATION:
+        if settings.circuit_extraction.run_validation:
             with BenchmarkTracker.section("run_validation"):
                 circuit_utils.run_validation(new_circuit_path)
 
