@@ -39,7 +39,7 @@ def create_activity(
 def create_generic_activity(
     *,
     client: Client,
-    config: list[Entity],
+    used: list[Entity],
     task_activity_type: TaskActivityType,
     activity_status: ActivityStatus = ActivityStatus.created,
     generated: list[Entity] | None = None,
@@ -50,7 +50,7 @@ def create_generic_activity(
         task_activity_type=task_activity_type,
         start_time=datetime.now(UTC),
         end_time=end_time,
-        used=config,
+        used=used,
         generated=generated,
         status=activity_status,
         authorized_public=False,
