@@ -117,9 +117,9 @@ def register_task_config_entity(
     multiple_value_parameters_dictionary: dict,
     input_entity_ids: list[UUID],
 ) -> TaskConfig:
-    """Registers a TaskConfig entity for the given campaign and returns it."""
-    L.info("-- Create campaign TaskConfig entity")
-    campaign_task_config = client.register_entity(
+    """Registers a TaskConfig entity for the given task_config_type and returns it."""
+    L.info("-- Create TaskConfig entity")
+    task_config = client.register_entity(
         TaskConfig(
             name=name,
             description=description,
@@ -128,7 +128,7 @@ def register_task_config_entity(
             inputs=[Entity(id=entity_id) for entity_id in input_entity_ids],
         )
     )
-    return campaign_task_config
+    return task_config
 
 
 def upload_task_config_asset(
@@ -138,7 +138,7 @@ def upload_task_config_asset(
     file_path: Path,
 ) -> Asset:
     """Uploads the given task configuration as an asset and returns it."""
-    L.info("-- Upload task_config asset for campaign TaskConfig")
+    L.info("-- Upload task_config asset for TaskConfig")
     asset = client.upload_file(
         entity_id=entity.id,
         entity_type=TaskConfig,
@@ -159,7 +159,7 @@ def register_task_config_with_asset(
     input_entity_ids: list[UUID],
     task_config_file_path: Path,
 ) -> tuple[TaskConfig, Asset]:
-    """Registers a TaskConfig entity for the given campaign, uploads the task config asset."""
+    """Registers a TaskConfig entity for the given task_config_type, uploads the task config asset."""
 
     L.info(f"-- Register TaskConfig type: {task_config_type} and task_config asset")
     task_config_entity = register_task_config_entity(
