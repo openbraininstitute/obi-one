@@ -9,6 +9,7 @@ from entitysdk.downloaders.memodel import download_memodel
 from morph_spines import load_morphology_with_spines
 
 from obi_one.core.task import Task
+from obi_one.utils.io import write_json
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -174,8 +175,7 @@ class EMSynapseMappingTask(Task):
             node_population_post,
             str(fn_morphology_out_h5),
         )
-        with (out_root / "circuit_config.json").open("w") as fid:
-            json.dump(sonata_cfg, fid, indent=2)
+        write_json(sonata_cfg, out_root / "circuit_config.json")
 
         # Register entity, if possible
         L.info("Registering the output...")
