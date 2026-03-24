@@ -90,22 +90,25 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.em_synapse_mapping: TaskDefinition(
-        task_type=TaskType.em_synapse_mapping,
-        config_type=models.TaskConfig,
-        activity_type=models.TaskActivity,
-        accounting_service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
-        resources=MachineResources(
-            cores=1,
-            memory=2,
-            timelimit="00:10",
-            compute_cell="local",
-        ),
-    ),
 }
+
+"""
+TaskType.em_synapse_mapping: TaskDefinition(
+    task_type=TaskType.em_synapse_mapping,
+    config_type=models.TaskConfig,
+    activity_type=models.TaskActivity,
+    accounting_service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
+    code=PythonRepositoryCode(
+        location=settings.OBI_ONE_REPO,
+        ref=APP_TAG,
+        path=OBI_ONE_CODE_PATH,
+        dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+    ),
+    resources=MachineResources(
+        cores=1,
+        memory=2,
+        timelimit="00:10",
+        compute_cell="local",
+    ),
+),
+"""
