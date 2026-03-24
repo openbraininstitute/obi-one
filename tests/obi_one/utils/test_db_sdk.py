@@ -7,7 +7,7 @@ import entitysdk
 import httpx
 import pytest
 from entitysdk.models import Asset, Entity, SimulationExecution
-from entitysdk.types import AssetLabel, ExecutorType
+from entitysdk.types import AssetLabel, ExecutorType, TaskActivityType
 
 from obi_one.utils import db_sdk as test_module
 
@@ -69,6 +69,30 @@ def test_create_activity(client, mock_entity, httpx_mock):
     result = test_module.create_activity(
         client=client,
         activity_type=SimulationExecution,
+        activity_status=activity_status,
+        used=[mock_entity],
+    )
+    assert result.status == activity_status
+
+
+def test_create_generic_activity(client, mock_entity, httpx_mock):
+    """Test successful activity creation."""
+    activity_status = "pending"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return the request payload plus an id."""
+        payload = json.loads(request.content)
+        return httpx.Response(status_code=200, json=payload | {"id": str(uuid4())})
+
+    httpx_mock.add_callback(
+        handler,
+        url="http://my-url/task-activity",
+        method="POST",
+    )
+
+    result = test_module.create_generic_activity(
+        client=client,
+        activity_type=TaskActivityType.circuit_extraction__execution,
         activity_status=activity_status,
         used=[mock_entity],
     )

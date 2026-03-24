@@ -3,13 +3,13 @@ from uuid import UUID
 
 import entitysdk
 import httpx
-from entitysdk import ProjectContext
+from entitysdk import ProjectContext, models
 from entitysdk.types import ActivityStatus, ExecutorType
 
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskDefinition, TaskLaunchInfo
+from app.schemas.task import TaskDefinition, TaskDefinitionLegacy, TaskLaunchInfo
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
 
@@ -26,16 +26,28 @@ def submit_task_job(
     compute_cell: str,
 ) -> TaskLaunchInfo:
     """Creates an activity and submits a task as a job on the launch-system."""
-    config = db_client.get_entity(
-        entity_id=config_id,
-        entity_type=task_definition.config_type,
-    )
-    activity_id = db_sdk.create_activity(
-        client=db_client,
-        used=[config],
-        activity_status=ActivityStatus.pending,
-        activity_type=task_definition.activity_type,
-    ).id
+    # TODO: Remove once simulations are migrated to generic configs
+    if isinstance(task_definition, TaskDefinitionLegacy):
+        config_type = task_definition.config_type
+        config = db_client.get_entity(entity_id=config_id, entity_type=config_type)
+        activity_type = task_definition.activity_type
+        activity_id = db_sdk.create_activity(
+            client=db_client,
+            used=[config],
+            activity_status=ActivityStatus.pending,
+            activity_type=activity_type,
+        ).id
+    else:
+        config_type = models.TaskConfig
+        config = db_client.get_entity(entity_id=config_id, entity_type=config_type)
+        activity_type = models.TaskActivity
+        activity_id = db_sdk.create_generic_activity(
+            client=db_client,
+            used=[config],
+            activity_status=ActivityStatus.pending,
+            activity_type=task_definition.activity_type,
+        ).id
+
     failure_callback = _generate_failure_callback(
         activity_id=activity_id,
         task_type=task_definition.task_type,
@@ -73,8 +85,8 @@ def submit_task_job(
         db_sdk.update_activity_status(
             client=db_client,
             activity_id=activity_id,
-            activity_type=task_definition.activity_type,
-            status="error",
+            activity_type=activity_type,
+            status=ActivityStatus.error,
         )
         msg = f"Job submission failed!\n{json.loads(response.text)}"
         raise RuntimeError(msg)
@@ -85,7 +97,7 @@ def submit_task_job(
     db_sdk.update_activity_executor(
         client=db_client,
         activity_id=activity_id,
-        activity_type=task_definition.activity_type,
+        activity_type=activity_type,
         execution_id=job_id,
         executor=ExecutorType.single_node_job,
     )
@@ -186,14 +198,20 @@ def handle_task_failure_callback(
     db_client: entitysdk.Client,
     task_definition: TaskDefinition,
 ) -> None:
+    # TODO: Remove once simulations are migrated to generic configs
+    if isinstance(task_definition, TaskDefinitionLegacy):
+        task_activity_type = task_definition.activity_type
+    else:
+        task_activity_type = models.TaskActivity
+
     current_status = db_client.get_entity(
-        entity_id=activity_id,
-        entity_type=task_definition.activity_type,
+        entity_id=activity_id, entity_type=task_activity_type
     ).status
 
     if current_status != ActivityStatus.done:
-        db_client.update_entity(
-            entity_id=activity_id,
-            entity_type=task_definition.activity_type,
-            attrs_or_entity={"status": ActivityStatus.error},
+        db_sdk.update_activity_status(
+            client=db_client,
+            activity_id=activity_id,
+            activity_type=task_activity_type,
+            status=ActivityStatus.error,
         )

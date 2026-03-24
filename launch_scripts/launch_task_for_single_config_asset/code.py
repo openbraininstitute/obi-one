@@ -10,26 +10,9 @@ from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
 from obi_one.core.run_tasks import run_task_type
+from obi_one.utils.db_sdk import update_activity_status
 
 L = logging.getLogger(__name__)
-
-
-def update_activity_status(
-    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: ActivityStatus
-) -> None:
-    if not db_client:
-        return
-    if not execution_activity_id:
-        L.warning("Status update not possible since no execution activity provided!")
-        return
-
-    execution_activity_type_resolved = getattr(models, execution_activity_type)
-    status_dict = {"status": status}
-    db_client.update_entity(
-        entity_type=execution_activity_type_resolved,
-        entity_id=execution_activity_id,
-        attrs_or_entity=status_dict,
-    )
 
 
 def main() -> int:
@@ -98,8 +81,13 @@ def main() -> int:
         return 1
 
     try:
-        # Get entity type
-        config_entity_type = getattr(models, args.config_entity_type)
+        # TODO: Remove once legacy tasks are moved to generic configs/activities
+        if args.config_entity_type in TaskConfigType:
+            config_entity_type = models.TaskConfig
+            execution_activity_type = models.TaskActivity
+        else:
+            config_entity_type = getattr(models, args.config_entity_type)
+            execution_activity_type = getattr(models, args.execution_activity_type)
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
@@ -120,9 +108,9 @@ def main() -> int:
             local_store=LocalAssetStore(prefix=local_store_prefix),
         )
         update_activity_status(
-            db_client=db_client,
-            execution_activity_type=args.execution_activity_type,
-            execution_activity_id=args.execution_activity_id,
+            client=db_client,
+            activity_id=args.execution_activity_id,
+            activity_type=execution_activity_type,
             status=ActivityStatus.running,
         )
         run_task_type(
@@ -138,17 +126,17 @@ def main() -> int:
         # Catch any error that may occur to make sure that error status is correctly set
         L.exception(f"Error launching task for single configuration asset: {e}")
         update_activity_status(
-            db_client=db_client,
-            execution_activity_type=args.execution_activity_type,
-            execution_activity_id=args.execution_activity_id,
+            client=db_client,
+            activity_id=args.execution_activity_id,
+            activity_type=execution_activity_type,
             status=ActivityStatus.error,
         )
         return 1
 
     update_activity_status(
-        db_client=db_client,
-        execution_activity_type=args.execution_activity_type,
-        execution_activity_id=args.execution_activity_id,
+        client=db_client,
+        activity_id=args.execution_activity_id,
+        activity_type=execution_activity_type,
         status=ActivityStatus.done,
     )
 
