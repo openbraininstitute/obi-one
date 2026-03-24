@@ -15,7 +15,6 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
 L = logging.getLogger(__name__)
 
 
-@staticmethod
 def synapses_and_nodes_dataframes_from_EM(
     em_dataset: EMDataSetFromID, pt_root_id: int, db_client: Client, cave_version: int
 ) -> tuple[pandas.DataFrame, CellCollection, CellCollection, list]:
