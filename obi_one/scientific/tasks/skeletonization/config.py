@@ -12,13 +12,12 @@ from pydantic import ConfigDict, Field, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
 
 
-class SkeletonizationScanConfig(ScanConfig, abc.ABC):
+class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
 
     single_coord_class_name: ClassVar[str] = "SkeletonizationSingleConfig"
@@ -79,16 +78,6 @@ class SkeletonizationScanConfig(ScanConfig, abc.ABC):
                 SchemaKey.UNITS: Units.MICROMETERS,
             },
         )
-
-    info: Info = Field(
-        title="Info",
-        description="Information about the skeletonization campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
 
     initialize: Initialize = Field(
         title="Initialization",

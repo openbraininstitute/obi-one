@@ -141,7 +141,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
     info: Info = Field(
         title="Info",
-        description="Information about the ion channel model simulation campaign.",
+        description="Information about the campaign.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
