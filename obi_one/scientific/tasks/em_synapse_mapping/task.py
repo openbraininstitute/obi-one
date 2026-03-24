@@ -1,4 +1,3 @@
-import json
 import logging
 import shutil
 from pathlib import Path
@@ -9,7 +8,6 @@ from entitysdk.downloaders.memodel import download_memodel
 from morph_spines import load_morphology_with_spines
 
 from obi_one.core.task import Task
-from obi_one.utils.io import write_json
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -31,6 +29,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.provenance import (
     resolve_provenance,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
+from obi_one.utils.io import write_json
 
 L = logging.getLogger(__name__)
 

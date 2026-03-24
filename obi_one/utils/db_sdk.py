@@ -197,3 +197,31 @@ def register_coordinate_task_config_entity_and_upload_asset(
         file_path=task_config_file_path,
     )
     return task_config_entity, asset
+
+
+def update_execution_activity_with_generated(
+    *,
+    client: Client,
+    execution_activity_id: UUID,
+    generated_ids: list[str],
+) -> TaskActivity:
+    """Updates the given execution activity by setting the generated circuit ID."""
+    entity = client.update_entity(
+        entity_id=execution_activity_id,
+        entity_type=TaskActivity,
+        attrs_or_entity={"generated_ids": generated_ids},
+    )
+    L.info("TaskActivity updated with generated_ids")
+    return entity
+
+
+def get_execution_activity(
+    *,
+    client: Client,
+    execution_activity_id: UUID,
+) -> TaskActivity:
+    """Returns the given execution activity."""
+    return client.get_entity(
+        entity_id=execution_activity_id,
+        entity_type=TaskActivity,
+    )

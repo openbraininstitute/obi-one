@@ -5,6 +5,7 @@ from entitysdk import Client
 from entitysdk.models import TaskActivity
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -19,12 +20,11 @@ class Task(OBIBaseModel, abc.ABC):
 
         Such activity is expected to be created and managed externally.
         """
+        execution_activity = None
         if db_client and execution_activity_id:
-            execution_activity = db_client.get_entity(
-                entity_type=TaskActivity, entity_id=execution_activity_id
+            execution_activity = db_sdk.get_execution_activity(
+                client=db_client, execution_activity_id=execution_activity_id
             )
-        else:
-            execution_activity = None
         return execution_activity
 
     @staticmethod
@@ -38,14 +38,12 @@ class Task(OBIBaseModel, abc.ABC):
         Registers only the generated circuit ID. Other updates (status,
         end time, executor, etc) are expected to be managed externally.
         """
+        upd_entity = None
         if db_client and execution_activity and generated:
-            upd_dict = {"generated_ids": generated}
-            upd_entity = db_client.update_entity(
-                entity_id=execution_activity.id,
-                entity_type=TaskActivity,
-                attrs_or_entity=upd_dict,
+            upd_entity = db_sdk.update_execution_activity_with_generated(
+                client=db_client,
+                execution_activity_id=execution_activity.id,
+                generated_ids=generated,
             )
-            L.info("TaskActivity UPDATED")
-        else:
-            upd_entity = None
+
         return upd_entity
