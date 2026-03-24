@@ -57,7 +57,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     ) -> entitysdk.models.Entity | None:
         return self._campaign
 
-    def input_entities(self, db_client: Client) -> list[Entity]:
+    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
         return []
 
     @property

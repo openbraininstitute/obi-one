@@ -2,9 +2,9 @@ import logging
 from enum import StrEnum
 from typing import ClassVar
 
-from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
-from entitysdk.models import Entity
 from entitysdk.client import Client
+from entitysdk.models import Entity
+from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
