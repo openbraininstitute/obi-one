@@ -274,15 +274,11 @@ def download_circuit_config(
 
 
 def load_morphology(path: Path, morph_name: str) -> morphio.Morphology:
+    # If hdf5 load as Collection as per: https://morphio.readthedocs.io/en/stable/cpp/doxygen_Collection.html
     if path.suffix.lower() == ".h5":
-        # Try to load as collection
-        try:
-            collection = morphio.Collection(path.as_posix())
-            return collection.load(morph_name)
-        except morphio.MorphioError:
-            pass
+        collection = morphio.Collection(path.as_posix())
+        return collection.load(morph_name)
 
-    # Default to loading as a single morphology file
     return morphio.Morphology(path)
 
 
