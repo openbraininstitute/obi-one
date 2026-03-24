@@ -13,12 +13,7 @@ from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.circuit_visualization import (
-    Morphology,
-    NeuronSectionInfo,
-    Node,
-    Nodes,
-)
+from app.schemas.circuit_visualization import Morphology, NeuronSectionInfo, Node, Nodes, MorphPath
 
 MAX_NODES = 10
 
@@ -83,7 +78,7 @@ def get_population_nodes(  # noqa: PLR0914
     asset_id: UUID,
     parent_dir: Path,
     asset_path: Path,
-    morphologies_path: Path,
+    morphologies_path: MorphPath,
     total_nodes: int,
 ) -> Nodes:
     nodes_file_path = parent_dir / asset_path
@@ -128,11 +123,8 @@ def get_population_nodes(  # noqa: PLR0914
         for i in range(population.size):
             m_name = morph_files[i]
 
-            m_file = (
-                morphologies_path
-                if morphologies_path.suffix in {".h5", ".asc"}
-                else morphologies_path / f"{m_name}.swc"
-            )
+            m_path = morphologies_path.path.relative_to(parent_dir)
+            m_file = m_path if m_path.suffix else m_path / f"{m_name}.{morphologies_path.format}"
 
             try:
                 morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
@@ -175,16 +167,18 @@ def get_population_nodes(  # noqa: PLR0914
 def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
-) -> Path:
+) -> MorphPath:
     pop_properties = config.node_population_properties(population_name)
     if pop_properties.morphologies_dir:
-        return Path(pop_properties.morphologies_dir)
+        return MorphPath(path=Path(pop_properties.morphologies_dir), format="swc")
 
     alternate_morphologies: dict = pop_properties.alternate_morphology_formats
 
-    path: str = next(iter(alternate_morphologies.values()), "")
-    if path:
-        return Path(path)
+    path_item = next(iter(alternate_morphologies.items()), None)
+
+    if path_item:
+        format_ = "asc" if path_item[0] == "neurolucida-asc" else "h5"
+        return MorphPath(path=Path(path_item[1]), format=format_)
 
     m = "No morphologies found"
     raise ValueError(m)
@@ -208,7 +202,7 @@ def get_nodes(
             nodes_file_path = Path(pop_properties.elements_path)
             asset_path = nodes_file_path.relative_to(parent_path)
 
-            morph_path = resolve_morph_path(pop_name, config).relative_to(parent_path)
+            morph_path = resolve_morph_path(pop_name, config)
 
             all_nodes += get_population_nodes(
                 pop_name,
@@ -274,12 +268,11 @@ def download_circuit_config(
 
 
 def load_morphology(path: Path, morph_name: str) -> morphio.Morphology:
-    # If hdf5 load as Collection as per: https://morphio.readthedocs.io/en/stable/cpp/doxygen_Collection.html
-    if path.suffix.lower() == ".h5":
+    try:
+        return morphio.Morphology(path)
+    except morphio.MorphioError:
         collection = morphio.Collection(path.as_posix())
         return collection.load(morph_name)
-
-    return morphio.Morphology(path)
 
 
 def get_morphology(

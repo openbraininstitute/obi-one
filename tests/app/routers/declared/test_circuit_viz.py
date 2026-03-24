@@ -428,4 +428,4 @@ def test_morphology_dir_fallback():
     config_path = Path("./examples/data/circuit_configs/circuit_config.json").resolve()
     config = libsonata.CircuitConfig(config_path.read_text(), "./examples/data/circuit_configs")
     path = resolve_morph_path("S1nonbarrel_neurons", config)
-    assert path == Path("./examples/data/circuit_configs/test_dir").absolute()
+    assert path.path == Path("./examples/data/circuit_configs/test_dir").absolute()

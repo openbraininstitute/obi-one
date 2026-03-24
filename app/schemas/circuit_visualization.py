@@ -1,6 +1,7 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
+from pathlib import Path
 
 
 class Node(BaseModel):
@@ -53,3 +54,8 @@ class NeuronSectionInfo(BaseModel):
 
 
 Morphology = dict[str, NeuronSectionInfo]
+
+
+class MorphPath(BaseModel):
+    path: Path
+    format: Literal["asc", "h5", "swc"]
