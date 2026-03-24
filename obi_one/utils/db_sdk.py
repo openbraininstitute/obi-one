@@ -160,6 +160,8 @@ def register_task_config_with_asset(
     task_config_file_path: Path,
 ) -> tuple[TaskConfig, Asset]:
     """Registers a TaskConfig entity for the given campaign, uploads the task config asset."""
+
+    L.info(f"-- Register TaskConfig type: {task_config_type} and task_config asset")
     task_config_entity = register_task_config_entity(
         client=client,
         name=name,
