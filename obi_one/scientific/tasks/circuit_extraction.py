@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 import tempfile
-from datetime import UTC, datetime
 from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
@@ -14,6 +13,7 @@ import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
 from entitysdk import Client, models, types
+from entitysdk.types import TaskActivityType, TaskConfigType
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
@@ -22,17 +22,15 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
-    _COORDINATE_CONFIG_FILENAME,
     _MAX_SMALL_MICROCIRCUIT_SIZE,
-    _SCAN_CONFIG_FILENAME,
 )
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -65,7 +63,7 @@ class BlockGroup(StrEnum):
     EXTRACTION_TARGET = "Extraction Target"
 
 
-class CircuitExtractionScanConfig(ScanConfig):
+class CircuitExtractionScanConfig(InfoScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
     single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
@@ -76,12 +74,27 @@ class CircuitExtractionScanConfig(ScanConfig):
         " to simulate the extracted circuit."
     )
 
-    _campaign: models.CircuitExtractionCampaign = None
-
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
     }
+
+    _campaign_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.circuit_extraction__campaign
+    )
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.circuit_extraction__config_generation
+    )
+
+    def input_entities(self, db_client: Client) -> list[models.Entity]:
+        input_entities = []
+        if isinstance(self.initialize.circuit, CircuitFromID):
+            input_entities.extend([self.initialize.circuit.entity(db_client=db_client)])
+        elif isinstance(self.initialize.circuit, list):
+            for circuit in self.initialize.circuit:
+                if isinstance(circuit, CircuitFromID):
+                    input_entities.extend([circuit.entity(db_client=db_client)])
+        return input_entities
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
@@ -141,51 +154,6 @@ class CircuitExtractionScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
-    ) -> models.CircuitExtractionCampaign:
-        """Initializes the circuit extraction campaign in the database."""
-        L.info("1. Initializing circuit extraction campaign in the database...")
-        if multiple_value_parameters_dictionary is None:
-            multiple_value_parameters_dictionary = {}
-
-        L.info("-- Register CircuitExtractionCampaign Entity")
-        self._campaign = db_client.register_entity(
-            models.CircuitExtractionCampaign(
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                scan_parameters=multiple_value_parameters_dictionary,
-            )
-        )
-
-        L.info("-- Upload campaign_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=models.CircuitExtractionCampaign,
-            file_path=output_root / _SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",
-            asset_label="campaign_generation_config",
-        )
-
-        return self._campaign
-
-    def create_campaign_generation_entity(
-        self, circuit_extraction_configs: list[models.CircuitExtractionConfig], db_client: Client
-    ) -> None:
-        L.info("3. Saving completed circuit extraction campaign generation")
-
-        L.info("-- Register CircuitExtractionConfigGeneration Entity")
-        db_client.register_entity(
-            models.CircuitExtractionConfigGeneration(
-                start_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=circuit_extraction_configs,
-            )
-        )
-
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
@@ -194,38 +162,10 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     that are required to simulate the extracted circuit.
     """
 
-    def create_single_entity_with_config(
-        self,
-        campaign: models.CircuitExtractionCampaign,  # noqa: ARG002
-        db_client: Client,
-    ) -> models.CircuitExtractionConfig:
-        """Saves the circuit extraction config to the database."""
-        L.info(f"2.{self.idx} Saving circuit extraction {self.idx} to database...")
-
-        if not isinstance(self.initialize.circuit, CircuitFromID):
-            msg = "Circuit extraction can only be saved to entitycore if circuit is CircuitFromID"
-            raise OBIONEError(msg)
-
-        L.info("-- Register CircuitExtractionConfig Entity")
-        self._single_entity = db_client.register_entity(
-            models.CircuitExtractionConfig(
-                name=f"Circuit extraction {self.idx}",
-                description=f"Circuit extraction {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                circuit_id=self.initialize.circuit.id_str,
-            )
-        )
-
-        L.info("-- Upload circuit_extraction_config")
-        _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=models.CircuitExtractionConfig,
-            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",
-            asset_label="circuit_extraction_config",
-        )
-
-        return self._single_entity
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.circuit_extraction__config
+    _single_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.circuit_extraction__execution
+    )
 
 
 class CircuitExtractionTask(Task):
@@ -346,46 +286,6 @@ class CircuitExtractionTask(Task):
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
-
-    @staticmethod
-    def _get_execution_activity(
-        db_client: Client = None,
-        execution_activity_id: str | None = None,
-    ) -> models.CircuitExtractionExecution | None:
-        """Returns the CircuitExtractionExecution activity.
-
-        Such activity is expected to be created and managed externally.
-        """
-        if db_client and execution_activity_id:
-            execution_activity = db_client.get_entity(
-                entity_type=models.CircuitExtractionExecution, entity_id=execution_activity_id
-            )
-        else:
-            execution_activity = None
-        return execution_activity
-
-    @staticmethod
-    def _update_execution_activity(
-        db_client: Client = None,
-        execution_activity: models.CircuitExtractionExecution | None = None,
-        circuit_id: str | None = None,
-    ) -> models.CircuitExtractionExecution | None:
-        """Updates a CircuitExtractionExecution activity after task completion.
-
-        Registers only the generated circuit ID. Other updates (status,
-        end time, executor, etc) are expected to be managed externally.
-        """
-        if db_client and execution_activity and circuit_id:
-            upd_dict = {"generated_ids": [circuit_id]}
-            upd_entity = db_client.update_entity(
-                entity_id=execution_activity.id,
-                entity_type=models.CircuitExtractionExecution,
-                attrs_or_entity=upd_dict,
-            )
-            L.info("CircuitExtractionExecution activity UPDATED")
-        else:
-            upd_entity = None
-        return upd_entity
 
     @staticmethod
     def _generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
@@ -825,11 +725,12 @@ class CircuitExtractionTask(Task):
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
 
             # Update execution activity (if any)
-            self._update_execution_activity(
-                db_client=db_client,
-                execution_activity=execution_activity,
-                circuit_id=str(new_circuit_entity.id),
-            )
+            if new_circuit_entity is not None:
+                CircuitExtractionTask._update_execution_activity(
+                    db_client=db_client,
+                    execution_activity=execution_activity,
+                    generated=[str(new_circuit_entity.id)],
+                )
 
             L.info("Registration DONE")
 
