@@ -74,25 +74,11 @@ class IntUniformDistribution(UniformDistribution):
         },
     )
 
-    def sample(
-        self,
-        n: int = 1,
-        ge: int | None = None,
-        le: int | None = None,
-        gt: int | None = None,
-        lt: int | None = None,
-    ) -> list[int]:
-        """Sample n values from the uniform distribution."""
+    def _sample_generator(self, n: int = 1) -> list[int]:
+        """Sample n values from the uniform distribution.
+
+        Don't worry about the constraints here, since the sample method will handle them.
+        """
         rng = np.random.default_rng(self.random_seed)
         samples = rng.integers(low=self.low, high=self.high, size=n)
-
-        if ge is not None:
-            samples = [max(s, ge) for s in samples]
-        if le is not None:
-            samples = [min(s, le) for s in samples]
-        if gt is not None:
-            samples = [s for s in samples if s > gt]
-        if lt is not None:
-            samples = [s for s in samples if s < lt]
-
         return samples.tolist()
