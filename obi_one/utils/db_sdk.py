@@ -10,6 +10,7 @@ from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
+from obi_one.core.exception import OBIONEError
 from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
@@ -18,16 +19,14 @@ L = logging.getLogger(__name__)
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
     """Determines the asset ID of the JSON config asset."""
     try:
-        client.select_assets(entity=config, selection={"label": asset_label}).one()
-    except EntitySDKError:
-        L.error(
-            "Could not find asset with label '%s' in config (%s) %s.\nAssets: %s",
-            asset_label,
-            config.type,
-            config.id,
-            config.assets,
+        return client.select_assets(entity=config, selection={"label": asset_label}).one()
+    except EntitySDKError as e:
+        msg = (
+            f"Could not find asset with label '{asset_label}' "
+            f"in Config(id={config.id}, type=config.type)\n"
+            f"Assets: {config.assets}",
         )
-        raise
+        raise OBIONEError(msg) from e
 
 
 def create_activity(
