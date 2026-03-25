@@ -76,10 +76,6 @@ def main() -> int:
         L.error(f"Argument parsing error: {e}")
         return 1
 
-    if args.execution_activity_id and not args.execution_activity_type:
-        L.error("Execution activity type required!")
-        return 1
-
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities
         if args.config_entity_type:
