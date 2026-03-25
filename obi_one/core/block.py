@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.complex_variable_holder import ComplexVariableHolder
+from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
 
