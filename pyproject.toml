@@ -79,6 +79,7 @@ dependencies = [
     "libsonata>=0.1.33",
     # BENCHMARKING
     "psutil>=6.1.0",
+    "obp-accounting-sdk>=0.6.0",
 ]
 
 [project.optional-dependencies]
