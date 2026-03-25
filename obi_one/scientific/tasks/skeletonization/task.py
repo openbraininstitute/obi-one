@@ -1,10 +1,8 @@
 import logging
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk import Client, models
-from entitysdk.models.activity import Activity
 from entitysdk.types import AssetLabel
 
 from obi_one.core.task import Task
@@ -126,11 +124,11 @@ class SkeletonizationTask(Task):
                 metadata=inputs.metadata,
                 outputs=outputs,
             )
-    
+
             SkeletonizationTask._update_execution_activity(
-            db_client=db_client,
-            execution_activity=execution_activity,
-            generated=[generated_entity],
-        )
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[generated_entity],
+            )
 
         L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
