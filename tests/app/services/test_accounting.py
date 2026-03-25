@@ -197,20 +197,23 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
         )
 
 
-def test_evaluate_accounting_parameters(db_client, accounting_parameters):
+@pytest.mark.parametrize("task_type", TaskType)
+def test_evaluate_accounting_parameters(db_client, task_type, accounting_parameters):
     config_id = uuid4()
+    task_definition = TASK_DEFINITIONS[task_type]
 
-    circuit_extraction_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
-
-    res = test_module._evaluate_accounting_parameters(
-        db_client=db_client,
-        config_id=config_id,
-        task_definition=circuit_extraction_definition,
-    )
-    assert res.service_subtype == circuit_extraction_definition.accounting_service_subtype
-    assert res.count == 1
-
-    circuit_simulation_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    expected_subtype = {
+        TaskType.circuit_extraction: ServiceSubtype.SMALL_SIM,
+        TaskType.circuit_simulation: ServiceSubtype.SMALL_SIM,
+        TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
+        TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
+    }
+    expected_count = {
+        TaskType.circuit_extraction: 1,
+        TaskType.circuit_simulation: 10,
+        TaskType.ion_channel_model_simulation_execution: 1,
+        TaskType.morphology_skeletonization: 1,
+    }
 
     with patch(
         "app.services.accounting._evaluate_circuit_simulation_parameters",
@@ -220,20 +223,19 @@ def test_evaluate_accounting_parameters(db_client, accounting_parameters):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,
             config_id=config_id,
-            task_definition=circuit_simulation_definition,
+            task_definition=task_definition,
         )
+        assert res.service_subtype == expected_subtype[task_type]
+        assert res.count == expected_count[task_type]
 
-        assert res.service_subtype == circuit_simulation_definition.accounting_service_subtype
-        assert res.count == accounting_parameters.count
 
-
-def test_generate_accounting_callbacks():
+def test_generate_accounting_callbacks(accounting_parameters):
     job_id = uuid4()
 
     res = test_module.generate_accounting_callbacks(
         task_type=TaskType.circuit_extraction,
         accounting_job_id=job_id,
-        count=11,
+        accounting_parameters=accounting_parameters,
         project_id=PROJECT_ID,
         virtual_lab_id=VIRTUAL_LAB_ID,
         callback_url="my-callback",

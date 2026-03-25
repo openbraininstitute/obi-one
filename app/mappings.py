@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from entitysdk import models
-from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.config import settings
 from app.schemas.task import (
@@ -24,7 +23,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.circuit_extraction,
         config_type=models.CircuitExtractionConfig,
         activity_type=models.CircuitExtractionExecution,
-        accounting_service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -42,7 +40,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.morphology_skeletonization,
         config_type=models.SkeletonizationConfig,
         activity_type=models.SkeletonizationExecution,
-        accounting_service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -61,7 +58,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        accounting_service_subtype=ServiceSubtype.SMALL_SIM,  # May be overridden by circuit scale
         code=BuiltinCode(
             script=BuiltinScript.circuit_simulation,
         ),
@@ -76,7 +72,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        accounting_service_subtype=ServiceSubtype.SMALL_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
