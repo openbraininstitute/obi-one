@@ -9,7 +9,8 @@ from entitysdk.types import ActivityStatus, ExecutorType
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskDefinition, TaskLaunchInfo
+from app.schemas.task import Resources, TaskDefinition, TaskLaunchInfo, TaskLaunchSubmit
+from app.services import circuit_extraction
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
 
@@ -197,3 +198,16 @@ def handle_task_failure_callback(
             entity_type=task_definition.activity_type,
             attrs_or_entity={"status": ActivityStatus.error},
         )
+
+
+def estimate_task_resources(
+    json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
+) -> Resources:
+    """Estimates the machine resources for a given task."""
+    match task_definition.task_type:
+        case TaskType.circuit_extraction:
+            return circuit_extraction.estimate_task_resources(
+                json_model=json_model, db_client=db_client, task_definition=task_definition
+            )
+        case _:
+            return task_definition.resources

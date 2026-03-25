@@ -3,12 +3,14 @@ import math
 from pathlib import Path
 
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.library.simulation import entrypoint
 from obi_one.scientific.library.simulation.schemas import SimulationParameters, SimulationResults
 from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
+
+# Path to cli that will be executed below
+ENTRYPOINT_PATH = Path(__file__).parent.resolve() / "entrypoint.py"
 
 
 def run_simulation(
@@ -21,12 +23,15 @@ def run_simulation(
     _run_simulation_executable(
         parameters=parameters,
         simulation_backend=simulation_backend,
+        simulation_entrypoint_path=ENTRYPOINT_PATH,
     )
     return _collect_simulation_outputs(results_dir=results_dir)
 
 
 def _run_simulation_executable(
-    parameters: SimulationParameters, simulation_backend: SimulationBackend
+    parameters: SimulationParameters,
+    simulation_backend: SimulationBackend,
+    simulation_entrypoint_path: Path,
 ) -> None:
     number_of_mpi_processes = _get_number_of_mpi_processes(parameters.number_of_cells)
 
@@ -36,7 +41,7 @@ def _run_simulation_executable(
             "-n",
             str(number_of_mpi_processes),
             "python",
-            str(entrypoint.__file__),
+            str(simulation_entrypoint_path),
             "--config",
             str(parameters.config_file),
             "--libnrnmech-path",
