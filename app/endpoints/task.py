@@ -64,7 +64,7 @@ def task_launch_endpoint(
     )
     accounting_callbacks = accounting_service.generate_accounting_callbacks(
         task_type=json_model.task_type,
-        accounting_job_id=accounting_session._job_id,  # noqa: SLF001
+        accounting_job_id=accounting_session.job_id,
         accounting_parameters=accounting_info.parameters,
         project_id=user_context.project_id,
         virtual_lab_id=user_context.virtual_lab_id,
