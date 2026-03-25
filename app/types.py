@@ -1,11 +1,8 @@
 from enum import StrEnum, auto
 
-
-class TaskType(StrEnum):
-    """Task types supported for job submission."""
-
-    circuit_extraction = auto()
-    circuit_simulation = auto()
+# re-export from obi-one so that obi_one is not
+# imported everywhere
+from obi_one.types import TaskType as TaskType  # noqa: PLC0414
 
 
 class CallBackEvent(StrEnum):

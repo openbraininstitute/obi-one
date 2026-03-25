@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import entitysdk
@@ -9,7 +10,7 @@ from entitysdk.types import AssetLabel
 
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
-from app.schemas.task import TaskType
+from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
 from app.services import task as test_module
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
@@ -155,6 +156,7 @@ def test_submit_task_job__success(
         project_context=project_context,
         callback_url=callback_url,
         callbacks=[],
+        compute_cell="cell_a",
     )
     assert res.task_type == task_type
     assert res.config_id == config_id
@@ -256,6 +258,7 @@ def test_submit_task_job__failure(
             project_context=project_context,
             callback_url=callback_url,
             callbacks=[],
+            compute_cell="cell_a",
         )
 
 
@@ -268,6 +271,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
         project_id=PROJECT_ID,
         callbacks=callbacks,
         task_definition=task_definition,
+        compute_cell="cell_a",
     )
 
     assert res == {
@@ -276,6 +280,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "instances": 1,
             "instance_type": "small",
             "timelimit": "00:10",
+            "compute_cell": "cell_a",
         },
         "inputs": [
             "--simulation-id",
@@ -318,26 +323,38 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         activity_id=activity_id,
         project_id=PROJECT_ID,
         virtual_lab_id=VIRTUAL_LAB_ID,
-        config_asset_id=config_id,
         task_definition=task_definition,
         entity_cache=True,
         output_root="/foo",
         callbacks=callbacks,
+        compute_cell="cell_b",
     )
 
     assert res == {
-        "resources": {"type": "machine", "cores": 1, "memory": 2, "timelimit": "00:10"},
+        "resources": {
+            "type": "machine",
+            "cores": 1,
+            "memory": 2,
+            "timelimit": "00:10",
+            "compute_cell": "cell_b",
+        },
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute/obi-one.git",
             "ref": task_definition.code.ref,
             "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
-            "dependencies": "launch_scripts/launch_task_for_single_config_asset/requirements.txt",
+            "dependencies": (
+                "launch_scripts/launch_task_for_single_config_asset/dependencies"
+                "/circuit_extraction.txt"
+            ),
+            "capabilities": {
+                "private_packages": False,
+            },
         },
         "inputs": [
-            "--entity_type CircuitExtractionConfig",
-            f"--entity_id {config_id}",
-            f"--config_asset_id {config_id}",
+            "--task-type circuit_extraction",
+            "--config_entity_type CircuitExtractionConfig",
+            f"--config_entity_id {config_id}",
             "--entity_cache True",
             "--scan_output_root /foo",
             f"--virtual_lab_id {VIRTUAL_LAB_ID}",
@@ -441,4 +458,40 @@ def test_handle_task_failure_callback__do_nothing(db_client, task_type, activity
         activity_id=activity_id,
         db_client=db_client,
         task_definition=TASK_DEFINITIONS[task_type],
+    )
+
+
+def test_estimate_task_resources_passthrough(db_client):
+    """Non-circuit_extraction tasks should return resources unchanged."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
+
+    result = test_module.estimate_task_resources(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+    )
+    assert result is task_definition.resources
+
+
+def test_estimate_task_resources_circuit_extraction(db_client):
+    """Circuit extraction tasks should delegate to circuit_extraction.estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
+    expected = MachineResources(cores=4, memory=16, timelimit="02:00", compute_cell="local")
+
+    with patch(
+        "app.services.circuit_extraction.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+        )
+
+    assert result is expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model, db_client=db_client, task_definition=task_definition
     )

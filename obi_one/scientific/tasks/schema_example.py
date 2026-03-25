@@ -1,12 +1,19 @@
 from enum import StrEnum
 from typing import ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
-from obi_one.scientific.tasks.generate_simulation_configs import CircuitDiscriminator
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+    CircuitDiscriminator,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
@@ -21,6 +28,20 @@ class BlockGroup(StrEnum):
     EXTRACTION_TARGET = "Extraction Target"
 
 
+class EntityDependentBlockExample(Block):
+    """Entity Dependent Block Example Description."""
+
+    title: ClassVar[str] = "Entity Dependent Block Example Title"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            SchemaKey.FALSE_MESSAGE: "This example block is not available for this circuit.",
+        },
+    }
+
+
 class SchemaExampleScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
@@ -28,24 +49,25 @@ class SchemaExampleScanConfig(ScanConfig):
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "ui_enabled": True,
-            "group_order": [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+    }
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
-                "ui_element": "model_identifier",
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             },
         )
         example_boolean_input: bool = Field(
             json_schema_extra={
-                "ui_element": "boolean_input",
+                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
             },
             default=True,
             title="Include Virtual Populations",
@@ -56,7 +78,7 @@ class SchemaExampleScanConfig(ScanConfig):
 
         temp_option_remove_string_selection: Literal["A", "B", "C"] = Field(
             json_schema_extra={
-                "ui_element": "string_selection",
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
             },
             title="Option",
             description="Option description.",
@@ -67,7 +89,7 @@ class SchemaExampleScanConfig(ScanConfig):
             title="Constant",
             description="Constant description.",
             json_schema_extra={
-                "ui_element": "string_constant",
+                SchemaKey.UI_ELEMENT: UIElement.STRING_CONSTANT,
             },
         )
 
@@ -76,18 +98,18 @@ class SchemaExampleScanConfig(ScanConfig):
             description="Option description.",
             default="A",
             json_schema_extra={
-                "ui_element": "string_selection_enhanced",
-                "description_by_key": {
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
+                SchemaKey.DESCRIPTION_BY_KEY: {
                     "A": "Description for option A.",
                     "B": "Description for option B.",
                     "C": "Description for option C.",
                 },
-                "latex_by_key": {
+                SchemaKey.LATEX_BY_KEY: {
                     "A": r"A_{latex}",
                     "B": r"B_{latex}",
                     "C": r"C_{latex}",
                 },
-                "title_by_key": {"A": "Option A", "B": "Option B", "C": "Option C"},
+                SchemaKey.TITLE_BY_KEY: {"A": "Option A", "B": "Option B", "C": "Option C"},
             },
         )
 
@@ -95,14 +117,14 @@ class SchemaExampleScanConfig(ScanConfig):
             title="Constant",
             description="Constant description.",
             json_schema_extra={
-                "ui_element": "string_constant_enhanced",
-                "description_by_key": {
+                SchemaKey.UI_ELEMENT: UIElement.STRING_CONSTANT_ENHANCED,
+                SchemaKey.DESCRIPTION_BY_KEY: {
                     "A": "Description for option A.",
                 },
-                "latex_by_key": {
+                SchemaKey.LATEX_BY_KEY: {
                     "A": r"A_{latex}",
                 },
-                "title_by_key": {
+                SchemaKey.TITLE_BY_KEY: {
                     "A": "Option A",
                 },
             },
@@ -112,18 +134,18 @@ class SchemaExampleScanConfig(ScanConfig):
         title="Info",
         description="Information about the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     neuron_set: CircuitExtractionNeuronSetUnion = Field(
@@ -131,9 +153,9 @@ class SchemaExampleScanConfig(ScanConfig):
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
         json_schema_extra={
-            "ui_element": "block_union",
-            "group": BlockGroup.EXTRACTION_TARGET,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -141,10 +163,21 @@ class SchemaExampleScanConfig(ScanConfig):
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "singular_name": "Neuron Set",
-            "reference_type": NeuronSetReference.__name__,
-            "group": BlockGroup.EXTRACTION_TARGET,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    entity_dependent_block_example: EntityDependentBlockExample = Field(
+        title="Entity Dependent Block Example",
+        description="Example block which is only usable for certain circuits based on the value of"
+        " the CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI property for that circuit.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )

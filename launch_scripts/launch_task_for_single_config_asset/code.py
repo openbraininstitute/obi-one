@@ -5,16 +5,17 @@ import sys
 from functools import partial
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
+from entitysdk.types import ActivityStatus
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
-from obi_one.core.run_tasks import run_task_for_single_config_asset
+from obi_one.core.run_tasks import run_task_type
 
 L = logging.getLogger(__name__)
 
 
 def update_activity_status(
-    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: str
+    db_client: Client, execution_activity_type: str, execution_activity_id: str, status: ActivityStatus
 ) -> None:
     if not db_client:
         return
@@ -39,7 +40,6 @@ def main() -> int:
     python launch_task_for_single_config_asset.py
         --entity_type Simulation
         --entity_id babb299c-782a-41f1-b782-bc4c5da45462
-        --config_asset_id 12eb6209-a4a1-40ad-ae2e-4b5c137e42a8
         --execution_activity_type SimulationExecution
         --execution_activity_id b6759d3d-001d-49b3-b57f-84303415fe0a
         --entity_cache True
@@ -61,12 +61,9 @@ def main() -> int:
         parser = argparse.ArgumentParser(
             description="Script to launch a task for a single configuration asset."
         )
-
-        parser.add_argument("--entity_type", required=True, help="EntitySDK entity type as string")
-        parser.add_argument("--entity_id", required=True, help="Entity ID as string")
-        parser.add_argument(
-            "--config_asset_id", required=True, help="Configuration Asset ID as string"
-        )
+        parser.add_argument("--task-type", required=True, help="Task type")
+        parser.add_argument("--config_entity_type", required=True, help="EntitySDK entity type as string")
+        parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
         parser.add_argument(
             "--execution_activity_type",
             required=False,
@@ -102,7 +99,7 @@ def main() -> int:
 
     try:
         # Get entity type
-        entity_type = getattr(models, args.entity_type)
+        config_entity_type = getattr(models, args.config_entity_type)
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
@@ -122,17 +119,16 @@ def main() -> int:
             token_manager=token_manager,
             local_store=LocalAssetStore(prefix=local_store_prefix),
         )
-
-        # Update activity status
         update_activity_status(
-            db_client, args.execution_activity_type, args.execution_activity_id, "running"
+            db_client=db_client,
+            execution_activity_type=args.execution_activity_type,
+            execution_activity_id=args.execution_activity_id,
+            status=ActivityStatus.running,
         )
-
-        # Run actual task
-        run_task_for_single_config_asset(
-            entity_type=entity_type,
-            entity_id=args.entity_id,
-            config_asset_id=args.config_asset_id,
+        run_task_type(
+            task_type=args.task_type,
+            entity_type=config_entity_type,
+            entity_id=args.config_entity_id,
             scan_output_root=args.scan_output_root,
             db_client=db_client,
             entity_cache=args.entity_cache,
@@ -140,19 +136,25 @@ def main() -> int:
         )
     except Exception as e:  # noqa: BLE001
         # Catch any error that may occur to make sure that error status is correctly set
-        L.error(f"Error launching task for single configuration asset: {e}")
+        L.exception(f"Error launching task for single configuration asset: {e}")
         update_activity_status(
-            db_client, args.execution_activity_type, args.execution_activity_id, "error"
+            db_client=db_client,
+            execution_activity_type=args.execution_activity_type,
+            execution_activity_id=args.execution_activity_id,
+            status=ActivityStatus.error,
         )
         return 1
 
-    # Task completed without error
     update_activity_status(
-        db_client, args.execution_activity_type, args.execution_activity_id, "done"
+        db_client=db_client,
+        execution_activity_type=args.execution_activity_type,
+        execution_activity_id=args.execution_activity_id,
+        status=ActivityStatus.done,
     )
 
     return 0
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     sys.exit(main())

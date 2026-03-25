@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 
@@ -144,19 +145,17 @@ class ContributeMorphologyScanConfig(ScanConfig):
     name: ClassVar[str] = "Contribute a Morphology"
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.ASSET_BLOCK_GROUP,
-                BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-                BlockGroup.STRAIN_BLOCK_GROUP,
-                BlockGroup.LOCATION_GROUP,
-                BlockGroup.PROTOCOL_GROUP,
-                BlockGroup.LICENSE_GROUP,
-            ]
-        }
-    )
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.ASSET_BLOCK_GROUP,
+            BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+            BlockGroup.STRAIN_BLOCK_GROUP,
+            BlockGroup.LOCATION_GROUP,
+            BlockGroup.PROTOCOL_GROUP,
+            BlockGroup.LICENSE_GROUP,
+        ]
+    }
 
     assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 

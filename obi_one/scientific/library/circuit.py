@@ -1,8 +1,12 @@
+from pathlib import Path
+
 import bluepysnap as snap
 import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+
+CIRCUIT_MOD_DIR = "mod"
 
 
 class Circuit(OBIBaseModel):
@@ -31,6 +35,11 @@ class Circuit(OBIBaseModel):
     def __str__(self) -> str:
         """Returns the name as a string representation."""
         return self.name
+
+    @property
+    def directory(self) -> Path:
+        """Return circuit directory."""
+        return Path(self.path).parent
 
     @property
     def sonata_circuit(self) -> snap.Circuit:
@@ -109,18 +118,44 @@ class Circuit(OBIBaseModel):
     @staticmethod
     def _default_edge_population_name(c: snap.Circuit) -> str:
         """Returns the default edge population name of a SONATA circuit c."""
-        popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=False)
-        if len(popul_names) == 0:
-            # Include point neuron sources
-            popul_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
-        if len(popul_names) == 0:
-            return None  # No biophysical/point neuron edges
-        if len(popul_names) != 1:
+        try:
+            default_npop = Circuit._default_population_name(c)
+        except ValueError as e:
+            msg = f"Cannot determine default edge population: {e}"
+            raise ValueError(msg) from e
+        if default_npop is None:
+            return None
+        epop_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
+        intrinsic_epops = [
+            epop
+            for epop in epop_names
+            if c.edges[epop].source.name == default_npop
+            and c.edges[epop].target.name == default_npop
+        ]
+        if len(intrinsic_epops) == 0:
+            return None
+        if len(intrinsic_epops) > 1:
             msg = "Default edge population unknown!"
             raise ValueError(msg)
-        return popul_names[0]
+        return intrinsic_epops[0]
 
     @property
     def default_edge_population_name(self) -> str:
         """Returns the default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
+
+    @property
+    def mechanisms_dir(self) -> Path:
+        # TODO: There should be only ONE convention for output dir of mechs
+        if type(self).__name__ == "Circuit":
+            path = self.directory / CIRCUIT_MOD_DIR
+        else:
+            path = self.directory / "mechanisms"
+
+        if not path.exists():
+            msg = f"{path} does not exist."
+            raise FileNotFoundError(msg)
+        if not path.is_dir():
+            msg = f"{path} is not a mechanisms directory."
+            raise NotADirectoryError(msg)
+        return path

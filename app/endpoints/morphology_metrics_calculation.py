@@ -29,7 +29,10 @@ from requests.exceptions import RequestException
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.services.morphology import DEFAULT_SINGLE_POINT_SOMA_BY_EXT, convert_morphology
+from app.services.morphology import (
+    DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    validate_and_convert_morphology,
+)
 
 
 class ApiErrorCode:
@@ -153,6 +156,7 @@ NEW_ENTITY_DEFAULTS = {
     "brain_region_id": None,
     "subject_id": None,
     "cell_morphology_protocol_id": None,
+    "repair_pipeline_state": None,
 }
 
 
@@ -228,6 +232,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
     morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
+    repair_pipeline_state = new_item.get("repair_pipeline_state")
 
     license = _get_entity("license", License)
     name = new_item.get("name")
@@ -235,6 +240,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     authorized_public = new_item.get("authorized_public")
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol,
+        repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
         subject=subject,
@@ -245,7 +251,6 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         authorized_public=authorized_public,
         published_in=new_item.get("published_in"),
     )
-
     registered = client.register_entity(entity=morphology)
     return registered
 
@@ -378,6 +383,7 @@ async def morphology_metrics_calculation(
         content,
         metadata_obj,
     ) = await _parse_file_and_metadata(file, metadata)
+
     entity_id = "UNKNOWN"
     entity_payload = _prepare_entity_payload(metadata_obj, morphology_name)
     single_point_soma_by_ext = (
@@ -398,7 +404,7 @@ async def morphology_metrics_calculation(
                 converted_morphology_file1,
                 converted_morphology_file2,
             ) = await run_in_threadpool(
-                convert_morphology,
+                validate_and_convert_morphology,
                 input_file=pathlib.Path(temp_file_path),
                 output_dir=pathlib.Path(temp_file_path).parent,
                 output_stem=Path(morphology_name).stem,
