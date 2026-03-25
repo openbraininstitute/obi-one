@@ -103,8 +103,8 @@ _task_type_single_config_map = {
     TaskType.em_synapse_mapping: EMSynapseMappingSingleConfig,
 }
 _task_type_config_asset_label_map = {
-    TaskType.circuit_extraction: AssetLabel.circuit_extraction_config,
-    TaskType.morphology_skeletonization: AssetLabel.skeletonization_config,
+    TaskType.circuit_extraction: AssetLabel.task_config,
+    TaskType.morphology_skeletonization: AssetLabel.config,
     TaskType.circuit_simulation: None,
     TaskType.ion_channel_model_simulation_execution: None,
     TaskType.em_synapse_mapping: AssetLabel.task_config,
