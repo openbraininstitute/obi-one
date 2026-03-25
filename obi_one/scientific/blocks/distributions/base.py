@@ -7,8 +7,8 @@ from obi_one.core.block import Block
 class Distribution(Block, abc.ABC):
     """Distribution base class."""
 
+    @staticmethod
     def _check_constraints(
-        self,
         ge: float | None = None,
         le: float | None = None,
         gt: float | None = None,
@@ -49,12 +49,13 @@ class Distribution(Block, abc.ABC):
         final_samples = self._apply_constraints(initial_samples, ge=ge, le=le, gt=gt, lt=lt)
         return final_samples
 
+    @abc.abstractmethod
     def _sample_generator(self, n: int = 1) -> Never:
         msg = "Subclasses must implement the _sample_generator method."
         raise NotImplementedError(msg)
 
+    @staticmethod
     def _apply_constraints(
-        self,
         samples: list[float],
         ge: float | None = None,
         le: float | None = None,
@@ -67,11 +68,15 @@ class Distribution(Block, abc.ABC):
             if ge is not None and sample < ge:
                 constrained_samples.append(ge)
             elif gt is not None and sample <= gt:
-                constrained_samples.append(gt + 1e-9)  # Add a small epsilon to ensure it's greater than gt
+                constrained_samples.append(
+                    gt + 1e-9
+                )  # Add a small epsilon to ensure it's greater than gt
             elif le is not None and sample > le:
                 constrained_samples.append(le)
             elif lt is not None and sample >= lt:
-                constrained_samples.append(lt - 1e-9)  # Subtract a small epsilon to ensure it's less than lt
+                constrained_samples.append(
+                    lt - 1e-9
+                )  # Subtract a small epsilon to ensure it's less than lt
             else:
                 constrained_samples.append(sample)
         return constrained_samples

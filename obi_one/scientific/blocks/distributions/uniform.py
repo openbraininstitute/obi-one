@@ -44,16 +44,7 @@ class FloatUniformDistribution(UniformDistribution):
 
     title: ClassVar[str] = "Uniform Floats"
 
-    value: float | list[float] = Field(
-        default=1.0,
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
-    def sample(self, n: int = 1) -> list[float]:
+    def _sample_generator(self, n: int = 1) -> list[float]:
         """Sample n values from the uniform distribution."""
         rng = np.random.default_rng(self.random_seed)
         samples = rng.uniform(low=self.low, high=self.high, size=n)
@@ -64,15 +55,6 @@ class IntUniformDistribution(UniformDistribution):
     """Values sampled from a uniform distribution of integers."""
 
     title: ClassVar[str] = "Uniform Integers"
-
-    value: int | list[int] = Field(
-        default=1,
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
 
     def _sample_generator(self, n: int = 1) -> list[int]:
         """Sample n values from the uniform distribution.
