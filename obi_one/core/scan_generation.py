@@ -156,28 +156,7 @@ class ScanGenerationTask(Task, abc.ABC):
                 single_coord_config = self.set_nested_single_coordinate_scan_param_value(
                     single_coord_config, scan_param.location_list, scan_param.value
                 )
-                # level_0_val = single_coord_config.__dict__[scan_param.location_list[0]]
-
-                # # If the first level is a Block
-                # if isinstance(level_0_val, Block):
-                #     level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
-
-                # # If the first level is a category dictionary
-                # if isinstance(level_0_val, dict):
-                #     level_1_val = level_0_val[scan_param.location_list[1]]
-                #     if isinstance(level_1_val, Block):
-                #         level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
-                #     else:
-                #         msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
-                #             {level_0_val}"
-                #         raise TypeError(msg)
-
-                # ComplexVariableHolder case
-                # 0: category name, 1: variable key, 2: list index, 3: tuple index
-                # if isinstance(level_0_val, ComplexVariableHolder):
-                #     level_1_val = level_0_val.__dict__[scan_param.location_list[1]]
-                #     level_1_val[scan_param.location_list[2]][scan_param.location_list[3]] = scan_param.value
-
+                
             try:
                 # Cast the form to its single_config_class_name type
                 single_coord_config = single_coord_config.cast_to_single_coord()

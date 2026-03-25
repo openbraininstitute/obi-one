@@ -45,12 +45,11 @@ class DurationVoltageCombinations(ComplexVariableHolder):
     """Class for storing pairs of duration and voltage combinations for stimulation protocols."""
     
     voltage_durations: list[tuple[NonNegativeFloat | list[NonNegativeFloat], float | list[float]]] = Field(
-        title="Duration and voltage combinations for each step",
-        description="A list of duration and voltage combinations for each step of the SEClamp stimulus. \
-                    Each combination specifies the duration and voltage level of a step input. \
+        title="Duration and voltage combinations for each level",
+        description="A list of duration and voltage combinations for each level of the SEClamp stimulus. \
                     The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "expandable_list",
+            "ui_element": "voltage_duration_ui_element",
             "subelement_ui_elements": ["float_parameter_sweep", "float_parameter_sweep"],
             "subelement_titles": ["Duration", "Voltage"],
             "subelement_units": ["ms", "mV"],
