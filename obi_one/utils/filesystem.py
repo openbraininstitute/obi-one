@@ -8,3 +8,8 @@ def create_dir(path: StrOrPath) -> Path:
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def filter_extension(file_list: list, extension: str) -> list:
+    """Filter a list of files by extension."""
+    return [f for f in file_list if Path(f).suffix.lower() == f".{extension}"]
