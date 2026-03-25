@@ -140,7 +140,7 @@ def upload_task_config_asset(
         entity_id=entity.id,
         entity_type=TaskConfig,
         file_path=file_path,
-        file_content_type=ContentType.json,
+        file_content_type=ContentType.application_json,
         asset_label=AssetLabel.task_config,
     )
     return asset
