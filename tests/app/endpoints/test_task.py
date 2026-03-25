@@ -7,6 +7,7 @@ from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.application import app
 from app.dependencies.compute_cell import get_compute_cell
+from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskLaunchInfo
@@ -35,6 +36,8 @@ def test_task_launch_success(
     task_type,
     monkeypatch,
 ):
+    task_definition = TASK_DEFINITIONS[task_type]
+
     job_id = uuid4()
     config_id = uuid4()
     activity_id = uuid4()
