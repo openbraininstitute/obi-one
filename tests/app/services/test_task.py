@@ -358,7 +358,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute/obi-one.git",
             "ref": task_definition.code.ref,
-            "path": "launch_scripts/launch_task_for_single_config_asset/code.py",
+            "path": "launch_scripts/launch_task_for_single_config_asset/main.py",
             "dependencies": (
                 "launch_scripts/launch_task_for_single_config_asset/dependencies"
                 "/circuit_extraction.txt"
@@ -369,13 +369,11 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         },
         "inputs": [
             "--task-type circuit_extraction",
-            "--config_entity_type circuit_extraction__config",
             f"--config_entity_id {config_id}",
             "--entity_cache True",
             "--scan_output_root /foo",
             f"--virtual_lab_id {VIRTUAL_LAB_ID}",
             f"--project_id {PROJECT_ID}",
-            "--execution_activity_type circuit_extraction__execution",
             f"--execution_activity_id {activity_id}",
         ],
         "project_id": PROJECT_ID,
