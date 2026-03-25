@@ -82,12 +82,12 @@ def main() -> int:
 
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities
-        if args.config_entity_type in TaskConfigType:
-            config_entity_type = models.TaskConfig
-            execution_activity_type = models.TaskActivity
-        else:
+        if args.config_entity_type:
             config_entity_type = getattr(models, args.config_entity_type)
             execution_activity_type = getattr(models, args.execution_activity_type)
+        else:
+            config_entity_type = models.TaskConfig
+            execution_activity_type = models.TaskActivity
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
