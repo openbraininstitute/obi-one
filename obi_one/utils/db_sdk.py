@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import UUID
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
+from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
@@ -16,7 +17,17 @@ L = logging.getLogger(__name__)
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
     """Determines the asset ID of the JSON config asset."""
-    return client.select_assets(entity=config, selection={"label": asset_label}).one()
+    try:
+        client.select_assets(entity=config, selection={"label": asset_label}).one()
+    except EntitySDKError:
+        L.error(
+            "Could not find asset with label '%s' in config (%s) %s.\nAssets: %s",
+            asset_label,
+            config.type,
+            config.id,
+            config.assets,
+        )
+        raise
 
 
 def create_activity(
