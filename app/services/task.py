@@ -146,10 +146,9 @@ def _generic_job_data(
     compute_cell: str,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json") | {"compute_cell": compute_cell}
-    return {
-        "code": task_definition.code.model_dump(mode="json"),
-        "resources": resources,
-        "inputs": [
+
+    if isinstance(task_definition, TaskDefinitionLegacy):
+        inputs = [
             f"--task-type {task_definition.task_type}",
             f"--config_entity_type {task_definition.config_type_name}",
             f"--config_entity_id {config_id}",
@@ -159,7 +158,22 @@ def _generic_job_data(
             f"--project_id {project_id}",
             f"--execution_activity_type {task_definition.activity_type_name}",
             f"--execution_activity_id {activity_id}",
-        ],
+        ]
+    else:
+        inputs = [
+            f"--task-type {task_definition.task_type}",
+            f"--config_entity_id {config_id}",
+            f"--entity_cache {entity_cache}",
+            f"--scan_output_root {output_root}",
+            f"--virtual_lab_id {virtual_lab_id}",
+            f"--project_id {project_id}",
+            f"--execution_activity_id {activity_id}",
+        ]
+
+    return {
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": resources,
+        "inputs": inputs,
         "project_id": str(project_id),
         "callbacks": [c.model_dump(mode="json") for c in callbacks],
     }
