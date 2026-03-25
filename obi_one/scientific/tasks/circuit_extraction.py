@@ -11,15 +11,13 @@ from typing import ClassVar
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
-import h5py
-import numpy as np
-from bluepysnap import BluepySnapError
 from brainbuilder.utils.sonata import split_population
 from conntility import ConnectivityMatrix
 from entitysdk import Client, models, types
 from PIL import Image
 from pydantic import Field, PrivateAttr
 
+from obi_one.config import settings
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
@@ -33,17 +31,31 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
     _MAX_SMALL_MICROCIRCUIT_SIZE,
-    _NEURON_PAIR_SIZE,
     _SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
+from obi_one.scientific.tasks.basic_connectivity_plots import (
+    BasicConnectivityPlotsScanConfig,
+)
+from obi_one.scientific.tasks.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtractionScanConfig,
+)
+from obi_one.scientific.tasks.folder_compression import (
+    FolderCompressionScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.utils import circuit as circuit_utils, db_sdk
+from obi_one.utils.benchmark import BenchmarkTracker
+
+if settings.circuit_extraction.benchmarking_enabled:
+    BenchmarkTracker.enable()
+else:
+    BenchmarkTracker.disable()
 
 L = logging.getLogger(__name__)
-_RUN_VALIDATION = False
 
 
 class BlockGroup(StrEnum):
@@ -267,47 +279,6 @@ class CircuitExtractionTask(Task):
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
-    @staticmethod
-    def get_circuit_size(c: Circuit) -> (str, int, int, int):
-        c_sonata = c.sonata_circuit
-        num_nrn = c_sonata.nodes[c.default_population_name].size
-        if num_nrn == 1:
-            scale = types.CircuitScale.single
-        elif num_nrn == _NEURON_PAIR_SIZE:
-            scale = types.CircuitScale.pair
-        elif num_nrn <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            scale = types.CircuitScale.small
-        else:
-            scale = types.CircuitScale.microcircuit
-        # TODO: Add support for other scales as well
-        # https://github.com/openbraininstitute/obi-one/issues/463
-
-        if scale == types.CircuitScale.single:
-            # Special case: Include extrinsic synapses & connections
-            edge_pops = Circuit.get_edge_population_names(c_sonata, incl_virtual=True)
-            edge_pops = [
-                e for e in edge_pops if c_sonata.edges[e].target.name == c.default_population_name
-            ]
-        else:
-            # Default case: Only include intrinsic synapse & connections
-            edge_pops = [c.default_edge_population_name]
-
-        num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
-        num_conn = np.sum(
-            [
-                len(
-                    list(
-                        c_sonata.edges[e].iter_connections(
-                            target={"population": c_sonata.edges[e].target.name}
-                        )
-                    )
-                )
-                for e in edge_pops
-            ]
-        ).astype(int)
-
-        return scale, num_nrn, num_syn, num_conn
-
     def _create_circuit_entity(self, db_client: Client, circuit_path: Path) -> models.Circuit:
         """Register a new Circuit entity of the extracted SONATA circuit (w/o assets)."""
         parent = self._circuit_entity  # Parent circuit entity
@@ -332,7 +303,7 @@ class CircuitExtractionTask(Task):
 
         # Get counts
         c = Circuit(name=circuit_name, path=str(circuit_path))
-        scale, num_nrn, num_syn, num_conn = CircuitExtractionTask.get_circuit_size(c)
+        scale, num_nrn, num_syn, num_conn = circuit_utils.get_circuit_size(c)
 
         # Create circuit model
         circuit_model = models.Circuit(
@@ -350,7 +321,7 @@ class CircuitExtractionTask(Task):
             has_spines=parent.has_spines,
             scale=scale,
             build_category=parent.build_category,
-            root_circuit_id=parent.root_circuit_id,
+            root_circuit_id=parent.root_circuit_id or parent.id,
             atlas_id=parent.atlas_id,
             contact_email=parent.contact_email,
             published_in=parent.published_in,
@@ -360,321 +331,6 @@ class CircuitExtractionTask(Task):
         registered_circuit = db_client.register_entity(circuit_model)
         L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
         return registered_circuit
-
-    @staticmethod
-    def _add_circuit_folder_asset(
-        db_client: Client, circuit_path: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload a circuit folder directory asset to a registered circuit entity."""
-        asset_label = "sonata_circuit"
-        circuit_folder = circuit_path.parent
-        if not circuit_folder.is_dir():
-            msg = "Circuit folder does not exist!"
-            raise OBIONEError(msg)
-
-        # Collect circuit files
-        circuit_files = {
-            str(path.relative_to(circuit_folder)): path
-            for path in circuit_folder.rglob("*")
-            if path.is_file()
-        }
-        L.info(f"{len(circuit_files)} files in '{circuit_folder}'")
-        if "circuit_config.json" not in circuit_files:
-            msg = "Circuit config file not found in circuit folder!"
-            raise OBIONEError(msg)
-        if "node_sets.json" not in circuit_files:
-            msg = "Node sets file not found in circuit folder!"
-            raise OBIONEError(msg)
-
-        # Upload asset
-        directory_asset = db_client.upload_directory(
-            label=asset_label,
-            name=asset_label,
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            paths=circuit_files,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
-        return directory_asset
-
-    @staticmethod
-    def _add_compressed_circuit_asset(
-        db_client: Client, compressed_file: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload a compressed circuit file asset to a registered circuit entity."""
-        asset_label = "compressed_sonata_circuit"
-
-        if not compressed_file.exists():
-            msg = f"Compressed circuit file '{compressed_file}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Upload compressed file asset
-        compressed_asset = db_client.upload_file(
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            file_path=compressed_file,
-            file_content_type="application/gzip",
-            asset_label=asset_label,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
-        return compressed_asset
-
-    @staticmethod
-    def _add_connectivity_matrix_asset(
-        db_client: Client, matrix_dir: Path, registered_circuit: models.Circuit
-    ) -> models.Asset:
-        """Upload connectivity matrix directory asset to a registered circuit entity."""
-        asset_label = "circuit_connectivity_matrices"
-
-        if not matrix_dir.is_dir():
-            msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Collect matrix files
-        matrix_files = {
-            str(path.relative_to(matrix_dir)): path
-            for path in matrix_dir.rglob("*")
-            if path.is_file()
-        }
-        L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
-
-        # Upload directory asset
-        matrix_asset = db_client.upload_directory(
-            label=asset_label,
-            name=asset_label,
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            paths=matrix_files,
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
-        return matrix_asset
-
-    @staticmethod
-    def convert_image_to_webp(
-        image_path: Path, *, overwrite: bool = False, quality: int = 80, method: int = 6
-    ) -> Path:
-        """Converts an image file (e.g., .png) to .webp format."""
-        if not image_path.exists():
-            msg = f"Input file '{image_path}' does not exist!"
-            raise OBIONEError(msg)
-        output_path = image_path.with_suffix(".webp")
-        if not overwrite and output_path.exists():
-            msg = f"Output file '{output_path}' already exists!"
-            raise OBIONEError(msg)
-        with Image.open(image_path) as img:
-            image = img.convert("RGBA")
-            image.save(output_path, "webp", quality=quality, method=method)
-        return output_path
-
-    @staticmethod
-    def _add_image_assets(
-        db_client: Client, plot_dir: Path, plot_files: list, registered_circuit: models.Circuit
-    ) -> list[models.Asset]:
-        """Upload connectivity plot assets to a registered circuit entity.
-
-        Note: Image files will be converted to .webp, if needed.
-        """
-        asset_label_map = {
-            "node_stats": ("node_stats", "webp"),
-            "small_adj_and_stats": ("network_stats_a", "webp"),
-            "small_network_in_2D": ("network_stats_b", "webp"),
-            "network_global_stats": ("network_stats_a", "webp"),
-            "network_pathway_stats": ("network_stats_b", "webp"),
-            "circuit_visualization": ("circuit_visualization", "webp"),
-            "simulation_designer_image": ("simulation_designer_image", "png"),
-        }
-        if not plot_dir.is_dir():
-            msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
-            raise OBIONEError(msg)
-
-        # Upload image file assets (incl. conversion to .webp format if needed)
-        plot_assets = []
-        for file in plot_files:
-            file_path = plot_dir / file
-            if not file_path.is_file():
-                msg = f"Connectivity plot '{file_path.name}' does not exist!"
-                raise OBIONEError(msg)
-            if file_path.stem not in asset_label_map:
-                msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
-                L.warning(msg)
-                continue
-            asset_label, fmt = asset_label_map[file_path.stem]
-            if fmt == "webp":
-                file_path = CircuitExtractionTask.convert_image_to_webp(image_path=file_path)
-            if "." + fmt != file_path.suffix:
-                msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
-                raise OBIONEError(msg)
-            plot_asset = db_client.upload_file(
-                entity_id=registered_circuit.id,
-                entity_type=models.Circuit,
-                file_path=file_path,
-                file_content_type=f"image/{fmt}",
-                asset_label=asset_label,
-            )
-            L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
-            plot_assets.append(plot_asset)
-        return plot_assets
-
-    @staticmethod
-    def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
-        """Set up and run folder compression task."""
-        # Import here to avoid circular import
-        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-        from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
-            FolderCompressionScanConfig,
-        )
-
-        # Set up circuit folder compression
-        folder_path = NamedPath(
-            name=circuit_path.parent.name + "__COMPRESSED__",  # Used as output name
-            path=str(circuit_path.parent),
-        )
-        compression_init = FolderCompressionScanConfig.Initialize(
-            folder_path=[folder_path],
-            file_format="gz",
-            file_name="circuit",
-            archive_name=circuit_name,
-        )
-        folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
-
-        # Run circuit folder compression
-        grid_scan = GridScanGenerationTask(
-            form=folder_compressions_config,
-            output_root=circuit_path.parents[1],
-            coordinate_directory_option="VALUE",
-        )
-        grid_scan.execute()
-        run_tasks_for_generated_scan(grid_scan)
-
-        # Check and return output file
-        output_file = (
-            grid_scan.single_configs[0].coordinate_output_root
-            / f"{compression_init.file_name}.{compression_init.file_format}"
-        )
-        if not output_file.exists():
-            msg = "Compressed circuit file does not exist!"
-            raise OBIONEError(msg)
-        L.info(f"Circuit folder compressed into {output_file}")
-        return output_file
-
-    @staticmethod
-    def _run_connectivity_matrix_extraction(circuit_path: Path) -> Path:
-        """Set up and run connectivity matrix extraction task."""
-        # Import here to avoid circular import
-        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-        from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # noqa: PLC0415
-            ConnectivityMatrixExtractionScanConfig,
-        )
-
-        # Set up connectivity matrix extraction
-        circuit = Circuit(
-            name=circuit_path.parent.name + "__CONN_MATRIX__",  # Used as output name
-            path=str(circuit_path),
-        )
-        edge_population = circuit.default_edge_population_name
-        matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
-            circuit=[circuit],
-            edge_population=edge_population,
-            node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
-            with_matrix_config=True,
-        )
-        matrix_extraction_config = ConnectivityMatrixExtractionScanConfig(initialize=matrix_init)
-
-        # Run connectivity matrix extraction
-        grid_scan = GridScanGenerationTask(
-            form=matrix_extraction_config,
-            output_root=circuit_path.parents[1],
-            coordinate_directory_option="VALUE",
-        )
-        grid_scan.execute()
-        run_tasks_for_generated_scan(grid_scan)
-
-        # Check and return output directory
-        output_dir = grid_scan.single_configs[0].coordinate_output_root
-        output_file = output_dir / "matrix_config.json"
-        if not output_file.exists():
-            msg = "Connectivity matrix config file does not exist!"
-            raise OBIONEError(msg)
-        L.info(f"Connectivity matrix extracted to {output_dir}")
-        return output_dir, output_file, edge_population
-
-    @staticmethod
-    def _run_basic_connectivity_plots(
-        circuit_path: Path, matrix_config: Path, edge_population: str
-    ) -> tuple[Path, list]:
-        """Set up and run basic connectivity plotting task."""
-        # Import here to avoid circular import
-        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-        from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
-            BasicConnectivityPlotsScanConfig,
-        )
-
-        # Find the connectivity matrix file
-        if not matrix_config.exists():
-            msg = f"Connectivity matrix config file '{matrix_config}' not found!"
-            raise OBIONEError(msg)
-        with matrix_config.open(encoding="utf-8") as f:
-            config_dict = json.load(f)
-        edge_pop_config = config_dict.get(edge_population, {})
-        matrix_file = matrix_config.parent / edge_pop_config.get("single", {}).get("path", "")
-        if not matrix_file.is_file():
-            msg = f"Connectivity matrix file '{matrix_file}' not found!"
-            raise OBIONEError(msg)
-
-        # Set up basic connectivity plots
-        matrix_path = NamedPath(
-            name=circuit_path.parent.name + "__BASIC_PLOTS__",  # Used as output name
-            path=str(matrix_file),
-        )
-        cmat = ConnectivityMatrix.from_h5(matrix_path.path)
-        if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
-            plot_types = (
-                "nodes",
-                "small_adj_and_stats",
-                "network_in_2D",
-                "network_in_2D_circular",
-                "property_table_extra",
-            )
-        else:
-            plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
-        plots_init = BasicConnectivityPlotsScanConfig.Initialize(
-            matrix_path=[matrix_path],
-            plot_formats=("png",),
-            rendering_cmap="tab10",
-            plot_types=plot_types,
-        )
-        plots_config = BasicConnectivityPlotsScanConfig(initialize=plots_init)
-
-        # Run basic connectivity plots
-        grid_scan = GridScanGenerationTask(
-            form=plots_config,
-            output_root=circuit_path.parents[1],
-            coordinate_directory_option="VALUE",
-        )
-        grid_scan.execute()
-        run_tasks_for_generated_scan(grid_scan)
-
-        # Check and return output directory
-        output_file_map = {
-            "nodes": "node_stats.png",
-            "small_adj_and_stats": "small_adj_and_stats.png",
-            "network_in_2D": "small_network_in_2D.png",
-            "network_in_2D_circular": "small_network_in_2D_circular.png",
-            "property_table_extra": "property_table_extra.png",
-            "connectivity_global": "network_global_stats.png",
-            "connectivity_pathway": "network_pathway_stats.png",
-        }
-        output_dir = grid_scan.single_configs[0].coordinate_output_root
-        output_files = [output_file_map[_pt] for _pt in plot_types]
-        for file in output_files:
-            if not (output_dir / file).is_file():
-                msg = f"Connectivity plot '{file}' missing!"
-                raise OBIONEError(msg)
-        L.info(f"Basic connectivity plots generated in {output_dir}: {output_files}")
-        return output_dir, output_files
 
     def _add_derivation_link(
         self, db_client: Client, registered_circuit: models.Circuit
@@ -690,162 +346,6 @@ class CircuitExtractionTask(Task):
         registered_derivation = db_client.register_entity(derivation_model)
         L.info(f"Derivation link '{derivation_type}' registered")
         return registered_derivation
-
-    @staticmethod
-    def _filter_ext(file_list: list, ext: str) -> list:
-        return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
-
-    @classmethod
-    def _rebase_config(cls, config_dict: dict, old_base: str, new_base: str) -> None:
-        old_base = str(Path(old_base).resolve())
-        for key, value in config_dict.items():
-            if isinstance(value, str):
-                if value == old_base:
-                    config_dict[key] = ""
-                else:
-                    config_dict[key] = value.replace(old_base, new_base)
-            elif isinstance(value, dict):
-                cls._rebase_config(value, old_base, new_base)
-            elif isinstance(value, list):
-                for _v in value:
-                    cls._rebase_config(_v, old_base, new_base)
-
-    @staticmethod
-    def _copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
-        mod_folder = "mod"
-        source_dir = Path(os.path.split(circuit_path)[0]) / mod_folder
-        if Path(source_dir).exists():
-            L.info("Copying mod files")
-            dest_dir = Path(output_root) / mod_folder
-            shutil.copytree(source_dir, dest_dir)
-
-    @staticmethod
-    def _run_validation(circuit_path: str) -> None:
-        errors = snap.circuit_validation.validate(circuit_path, skip_slow=True)
-        if len(errors) > 0:
-            msg = f"Circuit validation error(s) found: {errors}"
-            raise ValueError(msg)
-        L.info("No validation errors found!")
-
-    @classmethod
-    def _get_morph_dirs(
-        cls, pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> (dict, dict):
-        src_morph_dirs = {}
-        dest_morph_dirs = {}
-        for _morph_ext in ["swc", "asc", "h5"]:
-            try:
-                morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
-                    _morph_ext
-                )
-                # TODO: Should not use private function!! But required to get path
-                #       even if h5 container.
-            except BluepySnapError:
-                # Morphology folder for given extension not defined in config
-                continue
-
-            if not Path(morph_folder).exists():
-                # Morphology folder/container does not exist
-                continue
-
-            if (
-                Path(morph_folder).is_dir()
-                and len(cls._filter_ext(Path(morph_folder).iterdir(), _morph_ext)) == 0
-            ):
-                # Morphology folder does not contain morphologies
-                continue
-
-            dest_morph_dirs[_morph_ext] = pop.morph._get_morphology_base(_morph_ext)  # noqa: SLF001
-            # TODO: Should not use private function!!
-            src_morph_dirs[_morph_ext] = morph_folder
-        return src_morph_dirs, dest_morph_dirs
-
-    @classmethod
-    def _copy_morphologies(
-        cls, pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> None:
-        L.info(f"Copying morphologies for population '{pop_name}' ({pop.size})")
-        morphology_list = pop.get(properties="morphology").unique()
-
-        src_morph_dirs, dest_morph_dirs = cls._get_morph_dirs(pop_name, pop, original_circuit)
-
-        if len(src_morph_dirs) == 0:
-            msg = "ERROR: No morphologies of any supported format found!"
-            raise ValueError(msg)
-        for _morph_ext, _src_dir in src_morph_dirs.items():
-            if _morph_ext == "h5" and Path(_src_dir).is_file():
-                # TODO: If there is only one neuron extracted, consider removing
-                #       the container
-                # https://github.com/openbraininstitute/obi-one/issues/387
-
-                # Copy containerized morphologies into new container
-                L.info(f"Copying {len(morphology_list)} containerized .{_morph_ext} morphologies")
-                Path(os.path.split(dest_morph_dirs[_morph_ext])[0]).mkdir(
-                    parents=True, exist_ok=True
-                )
-                src_container = _src_dir
-                dest_container = dest_morph_dirs[_morph_ext]
-                with (
-                    h5py.File(src_container) as f_src,
-                    h5py.File(dest_container, "a") as f_dest,
-                ):
-                    skip_counter = 0
-                    for morphology_name in morphology_list:
-                        if morphology_name in f_dest:
-                            skip_counter += 1
-                        else:
-                            f_src.copy(
-                                f_src[morphology_name],
-                                f_dest,
-                                name=morphology_name,
-                            )
-                L.info(
-                    f"Copied {len(morphology_list) - skip_counter} morphologies into"
-                    f" container ({skip_counter} already existed)"
-                )
-            else:
-                # Copy morphology files
-                L.info(f"Copying {len(morphology_list)} .{_morph_ext} morphologies")
-                Path(dest_morph_dirs[_morph_ext]).mkdir(parents=True, exist_ok=True)
-                for morphology_name in morphology_list:
-                    src_file = Path(_src_dir) / f"{morphology_name}.{_morph_ext}"
-                    dest_file = (
-                        Path(dest_morph_dirs[_morph_ext]) / f"{morphology_name}.{_morph_ext}"
-                    )
-                    if not Path(src_file).exists():
-                        msg = f"ERROR: Morphology '{src_file}' missing!"
-                        raise ValueError(msg)
-                    if not Path(dest_file).exists():
-                        # Copy only, if not yet existing (could happen for shared
-                        # morphologies among populations)
-                        shutil.copyfile(src_file, dest_file)
-
-    @staticmethod
-    def _copy_hoc_files(
-        pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
-    ) -> None:
-        hoc_file_list = [
-            _hoc.split(":")[-1] + ".hoc" for _hoc in pop.get(properties="model_template").unique()
-        ]
-        L.info(
-            f"Copying {len(hoc_file_list)} biophysical neuron models (.hoc) for"
-            f" population '{pop_name}' ({pop.size})"
-        )
-
-        source_dir = original_circuit.nodes[pop_name].config["biophysical_neuron_models_dir"]
-        dest_dir = pop.config["biophysical_neuron_models_dir"]
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
-
-        for _hoc_file in hoc_file_list:
-            src_file = Path(source_dir) / _hoc_file
-            dest_file = Path(dest_dir) / _hoc_file
-            if not Path(src_file).exists():
-                msg = f"ERROR: HOC file '{src_file}' missing!"
-                raise ValueError(msg)
-            if not Path(dest_file).exists():
-                # Copy only, if not yet existing (could happen for shared hoc files
-                # among populations)
-                shutil.copyfile(src_file, dest_file)
 
     @staticmethod
     def _get_execution_activity(
@@ -941,7 +441,159 @@ class CircuitExtractionTask(Task):
         return output_file
 
     @staticmethod
-    def _generate_additional_circuit_assets(  # noqa: C901
+    def _run_circuit_folder_compression(circuit_path: Path, circuit_name: str) -> Path:
+        """Set up and run folder compression task."""
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+
+        # Set up circuit folder compression
+        folder_path = NamedPath(
+            name=circuit_path.parent.name + "__COMPRESSED__",  # Used as output name
+            path=str(circuit_path.parent),
+        )
+        compression_init = FolderCompressionScanConfig.Initialize(
+            folder_path=[folder_path],
+            file_format="gz",
+            file_name="circuit",
+            archive_name=circuit_name,
+        )
+        folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
+
+        # Run circuit folder compression
+        grid_scan = GridScanGenerationTask(
+            form=folder_compressions_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output file
+        output_file = (
+            grid_scan.single_configs[0].coordinate_output_root
+            / f"{compression_init.file_name}.{compression_init.file_format}"
+        )
+        if not output_file.exists():
+            msg = "Compressed circuit file does not exist!"
+            raise OBIONEError(msg)
+        L.info(f"Circuit folder compressed into {output_file}")
+        return output_file
+
+    @staticmethod
+    def _run_connectivity_matrix_extraction(circuit_path: Path) -> tuple[Path, Path, str]:
+        """Set up and run connectivity matrix extraction task."""
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+
+        # Set up connectivity matrix extraction
+        circuit = Circuit(
+            name=circuit_path.parent.name + "__CONN_MATRIX__",  # Used as output name
+            path=str(circuit_path),
+        )
+        edge_population = circuit.default_edge_population_name
+        matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
+            circuit=[circuit],
+            edge_population=edge_population,
+            node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
+            with_matrix_config=True,
+        )
+        matrix_extraction_config = ConnectivityMatrixExtractionScanConfig(initialize=matrix_init)
+
+        # Run connectivity matrix extraction
+        grid_scan = GridScanGenerationTask(
+            form=matrix_extraction_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output directory
+        output_dir = grid_scan.single_configs[0].coordinate_output_root
+        output_file = output_dir / "matrix_config.json"
+        if not output_file.exists():
+            msg = "Connectivity matrix config file does not exist!"
+            raise OBIONEError(msg)
+        L.info(f"Connectivity matrix extracted to {output_dir}")
+        return output_dir, output_file, edge_population
+
+    @staticmethod
+    def _run_basic_connectivity_plots(
+        circuit_path: Path, matrix_config: Path, edge_population: str
+    ) -> tuple[Path, list]:
+        """Set up and run basic connectivity plotting task."""
+        # Import here to avoid circular import
+        from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
+        from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
+
+        # Find the connectivity matrix file
+        if not matrix_config.exists():
+            msg = f"Connectivity matrix config file '{matrix_config}' not found!"
+            raise OBIONEError(msg)
+        with matrix_config.open(encoding="utf-8") as f:
+            config_dict = json.load(f)
+        edge_pop_config = config_dict.get(edge_population, {})
+        matrix_file = matrix_config.parent / edge_pop_config.get("single", {}).get("path", "")
+        if not matrix_file.is_file():
+            msg = f"Connectivity matrix file '{matrix_file}' not found!"
+            raise OBIONEError(msg)
+
+        # Set up basic connectivity plots
+        matrix_path = NamedPath(
+            name=circuit_path.parent.name + "__BASIC_PLOTS__",  # Used as output name
+            path=str(matrix_file),
+        )
+        cmat = ConnectivityMatrix.from_h5(matrix_path.path)
+        if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
+            plot_types = (
+                "nodes",
+                "small_adj_and_stats",
+                "network_in_2D",
+                "network_in_2D_circular",
+                "property_table_extra",
+            )
+        else:
+            plot_types = ("nodes", "connectivity_global", "connectivity_pathway")
+        plots_init = BasicConnectivityPlotsScanConfig.Initialize(
+            matrix_path=[matrix_path],
+            plot_formats=("png",),
+            rendering_cmap="tab10",
+            plot_types=plot_types,
+        )
+        plots_config = BasicConnectivityPlotsScanConfig(initialize=plots_init)
+
+        # Run basic connectivity plots
+        grid_scan = GridScanGenerationTask(
+            form=plots_config,
+            output_root=circuit_path.parents[1],
+            coordinate_directory_option="VALUE",
+        )
+        grid_scan.execute()
+        run_tasks_for_generated_scan(grid_scan)
+
+        # Check and return output directory
+        output_file_map = {
+            "nodes": "node_stats.png",
+            "small_adj_and_stats": "small_adj_and_stats.png",
+            "network_in_2D": "small_network_in_2D.png",
+            "network_in_2D_circular": "small_network_in_2D_circular.png",
+            "property_table_extra": "property_table_extra.png",
+            "connectivity_global": "network_global_stats.png",
+            "connectivity_pathway": "network_pathway_stats.png",
+        }
+        output_dir = grid_scan.single_configs[0].coordinate_output_root
+        output_files = [output_file_map[_pt] for _pt in plot_types]
+        for file in output_files:
+            if not (output_dir / file).is_file():
+                msg = f"Connectivity plot '{file}' missing!"
+                raise OBIONEError(msg)
+        L.info(f"Basic connectivity plots generated in {output_dir}: {output_files}")
+        return output_dir, output_files
+
+    @staticmethod
+    def _generate_additional_circuit_assets(  # noqa: C901, PLR0915
         db_client: Client,
         new_circuit_path: Path,
         new_circuit_entity: models.Circuit,
@@ -949,10 +601,11 @@ class CircuitExtractionTask(Task):
         """Generate and register additional circuit assets."""
         # Compressed circuit asset
         try:
-            compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
-                circuit_path=new_circuit_path,
-                circuit_name=new_circuit_entity.name if new_circuit_entity else None,
-            )
+            with BenchmarkTracker.section("run_circuit_folder_compression"):
+                compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
+                    circuit_path=new_circuit_path,
+                    circuit_name=new_circuit_entity.name if new_circuit_entity else None,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit compression failed: {e}")
@@ -960,24 +613,26 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and compressed_circuit:
             try:
-                CircuitExtractionTask._add_compressed_circuit_asset(
-                    db_client=db_client,
-                    compressed_file=compressed_circuit,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_compressed_circuit_asset"):
+                    db_sdk.add_compressed_circuit_asset(
+                        client=db_client,
+                        compressed_file=compressed_circuit,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Compressed circuit registration failed: {e}")
 
         # Connectivity matrix asset
         try:
-            (
-                matrix_dir,
-                matrix_config,
-                edge_population,
-            ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
-                circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("run_connectivity_matrix_extraction"):
+                (
+                    matrix_dir,
+                    matrix_config,
+                    edge_population,
+                ) = CircuitExtractionTask._run_connectivity_matrix_extraction(
+                    circuit_path=new_circuit_path
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity matrix extraction failed: {e}")
@@ -985,22 +640,24 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and matrix_dir:
             try:
-                CircuitExtractionTask._add_connectivity_matrix_asset(
-                    db_client=db_client,
-                    matrix_dir=matrix_dir,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_matrix_asset"):
+                    db_sdk.add_connectivity_matrix_asset(
+                        client=db_client,
+                        matrix_dir=matrix_dir,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity matrix registration failed: {e}")
 
         # Connectivity plots asset
         try:
-            plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
-                circuit_path=new_circuit_path,
-                matrix_config=matrix_config,
-                edge_population=edge_population,
-            )
+            with BenchmarkTracker.section("run_basic_connectivity_plots"):
+                plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
+                    circuit_path=new_circuit_path,
+                    matrix_config=matrix_config,
+                    edge_population=edge_population,
+                )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Connectivity plots generation failed: {e}")
@@ -1008,30 +665,32 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and plot_dir and plot_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=plot_dir,
-                    plot_files=plot_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_connectivity_plot_assets"):
+                    db_sdk.add_image_assets(
+                        client=db_client,
+                        plot_dir=plot_dir,
+                        plot_files=plot_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Connectivity plots registration failed: {e}")
 
         # Overview & sim designer visualizations
         try:
-            viz_dir = new_circuit_path.parent.with_name(
-                new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
-            )
-            viz_files = []
-            viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "circuit_visualization.png"
-            )
-            viz_files.append(viz_path.name)
-            sim_viz_path = CircuitExtractionTask._generate_overview_figure(
-                plot_dir, viz_dir / "simulation_designer_image.png"
-            )
-            viz_files.append(sim_viz_path.name)
+            with BenchmarkTracker.section("generate_overview_figures"):
+                viz_dir = new_circuit_path.parent.with_name(
+                    new_circuit_path.parent.name + "__CIRCUIT_VIZ__"
+                )
+                viz_files = []
+                viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "circuit_visualization.png"
+                )
+                viz_files.append(viz_path.name)
+                sim_viz_path = CircuitExtractionTask._generate_overview_figure(
+                    plot_dir, viz_dir / "simulation_designer_image.png"
+                )
+                viz_files.append(sim_viz_path.name)
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
             L.warning(f"Circuit visualization generation failed: {e}")
@@ -1039,59 +698,67 @@ class CircuitExtractionTask(Task):
 
         if db_client and new_circuit_entity and viz_dir and viz_files:
             try:
-                CircuitExtractionTask._add_image_assets(
-                    db_client=db_client,
-                    plot_dir=viz_dir,
-                    plot_files=viz_files,
-                    registered_circuit=new_circuit_entity,
-                )
+                with BenchmarkTracker.section("add_overview_figure_assets"):
+                    db_sdk.add_image_assets(
+                        client=db_client,
+                        plot_dir=viz_dir,
+                        plot_files=viz_files,
+                        registered_circuit=new_circuit_entity,
+                    )
             except Exception as e:  # noqa: BLE001
                 # Catch any exception here and turn into warnings only
                 L.warning(f"Circuit visualization registration failed: {e}")
 
-    def execute(
+    def execute(  # noqa: PLR0915
         self,
         *,
         db_client: Client = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
+        # Start benchmark tracking
+        BenchmarkTracker.start_tracking()
+
         # Get execution activity (expected to be created and managed externally)
         execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         # Resolve parent circuit (local path or staging from ID)
-        self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        with BenchmarkTracker.section("resolve_circuit"):
+            self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
-        nset_name = self.config.neuron_set.__class__.__name__
-        nset_def = self.config.neuron_set.get_node_set_definition(
-            self._circuit, self._circuit.default_population_name
-        )
-        sonata_circuit = self._circuit.sonata_circuit
-        add_node_set_to_circuit(sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False)
+        with BenchmarkTracker.section("add_node_set"):
+            nset_name = self.config.neuron_set.__class__.__name__
+            nset_def = self.config.neuron_set.get_node_set_definition(
+                self._circuit, self._circuit.default_population_name
+            )
+            sonata_circuit = self._circuit.sonata_circuit
+            add_node_set_to_circuit(
+                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+            )
 
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
-        split_population.split_subcircuit(
-            self.config.coordinate_output_root,
-            nset_name,
-            sonata_circuit,
-            self.config.initialize.do_virtual,
-            self.config.initialize.create_external,
-        )
+        with BenchmarkTracker.section("split_subcircuit"):
+            split_population.split_subcircuit(
+                self.config.coordinate_output_root,
+                nset_name,
+                sonata_circuit,
+                self.config.initialize.do_virtual,
+                self.config.initialize.create_external,
+            )
 
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
         old_base = os.path.split(self._circuit.path)[0]
 
-        # Quick fix to deal with symbolic links in base circuit (not usually required)
-        # > alt_base = old_base  # Alternative old base
-        # > for _sfix in ["-ER", "-DD", "-BIP", "-OFF", "-POS"]:
-        # >     alt_base = alt_base.removesuffix(_sfix)
+        # Fix to deal with symbolic links in the base circuit which may have been resolved
+        # Note: .resolve() resolves symlinks!
+        alt_base = str(Path(self._circuit.path).resolve().parent)
 
         new_base = "$BASE_DIR"
         new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
@@ -1101,50 +768,58 @@ class CircuitExtractionTask(Task):
 
         with Path(new_circuit_path).open(encoding="utf-8") as config_file:
             config_dict = json.load(config_file)
-        self._rebase_config(config_dict, old_base, new_base)
-
-        # Quick fix to deal with symbolic links in base circuit
-        # > if alt_base != old_base:
-        # > self._rebase_config(config_dict, alt_base, new_base)
+        circuit_utils.rebase_config(config_dict, old_base, new_base)
+        if alt_base != old_base:
+            # Rebase alternative old base directory as well
+            circuit_utils.rebase_config(config_dict, alt_base, new_base)
 
         with Path(new_circuit_path).open("w", encoding="utf-8") as config_file:
             json.dump(config_dict, config_file, indent=4)
 
+        # Check and fix the node sets file, if needed
+        circuit_utils.fix_node_sets_file(new_circuit_path)
+
         # Copy subcircuit morphologies and e-models (separately per node population)
-        original_circuit = self._circuit.sonata_circuit
-        new_circuit = snap.Circuit(new_circuit_path)
-        for pop_name, pop in new_circuit.nodes.items():
-            if pop.config["type"] == "biophysical":
-                # Copying morphologies of any (supported) format
-                if "morphology" in pop.property_names:
-                    self._copy_morphologies(pop_name, pop, original_circuit)
+        with BenchmarkTracker.section("copy_morph_hoc_mod"):
+            original_circuit = self._circuit.sonata_circuit
+            new_circuit = snap.Circuit(new_circuit_path)
+            for pop_name, pop in new_circuit.nodes.items():
+                if pop.config["type"] == "biophysical":
+                    # Copying morphologies of any (supported) format
+                    if "morphology" in pop.property_names:
+                        circuit_utils.copy_morphologies(pop_name, pop, original_circuit)
 
-                # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
-                if "biophysical_neuron_models_dir" in pop.config:
-                    self._copy_hoc_files(pop_name, pop, original_circuit)
+                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                    if "biophysical_neuron_models_dir" in pop.config:
+                        circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
 
-        # Copy .mod files, if any
-        self._copy_mod_files(self._circuit.path, self.config.coordinate_output_root, "mod")
+            # Copy .mod files, if any
+            circuit_utils.copy_mod_files(
+                self._circuit.path, self.config.coordinate_output_root, "mod"
+            )
 
         # Run circuit validation
-        if _RUN_VALIDATION:
-            self._run_validation(new_circuit_path)
+        if settings.circuit_extraction.run_validation:
+            with BenchmarkTracker.section("run_validation"):
+                circuit_utils.run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. folder asset and linked entities
         new_circuit_entity = None
         if db_client and self._circuit_entity:
-            new_circuit_entity = self._create_circuit_entity(
-                db_client=db_client, circuit_path=new_circuit_path
-            )
+            with BenchmarkTracker.section("register_circuit_entity"):
+                new_circuit_entity = self._create_circuit_entity(
+                    db_client=db_client, circuit_path=new_circuit_path
+                )
 
             # Register circuit folder asset
-            self._add_circuit_folder_asset(
-                db_client=db_client,
-                circuit_path=new_circuit_path,
-                registered_circuit=new_circuit_entity,
-            )
+            with BenchmarkTracker.section("register_circuit_folder_asset"):
+                db_sdk.add_circuit_folder_asset(
+                    client=db_client,
+                    circuit_path=new_circuit_path,
+                    registered_circuit=new_circuit_entity,
+                )
 
             # Derivation link
             self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
@@ -1166,7 +841,15 @@ class CircuitExtractionTask(Task):
         )
 
         # Clean-up
-        self._cleanup_temp_dir()
+        with BenchmarkTracker.section("cleanup"):
+            self._cleanup_temp_dir()
+
+        # Print and save benchmark summary
+        benchmark_dir = new_circuit_path.parent.parent / (
+            new_circuit_path.parent.name + "__BENCHMARK__"
+        )
+        benchmark_file = benchmark_dir / "benchmark_results.json"
+        BenchmarkTracker.print_summary(output_path=benchmark_file)
 
         if new_circuit_entity:
             return str(new_circuit_entity.id)
