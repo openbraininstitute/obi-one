@@ -48,7 +48,6 @@ class EMSynapseMappingTask(Task):
             err_str = "Synapse lookup and mapping requires a working db_client!"
             raise ValueError(err_str)
 
-        # NEW
         execution_activity = EMSynapseMappingTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )

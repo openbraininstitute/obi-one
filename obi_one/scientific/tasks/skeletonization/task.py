@@ -28,7 +28,6 @@ L = logging.getLogger(__name__)
 
 class SkeletonizationTask(Task):
     config: SkeletonizationSingleConfig
-    activity_type: ClassVar[type[Activity]] = models.SkeletonizationExecution
 
     @property
     def work_dir(self) -> WorkDir:
@@ -109,11 +108,9 @@ class SkeletonizationTask(Task):
         msg = f"WorkDir: {work_dir}"
         L.info(msg)
 
-        if execution_activity_id is not None:
-            execution_activity = db_client.get_entity(
-                entity_id=execution_activity_id,
-                entity_type=self.activity_type,
-            )
+        execution_activity = SkeletonizationTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
         inputs = self._create_inputs(
             db_client=db_client,
             output_dir=work_dir.inputs,
@@ -129,10 +126,11 @@ class SkeletonizationTask(Task):
                 metadata=inputs.metadata,
                 outputs=outputs,
             )
-            db_client.update_entity(
-                entity_id=execution_activity.id,
-                entity_type=self.activity_type,
-                attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
-            )
+    
+            SkeletonizationTask._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=[generated_entity],
+        )
 
         L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
