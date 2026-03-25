@@ -43,12 +43,13 @@ def create_generic_activity(
     activity_type: TaskActivityType,
     activity_status: ActivityStatus = ActivityStatus.created,
     generated: list[Entity] | None = None,
+    start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> Activity:
     """Creates and registers a generic task activity."""
     activity = TaskActivity(
         task_activity_type=activity_type,
-        start_time=datetime.now(UTC),
+        start_time=start_time or datetime.now(UTC),
         end_time=end_time,
         used=used,
         generated=generated,

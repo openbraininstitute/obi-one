@@ -110,13 +110,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             )
             raise NotImplementedError(msg)
 
+        time_now = datetime.now(UTC)
+
         db_sdk.create_generic_activity(
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
             generated=generated,
-            activity_status=ActivityStatus.completed,
-            end_time=datetime.now(UTC),
+            activity_status=ActivityStatus.done,
+            start_time=time_now,
+            end_time=time_now,
         )
 
     @classmethod
