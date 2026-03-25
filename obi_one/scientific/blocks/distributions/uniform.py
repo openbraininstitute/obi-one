@@ -3,14 +3,6 @@ from typing import ClassVar
 import numpy as np
 from pydantic import (
     Field,
-    NegativeFloat,
-    NegativeInt,
-    NonNegativeFloat,
-    NonNegativeInt,
-    NonPositiveFloat,
-    NonPositiveInt,
-    PositiveFloat,
-    PositiveInt,
 )
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -82,119 +74,25 @@ class IntUniformDistribution(UniformDistribution):
         },
     )
 
-    def sample(self, n: int = 1) -> list[int]:
+    def sample(
+        self,
+        n: int = 1,
+        ge: int | None = None,
+        le: int | None = None,
+        gt: int | None = None,
+        lt: int | None = None,
+    ) -> list[int]:
         """Sample n values from the uniform distribution."""
         rng = np.random.default_rng(self.random_seed)
         samples = rng.integers(low=self.low, high=self.high, size=n)
+
+        if ge is not None:
+            samples = [max(s, ge) for s in samples]
+        if le is not None:
+            samples = [min(s, le) for s in samples]
+        if gt is not None:
+            samples = [s for s in samples if s > gt]
+        if lt is not None:
+            samples = [s for s in samples if s < lt]
+
         return samples.tolist()
-
-
-class PositiveFloatUniformDistribution(FloatUniformDistribution):
-    """Values sampled from a uniform distribution of positive floats."""
-
-    value: PositiveFloat | list[PositiveFloat] = Field(
-        default=1.0,
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class PositiveIntUniformDistribution(IntUniformDistribution):
-    """Values sampled from a uniform distribution of positive integers."""
-
-    title: ClassVar[str] = "Uniform Positive Integers"
-
-    value: PositiveInt | list[PositiveInt] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NegativeFloatUniformDistribution(FloatUniformDistribution):
-    """Values sampled from a uniform distribution of negative floats."""
-
-    title: ClassVar[str] = "Uniform Negative Floats"
-
-    value: NegativeFloat | list[NegativeFloat] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NegativeIntUniformDistribution(IntUniformDistribution):
-    """Values sampled from a uniform distribution of negative integers."""
-
-    title: ClassVar[str] = "Uniform Negative Integers"
-
-    value: NegativeInt | list[NegativeInt] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NonNegativeFloatUniformDistribution(FloatUniformDistribution):
-    """Values sampled from a uniform distribution of non-negative floats."""
-
-    title: ClassVar[str] = "Uniform Non-Negative Floats"
-
-    value: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NonNegativeIntUniformDistribution(IntUniformDistribution):
-    """Values sampled from a uniform distribution of non-negative integers."""
-
-    title: ClassVar[str] = "Uniform Non-Negative Integers"
-
-    value: NonNegativeInt | list[NonNegativeInt] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NonPositiveFloatUniformDistribution(FloatUniformDistribution):
-    """Values sampled from a uniform distribution of non-positive floats."""
-
-    title: ClassVar[str] = "Uniform Non-Positive Floats"
-
-    value: NonPositiveFloat | list[NonPositiveFloat] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
-
-class NonPositiveIntUniformDistribution(IntUniformDistribution):
-    """Values sampled from a uniform distribution of non-positive integers."""
-
-    title: ClassVar[str] = "Uniform Non-Positive Integers"
-
-    value: NonPositiveInt | list[NonPositiveInt] = Field(
-        title="Value",
-        description="The value sampled from the uniform distribution.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
