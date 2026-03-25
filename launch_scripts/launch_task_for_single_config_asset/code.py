@@ -45,7 +45,7 @@ def main() -> int:
             description="Script to launch a task for a single configuration asset."
         )
         parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument("--config_entity_type", required=True, help="EntitySDK entity type as string")
+        parser.add_argument("--config_entity_type", required=False, help="EntitySDK entity type as string")
         parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
         parser.add_argument(
             "--execution_activity_type",
