@@ -50,22 +50,28 @@ def test_run_simulation(mock_collect, mock_run, tmp_path):
 
     results = test_module.run_simulation(parameters, tmp_path, backend)
 
-    mock_run.assert_called_once_with(parameters=parameters, simulation_backend=backend)
+    mock_run.assert_called_once_with(
+        parameters=parameters,
+        simulation_backend=backend,
+        simulation_entrypoint_path=test_module.ENTRYPOINT_PATH,
+    )
     mock_collect.assert_called_once_with(results_dir=tmp_path)
     assert results == expected_results
 
 
 @patch("obi_one.scientific.library.simulation.process.run_and_log")
-@patch("obi_one.scientific.library.simulation.process.entrypoint")
-def test_run_simulation_executable(mock_entrypoint, mock_run_and_log, tmp_path):
-    mock_entrypoint.__file__ = str(tmp_path / "entry.py")
+def test_run_simulation_executable(mock_run_and_log, tmp_path):
     parameters = SimulationParameters(
         number_of_cells=4,
         config_file=tmp_path / "config.json",
         libnrnmech_path=tmp_path / "libnrnmech.so",
         stop_time=0.1,
     )
-    test_module._run_simulation_executable(parameters, SimulationBackend.bluecellulab)
+    test_module._run_simulation_executable(
+        parameters,
+        SimulationBackend.bluecellulab,
+        tmp_path / "entry.py",
+    )
     mock_run_and_log.assert_called_once()
     call_cmd = mock_run_and_log.call_args[0][0]
     assert call_cmd == [
