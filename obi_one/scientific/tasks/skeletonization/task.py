@@ -131,4 +131,4 @@ class SkeletonizationTask(Task):
                 generated=[str(generated_entity.id)],
             )
 
-        L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
+            L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
