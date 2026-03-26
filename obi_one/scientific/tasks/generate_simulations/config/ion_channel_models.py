@@ -7,7 +7,6 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
@@ -142,7 +141,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
     info: Info = Field(
         title="Info",
-        description="Information about the ion channel model simulation campaign.",
+        description="Information about the campaign.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
@@ -153,6 +152,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
     # contains models and their conductances
     ion_channel_models: dict[str, IonChannelModelUnion] = Field(
         default_factory=dict,
+        min_length=1,
         title="Ion Channel Models",
         description="Ion channel models and their conductance / max permeability.",
         json_schema_extra={
@@ -233,6 +233,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
 
 class IonChannelModelSimulationSingleConfig(
-    IonChannelModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
+    IonChannelModelSimulationScanConfig, SimulationSingleConfigMixin
 ):
     """Only allows single values."""

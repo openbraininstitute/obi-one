@@ -16,6 +16,7 @@ from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
@@ -63,6 +64,20 @@ class StimulusWithTimestamps(BaseStimulus):
         },
     )
 
+    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
+
+
+class StimulusWithDuration(BaseStimulus):
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration in milliseconds for how long input is activated.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     neuron_set: NeuronSetReference | None = Field(
@@ -73,18 +88,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
             SchemaKey.SUPPORTS_VIRTUAL: False,
-        },
-    )
-
-    timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
-
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-        title="Duration",
-        description="Time duration in milliseconds for how long input is activated.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -124,7 +127,9 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         return self._generate_config()
 
 
-class ContinuousStimulus(ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps):
+class ContinuousStimulus(
+    ContinuousStimulusWithoutTimestamps, StimulusWithTimestamps, StimulusWithDuration
+):
     pass
 
 
@@ -631,7 +636,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
 
 
 class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
-    """A voltage clamp injection with an arbitrary number of steps at different voltages.
+    """A voltage clamp injection with three steps at different voltages.
 
     Warning: Maximum one SEClamp stimulus per location.
     """
@@ -639,56 +644,86 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     # We only have a simple flat voltage stimulus implemented now for simplicity.
     # A more complex implementation with multi-step stimulus will be implemented later.
 
-    title: ClassVar[str] = "Single Electrode Voltage Clamp Somatic Stimulus"
+    title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Levels Somatic Stimulus"
 
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
-    # overwrite duration to have a more accurate description for this stimulus
-    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-        title="Total Duration",
-        description="Time duration in milliseconds for how long the SEClamp is activated.",
+    level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        title="Level 1 Duration",
+        description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
         },
     )
 
-    initial_voltage: float | list[float] = Field(
-        default=0.0,
-        title="Initial Voltage",
-        description="The initial voltage level in millivolts (mV).",
+    level1_voltage: float | list[float] = Field(
+        default=-80.0,
+        title="Level 1 Voltage",
+        description="Amplitude 1 of SEClamp stimulus (in mV)",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
         },
     )
 
-    step_voltage: float | list[float] = Field(
-        default=0.0,
-        title="Step Voltage Amplitude",
-        description="The step voltage level in millivolts (mV).",
+    level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
+        title="Level 2 Duration",
+        description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    level2_voltage: float | list[float] = Field(
+        default=0.0,
+        title="Level 2 Voltage",
+        description="Amplitude 2 of SEClamp stimulus (in mV)",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
+        },
+    )
+
+    level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        title="Level 3 Duration",
+        description="Duration 3 of SEClamp stimulus (in ms)",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "ms",
+        },
+    )
+
+    level3_voltage: float | list[float] = Field(
+        default=-80.0,
+        title="Level 3 Voltage",
+        description="Amplitude 3 of  SEClamp stimulus (in mV)",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "units": "mV",
         },
     )
 
     # A duration and voltage combination will be needed for the multi-step implementation
+    # this will be done in another class
 
     def _generate_config(self) -> dict:
         sonata_config = {}
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": self.duration,
-            "voltage": self.initial_voltage,
+            "duration": self.level1_duration + self.level2_duration + self.level3_duration,
+            "voltage": self.level1_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
             # no need to set duration for step voltage since the SEClamp maintain the voltage
             #  until the clamp is off
-            "duration_levels": [self.timestamp_offset],
-            "voltage_levels": [self.step_voltage],
+            "duration_levels": [0, self.level1_duration, self.level2_duration],
+            "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
