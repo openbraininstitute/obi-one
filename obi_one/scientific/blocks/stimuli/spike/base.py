@@ -15,8 +15,8 @@ from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
     resolve_neuron_set_ref_to_neuron_set,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -119,21 +119,23 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population: str | None = None,
         default_source_neuron_set: NeuronSetReference | None = None,
     ) -> None:
-        
         self._default_source_neuron_set = default_source_neuron_set
 
-        # SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
-        # IF default_source_neuron_set is None:
-        #     self._default_source_neuron_set = NeuronSetReference(
-        #     )
+        """
+        SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET
+        IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
+        if default_source_neuron_set is None:
+            self._default_source_neuron_set = NeuronSetReference(
+            )
+        """
 
-        self.source_neuron_set = resolve_neuron_set_ref_to_neuron_set(self.source_neuron_set, self._default_source_neuron_set)
+        self.source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
+            self.source_neuron_set, self._default_source_neuron_set
+        )
 
         self._simulation_length = simulation_length
         self._gids = self.source_neuron_set.get_neuron_ids(circuit, source_node_population)
-        self._source_node_population = self.source_neuron_set.get_population(
-            source_node_population
-        )
+        self._source_node_population = self.source_neuron_set.get_population(source_node_population)
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
