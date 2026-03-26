@@ -42,7 +42,6 @@ def _mesh_swc(swc_path: str, output_directory: str) -> str:
         "and returns the new asset id."
     ),
 )
-
 def register_morphology_mesh(
     cell_morphology_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
@@ -57,7 +56,7 @@ def register_morphology_mesh(
     # 1. Fetch the CellMorphology entity
     # ------------------------------------------------------------------
     print(f"db_client config: url={db_client.api_url}, project={db_client.project_context}")
-    
+
     L.info(f"db_client config: url={db_client.api_url}, project={db_client.project_context}")
     L.info(f"register_morphology_mesh: fetching entity {cell_morphology_id}")
     try:
