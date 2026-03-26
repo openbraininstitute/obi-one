@@ -128,7 +128,7 @@ class SkeletonizationTask(Task):
             SkeletonizationTask._update_execution_activity(
                 db_client=db_client,
                 execution_activity=execution_activity,
-                generated=[generated_entity],
+                generated=[str(generated_entity.id)],
             )
 
         L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id}")
