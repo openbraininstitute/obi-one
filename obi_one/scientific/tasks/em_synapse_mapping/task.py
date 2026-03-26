@@ -109,7 +109,8 @@ class EMSynapseMappingTask(Task):
         cave_version = source_mesh_entity.release_version
 
         em_dataset = EMDataSetFromID(
-            id_str=str(source_dataset.id), auth_token=os.environ.get("CAVE_TOKEN") # TEMPORARY WAY OF GETTING TOKEN
+            id_str=str(source_dataset.id),
+            auth_token=os.environ.get("CAVE_TOKEN"),  # TEMPORARY WAY OF GETTING TOKEN
         )
 
         L.info("Reading data from source EM reconstruction...")
