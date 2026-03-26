@@ -131,4 +131,4 @@ class SkeletonizationTask(Task):
                 generated=[str(generated_entity.id)],
             )
 
-        f"Skeletonization completed. Output Morphology ID: {generated_entity.id if generated_entity else None}"
+        L.info(f"Skeletonization completed. Output Morphology ID: {generated_entity.id if generated_entity else None}")
