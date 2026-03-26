@@ -482,15 +482,15 @@ def test_create_campaign_entity_with_config_single_mesh(
             status_code=200,
             json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
         ),
-        url=f"{API_URL}/skeletonization-campaign",
+        url=f"{API_URL}/task-config",
         method="POST",
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/skeletonization-campaign/{campaign_id}/assets",
+        url=f"{API_URL}/task-config/{campaign_id}/assets",
         method="POST",
         json=_asset_json()
         | {
-            "label": "campaign_generation_config",
+            "label": "task_config",
             "path": _SCAN_CONFIG_FILENAME,
         },
     )
@@ -524,15 +524,15 @@ def test_create_campaign_generation_entity(
             status_code=200,
             json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
         ),
-        url=f"{API_URL}/skeletonization-campaign",
+        url=f"{API_URL}/task-config",
         method="POST",
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/skeletonization-campaign/{campaign_id}/assets",
+        url=f"{API_URL}/task-config/{campaign_id}/assets",
         method="POST",
         json=_asset_json()
         | {
-            "label": "campaign_generation_config",
+            "label": "task_config",
             "path": _SCAN_CONFIG_FILENAME,
         },
     )
@@ -541,13 +541,12 @@ def test_create_campaign_generation_entity(
         output_root=output_root,
         db_client=entitysdk_client,
     )
-
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
             json=json.loads(r.content) | {"id": str(uuid4())},
         ),
-        url=f"{API_URL}/skeletonization-config-generation",
+        url=f"{API_URL}/task-activity",
         method="POST",
     )
 
@@ -566,12 +565,12 @@ def test_create_campaign_generation_entity(
         },
     ]
     skeletonization_single_config.create_campaign_generation_entity(
-        skeletonization_configs=[SkeletonizationConfig.model_validate(c) for c in config_payloads],
+        generated=[SkeletonizationConfig.model_validate(c) for c in config_payloads],
         db_client=entitysdk_client,
     )
 
     requests = [r for r in httpx_mock.get_requests() if r.method == "POST"]
-    assert any("skeletonization-config-generation" in str(r.url) for r in requests)
+    assert any("task-activity" in str(r.url) for r in requests)
 
 
 def test_create_single_entity_with_config(
@@ -594,19 +593,19 @@ def test_create_single_entity_with_config(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(campaign_id), "input_meshes": []},
+            json=json.loads(r.content) | {"id": str(campaign_id)},
         ),
-        url=f"{API_URL}/skeletonization-campaign",
+        url=f"{API_URL}/task-config",
         method="POST",
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/skeletonization-campaign/{campaign_id}/assets",
+        url=f"{API_URL}/task-config/{campaign_id}/assets",
         method="POST",
         json=_asset_json()
         | {
-            "label": "campaign_generation_config",
+            "label": "task_config",
             "path": _SCAN_CONFIG_FILENAME,
-            "input_meshes": [],
+            "inputs": [],
         },
     )
 
@@ -620,16 +619,16 @@ def test_create_single_entity_with_config(
             status_code=200,
             json=json.loads(r.content) | {"id": str(config_id)},
         ),
-        url=f"{API_URL}/skeletonization-config",
+        url=f"{API_URL}/task-config",
         method="POST",
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/skeletonization-config/{config_id}/assets",
+        url=f"{API_URL}/task-config/{config_id}/assets",
         method="POST",
         json=_asset_json()
         | {
             "id": str(uuid4()),
-            "label": "skeletonization_config",
+            "label": "task_config",
             "path": _COORDINATE_CONFIG_FILENAME,
         },
     )
@@ -643,7 +642,5 @@ def test_create_single_entity_with_config(
 
     assert skeletonization_single_config.single_entity.id == config_id
     requests = httpx_mock.get_requests()
-    asset_uploads = [
-        r for r in requests if "/skeletonization-config/" in str(r.url) and r.method == "POST"
-    ]
+    asset_uploads = [r for r in requests if "/task-config/" in str(r.url) and r.method == "POST"]
     assert len(asset_uploads) >= 1

@@ -39,7 +39,7 @@ def task_definition():
 
 def test_make_task_reservation_success(user_context_user_1, accounting_parameters):
     class FakeSession:
-        _job_id = uuid4()
+        job_id = uuid4()
 
         def make_reservation(self):
             return None
@@ -54,7 +54,7 @@ def test_make_task_reservation_success(user_context_user_1, accounting_parameter
         accounting_factory=FakeFactory(),
     )
 
-    assert session._job_id is not None
+    assert session.job_id is not None
 
 
 def test_make_task_reservation_insufficient_funds(user_context_user_1, accounting_parameters):
@@ -203,16 +203,18 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     task_definition = TASK_DEFINITIONS[task_type]
 
     expected_subtype = {
-        TaskType.circuit_extraction: ServiceSubtype.SMALL_SIM,
+        TaskType.circuit_extraction: ServiceSubtype.SMALL_CIRCUIT_SIM,
         TaskType.circuit_simulation: ServiceSubtype.SMALL_SIM,
         TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
         TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
+        TaskType.em_synapse_mapping: ServiceSubtype.SMALL_CIRCUIT_SIM,
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
         TaskType.circuit_simulation: 10,
         TaskType.ion_channel_model_simulation_execution: 1,
         TaskType.morphology_skeletonization: 1,
+        TaskType.em_synapse_mapping: 1,
     }
 
     with patch(

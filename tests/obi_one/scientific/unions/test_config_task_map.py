@@ -41,8 +41,8 @@ def test_get_task_type_single_config(task_type, single_config_class):
 @pytest.mark.parametrize(
     ("task_type", "asset_label"),
     [
-        (TaskType.circuit_extraction, test_module.AssetLabel.circuit_extraction_config),
-        (TaskType.morphology_skeletonization, test_module.AssetLabel.skeletonization_config),
+        (TaskType.circuit_extraction, test_module.AssetLabel.task_config),
+        (TaskType.morphology_skeletonization, test_module.AssetLabel.task_config),
         (TaskType.circuit_simulation, None),
         (TaskType.ion_channel_model_simulation_execution, None),
     ],

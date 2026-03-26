@@ -2,6 +2,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from entitysdk.models.activity import Activity, Entity
+from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
 from pydantic import Field
 
@@ -90,6 +91,26 @@ class TaskAccountingInfo(TaskAccountingCreate):
 
 
 class TaskDefinition(Schema):
+    """Definition of a task type with its associated models and configuration."""
+
+    task_type: TaskType
+    config_type: TaskConfigType
+    activity_type: TaskActivityType
+    code: Code
+    resources: Resources
+
+    @property
+    def config_type_name(self) -> str:
+        """Return the name of the config class."""
+        return self.config_type
+
+    @property
+    def activity_type_name(self) -> str:
+        """Return the name of the activity class."""
+        return self.activity_type
+
+
+class TaskDefinitionLegacy(Schema):
     """Definition of a task type with its associated models and configuration."""
 
     task_type: TaskType
