@@ -117,7 +117,8 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
     task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
     fake_config = SimpleNamespace(initialize=SimpleNamespace(do_virtual=do_virtual))
-    fake_entity = SimpleNamespace(circuit_id=uuid4())
+    circuit_id = uuid4()
+    fake_entity = SimpleNamespace(inputs=[SimpleNamespace(id=circuit_id)])
 
     with (
         patch.object(db_client, "get_entity", return_value=fake_entity),
