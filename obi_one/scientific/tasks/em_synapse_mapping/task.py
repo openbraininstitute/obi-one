@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -24,10 +25,14 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
     _STR_PRE_NODE,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
+    synapses_and_nodes_dataframes_from_EM,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
 from obi_one.scientific.tasks.em_synapse_mapping.provenance import (
     resolve_provenance,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 from obi_one.utils.io import write_json
 
@@ -104,11 +109,11 @@ class EMSynapseMappingTask(Task):
         cave_version = source_mesh_entity.release_version
 
         em_dataset = EMDataSetFromID(
-            id_str=str(source_dataset.id), auth_token=self.config.cave_token
+            id_str=str(source_dataset.id), auth_token=os.environ.get("CAVE_TOKEN") # TEMPORARY WAY OF GETTING TOKEN
         )
 
         L.info("Reading data from source EM reconstruction...")
-        syns, coll_pre, coll_post, lst_notices = self.synapses_and_nodes_dataframes_from_EM(
+        syns, coll_pre, coll_post, lst_notices = synapses_and_nodes_dataframes_from_EM(
             em_dataset, pt_root_id, db_client, cave_version
         )
         L.info("Mapping synapses onto morphology...")
@@ -186,7 +191,7 @@ class EMSynapseMappingTask(Task):
         }
         compressed_path = compress_output(self.config.coordinate_output_root)
 
-        registered_circuit_id = self.register_output(
+        registered_circuit_id = register_output(
             db_client,
             pt_root_id,
             mapped_synapses_df,
