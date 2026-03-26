@@ -2,6 +2,8 @@ import logging
 from collections import defaultdict
 from typing import Any
 
+from obi_one.core.schema import SchemaKey, UIElement
+
 from .validate_block import (
     openapi_schema,
     resolve_ref,
@@ -30,12 +32,12 @@ def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[
 def validate_root_element(
     schema: dict, element: str, ref: str, config_ref: str, form: dict
 ) -> None:
-    match ui_element := schema.get("ui_element"):
-        case "block_single":
+    match ui_element := schema.get(SchemaKey.UI_ELEMENT):
+        case UIElement.BLOCK_SINGLE:
             validate_block_single(schema, element, ref)
-        case "block_dictionary":
+        case UIElement.BLOCK_DICTIONARY:
             validate_block_dictionary(schema, element, config_ref, form)
-        case "block_union":
+        case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
         case _:
             msg = (
@@ -52,7 +54,7 @@ def validate_dict(schema: dict, element: str, form_ref: str) -> None:
 
 
 def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
-    groups: list[str] = validate_array(schema, "group_order", str, form_ref)
+    groups: list[str] = validate_array(schema, SchemaKey.GROUP_ORDER, str, form_ref)
 
     used_groups: dict[str, list[int]] = defaultdict(list)
 
@@ -60,8 +62,8 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
         if root_element == "type":
             continue
 
-        group = root_element_schema.get("group")
-        group_order = root_element_schema.get("group_order")
+        group = root_element_schema.get(SchemaKey.GROUP)
+        group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)
@@ -105,7 +107,7 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
 
 
 def validate_block_usability_dictionary(block_schema: dict, ref: str, form: dict) -> None:
-    block_usability_dictionary = block_schema.get("block_usability_dictionary")
+    block_usability_dictionary = block_schema.get(SchemaKey.BLOCK_USABILITY_DICTIONARY)
     if block_usability_dictionary is not None:
         if type(block_usability_dictionary) is not dict:
             msg = (
@@ -114,9 +116,9 @@ def validate_block_usability_dictionary(block_schema: dict, ref: str, form: dict
             )
             raise ValueError(msg)
 
-        property_group = block_usability_dictionary.get("property_group")
-        property_value = block_usability_dictionary.get("property")
-        false_message = block_usability_dictionary.get("false_message")
+        property_group = block_usability_dictionary.get(SchemaKey.PROPERTY_GROUP)
+        property_value = block_usability_dictionary.get(SchemaKey.PROPERTY)
+        false_message = block_usability_dictionary.get(SchemaKey.FALSE_MESSAGE)
 
         if property_group is None or property_value is None or false_message is None:
             msg = (
@@ -138,7 +140,7 @@ def validate_block_usability_dictionary(block_schema: dict, ref: str, form: dict
             )
             raise TypeError(msg)
 
-        schema_property_endpoints = form.get("property_endpoints")
+        schema_property_endpoints = form.get(SchemaKey.PROPERTY_ENDPOINTS)
         if (
             schema_property_endpoints is None
             or type(schema_property_endpoints) is not dict
@@ -202,7 +204,7 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
 
 
 def validate_config(form: dict, config_ref: str) -> None:
-    if not form.get("ui_enabled"):
+    if not form.get(SchemaKey.UI_ENABLED):
         L.info(f"Form {config_ref} is disabled, skipping validation.")
         return
 
@@ -210,7 +212,7 @@ def validate_config(form: dict, config_ref: str) -> None:
 
     validate_string(form, "title", config_ref)
     validate_string(form, "description", config_ref)
-    validate_dict(form, "default_block_reference_labels", config_ref)
+    validate_dict(form, SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS, config_ref)
     validate_group_order(form, config_ref)
     validate_hidden_refs_not_required(form, config_ref)
 

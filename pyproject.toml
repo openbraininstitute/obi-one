@@ -60,6 +60,8 @@ dependencies = [
     "neurom",
     # OBI AUTH
     "obi-auth>=1.0.0",
+    # BENCHMARKING
+    "psutil>=6.1.0",
     # MESHES
     "pyvista",
 ]
@@ -97,7 +99,7 @@ service = [
     # HTTP CLIENT
     "httpx>=0.28.1",
     # OBP ACCOUNTING
-    "obp-accounting-sdk>=0.5.0",
+    "obp-accounting-sdk>=0.6.0",
     # PYDANTIC CORE & SETTINGS
     "pydantic-core",
     "pydantic-settings>=2.8.1",
@@ -197,6 +199,7 @@ builtins-ignorelist = ["license"]
     "ERA001", # Found commented-out code
     "PLC2701", # Private name import from external module
     "PLR2004", # magic value (constant) used in comparison (i.e. expected == 3)
+    "PLR6301", # Method could be a function (class-based test organization)
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
