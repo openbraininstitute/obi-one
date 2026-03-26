@@ -1,2 +1,2 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one.git@synapse_mapping_prep
+obi-one
 ultraliser
