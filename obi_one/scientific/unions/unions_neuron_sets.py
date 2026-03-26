@@ -90,3 +90,12 @@ def resolve_neuron_set_ref_to_node_set(
         return default_node_set
 
     return neuron_set_reference.block.block_name
+
+
+def resolve_neuron_set_ref_to_neuron_set(
+    neuron_set_reference: NeuronSetReference | None, default_neuron_set: NeuronSetUnion | None
+) -> NeuronSetUnion | None:
+    if neuron_set_reference is None:
+        return default_neuron_set
+
+    return neuron_set_reference.block

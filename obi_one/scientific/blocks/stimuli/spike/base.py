@@ -16,6 +16,7 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
+    resolve_neuron_set_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -85,19 +86,6 @@ class SpikeStimulus(StimulusWithTimestamps):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-        source_node_set = resolve_neuron_set_ref_to_node_set(
-            self.source_neuron_set, self._default_node_set
-        )
-        print("Source node set for spike stimulus:", source_node_set)
-
-
-        """
-
-        target_node_set = resolve_neuron_set_ref_to_node_set(
-            self.targeted_neuron_set, self._default_node_set
-        )
-        """
-
         return self._generate_config()
 
     def _generate_config(self) -> dict:
@@ -129,10 +117,20 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_path: Path,
         simulation_length: NonNegativeFloat,
         source_node_population: str | None = None,
+        default_source_neuron_set: NeuronSetReference | None = None,
     ) -> None:
+        
+        self._default_source_neuron_set = default_source_neuron_set
+
+        # IF default_source_neuron_set is None:
+        #     self._default_source_neuron_set = NeuronSetReference(
+        #     )
+
+        self.source_neuron_set = resolve_neuron_set_ref_to_neuron_set(self.source_neuron_set, self._default_source_neuron_set)
+
         self._simulation_length = simulation_length
-        self._gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-        self._source_node_population = self.source_neuron_set.block.get_population(
+        self._gids = self.source_neuron_set.get_neuron_ids(circuit, source_node_population)
+        self._source_node_population = self.source_neuron_set.get_population(
             source_node_population
         )
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(

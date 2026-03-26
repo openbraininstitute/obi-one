@@ -160,17 +160,17 @@ class GenerateSimulationTask(Task):
         for stimulus in self.config.stimuli.values():
             if hasattr(stimulus, "generate_spikes"):
                 stimulus.generate_spikes(
-                    self._circuit,
-                    self.config.coordinate_output_root,
-                    self.config.initialize.simulation_length,
+                    circuit=self._circuit,
+                    spike_file_path=self.config.coordinate_output_root,
+                    simulation_length=self.config.initialize.simulation_length,
                     source_node_population=self._circuit.default_population_name,
                 )
             self._sonata_config["inputs"].update(
                 stimulus.config(
-                    self._circuit,
-                    self._circuit.default_population_name,
-                    DEFAULT_NODE_SET_NAME,
-                    DEFAULT_TIMESTAMPS,
+                    circuit=self._circuit,
+                    population=self._circuit.default_population_name,
+                    default_node_set=DEFAULT_NODE_SET_NAME,
+                    default_timestamps=DEFAULT_TIMESTAMPS,
                 )
             )
 
@@ -239,7 +239,6 @@ class GenerateSimulationTask(Task):
 
             for attr_name, attr_type in type_hints.items():
                 if is_optional_neuronsetreference(attr_type):
-                    print("attr_name:", attr_name)
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
