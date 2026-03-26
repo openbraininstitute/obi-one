@@ -48,9 +48,11 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
+    "neuromorphomesh",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
+    "python-multipart",
     "pyvista",
 ]
 
@@ -79,7 +81,6 @@ service = [
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
-    "python-multipart",
     "starlette",
     "uvicorn",
 ]
@@ -127,8 +128,14 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.9.22"
 
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
+
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
