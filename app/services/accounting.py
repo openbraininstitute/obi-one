@@ -62,15 +62,9 @@ def make_task_reservation(
             details=str(ex),
         ) from ex
 
-    # TODO: Remove once https://github.com/openbraininstitute/accounting-sdk/issues/29 is addressed
-    if settings.ACCOUNTING_DISABLED:
-        accounting_job_id = UUID(int=0)
-        accounting_session._job_id = accounting_job_id  # noqa: SLF001
-    else:
-        accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
         f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
-        f"count={accounting_parameters.count}, job_id={accounting_job_id}"
+        f"count={accounting_parameters.count}, job_id={accounting_session.job_id}"
     )
     return accounting_session
 
@@ -115,10 +109,25 @@ def _evaluate_accounting_parameters(
     and uses the neuron_count from the simulation entity for the count.
     """
     match task_definition.task_type:
+        case TaskType.circuit_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SMALL_SIM,
+            )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.ion_channel_model_simulation_execution:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.ION_CHANNEL_SIM,
+            )
+        case TaskType.morphology_skeletonization:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
             )
         case _:
             # For other task types, use the default mapping
@@ -154,7 +163,7 @@ def _evaluate_circuit_simulation_parameters(
 def generate_accounting_callbacks(
     task_type: TaskType,
     accounting_job_id: str,
-    count: int,
+    accounting_parameters: AccountingParameters,
     virtual_lab_id: str,
     project_id: str,
     callback_url: str,
@@ -166,7 +175,8 @@ def generate_accounting_callbacks(
         _generate_accounting_success_callback(
             task_type=task_type,
             accounting_job_id=accounting_job_id,
-            count=count,
+            count=accounting_parameters.count,
+            accounting_service_subtype=accounting_parameters.service_subtype,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
             callback_url=callback_url,
@@ -197,6 +207,7 @@ def _generate_accounting_success_callback(
     task_type: TaskType,
     accounting_job_id: str,
     count: int,
+    accounting_service_subtype: str,
     callback_url: str,
     virtual_lab_id: str,
     project_id: str,
@@ -211,6 +222,7 @@ def _generate_accounting_success_callback(
         payload={
             "task_type": task_type,
             "job_id": accounting_job_id,
+            "accounting_service_subtype": accounting_service_subtype,
             "count": count,
         },
         headers={

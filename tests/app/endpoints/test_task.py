@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.application import app
 from app.dependencies.compute_cell import get_compute_cell
@@ -35,14 +36,15 @@ def test_task_launch_success(
     task_type,
     monkeypatch,
 ):
+    task_definition = TASK_DEFINITIONS[task_type]
+
     job_id = uuid4()
     config_id = uuid4()
     activity_id = uuid4()
-    task_definition = TASK_DEFINITIONS[task_type]
-    accounting_session = SimpleNamespace(_job_id="job-123", finish=Mock())
+    accounting_session = SimpleNamespace(job_id="job-123", finish=Mock())
     accounting_parameters = AccountingParameters(
         count=10,
-        service_subtype=task_definition.accounting_service_subtype,
+        service_subtype=ServiceSubtype.SMALL_SIM,
     )
     task_accounting_info = TaskAccountingInfo(
         cost=123.4,
@@ -75,6 +77,11 @@ def test_task_launch_success(
         patch(
             "app.services.accounting.generate_accounting_callbacks",
             return_value=callbacks,
+            autospec=True,
+        ),
+        patch(
+            "app.services.task.estimate_task_resources",
+            return_value=task_definition.resources,
             autospec=True,
         ),
         patch(
@@ -118,10 +125,9 @@ def test_task_launch_success(
 def test_task_estimate(client, task_type):
     config_id = uuid4()
 
-    task_definition = TASK_DEFINITIONS[task_type]
     accounting_parameters = AccountingParameters(
         count=10,
-        service_subtype=task_definition.accounting_service_subtype,
+        service_subtype=ServiceSubtype.SMALL_SIM,
     )
     task_accounting_info = TaskAccountingInfo(
         cost=123.4,
@@ -149,7 +155,7 @@ def test_task_estimate(client, task_type):
     assert data["task_type"] == task_type
     assert data["config_id"] == str(config_id)
     assert data["cost"] == 123.4
-    assert data["parameters"]["service_subtype"] == task_definition.accounting_service_subtype
+    assert data["parameters"]["service_subtype"] == ServiceSubtype.SMALL_SIM
     assert data["parameters"]["count"] == 10
 
 
@@ -177,6 +183,7 @@ def test_task_success_endpoint(client, task_type):
             json={
                 "task_type": task_type,
                 "job_id": str(job_id),
+                "accounting_service_subtype": ServiceSubtype.SMALL_SIM,
                 "count": 11,
             },
         ).raise_for_status()

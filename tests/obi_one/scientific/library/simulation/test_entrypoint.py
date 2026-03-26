@@ -1,75 +1,20 @@
-import importlib
 import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 
+from obi_one.scientific.library.simulation import entrypoint as test_module
 from obi_one.types import SimulationBackend
 
 
-def _install_stub_modules(monkeypatch):
-    matplotlib = ModuleType("matplotlib")
-    pyplot = ModuleType("matplotlib.pyplot")
-    pyplot.subplots = lambda *_args, **_kwargs: (SimpleNamespace(), [[SimpleNamespace()]])
-    pyplot.savefig = lambda *_args, **_kwargs: None
-    pyplot.close = lambda *_args, **_kwargs: None
-    monkeypatch.setitem(sys.modules, "matplotlib", matplotlib)
-    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", pyplot)
-
-    numpy = ModuleType("numpy")
-    numpy.array = lambda x, **_kwargs: x
-    monkeypatch.setitem(sys.modules, "numpy", numpy)
-
-    bluecellulab = ModuleType("bluecellulab")
-    bluecellulab.CircuitSimulation = object
-    monkeypatch.setitem(sys.modules, "bluecellulab", bluecellulab)
-
-    bluecellulab_reports = ModuleType("bluecellulab.reports")
-    bluecellulab_reports_manager = ModuleType("bluecellulab.reports.manager")
-    bluecellulab_reports_manager.ReportManager = object
-    monkeypatch.setitem(sys.modules, "bluecellulab.reports", bluecellulab_reports)
-    monkeypatch.setitem(sys.modules, "bluecellulab.reports.manager", bluecellulab_reports_manager)
-
-    neuron = ModuleType("neuron")
-    neuron.h = SimpleNamespace(
-        nrn_load_dll=lambda *_args, **_kwargs: None,
-        nrnmpi_init=lambda *_args, **_kwargs: None,
-        ParallelContext=lambda: SimpleNamespace(
-            id=lambda: 0,
-            nhost=lambda: 1,
-            barrier=lambda: None,
-            done=lambda: None,
-        ),
-        quit=lambda: None,
-    )
-    monkeypatch.setitem(sys.modules, "neuron", neuron)
-
-    pynwb = ModuleType("pynwb")
-    pynwb.NWBHDF5IO = object
-    pynwb.NWBFile = object
-    monkeypatch.setitem(sys.modules, "pynwb", pynwb)
-
-    pynwb_icephys = ModuleType("pynwb.icephys")
-    pynwb_icephys.CurrentClampSeries = object
-    pynwb_icephys.IntracellularElectrode = object
-    monkeypatch.setitem(sys.modules, "pynwb.icephys", pynwb_icephys)
-
-
-@pytest.fixture
-def test_module(monkeypatch):
-    _install_stub_modules(monkeypatch)
-    module = importlib.import_module("obi_one.scientific.library.simulation.entrypoint")
-    return importlib.reload(module)
-
-
-def test_get_instantiate_gids_params_defaults(test_module):
+def test_get_instantiate_gids_params_defaults():
     params = test_module.get_instantiate_gids_params({"run": {}})
     assert params["add_stimuli"] is False
     assert params["add_synapses"] is False
     assert params["add_projections"] is False
 
 
-def test_get_instantiate_gids_params_sets_flags(test_module):
+def test_get_instantiate_gids_params_sets_flags():
     params = test_module.get_instantiate_gids_params(
         {
             "inputs": {"i1": {"module": "noise"}},
@@ -82,7 +27,7 @@ def test_get_instantiate_gids_params_sets_flags(test_module):
     assert params["add_projections"] is True
 
 
-def test_run_dispatches_backend(test_module, monkeypatch):
+def test_run_dispatches_backend(monkeypatch):
     called = {}
 
     def fake_blue(**kwargs):
@@ -111,7 +56,7 @@ def test_run_dispatches_backend(test_module, monkeypatch):
     assert "neuro" in called
 
 
-def test_run_unsupported_backend_raises(test_module):
+def test_run_unsupported_backend_raises():
     with pytest.raises(ValueError, match="Unsupported backend"):
         test_module.run(
             simulation_config="cfg.json",
@@ -120,7 +65,7 @@ def test_run_unsupported_backend_raises(test_module):
         )
 
 
-def test_main_raises_if_config_missing(test_module, monkeypatch):
+def test_main_raises_if_config_missing(monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
@@ -138,7 +83,7 @@ def test_main_raises_if_config_missing(test_module, monkeypatch):
         test_module.main()
 
 
-def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
+def test_main_calls_run_when_config_exists(monkeypatch, tmp_path):
     config_path = tmp_path / "cfg.json"
     config_path.write_text("{}")
     called = {}
@@ -167,7 +112,7 @@ def test_main_calls_run_when_config_exists(test_module, monkeypatch, tmp_path):
     assert called["libnrnmech_path"] == "lib.so"
 
 
-def test_distribute_cells_splits_ids_across_ranks(test_module, monkeypatch, tmp_path):
+def test_distribute_cells_splits_ids_across_ranks(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
@@ -185,7 +130,7 @@ def test_distribute_cells_splits_ids_across_ranks(test_module, monkeypatch, tmp_
     assert sorted(all_gids) == list(range(10))
 
 
-def test_distribute_cells_missing_nodeset_raises(test_module, monkeypatch, tmp_path):
+def test_distribute_cells_missing_nodeset_raises(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
@@ -199,7 +144,7 @@ def test_distribute_cells_missing_nodeset_raises(test_module, monkeypatch, tmp_p
         test_module._distribute_cells(fake_load_json(cfg), cfg, 0, 1)
 
 
-def test_gather_results_collects_and_gathers(test_module, monkeypatch):
+def test_gather_results_collects_and_gathers(monkeypatch):
     calls = {}
 
     def fake_collect_local_payload(cells, cell_ids, recording_index):
