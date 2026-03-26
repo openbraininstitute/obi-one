@@ -2112,6 +2112,7 @@ dependencies = [
     { name = "morph-tool" },
     { name = "neurom" },
     { name = "obi-auth" },
+    { name = "psutil" },
     { name = "pydantic" },
     { name = "pyvista" },
 ]
@@ -2129,8 +2130,6 @@ all = [
     { name = "notebook" },
     { name = "obi-notebook" },
     { name = "obp-accounting-sdk" },
-    { name = "psutil" },
-    { name = "pydantic" },
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
