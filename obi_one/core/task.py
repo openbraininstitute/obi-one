@@ -35,7 +35,7 @@ class Task(OBIBaseModel, abc.ABC):
     ) -> TaskActivity | None:
         """Updates a TaskActivity after task completion.
 
-        Registers only the generated circuit ID. Other updates (status,
+        Registers only the generated entity IDs. Other updates (status,
         end time, executor, etc) are expected to be managed externally.
         """
         upd_entity = None
