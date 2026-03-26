@@ -39,7 +39,7 @@ def task_definition():
 
 def test_make_task_reservation_success(user_context_user_1, accounting_parameters):
     class FakeSession:
-        _job_id = uuid4()
+        job_id = uuid4()
 
         def make_reservation(self):
             return None
@@ -54,7 +54,7 @@ def test_make_task_reservation_success(user_context_user_1, accounting_parameter
         accounting_factory=FakeFactory(),
     )
 
-    assert session._job_id is not None
+    assert session.job_id is not None
 
 
 def test_make_task_reservation_insufficient_funds(user_context_user_1, accounting_parameters):
