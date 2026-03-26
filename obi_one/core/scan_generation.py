@@ -11,7 +11,6 @@ import entitysdk
 from pydantic import PrivateAttr, ValidationError
 
 from obi_one.core.block import Block
-from obi_one.core.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams

@@ -9,6 +9,7 @@ class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
+    # checks this for parameter scan
     def multiple_value_parameters(
         self, base_location_list: list[str]
     ) -> list[MultiValueScanParam]:
@@ -41,17 +42,23 @@ class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
         return self._multiple_value_parameters
     
 
-class DurationVoltageCombinations(ComplexVariableHolder):
+class DurationVoltageCombination(ComplexVariableHolder):
     """Class for storing pairs of duration and voltage combinations for stimulation protocols."""
     
-    voltage_durations: list[tuple[NonNegativeFloat | list[NonNegativeFloat], float | list[float]]] = Field(
-        title="Duration and voltage combinations for each level",
-        description="A list of duration and voltage combinations for each level of the SEClamp stimulus. \
-                    The duration is given in milliseconds (ms) and the voltage is given in millivolts (mV).",
+    voltage: float | list[float] = Field(
+        title="Voltage for each level",
+        description="The voltage for each level, given in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "voltage_duration_ui_element",
-            "subelement_ui_elements": ["float_parameter_sweep", "float_parameter_sweep"],
-            "subelement_titles": ["Duration", "Voltage"],
-            "subelement_units": ["ms", "mV"],
+            "ui_element": "float_parameter_sweep",
+            "unit": "mV",
+        },
+    )
+
+    duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        title="Duration for each level",
+        description="The duration for each level, given in milliseconds (ms).",
+        json_schema_extra={
+            "ui_element": "float_parameter_sweep",
+            "unit": "ms",
         },
     )

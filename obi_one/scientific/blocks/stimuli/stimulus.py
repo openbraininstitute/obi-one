@@ -14,6 +14,7 @@ from pydantic import (
 )
 
 from obi_one.core.block import Block
+from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
 from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
@@ -644,13 +645,10 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
 
 
 class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
-    """A voltage clamp injection with three steps at different voltages.
+    """A voltage clamp injection with three levels at different voltages.
 
     Warning: Maximum one SEClamp stimulus per location.
     """
-
-    # We only have a simple flat voltage stimulus implemented now for simplicity.
-    # A more complex implementation with multi-step stimulus will be implemented later.
 
     title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Levels Somatic Stimulus"
 
@@ -717,9 +715,6 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         },
     )
 
-    # A duration and voltage combination will be needed for the multi-step implementation
-    # this will be done in another class
-
     def _generate_config(self) -> dict:
         sonata_config = {}
         sonata_config[self.block_name] = {
@@ -727,11 +722,47 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "delay": 0,
             "duration": self.level1_duration + self.level2_duration + self.level3_duration,
             "voltage": self.level1_voltage,
-            # the delay is used as the duration of 1st voltage at initial_voltage level
-            # no need to set duration for step voltage since the SEClamp maintain the voltage
-            #  until the clamp is off
             "duration_levels": [0, self.level1_duration, self.level2_duration],
             "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return sonata_config
+
+
+class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
+    """A voltage clamp injection with multiple levels at different voltages.
+
+    Warning: Maximum one SEClamp stimulus per location.
+    """
+
+    title: ClassVar[str] = "Single Electrode Voltage Clamp Multiple Levels Somatic Stimulus"
+
+    _module: str = "seclamp"
+    _input_type: str = "voltage_clamp"
+
+    duration_voltage: list[DurationVoltageCombination] = Field(
+        min_length=1,
+        title="Voltage Levels and Durations",
+        description="A list of duration and voltage combinations for the SEClamp stimulus. "
+            "The first duration starts at time 0, and each subsequent duration starts when the previous one ends.",
+        json_schema_extra={
+            "ui_element": "voltage_duration_ui_element",
+        },
+    )
+
+    def _generate_config(self) -> dict:
+        sonata_config = {}
+        sonata_config[self.block_name] = {
+            # cannot have any delay with SEClamp, so timestamps are used in duration_levels
+            "delay": 0,
+            "duration": sum(combination.duration for combination in self.duration_voltage),
+            "voltage": self.duration_voltage[0].voltage,
+            # converts durations into starting times for each level, with the first level starting at time 0
+            "duration_levels": [0] + [combination.duration for combination in self.duration_voltage[:-1]],
+            "voltage_levels": [combination.voltage for combination in self.duration_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,

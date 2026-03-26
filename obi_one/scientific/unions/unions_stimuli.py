@@ -18,6 +18,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
+    MultiLevelSEClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
     NormallyDistributedCurrentClampSomaticStimulus,
     PoissonSpikeStimulus,
@@ -76,7 +77,7 @@ MEModelStimulusUnion = Annotated[
 ]
 
 IonChannelModelStimulusUnion = Annotated[
-    SEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 
