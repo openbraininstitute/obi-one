@@ -55,6 +55,7 @@ dependencies = [
     "morph-tool",
     # MESHES
     "pyvista",
+    "neuromorphomesh",
     # ENTITYSDK
     # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
@@ -125,6 +126,7 @@ required-version = ">=0.9.22"
 
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { git = "ssh://git@github.com/openbraininstitute/NeuroMorphoMesh.git" }
 
 [tool.ruff]
 line-length = 100
