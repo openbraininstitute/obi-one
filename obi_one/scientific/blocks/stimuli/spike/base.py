@@ -122,6 +122,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         
         self._default_source_neuron_set = default_source_neuron_set
 
+        # SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
         # IF default_source_neuron_set is None:
         #     self._default_source_neuron_set = NeuronSetReference(
         #     )
