@@ -85,10 +85,13 @@ class SpikeStimulus(StimulusWithTimestamps):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-        """
         source_node_set = resolve_neuron_set_ref_to_node_set(
-            self.targeted_neuron_set, self._default_node_set
+            self.source_neuron_set, self._default_node_set
         )
+        print("Source node set for spike stimulus:", source_node_set)
+
+
+        """
 
         target_node_set = resolve_neuron_set_ref_to_node_set(
             self.targeted_neuron_set, self._default_node_set

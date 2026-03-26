@@ -239,6 +239,7 @@ class GenerateSimulationTask(Task):
 
             for attr_name, attr_type in type_hints.items():
                 if is_optional_neuronsetreference(attr_type):
+                    print("attr_name:", attr_name)
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
