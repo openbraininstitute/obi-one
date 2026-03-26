@@ -2,7 +2,6 @@ from pathlib import Path
 
 from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
-from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.config import settings
 from app.schemas.task import (
@@ -26,7 +25,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
         activity_type=TaskActivityType.circuit_extraction__execution,
-        accounting_service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -44,7 +42,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.morphology_skeletonization,
         config_type=TaskConfigType.skeletonization__config,
         activity_type=TaskActivityType.skeletonization__execution,
-        accounting_service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -63,7 +60,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        accounting_service_subtype=ServiceSubtype.SMALL_SIM,  # May be overridden by circuit scale
         code=BuiltinCode(
             script=BuiltinScript.circuit_simulation,
         ),
@@ -78,7 +74,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        accounting_service_subtype=ServiceSubtype.SMALL_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
@@ -96,7 +91,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
-        accounting_service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,

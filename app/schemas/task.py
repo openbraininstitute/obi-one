@@ -96,7 +96,6 @@ class TaskDefinition(Schema):
     task_type: TaskType
     config_type: TaskConfigType
     activity_type: TaskActivityType
-    accounting_service_subtype: ServiceSubtype
     code: Code
     resources: Resources
 
@@ -117,7 +116,6 @@ class TaskDefinitionLegacy(Schema):
     task_type: TaskType
     config_type: type[Entity]
     activity_type: type[Activity]
-    accounting_service_subtype: ServiceSubtype
     code: Code
     resources: Resources
 
@@ -134,5 +132,6 @@ class TaskDefinitionLegacy(Schema):
 
 class TaskCallBackSuccessRequest(Schema):
     task_type: TaskType
+    accounting_service_subtype: ServiceSubtype
     job_id: UUID
     count: int
