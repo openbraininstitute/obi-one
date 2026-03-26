@@ -1,1 +1,1 @@
-obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@synapse_mapping_prep
+obi-one[connectivity]

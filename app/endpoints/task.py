@@ -64,8 +64,8 @@ def task_launch_endpoint(
     )
     accounting_callbacks = accounting_service.generate_accounting_callbacks(
         task_type=json_model.task_type,
-        accounting_job_id=accounting_session._job_id,  # noqa: SLF001
-        count=accounting_info.parameters.count,
+        accounting_job_id=accounting_session.job_id,
+        accounting_parameters=accounting_info.parameters,
         project_id=user_context.project_id,
         virtual_lab_id=user_context.virtual_lab_id,
         callback_url=callback_url,
@@ -157,10 +157,9 @@ def task_success_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
     user_context: UserContextWithProjectIdDep,
 ) -> None:
-    task_definition = TASK_DEFINITIONS[json_model.task_type]
     accounting_service.finish_accounting_session(
         accounting_job_id=json_model.job_id,
-        service_subtype=task_definition.accounting_service_subtype,
+        service_subtype=json_model.accounting_service_subtype,
         count=json_model.count,
         project_id=user_context.project_id,
         http_client=accounting_factory._http_client,  # noqa: SLF001
