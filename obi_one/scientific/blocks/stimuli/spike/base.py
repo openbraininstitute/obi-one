@@ -8,12 +8,13 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
 )
+from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_neuron_set,
@@ -22,7 +23,7 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
-from obi_one.scientific.library.constants import SONATA
+
 
 class SpikeStimulus(StimulusWithTimestamps):
     source_neuron_set: NeuronSetReference | None = Field(
@@ -60,7 +61,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         default_source_neuron_set_reference: NeuronSetReference | None = None,
         default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
-
         timestamps = resolve_timestamps_ref_to_timestamps_block(self.timestamps, default_timestamps)
 
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
@@ -100,7 +100,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_neuron_set: NeuronSet,
         source_node_population: str | None = None,
     ) -> Path:
-        
         source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
         source_node_population = source_neuron_set.get_population(source_node_population)
 
@@ -135,7 +134,7 @@ class SpikeStimulus(StimulusWithTimestamps):
 
         sonata_config = {}
         sonata_config[self.block_name] = {
-            SONATA.DELAY: 0.0,  # If present, the simulation filters out those times before the delay
+            SONATA.DELAY: 0.0,  # If present, the simulation filters times before the delay
             SONATA.DURATION: simulation_length,
             SONATA.NODE_SET: target_neuron_set.block_name,
             SONATA.MODULE: SONATA.SPIKE_STIMULUS_MODULE,

@@ -20,7 +20,10 @@ def resolve_timestamps_ref_to_timestamps_block(
 ) -> TimestampsUnion:
     if timestamps_reference is None:
         if default_timestamps is None:
-            msg="Either a timestamps block reference must be provided or a default timestamps block must be set"
+            msg = (
+                "Either a timestamps block reference must be provided or a default "
+                "timestamps block must be set"
+            )
             raise ValueError(msg)
         return default_timestamps
 
