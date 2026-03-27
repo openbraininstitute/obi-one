@@ -14,7 +14,7 @@ from nmm.morphology import NeuronMorphology
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.errors import ApiError, ApiErrorCode
+from app.errors import ApiErrorCode
 from app.logger import L
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -126,7 +126,8 @@ def register_morphology_mesh(
             glb_path = Path(glb_path_str)
 
             if not glb_path.exists() or glb_path.stat().st_size == 0:
-                raise RuntimeError(f"Meshing produced no output at {glb_path_str}")
+                msg = f"Meshing produced no output at {glb_path_str}"
+                raise RuntimeError(msg)
 
             # ----------------------------------------------------------------
             # 5. Upload the GLB as a new asset on the same entity

@@ -2,8 +2,8 @@ import uuid
 from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
-import pytest
 import entitysdk.exception
+import pytest
 from entitysdk.models.cell_morphology import CellMorphology
 
 from app.dependencies.entitysdk import get_client
