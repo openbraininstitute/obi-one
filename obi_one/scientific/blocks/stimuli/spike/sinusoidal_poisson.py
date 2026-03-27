@@ -144,12 +144,14 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
         return max(0.0, lam)
 
-    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(
+        self, source_gids: list[int], resolved_timestamps: list[float]
+    ) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         # Upper-bound on expected spikes to guard against pathological params
         total_expected = (
-            (self.duration * len(self.resolved_timestamps) / 1000.0)
+            (self.duration * len(resolved_timestamps) / 1000.0)
             * self.maximum_rate
             * len(source_gids)
         )
@@ -164,7 +166,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         lam_max_hz = self.maximum_rate
         phase_rad = np.deg2rad(self.phase_degrees)
 
-        for t0 in self.resolved_timestamps:
+        for t0 in resolved_timestamps:
             start_time = t0 + self.timestamp_offset
             end_time = start_time + self.duration
 

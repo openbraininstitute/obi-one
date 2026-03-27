@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Self
 
 import h5py
 import numpy as np
@@ -27,22 +26,18 @@ SPIKE_STIMULUS_SONATA_MODULE = "synapse_replay"
 SPIKE_STIMULUS_SONATA_INPUT_TYPE = "spikes"
 
 
-
 def check_non_none_neuron_set_reference_is_biophysical(
-        neuron_set_reference: NeuronSetReference | None,
-        circuit: Circuit,
-        population: str | None,
-        error_message: str,
-    ) -> None:
-        if (neuron_set_reference is not None) and (
-            neuron_set_reference.block.population_type(circuit, population) != "biophysical"
-        ):
-            msg = (
-                f"{error_message}"
-                f"Neuron Set: '{neuron_set_reference.block.block_name}'."
-                
-            )
-            raise OBIONEError(msg)
+    neuron_set_reference: NeuronSetReference | None,
+    circuit: Circuit,
+    population: str | None,
+    error_message: str,
+) -> None:
+    if (neuron_set_reference is not None) and (
+        neuron_set_reference.block.population_type(circuit, population) != "biophysical"
+    ):
+        msg = f"{error_message}Neuron Set: '{neuron_set_reference.block.block_name}'."
+        raise OBIONEError(msg)
+
 
 class SpikeStimulus(StimulusWithTimestamps):
     source_neuron_set: NeuronSetReference | None = Field(
@@ -123,7 +118,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         )
 
         return sonata_config
-    
+
     def generate_spikes(
         self,
         circuit: Circuit,
@@ -131,13 +126,13 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population: str | None = None,
         default_source_neuron_set: NeuronSetReference | None = None,
     ) -> Path:
-        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET
+        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET.
+
         IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
         if default_source_neuron_set is None:
             self._default_source_neuron_set = NeuronSetReference(
             )
         """
-
         # Resolve SOURCE neuron set, gids and population
         resolved_source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set
@@ -149,10 +144,12 @@ class SpikeStimulus(StimulusWithTimestamps):
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
-        self._resolved_timestamps = timestamps_block.timestamps()
+        resolved_timestamps = timestamps_block.timestamps()
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
+        spikes_by_gid = self.generate_spikes_by_gid(
+            source_gids=source_gids, resolved_timestamps=resolved_timestamps
+        )
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"
@@ -169,7 +166,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         simulation_length: NonNegativeFloat,
         target_node_set: str,
     ) -> dict:
-        spike_file_absolute_path = (sonata_simulation_config_directory / spike_file_relative_path).resolve()
+        spike_file_absolute_path = (
+            sonata_simulation_config_directory / spike_file_relative_path
+        ).resolve()
         if not spike_file_absolute_path.exists():
             msg = f"Spike file not found: {spike_file_absolute_path}"
             raise FileNotFoundError(msg)
@@ -186,10 +185,10 @@ class SpikeStimulus(StimulusWithTimestamps):
 
         return sonata_config
 
-
-
     @abstractmethod
-    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(
+        self, source_gids: list[int], resolved_timestamps: list[float]
+    ) -> dict[int, list[float]]:
         pass
 
     @staticmethod

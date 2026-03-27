@@ -19,8 +19,9 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     def generate_spikes_by_gid(
         self,
         source_gids: list[int],
+        resolved_timestamps: list[float],
     ) -> dict[int, list[float]]:
-        spike_times = [t + self.timestamp_offset for t in self.resolved_timestamps]
+        spike_times = [t + self.timestamp_offset for t in resolved_timestamps]
         spikes_by_gid: dict[int, list[float]] = defaultdict(list)
         for gid in source_gids:
             spikes_by_gid[gid] = list(spike_times)
