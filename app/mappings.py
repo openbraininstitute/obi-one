@@ -66,7 +66,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         resources=ClusterResources(
             instances=1,
             instance_type="small",
-            timelimit="00:10",
+            timelimit=None,
             compute_cell="local",
         ),
     ),
