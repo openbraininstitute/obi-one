@@ -159,20 +159,26 @@ class GenerateSimulationTask(Task):
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
             if hasattr(stimulus, "generate_spikes"):
-                stimulus.generate_spikes(
-                    circuit=self._circuit,
-                    spike_file_path=self.config.coordinate_output_root,
-                    simulation_length=self.config.initialize.simulation_length,
-                    source_node_population=self._circuit.default_population_name,
+                self._sonata_config["inputs"].update(
+                    stimulus.config(
+                        circuit=self._circuit,
+                        spike_file_directory=self.config.coordinate_output_root,
+                        simulation_length=self.config.initialize.simulation_length,
+                        population=self._circuit.default_population_name,
+                        default_node_set=DEFAULT_NODE_SET_NAME,
+                        default_timestamps=DEFAULT_TIMESTAMPS,
+                        source_node_population=self._circuit.default_population_name,
+                    )
                 )
-            self._sonata_config["inputs"].update(
-                stimulus.config(
-                    circuit=self._circuit,
-                    population=self._circuit.default_population_name,
-                    default_node_set=DEFAULT_NODE_SET_NAME,
-                    default_timestamps=DEFAULT_TIMESTAMPS,
+            else:
+                self._sonata_config["inputs"].update(
+                    stimulus.config(
+                        circuit=self._circuit,
+                        population=self._circuit.default_population_name,
+                        default_node_set=DEFAULT_NODE_SET_NAME,
+                        default_timestamps=DEFAULT_TIMESTAMPS,
+                    )
                 )
-            )
 
     def _add_sonata_simulation_config_reports(
         self, db_client: entitysdk.client.Client | None

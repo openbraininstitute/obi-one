@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 
-from obi_one.scientific.blocks.stimuli.spike.base import ExtendedSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_POISSON_SPIKE_LIMIT,
@@ -26,7 +26,7 @@ def _draw_inhomogeneous_poisson_interval_ms(rng: np.random.Generator, lam_max_hz
     return rng.exponential(1.0 / lam_max_hz) * 1000.0
 
 
-class SinusoidalPoissonSpikeStimulus(ExtendedSpikeStimulus):
+class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
     """Spike times drawn from an inhomogeneous Poisson process with sinusoidal rate.
 
     Sinusoid defined by a minimum and maximum rate.
@@ -144,14 +144,15 @@ class SinusoidalPoissonSpikeStimulus(ExtendedSpikeStimulus):
 
         return max(0.0, lam)
 
-    def generate_spikes_by_gid(self) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self,
+                               source_gids: list[int]) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         # Upper-bound on expected spikes to guard against pathological params
         total_expected = (
             (self.duration * len(self.resolved_timestamps) / 1000.0)
             * self.maximum_rate
-            * len(self._gids)
+            * len(source_gids)
         )
         if total_expected > _MAX_POISSON_SPIKE_LIMIT:
             msg = (
@@ -168,7 +169,7 @@ class SinusoidalPoissonSpikeStimulus(ExtendedSpikeStimulus):
             start_time = t0 + self.timestamp_offset
             end_time = start_time + self.duration
 
-            for gid in self._gids:
+            for gid in source_gids:
                 t = start_time
                 while t < end_time:
                     dt_ms = _draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)

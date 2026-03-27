@@ -5,7 +5,7 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.blocks.stimuli.spike.base import ExtendedSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_POISSON_SPIKE_LIMIT,
@@ -14,7 +14,7 @@ from obi_one.scientific.library.constants import (
 )
 
 
-class PoissonSpikeStimulus(ExtendedSpikeStimulus):
+class PoissonSpikeStimulus(SpikeStimulus):
     """Spike times drawn from a Poisson process with a given frequency.
 
     Sent from all neurons in the source neuron set to efferently connected
@@ -60,11 +60,12 @@ class PoissonSpikeStimulus(ExtendedSpikeStimulus):
         },
     )
 
-    def generate_spikes_by_gid(self) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self,
+                               source_gids: list[int]) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         if (
-            self.duration * 1e-3 * len(self._gids) * self.frequency * len(self.resolved_timestamps)
+            self.duration * 1e-3 * len(source_gids) * self.frequency * len(self.resolved_timestamps)
             > _MAX_POISSON_SPIKE_LIMIT
         ):
             msg = (
@@ -77,7 +78,7 @@ class PoissonSpikeStimulus(ExtendedSpikeStimulus):
         for timestamp_t in self.resolved_timestamps:
             start_time = timestamp_t + self.timestamp_offset
             end_time = start_time + self.duration
-            for gid in self._gids:
+            for gid in source_gids:
                 t = start_time
                 while t < end_time:
                     # Draw next spike time from exponential distribution
