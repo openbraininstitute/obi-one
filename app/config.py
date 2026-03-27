@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     ENTITYCORE_URL: str  # Required: URL to entitycore service
     LAUNCH_SYSTEM_URL: str
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
+    LAUNCH_SYSTEM_DISABLE_SSL_VERIFY: bool = False
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service

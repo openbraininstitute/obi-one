@@ -12,6 +12,7 @@ import pandas as pd
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel
 
@@ -85,12 +86,13 @@ class TemporaryAsset:
         temp_file_path = Path(self.temp_dir.__enter__()) / os.path.split(self._remote_path)[1]
 
         try:
-            self._db_client.download_file(
+            self._db_client.fetch_file(
                 entity_id=self._circuit_id,
                 entity_type=Circuit,
                 asset_id=self._asset_id,
                 output_path=temp_file_path,
                 asset_path=self._remote_path,
+                strategy=FetchFileStrategy.link_or_download,
             )
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
@@ -499,16 +501,17 @@ def get_circuit_metrics(  # noqa: PLR0914
     asset_id = directory_assets[0].id
 
     # db_client.download_content does not support `asset_path` at the time of writing this
-    # Use db_client.download_file with temporary directory instead
+    # Use db_client.fetch_file with temporary directory instead
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
-        db_client.download_file(
+        db_client.fetch_file(
             entity_id=circuit_id,
             entity_type=Circuit,
             asset_id=asset_id,
             output_path=temp_file_path,
             asset_path="circuit_config.json",
+            strategy=FetchFileStrategy.link_or_download,
         )
 
         # Read the file and load JSON
