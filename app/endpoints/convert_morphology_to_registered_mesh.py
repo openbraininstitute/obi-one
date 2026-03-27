@@ -127,7 +127,7 @@ def register_morphology_mesh(
 
             if not glb_path.exists() or glb_path.stat().st_size == 0:
                 msg = f"Meshing produced no output at {glb_path_str}"
-                raise RuntimeError(msg)
+                raise RuntimeError(msg)  # noqa: TRY301
 
             # ----------------------------------------------------------------
             # 5. Upload the GLB as a new asset on the same entity
