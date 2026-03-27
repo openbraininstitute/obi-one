@@ -99,6 +99,18 @@ class SpikeStimulus(StimulusWithTimestamps):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
+
+        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET.
+
+        IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
+        if default_source_neuron_set is None:
+            self._default_source_neuron_set = NeuronSetReference(
+            )
+        """
+        resolved_source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
+            self.source_neuron_set, default_source_neuron_set
+        )
+
         target_node_set = resolve_neuron_set_ref_to_node_set(
             self.targeted_neuron_set, default_node_set
         )
@@ -106,8 +118,8 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
+            source_neuron_set=resolved_source_neuron_set,
             source_node_population=source_node_population,
-            default_source_neuron_set=default_source_neuron_set,
         )
 
         sonata_config = self._generate_config(
@@ -123,22 +135,12 @@ class SpikeStimulus(StimulusWithTimestamps):
         self,
         circuit: Circuit,
         spike_file_directory: Path,
+        source_neuron_set: NeuronSetReference,
         source_node_population: str | None = None,
-        default_source_neuron_set: NeuronSetReference | None = None,
     ) -> Path:
-        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET.
-
-        IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
-        if default_source_neuron_set is None:
-            self._default_source_neuron_set = NeuronSetReference(
-            )
-        """
-        # Resolve SOURCE neuron set, gids and population
-        resolved_source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
-            self.source_neuron_set, default_source_neuron_set
-        )
-        source_gids = resolved_source_neuron_set.get_neuron_ids(circuit, source_node_population)
-        source_node_population = resolved_source_neuron_set.get_population(source_node_population)
+                
+        source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
+        source_node_population = source_neuron_set.get_population(source_node_population)
 
         # Timestamps
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
