@@ -15,6 +15,9 @@ from obi_one.scientific.library.constants import (
     _MAX_POISSON_SPIKE_LIMIT,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
+from obi_one.core.units import Units
+
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 def _draw_inhomogeneous_poisson_interval_ms(rng: np.random.Generator, lam_max_hz: float) -> float:
@@ -46,8 +49,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Duration",
         description="Time duration of the stimulus in milliseconds.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -60,8 +63,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Minimum Rate",
         description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -74,8 +77,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         description="Maximum rate of the stimulus in Hz. Must be greater than or equal to "
         "Minimum Rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -87,8 +90,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Modulation Frequency",
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -97,8 +100,8 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Phase Offset",
         description="Phase offset (degrees) of the sinusoid.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "°",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
 
@@ -107,7 +110,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         title="Random Seed",
         description="Seed for the random number generator to ensure reproducibility.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 

@@ -8,6 +8,7 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.timestamps import Timestamps
 from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
@@ -23,21 +24,6 @@ from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
 from obi_one.scientific.library.constants import SONATA
-
-
-
-def check_non_none_neuron_set_reference_is_biophysical(
-    neuron_set_reference: NeuronSetReference | None,
-    circuit: Circuit,
-    population: str | None,
-    error_message: str,
-) -> None:
-    if (neuron_set_reference is not None) and (
-        neuron_set_reference.block.population_type(circuit, population) != "biophysical"
-    ):
-        msg = f"{error_message}Neuron Set: '{neuron_set_reference.block.block_name}'."
-        raise OBIONEError(msg)
-
 
 class SpikeStimulus(StimulusWithTimestamps):
     source_neuron_set: NeuronSetReference | None = Field(
@@ -75,24 +61,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         default_source_neuron_set_reference: NeuronSetReference | None = None,
         default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
-        check_non_none_neuron_set_reference_is_biophysical(
-            neuron_set_reference=self.targeted_neuron_set,
-            circuit=circuit,
-            population=target_node_population,
-            error_message="Target Neuron Set of Spike Stimulus must be biophysical.",
-        )
 
-        if default_timestamps is None:
-            default_timestamps = SingleTimestamp(start_time=0.0)
-        self._default_timestamps = default_timestamps
+        timestamps = resolve_timestamps_ref_to_timestamps_block(self.timestamps, default_timestamps)
 
-        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET.
-
-        IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
-        if default_source_neuron_set is None:
-            self._default_source_neuron_set = NeuronSetReference(
-            )
-        """
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set_reference
         )
@@ -101,9 +72,14 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
+        if target_neuron_set.is_biophysical(circuit, target_node_population) is False:
+            msg = "Target Neuron Set of Spike Stimulus must be biophysical."
+            raise OBIONEError(msg)
+
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
+            timestamps=timestamps,
             source_neuron_set=source_neuron_set,
             source_node_population=source_node_population,
         )
@@ -121,17 +97,15 @@ class SpikeStimulus(StimulusWithTimestamps):
         self,
         circuit: Circuit,
         spike_file_directory: Path,
+        timestamps: Timestamps,
         source_neuron_set: NeuronSet,
         source_node_population: str | None = None,
     ) -> Path:
+        
         source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
         source_node_population = source_neuron_set.get_population(source_node_population)
 
-        # Timestamps
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-        resolved_timestamps = timestamps_block.timestamps()
+        resolved_timestamps = timestamps.timestamps()
 
         # Generate spikes
         spikes_by_gid = self.generate_spikes_by_gid(

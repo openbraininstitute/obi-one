@@ -159,6 +159,9 @@ class AbstractNeuronSet(Block, abc.ABC):
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
 
+    def is_biophysical(self, circuit: Circuit, population: str | None = None) -> bool:
+        return self.population_type(circuit, population) == "biophysical"
+
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:
         if file_name is None:
