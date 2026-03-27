@@ -60,8 +60,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         },
     )
 
-    def generate_spikes_by_gid(self,
-                               source_gids: list[int]) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         if (

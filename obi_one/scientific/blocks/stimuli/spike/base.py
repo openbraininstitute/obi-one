@@ -4,7 +4,7 @@ from typing import Self
 
 import h5py
 import numpy as np
-from pydantic import Field, NonNegativeFloat, model_validator
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.stimuli.stimulus import (
@@ -26,8 +26,25 @@ from obi_one.scientific.unions.unions_timestamps import (
 SPIKE_STIMULUS_SONATA_MODULE = "synapse_replay"
 SPIKE_STIMULUS_SONATA_INPUT_TYPE = "spikes"
 
+
+
+def check_non_none_neuron_set_reference_is_biophysical(
+        neuron_set_reference: NeuronSetReference | None,
+        circuit: Circuit,
+        population: str | None,
+        error_message: str,
+    ) -> None:
+        if (neuron_set_reference is not None) and (
+            neuron_set_reference.block.population_type(circuit, population) != "biophysical"
+        ):
+            msg = (
+                f"{error_message}"
+                f"Neuron Set: '{neuron_set_reference.block.block_name}'."
+                
+            )
+            raise OBIONEError(msg)
+
 class SpikeStimulus(StimulusWithTimestamps):
-    
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Source)",
@@ -52,7 +69,6 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
-
     """
     Misc
     """
@@ -66,12 +82,10 @@ class SpikeStimulus(StimulusWithTimestamps):
             raise ValueError(msg)
         return self._resolved_timestamps
 
-
-
     def config(
         self,
         circuit: Circuit,
-        spike_file_directory: Path,
+        sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
         population: str | None = None,
         default_node_set: str = "All",
@@ -79,56 +93,37 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population: str | None = None,
         default_source_neuron_set: NeuronSetReference | None = None,
     ) -> dict:
-        self._default_node_set = default_node_set
-
-        if (self.targeted_neuron_set is not None) and (
-            self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical"
-        ):
-            msg = (
-                f"Target Neuron Set '{self.targeted_neuron_set.block.block_name}' for "
-                f"{self.__class__.__name__}: '{self.block_name}' should be biophysical!"
-            )
-            raise OBIONEError(msg)
+        check_non_none_neuron_set_reference_is_biophysical(
+            neuron_set_reference=self.targeted_neuron_set,
+            circuit=circuit,
+            population=population,
+            error_message="Target Neuron Set of Spike Stimulus must be biophysical.",
+        )
 
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
+        target_node_set = resolve_neuron_set_ref_to_node_set(
+            self.targeted_neuron_set, default_node_set
+        )
 
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
-            spike_file_directory=spike_file_directory,
+            spike_file_directory=sonata_simulation_config_directory,
             source_node_population=source_node_population,
             default_source_neuron_set=default_source_neuron_set,
         )
 
-        sonata_config = self._generate_config(spike_file_relative_path=spike_file_relative_path,
-                                              simulation_length=simulation_length)
+        sonata_config = self._generate_config(
+            spike_file_relative_path=spike_file_relative_path,
+            sonata_simulation_config_directory=sonata_simulation_config_directory,
+            simulation_length=simulation_length,
+            target_node_set=target_node_set,
+        )
 
         return sonata_config
-
-    def _generate_config(self, 
-                         spike_file_relative_path: Path,
-                         simulation_length: NonNegativeFloat) -> dict:
-        
-        if not spike_file_relative_path.exists():
-            msg = f"Spike file not found: {spike_file_relative_path}"
-            raise FileNotFoundError(msg)
-
-        sonata_config = {}
-        sonata_config[self.block_name] = {
-            "delay": 0.0,  # If present, the simulation filters out those times before the delay
-            "duration": simulation_length,
-            "node_set": resolve_neuron_set_ref_to_node_set(
-                self.targeted_neuron_set, self._default_node_set
-            ),
-            "module": SPIKE_STIMULUS_SONATA_MODULE,
-            "input_type": SPIKE_STIMULUS_SONATA_INPUT_TYPE,
-            "spike_file": str(spike_file_relative_path),
-        }
-
-        return sonata_config
-
+    
     def generate_spikes(
         self,
         circuit: Circuit,
@@ -136,41 +131,65 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population: str | None = None,
         default_source_neuron_set: NeuronSetReference | None = None,
     ) -> Path:
-
-        """
-        SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET
+        """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET
         IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
         if default_source_neuron_set is None:
             self._default_source_neuron_set = NeuronSetReference(
             )
         """
 
-        self.source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
+        # Resolve SOURCE neuron set, gids and population
+        resolved_source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set
         )
+        source_gids = resolved_source_neuron_set.get_neuron_ids(circuit, source_node_population)
+        source_node_population = resolved_source_neuron_set.get_population(source_node_population)
 
-        source_gids = self.source_neuron_set.get_neuron_ids(circuit, source_node_population)
-        self._source_node_population = self.source_neuron_set.get_population(source_node_population)
+        # Timestamps
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
         self._resolved_timestamps = timestamps_block.timestamps()
 
+        # Generate spikes
         spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
 
+        # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"
-        spike_file_relative_path = spike_file
+        spike_file_relative_path = Path(spike_file)
         spike_file_absolute_path = spike_file_directory / spike_file
-
-        self.write_spike_file(
-            spikes_by_gid, spike_file_absolute_path, self._source_node_population
-        )
+        self.write_spike_file(spikes_by_gid, spike_file_absolute_path, source_node_population)
 
         return spike_file_relative_path
 
+    def _generate_config(
+        self,
+        spike_file_relative_path: Path,
+        sonata_simulation_config_directory: Path,
+        simulation_length: NonNegativeFloat,
+        target_node_set: str,
+    ) -> dict:
+        spike_file_absolute_path = (sonata_simulation_config_directory / spike_file_relative_path).resolve()
+        if not spike_file_absolute_path.exists():
+            msg = f"Spike file not found: {spike_file_absolute_path}"
+            raise FileNotFoundError(msg)
+
+        sonata_config = {}
+        sonata_config[self.block_name] = {
+            "delay": 0.0,  # If present, the simulation filters out those times before the delay
+            "duration": simulation_length,
+            "node_set": target_node_set,
+            "module": SPIKE_STIMULUS_SONATA_MODULE,
+            "input_type": SPIKE_STIMULUS_SONATA_INPUT_TYPE,
+            "spike_file": str(spike_file_relative_path),
+        }
+
+        return sonata_config
+
+
 
     @abstractmethod
-    def generate_spikes_by_gid(self) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         pass
 
     @staticmethod

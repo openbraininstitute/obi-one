@@ -162,7 +162,7 @@ class GenerateSimulationTask(Task):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
                         circuit=self._circuit,
-                        spike_file_directory=self.config.coordinate_output_root,
+                        sonata_simulation_config_directory=self.config.coordinate_output_root,
                         simulation_length=self.config.initialize.simulation_length,
                         population=self._circuit.default_population_name,
                         default_node_set=DEFAULT_NODE_SET_NAME,

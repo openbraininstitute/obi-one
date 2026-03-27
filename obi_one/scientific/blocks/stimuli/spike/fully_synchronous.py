@@ -16,9 +16,10 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
 
     title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
 
-    def generate_spikes_by_gid(self,
-                               source_gids: list[int],
-                               ) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(
+        self,
+        source_gids: list[int],
+    ) -> dict[int, list[float]]:
         spike_times = [t + self.timestamp_offset for t in self.resolved_timestamps]
         spikes_by_gid: dict[int, list[float]] = defaultdict(list)
         for gid in source_gids:
