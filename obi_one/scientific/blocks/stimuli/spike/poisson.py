@@ -5,6 +5,8 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -34,8 +36,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
     frequency: (
@@ -46,8 +48,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
         title="Frequency",
         description="Mean frequency (Hz) of the Poisson input.",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
     random_seed: int | list[int] = Field(
@@ -56,7 +58,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
         description="Seed for the random number generator to ensure "
         "reproducibility of the spike generation.",
         json_schema_extra={
-            "ui_element": "int_parameter_sweep",
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 

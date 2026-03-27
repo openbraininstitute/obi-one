@@ -6,6 +6,7 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
@@ -45,9 +46,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -56,9 +57,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -99,7 +100,6 @@ class SpikeStimulus(StimulusWithTimestamps):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-
         """SHOULD DEAL WITH NONE CASE, OR RAISE ISSUE IF SELF.SOURCE_NEURON_SET.
 
         IS NONE AND DEFAULT SOURCE NEURON SET IS NONE
@@ -107,7 +107,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             self._default_source_neuron_set = NeuronSetReference(
             )
         """
-        resolved_source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
+        source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set
         )
 
@@ -118,7 +118,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
-            source_neuron_set=resolved_source_neuron_set,
+            source_neuron_set=source_neuron_set,
             source_node_population=source_node_population,
         )
 
@@ -138,7 +138,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_neuron_set: NeuronSetReference,
         source_node_population: str | None = None,
     ) -> Path:
-                
         source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
         source_node_population = source_neuron_set.get_population(source_node_population)
 
