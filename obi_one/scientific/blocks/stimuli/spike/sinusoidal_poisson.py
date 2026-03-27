@@ -9,15 +9,14 @@ from pydantic import (
     model_validator,
 )
 
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_POISSON_SPIKE_LIMIT,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
-from obi_one.core.units import Units
-
-from obi_one.core.schema import SchemaKey, UIElement
 
 
 def _draw_inhomogeneous_poisson_interval_ms(rng: np.random.Generator, lam_max_hz: float) -> float:
@@ -185,7 +184,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
                     # Accept with probability λ(t_candidate)/λ_max
                     lam_tc = self._lambda_t_ms(
-                        t_candidate,
+                        t_candidate - start_time,
                         self.minimum_rate,
                         self.maximum_rate,
                         self.modulation_frequency_hz,

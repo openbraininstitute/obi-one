@@ -74,16 +74,16 @@ def generate_spikes_for_stim(validated_config, tmp_path: Path):
     if isinstance(circuit, list):
         circuit = circuit[0]
     pop = circuit.default_population_name
-    sim_length = validated_config.initialize.simulation_length
 
-    node_set_name = next(iter(validated_config.neuron_sets))
     for stim in validated_config.stimuli.values():
-        # Set the defaults that config() would set, without calling config()
-        # (config() also calls _generate_config which requires _spike_file)
-        stim._default_node_set = node_set_name
-        stim._default_timestamps = obi.SingleTimestamp(start_time=0.0)
+        source_neuron_set = validated_config.neuron_sets[stim.source_neuron_set.block_name]
+        timestamps = validated_config.timestamps[stim.timestamps.block_name]
         stim.generate_spikes(
-            circuit, tmp_path, simulation_length=sim_length, source_node_population=pop
+            circuit,
+            tmp_path,
+            timestamps=timestamps,
+            source_neuron_set=source_neuron_set,
+            source_node_population=pop,
         )
 
     first_name = next(iter(validated_config.stimuli))

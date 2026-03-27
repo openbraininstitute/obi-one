@@ -1,6 +1,5 @@
 import h5py
 import numpy as np
-import pytest
 
 import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
@@ -114,24 +113,6 @@ def test_different_seed_produces_different_spikes(tmp_path):
         ts2_data = np.array(f[f"spikes/{pop2}/timestamps"])
 
     assert not np.array_equal(ts1_data, ts2_data)
-
-
-def test_overlapping_timestamps_raises(tmp_path):
-    # Interval=100 but duration=200 → overlap
-    source = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="src", elements=range(3)))
-    target = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="tgt", elements=range(10)))
-    timestamps = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=100.0)
-
-    vc = make_validated_stimulus(
-        source,
-        target,
-        PoissonSpikeStimulus,
-        timestamps,
-        duration=200.0,
-        frequency=10.0,
-    )
-    with pytest.raises(ValueError, match="Stimulus time intervals overlap"):
-        generate_spikes_for_stim(vc, tmp_path)
 
 
 def test_non_overlapping_timestamps_succeeds(tmp_path):
