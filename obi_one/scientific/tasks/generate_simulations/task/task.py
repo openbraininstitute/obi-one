@@ -43,6 +43,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 
 L = logging.getLogger(__name__)
 
@@ -158,16 +159,17 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
-            if hasattr(stimulus, "generate_spikes"):
+            if isinstance(stimulus, SpikeStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
                         circuit=self._circuit,
                         sonata_simulation_config_directory=self.config.coordinate_output_root,
                         simulation_length=self.config.initialize.simulation_length,
-                        population=self._circuit.default_population_name,
-                        default_node_set=DEFAULT_NODE_SET_NAME,
                         default_timestamps=DEFAULT_TIMESTAMPS,
                         source_node_population=self._circuit.default_population_name,
+                        target_node_population=self._circuit.default_population_name,
+                        default_source_neuron_set_reference=self._default_neuron_set_ref(),
+                        default_target_neuron_set_reference=self._default_neuron_set_ref(),
                     )
                 )
             else:

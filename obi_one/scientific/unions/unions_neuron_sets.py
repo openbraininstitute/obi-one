@@ -93,9 +93,16 @@ def resolve_neuron_set_ref_to_node_set(
 
 
 def resolve_neuron_set_ref_to_neuron_set(
-    neuron_set_reference: NeuronSetReference | None, default_neuron_set: NeuronSetUnion | None
+    neuron_set_reference: NeuronSetReference | None, default_neuron_set_reference: NeuronSetReference | None
 ) -> NeuronSetUnion | None:
     if neuron_set_reference is None:
-        return default_neuron_set
+        if default_neuron_set_reference is None:
+            msg = (
+                "NeuronSetReference is None and no default_neuron_set provided. "
+                "Cannot resolve to a NeuronSet."
+            )
+            raise ValueError(msg)
+        
+        return default_neuron_set_reference.block
 
     return neuron_set_reference.block

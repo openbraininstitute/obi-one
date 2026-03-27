@@ -22,9 +22,8 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
+from obi_one.scientific.library.constants import SONATA
 
-SPIKE_STIMULUS_SONATA_MODULE = "synapse_replay"
-SPIKE_STIMULUS_SONATA_INPUT_TYPE = "spikes"
 
 
 def check_non_none_neuron_set_reference_is_biophysical(
@@ -65,34 +64,21 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
-    """
-    Misc
-    """
-    _source_node_population: str | None = None
-    _resolved_timestamps: list[float] | None = None
-
-    @property
-    def resolved_timestamps(self) -> list[float]:
-        if self._resolved_timestamps is None:
-            msg = "Timestamps must be resolved before accessing. Call generate_spikes first."
-            raise ValueError(msg)
-        return self._resolved_timestamps
-
     def config(
         self,
         circuit: Circuit,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
-        population: str | None = None,
-        default_node_set: str = "All",
         default_timestamps: TimestampsReference = None,
         source_node_population: str | None = None,
-        default_source_neuron_set: NeuronSetReference | None = None,
+        target_node_population: str | None = None,
+        default_source_neuron_set_reference: NeuronSetReference | None = None,
+        default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
         check_non_none_neuron_set_reference_is_biophysical(
             neuron_set_reference=self.targeted_neuron_set,
             circuit=circuit,
-            population=population,
+            population=target_node_population,
             error_message="Target Neuron Set of Spike Stimulus must be biophysical.",
         )
 
@@ -108,11 +94,11 @@ class SpikeStimulus(StimulusWithTimestamps):
             )
         """
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
-            self.source_neuron_set, default_source_neuron_set
+            self.source_neuron_set, default_source_neuron_set_reference
         )
 
         target_neuron_set = resolve_neuron_set_ref_to_neuron_set(
-            self.targeted_neuron_set, default_node_set
+            self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
         spike_file_relative_path = self.generate_spikes(
@@ -176,12 +162,12 @@ class SpikeStimulus(StimulusWithTimestamps):
 
         sonata_config = {}
         sonata_config[self.block_name] = {
-            "delay": 0.0,  # If present, the simulation filters out those times before the delay
-            "duration": simulation_length,
-            "node_set": target_neuron_set.block_name,
-            "module": SPIKE_STIMULUS_SONATA_MODULE,
-            "input_type": SPIKE_STIMULUS_SONATA_INPUT_TYPE,
-            "spike_file": str(spike_file_relative_path),
+            SONATA.DELAY: 0.0,  # If present, the simulation filters out those times before the delay
+            SONATA.DURATION: simulation_length,
+            SONATA.NODE_SET: target_neuron_set.block_name,
+            SONATA.MODULE: SONATA.SPIKE_STIMULUS_MODULE,
+            SONATA.INPUT_TYPE: SONATA.SPIKE_STIMULUS_INPUT_TYPE,
+            SONATA.SPIKE_FILE: str(spike_file_relative_path),
         }
 
         return sonata_config
