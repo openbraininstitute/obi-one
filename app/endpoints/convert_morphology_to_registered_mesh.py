@@ -121,7 +121,8 @@ def register_morphology_mesh(
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            swc_path = Path(tmp_dir) / f"{cell_morphology_id}.swc"
+            safe_id = Path(cell_morphology_id).name
+            swc_path = Path(tmp_dir) / f"{safe_id}.swc"
             swc_path.write_bytes(swc_bytes)
 
             glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
