@@ -33,7 +33,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.12.2",
+    "entitysdk>=0.13.0",
     # PYDANTIC
     "pydantic>=2.10.6",
     # -- SCIENTIFIC

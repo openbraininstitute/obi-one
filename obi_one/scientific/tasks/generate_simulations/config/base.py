@@ -10,9 +10,8 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
@@ -30,6 +29,7 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -64,7 +64,7 @@ TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
-class SimulationScanConfig(ScanConfig, abc.ABC):
+class SimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
     single_coord_class_name: ClassVar[str]
@@ -190,16 +190,6 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
 
-    info: Info = Field(  # type: ignore[]
-        title="Info",
-        description="Information about the simulation campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
         if isinstance(self.initialize.circuit, list):
@@ -265,18 +255,12 @@ class SimulationScanConfig(ScanConfig, abc.ABC):
         )
 
 
-class SimulationSingleConfigMixin(abc.ABC):
-    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig."""
+class SimulationSingleConfigMixin(SingleConfigMixin):
+    """Mixin for CircuitSimulationSingleConfig and MEModelSimulationSingleConfig.
 
-    _single_entity: entitysdk.models.Simulation
-
-    @property
-    def single_entity(self) -> entitysdk.models.Simulation:
-        return self._single_entity
-
-    def set_single_entity(self, entity: entitysdk.models.Simulation) -> None:
-        """Sets the single entity attribute to the given entity."""
-        self._single_entity = entity
+    Inherits from SingleConfigMixin and overrides create_single_entity_with_config
+    to register a Simulation entity instead of a generic TaskConfig.
+    """
 
     def create_single_entity_with_config(
         self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
