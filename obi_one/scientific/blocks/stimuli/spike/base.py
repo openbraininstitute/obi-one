@@ -23,10 +23,10 @@ from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
 
+SPIKE_STIMULUS_SONATA_MODULE = "synapse_replay"
+SPIKE_STIMULUS_SONATA_INPUT_TYPE = "spikes"
 
 class SpikeStimulus(StimulusWithTimestamps):
-    _module: str = "synapse_replay"
-    _input_type: str = "spikes"
     
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -98,22 +98,17 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=spike_file_directory,
-            simulation_length=simulation_length,
             source_node_population=source_node_population,
             default_source_neuron_set=default_source_neuron_set,
         )
 
-        sonata_config = self._generate_config(spike_file_relative_path,
-                                              module=self._module,
-                                              input_type=self._input_type,
+        sonata_config = self._generate_config(spike_file_relative_path=spike_file_relative_path,
                                               simulation_length=simulation_length)
 
         return sonata_config
 
     def _generate_config(self, 
                          spike_file_relative_path: Path,
-                         module: str,
-                         input_type: str,
                          simulation_length: NonNegativeFloat) -> dict:
         
         if not spike_file_relative_path.exists():
@@ -127,8 +122,8 @@ class SpikeStimulus(StimulusWithTimestamps):
             "node_set": resolve_neuron_set_ref_to_node_set(
                 self.targeted_neuron_set, self._default_node_set
             ),
-            "module": module,
-            "input_type": input_type,
+            "module": SPIKE_STIMULUS_SONATA_MODULE,
+            "input_type": SPIKE_STIMULUS_SONATA_INPUT_TYPE,
             "spike_file": str(spike_file_relative_path),
         }
 
@@ -138,7 +133,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         self,
         circuit: Circuit,
         spike_file_directory: Path,
-        simulation_length: NonNegativeFloat,
         source_node_population: str | None = None,
         default_source_neuron_set: NeuronSetReference | None = None,
     ) -> Path:
