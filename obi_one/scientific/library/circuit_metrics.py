@@ -85,7 +85,7 @@ class TemporaryAsset:
         temp_file_path = Path(self.temp_dir.__enter__()) / os.path.split(self._remote_path)[1]
 
         try:
-            self._db_client.download_file(
+            self._db_client.fetch_file(
                 entity_id=self._circuit_id,
                 entity_type=Circuit,
                 asset_id=self._asset_id,
@@ -498,12 +498,12 @@ def get_circuit_metrics(  # noqa: PLR0914
 
     asset_id = directory_assets[0].id
 
-    # db_client.download_content does not support `asset_path` at the time of writing this
-    # Use db_client.download_file with temporary directory instead
+    # Fetch circuit config into temporary directory
+    # (temp_dir is also used as base path for manifest resolution in downstream functions)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
-        db_client.download_file(
+        db_client.fetch_file(
             entity_id=circuit_id,
             entity_type=Circuit,
             asset_id=asset_id,
