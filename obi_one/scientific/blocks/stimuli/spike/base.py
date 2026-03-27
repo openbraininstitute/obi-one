@@ -8,12 +8,11 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.timestamps import Timestamps
+from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
 )
-from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
