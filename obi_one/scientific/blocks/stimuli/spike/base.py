@@ -7,6 +7,7 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
@@ -16,7 +17,6 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_neuron_set,
-    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -111,7 +111,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.source_neuron_set, default_source_neuron_set
         )
 
-        target_node_set = resolve_neuron_set_ref_to_node_set(
+        target_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.targeted_neuron_set, default_node_set
         )
 
@@ -126,7 +126,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             spike_file_relative_path=spike_file_relative_path,
             sonata_simulation_config_directory=sonata_simulation_config_directory,
             simulation_length=simulation_length,
-            target_node_set=target_node_set,
+            target_neuron_set=target_neuron_set,
         )
 
         return sonata_config
@@ -135,7 +135,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         self,
         circuit: Circuit,
         spike_file_directory: Path,
-        source_neuron_set: NeuronSetReference,
+        source_neuron_set: NeuronSet,
         source_node_population: str | None = None,
     ) -> Path:
         source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
@@ -165,7 +165,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_relative_path: Path,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
-        target_node_set: str,
+        target_neuron_set: NeuronSet,
     ) -> dict:
         spike_file_absolute_path = (
             sonata_simulation_config_directory / spike_file_relative_path
@@ -178,7 +178,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         sonata_config[self.block_name] = {
             "delay": 0.0,  # If present, the simulation filters out those times before the delay
             "duration": simulation_length,
-            "node_set": target_node_set,
+            "node_set": target_neuron_set.block_name,
             "module": SPIKE_STIMULUS_SONATA_MODULE,
             "input_type": SPIKE_STIMULUS_SONATA_INPUT_TYPE,
             "spike_file": str(spike_file_relative_path),
