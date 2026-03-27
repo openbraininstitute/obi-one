@@ -12,6 +12,7 @@ import pandas as pd
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel
 
@@ -91,6 +92,7 @@ class TemporaryAsset:
                 asset_id=self._asset_id,
                 output_path=temp_file_path,
                 asset_path=self._remote_path,
+                strategy=FetchFileStrategy.link_or_download,
             )
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
@@ -509,6 +511,7 @@ def get_circuit_metrics(  # noqa: PLR0914
             asset_id=asset_id,
             output_path=temp_file_path,
             asset_path="circuit_config.json",
+            strategy=FetchFileStrategy.link_or_download,
         )
 
         # Read the file and load JSON

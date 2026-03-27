@@ -9,6 +9,7 @@ from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
 from entitysdk.models import Asset
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
@@ -89,6 +90,7 @@ class TemporaryPartialCircuit:
             asset_id=self.asset.id,
             output_path=temp_file_path,
             asset_path=rel_path,
+            strategy=FetchFileStrategy.link_or_download,
         )
         return temp_file_path
 
