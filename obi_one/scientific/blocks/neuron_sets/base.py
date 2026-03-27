@@ -18,14 +18,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
 
-L = logging.getLogger("obi-one")
-_NBS1_VPM_NODE_POP = "VPM"
-_NBS1_POM_NODE_POP = "POm"
-_RCA1_CA3_NODE_POP = "CA3_projections"
-
-_ALL_NODE_SET = "All"
-_EXCITATORY_NODE_SET = "Excitatory"
-_INHIBITORY_NODE_SET = "Inhibitory"
+L = logging.getLogger(__name__)
 
 _MAX_PERCENT = 100.0
 

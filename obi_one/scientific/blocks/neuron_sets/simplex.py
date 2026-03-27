@@ -8,7 +8,7 @@ from pydantic import Field, field_validator, model_validator
 from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]

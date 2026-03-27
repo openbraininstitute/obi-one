@@ -9,7 +9,7 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 
 class PairMotifNeuronSet(NeuronSet):
