@@ -498,8 +498,8 @@ def get_circuit_metrics(  # noqa: PLR0914
 
     asset_id = directory_assets[0].id
 
-    # Fetch circuit config into temporary directory
-    # (temp_dir is also used as base path for manifest resolution in downstream functions)
+    # db_client.download_content does not support `asset_path` at the time of writing this
+    # Use db_client.fetch_file with temporary directory instead
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
