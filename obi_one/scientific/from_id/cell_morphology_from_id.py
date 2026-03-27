@@ -10,7 +10,9 @@ import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, EMCellMesh, SkeletonizationExecution
+from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.models.entity import Entity
+from entitysdk.types import CellMorphologyProtocolDesign
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
@@ -73,8 +75,16 @@ class CellMorphologyFromID(EntityFromID):
         CellMorphology and an EMCellMesh is available from that task.
         """
         morph_entity = self.entity(db_client=db_client)
-        if "ultraliser" not in morph_entity.cell_morphology_protocol.name.lower():
+        if not isinstance(morph_entity, CellMorphology):
             return False
+        cm_protocol = morph_entity.cell_morphology_protocol
+        if cm_protocol is None:
+            return False
+        if not isinstance(cm_protocol, DigitalReconstructionCellMorphologyProtocol):
+            return False
+        if cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy:
+            return False
+
         activity = db_client.search_entity(
             entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
         ).one_or_none()

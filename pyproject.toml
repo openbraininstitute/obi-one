@@ -62,7 +62,7 @@ dependencies = [
     # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
     # Add an upper bound only if automatic upgrades must be prevented.
-    "entitysdk>=0.12.2",
+    "entitysdk>=0.13.0",
     "obi-auth>=1.0.0",
     "networkx>=3.4.2",
     "pyjwt>=2.10.1",

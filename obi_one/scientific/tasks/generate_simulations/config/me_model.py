@@ -4,7 +4,6 @@ from typing import Annotated, ClassVar
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
@@ -95,7 +94,5 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     }
 
 
-class MEModelSimulationSingleConfig(
-    MEModelSimulationScanConfig, SingleConfigMixin, SimulationSingleConfigMixin
-):
+class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, SimulationSingleConfigMixin):
     """Only allows single values."""
