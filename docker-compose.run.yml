@@ -10,6 +10,8 @@ services:
       - APP_NAME
       - APP_VERSION
       - COMMIT_SHA
+      - UV_INDEX_OBI_CODEARTIFACT_USERNAME
+      - UV_INDEX_OBI_CODEARTIFACT_PASSWORD
       tags:
       - "${IMAGE_NAME}:${IMAGE_TAG_ALIAS}"
     ports:
