@@ -1,5 +1,5 @@
-import io
 import tempfile
+import uuid
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated
@@ -55,8 +55,6 @@ def register_morphology_mesh(
     # ------------------------------------------------------------------
     # 1. Fetch the CellMorphology entity
     # ------------------------------------------------------------------
-    print(f"db_client config: url={db_client.api_url}, project={db_client.project_context}")
-
     L.info(f"db_client config: url={db_client.api_url}, project={db_client.project_context}")
     L.info(f"register_morphology_mesh: fetching entity {cell_morphology_id}")
     try:
@@ -121,8 +119,7 @@ def register_morphology_mesh(
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            safe_id = Path(cell_morphology_id).name
-            swc_path = Path(tmp_dir) / f"{safe_id}.swc"
+            swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
             swc_path.write_bytes(swc_bytes)
 
             glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
