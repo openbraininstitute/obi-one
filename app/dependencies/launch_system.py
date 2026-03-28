@@ -14,6 +14,7 @@ def get_client(
     return httpx.Client(
         base_url=settings.LAUNCH_SYSTEM_URL,
         headers={"Authorization": f"Bearer {token}"},
+        verify=not settings.LAUNCH_SYSTEM_DISABLE_SSL_VERIFY,
     )
 
 

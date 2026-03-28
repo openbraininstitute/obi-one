@@ -2,6 +2,7 @@ import json
 
 import entitysdk
 import numpy as np
+from entitysdk import models
 
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
@@ -56,9 +57,10 @@ def estimate_task_resources(  # noqa: PLR0914
 ) -> Resources:
     """Estimate machine resources for a circuit extraction task."""
     # Get extraction config
+    config_type = models.TaskConfig
     config = db_client.get_entity(
         entity_id=json_model.config_id,
-        entity_type=task_definition.config_type,
+        entity_type=config_type,
     )
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
@@ -68,7 +70,7 @@ def estimate_task_resources(  # noqa: PLR0914
 
     json_str = db_client.download_content(
         entity_id=json_model.config_id,
-        entity_type=task_definition.config_type,
+        entity_type=config_type,
         asset_id=config_asset_id,
     ).decode(encoding="utf-8")
 
@@ -76,10 +78,11 @@ def estimate_task_resources(  # noqa: PLR0914
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
     # Get parent circuit metrics
+    circuit_id = config.inputs[0].id
     level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     circuit_metrics = get_circuit_metrics(
-        circuit_id=config.circuit_id,
+        circuit_id=circuit_id,
         db_client=db_client,
         level_of_detail_nodes=level_of_detail_nodes_dict,
         level_of_detail_edges=level_of_detail_edges_dict,

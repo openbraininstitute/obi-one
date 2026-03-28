@@ -263,12 +263,6 @@ class IonChannelFittingScanConfig(ScanConfig):
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: entitysdk.models.IonChannelModelingConfig
-
-    @property
-    def single_entity(self) -> entitysdk.models.IonChannelModelingConfig:
-        return self._single_entity
-
     def create_single_entity_with_config(
         self,
         campaign: entitysdk.models.IonChannelModelingCampaign,

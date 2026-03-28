@@ -112,12 +112,17 @@ def _evaluate_accounting_parameters(
         case TaskType.circuit_extraction:
             return AccountingParameters(
                 count=1,
-                service_subtype=ServiceSubtype.SMALL_SIM,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.em_synapse_mapping:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
         case TaskType.ion_channel_model_simulation_execution:
             return AccountingParameters(
