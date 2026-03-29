@@ -13,6 +13,11 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
 
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
+
 L = logging.getLogger(__name__)
 
 
@@ -140,36 +145,19 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
 
         return expression
 
-    # BELOW: PROBALY NOT NEEDED ANYMORE.
-
-
-#     def _population(self, population: str | None = None) -> str:
-#         if (
-#             population is not None
-#             and self.node_population is not None
-#             and population != self.node_population
-#         ):
-#             L.warning(
-#                 "Node population %s has been set for this block and will be used. Ignoring %s",
-#                 self.node_population,
-#                 population,
-#             )
-#         population = self.node_population or population
-#         if population is None:
-#             msg = "Must specify name of a node population to resolve the NeuronSet!"
-#             raise ValueError(msg)
-#         return population
-
 
 class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
     """Only biophysical node populations are selectable."""
 
     population: str = Field(
         default="",
+        min_length=1,
         title="Population",
         description="Name of the biophysical node population to select from.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.NODE_POPULATION_DROPDOWN,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NODE_POPULATION,
         },
     )
 
@@ -179,10 +167,13 @@ class PointNeuronPopulationNeuronSet(PopulationNeuronSet):
 
     population: str = Field(
         default="",
+        min_length=1,
         title="Population",
         description="Name of the point neuron node population to select from.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.NODE_POPULATION_DROPDOWN,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.POINT_NODE_POPULATION,
         },
     )
 
@@ -192,9 +183,12 @@ class VirtualPopulationNeuronSet(PopulationNeuronSet):
 
     population: str = Field(
         default="",
+        min_length=1,
         title="Population",
         description="Name of the virtual node population to select from.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.NODE_POPULATION_DROPDOWN,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.VIRTUAL_NODE_POPULATION,
         },
     )
