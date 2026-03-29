@@ -21,3 +21,7 @@ class EModelOptimizationTask(Task):
         execution_activity = EModelOptimizationTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
+
+        # self.config.initialize.morphology...
+
+        # self.

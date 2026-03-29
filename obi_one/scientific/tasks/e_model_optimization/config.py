@@ -3,6 +3,8 @@ from enum import StrEnum
 from typing import ClassVar
 
 from obi_one.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromIDFromID
+from obi_one.scientific.from_id.electrical_recording_from_id import ElectricalRecordingFromID
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -46,10 +48,24 @@ class EModelOptimizationScanConfig(InfoScanConfig, SingleConfigMixin):
     }
 
     class Initialize(Block):
-        morphology: CellMorphologyFromIDFromID = Field(
+        morphology: CellMorphologyFromIDFromID | list[CellMorphologyFromIDFromID] = Field(
             title="Morphology",
             description="Morphology description.",
         )
+
+        ephys_traces: ElectricalRecordingFromID | tuple[ElectricalRecordingFromID] = Field(
+            title="Electrical Recordings",
+            description="Electrical recordings description.",
+        )
+
+        seed: int | list[int] = Field(
+            title="Random Seed",
+            description="Random seed for optimization.",
+        )
+
+        """
+        OTHER OPTIMIZATION PARAMETERS, E.G. OPTIMIZATION ALGORITHM, NUMBER OF GENERATIONS, POPULATION SIZE, ETC.
+        """
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -61,53 +77,43 @@ class EModelOptimizationScanConfig(InfoScanConfig, SingleConfigMixin):
         },
     )
 
-    # synapse_model_assigners: dict[str, SynapticModelAssignerUnion] = Field(
-    #     default_factory=dict,
-    #     description="Parameterizations...",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-    #         SchemaKey.REFERENCE_TYPE: SynapticModelAssignerReference.__name__,
-    #         SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
-    #         SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
-    #         SchemaKey.GROUP_ORDER: 0,
-    #     },
-    # )
+    morphology_locations: dict[str, SectionListMorphologyLocationsUnion] = Field(
+        # default_factory=dict,
+        # description="Synaptic models for synapse parameterization.",
+        # json_schema_extra={
+        #     SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+        #     SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+        #     SchemaKey.SINGULAR_NAME: "Synaptic Model",
+        #     SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
+        #     SchemaKey.GROUP_ORDER: 1,
+        # },
+    )
 
-    # synaptic_models: dict[str, SynapticModelUnion] = Field(
-    #     default_factory=dict,
-    #     description="Synaptic models for synapse parameterization.",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-    #         SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
-    #         SchemaKey.SINGULAR_NAME: "Synaptic Model",
-    #         SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
-    #         SchemaKey.GROUP_ORDER: 1,
-    #     },
-    # )
+    ion_channel_models_with_constraints_by_location: dict[IonChannelModelsWithConstraintsByLocationUnion] = Field(
+        default_factory=dict,
+        title="Ion Channel Models with Constraints by Location",
+        description="Ion channel models with constraints by location.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            # SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Ion Channel Models with Constraints for Location",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
 
-    # distributions: dict[str, AllDistributionsUnion] = Field(
-    #     default_factory=dict,
-    #     description="Distributions for synapse parameterization.",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-    #         SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
-    #         SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
-    #         SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
-    #         SchemaKey.GROUP_ORDER: 2,
-    #     },
-    # )
-
-    # neuron_sets: dict[str, NeuronSetUnion] = Field(
-    #     default_factory=dict,
-    #     description="Neuron sets for the simulation.",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-    #         SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-    #         SchemaKey.SINGULAR_NAME: "Neuron Set",
-    #         SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-    #         SchemaKey.GROUP_ORDER: 0,
-    #     },
-    # )
+    neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
+        default_factory=dict,
+        title="Neuronal Manipulations",
+        description="Neuronal manipulations for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: NeuronalManipulationReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
 
 
 class EModelOptimizationSingleConfig(EModelOptimizationScanConfig, SingleConfigMixin):
