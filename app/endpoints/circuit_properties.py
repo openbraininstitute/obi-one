@@ -65,7 +65,7 @@ def circuit_metrics_endpoint(
 
 
 @router.get(
-    "/circuit/{circuit_id}/BIOPHYSICAL_NEURONAL_POPULATIONs",
+    "/circuit/{circuit_id}/biophysical_populations",
     summary="Circuit populations",
     description="This returns the list of biophysical node populations for a given circuit.",
 )
