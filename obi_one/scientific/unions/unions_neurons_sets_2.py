@@ -23,13 +23,8 @@ _POINT_NEURON_SETS = PointIDNeuronSet | PointPopulationNeuronSet
 _POPULATION_NEURON_SETS = BiophysicalPopulationNeuronSet | VirtualPopulationNeuronSet | PointPopulationNeuronSet
 _ID_NEURON_SETS = BiophysicalIDNeuronSet | VirtualIDNeuronSet | PointIDNeuronSet
 
-
-# NeuronSet2Union = Annotated[
-#     _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS,
-#     Discriminator("type"),
-# ]
 NeuronSet2Union = Annotated[
-    _POPULATION_NEURON_SETS | _ID_NEURON_SETS,
+    _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS,
     Discriminator("type"),
 ]
 

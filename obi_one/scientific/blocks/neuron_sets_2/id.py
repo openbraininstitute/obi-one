@@ -51,16 +51,16 @@ class IDNeuronSet(PopulationNeuronSet, abc.ABC):
 class BiophysicalIDNeuronSet(IDNeuronSet, BiophysicalPopulationNeuronSet):
     """Only biophysical neuron node populations are selectable."""
 
-    title: ClassVar[str] = "Sample by Neuron ID (Biophysical)"
+    title: ClassVar[str] = "Sample IDs (Biophysical)"
 
 
 class VirtualIDNeuronSet(IDNeuronSet, VirtualPopulationNeuronSet):
     """Only virtual neuron node populations are selectable."""
 
-    title: ClassVar[str] = "Sample by Neuron ID (Virtual)"
+    title: ClassVar[str] = "Sample IDs (Virtual)"
 
 
 class PointIDNeuronSet(IDNeuronSet, PointPopulationNeuronSet):
     """Only point neuron node populations are selectable."""
 
-    title: ClassVar[str] = "Sample by Neuron ID (Point)"
+    title: ClassVar[str] = "Sample IDs (Point)"

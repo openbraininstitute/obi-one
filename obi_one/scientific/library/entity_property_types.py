@@ -22,6 +22,9 @@ class CircuitMappedProperties(StrEnum):
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
+    SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
+    SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
+    SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"
 
 
 class IonChannelPropertyType(StrEnum):

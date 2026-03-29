@@ -13,6 +13,7 @@ from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
+    CircuitUsability,
     MappedPropertiesGroup,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import (
@@ -145,10 +146,17 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
 class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
     """Sample a percentage of neurons in a biophysical population."""
 
-    title: ClassVar[str] = "Sample Percentage (Biophysical)"
+    title: ClassVar[str] = "Sample % (Biophysical)"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no biophysical populations.",
+        },
+    }
 
     population: str = Field(
-        default="",
         min_length=1,
         title="Population",
         description="Name of the biophysical node population to select from.",
@@ -163,11 +171,18 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
 class PointPopulationNeuronSet(PopulationNeuronSet):
     """Sample a percentage of neurons in a point neuron population."""
 
-    title: ClassVar[str] = "Sample Percentage (Point)"
+    title: ClassVar[str] = "Sample % (Point)"
     description: ClassVar[str] = "..."
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_POINT_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no point neuron populations.",
+        },
+    }
+
     population: str = Field(
-        default="",
         min_length=1,
         title="Population",
         description="Name of the point neuron node population to select from.",
@@ -178,15 +193,21 @@ class PointPopulationNeuronSet(PopulationNeuronSet):
         },
     )
 
-
 class VirtualPopulationNeuronSet(PopulationNeuronSet):
     """Sample a percentage of neurons in a virtual population."""
 
-    title: ClassVar[str] = "Sample Percentage (Virtual)"
+    title: ClassVar[str] = "Sample % (Virtual)"
     description: ClassVar[str] = "..."
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_VIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no virtual populations.",
+        },
+    }
+
     population: str = Field(
-        default="",
         min_length=1,
         title="Population",
         description="Name of the virtual node population to select from.",
