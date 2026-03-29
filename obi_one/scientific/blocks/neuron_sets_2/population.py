@@ -1,22 +1,34 @@
-"""
-PopulationNeuronSet(NeuronSet) [NEW] 
-- node_population 
-- sample_percentage 
-- sample_seed 
-- _population_type 
+"""PopulationNeuronSet(NeuronSet) [NEW]
+- node_population
+- sample_percentage
+- sample_seed
+- _population_type
 
-- Allows a user to select a whole node population, i.e., restricted to a single node population 
-- Supports sub-sampling 
-- Is aware of the population type (i.e., biophysical, point, virtual) 
-- Can be used for either biophysical, point, or virtual populations 
-- Replaces: AllNeurons, nbS1VPMInputs, nbS1POmInputs, rCA1CA3Inputs, etc. 
+- Allows a user to select a whole node population, i.e., restricted to a single node population
+- Supports sub-sampling
+- Is aware of the population type (i.e., biophysical, point, virtual)
+- Can be used for either biophysical, point, or virtual populations
+- Replaces: AllNeurons, nbS1VPMInputs, nbS1POmInputs, rCA1CA3Inputs, etc.
 """
+
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
+)
+
+
+class PopulationType(StrEnum):
+    BIOPHYSICAL = "biophysical"
+    POINT = "point"
+    VIRTUAL = "virtual"
 
 
 import abc
 
+
 class PopulationNeuronSet(NeuronSet, abc.ABC):
     """"""
+
+    population = None
 
     sample_percentage: (
         Annotated[NonNegativeFloat, Field(le=100)]
@@ -40,6 +52,100 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
         },
     )
 
+    @model_validator(mode="after")
+    def check_population_exists_in_circuit(self, circuit: Circuit) -> None:
+        """Check self.population exists in circuit."""
+        if self.population is None:
+            msg = "Sub-class of PopulationNeuronSet must specify a node population name!"
+            raise ValueError(msg)
+        if self.population not in (
+            populations := Circuit.get_node_population_names(circuit.sonata_circuit)
+        ):
+            msg = (
+                f"Node population '{self.population}' not found in circuit '{circuit.name}'. "
+                f"Available node populations: {', '.join(populations)}"
+            )
+            raise ValueError(msg)
+
+    def population_type(self, circuit: Circuit) -> PopulationType:
+        """Returns the population type (i.e. biophysical, point, virtual)."""
+        return circuit.sonata_circuit.nodes[self.population].type
+
+    def _get_expression(self, circuit: Circuit) -> dict:
+        """Returns the SONATA node set expression (w/o subsampling)."""
+        return {"population": self.population}
+
+    def _resolve_ids(self, circuit: Circuit) -> list[int]:
+        """Returns the full list of neuron IDs (w/o subsampling)."""
+        expression = self._get_expression(circuit)
+        name = "__TMP_NODE_SET__"
+        add_node_set_to_circuit(circuit.sonata_circuit, {name: expression})
+
+        try:
+            node_ids = circuit.sonata_circuit.nodes[self.population].ids(name)
+        except snap.BluepySnapError as e:
+            # In case of an error, return empty list
+            L.warning(e)
+            node_ids = []
+
+        return node_ids
+
+    def get_neuron_ids(self, circuit: Circuit) -> np.ndarray:
+        """Returns list of neuron IDs (with subsampling, if specified)."""
+        # self.enforce_no_multi_param()
+        # self.check_population(circuit)
+        ids = np.array(self._resolve_ids(circuit))
+
+        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
+            rng = np.random.default_rng(self.sample_seed)
+            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
+            ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
+
+        if len(ids) == 0:
+            L.warning("Neuron set empty!")
+
+        return ids
+
+    def get_node_set_definition(self, circuit: Circuit, *, force_resolve_ids: bool = False) -> dict:
+        """Returns the SONATA node set definition, optionally forcing to resolve individual \
+            IDs.
+        """
+        # self.enforce_no_multi_param()
+        if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
+            # Symbolic expression can be preserved
+            # self.check_population(circuit, ignore_none=True)
+            expression = self._get_expression(circuit)
+        else:
+            # Individual IDs need to be resolved
+            # self.check_population(circuit)
+            expression = {
+                "population": self.population,
+                "node_id": self.get_neuron_ids(circuit).tolist(),
+            }
+
+        return expression
+
+    # BELOW: PROBALY NOT NEEDED ANYMORE.
+
+
+#     def _population(self, population: str | None = None) -> str:
+#         if (
+#             population is not None
+#             and self.node_population is not None
+#             and population != self.node_population
+#         ):
+#             L.warning(
+#                 "Node population %s has been set for this block and will be used. Ignoring %s",
+#                 self.node_population,
+#                 population,
+#             )
+#         population = self.node_population or population
+#         if population is None:
+#             msg = "Must specify name of a node population to resolve the NeuronSet!"
+#             raise ValueError(msg)
+#         return population
+
+
 class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
     """Only biophysical node populations are selectable."""
 
@@ -51,6 +157,7 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.NODE_POPULATION_DROPDOWN,
         },
     )
+
 
 class PointNeuronPopulationNeuronSet(PopulationNeuronSet):
     """Only point neuron node populations are selectable."""
@@ -64,6 +171,7 @@ class PointNeuronPopulationNeuronSet(PopulationNeuronSet):
         },
     )
 
+
 class VirtualPopulationNeuronSet(PopulationNeuronSet):
     """Only virtual node populations are selectable."""
 
@@ -75,4 +183,3 @@ class VirtualPopulationNeuronSet(PopulationNeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.NODE_POPULATION_DROPDOWN,
         },
     )
-

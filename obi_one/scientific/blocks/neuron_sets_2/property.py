@@ -1,9 +1,8 @@
-"""
-PropertyNeuronSet(PopulationNeuronSet) 
-- property_filter (may be refined) 
-- Has a filter by node properties only 
-- Available node properties dependent on the node population 
-- No node sets any more (can be combined separately, see below) 
+"""PropertyNeuronSet(PopulationNeuronSet)
+- property_filter (may be refined)
+- Has a filter by node properties only
+- Available node properties dependent on the node population
+- No node sets any more (can be combined separately, see below)
 """
 
 # import abc
@@ -19,11 +18,6 @@ PropertyNeuronSet(PopulationNeuronSet)
 # from obi_one.scientific.library.circuit import Circuit
 
 # L = logging.getLogger("obi-one")
-
-
-# CircuitNode = Annotated[str, Field(min_length=1)]
-# NodeSetType = CircuitNode | list[CircuitNode]
-
 
 # class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 #     filter_dict: dict[str, list] = Field(
