@@ -65,7 +65,7 @@ def circuit_metrics_endpoint(
 
 
 @router.get(
-    "/circuit/{circuit_id}/biophysical_populations",
+    "/circuit/{circuit_id}/BIOPHYSICAL_NEURONAL_POPULATIONs",
     summary="Circuit populations",
     description="This returns the list of biophysical node populations for a given circuit.",
 )
@@ -138,6 +138,15 @@ def mapped_circuit_properties_endpoint(
         )
         mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
             circuit_metrics.names_of_nodesets
+        )
+        mapped_circuit_properties[CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_biophys_node_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_virtual_node_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.POINT_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_point_node_populations
         )
     except (entitysdk.exception.EntitySDKError, ValueError):
         # Expected for MEModel entities or entities without proper circuit configuration

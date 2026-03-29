@@ -9,13 +9,12 @@ from pydantic import Field, NonNegativeFloat, model_validator
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.sonata_circuit_helpers import (
-    add_node_set_to_circuit,
-)
-
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
+)
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
 )
 
 L = logging.getLogger(__name__)
