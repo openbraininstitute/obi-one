@@ -4,9 +4,11 @@ from enum import StrEnum
 from typing import Annotated
 
 import bluepysnap as snap
+import numpy as np
 from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -156,7 +158,7 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NODE_POPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
         },
     )
 
@@ -172,7 +174,7 @@ class PointNeuronPopulationNeuronSet(PopulationNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.POINT_NODE_POPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.POINT_NEURONAL_POPULATION,
         },
     )
 
@@ -188,6 +190,6 @@ class VirtualPopulationNeuronSet(PopulationNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.VIRTUAL_NODE_POPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION,
         },
     )

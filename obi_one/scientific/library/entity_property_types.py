@@ -13,9 +13,9 @@ class MappedPropertiesGroup(StrEnum):
 
 class CircuitMappedProperties(StrEnum):
     NODE_SET = "NodeSet"
-    BIOPHYSICAL_NEURONAL_POPULATION = "BiophysicalPopulation"
-    VIRTUAL_NEURONAL_POPULATION = "VirtualPopulation"
-    POINT_NEURONAL_POPULATION = "PointNeuronPopulation"
+    BIOPHYSICAL_NEURONAL_POPULATION = "BiophysicalNeuronalPopulation"
+    VIRTUAL_NEURONAL_POPULATION = "VirtualNeuronalPopulation"
+    POINT_NEURONAL_POPULATION = "PointNeuronalPopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
 
 
