@@ -29,6 +29,9 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
+from obi_one.scientific.library.generate_simulations.helpers import (
+    resolved_sonata_delay_duration_dict,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -208,17 +211,22 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         )
 
         for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "percent_start": self.percentage_of_threshold_current,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+            stim_dict = resolved_sonata_delay_duration_dict(
+                timestamp, self.timestamp_offset, self.duration
+            )
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "percent_start": self.percentage_of_threshold_current,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
