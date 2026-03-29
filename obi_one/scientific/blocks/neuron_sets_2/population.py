@@ -48,7 +48,7 @@ _MAX_PERCENT = 100.0
 class PopulationNeuronSet(NeuronSet, abc.ABC):
     """"""
 
-    population = None
+    population: None = None
     _population_type: SonataPopulationType | None = None
 
     sample_percentage: (
