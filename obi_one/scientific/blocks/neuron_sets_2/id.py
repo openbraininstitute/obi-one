@@ -24,8 +24,6 @@ L = logging.getLogger("obi-one")
 class IDNeuronSet(PopulationNeuronSet, abc.ABC):
     """Neuron set definition by providing a list of neuron IDs."""
 
-    title: ClassVar[str] = "ID Neuron Set"
-
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
         title="ID Neuronset",
         description="List of neuron IDs to include in the neuron set.",
@@ -53,10 +51,16 @@ class IDNeuronSet(PopulationNeuronSet, abc.ABC):
 class BiophysicalIDNeuronSet(IDNeuronSet, BiophysicalPopulationNeuronSet):
     """Only biophysical neuron node populations are selectable."""
 
+    title: ClassVar[str] = "Sample by Neuron ID (Biophysical)"
+
 
 class VirtualIDNeuronSet(IDNeuronSet, VirtualPopulationNeuronSet):
     """Only virtual neuron node populations are selectable."""
 
+    title: ClassVar[str] = "Sample by Neuron ID (Virtual)"
+
 
 class PointIDNeuronSet(IDNeuronSet, PointPopulationNeuronSet):
     """Only point neuron node populations are selectable."""
+
+    title: ClassVar[str] = "Sample by Neuron ID (Point)"

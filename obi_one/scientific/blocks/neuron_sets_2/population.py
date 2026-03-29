@@ -1,7 +1,7 @@
 import abc
 import logging
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 import bluepysnap as snap
 import numpy as np
@@ -143,7 +143,9 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
 
 
 class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
-    """Only biophysical node populations are selectable."""
+    """Sample a percentage of neurons in a biophysical population."""
+
+    title: ClassVar[str] = "Sample Percentage (Biophysical)"
 
     population: str = Field(
         default="",
@@ -159,7 +161,10 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
 
 
 class PointPopulationNeuronSet(PopulationNeuronSet):
-    """Only point neuron node populations are selectable."""
+    """Sample a percentage of neurons in a point neuron population."""
+
+    title: ClassVar[str] = "Sample Percentage (Point)"
+    description: ClassVar[str] = "..."
 
     population: str = Field(
         default="",
@@ -175,7 +180,10 @@ class PointPopulationNeuronSet(PopulationNeuronSet):
 
 
 class VirtualPopulationNeuronSet(PopulationNeuronSet):
-    """Only virtual node populations are selectable."""
+    """Sample a percentage of neurons in a virtual population."""
+
+    title: ClassVar[str] = "Sample Percentage (Virtual)"
+    description: ClassVar[str] = "..."
 
     population: str = Field(
         default="",
