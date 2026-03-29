@@ -84,7 +84,7 @@ class NeuronSet(Block, abc.ABC):
             )
             raise ValueError(msg)
 
-        output_file = AbstractNeuronSet._get_output_file(circuit, file_name, output_path)
+        output_file = self._get_output_file(circuit, file_name, output_path)
 
         if overwrite_if_exists and append_if_exists:
             msg = "Append and overwrite options are mutually exclusive!"

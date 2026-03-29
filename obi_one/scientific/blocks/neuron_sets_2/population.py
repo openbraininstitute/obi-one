@@ -113,8 +113,6 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
 
     def get_neuron_ids(self, circuit: Circuit) -> np.ndarray:
         """Returns list of neuron IDs (with subsampling, if specified)."""
-        # self.enforce_no_multi_param()
-        # self.check_population(circuit)
         ids = np.array(self._resolve_ids(circuit))
 
         if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
@@ -131,14 +129,11 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
         """Returns the SONATA node set definition, optionally forcing to resolve individual \
             IDs.
         """
-        # self.enforce_no_multi_param()
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
-            # self.check_population(circuit, ignore_none=True)
             expression = self._get_expression(circuit)
         else:
             # Individual IDs need to be resolved
-            # self.check_population(circuit)
             expression = {
                 "population": self.population,
                 "node_id": self.get_neuron_ids(circuit).tolist(),
@@ -163,7 +158,7 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
     )
 
 
-class PointNeuronPopulationNeuronSet(PopulationNeuronSet):
+class PointPopulationNeuronSet(PopulationNeuronSet):
     """Only point neuron node populations are selectable."""
 
     population: str = Field(
