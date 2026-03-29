@@ -1,3 +1,21 @@
+import abc
+import logging
+from enum import StrEnum
+from typing import Annotated
+
+import bluepysnap as snap
+from pydantic import Field, NonNegativeFloat, model_validator
+
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
+)
+
+L = logging.getLogger(__name__)
+
+
 """PopulationNeuronSet(NeuronSet) [NEW]
 - node_population
 - sample_percentage
@@ -11,24 +29,21 @@
 - Replaces: AllNeurons, nbS1VPMInputs, nbS1POmInputs, rCA1CA3Inputs, etc.
 """
 
-from obi_one.scientific.library.sonata_circuit_helpers import (
-    add_node_set_to_circuit,
-)
 
-
-class PopulationType(StrEnum):
+class SonataPopulationType(StrEnum):
     BIOPHYSICAL = "biophysical"
     POINT = "point"
     VIRTUAL = "virtual"
 
 
-import abc
+_MAX_PERCENT = 100.0
 
 
 class PopulationNeuronSet(NeuronSet, abc.ABC):
     """"""
 
     population = None
+    _population_type: SonataPopulationType | None = None
 
     sample_percentage: (
         Annotated[NonNegativeFloat, Field(le=100)]
@@ -67,7 +82,7 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
             )
             raise ValueError(msg)
 
-    def population_type(self, circuit: Circuit) -> PopulationType:
+    def population_type(self, circuit: Circuit) -> SonataPopulationType:
         """Returns the population type (i.e. biophysical, point, virtual)."""
         return circuit.sonata_circuit.nodes[self.population].type
 
