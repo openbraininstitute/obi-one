@@ -16,10 +16,11 @@ L = logging.getLogger(__name__)
 
 
 class NeuronSet(Block, abc.ABC):
-    """NeuronSet  [NEW - redefined]
+    """NeuronSet  [NEW - redefined].
+
     - New (abstract) base class for all neuron sets
     - No sampling
-    - No node population (i.e., supports multi-population neuron sets !)
+    - No node population (i.e., supports multi-population neuron sets!)
     """
 
     """Base class representing a neuron set which can be turned into a SONATA node set by either

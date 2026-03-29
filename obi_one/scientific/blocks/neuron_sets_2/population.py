@@ -47,7 +47,7 @@ _MAX_PERCENT = 100.0
 
 
 class PopulationNeuronSet(NeuronSet, abc.ABC):
-    """"""
+    """Abstract base class for neuron sets defined by node population and optional sub-sampling."""
 
     population: None = None
     _population_type: SonataPopulationType | None = None
@@ -93,7 +93,7 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
         """Returns the population type (i.e. biophysical, point, virtual)."""
         return circuit.sonata_circuit.nodes[self.population].type
 
-    def _get_expression(self, circuit: Circuit) -> dict:
+    def _get_expression(self, circuit: Circuit) -> dict:  # noqa: ARG002
         """Returns the SONATA node set expression (w/o subsampling)."""
         return {"population": self.population}
 
@@ -148,6 +148,8 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
 
     title: ClassVar[str] = "Sample % (Biophysical)"
 
+    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.BIOPHYSICAL
+
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
@@ -174,6 +176,8 @@ class PointPopulationNeuronSet(PopulationNeuronSet):
     title: ClassVar[str] = "Sample % (Point)"
     description: ClassVar[str] = "..."
 
+    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.POINT
+
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
@@ -193,11 +197,14 @@ class PointPopulationNeuronSet(PopulationNeuronSet):
         },
     )
 
+
 class VirtualPopulationNeuronSet(PopulationNeuronSet):
     """Sample a percentage of neurons in a virtual population."""
 
     title: ClassVar[str] = "Sample % (Virtual)"
     description: ClassVar[str] = "..."
+
+    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.VIRTUAL
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {

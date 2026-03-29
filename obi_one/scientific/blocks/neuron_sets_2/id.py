@@ -1,4 +1,5 @@
-"""IDNeuronSet(PopulationNeuronSet)
+"""IDNeuronSet(PopulationNeuronSet).
+
 - As before, selected IDs within a given node population
 """
 

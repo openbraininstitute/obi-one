@@ -442,7 +442,6 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     number_of_virtual_node_populations: int
     names_of_biophys_node_populations: list[str]
     names_of_virtual_node_populations: list[str]
-    # names_of_point_node_populations: list[str]
     names_of_nodesets: list[str]
     biophysical_node_populations: list[CircuitMetricsNodePopulation | None]
     virtual_node_populations: list[CircuitMetricsNodePopulation | None]
