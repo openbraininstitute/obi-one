@@ -317,7 +317,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
                     SingleValueScanParam(
                         location_list=multi_value.location_list,
                         value=multi_value.values[coord_i],
-                        index=coord_i,
+                        index_in_scan_dimension=coord_i,
                     )
                     for multi_value in multi_value_parameters
                 ]
