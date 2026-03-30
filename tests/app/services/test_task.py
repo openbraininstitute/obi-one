@@ -295,7 +295,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "type": "cluster",
             "instances": 1,
             "instance_type": "small",
-            "timelimit": "00:10",
+            "timelimit": None,
             "compute_cell": "cell_a",
         },
         "inputs": [
