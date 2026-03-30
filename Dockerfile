@@ -39,11 +39,16 @@ WORKDIR /code
 ARG ENVIRONMENT
 ARG TARGETPLATFORM
 
+ARG UV_INDEX_OBI_CODEARTIFACT_USERNAME
+ARG UV_INDEX_OBI_CODEARTIFACT_PASSWORD
+
 RUN \
     --mount=type=cache,target=/root/.cache/uv,id=uv-cache-${TARGETPLATFORM} \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
+    UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
+    UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
     uv sync --locked --no-install-project --extra connectivity
 
 RUN \
@@ -53,6 +58,8 @@ RUN \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi_one,target=obi_one \
     --mount=type=bind,source=.git,target=.git \
+    UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
+    UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
     uv sync --locked --no-editable --no-cache --extra connectivity
 
 # run stage
