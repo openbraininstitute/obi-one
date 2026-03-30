@@ -660,8 +660,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 1 Duration",
         description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -670,8 +670,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 1 Voltage",
         description="Amplitude 1 of SEClamp stimulus (in mV)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -680,8 +680,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 2 Duration",
         description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -690,8 +690,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 2 Voltage",
         description="Amplitude 2 of SEClamp stimulus (in mV)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -700,8 +700,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 3 Duration",
         description="Duration 3 of SEClamp stimulus (in ms)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -710,8 +710,8 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         title="Level 3 Voltage",
         description="Amplitude 3 of  SEClamp stimulus (in mV)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -750,7 +750,7 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         "The first duration starts at time 0, "
         "and each subsequent duration starts when the previous one ends.",
         json_schema_extra={
-            "ui_element": "voltage_duration_ui_element",
+            SchemaKey.UI_ELEMENT: UIElement.VOLTAGE_DURATION,
         },
     )
 

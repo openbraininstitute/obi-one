@@ -2,6 +2,8 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.param import MultiValueScanParam
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 
 class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
@@ -40,8 +42,8 @@ class DurationVoltageCombination(ComplexVariableHolder):
         title="Voltage for each level",
         description="The voltage for each level, given in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "unit": "mV",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
 
@@ -49,7 +51,7 @@ class DurationVoltageCombination(ComplexVariableHolder):
         title="Duration for each level",
         description="The duration for each level, given in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "unit": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
