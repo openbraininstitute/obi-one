@@ -64,6 +64,18 @@ class TestSingleValueScanParam:
         param = SingleValueScanParam(location_list=["opt"], value=None)
         assert param.value is None
 
+    def test_index_in_scan_dimension(self):
+        param = SingleValueScanParam(location_list=["x"], value=42, index_in_scan_dimension=3)
+        assert param.index_in_scan_dimension == 3
+
+    def test_index_in_scan_dimension_default_none(self):
+        param = SingleValueScanParam(location_list=["x"], value=42)
+        assert param.index_in_scan_dimension is None
+
+    def test_index_in_scan_dimension_zero(self):
+        param = SingleValueScanParam(location_list=["x"], value=42, index_in_scan_dimension=0)
+        assert param.index_in_scan_dimension == 0
+
 
 class TestScanParamSerialization:
     def test_multi_value_model_dump(self):
@@ -77,6 +89,12 @@ class TestScanParamSerialization:
         dump = param.model_dump()
         assert dump["location_list"] == ["x"]
         assert dump["value"] == 42
+        assert dump["index_in_scan_dimension"] is None
+
+    def test_single_value_model_dump_with_index(self):
+        param = SingleValueScanParam(location_list=["x"], value=42, index_in_scan_dimension=5)
+        dump = param.model_dump()
+        assert dump["index_in_scan_dimension"] == 5
 
 
 class TestNestedParamShortEdgeCases:
