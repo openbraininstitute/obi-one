@@ -31,3 +31,4 @@ class MultiValueScanParam(ScanParam):
 
 class SingleValueScanParam(ScanParam):
     value: Any
+    index_in_scan_dimension: int

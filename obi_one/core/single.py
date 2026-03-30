@@ -61,6 +61,14 @@ class SingleCoordinateScanParams(OBIBaseModel):
         for scan_param in self.scan_params:
             d[scan_param.location_str] = scan_param.value
         return d
+    
+    @property
+    def scan_multi_dim_index(self) -> dict[str, int]:
+        """Return a dictionary with the multi-dimensional index of the scan parameters."""
+        d = {}
+        for scan_param in self.scan_params:
+            d[scan_param.location_str] = scan_param.index_in_scan_dimension
+        return d
 
 
 class SingleConfigMixin:
@@ -99,13 +107,18 @@ class SingleConfigMixin:
                 "for Tasks which use TaskActivity execution activities."
             )
             raise ValueError(msg)
+        
+        multiple_value_parameters_dictionary = {
+            "scan_params": self.single_coordinate_scan_params.dictionary_representaiton(),
+            "scan_multi_dim_index": self.single_coordinate_scan_params.scan_multi_dim_index
+        }
 
         self._single_entity, _ = db_sdk.register_task_config_with_asset(
             client=db_client,
             name=self.campaign_name,
             description=self.campaign_description,
             task_config_type=self.single_task_config_type,
-            multiple_value_parameters_dictionary=self.single_coordinate_scan_params.dictionary_representaiton(),
+            multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
             input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
         )
