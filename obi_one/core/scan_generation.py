@@ -6,6 +6,7 @@ from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 import entitysdk
 from pydantic import PrivateAttr, ValidationError
@@ -108,22 +109,26 @@ class ScanGenerationTask(Task, abc.ABC):
         msg = "coordinate_parameters() must be implemented by a subclass of Scan."
         raise NotImplementedError(msg)
 
-    def set_nested_single_coordinate_scan_param_value(self, single_coord_config, location_list, value):
+    def set_nested_single_coordinate_scan_param_value(
+        self, single_coord_config: ScanConfigsUnion, location_list: list, value: Any
+    ) -> Any:
         if location_list == []:
             return value
-        
-        if isinstance(single_coord_config, list) or isinstance(single_coord_config, dict) or isinstance(single_coord_config, tuple):
-            single_coord_config[location_list[0]] = self.set_nested_single_coordinate_scan_param_value(
-                single_coord_config[location_list[0]], location_list[1:], value
-            )
-            return single_coord_config
-        
-        else:
-            single_coord_config.__dict__[location_list[0]] = self.set_nested_single_coordinate_scan_param_value(
-                single_coord_config.__dict__[location_list[0]], location_list[1:], value
+
+        if isinstance(single_coord_config, (list, dict, tuple)):
+            single_coord_config[location_list[0]] = (
+                self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config[location_list[0]], location_list[1:], value
+                )
             )
             return single_coord_config
 
+        single_coord_config.__dict__[location_list[0]] = (
+            self.set_nested_single_coordinate_scan_param_value(
+                single_coord_config.__dict__[location_list[0]], location_list[1:], value
+            )
+        )
+        return single_coord_config
 
     def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
@@ -155,7 +160,7 @@ class ScanGenerationTask(Task, abc.ABC):
                 single_coord_config = self.set_nested_single_coordinate_scan_param_value(
                     single_coord_config, scan_param.location_list, scan_param.value
                 )
-                
+
             try:
                 # Cast the form to its single_config_class_name type
                 single_coord_config = single_coord_config.cast_to_single_coord()

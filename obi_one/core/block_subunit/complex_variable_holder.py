@@ -5,32 +5,23 @@ from obi_one.core.param import MultiValueScanParam
 
 
 class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
-    """Has structure List[Tuple[AnyOf(int, float, list[float], list[int])]]"""
+    """Has structure List[Tuple[AnyOf(int, float, list[float], list[int])]]."""
 
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
     # checks this for parameter scan
-    def multiple_value_parameters(
-        self, base_location_list: list[str]
-    ) -> list[MultiValueScanParam]:
-        
+    def multiple_value_parameters(self, base_location_list: list[str]) -> list[MultiValueScanParam]:
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
-            # find the value of the form list[tuple(list[...])]
-            # make parameter scan on the list inside the tuple
             multi_values = []
             if isinstance(value, list):
-                for list_i, item in enumerate(value):
-                    if isinstance(item, tuple):
-                        for tuple_i, subitem in enumerate(item):
-                            if isinstance(subitem, list):
-                                multi_values.append(
-                                    {
-                                        "value": subitem,
-                                        "location_list": base_location_list + [key, list_i, tuple_i],
-                                    }
-                                )
+                multi_values.append(
+                    {
+                        "value": value,
+                        "location_list": [*base_location_list, key],
+                    }
+                )
 
             for multi_value in multi_values:
                 self._multiple_value_parameters.append(
@@ -40,11 +31,11 @@ class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
                 )
 
         return self._multiple_value_parameters
-    
+
 
 class DurationVoltageCombination(ComplexVariableHolder):
     """Class for storing pairs of duration and voltage combinations for stimulation protocols."""
-    
+
     voltage: float | list[float] = Field(
         title="Voltage for each level",
         description="The voltage for each level, given in millivolts (mV).",

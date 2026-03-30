@@ -747,7 +747,8 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         min_length=1,
         title="Voltage Levels and Durations",
         description="A list of duration and voltage combinations for the SEClamp stimulus. "
-            "The first duration starts at time 0, and each subsequent duration starts when the previous one ends.",
+        "The first duration starts at time 0, "
+        "and each subsequent duration starts when the previous one ends.",
         json_schema_extra={
             "ui_element": "voltage_duration_ui_element",
         },
@@ -760,8 +761,10 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "delay": 0,
             "duration": sum(combination.duration for combination in self.duration_voltage),
             "voltage": self.duration_voltage[0].voltage,
-            # converts durations into starting times for each level, with the first level starting at time 0
-            "duration_levels": [0] + [combination.duration for combination in self.duration_voltage[:-1]],
+            # converts durations into starting times for each level,
+            # with the first level starting at time 0
+            "duration_levels": [0]
+            + [combination.duration for combination in self.duration_voltage[:-1]],
             "voltage_levels": [combination.voltage for combination in self.duration_voltage],
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
