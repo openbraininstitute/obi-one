@@ -1,40 +1,37 @@
 {
-  "oneOf": [
-    {
-      "items": {
-        "items": {
-          "oneOf": [
-            {
+  "duration_voltage_combinations": {
+    "items": {
+      "duration": {
+        "oneOf": [
+          {
+            "type": "float"
+          },
+          {
+            "type": "array",
+            "items": {
               "type": "float"
-            },
-            {
-              "items": {
-                "type": "float"
-              },
-              "type": "array",
-              "minLength": 1
             }
-          ]
-        },
-        "type": "array",
-        "minLength": 1
+          }
+        ]
       },
-      "type": "array"
-    }
-  ],
-  "title": "Duration and voltage combinations for each level",
-  "description": "A list of duration and voltage combinations for each level of the SEClamp stimulus.",
-  "subelement_ui_elements": [
-    "float_parameter_sweep",
-    "float_parameter_sweep"
-  ],
-  "subelement_titles": [
-    "Duration",
-    "Voltage"
-  ],
-  "subelement_units": [
-    "ms",
-    "mV"
-  ],
+      "voltage": {
+        "oneOf": [
+          {
+            "type": "float"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "float"
+            }
+          }
+        ]
+      }
+    },
+    "type": "array",
+    "minLength": 1
+  },
+  "title": "Voltage Levels and Durations",
+  "description": "A list of duration and voltage combinations for the SEClamp stimulus.",
   "ui_element": "voltage_duration_ui_element"
 }
