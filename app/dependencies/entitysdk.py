@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import entitysdk
 import entitysdk.client
 import entitysdk.common
 from fastapi import Depends
@@ -37,6 +38,11 @@ def get_client(
         project_context=project_context,
         http_client=request.state.http_client,
         token_manager=token_manager,
+        local_store=(
+            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)
+            if settings.MOUNT_BASE_DIR
+            else None
+        ),
     )
     return client
 

@@ -74,5 +74,7 @@ class Settings(BaseSettings):
     # Path to launch script within the repository. Must contain code.py and requirements.txt.
     OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
 
+    MOUNT_BASE_DIR: str | None = None
+
 
 settings = Settings()
