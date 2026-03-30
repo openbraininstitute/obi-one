@@ -7,6 +7,7 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 L = logging.getLogger()
 
@@ -472,7 +473,45 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
 
 
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
-    pass
+    assert schema.get("type") == "array", (
+        f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
+    )
+    assert schema.get("ui_element") == UIElement.VOLTAGE_DURATION, (
+        f"Validation error at {ref}: voltage_duration param {param} should have ui_element "
+        f"'{UIElement.VOLTAGE_DURATION}'"
+    )
+
+    resolved_ref = resolve_ref(openapi_schema, schema.get("items").get("$ref"))
+    assert (
+        resolved_ref.get("properties").get("type").get("const") == "DurationVoltageCombination"
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "with type 'DurationVoltageCombination'"
+    )
+    assert (
+        resolved_ref.get("properties").get("voltage").get(SchemaKey.UI_ELEMENT)
+        == UIElement.FLOAT_PARAMETER_SWEEP
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'voltage' has ui_element 'FLOAT_PARAMETER_SWEEP'"
+    )
+    assert resolved_ref.get("properties").get("voltage").get(SchemaKey.UNITS) == Units.MILLIVOLTS, (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'voltage' has units 'millivolts'"
+    )
+    assert (
+        resolved_ref.get("properties").get("duration").get(SchemaKey.UI_ELEMENT)
+        == UIElement.FLOAT_PARAMETER_SWEEP
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'duration' has ui_element 'FLOAT_PARAMETER_SWEEP'"
+    )
+    assert (
+        resolved_ref.get("properties").get("duration").get(SchemaKey.UNITS) == Units.MILLISECONDS
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'duration' has units 'milliseconds'"
+    )
 
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
