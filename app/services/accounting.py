@@ -62,15 +62,9 @@ def make_task_reservation(
             details=str(ex),
         ) from ex
 
-    # TODO: Remove once https://github.com/openbraininstitute/accounting-sdk/issues/29 is addressed
-    if settings.ACCOUNTING_DISABLED:
-        accounting_job_id = UUID(int=0)
-        accounting_session._job_id = accounting_job_id  # noqa: SLF001
-    else:
-        accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
         f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
-        f"count={accounting_parameters.count}, job_id={accounting_job_id}"
+        f"count={accounting_parameters.count}, job_id={accounting_session.job_id}"
     )
     return accounting_session
 
@@ -118,12 +112,17 @@ def _evaluate_accounting_parameters(
         case TaskType.circuit_extraction:
             return AccountingParameters(
                 count=1,
-                service_subtype=ServiceSubtype.SMALL_SIM,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.em_synapse_mapping:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
         case TaskType.ion_channel_model_simulation_execution:
             return AccountingParameters(

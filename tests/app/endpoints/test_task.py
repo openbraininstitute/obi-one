@@ -41,7 +41,7 @@ def test_task_launch_success(
     job_id = uuid4()
     config_id = uuid4()
     activity_id = uuid4()
-    accounting_session = SimpleNamespace(_job_id="job-123", finish=Mock())
+    accounting_session = SimpleNamespace(job_id="job-123", finish=Mock())
     accounting_parameters = AccountingParameters(
         count=10,
         service_subtype=ServiceSubtype.SMALL_SIM,

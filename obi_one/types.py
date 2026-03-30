@@ -18,3 +18,4 @@ class TaskType(StrEnum):
     circuit_simulation = auto()
     morphology_skeletonization = auto()
     ion_channel_model_simulation_execution = auto()
+    em_synapse_mapping = auto()
