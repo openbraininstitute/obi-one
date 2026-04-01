@@ -30,6 +30,9 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _MAX_SMALL_MICROCIRCUIT_SIZE,
 )
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 from obi_one.scientific.tasks.basic_connectivity_plots import (
@@ -77,6 +80,9 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (

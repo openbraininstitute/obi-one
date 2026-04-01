@@ -112,7 +112,7 @@ class MorphologyMetricsOutput(BaseModel):
             default=None,
         ),
     ]
-    total_height: Annotated[
+    total_width: Annotated[
         float | None,
         Field(
             title="total_width [μm]",
