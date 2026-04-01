@@ -138,3 +138,32 @@ Module: obi_one/scientific/tasks/nest_simulation_from_sonata/
   populations dict is present
   - Vectorized connections: Edge building uses numpy array indexing (src_global[source_ids]) instead of
   per-edge Python loops - critical for the 56M+ edges in core_nll_7
+
+
+
+
+  New files:
+  - obi_one/scientific/unions/unions_nest.py - NEST-compatible discriminated unions:
+    - NestCircuitStimulusUnion - only absolute current clamps (constant, linear, noise, pulse, sinusoidal,
+   OU) + spike stimuli (poisson, synchronous, sinusoidal poisson). Excludes relative/threshold-based
+  stimuli, voltage clamp, and electric fields
+    - NestRecordingUnion - soma voltage recordings only
+  - obi_one/scientific/tasks/generate_simulations/config/nest_circuit.py - new config:
+    - NestCircuitSimulationScanConfig / NestCircuitSimulationSingleConfig - mirrors
+  CircuitSimulationScanConfig but uses the NEST unions for stimuli and recordings, and omits
+  synaptic_manipulations (not supported in NEST)
+    - Uses Circuit or CircuitFromID via NestCircuitDiscriminator
+
+  Modified files:
+  - generate_simulations/task/task.py - GenerateSimulationTask now:
+    - Accepts NestCircuitSimulationSingleConfig
+    - Sets target_simulator: "NEST" for NEST configs
+    - Skips NEURON-specific conditions (extracellular calcium, spike location, synapse mechanisms)
+    - Skips the biophysical population type check for NEST circuits
+  - config_task_map.py - maps NestCircuitSimulationSingleConfig to GenerateSimulationTask
+
+  Updated notebook - now uses the full pipeline:
+  1. Creates NestCircuitSimulationScanConfig with Circuit(path=config_bio_trained.json)
+  2. Generates via GridScanGenerationTask (produces simulation_config.json with target_simulator: "NEST")
+  3. Runs via NestSimulationFromSonataTask
+  4. Plots spike rasters and voltage traces
