@@ -55,7 +55,7 @@ class SingleCoordinateScanParams(OBIBaseModel):
                     output += ", "
             L.info(output)
 
-    def dictionary_representaiton(self) -> dict[str, Any]:
+    def dictionary_representation(self) -> dict[str, Any]:
         """Return a dictionary representation of the scan parameters."""
         d = {}
         for scan_param in self.scan_params:
