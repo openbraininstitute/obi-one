@@ -100,10 +100,13 @@ class SingleConfigMixin:
             )
             raise ValueError(msg)
 
+        single_name = (
+            self.single_task_config_type.name.split("__")[0].replace("_", " ").capitalize()
+        )
         self._single_entity, _ = db_sdk.register_task_config_with_asset(
             client=db_client,
-            name=self.campaign_name,
-            description=self.campaign_description,
+            name=f"{single_name} {self.idx}",
+            description=f"{single_name} {self.idx}",
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=self.single_coordinate_scan_params.dictionary_representaiton(),
             input_entities=self.input_entities(db_client=db_client),
