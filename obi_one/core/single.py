@@ -109,7 +109,7 @@ class SingleConfigMixin:
             raise ValueError(msg)
 
         multiple_value_parameters_dictionary = {
-            "scan_params": self.single_coordinate_scan_params.dictionary_representaiton(),
+            "scan_params": self.single_coordinate_scan_params.dictionary_representation(),
             "scan_multi_dim_index": self.single_coordinate_scan_params.scan_multi_dim_index,
         }
 
