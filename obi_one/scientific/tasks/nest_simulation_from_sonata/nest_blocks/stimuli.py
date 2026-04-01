@@ -289,7 +289,10 @@ class NestSynapseReplay(NestInputHandler):
                     if spike_times:
                         gen = nest.Create(
                             "spike_generator",
-                            params={"spike_times": spike_times},
+                            params={
+                                "spike_times": spike_times,
+                                "allow_offgrid_times": True,
+                            },
                         )
                         nest.Connect(gen, targets)
                         generators.append(gen)

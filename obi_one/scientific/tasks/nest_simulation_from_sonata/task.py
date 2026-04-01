@@ -128,6 +128,9 @@ class NestSimulationFromSonataTask(Task):
             with circuit_path.open(encoding="utf-8") as f:
                 self._circuit_config = json.load(f)
             self._resolve_circuit_paths(circuit_path.parent)
+        elif "networks" in self._sonata_config:
+            self._circuit_config = self._sonata_config
+            self._resolve_circuit_paths(sim_config_path.parent)
         else:
             L.warning("No 'network' field in simulation config; circuit will not be loaded.")
 
@@ -186,6 +189,11 @@ class NestSimulationFromSonataTask(Task):
             nodes_file = nodes_conf.get("nodes_file", "")
             populations = nodes_conf.get("populations", {})
 
+            if not populations:
+                populations = self._discover_populations_from_hdf5(
+                    nodes_file, nodes_conf.get("node_types_file")
+                )
+
             for pop_name, pop_info in populations.items():
                 pop_type = pop_info.get("type", "biophysical")
                 self._population_types[pop_name] = pop_type
@@ -243,6 +251,33 @@ class NestSimulationFromSonataTask(Task):
         if params_list is None:
             return nest.Create("parrot_neuron", n=n_nodes)
         return nest.Create("spike_generator", n=n_nodes, params=params_list)
+
+    @staticmethod
+    def _discover_populations_from_hdf5(
+        nodes_file: str, node_types_file: str | None = None
+    ) -> dict[str, dict]:
+        """Discover population names and types from HDF5 + optional CSV."""
+        import csv  # noqa: PLC0415
+
+        populations: dict[str, dict] = {}
+        with h5py.File(nodes_file, "r") as f:
+            for pop_name in f["nodes"]:
+                populations[pop_name] = {"type": "biophysical"}
+
+        if node_types_file and Path(node_types_file).exists():
+            with Path(node_types_file).open(encoding="utf-8") as csvf:
+                reader = csv.DictReader(csvf, delimiter=" ")
+                for row in reader:
+                    model_type = row.get("model_type", "")
+                    pop = row.get("population", "")
+                    if pop in populations:
+                        if model_type == "virtual":
+                            populations[pop]["type"] = "virtual"
+                        elif model_type in {"point_neuron", "point_process"}:
+                            populations[pop]["type"] = "point_process"
+                    break
+
+        return populations
 
     @staticmethod
     def _load_virtual_spike_params(
@@ -305,6 +340,9 @@ class NestSimulationFromSonataTask(Task):
         source_nc = self._node_collections[source_pop]
         target_nc = self._node_collections[target_pop]
 
+        src_global = np.array(source_nc.global_id)
+        tgt_global = np.array(target_nc.global_id)
+
         with h5py.File(edges_file, "r") as f:
             edge_grp = f["edges"][edge_pop_name]
             source_ids = edge_grp["source_node_id"][:]
@@ -318,8 +356,8 @@ class NestSimulationFromSonataTask(Task):
                 weights = edge_grp["0"]["conductance"][:]
 
         n_edges = len(source_ids)
-        src_nest_ids = [source_nc[int(sid)].global_id for sid in source_ids]
-        tgt_nest_ids = [target_nc[int(tid)].global_id for tid in target_ids]
+        src_nest_ids = src_global[source_ids].tolist()
+        tgt_nest_ids = tgt_global[target_ids].tolist()
 
         syn_spec: dict[str, Any] = {"synapse_model": "static_synapse"}
         if weights is not None:
@@ -336,16 +374,29 @@ class NestSimulationFromSonataTask(Task):
 
         L.info("Connected %d edges: %s -> %s", n_edges, source_pop, target_pop)
 
-    @staticmethod
-    def _parse_edge_population_names(edge_pop_name: str) -> tuple[str, str]:
+    def _parse_edge_population_names(self, edge_pop_name: str) -> tuple[str, str]:
         """Extract source and target population names from edge population name.
 
-        BlueBrain SONATA convention: ``source__target__type``.
+        Supports BlueBrain convention (``source__target__type``),
+        BMTK convention (``source_to_target``), and falls back to matching
+        known population names in the edge name.
         """
-        parts = edge_pop_name.split("__")
-        if len(parts) >= 2:  # noqa: PLR2004
-            return parts[0], parts[1]
-        return parts[0], parts[0]
+        if "__" in edge_pop_name:
+            parts = edge_pop_name.split("__")
+            if len(parts) >= 2:  # noqa: PLR2004
+                return parts[0], parts[1]
+
+        if "_to_" in edge_pop_name:
+            src, tgt = edge_pop_name.split("_to_", maxsplit=1)
+            return src, tgt
+
+        known_pops = list(self._node_collections.keys())
+        for src in known_pops:
+            for tgt in known_pops:
+                if edge_pop_name.startswith(src) and edge_pop_name.endswith(tgt):
+                    return src, tgt
+
+        return edge_pop_name, edge_pop_name
 
     def _apply_conditions(self) -> None:
         """Apply SONATA conditions to NEST neurons where possible."""
@@ -372,10 +423,27 @@ class NestSimulationFromSonataTask(Task):
                 )
 
     def _apply_inputs(self, nest: Any, config_dir: Path) -> None:
-        """Apply each SONATA inputs entry via the appropriate handler."""
+        """Apply each SONATA inputs entry via the appropriate handler.
+
+        Inputs whose ``node_set`` matches a virtual population are skipped
+        because their spike data was already loaded during network building.
+        """
         inputs = self._sonata_config.get("inputs", {})
+        virtual_pops = {
+            name for name, ptype in self._population_types.items() if ptype == "virtual"
+        }
 
         for input_name, input_config in inputs.items():
+            node_set = input_config.get("node_set", "")
+            if node_set in virtual_pops:
+                L.info(
+                    "Input '%s' targets virtual population '%s'; "
+                    "spikes already loaded during network build.",
+                    input_name,
+                    node_set,
+                )
+                continue
+
             module = input_config.get("module", "")
 
             if module == "synapse_replay":
@@ -497,13 +565,12 @@ class NestSimulationFromSonataTask(Task):
                 if self._population_types.get(pop_name) == "virtual":
                     continue
 
-                nest_ids = nc.global_id if hasattr(nc, "global_id") else list(nc.tolist())
-                if not isinstance(nest_ids, (list, np.ndarray)):
-                    nest_ids = [nest_ids]
-                nest_id_set = set(nest_ids)
-                min_id = min(nest_ids) if nest_ids else 0
+                nest_ids = np.asarray(nc.global_id, dtype=np.int64)
+                if nest_ids.ndim == 0:
+                    nest_ids = nest_ids.reshape(1)
+                min_id = int(nest_ids.min()) if nest_ids.size > 0 else 0
 
-                mask = np.isin(senders, list(nest_id_set))
+                mask = np.isin(senders, nest_ids)
                 pop_senders = senders[mask]
                 pop_times = times[mask]
 
