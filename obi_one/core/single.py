@@ -90,7 +90,7 @@ class SingleConfigMixin:
 
     def create_single_entity_with_config(
         self,
-        campaign: TaskConfig,  # noqa: ARG002
+        campaign: TaskConfig,
         db_client: Client,
     ) -> TaskConfig:
         if self.single_task_config_type is None:
@@ -108,6 +108,7 @@ class SingleConfigMixin:
             multiple_value_parameters_dictionary=self.single_coordinate_scan_params.dictionary_representaiton(),
             input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            task_config_generator_id=campaign.id,
         )
 
         return self._single_entity
