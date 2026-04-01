@@ -98,7 +98,7 @@ class SingleConfigMixin:
 
     def create_single_entity_with_config(
         self,
-        campaign: TaskConfig,  # noqa: ARG002
+        campaign: TaskConfig,
         db_client: Client,
     ) -> TaskConfig:
         if self.single_task_config_type is None:
@@ -113,14 +113,18 @@ class SingleConfigMixin:
             "scan_multi_dim_index": self.single_coordinate_scan_params.scan_multi_dim_index,
         }
 
+        single_name = (
+            self.single_task_config_type.name.split("__")[0].replace("_", " ").capitalize()
+        )
         self._single_entity, _ = db_sdk.register_task_config_with_asset(
             client=db_client,
-            name=self.campaign_name,
-            description=self.campaign_description,
+            name=f"{single_name} {self.idx}",
+            description=f"{single_name} {self.idx}",
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
             input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            task_config_generator_id=campaign.id,
         )
 
         return self._single_entity
