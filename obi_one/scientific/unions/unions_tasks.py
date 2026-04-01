@@ -15,6 +15,7 @@ from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDec
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTask
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
+from obi_one.scientific.tasks.tribe_brain_prediction import TribeBrainPredictionTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
@@ -29,6 +30,7 @@ TasksUnion = Annotated[
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
-    | MorphologyLocationsTask,
+    | MorphologyLocationsTask
+    | TribeBrainPredictionTask,
     Discriminator("type"),
 ]
