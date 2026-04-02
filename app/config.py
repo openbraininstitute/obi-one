@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     AUTH_CACHE_INFO: bool = False
 
     OUTPUT_DIR: Path = Path("../obi-output")
+
+    API_URL: str
     ENTITYCORE_URL: str  # Required: URL to entitycore service
     LAUNCH_SYSTEM_URL: str
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
