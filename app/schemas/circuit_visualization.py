@@ -8,7 +8,7 @@ class Node(BaseModel):
     morphology_file: Annotated[
         str, Field(description="Path to the morphology file in the circuit's sonata directory")
     ]
-    morphology_name: str
+    morphology_name: str | None
     position: Annotated[
         tuple[float, float, float], Field(description="Position coordinates (x,y,z)")
     ]

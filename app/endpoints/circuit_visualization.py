@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 import entitysdk.client
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path as PathParam, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
@@ -41,20 +41,27 @@ def circuit_nodes(
 
 
 @router.get(
-    "/{circuit_id}/morphologies/{morphology_file:path}/{morphology_name:path}",
+    "/{circuit_id}/morphologies/{morphology_file:path}",
     summary="A morphology from a circuit's sonata directory",
     description="Returns a morphology for visualization",
 )
 def circuit_morphology(
     circuit_id: UUID,
-    morphology_file: str,
-    morphology_name: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     temp_dir: TempDirDep,
+    morphology_file: Annotated[
+        str, PathParam(description="The path to the morphology file. Must be URL-encoded.")
+    ],
+    name: Annotated[
+        str | None,
+        Query(
+            description="The name of the morphology. Required if morphology_file is a collection."
+        ),
+    ] = None,
 ) -> Morphology:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
     morphology = get_morphology(
-        temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), morphology_name
+        temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), name
     )
     return get_morphology_data(morphology)

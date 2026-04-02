@@ -105,7 +105,7 @@ def test_circuit_morphology(
 
     mock_circuit_asset_id.return_value = asset_id
     mock_get_morphology_data.return_value = {}
-    response = client.get(f"/circuit/viz/{str(circuit_id)}/morphologies/{morphology_path}/{name}")  # noqa: RUF010
+    response = client.get(f"/circuit/viz/{circuit_id!s}/morphologies/{morphology_path}?name={name}")
 
     assert response.status_code == 200
     assert response.json() == {}
@@ -208,7 +208,7 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
     test_nodes = [
         Node(
             morphology_file="morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc",
-            morphology_name="dend-rp090908_c2_axon-vd110623_idA",
+            morphology_name=None,
             position=(3927.1862191305954, -1398.4124233327566, -2409.039000858357),
             orientation=(
                 0.6971569742455114,
@@ -220,7 +220,7 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
         ),
         Node(
             morphology_file="morphologies/swc/rp110127_L5-2_idD_-_Clone_1.swc",
-            morphology_name="rp110127_L5-2_idD_-_Clone_1",
+            morphology_name=None,
             position=(3821.770720831846, -1368.8353733057893, -2569.5086101559486),
             orientation=(
                 0.6809097129262709,
@@ -385,7 +385,7 @@ def test_get_morphology(mock_client, test_circuit_dir):
         uuid4(),
         uuid4(),
         Path("morphologies/swc/dend-rp090908_c2_axon-vd110623_idA.swc"),
-        "dend-rp090908_c2_axon-vd110623_idA",
+        None,
     )
 
     morphology = get_morphology_data(morph_raw)
