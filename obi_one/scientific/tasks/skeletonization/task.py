@@ -39,11 +39,10 @@ class SkeletonizationTask(Task):
             entity_id=self.config.initialize.cell_mesh.id_str,
             entity_type=models.EMCellMesh,
         )
-        em_cell_mesh_asset = db_client.download_assets(
+        em_cell_mesh_asset = db_client.fetch_assets(
             entity_or_id=em_cell_mesh,
             selection={"label": AssetLabel.cell_surface_mesh},
             output_path=output_dir,
-            link_from_store=True,
         ).one()
         # fetch the full dataset from the nested Entity
         em_dense_reconstruction_dataset = db_client.get_entity(
