@@ -38,6 +38,9 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model import (
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.nest_circuit import (
+    NestCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
@@ -89,6 +92,7 @@ _config_tasks_map = {
     SkeletonizationSingleConfig: SkeletonizationTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+    NestCircuitSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {
     TaskType.circuit_extraction: CircuitExtractionTask,
