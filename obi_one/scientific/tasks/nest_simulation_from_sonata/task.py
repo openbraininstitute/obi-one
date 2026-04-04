@@ -182,7 +182,7 @@ class NestSimulationFromSonataTask(Task):
         specified in the config. Virtual populations are created as
         ``spike_generator`` devices.
         """
-        nest_model = self.config.initialize.nest_model
+        default_nest_model = self.config.initialize.nest_model
         nodes_confs = self._circuit_config.get("networks", {}).get("nodes", [])
 
         for nodes_conf in nodes_confs:
@@ -198,8 +198,9 @@ class NestSimulationFromSonataTask(Task):
                 pop_type = pop_info.get("type", "biophysical")
                 self._population_types[pop_name] = pop_type
 
-                with h5py.File(nodes_file, "r") as f:
-                    n_nodes = f["nodes"][pop_name]["node_type_id"].shape[0]
+                nest_model, n_nodes, dynamics_params = self._read_node_model_params(
+                    nodes_file, pop_name, default_nest_model,
+                )
 
                 if pop_type == "virtual":
                     self._node_collections[pop_name] = self._create_virtual_population(
@@ -207,6 +208,8 @@ class NestSimulationFromSonataTask(Task):
                     )
                 else:
                     self._node_collections[pop_name] = nest.Create(nest_model, n=n_nodes)
+                    if dynamics_params:
+                        self._node_collections[pop_name].set(**dynamics_params)
 
                 L.info(
                     "Created %d NEST neurons for population '%s' (type=%s, model=%s)",
@@ -217,6 +220,53 @@ class NestSimulationFromSonataTask(Task):
                 )
 
         self._connect_edges(nest)
+
+    @staticmethod
+    def _read_node_model_params(
+        nodes_file: str, pop_name: str, default_model: str,
+    ) -> tuple[str, int, dict[str, Any]]:
+        """Read neuron model and dynamics parameters from the SONATA nodes HDF5.
+
+        Looks for ``0/model_template`` (string) to determine the NEST model and
+        ``0/dynamics_params/*`` (scalar or per-neuron datasets) for neuron
+        parameters.  Falls back to *default_model* with no dynamics parameters
+        when these fields are absent.
+
+        Returns:
+            Tuple of ``(nest_model, n_nodes, dynamics_params)``.
+        """
+        nest_model = default_model
+        dynamics_params: dict[str, Any] = {}
+
+        with h5py.File(nodes_file, "r") as f:
+            pop_grp = f["nodes"][pop_name]
+            n_nodes = int(pop_grp["node_type_id"].shape[0])
+
+            if "0" in pop_grp:
+                grp = pop_grp["0"]
+                if "model_template" in grp:
+                    raw = grp["model_template"][()]
+                    nest_model = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
+
+                if "dynamics_params" in grp:
+                    for param_name in grp["dynamics_params"]:
+                        val = grp["dynamics_params"][param_name][()]
+                        if isinstance(val, np.ndarray) and val.size == 1:
+                            dynamics_params[param_name] = float(val.item())
+                        elif isinstance(val, np.ndarray):
+                            dynamics_params[param_name] = val.tolist()
+                        else:
+                            dynamics_params[param_name] = float(val)
+
+        if dynamics_params:
+            L.info(
+                "Population '%s': model_template='%s', dynamics_params=%s",
+                pop_name,
+                nest_model,
+                list(dynamics_params.keys()),
+            )
+
+        return nest_model, n_nodes, dynamics_params
 
     def _create_virtual_population(self, nest: Any, pop_name: str, n_nodes: int) -> Any:
         """Create spike_generator devices for a virtual population.
