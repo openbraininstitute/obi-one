@@ -166,18 +166,22 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "amp_start": self.amplitude,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "amp_start": self.amplitude,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -262,19 +266,23 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "amp_start": self.amplitude_start,
-                "amp_end": self.amplitude_end,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "amp_start": self.amplitude_start,
+                    "amp_end": self.amplitude_end,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -316,19 +324,23 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "percent_start": self.percentage_of_threshold_current_start,
-                "percent_end": self.percentage_of_threshold_current_end,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "percent_start": self.percentage_of_threshold_current_start,
+                    "percent_end": self.percentage_of_threshold_current_end,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -367,19 +379,23 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "mean": self.mean_amplitude,
-                "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "mean": self.mean_amplitude,
+                    "variance": self.variance,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -421,19 +437,23 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "mean_percent": self.mean_percentage_of_threshold_current,
-                "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "mean_percent": self.mean_percentage_of_threshold_current,
+                    "variance": self.variance,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -489,20 +509,24 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "amp_start": self.amplitude,
-                "width": self.width,
-                "frequency": self.frequency,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "amp_start": self.amplitude,
+                    "width": self.width,
+                    "frequency": self.frequency,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -555,20 +579,24 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "amp_start": self.maximum_amplitude,
-                "frequency": self.frequency,
-                "dt": self.dt,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "amp_start": self.maximum_amplitude,
+                    "frequency": self.frequency,
+                    "dt": self.dt,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -600,18 +628,22 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "percent_less": self.percentage_below_threshold,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "percent_less": self.percentage_below_threshold,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
@@ -633,17 +665,21 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
             self.timestamps, self._default_timestamps
         )
 
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
+            stim_dict.update(
+                {
+                    "node_set": resolve_neuron_set_ref_to_node_set(
+                        self.neuron_set, self._default_node_set
+                    ),
+                    "module": self._module,
+                    "input_type": self._input_type,
+                    "represents_physical_electrode": self._represents_physical_electrode,
+                }
+            )
+            sonata_config[self.block_name + "_" + str(t_ind)] = stim_dict
+
         return sonata_config
 
 
