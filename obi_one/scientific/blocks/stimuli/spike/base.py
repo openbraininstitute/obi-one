@@ -18,6 +18,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_neuron_set,
 )
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+)
 
 
 class SpikeStimulus(StimulusWithTimestamps):
@@ -53,11 +56,17 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
+        default_timestamps: TimestampsReference = None,
         source_node_population: str | None = None,
         target_node_population: str | None = None,
         default_source_neuron_set_reference: NeuronSetReference | None = None,
         default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
+        
+        if default_timestamps is None:
+            default_timestamps = SingleTimestamp(start_time=0.0)
+        self._default_timestamps = default_timestamps
+
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set_reference
         )
