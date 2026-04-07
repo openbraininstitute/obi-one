@@ -77,9 +77,7 @@ def estimate_skeletonization_count(
     cell_mesh = config.initialize.cell_mesh
 
     if isinstance(cell_mesh, list):
-        total_area = sum(
-            _compute_mesh_surface_area(db_client, mesh) for mesh in cell_mesh
-        )
+        total_area = sum(_compute_mesh_surface_area(db_client, mesh) for mesh in cell_mesh)
     else:
         total_area = _compute_mesh_surface_area(db_client, cell_mesh)
 
