@@ -21,7 +21,7 @@ def compress_output(
     return str(gz_path)
 
 
-def merge_spiny_morphologies(  # NOQA: C901, PLR0912
+def merge_spiny_morphologies(
     source_files: list[Path],
     output_path: Path,
     *,
