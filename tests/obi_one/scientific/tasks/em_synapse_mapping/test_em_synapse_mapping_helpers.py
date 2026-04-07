@@ -51,6 +51,7 @@ def em_dataset():
 def test_compress_output(tmp_path):
     out_root = tmp_path / "out"
     out_root.mkdir()
+    test_files = [str(out_root / "a.h5"), str(out_root / "b.h5")]
 
     with (
         patch(
@@ -61,11 +62,11 @@ def test_compress_output(tmp_path):
             "obi_one.scientific.tasks.em_synapse_mapping.util.subprocess.check_call"
         ) as mock_check_call,
     ):
-        compressed_path = compress_output(out_root)
+        compressed_path = compress_output(out_root, test_files)
 
     assert compressed_path == str(out_root / "sonata.tar.gz")
     assert (out_root / "sonata.tar").read_bytes() == b"tar-bytes"
-    mock_check_output.assert_called_once_with(["tar", "-c", str(out_root)])
+    mock_check_output.assert_called_once_with(["tar", "-cf", "-", *test_files])
     mock_check_call.assert_called_once_with(["gzip", "-1", str(out_root / "sonata.tar")])
 
 
