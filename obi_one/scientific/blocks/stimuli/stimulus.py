@@ -29,9 +29,6 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
-from obi_one.scientific.library.generate_simulations.helpers import (
-    resolved_sonata_delay_duration_dict,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -209,11 +206,13 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            stim_dict = resolved_sonata_delay_duration_dict(
-                timestamp, self.timestamp_offset, self.duration
-            )
+        for (
+            t_ind,
+            _timestamp,
+            stim_dict,
+        ) in timestamps_block.enumerate_zero_checked_timestamp_stimulus_dicts(
+            self.timestamp_offset, self.duration
+        ):
             stim_dict.update(
                 {
                     "node_set": resolve_neuron_set_ref_to_node_set(
