@@ -3,12 +3,12 @@ import os
 
 import pandas  # NOQA: ICN001
 from entitysdk import Client
-from entitysdk._server_schemas import (
-    AssetLabel,  # NOQA: PLC2701
-    CircuitBuildCategory,  # NOQA: PLC2701
-    CircuitScale,  # NOQA: PLC2701
-    ContentType,  # NOQA: PLC2701
-    PublicationType,  # NOQA: PLC2701
+from entitysdk._server_schemas import (  # NOQA: PLC2701
+    AssetLabel,
+    CircuitBuildCategory,
+    CircuitScale,
+    ContentType,
+    PublicationType,
 )
 from entitysdk.models import (
     Circuit,
