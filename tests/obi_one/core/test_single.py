@@ -48,7 +48,7 @@ class TestSingleCoordinateScanParamsWithParams:
         assert "out" in str(path)
 
     def test_dictionary_representation(self, scan_params):
-        d = scan_params.dictionary_representaiton()
+        d = scan_params.dictionary_representation()
         assert d["initialize.file_format"] == "gz"
         assert d["initialize.file_name"] == "out"
 
@@ -190,7 +190,7 @@ class TestSingleCoordinateScanParamsDisplay:
 class TestSingleCoordinateScanParamsDictionaryRepresentation:
     def test_empty(self):
         scp = SingleCoordinateScanParams()
-        assert scp.dictionary_representaiton() == {}
+        assert scp.dictionary_representation() == {}
 
     def test_single_param(self):
         scp = SingleCoordinateScanParams(
@@ -198,7 +198,7 @@ class TestSingleCoordinateScanParamsDictionaryRepresentation:
                 SingleValueScanParam(location_list=["x", "y"], value=42),
             ]
         )
-        d = scp.dictionary_representaiton()
+        d = scp.dictionary_representation()
         assert d == {"x.y": 42}
 
     def test_multiple_params(self):
@@ -208,7 +208,7 @@ class TestSingleCoordinateScanParamsDictionaryRepresentation:
                 SingleValueScanParam(location_list=["b"], value=2),
             ]
         )
-        d = scp.dictionary_representaiton()
+        d = scp.dictionary_representation()
         assert d == {"a": 1, "b": 2}
 
 

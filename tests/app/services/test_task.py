@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import entitysdk
 import httpx
@@ -337,8 +337,8 @@ def test_generic_job_data(config_id, activity_id, callbacks):
     res = test_module._generic_job_data(
         config_id=config_id,
         activity_id=activity_id,
-        project_id=PROJECT_ID,
-        virtual_lab_id=VIRTUAL_LAB_ID,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
         task_definition=task_definition,
         entity_cache=True,
         output_root="/foo",
