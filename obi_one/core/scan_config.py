@@ -93,7 +93,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             name=self.campaign_name,
             description=self.campaign_description,
             task_config_type=self.campaign_task_config_type,
-            multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
+            multiple_value_parameters_dictionary={"scan_parameters": multiple_value_parameters_dictionary},
             input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
         )
