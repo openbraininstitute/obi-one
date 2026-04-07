@@ -63,12 +63,12 @@ class PoissonSpikeStimulus(SpikeStimulus):
     )
 
     def generate_spikes_by_gid(
-        self, source_gids: list[int], resolved_timestamps: list[float]
+        self, source_gids: list[int], offset_timestamps: list[NonNegativeFloat]
     ) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         if (
-            self.duration * 1e-3 * len(source_gids) * self.frequency * len(resolved_timestamps)
+            self.duration * 1e-3 * len(source_gids) * self.frequency * len(offset_timestamps)
             > _MAX_POISSON_SPIKE_LIMIT
         ):
             msg = (
@@ -78,8 +78,8 @@ class PoissonSpikeStimulus(SpikeStimulus):
             raise OBIONEError(msg)
 
         spikes_by_gid: dict[int, list[float]] = defaultdict(list)
-        for timestamp_t in resolved_timestamps:
-            start_time = timestamp_t + self.timestamp_offset
+        for offset_timestamp in offset_timestamps:
+            start_time = offset_timestamp
             end_time = start_time + self.duration
             for gid in source_gids:
                 t = start_time

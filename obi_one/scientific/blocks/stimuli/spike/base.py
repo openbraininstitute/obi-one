@@ -106,11 +106,15 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
         source_node_population = source_neuron_set.get_population(source_node_population)
 
-        resolved_timestamps = timestamps.timestamps()
-
         # Generate spikes
+        offset_timestamps = [
+            offset_timestamp
+            for _, offset_timestamp in timestamps.enumerate_non_negative_checked_offset_timestamps(
+                self.timestamp_offset
+            )
+        ]
         spikes_by_gid = self.generate_spikes_by_gid(
-            source_gids=source_gids, resolved_timestamps=resolved_timestamps
+            source_gids=source_gids, offset_timestamps=offset_timestamps
         )
 
         # Write spikes to file
@@ -149,7 +153,7 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     @abstractmethod
     def generate_spikes_by_gid(
-        self, source_gids: list[int], resolved_timestamps: list[float]
+        self, source_gids: list[int], offset_timestamps: list[NonNegativeFloat]
     ) -> dict[int, list[float]]:
         pass
 

@@ -6,9 +6,6 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.library.generate_simulations.helpers import (
-    resolved_sonata_delay_duration_dict,
-)
 
 
 class Timestamps(Block, ABC):
@@ -28,19 +25,21 @@ class Timestamps(Block, ABC):
     def _resolve_timestamps(self) -> list:
         pass
 
-    def enumerate_zero_checked_stimulus_dicts(
-        self, timestamp_offset: float, duration: NonNegativeFloat
-    ) -> Iterator[tuple[int, NonNegativeFloat, dict]]:
-        """Enumerate timestamps with their resolved SONATA delay/duration dicts.
-
-        Uses resolved_sonata_delay_duration_dict to handle cases where
-        timestamp + timestamp_offset is negative by setting delay to 0
-        and adjusting duration accordingly.
+    def enumerate_non_negative_checked_offset_timestamps(
+        self, timestamp_offset: float
+    ) -> Iterator[tuple[int, NonNegativeFloat]]:
+        """Enumerate timestamp index and offset timestamps.
 
         Yields:
-            Tuples of (timestamp_index, timestamp, stimulus_dict) where
-            stimulus_dict contains 'delay' and 'duration' keys.
+            Tuples of (timestamp_index, offset_timestamp)
         """
         for t_ind, timestamp in enumerate(self.timestamps()):
-            stim_dict = resolved_sonata_delay_duration_dict(timestamp, timestamp_offset, duration)
-            yield t_ind, timestamp, stim_dict
+            offset_timestamp = timestamp + timestamp_offset
+            if offset_timestamp < 0:
+                msg = (
+                    f"Invalid stimulus configuration: timestamp ({timestamp} ms) + "
+                    f"timestamp_offset ({timestamp_offset} ms) must be >= 0."
+                )
+                raise ValueError(msg)
+
+            yield t_ind, offset_timestamp
