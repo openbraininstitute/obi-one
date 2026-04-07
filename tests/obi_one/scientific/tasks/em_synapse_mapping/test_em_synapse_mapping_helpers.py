@@ -10,7 +10,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
     synapses_and_nodes_dataframes_from_EM,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
-from obi_one.scientific.tasks.em_synapse_mapping.provenance import resolve_provenance
+from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
     assemble_publication_links,
 )

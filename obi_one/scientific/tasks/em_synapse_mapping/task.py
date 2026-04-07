@@ -1,17 +1,10 @@
 import logging
 import os
-import shutil
-from pathlib import Path
 
-import numpy  # NOQA: ICN001
 from entitysdk import Client
-from entitysdk.downloaders.memodel import download_memodel
-from morph_spines import load_morphology_with_spines
 
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.map_em_synapses import (
     map_afferents_to_spiny_morphology,
     write_edges,
@@ -29,10 +22,8 @@ from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
     synapses_and_nodes_dataframes_from_EM,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
-from obi_one.scientific.tasks.em_synapse_mapping.provenance import (
-    resolve_provenance,
-)
 from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
+from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_neuron
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 from obi_one.utils.io import write_json
 
@@ -42,11 +33,11 @@ L = logging.getLogger(__name__)
 class EMSynapseMappingTask(Task):
     config: EMSynapseMappingSingleConfig
 
-    def execute(  # NOQA: PLR0914, PLR0915
+    def execute(  # NOQA: PLR0914
         self,
         *,
         db_client: Client = None,
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # NOQA: ARG002
         execution_activity_id: str | None = None,
     ) -> None:
         if db_client is None:
@@ -57,56 +48,25 @@ class EMSynapseMappingTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        use_me_model = isinstance(self.config.initialize.spiny_neuron, MEModelFromID)
-        if use_me_model:
-            me_model_entity = self.config.initialize.spiny_neuron.entity(db_client)
-            morph_entity = me_model_entity.morphology
-            id_str = str(morph_entity.id)
-            morph_from_id = CellMorphologyFromID(id_str=id_str)
-        else:
-            morph_entity = self.config.initialize.spiny_neuron.entity(db_client)
-            morph_from_id = self.config.initialize.spiny_neuron
-
         # Prepare output location
         out_root = self.config.coordinate_output_root
         L.info(f"Preparing output at {out_root}...")
-        (out_root / "morphologies/morphology").mkdir(parents=True)
+        morph_dir = out_root / "morphologies"
+        swc_morph_subdir = morph_dir / "morphology"
+        swc_morph_subdir.mkdir(parents=True)
 
-        # Place and load morphologies
-        L.info("Placing morphologies...")
-        fn_morphology_out_h5 = Path("morphologies") / (morph_entity.name + ".h5")
-        fn_morphology_out_swc = Path("morphologies/morphology") / (morph_entity.name + ".swc")
-        morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)
-        smooth_morph = morph_from_id.neurom_morphology(db_client)
-        smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
-        spiny_morph = load_morphology_with_spines(str(out_root / fn_morphology_out_h5))
+        # Resolve neuron: morphology, provenance, ME model
+        L.info("Resolving neuron...")
+        resolved_neuron = resolve_neuron(self.config.initialize.spiny_neuron, db_client, out_root)
 
-        phys_node_props = {}
-        if use_me_model:
-            L.info("Placing mechanisms and .hoc file...")
-            tmp_staging = out_root / "temp_staging"
-            memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)
-            shutil.move(memdl_paths.mechanisms_dir, out_root / "mechanisms")
-            (out_root / "hoc").mkdir(parents=True)
-            shutil.move(memdl_paths.hoc_path, out_root / "hoc")
-            shutil.rmtree(tmp_staging)
-            phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
-            phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
-            phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
-            if me_model_entity.calibration_result is not None:
-                phys_node_props["threshold_current"] = numpy.array(
-                    [me_model_entity.calibration_result.threshold_current], dtype=numpy.float32
-                )
-                phys_node_props["holding_current"] = numpy.array(
-                    [me_model_entity.calibration_result.holding_current], dtype=numpy.float32
-                )
-
-        L.info("Resolving skeleton provenance...")
-        pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(
-            db_client, morph_from_id
-        )
-
-        cave_version = source_mesh_entity.release_version
+        spiny_morph = resolved_neuron.spiny_morph
+        fn_morphology_out_h5 = resolved_neuron.fn_morph_h5
+        fn_morphology_out_swc = resolved_neuron.fn_morph_swc
+        pt_root_id = resolved_neuron.pt_root_id
+        cave_version = resolved_neuron.cave_version
+        source_dataset = resolved_neuron.source_dataset
+        use_me_model = resolved_neuron.use_me_model
+        phys_node_props = resolved_neuron.phys_node_props
 
         em_dataset = EMDataSetFromID(
             id_str=str(source_dataset.id),
@@ -174,10 +134,10 @@ class EMSynapseMappingTask(Task):
         sonata_cfg = sonata_config_for(
             fn_edges_out,
             fn_nodes_out,
-            edge_population_name,
-            node_population_pre,
-            node_population_post,
-            str(fn_morphology_out_h5),
+            edge_populations={edge_population_name: {"type": "chemical"}},
+            biophysical_population=node_population_post,
+            virtual_population=node_population_pre,
+            alternate_morphologies_h5=str(fn_morphology_out_h5),
         )
         write_json(sonata_cfg, out_root / "circuit_config.json")
 
