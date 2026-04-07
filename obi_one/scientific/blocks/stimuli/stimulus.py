@@ -124,11 +124,12 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         self._default_timestamps = default_timestamps
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+            self.neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "point_process", "point_neuron"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
-                f"'{self.block_name}' should be biophysical!"
+                f"'{self.block_name}' should be biophysical or point_process!"
             )
             raise OBIONEError(msg)
 
@@ -779,11 +780,13 @@ class SpikeStimulus(StimulusWithTimestamps):
         self._default_node_set = default_node_set
 
         if (self.targeted_neuron_set is not None) and (
-            self.targeted_neuron_set.block.population_type(circuit, population) != "biophysical"
+            self.targeted_neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "point_process", "point_neuron"}
         ):
             msg = (
                 f"Target Neuron Set '{self.targeted_neuron_set.block.block_name}' for "
-                f"{self.__class__.__name__}: '{self.block_name}' should be biophysical!"
+                f"{self.__class__.__name__}: '{self.block_name}' should be biophysical "
+                f"or point_process!"
             )
             raise OBIONEError(msg)
 
