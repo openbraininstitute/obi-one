@@ -99,9 +99,7 @@ def sonata_config_for(
         "type": "biophysical",
     }
     if alternate_morphologies_h5 is not None:
-        bio_props["alternate_morphologies"] = {
-            "h5v1": "$BASE_DIR/" + alternate_morphologies_h5
-        }
+        bio_props["alternate_morphologies"] = {"h5v1": "$BASE_DIR/" + alternate_morphologies_h5}
     cfg["networks"]["nodes"].append(
         {
             "nodes_file": "$BASE_DIR/" + fn_nodes_out,
