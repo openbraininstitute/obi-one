@@ -47,8 +47,14 @@ class TestFullySynchronousSpikeStimulus:
     def test_timestamp_offset_applied(self):
         stim = obi.FullySynchronousSpikeStimulus(timestamp_offset=50.0)
         gids = [5, 10]
-        timestamps = [0.0, 1000.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        timestamps = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=1000.0)
+        offset_timestamps = [
+            offset_timestamp
+            for _, offset_timestamp in timestamps.enumerate_non_negative_checked_offset_timestamps(
+                stim.timestamp_offset
+            )
+        ]
+        result = stim.generate_spikes_by_gid(gids, offset_timestamps)
 
         expected = [50.0, 1050.0]
         for gid in gids:
@@ -104,7 +110,14 @@ class TestPoissonSpikeStimulus:
         stim = obi.PoissonSpikeStimulus(
             duration=100.0, frequency=20.0, random_seed=7, timestamp_offset=50.0
         )
-        result = stim.generate_spikes_by_gid([0], [0.0])
+        timestamps = obi.SingleTimestamp(start_time=0.0)
+        offset_timestamps = [
+            offset_timestamp
+            for _, offset_timestamp in timestamps.enumerate_non_negative_checked_offset_timestamps(
+                stim.timestamp_offset
+            )
+        ]
+        result = stim.generate_spikes_by_gid([0], offset_timestamps)
         for t in result[0]:
             assert 50.0 <= t <= 150.0
 
@@ -241,7 +254,14 @@ class TestSinusoidalPoissonSpikeStimulus:
             random_seed=0,
             timestamp_offset=100.0,
         )
-        result = stim.generate_spikes_by_gid([0], [0.0])
+        timestamps = obi.SingleTimestamp(start_time=0.0)
+        offset_timestamps = [
+            offset_timestamp
+            for _, offset_timestamp in timestamps.enumerate_non_negative_checked_offset_timestamps(
+                stim.timestamp_offset
+            )
+        ]
+        result = stim.generate_spikes_by_gid([0], offset_timestamps)
         for t in result[0]:
             assert 100.0 <= t <= 300.0
 

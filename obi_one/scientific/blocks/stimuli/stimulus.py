@@ -66,10 +66,6 @@ class StimulusWithTimestamps(BaseStimulus):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
-    @abstractmethod
-    def _update_zero_resolved_single_timestamp_config(self, stim_dict: dict) -> dict:
-        """Update a zero-resolved stimulus dict with class-specific parameters."""
-
     def _generate_config(self) -> dict:
         sonata_config = {}
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
@@ -377,19 +373,19 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         },
     )
 
-    def _update_zero_resolved_single_timestamp_config(self, stim_dict: dict) -> dict:
-        stim_dict.update(
-            {
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "mean_percent": self.mean_percentage_of_threshold_current,
-                "variance": self.variance,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        )
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                self.neuron_set, self._default_node_set
+            ),
+            "module": self._module,
+            "input_type": self._input_type,
+            "mean_percent": self.mean_percentage_of_threshold_current,
+            "variance": self.variance,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
         return stim_dict
 
 
