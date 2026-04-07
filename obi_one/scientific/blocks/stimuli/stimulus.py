@@ -206,11 +206,8 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
-        for (
-            t_ind,
-            _timestamp,
-            stim_dict,
-        ) in timestamps_block.enumerate_zero_checked_timestamp_stimulus_dicts(
+
+        for t_ind, _, stim_dict in timestamps_block.enumerate_zero_checked_stimulus_dicts(
             self.timestamp_offset, self.duration
         ):
             stim_dict.update(

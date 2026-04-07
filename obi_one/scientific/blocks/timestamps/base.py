@@ -28,7 +28,7 @@ class Timestamps(Block, ABC):
     def _resolve_timestamps(self) -> list:
         pass
 
-    def enumerate_zero_checked_timestamp_stimulus_dicts(
+    def enumerate_zero_checked_stimulus_dicts(
         self, timestamp_offset: float, duration: NonNegativeFloat
     ) -> Iterator[tuple[int, NonNegativeFloat, dict]]:
         """Enumerate timestamps with their resolved SONATA delay/duration dicts.

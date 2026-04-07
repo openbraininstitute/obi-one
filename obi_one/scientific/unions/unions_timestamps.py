@@ -16,8 +16,8 @@ class TimestampsReference(BlockReference):
 
 
 def resolve_timestamps_ref_to_timestamps_block(
-    timestamps_reference: TimestampsReference | None, default_timestamps: str
-) -> str:
+    timestamps_reference: TimestampsReference | None, default_timestamps: TimestampsReference
+) -> Any:
     if timestamps_reference is None:
         return default_timestamps
 
