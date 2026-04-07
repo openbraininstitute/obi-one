@@ -1,8 +1,8 @@
 import logging
 
 from entitysdk import Client
-from entitysdk._server_schemas import (  # NOQA: PLC2701
-    PublicationType,
+from entitysdk._server_schemas import (
+    PublicationType,  # NOQA: PLC2701
 )
 from entitysdk.models import (
     EMDenseReconstructionDataset,

@@ -83,7 +83,6 @@ def sonata_config_for(
         alternate_morphologies_h5: [Optional] Adds an 'alternate_morphologies'
             entry pointing to this H5 path (mostly for single-neuron spiny case).
     """
-
     cfg = deepcopy(SYNAPTOME_SONATA_CONFIG)
 
     # Edge populations

@@ -56,7 +56,7 @@ class EMMultiNeuronSynapseMappingTask(Task):
 
     config: EMSynapseMappingMultipleConfig
 
-    def execute(  # NOQA: PLR0914, PLR0915
+    def execute(  # NOQA: PLR0914, PLR0915, C901, PLR0912
         self,
         *,
         db_client: Client = None,
