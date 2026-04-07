@@ -69,6 +69,10 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
     SkeletonizationTask,
 )
+from obi_one.scientific.tasks.tribe_brain_prediction import (
+    TribeBrainPredictionSingleConfig,
+    TribeBrainPredictionTask,
+)
 from obi_one.types import TaskType
 
 _config_tasks_map = {
@@ -89,6 +93,7 @@ _config_tasks_map = {
     SkeletonizationSingleConfig: SkeletonizationTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+    TribeBrainPredictionSingleConfig: TribeBrainPredictionTask,
 }
 _task_type_task_map = {
     TaskType.circuit_extraction: CircuitExtractionTask,
