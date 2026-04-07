@@ -22,7 +22,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
     synapses_and_nodes_dataframes_from_EM,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
-from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output_single
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_neuron
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 from obi_one.utils.io import write_json
@@ -152,7 +152,7 @@ class EMSynapseMappingTask(Task):
         }
         compressed_path = compress_output(self.config.coordinate_output_root)
 
-        registered_circuit_id = register_output(
+        registered_circuit_id = register_output_single(
             db_client,
             pt_root_id,
             mapped_synapses_df,
