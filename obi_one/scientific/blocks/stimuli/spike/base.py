@@ -50,6 +50,9 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
+    def _update_zero_resolved_single_timestamp_config(self, stim_dict: dict) -> dict:  # noqa: PLR6301
+        return stim_dict
+
     def config(
         self,
         circuit: Circuit,
