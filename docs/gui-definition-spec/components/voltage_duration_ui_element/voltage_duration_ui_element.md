@@ -2,8 +2,6 @@
 
 ui_element: `voltage_duration_ui_element`
 
-- Should be inside a list
-
 Reference schema [voltage_duration_ui_element](reference_schemas/voltage_duration_ui_element.json)
 
 

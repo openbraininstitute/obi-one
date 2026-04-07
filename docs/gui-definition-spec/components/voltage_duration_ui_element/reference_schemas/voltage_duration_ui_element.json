@@ -12,7 +12,8 @@
               "type": "float"
             }
           }
-        ]
+        ],
+        "ui_element": "float_parameter_sweep"
       },
       "voltage": {
         "oneOf": [
@@ -25,7 +26,8 @@
               "type": "float"
             }
           }
-        ]
+        ],
+        "ui_element": "float_parameter_sweep"
       }
     },
     "type": "array",
