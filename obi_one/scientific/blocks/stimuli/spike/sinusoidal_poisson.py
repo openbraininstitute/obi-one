@@ -146,14 +146,14 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
         return max(0.0, lam)
 
-    def generate_spikes_by_gid(
-        self, source_gids: list[int]
-    ) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         # Upper-bound on expected spikes to guard against pathological params
         total_expected = (
-            (self.duration * len(self._offset_timestamps()) / 1000.0) * self.maximum_rate * len(source_gids)
+            (self.duration * len(self._offset_timestamps()) / 1000.0)
+            * self.maximum_rate
+            * len(source_gids)
         )
         if total_expected > _MAX_POISSON_SPIKE_LIMIT:
             msg = (

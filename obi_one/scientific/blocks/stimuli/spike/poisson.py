@@ -62,13 +62,15 @@ class PoissonSpikeStimulus(SpikeStimulus):
         },
     )
 
-    def generate_spikes_by_gid(
-        self, source_gids: list[int]
-    ) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         rng = np.random.default_rng(self.random_seed)
 
         if (
-            self.duration * 1e-3 * len(source_gids) * self.frequency * len(self._offset_timestamps())
+            self.duration
+            * 1e-3
+            * len(source_gids)
+            * self.frequency
+            * len(self._offset_timestamps())
             > _MAX_POISSON_SPIKE_LIMIT
         ):
             msg = (

@@ -25,7 +25,7 @@ class Timestamps(Block, ABC):
     def _resolve_timestamps(self) -> list:
         pass
 
-    def enumerate_non_negative_checked_offset_timestamps(
+    def enumerate_non_negative_offset_timestamps(
         self, timestamp_offset: float
     ) -> Iterator[tuple[int, NonNegativeFloat]]:
         """Enumerate timestamp index and offset timestamps.

@@ -13,7 +13,6 @@ from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -68,14 +67,13 @@ class StimulusWithTimestamps(BaseStimulus):
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     def _offset_timestamps(self) -> list[float]:
-
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps, self._default_timestamps
         )
 
         offset_timestamps = [
             offset_timestamp
-            for _, offset_timestamp in timestamps_block.enumerate_non_negative_checked_offset_timestamps(
+            for _, offset_timestamp in timestamps_block.enumerate_non_negative_offset_timestamps(
                 self.timestamp_offset
             )
         ]
@@ -84,7 +82,7 @@ class StimulusWithTimestamps(BaseStimulus):
 
     def _generate_config(self) -> dict:
         sonata_config = {}
-        
+
         for (
             t_ind,
             offset_timestamp,
@@ -389,9 +387,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "mean_percent": self.mean_percentage_of_threshold_current,

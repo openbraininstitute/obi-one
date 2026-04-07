@@ -12,16 +12,11 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
 )
-from obi_one.scientific.blocks.timestamps.base import Timestamps
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_neuron_set,
-)
-from obi_one.scientific.unions.unions_timestamps import (
-    TimestampsReference,
-    resolve_timestamps_ref_to_timestamps_block,
 )
 
 
@@ -58,14 +53,11 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
-        default_timestamps: TimestampsReference = None,
         source_node_population: str | None = None,
         target_node_population: str | None = None,
         default_source_neuron_set_reference: NeuronSetReference | None = None,
         default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
-        timestamps = resolve_timestamps_ref_to_timestamps_block(self.timestamps, default_timestamps)
-
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set_reference
         )
@@ -81,7 +73,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
-            timestamps=timestamps,
             source_neuron_set=source_neuron_set,
             source_node_population=source_node_population,
         )
@@ -99,7 +90,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         self,
         circuit: Circuit,
         spike_file_directory: Path,
-        timestamps: Timestamps,
         source_neuron_set: NeuronSet,
         source_node_population: str | None = None,
     ) -> Path:
@@ -107,9 +97,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population = source_neuron_set.get_population(source_node_population)
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(
-            source_gids=source_gids
-        )
+        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"
@@ -146,9 +134,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         return sonata_config
 
     @abstractmethod
-    def generate_spikes_by_gid(
-        self, source_gids: list[int]
-    ) -> dict[int, list[float]]:
+    def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         pass
 
     @staticmethod
