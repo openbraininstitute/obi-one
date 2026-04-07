@@ -270,8 +270,12 @@ class GridScanGenerationTask(ScanGenerationTask):
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 single_values = [
-                    SingleValueScanParam(location_list=multi_value.location_list, value=value)
-                    for value in multi_value.values
+                    SingleValueScanParam(
+                        location_list=multi_value.location_list,
+                        value=value,
+                        index_in_scan_dimension=index,
+                    )
+                    for index, value in enumerate(multi_value.values)
                 ]
 
                 single_values_by_multi_value.append(single_values)
@@ -300,7 +304,7 @@ class GridScanGenerationTask(ScanGenerationTask):
 class CoupledScanGenerationTask(ScanGenerationTask):
     """Description."""
 
-    def coordinate_parameters(self, *, display: bool = False) -> list:
+    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
         """Description."""
         previous_len = -1
 
@@ -323,6 +327,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
                     SingleValueScanParam(
                         location_list=multi_value.location_list,
                         value=multi_value.values[coord_i],
+                        index_in_scan_dimension=coord_i,
                     )
                     for multi_value in multi_value_parameters
                 ]

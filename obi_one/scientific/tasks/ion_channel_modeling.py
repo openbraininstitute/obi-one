@@ -296,7 +296,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
             entitysdk.models.IonChannelModelingConfig(
                 name=f"IonChannelModelingConfig {self.idx}",
                 description=f"IonChannelModelingConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
                 ion_channel_modeling_campaign_id=campaign.id,
             )
         )
