@@ -17,7 +17,7 @@ def compress_output(
     Path(tar_path).write_bytes(
         subprocess.check_output(["tar", "-cf", "-", *files])  # NOQA: S607, S603
     )
-    subprocess.check_call(["gzip", "-1", str(tar_path)])  # NOQA: S607, S603
+    subprocess.check_call(["gzip", "-1", "-f", str(tar_path)])  # NOQA: S607, S603
     return str(gz_path)
 
 

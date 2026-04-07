@@ -150,7 +150,10 @@ class EMSynapseMappingTask(Task):
             fn_morphology_out_h5: str(out_root / fn_morphology_out_h5),
             fn_morphology_out_swc: str(out_root / fn_morphology_out_swc),
         }
-        compressed_path = compress_output(self.config.coordinate_output_root)
+        compressed_path = compress_output(
+            self.config.coordinate_output_root,
+            list(file_paths.values()),
+        )
 
         registered_circuit_id = register_output_single(
             db_client,
