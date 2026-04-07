@@ -24,6 +24,7 @@ def compress_output(
 def merge_spiny_morphologies(
     source_files: list[Path],
     output_path: Path,
+    *,
     include_meshes: bool = True,
 ) -> None:
     """Merge multiple morphology-with-spines HDF5 files into one.
