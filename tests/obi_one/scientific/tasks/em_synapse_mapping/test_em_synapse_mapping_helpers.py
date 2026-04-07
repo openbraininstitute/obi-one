@@ -13,7 +13,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
     assemble_publication_links,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output_single
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
@@ -150,7 +150,7 @@ def test_plot_mapping_stats():
     assert fig.axes[0].get_ylabel() == "Synapse count"
 
 
-def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
+def test_register_output_single(tmp_path, mock_db_client, source_dataset, em_dataset):
     existing_circuit = SimpleNamespace(id=uuid4())
     mock_db_client.register_entity.side_effect = [existing_circuit, "link-1", "link-2"]
 
@@ -173,7 +173,7 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
             return_value=SimpleNamespace(id=uuid4()),
         ),
     ):
-        circuit_id = register_output(
+        circuit_id = register_output_single(
             db_client=mock_db_client,
             pt_root_id=42,
             mapped_synapses_df=mapped_synapses_df,
