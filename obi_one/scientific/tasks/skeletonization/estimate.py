@@ -1,5 +1,6 @@
 """Cost estimation for skeletonization tasks."""
 
+import math
 import tempfile
 from pathlib import Path
 from uuid import UUID
@@ -77,4 +78,4 @@ def estimate_skeletonization_count(
     cell_mesh = config.initialize.cell_mesh
     total_area = _compute_mesh_surface_area(db_client, cell_mesh)
 
-    return max(0, total_area)
+    return max(1, math.ceil(total_area))
