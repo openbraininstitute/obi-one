@@ -17,6 +17,7 @@ from httpx import HTTPStatusError
 from pydantic import BaseModel
 
 ALL_POPULATIONS = "_ALL_"
+MAX_UNIQUE_VALUES = 100
 
 
 class NodePopulationType(StrEnum):
@@ -209,11 +210,17 @@ def list_of_edge_properties_from_h5(h5: h5py.File, population_name: str) -> list
     return list(h5["edges"][population_name].get("0", {}).keys())
 
 
-def unique_node_property_values_from_h5(h5: h5py.File, population_name: str) -> dict[str, list]:
+def unique_node_property_values_from_h5(
+    h5: h5py.File, population_name: str
+) -> dict[str, list | None]:
     vals_dict = {}
     grp = h5["nodes"][population_name]["0"]
     for k in grp.get("@library", {}):
-        vals_dict[k] = grp["@library"][k][:]
+        prop_vals = grp["@library"][k][:]
+        if len(prop_vals) <= MAX_UNIQUE_VALUES:
+            vals_dict[k] = prop_vals
+        else:
+            vals_dict[k] = None
     return vals_dict
 
 
@@ -222,10 +229,13 @@ def number_of_nodes_per_unique_value_from_h5(h5: h5py.File, population_name: str
     grp = h5["nodes"][population_name]["0"]
     for k in grp.get("@library", {}):
         prop_vals = grp["@library"][k][:]
-        prop_idx_counts = pd.Series(grp[k][:]).value_counts()
-        prop_idx_counts = prop_idx_counts.reindex(range(len(prop_vals)), fill_value=0)
-        prop_idx_counts.index = pd.Index(prop_vals)
-        vals_dict[k] = prop_idx_counts.to_dict()
+        if len(prop_vals) <= MAX_UNIQUE_VALUES:
+            prop_idx_counts = pd.Series(grp[k][:]).value_counts()
+            prop_idx_counts = prop_idx_counts.reindex(range(len(prop_vals)), fill_value=0)
+            prop_idx_counts.index = pd.Index(prop_vals)
+            vals_dict[k] = prop_idx_counts.to_dict()
+        else:
+            vals_dict[k] = None
     return vals_dict
 
 
@@ -410,8 +420,8 @@ class CircuitMetricsNodePopulation(BaseModel):
     name: str
     population_type: NodePopulationType
     property_names: list[str]
-    property_unique_values: dict[str, list[str]]
-    property_value_counts: dict[str, dict[str, int]]
+    property_unique_values: dict[str, list[str] | None]
+    property_value_counts: dict[str, dict[str, int] | None]
     node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
 
 
