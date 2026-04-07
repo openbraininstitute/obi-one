@@ -489,16 +489,14 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
         "with type 'DurationVoltageCombination'"
     )
     voltage = resolved_ref.get("properties").get("voltage")
-    assert (
-        voltage.get(SchemaKey.UI_ELEMENT)
-        == UIElement.FLOAT_PARAMETER_SWEEP
-    ), (
+    assert voltage.get(SchemaKey.UI_ELEMENT) == UIElement.FLOAT_PARAMETER_SWEEP, (
         f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
         "where 'voltage' has ui_element 'FLOAT_PARAMETER_SWEEP'"
     )
-    assert (
-        voltage["anyOf"] == [{"type": "number"}, {"type": "array", "items": {"type": "number"}}]
-    ), (
+    assert voltage["anyOf"] == [
+        {"type": "number"},
+        {"type": "array", "items": {"type": "number"}},
+    ], (
         f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
         f"where 'voltage' is of type 'number' or an array of 'number'."
     )
@@ -508,25 +506,18 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
     duration = resolved_ref.get("properties").get("duration")
-    assert (
-        duration.get(SchemaKey.UI_ELEMENT)
-        == UIElement.FLOAT_PARAMETER_SWEEP
-    ), (
+    assert duration.get(SchemaKey.UI_ELEMENT) == UIElement.FLOAT_PARAMETER_SWEEP, (
         f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
         "where 'duration' has ui_element 'FLOAT_PARAMETER_SWEEP'"
     )
-    assert (
-        duration["anyOf"] == [
-            {"type": "number", 'minimum': 0.0},
-            {"type": "array", "items": {"type": "number", 'minimum': 0.0}}
-        ]
-    ), (
+    assert duration["anyOf"] == [
+        {"type": "number", "minimum": 0.0},
+        {"type": "array", "items": {"type": "number", "minimum": 0.0}},
+    ], (
         f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
         f"where 'duration' is of type 'number' or an array of 'number'. Found {duration}"
     )
-    assert (
-        duration.get(SchemaKey.UNITS) == Units.MILLISECONDS
-    ), (
+    assert duration.get(SchemaKey.UNITS) == Units.MILLISECONDS, (
         f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
         "where 'duration' has units 'milliseconds'"
     )
