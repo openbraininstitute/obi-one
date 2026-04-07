@@ -49,7 +49,9 @@ def merge_spiny_morphologies(  # NOQA: C901, PLR0912
     with h5py.File(output_path, "w") as h5_out:
         for src_path in source_files:
             with h5py.File(src_path, "r") as h5_in:
-                _merge_one_source(h5_in, h5_out, src_path, neuron_keyed_groups, spine_library_groups)
+                _merge_one_source(
+                    h5_in, h5_out, src_path, neuron_keyed_groups, spine_library_groups
+                )
 
 
 def _merge_one_source(
