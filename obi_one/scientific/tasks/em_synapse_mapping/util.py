@@ -21,7 +21,7 @@ def compress_output(
     return str(gz_path)
 
 
-def merge_spiny_morphologies(  # NOQA: C901, PLR0912, PLR1702
+def merge_spiny_morphologies(  # NOQA: C901, PLR0912
     source_files: list[Path],
     output_path: Path,
     *,
@@ -49,47 +49,67 @@ def merge_spiny_morphologies(  # NOQA: C901, PLR0912, PLR1702
     with h5py.File(output_path, "w") as h5_out:
         for src_path in source_files:
             with h5py.File(src_path, "r") as h5_in:
-                if "morphology" not in h5_in:
-                    err_str = f"No /morphology group found in {src_path}"
-                    raise ValueError(err_str)
+                _merge_one_source(h5_in, h5_out, src_path, neuron_keyed_groups, spine_library_groups)
 
-                src_names = list(h5_in["morphology"].keys())
 
-                # Copy neuron keyed groups (error on duplicate keys)
-                for morph_key in src_names:
-                    for grp_path in neuron_keyed_groups:
-                        src_grp = _navigate_h5_path(h5_in, grp_path)
-                        if src_grp is None or morph_key not in src_grp:
-                            continue
-                        dst_parent = h5_out.require_group(grp_path)
-                        if morph_key in dst_parent:
-                            err_str = (
-                                f"Duplicate morphology key '{morph_key}' in "
-                                f"output group '{grp_path}' (from {src_path})"
-                            )
-                            raise ValueError(err_str)
-                        h5_in.copy(src_grp[morph_key], dst_parent, name=morph_key)
-                        if grp_path == "edges":
-                            metadata_path = f"{grp_path}/{morph_key}/metadata"
-                            if metadata_path in h5_in:
-                                dst_grp = dst_parent[morph_key]
-                                if "metadata" not in dst_grp:
-                                    h5_in.copy(h5_in[metadata_path], dst_grp, name="metadata")
+def _merge_one_source(
+    h5_in: h5py.File,
+    h5_out: h5py.File,
+    src_path: Path,
+    neuron_keyed_groups: list[str],
+    spine_library_groups: list[str],
+) -> None:
+    """Merge all morphologies from one source file into the output."""
+    if "morphology" not in h5_in:
+        err_str = f"No /morphology group found in {src_path}"
+        raise ValueError(err_str)
 
-                # Copy spine library groups (error on duplicate keys)
-                for grp_path in spine_library_groups:
-                    src_grp = _navigate_h5_path(h5_in, grp_path)
-                    if src_grp is None:
-                        continue
-                    dst_parent = h5_out.require_group(grp_path)
-                    for spine_key in src_grp:
-                        if spine_key in dst_parent:
-                            err_str = (
-                                f"Duplicate spine key '{spine_key}' in "
-                                f"output group '{grp_path}' (from {src_path})"
-                            )
-                            raise ValueError(err_str)
-                        h5_in.copy(src_grp[spine_key], dst_parent, name=spine_key)
+    src_names = list(h5_in["morphology"].keys())
+
+    for morph_key in src_names:
+        _copy_neuron_groups(h5_in, h5_out, morph_key, src_path, neuron_keyed_groups)
+
+    for grp_path in spine_library_groups:
+        src_grp = _navigate_h5_path(h5_in, grp_path)
+        if src_grp is None:
+            continue
+        dst_parent = h5_out.require_group(grp_path)
+        for spine_key in src_grp:
+            if spine_key in dst_parent:
+                err_str = (
+                    f"Duplicate spine key '{spine_key}' in "
+                    f"output group '{grp_path}' (from {src_path})"
+                )
+                raise ValueError(err_str)
+            h5_in.copy(src_grp[spine_key], dst_parent, name=spine_key)
+
+
+def _copy_neuron_groups(
+    h5_in: h5py.File,
+    h5_out: h5py.File,
+    morph_key: str,
+    src_path: Path,
+    neuron_keyed_groups: list[str],
+) -> None:
+    """Copy neuron-keyed groups for one morphology key, raising on duplicates."""
+    for grp_path in neuron_keyed_groups:
+        src_grp = _navigate_h5_path(h5_in, grp_path)
+        if src_grp is None or morph_key not in src_grp:
+            continue
+        dst_parent = h5_out.require_group(grp_path)
+        if morph_key in dst_parent:
+            err_str = (
+                f"Duplicate morphology key '{morph_key}' in "
+                f"output group '{grp_path}' (from {src_path})"
+            )
+            raise ValueError(err_str)
+        h5_in.copy(src_grp[morph_key], dst_parent, name=morph_key)
+        if grp_path == "edges":
+            metadata_path = f"{grp_path}/{morph_key}/metadata"
+            if metadata_path in h5_in:
+                dst_grp = dst_parent[morph_key]
+                if "metadata" not in dst_grp:
+                    h5_in.copy(h5_in[metadata_path], dst_grp, name="metadata")
 
 
 def _navigate_h5_path(h5: h5py.File, path: str) -> h5py.Group | None:
