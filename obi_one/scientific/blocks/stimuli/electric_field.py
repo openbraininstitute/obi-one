@@ -18,9 +18,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
-)
 
 from .stimulus import ContinuousStimulus
 
@@ -135,22 +132,14 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     _frequency: float = PrivateAttr(0.0)
     _phase_degrees: float = PrivateAttr(0.0)
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
+    def _update_zero_resolved_single_timestamp_config(self, stim_dict: dict) -> dict:
+        stim_dict.update(
+            {
                 "module": self._module,
                 "input_type": self._input_type,
                 "node_set": resolve_neuron_set_ref_to_node_set(
                     self.neuron_set, self._default_node_set
                 ),
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
                 "ramp_up_duration": self.ramp_up_duration,
                 "ramp_down_duration": self.ramp_down_duration,
                 "fields": [
@@ -163,7 +152,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
                     }
                 ],
             }
-        return sonata_config
+        )
+        return stim_dict
 
 
 class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
