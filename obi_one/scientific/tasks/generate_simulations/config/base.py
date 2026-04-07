@@ -293,7 +293,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
             entitysdk.models.Simulation(
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
                 entity_id=self.entity_id_for_campaign_entity_generation(),
                 simulation_campaign_id=campaign.id,
                 number_neurons=-1,
