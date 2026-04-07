@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
 
@@ -60,6 +61,17 @@ class Block(OBIBaseModel, extra="forbid"):
                 multi_values = list(value)
 
             elif isinstance(value, list):
+                # list[ComplexVariableHolder] special case
+                if len(value) > 0 and isinstance(value[0], ComplexVariableHolder):
+                    for i, complex_variable_holder in enumerate(value):
+                        self._multiple_value_parameters.extend(
+                            complex_variable_holder.multiple_value_parameters(
+                                base_location_list=[category_name, block_key, key, i]
+                                if block_key
+                                else [category_name, key, i]
+                            )
+                        )
+                    continue
                 multi_values = value
 
             else:

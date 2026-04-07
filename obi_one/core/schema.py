@@ -47,3 +47,4 @@ class UIElement(StrEnum):
     STRING_INPUT = "string_input"
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
+    VOLTAGE_DURATION = "voltage_duration"
