@@ -33,7 +33,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
@@ -44,7 +43,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 
