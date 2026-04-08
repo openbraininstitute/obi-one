@@ -60,8 +60,9 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    neuron_sets_2: dict[str, AllNeuronSet2Union] = Field(
+    neuron_sets: dict[str, AllNeuronSet2Union] = Field(
         default_factory=dict,
+        title="Neuron Sets",
         description="Neuron sets for the simulation (new version).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
