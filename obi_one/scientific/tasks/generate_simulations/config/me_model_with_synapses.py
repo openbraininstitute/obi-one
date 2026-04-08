@@ -14,9 +14,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
-from obi_one.scientific.unions.unions_neuron_sets import (
-    MEModelWithSynapsesNeuronSetUnion,
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    NeuronSet2Reference,
+    VirtualNeuronSet2Reference,
+    VirtualNeuronSet2Union,
 )
 
 L = logging.getLogger(__name__)
@@ -34,12 +35,13 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+    neuron_sets: dict[str, VirtualNeuronSet2Union] = Field(
         default_factory=dict,
+        title="Neuron Sets",
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

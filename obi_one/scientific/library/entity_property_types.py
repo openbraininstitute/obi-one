@@ -13,15 +13,18 @@ class MappedPropertiesGroup(StrEnum):
 
 class CircuitMappedProperties(StrEnum):
     NODE_SET = "NodeSet"
-    POPULATION = "Population"
-    BIOPHYSICAL_POPULATION = "BiophysicalPopulation"
-    VIRTUAL_POPULATION = "VirtualPopulation"
+    BIOPHYSICAL_NEURONAL_POPULATION = "BiophysicalNeuronalPopulation"
+    VIRTUAL_NEURONAL_POPULATION = "VirtualNeuronalPopulation"
+    POINT_NEURONAL_POPULATION = "PointNeuronalPopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
 
 
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
+    SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
+    SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
+    SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"
 
 
 class IonChannelPropertyType(StrEnum):

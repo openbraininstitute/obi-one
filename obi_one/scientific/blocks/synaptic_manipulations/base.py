@@ -6,9 +6,10 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    BiophysicalAndPointNeuronSet2Reference,
+    NeuronSet2Reference,
+    resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -24,25 +25,23 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: NeuronSetReference | None = Field(
+    presynaptic_neuron_set: NeuronSet2Reference | None = Field(
         default=None,
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.SUPPORTS_VIRTUAL: True,
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
         },
     )
 
-    postsynaptic_neuron_set: NeuronSetReference | None = Field(
+    postsynaptic_neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
         default=None,
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.SUPPORTS_VIRTUAL: False,
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
         },
     )
 
@@ -55,10 +54,10 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
     def _sonata_manipulations_list(self) -> dict:
         sonata_config = {
             "name": self.block_name,
-            "source": resolve_neuron_set_ref_to_node_set(
+            "source": resolve_neuron_set_2_ref_to_neuron_set(
                 self.presynaptic_neuron_set, self._default_node_set
             ),
-            "target": resolve_neuron_set_ref_to_node_set(
+            "target": resolve_neuron_set_2_ref_to_neuron_set(
                 self.postsynaptic_neuron_set, self._default_node_set
             ),
         }

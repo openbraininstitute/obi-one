@@ -14,9 +14,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    BiophysicalAndPointNeuronSet2Reference,
+    resolve_neuron_set_2_ref_to_neuron_set,
 )
 
 from .stimulus import ContinuousStimulus
@@ -48,14 +48,13 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
         },
     )
 
@@ -136,7 +135,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "node_set": resolve_neuron_set_2_ref_to_neuron_set(
+                self.neuron_set, self._default_node_set
+            ),
             "ramp_up_duration": self.ramp_up_duration,
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [

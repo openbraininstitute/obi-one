@@ -19,9 +19,10 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    AllNeuronSet2Union,
+    BiophysicalAndPointNeuronSet2Reference,
+    NeuronSet2Reference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
@@ -53,20 +54,22 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            NeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalAndPointNeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AllNeuronSet2Union] = Field(
         default_factory=dict,
-        description="Neuron sets for the simulation.",
+        title="Neuron Sets",
+        description="Neuron sets for the simulation (new version).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
@@ -87,13 +90,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             description="Circuit to simulate.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
-        node_set: NeuronSetReference | None = Field(
+        node_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
             },
         )
 
