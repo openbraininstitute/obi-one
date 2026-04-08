@@ -23,7 +23,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_neurons_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    AllNeuronSet2Union,
+    BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
     NeuronSet2Union,
 )
@@ -62,17 +64,6 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
-        description="Neuron sets for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
     neuron_sets_2: dict[str, NeuronSet2Union] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation (new version).",
@@ -102,13 +93,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             description="Circuit to simulate.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
-        node_set: NeuronSetReference | None = Field(
+        node_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
             },
         )
 
