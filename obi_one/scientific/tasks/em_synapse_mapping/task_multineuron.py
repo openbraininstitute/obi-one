@@ -9,27 +9,26 @@ from matplotlib import pyplot as plt
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-from obi_one.scientific.library.map_em_synapses import (
-    map_afferents_to_spiny_morphology,
-    synapses_and_nodes_dataframes_from_EM,
-    write_edges,
-    write_nodes,
-)
 from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
     sonata_config_for,
 )
-from obi_one.scientific.library.map_em_synapses.util import (
-    merge_spiny_morphologies,
+from obi_one.scientific.library.map_em_synapses.map_synapse_locations import (
+    map_afferents_to_spiny_morphology,
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
     _STR_POST_NODE,
     _STR_PRE_NODE,
+    write_edges,
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     assemble_collection_from_specs,
+    write_nodes,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingMultipleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
+    synapses_and_nodes_dataframes_from_EM,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.plot import (
     plot_mapping_stats,
 )
@@ -39,7 +38,10 @@ from obi_one.scientific.tasks.em_synapse_mapping.register import (
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
     resolve_neuron,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
+from obi_one.scientific.tasks.em_synapse_mapping.util import (
+    compress_output,
+    merge_spiny_morphologies,
+)
 
 L = logging.getLogger(__name__)
 
