@@ -126,7 +126,7 @@ def register_output_multiple(
         subject=source_dataset.subject,
         has_morphologies=True,
         has_electrical_cell_models=any(rn.use_me_model for rn in resolved_neurons),
-        has_spines=any(rn.is_spiny for rn in resolved_neurons),
+        has_spines=True,
         brain_region=source_dataset.brain_region,
         experiment_date=source_dataset.experiment_date,
         license=em_entity.license,
