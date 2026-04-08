@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
