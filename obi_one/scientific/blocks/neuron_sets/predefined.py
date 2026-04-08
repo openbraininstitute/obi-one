@@ -11,7 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
