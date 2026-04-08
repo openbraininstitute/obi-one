@@ -72,7 +72,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
             > _MAX_POISSON_SPIKE_LIMIT
         ):
             msg = (
-                f"Poisson input exceeds maximum allowed nunmber of spikes "
+                f"Poisson input exceeds maximum allowed number of spikes "
                 f"({_MAX_POISSON_SPIKE_LIMIT})!"
             )
             raise OBIONEError(msg)
