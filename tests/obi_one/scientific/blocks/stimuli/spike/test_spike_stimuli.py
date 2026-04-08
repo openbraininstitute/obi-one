@@ -9,6 +9,7 @@ from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
     _draw_inhomogeneous_poisson_interval_ms,
 )
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 from tests.utils import CIRCUIT_DIR
 
@@ -18,6 +19,13 @@ CIRCUIT_NAME = "N_10__top_nodes_dim6"
 
 def _make_circuit():
     return obi.Circuit(name=CIRCUIT_NAME, path=CIRCUIT_PATH)
+
+
+def _make_timestamps_ref(block):
+    """Create a resolved TimestampsReference for unit testing."""
+    ref = TimestampsReference(block_name="test")
+    ref.block = block
+    return ref
 
 
 def _read_spike_file(path, population):
@@ -36,65 +44,70 @@ def _read_spike_file(path, population):
 
 class TestFullySynchronousSpikeStimulus:
     def test_all_gids_spike_at_all_timestamps(self):
-        stim = obi.FullySynchronousSpikeStimulus()
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=3, interval=100.0)
+        )
+        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
         gids = [0, 1, 2]
-        timestamps = [100.0, 200.0, 300.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        result = stim.generate_spikes_by_gid(gids)
 
+        expected = [100.0, 200.0, 300.0]
         for gid in gids:
-            assert sorted(result[gid]) == timestamps
+            assert sorted(result[gid]) == expected
 
     def test_timestamp_offset_applied(self):
-        stim = obi.FullySynchronousSpikeStimulus(timestamp_offset=50.0)
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=1000.0)
+        )
+        stim = obi.FullySynchronousSpikeStimulus(timestamp_offset=50.0, timestamps=ts_ref)
         gids = [5, 10]
-        timestamps = [0.0, 1000.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        result = stim.generate_spikes_by_gid(gids)
 
         expected = [50.0, 1050.0]
         for gid in gids:
             assert result[gid] == expected
 
     def test_single_gid_single_timestamp(self):
-        stim = obi.FullySynchronousSpikeStimulus()
-        result = stim.generate_spikes_by_gid([42], [500.0])
+        ts_ref = _make_timestamps_ref(obi.SingleTimestamp(start_time=500.0))
+        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
+        result = stim.generate_spikes_by_gid([42])
         assert result[42] == [500.0]
 
     def test_empty_gids(self):
-        stim = obi.FullySynchronousSpikeStimulus()
-        result = stim.generate_spikes_by_gid([], [100.0, 200.0])
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=100.0)
+        )
+        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
+        result = stim.generate_spikes_by_gid([])
         assert len(result) == 0
-
-    def test_empty_timestamps(self):
-        stim = obi.FullySynchronousSpikeStimulus()
-        result = stim.generate_spikes_by_gid([0, 1], [])
-        for gid in [0, 1]:
-            assert result[gid] == []
 
 
 class TestPoissonSpikeStimulus:
     def test_reproducibility_with_same_seed(self):
         stim = obi.PoissonSpikeStimulus(duration=500.0, frequency=10.0, random_seed=42)
         gids = [0, 1, 2]
-        timestamps = [0.0]
-        r1 = stim.generate_spikes_by_gid(gids, timestamps)
-        r2 = stim.generate_spikes_by_gid(gids, timestamps)
+        r1 = stim.generate_spikes_by_gid(gids)
+        r2 = stim.generate_spikes_by_gid(gids)
         for gid in gids:
             assert r1[gid] == r2[gid]
 
     def test_different_seeds_give_different_spikes(self):
         gids = [0]
-        timestamps = [0.0]
         stim_a = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=1)
         stim_b = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=2)
-        r_a = stim_a.generate_spikes_by_gid(gids, timestamps)
-        r_b = stim_b.generate_spikes_by_gid(gids, timestamps)
+        r_a = stim_a.generate_spikes_by_gid(gids)
+        r_b = stim_b.generate_spikes_by_gid(gids)
         assert r_a[0] != r_b[0]
 
     def test_spikes_within_time_window(self):
-        stim = obi.PoissonSpikeStimulus(duration=200.0, frequency=10.0, random_seed=0)
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=400.0)
+        )
+        stim = obi.PoissonSpikeStimulus(
+            duration=200.0, frequency=10.0, random_seed=0, timestamps=ts_ref
+        )
         gids = list(range(5))
-        timestamps = [100.0, 500.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        result = stim.generate_spikes_by_gid(gids)
         for gid in gids:
             for t in result[gid]:
                 in_window = (100.0 <= t <= 300.0) or (500.0 <= t <= 700.0)
@@ -104,37 +117,45 @@ class TestPoissonSpikeStimulus:
         stim = obi.PoissonSpikeStimulus(
             duration=100.0, frequency=20.0, random_seed=7, timestamp_offset=50.0
         )
-        result = stim.generate_spikes_by_gid([0], [0.0])
+        result = stim.generate_spikes_by_gid([0])
         for t in result[0]:
             assert 50.0 <= t <= 150.0
 
     def test_zero_duration_produces_no_spikes(self):
         stim = obi.PoissonSpikeStimulus(duration=0.0, frequency=10.0, random_seed=0)
-        result = stim.generate_spikes_by_gid([0, 1], [0.0])
+        result = stim.generate_spikes_by_gid([0, 1])
         for gid in [0, 1]:
             assert result[gid] == []
 
     def test_spike_count_scales_with_frequency(self):
         gids = list(range(3))
-        timestamps = [0.0]
         stim_low = obi.PoissonSpikeStimulus(duration=2000.0, frequency=5.0, random_seed=10)
         stim_high = obi.PoissonSpikeStimulus(duration=2000.0, frequency=50.0, random_seed=10)
-        r_low = stim_low.generate_spikes_by_gid(gids, timestamps)
-        r_high = stim_high.generate_spikes_by_gid(gids, timestamps)
+        r_low = stim_low.generate_spikes_by_gid(gids)
+        r_high = stim_high.generate_spikes_by_gid(gids)
         total_low = sum(len(v) for v in r_low.values())
         total_high = sum(len(v) for v in r_high.values())
         assert total_high > total_low
 
     def test_exceeding_max_spikes_raises(self):
-        stim = obi.PoissonSpikeStimulus(duration=5000.0, frequency=50000.0, random_seed=0)
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
+        )
+        stim = obi.PoissonSpikeStimulus(
+            duration=5000.0, frequency=50000.0, random_seed=0, timestamps=ts_ref
+        )
         with pytest.raises(obi.OBIONEError, match="maximum allowed"):
-            stim.generate_spikes_by_gid(list(range(100)), [0.0] * 100)
+            stim.generate_spikes_by_gid(list(range(100)))
 
     def test_multiple_timestamps_produce_spikes_in_each_window(self):
-        stim = obi.PoissonSpikeStimulus(duration=100.0, frequency=50.0, random_seed=99)
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=500.0)
+        )
+        stim = obi.PoissonSpikeStimulus(
+            duration=100.0, frequency=50.0, random_seed=99, timestamps=ts_ref
+        )
         gids = [0]
-        timestamps = [0.0, 500.0, 1000.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        result = stim.generate_spikes_by_gid(gids)
 
         windows = [(0.0, 100.0), (500.0, 600.0), (1000.0, 1100.0)]
         for start, end in windows:
@@ -152,23 +173,23 @@ class TestSinusoidalPoissonSpikeStimulus:
             random_seed=42,
         )
         gids = [0, 1]
-        timestamps = [0.0]
-        r1 = stim.generate_spikes_by_gid(gids, timestamps)
-        r2 = stim.generate_spikes_by_gid(gids, timestamps)
+        r1 = stim.generate_spikes_by_gid(gids)
+        r2 = stim.generate_spikes_by_gid(gids)
         for gid in gids:
             assert r1[gid] == r2[gid]
 
     def test_spikes_within_time_window(self):
+        ts_ref = _make_timestamps_ref(obi.SingleTimestamp(start_time=100.0))
         stim = obi.SinusoidalPoissonSpikeStimulus(
             duration=300.0,
             minimum_rate=1.0,
             maximum_rate=10.0,
             modulation_frequency_hz=2.0,
             random_seed=5,
+            timestamps=ts_ref,
         )
         gids = [0]
-        timestamps = [100.0]
-        result = stim.generate_spikes_by_gid(gids, timestamps)
+        result = stim.generate_spikes_by_gid(gids)
         for t in result[0]:
             assert 100.0 <= t <= 400.0
 
@@ -178,7 +199,6 @@ class TestSinusoidalPoissonSpikeStimulus:
 
     def test_phase_offset_changes_spike_pattern(self):
         gids = [0]
-        timestamps = [0.0]
         stim_0 = obi.SinusoidalPoissonSpikeStimulus(
             duration=1000.0,
             minimum_rate=0.00001,
@@ -195,20 +215,24 @@ class TestSinusoidalPoissonSpikeStimulus:
             phase_degrees=90.0,
             random_seed=42,
         )
-        r0 = stim_0.generate_spikes_by_gid(gids, timestamps)
-        r90 = stim_90.generate_spikes_by_gid(gids, timestamps)
+        r0 = stim_0.generate_spikes_by_gid(gids)
+        r90 = stim_90.generate_spikes_by_gid(gids)
         assert r0[0] != r90[0]
 
     def test_exceeding_max_spikes_raises(self):
+        ts_ref = _make_timestamps_ref(
+            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
+        )
         stim = obi.SinusoidalPoissonSpikeStimulus(
             duration=5000.0,
             minimum_rate=0.00001,
             maximum_rate=50.0,
             modulation_frequency_hz=1.0,
             random_seed=0,
+            timestamps=ts_ref,
         )
         with pytest.raises(ValueError, match="maximum allowed"):
-            stim.generate_spikes_by_gid(list(range(1000)), [0.0] * 100)
+            stim.generate_spikes_by_gid(list(range(1000)))
 
     def test_lambda_t_ms_peak_and_trough(self):
         # At the peak of the sinusoid, lambda should be close to maximum_rate
@@ -241,7 +265,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             random_seed=0,
             timestamp_offset=100.0,
         )
-        result = stim.generate_spikes_by_gid([0], [0.0])
+        result = stim.generate_spikes_by_gid([0])
         for t in result[0]:
             assert 100.0 <= t <= 300.0
 
