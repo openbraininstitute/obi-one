@@ -18,14 +18,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
 
-L = logging.getLogger("obi-one")
-_NBS1_VPM_NODE_POP = "VPM"
-_NBS1_POM_NODE_POP = "POm"
-_RCA1_CA3_NODE_POP = "CA3_projections"
-
-_ALL_NODE_SET = "All"
-_EXCITATORY_NODE_SET = "Excitatory"
-_INHIBITORY_NODE_SET = "Inhibitory"
+L = logging.getLogger(__name__)
 
 _MAX_PERCENT = 100.0
 
@@ -165,6 +158,9 @@ class AbstractNeuronSet(Block, abc.ABC):
     def population_type(self, circuit: Circuit, population: str | None = None) -> str:
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
+
+    def is_biophysical(self, circuit: Circuit, population: str | None = None) -> bool:
+        return self.population_type(circuit, population) == "biophysical"
 
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:
