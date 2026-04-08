@@ -52,6 +52,7 @@ class BiophysicalAndPointNeuronSet2Reference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = BiophysicalAndPointNeuronSet2Union
 
+
 class VirtualNeuronSet2Reference(BlockReference):
     """A reference to a Virtual NeuronSet2 block."""
 

@@ -21,13 +21,11 @@ from obi_one.scientific.unions.unions_manipulations import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
-    SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    AllNeuronSet2Union,
     BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
-    NeuronSet2Union,
+    AllNeuronSet2Union,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
@@ -59,12 +57,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            NeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalAndPointNeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
 
-    neuron_sets_2: dict[str, NeuronSet2Union] = Field(
+    neuron_sets_2: dict[str, AllNeuronSet2Union] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation (new version).",
         json_schema_extra={

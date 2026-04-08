@@ -1,5 +1,4 @@
-"""
-Think about supporting these as legacy types?
+"""Think about supporting these as legacy types?
 IDNeuronSet
 AllNeurons
 ExcitatoryNeurons
@@ -8,4 +7,3 @@ PredefinedNeuronSet
 nbS1VPMInputs
 nbS1POmInputs
 """
-
