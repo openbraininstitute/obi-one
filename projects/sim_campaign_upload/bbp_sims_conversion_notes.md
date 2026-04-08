@@ -1,6 +1,7 @@
 1. Download the sims using [download/download_sim_campaigns.ipynb](download/download_sim_campaigns.ipynb)
     - Stop the download once you have the spike files. We don't need the soma reports for now.
     - For the spike sorting dataset the command which ignores the extracellular ("lfp") files is in the notebook
+    - For spike sorting cylindrical target available at: https://drive.google.com/file/d/16N_fryCWC-GVxWasThxn2fBi_VHANnop/view?usp=sharing
 2. Download the circuit without the edges file using [download/download_circuit_without_edges.ipynb](download/download_circuit_without_edges.ipynb)
 3. Convert the simulations to sonata using [convert/blue_config_sims_to_sonata.ipynb](convert/blue_config_sims_to_sonata.ipynb). This:
     - Creates the sonata simulation configs
