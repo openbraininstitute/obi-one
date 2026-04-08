@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from entitysdk.models.activity import Activity, Entity
-from entitysdk.types import AssetLabel
+from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
 from pydantic import Field
 
@@ -16,12 +16,17 @@ from app.types import (
 )
 
 
+class Capabilities(Schema):
+    private_packages: bool = False
+
+
 class PythonRepositoryCode(Schema):
     type: Literal[CodeType.python_repository] = CodeType.python_repository
     location: str
     ref: str
     path: str
     dependencies: str
+    capabilities: Capabilities = Capabilities()
 
 
 class BuiltinCode(Schema):
@@ -41,6 +46,7 @@ class MachineResources(Schema):
     type: Literal[ResourcesConfigType.machine] = ResourcesConfigType.machine
     cores: int = 1
     memory: int = 2
+    compute_cell: str
     timelimit: str | None = None
 
 
@@ -50,6 +56,7 @@ class ClusterResources(Schema):
     type: Literal[ResourcesConfigType.cluster] = ResourcesConfigType.cluster
     instances: int
     instance_type: str
+    compute_cell: str
     timelimit: str | None = None
 
 
@@ -87,10 +94,28 @@ class TaskDefinition(Schema):
     """Definition of a task type with its associated models and configuration."""
 
     task_type: TaskType
+    config_type: TaskConfigType
+    activity_type: TaskActivityType
+    code: Code
+    resources: Resources
+
+    @property
+    def config_type_name(self) -> str:
+        """Return the name of the config class."""
+        return self.config_type
+
+    @property
+    def activity_type_name(self) -> str:
+        """Return the name of the activity class."""
+        return self.activity_type
+
+
+class TaskDefinitionLegacy(Schema):
+    """Definition of a task type with its associated models and configuration."""
+
+    task_type: TaskType
     config_type: type[Entity]
     activity_type: type[Activity]
-    accounting_service_subtype: ServiceSubtype
-    config_asset_label: AssetLabel
     code: Code
     resources: Resources
 
@@ -107,5 +132,6 @@ class TaskDefinition(Schema):
 
 class TaskCallBackSuccessRequest(Schema):
     task_type: TaskType
+    accounting_service_subtype: ServiceSubtype
     job_id: UUID
     count: int

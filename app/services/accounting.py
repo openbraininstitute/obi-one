@@ -31,13 +31,12 @@ CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
 
 def make_task_reservation(
     *,
-    service_subtype: ServiceSubtype,
     user_context: UserContext,
     accounting_parameters: AccountingParameters,
     accounting_factory: AccountingSessionFactory,
 ) -> OneshotSession:
     accounting_session = accounting_factory.oneshot_session(
-        subtype=service_subtype,
+        subtype=accounting_parameters.service_subtype,
         proj_id=user_context.project_id,
         user_id=user_context.subject,
         count=accounting_parameters.count,
@@ -63,10 +62,9 @@ def make_task_reservation(
             details=str(ex),
         ) from ex
 
-    accounting_job_id = str(accounting_session._job_id)  # noqa: SLF001
     L.info(
-        f"Accounting parameters reserved: subtype={service_subtype}, "
-        f"count={accounting_parameters.count}, job_id={accounting_job_id}"
+        f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
+        f"count={accounting_parameters.count}, job_id={accounting_session.job_id}"
     )
     return accounting_session
 
@@ -86,7 +84,7 @@ def estimate_task_cost(
         task_definition=task_definition,
     )
     cost_estimate = accounting_factory.estimate_oneshot_cost(
-        subtype=task_definition.accounting_service_subtype,
+        subtype=accounting_parameters.service_subtype,
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )
@@ -111,10 +109,30 @@ def _evaluate_accounting_parameters(
     and uses the neuron_count from the simulation entity for the count.
     """
     match task_definition.task_type:
+        case TaskType.circuit_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+            )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.em_synapse_mapping:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+            )
+        case TaskType.ion_channel_model_simulation_execution:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.ION_CHANNEL_SIM,
+            )
+        case TaskType.morphology_skeletonization:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
             )
         case _:
             # For other task types, use the default mapping
@@ -149,10 +167,10 @@ def _evaluate_circuit_simulation_parameters(
 
 def generate_accounting_callbacks(
     task_type: TaskType,
-    accounting_job_id: str,
-    count: int,
-    virtual_lab_id: str,
-    project_id: str,
+    accounting_job_id: UUID,
+    accounting_parameters: AccountingParameters,
+    virtual_lab_id: UUID,
+    project_id: UUID,
     callback_url: str,
 ) -> list[CallBack]:
     return [
@@ -162,7 +180,8 @@ def generate_accounting_callbacks(
         _generate_accounting_success_callback(
             task_type=task_type,
             accounting_job_id=accounting_job_id,
-            count=count,
+            count=accounting_parameters.count,
+            accounting_service_subtype=accounting_parameters.service_subtype,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
             callback_url=callback_url,
@@ -171,7 +190,7 @@ def generate_accounting_callbacks(
 
 
 def _generate_accounting_failure_callback(
-    accounting_job_id: str,
+    accounting_job_id: UUID,
 ) -> CallBack:
     """Builds the callback URL for accounting failure (reservation deletion).
 
@@ -191,11 +210,12 @@ def _generate_accounting_failure_callback(
 
 def _generate_accounting_success_callback(
     task_type: TaskType,
-    accounting_job_id: str,
+    accounting_job_id: UUID,
     count: int,
+    accounting_service_subtype: str,
     callback_url: str,
-    virtual_lab_id: str,
-    project_id: str,
+    virtual_lab_id: UUID,
+    project_id: UUID,
 ) -> CallBack:
     """Builds the callback URL and payload for accounting success (usage addition).
 
@@ -206,7 +226,8 @@ def _generate_accounting_success_callback(
         method="POST",
         payload={
             "task_type": task_type,
-            "job_id": accounting_job_id,
+            "job_id": str(accounting_job_id),
+            "accounting_service_subtype": accounting_service_subtype,
             "count": count,
         },
         headers={
@@ -222,18 +243,18 @@ def _generate_accounting_success_callback(
 
 
 def finish_accounting_session(
-    accounting_job_id: str,
+    accounting_job_id: UUID,
     service_subtype: ServiceSubtype,
     count: int,
-    project_id: str,
+    project_id: UUID,
     http_client: httpx.Client,
 ) -> None:
     data = {
         "type": "oneshot",
         "subtype": service_subtype,
-        "proj_id": project_id,
+        "proj_id": str(project_id),
         "count": str(count),
-        "job_id": accounting_job_id,
+        "job_id": str(accounting_job_id),
         "timestamp": get_current_timestamp(),
     }
     make_http_request(

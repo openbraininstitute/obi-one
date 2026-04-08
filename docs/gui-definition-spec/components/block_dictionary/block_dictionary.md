@@ -21,11 +21,11 @@ class Config:
         title="Neuron sets",
         description="Neuron sets for the simulation.",
         json_schema_extra={
-            "ui_element": "block_dictionary",
-            "group": "Group 1", # Must exit in parent config's `group_order` array
-            "group_order": 0, # Unique within the group
-            "singular_name": "Neuron Set",
-            "reference_type": "NeuronSetReference",
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: "Group 1", # Must exit in parent config's `group_order` array
+            SchemaKey.GROUP_ORDER: 0, # Unique within the group
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.REFERENCE_TYPE: "NeuronSetReference",
         }
     )
 

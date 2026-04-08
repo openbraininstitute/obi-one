@@ -136,6 +136,7 @@ def client_user_1(client_no_auth):
     return ClientProxy(client_no_auth, headers=AUTH_HEADER_USER_1 | PROJECT_HEADERS)
 
 
+@pytest.fixture
 def client_user_2(client_no_auth):
     """Return a web client instance, authenticated as regular user with different project-id."""
     return ClientProxy(client_no_auth, headers=AUTH_HEADER_USER_2 | UNRELATED_PROJECT_HEADERS)

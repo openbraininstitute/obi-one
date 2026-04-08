@@ -3,7 +3,9 @@ from abc import ABC
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.scientific.blocks.timestamps import SingleTimestamp
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -27,9 +29,9 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            "supports_virtual": True,
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: True,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
         },
     )
 
@@ -38,9 +40,9 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            "supports_virtual": False,
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
         },
     )
 
@@ -106,8 +108,8 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         title="Timestamps",
         description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": TimestampsReference.__name__,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
         },
     )
 
@@ -117,8 +119,8 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         description="An optional offset of the manipulation relative to each "
         "timestamp in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 

@@ -1,7 +1,7 @@
 import json
 from http import HTTPStatus
 from unittest.mock import ANY, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import entitysdk
 import httpx
@@ -39,37 +39,35 @@ def task_definition():
 
 def test_make_task_reservation_success(user_context_user_1, accounting_parameters):
     class FakeSession:
-        _job_id = uuid4()
+        job_id = uuid4()
 
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             return None
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     session = test_module.make_task_reservation(
-        service_subtype=ServiceSubtype.SMALL_SIM,
         user_context=user_context_user_1,
         accounting_parameters=accounting_parameters,
         accounting_factory=FakeFactory(),
     )
 
-    assert session._job_id is not None
+    assert session.job_id is not None
 
 
 def test_make_task_reservation_insufficient_funds(user_context_user_1, accounting_parameters):
     class FakeSession:
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             raise InsufficientFundsError
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     with pytest.raises(ApiError) as exc:
         test_module.make_task_reservation(
-            service_subtype=ServiceSubtype.SMALL_SIM,
             user_context=user_context_user_1,
             accounting_parameters=accounting_parameters,
             accounting_factory=FakeFactory(),
@@ -84,17 +82,16 @@ def test_make_task_reservation__generic_accounting_error(
     user_context_user_1, accounting_parameters
 ):
     class FakeSession:
-        def make_reservation(self):  # noqa: PLR6301
+        def make_reservation(self):
             msg = "Internal accounting error"
             raise BaseAccountingError(msg)
 
     class FakeFactory:
-        def oneshot_session(self, **_kwargs):  # noqa: PLR6301
+        def oneshot_session(self, **_kwargs):
             return FakeSession()
 
     with pytest.raises(ApiError) as exc:
         test_module.make_task_reservation(
-            service_subtype=ServiceSubtype.SMALL_SIM,
             user_context=user_context_user_1,
             accounting_parameters=accounting_parameters,
             accounting_factory=FakeFactory(),
@@ -106,7 +103,7 @@ def test_make_task_reservation__generic_accounting_error(
 
 def test_estimate_task_cost(project_context, accounting_parameters, task_definition):
     class FakeFactory:
-        def estimate_oneshot_cost(self, **_kwargs):  # noqa: PLR6301
+        def estimate_oneshot_cost(self, **_kwargs):
             return 100.0
 
     with patch(
@@ -200,20 +197,25 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
         )
 
 
-def test_evaluate_accounting_parameters(db_client, accounting_parameters):
+@pytest.mark.parametrize("task_type", TaskType)
+def test_evaluate_accounting_parameters(db_client, task_type, accounting_parameters):
     config_id = uuid4()
+    task_definition = TASK_DEFINITIONS[task_type]
 
-    circuit_extraction_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
-
-    res = test_module._evaluate_accounting_parameters(
-        db_client=db_client,
-        config_id=config_id,
-        task_definition=circuit_extraction_definition,
-    )
-    assert res.service_subtype == circuit_extraction_definition.accounting_service_subtype
-    assert res.count == 1
-
-    circuit_simulation_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    expected_subtype = {
+        TaskType.circuit_extraction: ServiceSubtype.SMALL_CIRCUIT_SIM,
+        TaskType.circuit_simulation: ServiceSubtype.SMALL_SIM,
+        TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
+        TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
+        TaskType.em_synapse_mapping: ServiceSubtype.SMALL_CIRCUIT_SIM,
+    }
+    expected_count = {
+        TaskType.circuit_extraction: 1,
+        TaskType.circuit_simulation: 10,
+        TaskType.ion_channel_model_simulation_execution: 1,
+        TaskType.morphology_skeletonization: 1,
+        TaskType.em_synapse_mapping: 1,
+    }
 
     with patch(
         "app.services.accounting._evaluate_circuit_simulation_parameters",
@@ -223,22 +225,21 @@ def test_evaluate_accounting_parameters(db_client, accounting_parameters):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,
             config_id=config_id,
-            task_definition=circuit_simulation_definition,
+            task_definition=task_definition,
         )
+        assert res.service_subtype == expected_subtype[task_type]
+        assert res.count == expected_count[task_type]
 
-        assert res.service_subtype == circuit_simulation_definition.accounting_service_subtype
-        assert res.count == accounting_parameters.count
 
-
-def test_generate_accounting_callbacks():
+def test_generate_accounting_callbacks(accounting_parameters):
     job_id = uuid4()
 
     res = test_module.generate_accounting_callbacks(
         task_type=TaskType.circuit_extraction,
         accounting_job_id=job_id,
-        count=11,
-        project_id=PROJECT_ID,
-        virtual_lab_id=VIRTUAL_LAB_ID,
+        accounting_parameters=accounting_parameters,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
         callback_url="my-callback",
     )
 
@@ -267,11 +268,14 @@ def test_finish_accounting_session_success(monkeypatch, httpx_mock):
 
     client = httpx.Client()
 
+    job_id = UUID(int=0)
+    proj_id = UUID(int=1)
+
     test_module.finish_accounting_session(
-        accounting_job_id="job-1",
+        accounting_job_id=job_id,
         service_subtype="compute",
         count=3,
-        project_id="proj-1",
+        project_id=proj_id,
         http_client=client,
     )
 
@@ -284,8 +288,8 @@ def test_finish_accounting_session_success(monkeypatch, httpx_mock):
     assert json.loads(request.content) == {
         "type": "oneshot",
         "subtype": "compute",
-        "proj_id": "proj-1",
+        "proj_id": str(proj_id),
         "count": "3",
-        "job_id": "job-1",
+        "job_id": str(job_id),
         "timestamp": ANY,
     }

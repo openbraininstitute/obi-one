@@ -49,12 +49,16 @@ class Settings(BaseSettings):
     AUTH_CACHE_INFO: bool = False
 
     OUTPUT_DIR: Path = Path("../obi-output")
+
+    API_URL: str
     ENTITYCORE_URL: str  # Required: URL to entitycore service
-    LAUNCH_SYSTEM_URL_TEMPLATE: str  # Required: URL template to launch-system service
+    LAUNCH_SYSTEM_URL: str
     LAUNCH_SYSTEM_OUTPUT_DIR: str = "./obi-output"
+    LAUNCH_SYSTEM_DISABLE_SSL_VERIFY: bool = False
     ACCOUNTING_BASE_URL: str  # Required: URL to accounting service
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
+    VIRTUAL_LAB_DISABLED: bool = False
 
     SUBDOMAIN_PLACEHOLDER: str = "cell-X"
 
@@ -71,6 +75,8 @@ class Settings(BaseSettings):
 
     # Path to launch script within the repository. Must contain code.py and requirements.txt.
     OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
+
+    MOUNT_BASE_DIR: str | None = None
 
 
 settings = Settings()

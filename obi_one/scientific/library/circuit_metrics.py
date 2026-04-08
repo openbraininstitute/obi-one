@@ -6,11 +6,13 @@ from enum import IntEnum, StrEnum, auto
 from pathlib import Path
 
 import h5py
+import libsonata
 import numpy as np
 import pandas as pd
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel
 
@@ -84,12 +86,13 @@ class TemporaryAsset:
         temp_file_path = Path(self.temp_dir.__enter__()) / os.path.split(self._remote_path)[1]
 
         try:
-            self._db_client.download_file(
+            self._db_client.fetch_file(
                 entity_id=self._circuit_id,
                 entity_type=Circuit,
                 asset_id=self._asset_id,
                 output_path=temp_file_path,
                 asset_path=self._remote_path,
+                strategy=FetchFileStrategy.link_or_download,
             )
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
@@ -188,6 +191,14 @@ def number_of_nodes_from_h5(h5: h5py.File, population_name: str) -> int:
 
 def number_of_edges_from_h5(h5: h5py.File, population_name: str) -> int:
     return len(h5["edges"][population_name]["source_node_id"])
+
+
+def source_name_from_h5(h5: h5py.File, population_name: str) -> str:
+    return libsonata.EdgeStorage(h5.filename).open_population(population_name).source
+
+
+def target_name_from_h5(h5: h5py.File, population_name: str) -> str:
+    return libsonata.EdgeStorage(h5.filename).open_population(population_name).target
 
 
 def list_of_node_properties_from_h5(h5: h5py.File, population_name: str) -> list[str]:
@@ -381,6 +392,8 @@ def properties_from_edges_files(
                 properties_dict[edgepop]["property_list"] = list_of_edge_properties_from_h5(
                     h5, edgepop
                 )
+                properties_dict[edgepop]["source_name"] = source_name_from_h5(h5, edgepop)
+                properties_dict[edgepop]["target_name"] = target_name_from_h5(h5, edgepop)
                 if (
                     level_of_detail_specs.get(edgepop, default_lod)
                     > CircuitStatsLevelOfDetail.basic
@@ -406,6 +419,8 @@ class CircuitMetricsEdgePopulation(BaseModel):
     number_of_edges: int
     name: str
     population_type: EdgePopulationType
+    source_name: str | None = None
+    target_name: str | None = None
     property_names: list[str]
     property_stats: dict[str, dict[str, float]] | None
     degree_stats: dict[DegreeTypes, dict[str, float]] | None
@@ -475,6 +490,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         entity_id=circuit_id,
         entity_type=Circuit,
     )
+
     directory_assets = [
         a for a in circuit.assets if a.is_directory and a.label.value == "sonata_circuit"
     ]
@@ -485,16 +501,17 @@ def get_circuit_metrics(  # noqa: PLR0914
     asset_id = directory_assets[0].id
 
     # db_client.download_content does not support `asset_path` at the time of writing this
-    # Use db_client.download_file with temporary directory instead
+    # Use db_client.fetch_file with temporary directory instead
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
-        db_client.download_file(
+        db_client.fetch_file(
             entity_id=circuit_id,
             entity_type=Circuit,
             asset_id=asset_id,
             output_path=temp_file_path,
             asset_path="circuit_config.json",
+            strategy=FetchFileStrategy.link_or_download,
         )
 
         # Read the file and load JSON
@@ -554,6 +571,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 number_of_edges=edge_props[edgepop]["number_of_edges"],
                 name=edgepop,
                 population_type=EdgePopulationType.chemical,
+                source_name=edge_props[edgepop]["source_name"],
+                target_name=edge_props[edgepop]["target_name"],
                 property_names=edge_props[edgepop]["property_list"],
                 property_stats=edge_props[edgepop]["property_stats"],
                 degree_stats=edge_props[edgepop]["degrees"],
@@ -567,6 +586,8 @@ def get_circuit_metrics(  # noqa: PLR0914
                 number_of_edges=edge_props[edgepop]["number_of_edges"],
                 name=edgepop,
                 population_type=EdgePopulationType.electrical,
+                source_name=edge_props[edgepop]["source_name"],
+                target_name=edge_props[edgepop]["target_name"],
                 property_names=edge_props[edgepop]["property_list"],
                 property_stats=edge_props[edgepop]["property_stats"],
                 degree_stats=edge_props[edgepop]["degrees"],

@@ -16,9 +16,17 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
@@ -27,7 +35,6 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
-from obi_one.scientific.unions.aliases import SimulationsForm
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
 
@@ -105,14 +112,15 @@ def activate_scan_config_endpoints() -> None:
         (CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
-        (SimulationsForm, "generate", "save", True),
         (MorphologyMetricsScanConfig, "run", "", True),
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),
+        (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
+        (EMSynapseMappingScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,

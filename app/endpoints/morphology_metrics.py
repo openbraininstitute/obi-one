@@ -1,12 +1,18 @@
+import tempfile
 from http import HTTPStatus
 from typing import Annotated, Literal
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.cell_morphology import CellMorphology
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics_calculation import (
+    _run_morphology_analysis,
+    register_measurements,
+)
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.library.morphology_metrics import (
@@ -57,3 +63,34 @@ def neuron_morphology_metrics_endpoint(
         error_code=ApiErrorCode.INTERNAL_ERROR,
         http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
+
+
+@router.post(
+    "/neuron-morphology-metrics/{cell_morphology_id}/register",
+    summary="Compute & register morphology metrics for an existing morphology",
+)
+def register_morphology_metrics(
+    cell_morphology_id: str,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> dict:
+    # 1) fetch morphology and its SWC asset
+    morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
+    asset = next((a for a in morph.assets if a.content_type == "application/swc"), None)
+    if not asset:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No SWC asset on morphology")
+
+    # 2) download to temp file
+    with tempfile.NamedTemporaryFile(suffix=".swc") as tmp:
+        tmp.write(
+            db_client.download_content(
+                entity_id=cell_morphology_id, entity_type=CellMorphology, asset_id=asset.id
+            )
+        )
+        tmp.flush()
+
+        # 3) compute measurement_kinds using existing helper
+        measurement_kinds = _run_morphology_analysis(tmp.name)
+
+    # 4) register measurement annotation only
+    registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
+    return {"measurement_entity_id": str(registered.id), "status": "success"}
