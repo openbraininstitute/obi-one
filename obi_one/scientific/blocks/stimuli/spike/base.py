@@ -12,6 +12,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     _TIMESTAMPS_OFFSET_FIELD,
     StimulusWithTimestamps,
 )
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -62,7 +63,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         default_source_neuron_set_reference: NeuronSetReference | None = None,
         default_target_neuron_set_reference: NeuronSetReference | None = None,
     ) -> dict:
-        
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
