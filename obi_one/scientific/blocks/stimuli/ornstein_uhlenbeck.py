@@ -52,9 +52,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _update_zero_resolved_single_timestamp_config(
-        self, offset_timestamp: NonNegativeFloat
-    ) -> dict:
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
@@ -117,9 +115,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _update_zero_resolved_single_timestamp_config(
-        self, offset_timestamp: NonNegativeFloat
-    ) -> dict:
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
@@ -173,9 +169,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _update_zero_resolved_single_timestamp_config(
-        self, offset_timestamp: NonNegativeFloat
-    ) -> dict:
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
@@ -249,9 +243,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _update_zero_resolved_single_timestamp_config(
-        self, offset_timestamp: NonNegativeFloat
-    ) -> dict:
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
