@@ -49,10 +49,14 @@ def register_output_resource(
     protocol = None
     dset = metadata.em_dense_reconstruction_dataset
 
+    # in case of duplicates take the first in ascending order
     protocol = client.search_entity(
         entity_type=models.CellMorphologyProtocol,
-        query={"name": metadata.cell_morphology_protocol_name},
-    ).one_or_none()
+        query={
+            "name": metadata.cell_morphology_protocol_name,
+            "order_by": "+creation_date",
+        },
+    ).first()
     if not protocol:
         msg = f"Creating cell morphology protocol: {metadata.cell_morphology_protocol_name}"
         L.debug(msg)

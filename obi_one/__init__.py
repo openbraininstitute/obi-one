@@ -275,19 +275,21 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike import (
+    FullySynchronousSpikeStimulus,
+    PoissonSpikeStimulus,
+    SinusoidalPoissonSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
-    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
     NormallyDistributedCurrentClampSomaticStimulus,
-    PoissonSpikeStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
-    SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
