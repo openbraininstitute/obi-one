@@ -19,13 +19,10 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-)
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    AllNeuronSet2Union,
     BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
-    AllNeuronSet2Union,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,

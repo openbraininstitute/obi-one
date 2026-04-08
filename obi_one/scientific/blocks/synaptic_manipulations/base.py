@@ -7,8 +7,8 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    NeuronSet2Reference,
     BiophysicalAndPointNeuronSet2Reference,
+    NeuronSet2Reference,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
@@ -30,7 +30,6 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.SUPPORTS_VIRTUAL: True,
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
         },

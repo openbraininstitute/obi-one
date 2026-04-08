@@ -23,7 +23,6 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     BiophysicalAndPointNeuronSet2Reference,
-    resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,

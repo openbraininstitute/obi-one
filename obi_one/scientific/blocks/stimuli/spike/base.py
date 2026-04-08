@@ -16,8 +16,8 @@ from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    NeuronSet2Reference,
     BiophysicalAndPointNeuronSet2Reference,
+    NeuronSet2Reference,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (

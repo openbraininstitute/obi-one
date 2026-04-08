@@ -135,7 +135,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_neuron_set(self.neuron_set, self._default_node_set),
+            "node_set": resolve_neuron_set_2_ref_to_neuron_set(
+                self.neuron_set, self._default_node_set
+            ),
             "ramp_up_duration": self.ramp_up_duration,
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [
