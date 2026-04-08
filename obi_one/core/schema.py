@@ -17,7 +17,6 @@ class SchemaKey(StrEnum):
     PROPERTY_GROUP = "property_group"
     REFERENCE_TYPE = "reference_type"
     SINGULAR_NAME = "singular_name"
-    SUPPORTS_VIRTUAL = "supports_virtual"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"
     UI_ENABLED = "ui_enabled"
