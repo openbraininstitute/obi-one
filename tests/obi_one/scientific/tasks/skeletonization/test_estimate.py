@@ -117,32 +117,3 @@ def test_estimate_skeletonization_count_single_mesh(mock_db_client, config_id, m
         config_id=config_id,
         config_type=SkeletonizationSingleConfig,
     )
-
-
-def test_estimate_skeletonization_count_multiple_meshes(mock_db_client, config_id, tmp_path):
-    """Test estimate_skeletonization_count with multiple meshes."""
-    mesh_id_1 = str(uuid4())
-    mesh_id_2 = str(uuid4())
-
-    mock_db_client.fetch_file.side_effect = _make_fetch_file_side_effect(SPHERE_GLB_PATH)
-
-    config = SkeletonizationSingleConfig(
-        info=Info(campaign_name="test", campaign_description="test"),
-        initialize=SkeletonizationSingleConfig.Initialize(
-            cell_mesh=[
-                EMCellMeshFromID(id_str=mesh_id_1),
-                EMCellMeshFromID(id_str=mesh_id_2),
-            ],
-            neuron_voxel_size=0.1,
-            spines_voxel_size=0.1,
-        ),
-        coordinate_output_root=tmp_path,
-        idx=1,
-        single_coordinate_scan_params=SingleCoordinateScanParams(scan_params=[]),
-    )
-    mock_db_client.get_task_config.return_value = config
-
-    count = estimate_skeletonization_count(db_client=mock_db_client, config_id=config_id)
-
-    assert count > 0
-    assert mock_db_client.fetch_file.call_count == 2

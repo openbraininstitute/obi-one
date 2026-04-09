@@ -60,7 +60,7 @@ def estimate_skeletonization_count(
 ) -> int:
     """Estimate the count for skeletonization cost calculation.
 
-    The count is based on the total surface area of all cell meshes
+    The count is based on the surface area of the cell mesh
     in the configuration.
 
     Args:
@@ -75,11 +75,7 @@ def estimate_skeletonization_count(
         config_type=SkeletonizationSingleConfig,
     )
     cell_mesh = config.initialize.cell_mesh
-
-    if isinstance(cell_mesh, list):
-        total_area = sum(_compute_mesh_surface_area(db_client, mesh) for mesh in cell_mesh)
-    else:
-        total_area = _compute_mesh_surface_area(db_client, cell_mesh)
+    total_area = _compute_mesh_surface_area(db_client, cell_mesh)
 
     # Convert surface area to count (you may want to adjust this formula)
     return max(0, total_area)
