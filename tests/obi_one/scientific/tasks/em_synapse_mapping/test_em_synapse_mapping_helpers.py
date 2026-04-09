@@ -67,7 +67,7 @@ def test_compress_output(tmp_path):
     assert compressed_path == str(out_root / "sonata.tar.gz")
     assert (out_root / "sonata.tar").read_bytes() == b"tar-bytes"
     mock_check_output.assert_called_once_with(["tar", "-cf", "-", *test_files])
-    mock_check_call.assert_called_once_with(["gzip", "-1", str(out_root / "sonata.tar")])
+    mock_check_call.assert_called_once_with(["gzip", "-1", "-f", str(out_root / "sonata.tar")])
 
 
 def test_assemble_publication_links_filters_application(mock_db_client):
