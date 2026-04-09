@@ -485,8 +485,11 @@ def test_handle_task_failure_callback__do_nothing(
 
 def test_estimate_task_resources_passthrough(db_client):
     """Non-circuit_extraction tasks should return resources unchanged."""
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
-    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
+    task_definition = TASK_DEFINITIONS[TaskType.morphology_skeletonization]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.morphology_skeletonization,
+        config_id=uuid4(),
+    )
 
     result = test_module.estimate_task_resources(
         json_model=json_model,

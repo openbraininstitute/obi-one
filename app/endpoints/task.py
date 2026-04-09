@@ -83,7 +83,6 @@ def task_launch_endpoint(
             db_client=db_client,
             ls_client=ls_client,
             callback_url=callback_url,
-            compute_cell=compute_cell,
             config_id=json_model.config_id,
             project_context=project_context,
             task_definition=task_definition,

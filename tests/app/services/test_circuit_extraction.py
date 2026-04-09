@@ -124,24 +124,27 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
         patch.object(db_client, "get_entity", return_value=fake_entity),
         patch.object(db_client, "download_content", return_value=b'{"type": "Fake"}'),
         patch(
-            "app.services.circuit_extraction.get_circuit_metrics",
+            "app.services.resource_estimation.circuit_extraction.get_circuit_metrics",
             return_value=circuit_metrics,
         ),
         patch(
-            "app.services.circuit_extraction.deserialize_obi_object_from_json_data",
+            "app.services.resource_estimation.circuit_extraction.deserialize_obi_object_from_json_data",
             return_value=fake_config,
         ),
         patch(
-            "app.services.circuit_extraction.get_task_type_config_asset_label",
+            "app.services.resource_estimation.circuit_extraction.get_task_type_config_asset_label",
             return_value="circuit_extraction_config",
         ),
-        patch("app.services.circuit_extraction.db_sdk.get_entity_asset_by_label") as mock_get_asset,
+        patch(
+            "app.services.resource_estimation.circuit_extraction.db_sdk.get_entity_asset_by_label"
+        ) as mock_get_asset,
     ):
         mock_get_asset.return_value = SimpleNamespace(id=uuid4())
         return test_module.estimate_task_resources(
             json_model=json_model,
             db_client=db_client,
             task_definition=task_definition,
+            compute_cell="cell_b",
         )
 
 
