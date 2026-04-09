@@ -133,9 +133,11 @@ class EMSynapseMappingMultipleConfig(OBIBaseModel):
     coordinate_output_root: Path = Field(title="Output directory")
 
     class Initialize(Block):
-        neurons: list[NeuronEntry] = Field(
+        # We use a tuple instead of a list to avoid getting it taken as scan dimensions in the
+        # scan config.
+        neurons: tuple[NeuronEntry, ...] = Field(
             title="Neurons",
-            description="List of neurons to include in the multi-neuron circuit.",
+            description="Neurons to include in the multi-neuron circuit.",
             min_length=2,
         )
         physical_edge_population_name: str = Field(
