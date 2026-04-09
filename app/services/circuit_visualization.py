@@ -120,17 +120,10 @@ def get_population_nodes(  # noqa: PLR0914
         morph_files = population.get_attribute("morphology", selection)
 
         nodes_list = []
+        m_path = morphologies_path.path.relative_to(parent_dir)
         for i in range(population.size):
             m_name = morph_files[i]
-            m_path = morphologies_path.path.relative_to(parent_dir)
-
-            if m_path.suffix:
-                m_file = m_path
-                m_name = None if m_name in str(m_file) else m_name
-            else:
-                m_file = m_path / f"{m_name}.{morphologies_path.format}"
-                m_name = None
-
+            m_file = m_path if m_path.suffix else m_path / f"{m_name}.{morphologies_path.format}"
             try:
                 morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
 
@@ -272,11 +265,12 @@ def download_circuit_config(
         ) from e
 
 
-def load_morphology(path: Path, morph_name: str | None) -> morphio.Morphology:
-    if morph_name is None:
+def load_morphology(path: Path, morph_name: str) -> morphio.Morphology:
+    try:
         return morphio.Morphology(path)
-    collection = morphio.Collection(path.as_posix())
-    return collection.load(morph_name)
+    except morphio.MorphioError:
+        collection = morphio.Collection(path.as_posix())
+        return collection.load(morph_name)
 
 
 def get_morphology(
@@ -285,7 +279,7 @@ def get_morphology(
     circuit_id: UUID,
     asset_id: UUID,
     morph_path: Path,
-    morph_name: str | None,
+    morph_name: str
 ) -> Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
