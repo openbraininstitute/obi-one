@@ -77,5 +77,4 @@ def estimate_skeletonization_count(
     cell_mesh = config.initialize.cell_mesh
     total_area = _compute_mesh_surface_area(db_client, cell_mesh)
 
-    # Convert surface area to count (you may want to adjust this formula)
     return max(0, total_area)
