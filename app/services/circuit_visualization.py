@@ -265,7 +265,7 @@ def download_circuit_config(
         ) from e
 
 
-def load_morphology(path: Path, morph_name: str) -> morphio.Morphology:
+def load_morphology(path: Path, morph_name: str | None) -> morphio.Morphology:
     try:
         return morphio.Morphology(path)
     except morphio.MorphioError:
@@ -279,7 +279,7 @@ def get_morphology(
     circuit_id: UUID,
     asset_id: UUID,
     morph_path: Path,
-    morph_name: str
+    morph_name: str | None
 ) -> Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
