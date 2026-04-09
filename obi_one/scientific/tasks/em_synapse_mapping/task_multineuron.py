@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
@@ -106,7 +107,7 @@ class EMMultiNeuronSynapseMappingTask(Task):
         cave_version = resolved_neurons[0].cave_version
         em_dataset = EMDataSetFromID(
             id_str=str(source_dataset.id),
-            auth_token=cfg.cave_token,
+            auth_token=os.environ.get("CAVE_TOKEN"),  # TEMPORARY PLACEHOLDER, NOT TESTED
         )
 
         # Merge spiny morphologies into a single file

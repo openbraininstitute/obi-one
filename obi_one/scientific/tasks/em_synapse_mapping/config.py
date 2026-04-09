@@ -130,7 +130,6 @@ class EMSynapseMappingMultipleConfig(OBIBaseModel):
         "Map afferent synapses from EM onto multiple spiny morphologies, "
         "producing a circuit with physical internal connections and virtual external inputs."
     )
-    cave_token: str | None = Field(default=None, title="CAVEclient access token")
     coordinate_output_root: Path = Field(title="Output directory")
 
     class Initialize(Block):
