@@ -23,7 +23,7 @@ def estimate_task_resources(
         entity_id=config.entity_id,
         entity_type=models.Circuit,
     )
-    number_of_neurons = circuit.number_of_neurons
+    number_of_neurons = circuit.number_neurons
 
     if compute_cell not in CLUSTER_INSTANCES_INFO:
         raise ApiError(
@@ -38,7 +38,7 @@ def estimate_task_resources(
         [
             info
             for info in CLUSTER_INSTANCES_INFO[compute_cell]
-            if info.max_neurons <= number_of_neurons
+            if info.max_neurons >= number_of_neurons
         ],
         key=lambda o: o.max_neurons,
     )

@@ -8,8 +8,10 @@ import httpx
 import pytest
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
+import app.services.resource_estimation.circuit_simulation
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
+from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
 from app.services import task as test_module
 
@@ -525,3 +527,54 @@ def test_estimate_task_resources_circuit_extraction(db_client):
         task_definition=task_definition,
         compute_cell="cell_b",
     )
+
+
+def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+
+    circuit_id = uuid4()
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=config_id)
+    mocked_instances = {
+        "cell_a": [
+            ClusterInstanceInfo(name="big", max_neurons=1_000_000, memory_per_instance_gb=100),
+            ClusterInstanceInfo(name="small", max_neurons=100, memory_per_instance_gb=10),
+        ]
+    }
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "entity_id": str(circuit_id),
+            "simulation_campaign_id": str(uuid4()),
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{circuit_id}",
+        method="GET",
+        json={
+            "id": str(circuit_id),
+            "number_neurons": 1000,
+            "number_connections": 20,
+            "number_synapses": 35,
+            "scale": "microcircuit",
+            "build_category": "em_reconstruction",
+        },
+    )
+    with patch.object(
+        app.services.resource_estimation.circuit_simulation,
+        "CLUSTER_INSTANCES_INFO",
+        mocked_instances,
+    ):
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_a",
+        )
+    assert result.type == "cluster"
+    assert result.instance_type == "big"
+    assert result.instances == 1
+    assert result.compute_cell == "cell_a"

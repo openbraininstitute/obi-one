@@ -4,6 +4,7 @@ from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
 from app.config import settings
+from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
     BuiltinCode,
     Capabilities,
@@ -107,6 +108,28 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
 }
 
 CLUSTER_INSTANCES_INFO = {
-    "cell_a": None,
-    "cell_b": None,
+    "cell_a": [
+        ClusterInstanceInfo(
+            name="small",
+            max_neurons=100,
+            memory_per_instance_gb=1,
+        ),
+        ClusterInstanceInfo(
+            name="large",
+            max_neurons=10000,
+            memory_per_instance_gb=10,
+        ),
+    ],
+    "cell_b": [
+        ClusterInstanceInfo(
+            name="small",
+            max_neurons=100,
+            memory_per_instance_gb=1,
+        ),
+        ClusterInstanceInfo(
+            name="large",
+            max_neurons=10000,
+            memory_per_instance_gb=10,
+        ),
+    ],
 }
