@@ -279,7 +279,7 @@ def get_morphology(
     circuit_id: UUID,
     asset_id: UUID,
     morph_path: Path,
-    morph_name: str | None
+    morph_name: str | None,
 ) -> Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
