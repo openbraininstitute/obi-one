@@ -4,6 +4,7 @@ import tempfile
 from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from pathlib import Path
+from os.path import realpath
 
 import h5py
 import libsonata
@@ -178,9 +179,7 @@ def names_from_node_sets_file(
     circuit_id: str,
     asset_id: str,
 ) -> list:
-    ns_path = config.node_sets_path
-    if ns_path.startswith("/private"):
-        ns_path = ns_path[8:]
+    ns_path = realpath(config.node_sets_path)
     if len(ns_path) > 0:
         try:
             remote_path = Path(ns_path).relative_to(temp_dir)
@@ -344,8 +343,6 @@ def properties_from_nodes_files(
     ):
         if level_of_detail_specs.get(nodepop, default_lod) > CircuitStatsLevelOfDetail.none:
             np_file_path = circ.nodes[nodepop].h5_filepath
-            if np_file_path.startswith("/private"):
-                np_file_path = np_file_path[8:]
             remote_path = Path(np_file_path).relative_to(temp_dir)
             properties_dict[nodepop] = {_k: {} for _k in lst_req_props}
             with (
@@ -393,8 +390,6 @@ def properties_from_edges_files(
             properties_dict[edgepop] = {_k: {} for _k in lst_req_props}
 
             ep_file_path = circ.edges[edgepop].h5_filepath
-            if ep_file_path.startswith("/private"):
-                ep_file_path = ep_file_path[8:]
             remote_path = Path(ep_file_path).relative_to(temp_dir)
             with (
                 TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
@@ -527,10 +522,11 @@ def get_circuit_metrics(  # noqa: PLR0914
             asset_path="circuit_config.json",
             strategy=FetchFileStrategy.link_or_download,
         )
-        
+
         circ = SnapCircuit(temp_file_path)
         config = circ.to_libsonata
 
+    temp_dir = realpath(str(temp_dir))
     dict_props = properties_from_config(config)
     nodesets = names_from_node_sets_file(
         config, temp_dir, db_client, circuit_id, asset_id
