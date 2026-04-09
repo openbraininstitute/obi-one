@@ -34,75 +34,53 @@ dependencies = [
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
     "entitysdk>=0.13.0",
-    # PYDANTIC
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
-    # SINGLE CELL SIMULATION
+    "aiofiles",
     "bluecellulab>=2.6.87",
-    # BLUEETL
     "blueetl",
-    # BLUEPYEFE
     "bluepyefe>=2.3.51",
-    # MORPHOLOGY CONTAINERIZATION
     "bluepysnap>=3.0.2",
-    # CIRCUIT EXTRACTION
     "brainbuilder>=0.20.2",
-    # CAVECLIENT
     "caveclient>=7.11.0",
-    # CONNECTOME UTILITIES
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
-    # MORPHOLOGY WITH SPINES UTILITIES
     "morph_spines",
-    # NEUROM
-    "aiofiles",
     "morph-tool",
     "neurom",
-    # OBI AUTH
     "obi-auth>=1.0.0",
-    # BENCHMARKING
     "psutil>=6.1.0",
-    # MESHES
     "pyvista",
 ]
 
 [project.optional-dependencies]
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
-    # CONNECTOME ANALYSIS
     "connectome-analysis>=1.0.1",
-    # NETWORKX
     "networkx>=3.4.2",
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
-    # JUPYTER
     "ipykernel",
     "jupyter",
     "jupyterlab>=4.4.8",
     "notebook",
-    # OBI NOTEBOOK
     "obi_notebook",
 ]
 
 # SERVICE - optional, needed to run obi-one as a service
 service = [
-    # AUTH & SECURITY
     "cachetools>=5.5.2",
-    "pyjwt>=2.10.1",
-    # FAST API SERVICE
     "fastapi",
+    "httpx>=0.28.1",
+    "obp-accounting-sdk>=0.6.0",
+    "pydantic-core",
+    "pydantic-settings>=2.8.1",
+    "pyjwt>=2.10.1",
     "python-multipart",
     "starlette",
     "uvicorn",
-    # HTTP CLIENT
-    "httpx>=0.28.1",
-    # OBP ACCOUNTING
-    "obp-accounting-sdk>=0.6.0",
-    # PYDANTIC CORE & SETTINGS
-    "pydantic-core",
-    "pydantic-settings>=2.8.1",
 ]
 
 # ALL - convenience alias to install all optional dependencies
