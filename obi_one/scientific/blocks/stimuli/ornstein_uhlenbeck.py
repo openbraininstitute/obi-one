@@ -12,9 +12,6 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
-)
 
 
 class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
@@ -55,28 +52,19 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean": self.mean_amplitude,
-                "sigma": self.standard_deviation,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean": self.mean_amplitude,
+            "sigma": self.standard_deviation,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
@@ -127,29 +115,20 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean": self.mean_amplitude,
-                "sigma": self.standard_deviation,
-                "reversal": self.reversal_potential,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean": self.mean_amplitude,
+            "sigma": self.standard_deviation,
+            "reversal": self.reversal_potential,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
@@ -190,28 +169,19 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean_percent": self.mean_percentage_of_threshold_current,
-                "sd_percent": self.standard_deviation_percentage_of_threshold,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean_percent": self.mean_percentage_of_threshold_current,
+            "sd_percent": self.standard_deviation_percentage_of_threshold,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
@@ -273,26 +243,17 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean_percent": self.mean_percentage_of_cells_input_conductance,
-                "sd_percent": self.standard_deviation_percentage_of_cells_input_conductance,
-                "reversal": self.reversal_potential,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean_percent": self.mean_percentage_of_cells_input_conductance,
+            "sd_percent": self.standard_deviation_percentage_of_cells_input_conductance,
+            "reversal": self.reversal_potential,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
