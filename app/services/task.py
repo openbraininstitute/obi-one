@@ -239,19 +239,26 @@ def handle_task_failure_callback(
 
 
 def estimate_task_resources(
-    json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
+    json_model: TaskLaunchSubmit,
+    db_client: entitysdk.Client,
+    task_definition: TaskDefinition,
+    compute_cell: str,
 ) -> Resources:
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
             return resource_estimation.circuit_extraction.estimate_task_resources(
-                json_model=json_model, db_client=db_client, task_definition=task_definition
+                json_model=json_model,
+                db_client=db_client,
+                task_definition=task_definition,
+                compute_cell=compute_cell,
             )
         case TaskType.circuit_simulation:
             return resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
+                compute_cell=compute_cell,
             )
         case _:
             return task_definition.resources
