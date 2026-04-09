@@ -16,7 +16,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.services import circuit_extraction
+from app.services import resource_estimation
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
 
@@ -246,8 +246,14 @@ def estimate_task_resources(
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
-            return circuit_extraction.estimate_task_resources(
+            return resource_estimation.circuit_extraction.estimate_task_resources(
                 json_model=json_model, db_client=db_client, task_definition=task_definition
+            )
+        case TaskType.circuit_simulation:
+            return resource_estimation.circuit_simulation.estimate_task_resources(
+                json_model=json_model,
+                db_client=db_client,
+                task_definition=task_definition,
             )
         case _:
             return task_definition.resources
