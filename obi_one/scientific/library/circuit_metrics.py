@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from pathlib import Path
 from os.path import realpath
+from uuid import UUID
 
 import h5py
 import libsonata
@@ -49,9 +50,17 @@ class DegreeTypes(StrEnum):
     degreedifference = auto()
 
 
+class CircuitStatsLevelOfDetail(IntEnum):
+    none = 0
+    basic = 1
+    advanced = 2
+    full = 3
+
+
 def _assert_level_of_detail_specs(
-    level_of_detail_nodes: dict, level_of_detail_edges: dict
-) -> tuple:
+    level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None,
+    level_of_detail_edges: dict[str, CircuitStatsLevelOfDetail] | None
+) -> tuple[dict[str, CircuitStatsLevelOfDetail], dict[str, CircuitStatsLevelOfDetail]]:
     if level_of_detail_nodes is None:
         level_of_detail_nodes = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.none}
     if level_of_detail_edges is None:
@@ -67,13 +76,6 @@ def _assert_level_of_detail_specs(
                                  the minimum level of detail on nodes must be basic!""")
             break
     return level_of_detail_nodes, level_of_detail_edges
-
-
-class CircuitStatsLevelOfDetail(IntEnum):
-    none = 0
-    basic = 1
-    advanced = 2
-    full = 3
 
 
 class TemporaryAsset:
@@ -93,11 +95,11 @@ class TemporaryAsset:
 
         try:
             self._db_client.fetch_file(
-                entity_id=self._circuit_id,
+                entity_id=UUID(self._circuit_id),
                 entity_type=Circuit,
-                asset_id=self._asset_id,
+                asset_id=UUID(self._asset_id),
                 output_path=temp_file_path,
-                asset_path=self._remote_path,
+                asset_path=Path(self._remote_path),
                 strategy=FetchFileStrategy.link_or_download,
             )
         except HTTPStatusError:
@@ -177,14 +179,14 @@ def names_from_node_sets_file(
     temp_dir: str,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
+    asset_id: str | UUID,
 ) -> list:
     ns_path = realpath(config.node_sets_path)
     if len(ns_path) > 0:
         try:
             remote_path = Path(ns_path).relative_to(temp_dir)
             with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+                TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn,
                 Path.open(fn) as fid,
             ):
                 contents = json.load(fid)
@@ -194,30 +196,6 @@ def names_from_node_sets_file(
     else:
         contents = {}
     return list(contents.keys())
-
-
-def number_of_nodes_from_population(pop: NodePopulation):
-    return pop.size
-
-
-def number_of_edges_from_population(pop: EdgePopulation) -> int:
-    return pop.size
-
-
-def source_name_from_population(pop) -> str:
-    return pop.source
-
-
-def target_name_from_population(pop) -> str:
-    return pop.target
-
-
-def list_of_node_properties_from_population(pop: NodePopulation) -> list[str]:
-    return list(pop.attribute_names)
-
-
-def list_of_edge_properties_from_population(pop: EdgePopulation) -> list[str]:
-    return list(pop.attribute_names)
 
 
 def unique_node_property_values_from_population(pop: NodePopulation) -> dict[str, list]:
@@ -326,8 +304,8 @@ def properties_from_nodes_files(
     temp_dir: str,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
-    level_of_detail_specs: dict,
+    asset_id: str | UUID,
+    level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
 ) -> dict:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = [
@@ -346,13 +324,11 @@ def properties_from_nodes_files(
             remote_path = Path(np_file_path).relative_to(temp_dir)
             properties_dict[nodepop] = {_k: {} for _k in lst_req_props}
             with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn
+                TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn
             ):
                 pop_obj = NodeStorage(fn).open_population(nodepop)
-                properties_dict[nodepop]["population_length"] = number_of_nodes_from_population(pop_obj)
-                properties_dict[nodepop]["property_list"] = list_of_node_properties_from_population(
-                    pop_obj
-                )
+                properties_dict[nodepop]["population_length"] = pop_obj.size
+                properties_dict[nodepop]["property_list"] = list(pop_obj.attribute_names)
                 properties_dict[nodepop]["property_unique_values"] = (
                     unique_node_property_values_from_population(pop_obj)
                 )
@@ -376,8 +352,8 @@ def properties_from_edges_files(
     node_stats_dict: dict,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
-    level_of_detail_specs: dict,
+    asset_id: str | UUID,
+    level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
 ) -> dict:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = ["number_of_edges", "property_list", "property_stats", "degrees"]
@@ -392,15 +368,13 @@ def properties_from_edges_files(
             ep_file_path = circ.edges[edgepop].h5_filepath
             remote_path = Path(ep_file_path).relative_to(temp_dir)
             with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+                TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn,
             ):
                 pop_obj = EdgeStorage(fn).open_population(edgepop)
-                properties_dict[edgepop]["number_of_edges"] = number_of_edges_from_population(pop_obj)
-                properties_dict[edgepop]["property_list"] = list_of_edge_properties_from_population(
-                    pop_obj
-                )
-                properties_dict[edgepop]["source_name"] = source_name_from_population(pop_obj)
-                properties_dict[edgepop]["target_name"] = target_name_from_population(pop_obj)
+                properties_dict[edgepop]["number_of_edges"] = pop_obj.size
+                properties_dict[edgepop]["property_list"] = list(pop_obj.attribute_names)
+                properties_dict[edgepop]["source_name"] = pop_obj.source
+                properties_dict[edgepop]["target_name"] = pop_obj.target
                 if (
                     level_of_detail_specs.get(edgepop, default_lod)
                     > CircuitStatsLevelOfDetail.basic
@@ -462,7 +436,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         """Provides iterator over all populations (node + edge)."""
         yield from self.biophysical_node_populations + self.virtual_node_populations
 
-    def __getitem__(self, key: str) -> CircuitMetricsNodePopulation | CircuitMetricsEdgePopulation:
+    def __getitem__(self, key: str) -> CircuitMetricsNodePopulation | CircuitMetricsEdgePopulation | None:
         """Provides access to populations by name."""
         if key in self.names_of_biophys_node_populations:
             return self.biophysical_node_populations[
@@ -496,7 +470,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         level_of_detail_nodes, level_of_detail_edges
     )
     circuit = db_client.get_entity(
-        entity_id=circuit_id,
+        entity_id=UUID(circuit_id),
         entity_type=Circuit,
     )
 
@@ -515,11 +489,11 @@ def get_circuit_metrics(  # noqa: PLR0914
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
         db_client.fetch_file(
-            entity_id=circuit_id,
+            entity_id=UUID(circuit_id),
             entity_type=Circuit,
             asset_id=asset_id,
             output_path=temp_file_path,
-            asset_path="circuit_config.json",
+            asset_path=Path("circuit_config.json"),
             strategy=FetchFileStrategy.link_or_download,
         )
 
