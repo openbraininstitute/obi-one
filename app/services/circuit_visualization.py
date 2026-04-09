@@ -303,7 +303,7 @@ def get_morphology(
         return load_morphology(output_path, morph_name)
 
     except Exception as e:
-        msg = f"Could not parse morphology {morph_path}"
+        msg = f"Could not parse morphology {morph_path} {morph_name}"
         raise HTTPException(status_code=500, detail=msg) from e
 
 
