@@ -135,7 +135,7 @@ def register_task_config_entity(
             name=name,
             description=description,
             task_config_type=task_config_type,
-            meta={"scan_parameters": multiple_value_parameters_dictionary},
+            meta=multiple_value_parameters_dictionary,
             inputs=input_entities,
             task_config_generator_id=task_config_generator_id,
         )

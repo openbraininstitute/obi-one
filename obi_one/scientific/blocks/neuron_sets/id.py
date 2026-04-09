@@ -8,7 +8,7 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 
 class IDNeuronSet(AbstractNeuronSet):
