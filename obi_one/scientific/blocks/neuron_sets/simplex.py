@@ -14,6 +14,7 @@ CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
 # Don't fail at import time if connalysis is not installed. It will only fail at runtime if used.
+simplex_submat = None
 with contextlib.suppress(ImportError):  # Connalysis (optional)
     from obi_one.scientific.library.simplex_extractors import simplex_submat
 
@@ -93,7 +94,7 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():  # pragma: no cover
+        if simplex_submat is None:  # pragma: no cover
             msg = (
                 "Import of 'simplex_submat' failed. You probably need connectome-analysis "
                 "(connalysis). Install with: pip install obi-one[connectivity]"
@@ -198,7 +199,7 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():  # pragma: no cover
+        if simplex_submat is None:  # pragma: no cover
             msg = (
                 "Import of 'simplex_submat' failed. You probably need connectome-analysis "
                 "(connalysis). Install with: pip install obi-one[connectivity]"
