@@ -65,6 +65,7 @@ def submit_task_job(
 
     match task_definition.task_type:
         case TaskType.circuit_simulation:
+            executor_type = ExecutorType.distributed_job
             job_data = _circuit_simulation_job_data(
                 simulation_id=config_id,
                 simulation_execution_id=activity_id,
@@ -74,6 +75,7 @@ def submit_task_job(
                 compute_cell=compute_cell,
             )
         case _:
+            executor_type = ExecutorType.single_node_job
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
@@ -106,7 +108,7 @@ def submit_task_job(
         activity_id=activity_id,
         activity_type=activity_type,
         execution_id=job_id,
-        executor=ExecutorType.single_node_job,
+        executor=executor_type,
     )
     return TaskLaunchInfo(
         task_type=task_definition.task_type,
