@@ -105,3 +105,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
     ),
 }
+
+CLUSTER_INSTANCES_INFO = {
+    "cell_a": None,
+    "cell_b": None,
+}

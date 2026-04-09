@@ -72,7 +72,10 @@ def task_launch_endpoint(
     )
     try:
         updated_resources = task_service.estimate_task_resources(
-            json_model=json_model, db_client=db_client, task_definition=task_definition
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell=compute_cell,
         )
         task_definition = task_definition.model_copy(update={"resources": updated_resources})
 

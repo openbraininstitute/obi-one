@@ -125,9 +125,8 @@ def _circuit_simulation_job_data(
     project_id: UUID,
     callbacks: list[CallBack],
     task_definition: TaskDefinition,
-    compute_cell: str,
 ) -> dict:
-    resources = task_definition.resources.model_dump(mode="json") | {"compute_cell": compute_cell}
+    resources = task_definition.resources.model_dump(mode="json")
     return {
         "code": task_definition.code.model_dump(mode="json"),
         "resources": resources,
@@ -152,9 +151,8 @@ def _generic_job_data(
     output_root: str,
     callbacks: list[CallBack],
     task_definition: TaskDefinition,
-    compute_cell: str,
 ) -> dict:
-    resources = task_definition.resources.model_dump(mode="json") | {"compute_cell": compute_cell}
+    resources = task_definition.resources.model_dump(mode="json")
 
     if isinstance(task_definition, TaskDefinitionLegacy):
         inputs = [
