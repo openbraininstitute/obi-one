@@ -6,6 +6,8 @@ import httpx
 from entitysdk import ProjectContext, models
 from entitysdk.types import ActivityStatus, ExecutorType
 
+import app.services.resource_estimation.circuit_extraction
+import app.services.resource_estimation.circuit_simulation
 from app.config import settings
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
@@ -16,7 +18,6 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.services import resource_estimation
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.utils import db_sdk
 
@@ -30,7 +31,6 @@ def submit_task_job(
     project_context: entitysdk.ProjectContext,
     callback_url: str,
     callbacks: list[CallBack],
-    compute_cell: str,
 ) -> TaskLaunchInfo:
     """Creates an activity and submits a task as a job on the launch-system."""
     # TODO: Remove once simulations are migrated to generic configs
@@ -72,7 +72,6 @@ def submit_task_job(
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
-                compute_cell=compute_cell,
             )
         case _:
             executor_type = ExecutorType.single_node_job
@@ -81,7 +80,6 @@ def submit_task_job(
                 config_id=config_id,
                 activity_id=activity_id,
                 callbacks=all_callbacks,
-                compute_cell=compute_cell,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,
@@ -247,14 +245,14 @@ def estimate_task_resources(
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
-            return resource_estimation.circuit_extraction.estimate_task_resources(
+            return app.services.resource_estimation.circuit_extraction.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
             )
         case TaskType.circuit_simulation:
-            return resource_estimation.circuit_simulation.estimate_task_resources(
+            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,

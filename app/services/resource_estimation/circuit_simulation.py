@@ -40,7 +40,7 @@ def estimate_task_resources(
             for info in CLUSTER_INSTANCES_INFO[compute_cell]
             if info.max_neurons <= number_of_neurons
         ],
-        key=lambda o: o.number_of_neurons,
+        key=lambda o: o.max_neurons,
     )
 
     if not instances:

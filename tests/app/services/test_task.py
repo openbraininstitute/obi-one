@@ -164,7 +164,6 @@ def test_submit_task_job__success(
         project_context=project_context,
         callback_url=callback_url,
         callbacks=[],
-        compute_cell="cell_a",
     )
     assert res.task_type == task_type
     assert res.config_id == config_id
@@ -274,7 +273,6 @@ def test_submit_task_job__failure(
             project_context=project_context,
             callback_url=callback_url,
             callbacks=[],
-            compute_cell="cell_a",
         )
 
 
@@ -287,7 +285,6 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
         project_id=PROJECT_ID,
         callbacks=callbacks,
         task_definition=task_definition,
-        compute_cell="cell_a",
     )
 
     assert res == {
@@ -296,7 +293,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "instances": 1,
             "instance_type": "small",
             "timelimit": None,
-            "compute_cell": "cell_a",
+            "compute_cell": "local",
         },
         "inputs": [
             "--simulation-id",
@@ -343,7 +340,6 @@ def test_generic_job_data(config_id, activity_id, callbacks):
         entity_cache=True,
         output_root="/foo",
         callbacks=callbacks,
-        compute_cell="cell_b",
     )
 
     assert res == {
@@ -352,7 +348,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "cores": 1,
             "memory": 2,
             "timelimit": "00:10",
-            "compute_cell": "cell_b",
+            "compute_cell": "local",
         },
         "code": {
             "type": "python_repository",
@@ -496,6 +492,7 @@ def test_estimate_task_resources_passthrough(db_client):
         json_model=json_model,
         db_client=db_client,
         task_definition=task_definition,
+        compute_cell="local",
     )
     assert result is task_definition.resources
 
@@ -507,7 +504,7 @@ def test_estimate_task_resources_circuit_extraction(db_client):
     expected = MachineResources(cores=4, memory=16, timelimit="02:00", compute_cell="local")
 
     with patch(
-        "app.services.circuit_extraction.estimate_task_resources",
+        "app.services.resource_estimation.circuit_extraction.estimate_task_resources",
         return_value=expected,
         autospec=True,
     ) as mock_estimate:
@@ -515,9 +512,13 @@ def test_estimate_task_resources_circuit_extraction(db_client):
             json_model=json_model,
             db_client=db_client,
             task_definition=task_definition,
+            compute_cell="cell_b",
         )
 
     assert result is expected
     mock_estimate.assert_called_once_with(
-        json_model=json_model, db_client=db_client, task_definition=task_definition
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
     )
