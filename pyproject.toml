@@ -55,6 +55,7 @@ dependencies = [
     "morph-tool",
     # MESHES
     "pyvista",
+    "pylmesh",
     # ENTITYSDK
     # `make compile-deps` compiles dependencies and ensures ENTITYSDK is latest version.
     # WARNING: `make upgrade-deps` updates all dependencies and may introduce breaking changes.
