@@ -1,1 +1,1 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one@jplanas/split_deps
+obi-one
