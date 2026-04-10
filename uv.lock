@@ -843,14 +843,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.13.2"
+version = "0.13.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/02/b7f77c2e7fa72d80c5bfccdc5ae7e298ee0b69e089aa7ed2b4ff33e5d688/entitysdk-0.13.2.tar.gz", hash = "sha256:11f9bf9feee53a48b1f8eafa07337c4923d8ec8a212736ecd332dbec32e996f6", size = 80630, upload-time = "2026-04-08T13:57:59.782Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/54/fb4fe933ad003de7228cee3b4feb04a333d5f8c80096f72d0d582d78216e/entitysdk-0.13.3.tar.gz", hash = "sha256:4725208bc1868586e6e65bfdae41ff05d448e4b0e3d2902fcba88a20cb60ac38", size = 80656, upload-time = "2026-04-10T11:33:59.708Z" }
 
 [[package]]
 name = "executing"
@@ -2108,6 +2108,7 @@ dependencies = [
     { name = "connectome-manipulator" },
     { name = "connectome-utilities" },
     { name = "entitysdk" },
+    { name = "libsonata" },
     { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "neurom" },
@@ -2190,12 +2191,13 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
-    { name = "entitysdk", specifier = ">=0.13.0" },
+    { name = "entitysdk", specifier = ">=0.13.3" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
+    { name = "libsonata", specifier = ">=0.1.33" },
     { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
