@@ -7,6 +7,7 @@ from typing import Annotated
 import entitysdk.client
 import entitysdk.exception
 from entitysdk.common import ProjectContext
+from entitysdk.models.asset import Asset
 from entitysdk.models.cell_morphology import CellMorphology
 from fastapi import APIRouter, Depends, HTTPException, Query
 from nmm.common import NEURON_COLORS
@@ -64,7 +65,7 @@ def _upload_glb_asset(
     db_client: entitysdk.client.Client,
     cell_morphology_id: str,
     glb_path: Path,
-):
+) -> Asset:
     L.info(
         f"register_morphology_mesh: uploading GLB asset for {cell_morphology_id} "
         f"({glb_path.stat().st_size} bytes)"
@@ -93,7 +94,7 @@ def _mesh_and_register(
     cell_morphology_id: str,
     morph: CellMorphology,
     swc_bytes: bytes,
-):
+) -> Asset:
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
