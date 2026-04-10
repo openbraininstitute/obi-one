@@ -23,7 +23,7 @@ def assemble_publication_links(
         query={"scientific_artifact__id": em_dataset.id},
     ).all()
     src_pubs = [
-        _x.publication for _x in src_links if _x.publication_type != PublicationType.application
+        x.publication for x in src_links if x.publication_type != PublicationType.application
     ]
     # TODO: Parse DOIs out of the lst_notices. Create publications for them.
     return src_pubs

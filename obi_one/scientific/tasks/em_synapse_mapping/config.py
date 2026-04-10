@@ -1,5 +1,6 @@
 import logging
 from enum import StrEnum
+from pathlib import Path
 from typing import ClassVar
 
 from entitysdk.client import Client
@@ -7,10 +8,12 @@ from entitysdk.models import Entity
 from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
@@ -103,3 +106,62 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.em_synapse_mapping__execution
     )
+
+
+class NeuronEntry(OBIBaseModel):
+    """A single neuron entry for the multi-neuron synapse mapping task."""
+
+    neuron: CellMorphologyFromID | MEModelFromID = Field(
+        title="EM skeletonized morphology",
+        description=("A spiny neuron morphology from an EM dataset."),
+    )
+    pt_root_id: int | None = Field(
+        title="Neuron identifier within the EM dense reconstruction dataset.",
+        description="If not provided, it will be inferred from the provenance of the morphology.",
+        default=None,
+    )
+
+
+class EMSynapseMappingMultipleConfig(OBIBaseModel):
+    """Config for multi-neuron synapse mapping."""
+
+    name: ClassVar[str] = "Map synapse locations (multi-neuron)"
+    description: ClassVar[str] = (
+        "Map afferent synapses from EM onto multiple spiny morphologies, "
+        "producing a circuit with physical internal connections and virtual external inputs."
+    )
+    coordinate_output_root: Path = Field(title="Output directory")
+
+    class Initialize(Block):
+        # We use a tuple instead of a list to avoid getting it taken as scan dimensions in the
+        # scan config.
+        neurons: tuple[NeuronEntry, ...] = Field(
+            title="Neurons",
+            description="Neurons to include in the multi-neuron circuit.",
+            min_length=2,
+        )
+        physical_edge_population_name: str = Field(
+            title="Physical edge population name",
+            description="Edge population for connections between neurons in the set.",
+            default="physical_connections",
+        )
+        virtual_edge_population_name: str = Field(
+            title="Virtual edge population name",
+            description="Edge population for connections from virtual neurons.",
+            default="virtual_afferents",
+        )
+        biophysical_node_population: str = Field(
+            title="Biophysical node population name",
+            description="Node population for the physical neurons in the circuit.",
+            default="biophysical_neurons",
+        )
+        virtual_node_population: str = Field(
+            title="Virtual node population name",
+            description="Node population for external presynaptic neurons.",
+            default="virtual_afferent_neurons",
+        )
+
+    initialize: Initialize
+
+    def enforce_no_multi_param(self) -> None:
+        """Override: allow list-valued neurons field."""

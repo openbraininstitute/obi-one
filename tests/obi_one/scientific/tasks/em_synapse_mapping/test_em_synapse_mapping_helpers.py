@@ -10,11 +10,11 @@ from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
     synapses_and_nodes_dataframes_from_EM,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
-from obi_one.scientific.tasks.em_synapse_mapping.provenance import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
     assemble_publication_links,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output_single
+from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
 
@@ -51,6 +51,7 @@ def em_dataset():
 def test_compress_output(tmp_path):
     out_root = tmp_path / "out"
     out_root.mkdir()
+    test_files = [str(out_root / "a.h5"), str(out_root / "b.h5")]
 
     with (
         patch(
@@ -61,12 +62,12 @@ def test_compress_output(tmp_path):
             "obi_one.scientific.tasks.em_synapse_mapping.util.subprocess.check_call"
         ) as mock_check_call,
     ):
-        compressed_path = compress_output(out_root)
+        compressed_path = compress_output(out_root, test_files)
 
     assert compressed_path == str(out_root / "sonata.tar.gz")
     assert (out_root / "sonata.tar").read_bytes() == b"tar-bytes"
-    mock_check_output.assert_called_once_with(["tar", "-c", str(out_root)])
-    mock_check_call.assert_called_once_with(["gzip", "-1", str(out_root / "sonata.tar")])
+    mock_check_output.assert_called_once_with(["tar", "-cf", "-", *test_files])
+    mock_check_call.assert_called_once_with(["gzip", "-1", "-f", str(out_root / "sonata.tar")])
 
 
 def test_assemble_publication_links_filters_application(mock_db_client):
@@ -150,7 +151,7 @@ def test_plot_mapping_stats():
     assert fig.axes[0].get_ylabel() == "Synapse count"
 
 
-def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
+def test_register_output_single(tmp_path, mock_db_client, source_dataset, em_dataset):
     existing_circuit = SimpleNamespace(id=uuid4())
     mock_db_client.register_entity.side_effect = [existing_circuit, "link-1", "link-2"]
 
@@ -173,7 +174,7 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
             return_value=SimpleNamespace(id=uuid4()),
         ),
     ):
-        circuit_id = register_output(
+        circuit_id = register_output_single(
             db_client=mock_db_client,
             pt_root_id=42,
             mapped_synapses_df=mapped_synapses_df,

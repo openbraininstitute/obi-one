@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 import pandas  # NOQA: ICN001
 from entitysdk import Client
@@ -17,12 +18,13 @@ from entitysdk.models import (
     ScientificArtifactPublicationLink,
 )
 
+from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
 
 L = logging.getLogger(__name__)
 
 
-def register_output(
+def register_output_single(
     db_client: Client,
     pt_root_id: int,
     mapped_synapses_df: pandas.DataFrame,
@@ -85,3 +87,82 @@ def register_output(
     L.info(f"Output registered as: {existing_circuit.id}")
 
     return str(existing_circuit.id)
+
+
+def register_output_multiple(
+    db_client: Client,
+    resolved_neurons: list,
+    source_dataset: EMDenseReconstructionDataset,
+    em_dataset: EMDataSetFromID,
+    all_notices: list[str],
+    total_synapses: int,
+    total_internal: int,
+    total_external: int,
+    file_paths: dict[os.PathLike, os.PathLike],
+    compressed_path: os.PathLike,
+) -> None:
+    em_entity = em_dataset.entity(db_client)
+    pt_root_ids = [rn.pt_root_id for rn in resolved_neurons]
+    n_neurons = len(resolved_neurons)
+
+    description = (
+        f"Multi-neuron synaptome circuit with {n_neurons} neurons "
+        f"(pt_root_ids: {pt_root_ids}) from dataset {source_dataset.name}.\n"
+        f"Internal connections: {total_internal}, External inputs: {total_external}.\n"
+    )
+    description += "Used tables with the following notice texts:\n"
+    unique_notices = list(dict.fromkeys(str(n) for n in all_notices))
+    for notice in unique_notices:
+        description += notice + "\n"
+
+    circ_entity = Circuit(
+        name=f"Multi-synaptome-{'-'.join(str(p) for p in pt_root_ids[:3])}",
+        description=description,
+        number_neurons=n_neurons,
+        number_synapses=total_synapses,
+        number_connections=total_internal + total_external,
+        scale=CircuitScale.small if n_neurons > 1 else CircuitScale.single,
+        build_category=CircuitBuildCategory.em_reconstruction,
+        subject=source_dataset.subject,
+        has_morphologies=True,
+        has_electrical_cell_models=any(rn.use_me_model for rn in resolved_neurons),
+        has_spines=True,
+        brain_region=source_dataset.brain_region,
+        experiment_date=source_dataset.experiment_date,
+        license=em_entity.license,
+    )
+    existing_circuit = db_client.register_entity(circ_entity)
+
+    db_client.upload_directory(
+        entity_id=existing_circuit.id,
+        entity_type=Circuit,
+        name="sonata_synaptome",
+        paths=file_paths,
+        label=AssetLabel.sonata_circuit,
+    )
+
+    max_upload_bytes = 524_288_000
+    compressed_size = Path(compressed_path).stat().st_size
+    if 0 < compressed_size < max_upload_bytes:
+        db_client.upload_file(
+            entity_id=existing_circuit.id,
+            entity_type=Circuit,
+            file_path=compressed_path,
+            file_content_type=ContentType.application_gzip,
+            asset_label=AssetLabel.compressed_sonata_circuit,
+        )
+    else:
+        L.warning(
+            f"Skipping compressed archive upload: size={compressed_size} bytes "
+            f"(limit={max_upload_bytes}). The directory asset was uploaded successfully."
+        )
+
+    for publication in assemble_publication_links(db_client, em_entity, all_notices):
+        new_link = ScientificArtifactPublicationLink(
+            scientific_artifact=existing_circuit,
+            publication=publication,
+            publication_type=PublicationType.component_source,
+        )
+        db_client.register_entity(new_link)
+    L.info(f"Output registered as: {existing_circuit.id}")
+    return existing_circuit.id
