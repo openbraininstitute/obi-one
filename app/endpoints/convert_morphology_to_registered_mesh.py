@@ -33,6 +33,98 @@ def _mesh_swc(swc_path: str, output_directory: str) -> str:
     return morphology.export_annotated_glb_mesh(output_directory=output_directory, show_stats=False)
 
 
+def _delete_existing_glb_assets(
+    db_client: entitysdk.client.Client,
+    cell_morphology_id: str,
+    existing_glb_assets: list,
+) -> None:
+    for asset in existing_glb_assets:
+        L.info(
+            f"register_morphology_mesh: deleting existing GLB asset {asset.id}"
+            f" for {cell_morphology_id}"
+        )
+        try:
+            db_client.delete_asset(
+                entity_id=cell_morphology_id,
+                entity_type=CellMorphology,
+                asset_id=asset.id,
+            )
+        except entitysdk.exception.EntitySDKError as err:
+            L.error(f"Failed to delete existing GLB asset {asset.id}: {err}")
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INTERNAL_ERROR,
+                    "detail": f"Failed to delete existing GLB asset {asset.id}.",
+                },
+            ) from err
+
+
+def _upload_glb_asset(
+    db_client: entitysdk.client.Client,
+    cell_morphology_id: str,
+    glb_path: Path,
+):
+    L.info(
+        f"register_morphology_mesh: uploading GLB asset for {cell_morphology_id} "
+        f"({glb_path.stat().st_size} bytes)"
+    )
+    try:
+        return db_client.upload_file(
+            entity_id=cell_morphology_id,
+            entity_type=CellMorphology,
+            file_path=glb_path,
+            file_content_type="model/gltf-binary",
+            asset_label="cell_surface_mesh",
+        )
+    except entitysdk.exception.EntitySDKError as err:
+        L.error(f"Failed to upload GLB asset for {cell_morphology_id}: {err}")
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": "Failed to upload the GLB mesh asset.",
+            },
+        ) from err
+
+
+def _mesh_and_register(
+    db_client: entitysdk.client.Client,
+    cell_morphology_id: str,
+    morph: CellMorphology,
+    swc_bytes: bytes,
+):
+    L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
+            swc_path.write_bytes(swc_bytes)
+
+            glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
+            glb_path = Path(glb_path_str)
+
+            if not glb_path.exists() or glb_path.stat().st_size == 0:
+                msg = f"Meshing produced no output at {glb_path_str}"
+                raise RuntimeError(msg)  # noqa: TRY301
+
+            existing_glb_assets = [a for a in morph.assets if a.content_type == "model/gltf-binary"]
+            _delete_existing_glb_assets(db_client, cell_morphology_id, existing_glb_assets)
+
+            return _upload_glb_asset(db_client, cell_morphology_id, glb_path)
+
+    except HTTPException:
+        raise
+    except Exception as err:
+        L.error(f"Meshing failed for {cell_morphology_id}: {err}")
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Meshing failed: {err}",
+            },
+        ) from err
+
+
 @router.post(
     "/convert-morphology-to-registered-mesh/{cell_morphology_id}",
     summary="Compute & register a GLB surface mesh for an existing morphology",
@@ -52,9 +144,6 @@ def register_morphology_mesh(
         virtual_lab_id=virtual_lab_id,
         project_id=project_id,
     )
-    # ------------------------------------------------------------------
-    # 1. Fetch the CellMorphology entity
-    # ------------------------------------------------------------------
     L.info(f"db_client config: url={db_client.api_url}, project={db_client.project_context}")
     L.info(f"register_morphology_mesh: fetching entity {cell_morphology_id}")
     try:
@@ -69,9 +158,6 @@ def register_morphology_mesh(
             },
         ) from err
 
-    # ------------------------------------------------------------------
-    # 2. Locate the SWC asset
-    # ------------------------------------------------------------------
     swc_asset = next((a for a in morph.assets if a.content_type == "application/swc"), None)
     if swc_asset is None:
         L.error(f"No SWC asset found on morphology {cell_morphology_id}")
@@ -83,9 +169,6 @@ def register_morphology_mesh(
             },
         )
 
-    # ------------------------------------------------------------------
-    # 3. Download SWC content into memory
-    # ------------------------------------------------------------------
     L.info(f"register_morphology_mesh: downloading SWC asset {swc_asset.id}")
     try:
         swc_bytes: bytes = db_client.download_content(
@@ -112,81 +195,7 @@ def register_morphology_mesh(
             },
         )
 
-    # ------------------------------------------------------------------
-    # 4. Mesh the SWC file; both the SWC input and GLB output are kept
-    #    in a single temporary directory that is cleaned up automatically.
-    # ------------------------------------------------------------------
-    L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
-            swc_path.write_bytes(swc_bytes)
-
-            glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
-            glb_path = Path(glb_path_str)
-
-            if not glb_path.exists() or glb_path.stat().st_size == 0:
-                msg = f"Meshing produced no output at {glb_path_str}"
-                raise RuntimeError(msg)  # noqa: TRY301
-
-            # remove existing glb meshes if they exist
-            existing_glb_assets = [a for a in morph.assets if a.content_type == "model/gltf-binary"]
-            for asset in existing_glb_assets:
-                L.info(
-                    f"register_morphology_mesh: deleting existing GLB asset {asset.id} for {cell_morphology_id}"
-                )
-                try:
-                    db_client.delete_asset(
-                        entity_id=cell_morphology_id,
-                        entity_type=CellMorphology,
-                        asset_id=asset.id,
-                    )
-                except entitysdk.exception.EntitySDKError as err:
-                    L.error(f"Failed to delete existing GLB asset {asset.id}: {err}")
-                    raise HTTPException(
-                        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                        detail={
-                            "code": ApiErrorCode.INTERNAL_ERROR,
-                            "detail": f"Failed to delete existing GLB asset {asset.id}.",
-                        },
-                    ) from err
-
-            # ----------------------------------------------------------------
-            # 5. Upload the GLB as a new asset on the same entity
-            # ----------------------------------------------------------------
-            L.info(
-                f"register_morphology_mesh: uploading GLB asset for {cell_morphology_id} "
-                f"({glb_path.stat().st_size} bytes)"
-            )
-            try:
-                asset = db_client.upload_file(
-                    entity_id=cell_morphology_id,
-                    entity_type=CellMorphology,
-                    file_path=glb_path,
-                    file_content_type="model/gltf-binary",
-                    asset_label="cell_surface_mesh",
-                )
-            except entitysdk.exception.EntitySDKError as err:
-                L.error(f"Failed to upload GLB asset for {cell_morphology_id}: {err}")
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail={
-                        "code": ApiErrorCode.INTERNAL_ERROR,
-                        "detail": "Failed to upload the GLB mesh asset.",
-                    },
-                ) from err
-
-    except HTTPException:
-        raise
-    except Exception as err:
-        L.error(f"Meshing failed for {cell_morphology_id}: {err}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Meshing failed: {err}",
-            },
-        ) from err
+    asset = _mesh_and_register(db_client, cell_morphology_id, morph, swc_bytes)
 
     L.info(f"register_morphology_mesh: done, asset id={asset.id}")
     return {"asset_id": str(asset.id), "status": "success"}
