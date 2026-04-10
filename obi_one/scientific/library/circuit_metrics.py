@@ -214,8 +214,12 @@ def number_of_nodes_per_unique_value_from_population(pop: NodePopulation) -> dic
     vals_dict = {}
     for name in pop.enumeration_names:
         prop_vals = pop.enumeration_values(name)
-        prop_counts = pd.Series(pop.get_attribute(name, pop.select_all())).value_counts()
-        prop_counts = prop_counts.reindex(prop_vals, fill_value=0)
+        prop_idx = pop.get_enumeration("layer", pop.select_all())
+
+        prop_counts = (
+            pd.Series(prop_idx).value_counts().reindex(range(len(prop_vals)), fill_value=0)
+        )
+        prop_counts.index = prop_vals
         vals_dict[name] = prop_counts.to_dict()
     return vals_dict
 
