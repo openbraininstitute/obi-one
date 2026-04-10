@@ -37,15 +37,11 @@ class CircuitFromIonChannelModels:
                 if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
                     db_client=db_client
                 ):
-                    conductance = {
-                        "conductance": ic_data.conductance
-                    }
+                    conductance = {"conductance": ic_data.conductance}
                 elif hasattr(
                     ic_data, "max_permeability"
                 ) and ic_data.ion_channel_model.has_max_permeability(db_client=db_client):
-                    conductance = {
-                        "conductance": ic_data.max_permeability
-                    }
+                    conductance = {"conductance": ic_data.max_permeability}
                 ion_channel_model_data_dict[key] = {
                     "id": ic_data.ion_channel_model.id_str,
                 }
