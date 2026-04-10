@@ -112,24 +112,24 @@ CLUSTER_INSTANCES_INFO = {
         ClusterInstanceInfo(
             name="small",
             max_neurons=100,
-            memory_per_instance_gb=1,
+            memory_per_instance_gb=16,
         ),
         ClusterInstanceInfo(
             name="large",
-            max_neurons=10000,
-            memory_per_instance_gb=10,
+            max_neurons=1_000_000,
+            memory_per_instance_gb=384,
         ),
     ],
     "cell_b": [
         ClusterInstanceInfo(
             name="small",
             max_neurons=100,
-            memory_per_instance_gb=1,
+            memory_per_instance_gb=8,
         ),
         ClusterInstanceInfo(
             name="large",
-            max_neurons=10000,
-            memory_per_instance_gb=10,
+            max_neurons=1_000_000,
+            memory_per_instance_gb=788,
         ),
     ],
 }
