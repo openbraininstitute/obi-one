@@ -129,6 +129,28 @@ def register_morphology_mesh(
                 msg = f"Meshing produced no output at {glb_path_str}"
                 raise RuntimeError(msg)  # noqa: TRY301
 
+            # remove existing glb meshes if they exist
+            existing_glb_assets = [a for a in morph.assets if a.content_type == "model/gltf-binary"]
+            for asset in existing_glb_assets:
+                L.info(
+                    f"register_morphology_mesh: deleting existing GLB asset {asset.id} for {cell_morphology_id}"
+                )
+                try:
+                    db_client.delete_asset(
+                        entity_id=cell_morphology_id,
+                        entity_type=CellMorphology,
+                        asset_id=asset.id,
+                    )
+                except entitysdk.exception.EntitySDKError as err:
+                    L.error(f"Failed to delete existing GLB asset {asset.id}: {err}")
+                    raise HTTPException(
+                        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                        detail={
+                            "code": ApiErrorCode.INTERNAL_ERROR,
+                            "detail": f"Failed to delete existing GLB asset {asset.id}.",
+                        },
+                    ) from err
+
             # ----------------------------------------------------------------
             # 5. Upload the GLB as a new asset on the same entity
             # ----------------------------------------------------------------
