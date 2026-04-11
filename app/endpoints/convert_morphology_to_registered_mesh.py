@@ -191,7 +191,7 @@ def register_morphology_mesh(
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={
-                "code": ApiErrorCode.VALIDATION_ERROR,
+                "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": "Downloaded SWC asset is empty.",
             },
         )
