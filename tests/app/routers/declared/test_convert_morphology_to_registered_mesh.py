@@ -114,7 +114,6 @@ def test_register_morphology_mesh_empty_swc(client, mock_db_client, mock_morphol
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     response = _make_response(client, cell_id)
-
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
 
