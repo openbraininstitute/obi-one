@@ -28,7 +28,6 @@ dynamic = ["version"]
 
 # CORE + SCIENTIFIC - dependencies always installed
 dependencies = [
-    # -- CORE
     # ENTITYSDK
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
@@ -48,6 +47,8 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
+    "neuromorphomesh",
+    "numpy==2.0.0",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
@@ -127,8 +128,14 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.9.22"
 
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
+
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
