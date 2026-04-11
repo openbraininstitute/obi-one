@@ -16,13 +16,11 @@ ENDPOINT = "convert-morphology-to-registered-mesh"
 
 TARGET_MODULE = "app.endpoints.convert_morphology_to_registered_mesh"
 
-
 @pytest.fixture
 def mock_db_client():
     client = MagicMock()
     client.project_context = MagicMock()
     return client
-
 
 @pytest.fixture
 def mock_morphology_entity():
@@ -33,13 +31,11 @@ def mock_morphology_entity():
     morph.assets = [swc_asset]
     return morph
 
-
 def _make_response(client, cell_id):
     return client.post(
         f"{ROUTE_PREFIX}/{ENDPOINT}/{cell_id}",
         params={"virtual_lab_id": VIRTUAL_LAB_ID, "project_id": PROJECT_ID},
     )
-
 
 def test_register_morphology_mesh_success(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
@@ -67,7 +63,6 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
     assert response.status_code == HTTPStatus.OK
     assert response.json()["asset_id"] == new_asset_id
 
-
 def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     cell_id = str(uuid.uuid4())
     morph = MagicMock(spec=CellMorphology)
@@ -81,7 +76,6 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
 
-
 def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.side_effect = entitysdk.exception.EntitySDKError("Not found")
@@ -91,7 +85,6 @@ def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
-
 
 def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
@@ -106,7 +99,6 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_empty_swc(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
@@ -116,8 +108,7 @@ def test_register_morphology_mesh_empty_swc(client, mock_db_client, mock_morphol
     response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-    assert response.json()["detail"]["code"] == ApiErrorCode.VALIDATION_ERROR
-
+    assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
 
 def test_register_morphology_mesh_output_file_missing(
     client, mock_db_client, mock_morphology_entity
@@ -138,7 +129,6 @@ def test_register_morphology_mesh_output_file_missing(
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
-
 
 def test_register_morphology_mesh_output_file_zero_bytes(
     client, mock_db_client, mock_morphology_entity
@@ -161,7 +151,6 @@ def test_register_morphology_mesh_output_file_zero_bytes(
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_unexpected_exception(
     client, mock_db_client, mock_morphology_entity
 ):
@@ -178,7 +167,6 @@ def test_register_morphology_mesh_unexpected_exception(
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
-
 
 def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_client):
     cell_id = str(uuid.uuid4())
@@ -216,7 +204,6 @@ def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_clie
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
@@ -236,7 +223,6 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
-
 
 def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
     cell_id = str(uuid.uuid4())
@@ -280,7 +266,6 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
         entity_type=CellMorphology,
         asset_id=glb_asset.id,
     )
-
 
 def test_register_morphology_mesh_response_contains_status(
     client, mock_db_client, mock_morphology_entity
