@@ -49,8 +49,7 @@ RUN \
     --mount=type=bind,source=README.md,target=README.md \
     UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
     UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
-    uv sync --locked --no-install-project --extra connectivity
-
+    uv sync --locked --no-install-project --extra connectivity --extra service
 RUN \
     --mount=type=cache,target=/root/.cache/uv,id=uv-cache-${TARGETPLATFORM} \
     --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -60,7 +59,7 @@ RUN \
     --mount=type=bind,source=.git,target=.git \
     UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
     UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
-    uv sync --locked --no-editable --no-cache --extra connectivity
+    uv sync --locked --no-install-project --extra connectivity --extra service
 
 # run stage
 FROM python:$PYTHON_BASE
