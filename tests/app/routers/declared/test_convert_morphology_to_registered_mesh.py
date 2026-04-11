@@ -16,13 +16,11 @@ ENDPOINT = "convert-morphology-to-registered-mesh"
 
 TARGET_MODULE = "app.endpoints.convert_morphology_to_registered_mesh"
 
-
 @pytest.fixture
 def mock_db_client():
     client = MagicMock()
     client.project_context = MagicMock()
     return client
-
 
 @pytest.fixture
 def mock_morphology_entity():
@@ -33,14 +31,11 @@ def mock_morphology_entity():
     morph.assets = [swc_asset]
     return morph
 
-
-def _make_response(client, mock_db_client, cell_id):
-    """Helper: POST to the endpoint with standard query params."""
+def _make_response(client, cell_id):
     return client.post(
         f"{ROUTE_PREFIX}/{ENDPOINT}/{cell_id}",
         params={"virtual_lab_id": VIRTUAL_LAB_ID, "project_id": PROJECT_ID},
     )
-
 
 def test_register_morphology_mesh_success(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
@@ -63,11 +58,10 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
             instance.exists.return_value = True
             instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["asset_id"] == new_asset_id
-
 
 def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     cell_id = str(uuid.uuid4())
@@ -77,25 +71,22 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     mock_db_client.get_entity.return_value = morph
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, mock_db_client, cell_id)
+    response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
-
 
 def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.side_effect = entitysdk.exception.EntitySDKError("Not found")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, mock_db_client, cell_id)
+    response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
 
-
 def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_morphology_entity):
-    """EntitySDKError during download_content → 500."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.side_effect = entitysdk.exception.EntitySDKError(
@@ -103,29 +94,25 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
     )
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, mock_db_client, cell_id)
+    response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_empty_swc(client, mock_db_client, mock_morphology_entity):
-    """Empty bytes returned from download_content → 422."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.return_value = b""
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, mock_db_client, cell_id)
+    response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.VALIDATION_ERROR
 
-
 def test_register_morphology_mesh_output_file_missing(
     client, mock_db_client, mock_morphology_entity
 ):
-    """_mesh_swc returns a path that does not exist → 500."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.return_value = b"mock swc data"
@@ -136,18 +123,16 @@ def test_register_morphology_mesh_output_file_missing(
 
         with patch(f"{TARGET_MODULE}.Path") as mock_path:
             instance = mock_path.return_value
-            instance.exists.return_value = False  # file absent
+            instance.exists.return_value = False
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_output_file_zero_bytes(
     client, mock_db_client, mock_morphology_entity
 ):
-    """_mesh_swc returns a path that exists but is empty → 500."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.return_value = b"mock swc data"
@@ -159,37 +144,34 @@ def test_register_morphology_mesh_output_file_zero_bytes(
         with patch(f"{TARGET_MODULE}.Path") as mock_path:
             instance = mock_path.return_value
             instance.exists.return_value = True
-            instance.stat.return_value.st_size = 0  # zero-byte file
+            instance.stat.return_value.st_size = 0
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_unexpected_exception(
     client, mock_db_client, mock_morphology_entity
 ):
-    """Unexpected non-HTTP exception during meshing → 500."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.return_value = b"mock swc data"
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc", side_effect=RuntimeError("unexpected crash")):
-        with patch(f"{TARGET_MODULE}.Path"):
-            response = _make_response(client, mock_db_client, cell_id)
+    with (
+        patch(f"{TARGET_MODULE}._mesh_swc", side_effect=RuntimeError("unexpected crash")),
+        patch(f"{TARGET_MODULE}.Path"),
+    ):
+        response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_client):
-    """delete_asset raises EntitySDKError for an existing GLB asset → 500."""
     cell_id = str(uuid.uuid4())
     new_asset_id = str(uuid.uuid4())
 
-    # Morphology has both an SWC and an existing GLB asset
     morph = MagicMock(spec=CellMorphology)
     swc_asset = MagicMock()
     swc_asset.id = str(uuid.uuid4())
@@ -217,14 +199,12 @@ def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_clie
             instance.exists.return_value = True
             instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morphology_entity):
-    """upload_file raises EntitySDKError → 500."""
     cell_id = str(uuid.uuid4())
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.download_content.return_value = b"mock swc data"
@@ -239,14 +219,12 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
             instance.exists.return_value = True
             instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
 
-
 def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
-    """Existing GLB asset is deleted and a new one is uploaded successfully."""
     cell_id = str(uuid.uuid4())
     new_asset_id = str(uuid.uuid4())
 
@@ -261,7 +239,7 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
 
     mock_db_client.get_entity.return_value = morph
     mock_db_client.download_content.return_value = b"mock swc data"
-    mock_db_client.delete_asset.return_value = None  # deletion succeeds
+    mock_db_client.delete_asset.return_value = None
 
     uploaded_asset = MagicMock()
     uploaded_asset.id = new_asset_id
@@ -277,7 +255,7 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
             instance.exists.return_value = True
             instance.stat.return_value.st_size = 2048
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
@@ -289,11 +267,9 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
         asset_id=glb_asset.id,
     )
 
-
 def test_register_morphology_mesh_response_contains_status(
     client, mock_db_client, mock_morphology_entity
 ):
-    """Successful response body includes status='success'."""
     cell_id = str(uuid.uuid4())
     new_asset_id = str(uuid.uuid4())
 
@@ -314,7 +290,7 @@ def test_register_morphology_mesh_response_contains_status(
             instance.exists.return_value = True
             instance.stat.return_value.st_size = 512
 
-            response = _make_response(client, mock_db_client, cell_id)
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == "success"
