@@ -207,8 +207,17 @@ def names_from_node_sets_file(
     return list(contents.keys())
 
 
-def unique_node_property_values_from_population(pop: NodePopulation) -> dict[str, list]:
-    return {name: (pop.enumeration_values(name) if len(pop.enumeration_values(name)) <= MAX_UNIQUE_VALUES else None) for name in pop.enumeration_names}
+def unique_node_property_values_from_population(
+    pop: NodePopulation,
+) -> dict[str, list | None]:
+    return {
+        name: (
+            pop.enumeration_values(name)
+            if len(pop.enumeration_values(name)) <= MAX_UNIQUE_VALUES
+            else None
+        )
+        for name in pop.enumeration_names
+    }
 
 
 def number_of_nodes_per_unique_value_from_population(pop: NodePopulation) -> dict:
@@ -224,7 +233,7 @@ def number_of_nodes_per_unique_value_from_population(pop: NodePopulation) -> dic
             prop_counts.index = prop_vals
             vals_dict[name] = prop_counts.to_dict()
         else:
-            vals_dict[k] = None
+            vals_dict[name] = None
     return vals_dict
 
 
