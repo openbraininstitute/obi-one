@@ -7,7 +7,6 @@ import pytest
 from entitysdk.models.cell_morphology import CellMorphology
 
 from app.dependencies.entitysdk import get_client
-from app.errors import ApiErrorCode
 
 VIRTUAL_LAB_ID = "00000000-0000-0000-0000-000000000001"
 PROJECT_ID = "00000000-0000-0000-0000-000000000002"
