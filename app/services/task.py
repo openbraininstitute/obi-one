@@ -259,4 +259,4 @@ def estimate_task_resources(
                 compute_cell=compute_cell,
             )
         case _:
-            return task_definition.resources
+            return task_definition.resources.model_copy(update={"compute_cell": compute_cell})
