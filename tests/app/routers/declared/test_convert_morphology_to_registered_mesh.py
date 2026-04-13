@@ -111,7 +111,9 @@ def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
     assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
 
 
-def test_register_morphology_mesh_conflict_existing_glb(client, mock_db_client, mock_morphology_entity):
+def test_register_morphology_mesh_conflict_existing_glb(
+    client, mock_db_client, mock_morphology_entity
+):
     cell_id = str(uuid.uuid4())
     glb_asset = MagicMock()
     glb_asset.id = "existing_glb_id"
@@ -159,7 +161,9 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
     mock_db_client.select_assets.return_value.one.return_value = mock_morphology_entity.assets[0]
     mock_db_client.select_assets.return_value.__iter__.return_value = iter([])
 
-    mock_db_client.download_content.side_effect = entitysdk.exception.EntitySDKError("network error")
+    mock_db_client.download_content.side_effect = entitysdk.exception.EntitySDKError(
+        "network error"
+    )
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with patch(f"{TARGET_MODULE}.HAS_MESHING", new=True):
@@ -167,4 +171,3 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
-    
