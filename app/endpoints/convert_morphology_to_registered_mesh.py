@@ -19,6 +19,7 @@ from app.logger import L
 try:
     from nmm.common import NEURON_COLORS
     from nmm.morphology import NeuronMorphology
+
     HAS_MESHING = True
 except ImportError:
     HAS_MESHING = False
@@ -45,10 +46,12 @@ def _check_no_existing_glb_assets(
     morph: CellMorphology,
 ) -> None:
     existing_glb_asset = next(
-        iter(db_client.select_assets(
-            entity=morph,
-            selection={"content_type": "model/gltf-binary"},
-        )),
+        iter(
+            db_client.select_assets(
+                entity=morph,
+                selection={"content_type": "model/gltf-binary"},
+            )
+        ),
         None,
     )
     if existing_glb_asset is not None:
@@ -142,8 +145,6 @@ def _mesh_and_register(
         "and returns the new asset id."
     ),
 )
-
-
 def register_morphology_mesh(
     cell_morphology_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
@@ -151,7 +152,7 @@ def register_morphology_mesh(
     if not HAS_MESHING:
         raise HTTPException(
             status_code=HTTPStatus.NOT_IMPLEMENTED,
-            detail="Meshing dependencies are not installed on this instance."
+            detail="Meshing dependencies are not installed on this instance.",
         )
     try:
         morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
