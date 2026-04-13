@@ -62,7 +62,7 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.select_assets.return_value.one.return_value = mock_morphology_entity.assets[0]
     # Existing GLB check returns nothing
-    mock_db_client.select_assets.return_value.__iter__.return_value = iter([]) 
+    mock_db_client.select_assets.return_value.__iter__.return_value = iter([])
     mock_db_client.download_content.return_value = b"mock swc data"
 
     uploaded_asset = MagicMock()
@@ -116,11 +116,13 @@ def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
     assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
 
 
-def test_register_morphology_mesh_conflict_existing_glb(client, mock_db_client, mock_morphology_entity):
+def test_register_morphology_mesh_conflict_existing_glb(
+    client, mock_db_client, mock_morphology_entity
+):
     cell_id = str(uuid.uuid4())
     glb_asset = MagicMock()
     glb_asset.id = "existing_glb_id"
-    
+
     mock_db_client.get_entity.return_value = mock_morphology_entity
     # Mock the iterator for _check_no_existing_glb_assets to find an asset
     mock_db_client.select_assets.return_value.__iter__.return_value = iter([glb_asset])
@@ -140,7 +142,7 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
     mock_db_client.select_assets.return_value.one.return_value = mock_morphology_entity.assets[0]
     mock_db_client.select_assets.return_value.__iter__.return_value = iter([])
     mock_db_client.download_content.return_value = b"mock swc data"
-    
+
     mock_db_client.upload_file.side_effect = entitysdk.exception.EntitySDKError("upload error")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
@@ -164,8 +166,10 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
     mock_db_client.get_entity.return_value = mock_morphology_entity
     mock_db_client.select_assets.return_value.one.return_value = mock_morphology_entity.assets[0]
     mock_db_client.select_assets.return_value.__iter__.return_value = iter([])
-    
-    mock_db_client.download_content.side_effect = entitysdk.exception.EntitySDKError("network error")
+
+    mock_db_client.download_content.side_effect = entitysdk.exception.EntitySDKError(
+        "network error"
+    )
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with patch(f"{TARGET_MODULE}.HAS_MESHING", new=True):
@@ -173,4 +177,3 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
-    
