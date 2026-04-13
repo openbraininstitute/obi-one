@@ -48,7 +48,7 @@ dependencies = [
     "morph-tool",
     "neurom",
     "neuromorphomesh",
-    "numpy>=2.0.0",
+    "numpy==2.0.0",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
