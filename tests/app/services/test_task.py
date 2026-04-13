@@ -497,9 +497,9 @@ def test_estimate_task_resources_passthrough(db_client):
         json_model=json_model,
         db_client=db_client,
         task_definition=task_definition,
-        compute_cell="local",
+        compute_cell="cell_b",
     )
-    assert result is task_definition.resources
+    assert result == task_definition.resources.model_copy(update={"compute_cell": "cell_b"})
 
 
 def test_estimate_task_resources_circuit_extraction(db_client):
