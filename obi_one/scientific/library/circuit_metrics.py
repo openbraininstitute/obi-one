@@ -209,14 +209,11 @@ def names_from_node_sets_file(
 
 def unique_node_property_values_from_population(
     pop: NodePopulation,
-) -> dict[str, list | None]:
+) -> dict[str, list]:
     return {
-        name: (
-            pop.enumeration_values(name)
-            if len(pop.enumeration_values(name)) <= MAX_UNIQUE_VALUES
-            else None
-        )
+        name: pop.enumeration_values(name)
         for name in pop.enumeration_names
+        if len(pop.enumeration_values(name)) <= MAX_UNIQUE_VALUES
     }
 
 
@@ -232,8 +229,6 @@ def number_of_nodes_per_unique_value_from_population(pop: NodePopulation) -> dic
             )
             prop_counts.index = prop_vals
             vals_dict[name] = prop_counts.to_dict()
-        else:
-            vals_dict[name] = None
     return vals_dict
 
 
@@ -406,8 +401,8 @@ class CircuitMetricsNodePopulation(BaseModel):
     name: str
     population_type: NodePopulationType
     property_names: list[str]
-    property_unique_values: dict[str, list[str] | None]
-    property_value_counts: dict[str, dict[str, int] | None]
+    property_unique_values: dict[str, list[str]]
+    property_value_counts: dict[str, dict[str, int]]
     node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
 
 
