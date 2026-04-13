@@ -47,7 +47,6 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
-    "neuromorphomesh",
     "numpy==2.0.0",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
@@ -56,6 +55,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# New group for the private dependency
+meshing = [
+    "neuromorphomesh",
+]
+
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
@@ -87,7 +91,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service]",
+    "obi-one[connectivity,notebooks,service,meshing]",
 ]
 
 [dependency-groups]

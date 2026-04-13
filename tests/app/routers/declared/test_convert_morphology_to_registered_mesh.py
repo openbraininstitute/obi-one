@@ -41,6 +41,17 @@ def _make_response(client, cell_id):
     )
 
 
+def test_register_morphology_mesh_not_installed(client, mock_db_client):
+    cell_id = str(uuid.uuid4())
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", False):
+        response = _make_response(client, cell_id)
+
+    assert response.status_code == HTTPStatus.NOT_IMPLEMENTED
+    assert response.json()["detail"] == "Meshing dependencies are not installed on this instance."
+
+
 def test_register_morphology_mesh_success(client, mock_db_client, mock_morphology_entity):
     cell_id = str(uuid.uuid4())
     new_asset_id = str(uuid.uuid4())
@@ -54,15 +65,16 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 1024
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["asset_id"] == new_asset_id
@@ -76,7 +88,8 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     mock_db_client.get_entity.return_value = morph
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, cell_id)
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
@@ -87,7 +100,8 @@ def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
     mock_db_client.get_entity.side_effect = entitysdk.exception.EntitySDKError("Not found")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, cell_id)
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
@@ -101,7 +115,8 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
     )
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, cell_id)
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -113,7 +128,9 @@ def test_register_morphology_mesh_empty_swc(client, mock_db_client, mock_morphol
     mock_db_client.download_content.return_value = b""
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    response = _make_response(client, cell_id)
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        response = _make_response(client, cell_id)
+
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
 
@@ -126,14 +143,15 @@ def test_register_morphology_mesh_output_file_missing(
     mock_db_client.download_content.return_value = b"mock swc data"
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = False
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = False
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -147,15 +165,16 @@ def test_register_morphology_mesh_output_file_zero_bytes(
     mock_db_client.download_content.return_value = b"mock swc data"
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 0
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 0
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -169,11 +188,12 @@ def test_register_morphology_mesh_unexpected_exception(
     mock_db_client.download_content.return_value = b"mock swc data"
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with (
-        patch(f"{TARGET_MODULE}._mesh_swc", side_effect=RuntimeError("unexpected crash")),
-        patch(f"{TARGET_MODULE}.Path"),
-    ):
-        response = _make_response(client, cell_id)
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with (
+            patch(f"{TARGET_MODULE}._mesh_swc", side_effect=RuntimeError("unexpected crash")),
+            patch(f"{TARGET_MODULE}.Path"),
+        ):
+            response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -202,15 +222,16 @@ def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_clie
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 1024
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -223,15 +244,16 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
     mock_db_client.upload_file.side_effect = entitysdk.exception.EntitySDKError("upload error")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 1024
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 1024
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
@@ -260,15 +282,16 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 2048
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 2048
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
@@ -296,15 +319,16 @@ def test_register_morphology_mesh_response_contains_status(
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
-    with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
-        mock_mesh.return_value = "fake_path.glb"
+    with patch(f"{TARGET_MODULE}.HAS_MESHING", True):
+        with patch(f"{TARGET_MODULE}._mesh_swc") as mock_mesh:
+            mock_mesh.return_value = "fake_path.glb"
 
-        with patch(f"{TARGET_MODULE}.Path") as mock_path:
-            instance = mock_path.return_value
-            instance.exists.return_value = True
-            instance.stat.return_value.st_size = 512
+            with patch(f"{TARGET_MODULE}.Path") as mock_path:
+                instance = mock_path.return_value
+                instance.exists.return_value = True
+                instance.stat.return_value.st_size = 512
 
-            response = _make_response(client, cell_id)
+                response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == "success"

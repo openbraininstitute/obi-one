@@ -50,7 +50,7 @@ RUN \
     --mount=type=bind,source=README.md,target=README.md \
     UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
     UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
-    uv sync --locked --no-install-project --extra connectivity --extra service
+    uv sync --locked --no-install-project --extra connectivity --extra service --extra meshing
 
 # Step 2: install the project itself as a proper non-editable package (with metadata)
 # SETUPTOOLS_SCM_PRETEND_VERSION ensures metadata is generated correctly in CI
@@ -65,7 +65,7 @@ RUN \
     SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0 \
     UV_INDEX_OBI_CODEARTIFACT_USERNAME=${UV_INDEX_OBI_CODEARTIFACT_USERNAME} \
     UV_INDEX_OBI_CODEARTIFACT_PASSWORD=${UV_INDEX_OBI_CODEARTIFACT_PASSWORD} \
-    uv sync --locked --no-editable --no-cache --extra connectivity --extra service
+    uv sync --locked --no-editable --no-cache --extra connectivity --extra service --extra meshing
 
 # run stage
 FROM python:$PYTHON_BASE
