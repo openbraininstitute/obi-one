@@ -98,8 +98,13 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
 
         add_raw_segmented_spines: bool = Field(
             default=False,
-            title="Add Raw Segmented Spines",
-            description="Whether to add raw segmented spines to the skeletonization output.",
+            title="Include Full Resolution Spines",
+            description=(
+                "By default a morphology h5 file is created with reconstructed spines. "
+                "Set to True to additionally include raw segmented spines in the output. "
+                "This may be useful for use cases which require "
+                "the full resolution spine data."
+            ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
 

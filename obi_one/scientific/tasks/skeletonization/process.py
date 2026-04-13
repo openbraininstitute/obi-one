@@ -75,7 +75,8 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
             - H5 morphology file (derived from SWC)
             - SWC morphology file
             - ASC morphology file
-            - Combined H5 morphology file (with reconstructed spines, and optional raw segmented spines)
+            - Combined H5 morphology file (with reconstructed spines,
+                and optional raw segmented spines)
 
     Raises:
         OBIONEError
