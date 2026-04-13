@@ -96,6 +96,13 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
 
+        add_raw_segmented_spines: bool = Field(
+            default=False,
+            title="Add Raw Segmented Spines",
+            description="Whether to add raw segmented spines to the skeletonization output.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the skeletonization.",
