@@ -101,7 +101,8 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             title="Include Full Resolution Spines",
             description=(
                 "By default a morphology h5 file is created with reconstructed spines. "
-                "Set to True to additionally include raw segmented spines in the output. "
+                "Set this parameter to True to additionally include the initially "
+                "extracted full resolution segmented spine meshes in the h5 file. "
                 "This may be useful for use cases which require "
                 "the full resolution spine data."
             ),
