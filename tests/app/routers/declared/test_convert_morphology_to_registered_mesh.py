@@ -135,16 +135,16 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
     swc_asset = MagicMock()
     swc_asset.id = str(uuid.uuid4())
     swc_asset.content_type = ContentType.SWC
-    
+
     glb_asset = MagicMock()
     glb_asset.id = str(uuid.uuid4())
     glb_asset.content_type = ContentType.GLB
-    
+
     morph.assets = [swc_asset, glb_asset]
 
     mock_db_client.get_entity.return_value = morph
     mock_db_client.download_content.return_value = b"mock swc data"
-    
+
     uploaded_asset = MagicMock()
     uploaded_asset.id = new_asset_id
     mock_db_client.upload_file.return_value = uploaded_asset
@@ -173,7 +173,7 @@ def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_clie
     swc_asset = MagicMock()
     swc_asset.id = str(uuid.uuid4())
     swc_asset.content_type = ContentType.SWC
-    
+
     glb_asset = MagicMock()
     glb_asset.id = str(uuid.uuid4())
     glb_asset.content_type = ContentType.GLB
