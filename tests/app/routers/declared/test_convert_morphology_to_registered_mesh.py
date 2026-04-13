@@ -92,7 +92,7 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     with patch(f"{TARGET_MODULE}.HAS_MESHING", new=True):
         response = _make_response(client, cell_id)
 
-    # Note: If your app returns 500 instead of 422 here, 
+    # Note: If your app returns 500 instead of 422 here,
     # check if the validation happens inside a try/except that catches everything.
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
@@ -139,17 +139,17 @@ def test_register_morphology_mesh_replaces_existing_glb(client, mock_db_client):
     swc_asset = MagicMock()
     swc_asset.id = str(uuid.uuid4())
     swc_asset.content_type = "application/swc"
-    
+
     # Ensure content_type exactly matches what _check_no_existing_glb_assets looks for
     glb_asset = MagicMock()
     glb_asset.id = str(uuid.uuid4())
-    glb_asset.content_type = "model/gltf-binary" 
-    
+    glb_asset.content_type = "model/gltf-binary"
+
     morph.assets = [swc_asset, glb_asset]
 
     mock_db_client.get_entity.return_value = morph
     mock_db_client.download_content.return_value = b"mock swc data"
-    
+
     uploaded_asset = MagicMock()
     uploaded_asset.id = new_asset_id
     mock_db_client.upload_file.return_value = uploaded_asset
@@ -203,4 +203,3 @@ def test_register_morphology_mesh_delete_existing_glb_fails(client, mock_db_clie
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    
