@@ -347,7 +347,7 @@ def test_register_output_resource_creates_protocol_when_missing(
         json={"data": [license_json], "pagination": PAGINATION},
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&page=1",
+        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&order_by=%2Bcreation_date&page=1",
         method="GET",
         json={"data": [], "pagination": PAGINATION},
     )
@@ -416,7 +416,7 @@ def test_register_output_resource_reuses_existing_protocol(
         json={"data": [license_json], "pagination": PAGINATION},
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&page=1",
+        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&order_by=%2Bcreation_date&page=1",
         method="GET",
         json={"data": [protocol_json], "pagination": PAGINATION},
     )

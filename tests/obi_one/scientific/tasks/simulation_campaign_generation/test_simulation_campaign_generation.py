@@ -339,6 +339,8 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "matrix_path": None,
             "type": "Circuit",
         }
+        mg_scan_param = instance.single_coordinate_scan_params.scan_params[0]
+        circuit_scan_param = instance.single_coordinate_scan_params.scan_params[1]
         scan_dict1 = {
             "location_list": [
                 "synaptic_manipulations",
@@ -347,11 +349,13 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             ],
             "type": "SingleValueScanParam",
             "value": mg,
+            "index_in_scan_dimension": mg_scan_param.index_in_scan_dimension,
         }
         scan_dict2 = {
             "location_list": ["initialize", "circuit"],
             "type": "SingleValueScanParam",
             "value": circuit_dict,
+            "index_in_scan_dimension": circuit_scan_param.index_in_scan_dimension,
         }
         assert cfg.pop("single_coordinate_scan_params") == {
             "scan_params": [scan_dict1, scan_dict2],

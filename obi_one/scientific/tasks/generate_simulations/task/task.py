@@ -10,6 +10,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
+from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
@@ -167,21 +168,28 @@ class GenerateSimulationTask(Task):
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
         for stimulus in self.config.stimuli.values():
-            if hasattr(stimulus, "generate_spikes"):
-                stimulus.generate_spikes(
-                    self._circuit,
-                    self.config.coordinate_output_root,
-                    self.config.initialize.simulation_length,
-                    source_node_population=self._circuit.default_population_name,
+            if isinstance(stimulus, SpikeStimulus):
+                self._sonata_config["inputs"].update(
+                    stimulus.config(
+                        circuit=self._circuit,
+                        sonata_simulation_config_directory=self.config.coordinate_output_root,
+                        simulation_length=self.config.initialize.simulation_length,
+                        default_timestamps=DEFAULT_TIMESTAMPS,
+                        source_node_population=self._circuit.default_population_name,
+                        target_node_population=self._circuit.default_population_name,
+                        default_source_neuron_set_reference=self._default_neuron_set_ref(),
+                        default_target_neuron_set_reference=self._default_neuron_set_ref(),
+                    )
                 )
-            self._sonata_config["inputs"].update(
-                stimulus.config(
-                    self._circuit,
-                    self._circuit.default_population_name,
-                    DEFAULT_NODE_SET_NAME,
-                    DEFAULT_TIMESTAMPS,
+            else:
+                self._sonata_config["inputs"].update(
+                    stimulus.config(
+                        circuit=self._circuit,
+                        population=self._circuit.default_population_name,
+                        default_node_set=DEFAULT_NODE_SET_NAME,
+                        default_timestamps=DEFAULT_TIMESTAMPS,
+                    )
                 )
-            )
 
     def _add_sonata_simulation_config_reports(
         self, db_client: entitysdk.client.Client | None

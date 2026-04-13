@@ -8,7 +8,7 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
 _RCA1_CA3_NODE_POP = "CA3_projections"
