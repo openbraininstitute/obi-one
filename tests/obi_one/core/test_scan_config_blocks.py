@@ -143,7 +143,6 @@ class TestBlockMappingMissingReferenceType:
 
             class Initialize(Block):
                 type: str = "Block"
-                pass
 
             initialize: Initialize
             blocks: dict[str, BlockUnion] = Field(
