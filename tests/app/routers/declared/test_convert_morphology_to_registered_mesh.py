@@ -50,7 +50,8 @@ def test_register_morphology_mesh_not_installed(client, mock_db_client):
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.NOT_IMPLEMENTED
-    assert response.json()["detail"] == "Meshing dependencies are not installed on this instance."
+    assert response.json()["message"] == "Meshing dependencies are not installed on this instance."
+    assert response.json()["error_code"] == ApiErrorCode.INTERNAL_ERROR
 
 
 def test_register_morphology_mesh_success(client, mock_db_client, mock_morphology_entity):
@@ -96,7 +97,8 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-    assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
+    assert response.json()["error_code"] == ApiErrorCode.INVALID_REQUEST
+    assert "has no SWC asset" in response.json()["message"]
 
 
 def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
@@ -108,7 +110,7 @@ def test_register_morphology_mesh_entity_not_found(client, mock_db_client):
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json()["detail"]["code"] == ApiErrorCode.NOT_FOUND
+    assert response.json()["error_code"] == ApiErrorCode.NOT_FOUND
 
 
 def test_register_morphology_mesh_conflict_existing_glb(
@@ -127,7 +129,7 @@ def test_register_morphology_mesh_conflict_existing_glb(
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.CONFLICT
-    assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
+    assert response.json()["error_code"] == ApiErrorCode.INVALID_REQUEST
 
 
 def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morphology_entity):
@@ -152,7 +154,7 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert response.json()["detail"]["code"] == ApiErrorCode.DATABASE_CLIENT_ERROR
+    assert response.json()["error_code"] == ApiErrorCode.DATABASE_CLIENT_ERROR
 
 
 def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_morphology_entity):
@@ -170,4 +172,4 @@ def test_register_morphology_mesh_download_fails(client, mock_db_client, mock_mo
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert response.json()["detail"]["code"] == ApiErrorCode.INTERNAL_ERROR
+    assert response.json()["error_code"] == ApiErrorCode.DATABASE_CLIENT_ERROR
