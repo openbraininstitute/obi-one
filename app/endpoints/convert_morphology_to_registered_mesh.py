@@ -8,12 +8,12 @@ import entitysdk.client
 import entitysdk.exception
 from entitysdk.models.asset import Asset
 from entitysdk.models.cell_morphology import CellMorphology
-from entitysdk.types import ContentType, AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.errors import ApiErrorCode, ApiError
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 
 try:
@@ -28,7 +28,6 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 def _mesh_swc(swc_path: str, output_directory: str) -> str:
-    """Convert a SWC file to an annotated GLB mesh and return the output file path."""
     morphology = NeuronMorphology(
         swc_path,
         smooth_sections=True,
@@ -91,7 +90,18 @@ def _upload_glb_asset(
             error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             details=str(err),
-        )
+        ) from err
+
+
+def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
+    """Helper to validate mesh file existence and size to satisfy TRY301."""
+    if not glb_path.exists():
+        msg = f"Meshing produced no output at {glb_path_str}"
+        raise RuntimeError(msg)
+
+    if glb_path.stat().st_size == 0:
+        msg = f"Meshing produced blank output at {glb_path_str}"
+        raise RuntimeError(msg)
 
 
 def _mesh_and_register(
@@ -108,13 +118,7 @@ def _mesh_and_register(
             glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
             glb_path = Path(glb_path_str)
 
-            if not glb_path.exists():
-                msg = f"Meshing produced no output at {glb_path_str}"
-                raise RuntimeError(msg)  # noqa: TRY301
-
-            if glb_path.stat().st_size == 0:
-                msg = f"Meshing produced blank output at {glb_path_str}"
-                raise RuntimeError(msg)  # noqa: TRY301
+            _validate_mesh_output(glb_path, glb_path_str)
 
             return _upload_glb_asset(db_client, cell_morphology_id, glb_path)
 
@@ -127,7 +131,7 @@ def _mesh_and_register(
             error_code=ApiErrorCode.INTERNAL_ERROR,
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             details=str(err),
-        )
+        ) from err
 
 
 @router.post(
@@ -146,7 +150,7 @@ def register_morphology_mesh(
     if not HAS_MESHING:
         raise ApiError(
             message="Meshing dependencies are not installed on this instance.",
-            error_code=ApiErrorCode.INTERNAL_ERROR,  # Or a more specific code
+            error_code=ApiErrorCode.INTERNAL_ERROR,
             http_status_code=HTTPStatus.NOT_IMPLEMENTED,
         )
     try:
@@ -157,7 +161,8 @@ def register_morphology_mesh(
             message=f"Cell morphology {cell_morphology_id} not found.",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
-        )
+        ) from err
+
     L.info(f"register_morphology_mesh: checking for existing GLB assets on {cell_morphology_id}")
     _check_no_existing_glb_assets(db_client, cell_morphology_id, morph)
 
@@ -186,7 +191,7 @@ def register_morphology_mesh(
             error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             details=str(err),
-        )
+        ) from err
 
     if not swc_bytes:
         raise ApiError(
