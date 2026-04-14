@@ -30,7 +30,7 @@ class ProcessParameters(BaseModel):
     segment_spines: bool
     neuron_voxel_size: float
     spines_voxel_size: float
-    add_raw_segmented_spines: bool
+    write_raw_spines: bool
 
 
 class SkeletonizationInputs(BaseModel):

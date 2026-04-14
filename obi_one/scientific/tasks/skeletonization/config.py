@@ -96,7 +96,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
 
-        add_raw_segmented_spines: bool = Field(
+        write_raw_spines: bool = Field(
             default=False,
             title="Include Full Resolution Spines",
             description=(

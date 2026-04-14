@@ -40,7 +40,7 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
             - segment_spines: Whether to segment dendritic spines.
             - neuron_voxel_size: Voxel size for neuron processing.
             - spines_voxel_size: Voxel size for spine processing.
-            - add_raw_segmented_spines: Whether to include raw segmented spines in the output.
+            - write_raw_spines: Whether to include raw segmented spines in the output.
         output_dir: Directory where skeletonization outputs will be written.
     """
     import ultraliser  # noqa: PLC0415
@@ -51,7 +51,7 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
         segment_spines=parameters.segment_spines,
         neuron_voxel_size=parameters.neuron_voxel_size,
         spines_voxel_size=parameters.spines_voxel_size,
-        add_raw_segmented_spines=parameters.add_raw_segmented_spines,
+        write_raw_spines=parameters.write_raw_spines,
     )
 
 
