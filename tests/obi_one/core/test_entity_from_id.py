@@ -26,7 +26,7 @@ class TestEntityFromIDProperties:
         mock_class = MagicMock()
 
         class ConcreteEntityFromID(EntityFromID):
-            type: str = "EntityFromID" 
+            type: str = "EntityFromID"
             entitysdk_class = mock_class
 
         obj = ConcreteEntityFromID(id_str="xyz")
