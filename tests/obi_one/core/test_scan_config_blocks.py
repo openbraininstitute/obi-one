@@ -142,6 +142,7 @@ class TestBlockMappingMissingReferenceType:
             description: ClassVar[str] = ""
 
             class Initialize(Block):
+                type: str = "Block"
                 pass
 
             initialize: Initialize
