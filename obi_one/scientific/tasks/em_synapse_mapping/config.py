@@ -108,20 +108,6 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
     )
 
 
-class NeuronEntry(OBIBaseModel):
-    """A single neuron entry for the multi-neuron synapse mapping task."""
-
-    neuron: CellMorphologyFromID | MEModelFromID = Field(
-        title="EM skeletonized morphology",
-        description=("A spiny neuron morphology from an EM dataset."),
-    )
-    pt_root_id: int | None = Field(
-        title="Neuron identifier within the EM dense reconstruction dataset.",
-        description="If not provided, it will be inferred from the provenance of the morphology.",
-        default=None,
-    )
-
-
 class EMSynapseMappingMultipleConfig(OBIBaseModel):
     """Config for multi-neuron synapse mapping."""
 
@@ -135,7 +121,7 @@ class EMSynapseMappingMultipleConfig(OBIBaseModel):
     class Initialize(Block):
         # We use a tuple instead of a list to avoid getting it taken as scan dimensions in the
         # scan config.
-        neurons: tuple[NeuronEntry, ...] = Field(
+        neurons: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(
             title="Neurons",
             description="Neurons to include in the multi-neuron circuit.",
             min_length=2,

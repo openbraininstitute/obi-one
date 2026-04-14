@@ -90,7 +90,7 @@ class EMMultiNeuronSynapseMappingTask(Task):
 
         for neuron_entry in init.neurons:
             resolved_neuron = resolve_neuron(
-                neuron_entry.neuron,
+                neuron_entry,
                 db_client,
                 out_root,
             )
