@@ -10,8 +10,8 @@ services:
       - APP_NAME
       - APP_VERSION
       - COMMIT_SHA
-      - UV_INDEX_OBI_CODEARTIFACT_USERNAME
-      - UV_INDEX_OBI_CODEARTIFACT_PASSWORD
+      secrets:
+      - CODEARTIFACT_TOKEN
       tags:
       - "${IMAGE_NAME}:${IMAGE_TAG_ALIAS}"
     ports:
@@ -24,3 +24,7 @@ services:
         target: /code/app
       - action: rebuild
         path: uv.lock
+
+secrets:
+  CODEARTIFACT_TOKEN:
+    environment: CODEARTIFACT_TOKEN
