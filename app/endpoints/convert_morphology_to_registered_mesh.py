@@ -8,12 +8,12 @@ import entitysdk.client
 import entitysdk.exception
 from entitysdk.models.asset import Asset
 from entitysdk.models.cell_morphology import CellMorphology
-from entitysdk.types import ContentType
-from fastapi import APIRouter, Depends, HTTPException
+from entitysdk.types import ContentType, AssetLabel
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.errors import ApiErrorCode
+from app.errors import ApiErrorCode, ApiError
 from app.logger import L
 
 try:
@@ -49,7 +49,7 @@ def _check_no_existing_glb_assets(
         iter(
             db_client.select_assets(
                 entity=morph,
-                selection={"content_type": "model/gltf-binary"},
+                selection={"content_type": ContentType.model_gltf_binary},
             )
         ),
         None,
@@ -59,15 +59,11 @@ def _check_no_existing_glb_assets(
             f"register_morphology_mesh: GLB asset already exists for {cell_morphology_id}: "
             f"{existing_glb_asset.id}"
         )
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": (
-                    f"Cell morphology {cell_morphology_id} already has a GLB asset: "
-                    f"{existing_glb_asset.id}."
-                ),
-            },
+        raise ApiError(
+            message=f"Cell morphology {cell_morphology_id} already has a GLB asset.",
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.CONFLICT,
+            details={"asset_id": existing_glb_asset.id}
         )
 
 
@@ -85,18 +81,17 @@ def _upload_glb_asset(
             entity_id=cell_morphology_id,
             entity_type=CellMorphology,
             file_path=glb_path,
-            file_content_type="model/gltf-binary",
-            asset_label="cell_surface_mesh",
+            file_content_type=ContentType.model_gltf_binary,
+            asset_label=AssetLabel.cell_surface_mesh,
         )
     except entitysdk.exception.EntitySDKError as err:
         L.error(f"Failed to upload GLB asset for {cell_morphology_id}: {err}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.DATABASE_CLIENT_ERROR,
-                "detail": "Failed to upload the GLB mesh asset.",
-            },
-        ) from err
+        raise ApiError(
+            message="Failed to upload the GLB mesh asset.",
+            error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            details=str(err)
+        )
 
 
 def _mesh_and_register(
@@ -123,17 +118,16 @@ def _mesh_and_register(
 
             return _upload_glb_asset(db_client, cell_morphology_id, glb_path)
 
-    except HTTPException:
+    except ApiError:
         raise
     except Exception as err:
         L.error(f"Meshing failed for {cell_morphology_id}: {err}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Meshing failed: {err}",
-            },
-        ) from err
+        raise ApiError(
+            message=f"Meshing failed for morphology {cell_morphology_id}.",
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            details=str(err)
+        )
 
 
 @router.post(
@@ -150,21 +144,20 @@ def register_morphology_mesh(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     if not HAS_MESHING:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_IMPLEMENTED,
-            detail="Meshing dependencies are not installed on this instance.",
+        raise ApiError(
+            message="Meshing dependencies are not installed on this instance.",
+            error_code=ApiErrorCode.INTERNAL_ERROR, # Or a more specific code
+            http_status_code=HTTPStatus.NOT_IMPLEMENTED
         )
     try:
         morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
     except entitysdk.exception.EntitySDKError as err:
         L.error(f"Failed to fetch entity {cell_morphology_id}: {err}")
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail={
-                "code": ApiErrorCode.NOT_FOUND,
-                "detail": f"Cell morphology {cell_morphology_id} not found.",
-            },
-        ) from err
+        raise ApiError(
+            message=f"Cell morphology {cell_morphology_id} not found.",
+            error_code=ApiErrorCode.NOT_FOUND,
+            http_status_code=HTTPStatus.NOT_FOUND
+        )
     L.info(f"register_morphology_mesh: checking for existing GLB assets on {cell_morphology_id}")
     _check_no_existing_glb_assets(db_client, cell_morphology_id, morph)
 
@@ -173,12 +166,10 @@ def register_morphology_mesh(
     ).one()
     if swc_asset is None:
         L.error(f"No SWC asset found on morphology {cell_morphology_id}")
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Cell morphology {cell_morphology_id} has no SWC asset.",
-            },
+        raise ApiError(
+            message=f"Cell morphology {cell_morphology_id} has no SWC asset.",
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY
         )
 
     L.info(f"register_morphology_mesh: downloading SWC asset {swc_asset.id}")
@@ -190,21 +181,18 @@ def register_morphology_mesh(
         )
     except entitysdk.exception.EntitySDKError as err:
         L.error(f"Failed to download SWC asset {swc_asset.id}: {err}")
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": "Failed to download the SWC asset.",
-            },
-        ) from err
+        raise ApiError(
+            message="Failed to download the SWC asset.",
+            error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            details=str(err)
+        )
 
     if not swc_bytes:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Downloaded SWC asset is empty.",
-            },
+        raise ApiError(
+            message="Downloaded SWC asset is empty.",
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY
         )
 
     asset = _mesh_and_register(db_client, cell_morphology_id, swc_bytes)
