@@ -213,7 +213,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_extraction: 1,
         TaskType.circuit_simulation: 10,
         TaskType.ion_channel_model_simulation_execution: 1,
-        TaskType.morphology_skeletonization: 1,
+        TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
     }
 
