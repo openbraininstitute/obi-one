@@ -217,6 +217,7 @@ def skeletonization_single_config(tmp_path, skeletonization_info, single_cell_me
         cell_mesh=EMCellMeshFromID(id_str=single_cell_mesh_id),
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
     return SkeletonizationSingleConfig(
         info=skeletonization_info,
@@ -248,6 +249,7 @@ def test_run_process_calls_ultraliser(tmp_path):
         segment_spines=True,
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
     output_dir = tmp_path / "out"
     output_dir.mkdir()
@@ -261,6 +263,7 @@ def test_run_process_calls_ultraliser(tmp_path):
         segment_spines=True,
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
 
 

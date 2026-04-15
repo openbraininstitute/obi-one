@@ -131,7 +131,7 @@ def _evaluate_accounting_parameters(
             )
         case TaskType.morphology_skeletonization:
             return AccountingParameters(
-                count=1,
+                count=800,
                 service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
             )
         case _:
