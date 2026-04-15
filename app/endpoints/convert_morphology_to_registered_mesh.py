@@ -139,7 +139,7 @@ def _mesh_and_register(
 )
 def register_morphology_mesh(
     cell_morphology_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: DatabaseClientDep
 ) -> dict:
     if not HAS_MESHING:
         raise ApiError(
