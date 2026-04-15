@@ -165,13 +165,13 @@ def register_morphology_mesh(
         swc_asset = db_client.select_assets(
             entity=morph, selection={"content_type": ContentType.application_swc}
         ).one()
-    except (entitysdk.exception.NotFoundError, entitysdk.exception.NoResultFoundError):
+    except (entitysdk.exception.NotFoundError, entitysdk.exception.NoResultFoundError) as err:
         L.error(f"No SWC asset found on morphology {cell_morphology_id}")
         raise ApiError(
             message=f"Cell morphology {cell_morphology_id} has no SWC asset.",
             error_code=ApiErrorCode.INVALID_REQUEST,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
+        ) from err
 
     L.info(f"register_morphology_mesh: downloading SWC asset {swc_asset.id}")
     try:
