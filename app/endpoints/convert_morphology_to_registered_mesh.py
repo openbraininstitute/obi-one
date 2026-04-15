@@ -2,7 +2,6 @@ import tempfile
 import uuid
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
@@ -12,7 +11,7 @@ from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
-from app.dependencies.entitysdk import get_client
+from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 
@@ -138,8 +137,8 @@ def _mesh_and_register(
     ),
 )
 def register_morphology_mesh(
-    cell_morphology_id: str,
-    db_client: DatabaseClientDep
+    cell_morphology_id: uuid.UUID,
+    db_client: DatabaseClientDep,
 ) -> dict:
     if not HAS_MESHING:
         raise ApiError(
