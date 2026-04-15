@@ -36,7 +36,7 @@ class TestEMSynapseMappingMultipleConfig:
 
     def test_min_length_validation(self, tmp_path):
         with pytest.raises(
-            ValidationError, match="ensure this value has at least 2 items|too_short"
+            ValidationError, match=r"ensure this value has at least 2 items|too_short"
         ):
             EMSynapseMappingMultipleConfig(
                 coordinate_output_root=tmp_path,
