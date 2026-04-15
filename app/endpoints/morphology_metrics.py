@@ -21,7 +21,6 @@ from obi_one.scientific.library.morphology_metrics import (
     get_morphology_metrics,
 )
 
-
 MORPHOLOGY_FORMAT_TO_CONTENT_TYPE = {
     "swc": "application/swc",
     "h5": "application/x-hdf5",
@@ -108,8 +107,6 @@ def compute_measurement_kinds(
         return _run_morphology_analysis(tmp.name)
 
 
-
-
 @router.get(
     "/neuron-morphology-metrics/{cell_morphology_id}/measurement-kinds",
     summary="Preview morphology measurement kinds without registering",
@@ -133,6 +130,7 @@ def preview_morphology_measurement_kinds(
         "measurement_kinds": measurement_kinds,
         "status": "success",
     }
+
 
 @router.post(
     "/neuron-morphology-metrics/{cell_morphology_id}/register",
