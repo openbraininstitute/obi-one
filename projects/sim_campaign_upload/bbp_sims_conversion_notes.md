@@ -12,7 +12,12 @@
     4) Remap output spikes to correct gids
     5) TODO: Remap input spikes of both files
 5. Download circuit without edges using [download/download_circuit_without_edges.ipynb](download/download_circuit_without_edges.ipynb)
-6. Register campaign using [register/register_sim_campaigns.ipynb](register/register_sim_campaigns.ipynb)
+6. Register campaign using [upload/register_sim_campaigns.ipynb](upload/register_sim_campaigns.ipynb)
 
 
+
+
+
+Spike sorting status
+- IIRC: Campaign downloaded 
 
