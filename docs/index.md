@@ -11,60 +11,87 @@ tags:
   - virtual-labs
 ---
 
-# OBI-one
+# OBI-ONE
 
-OBI-one is a standardized library of workflows for biophysically-detailed brain modeling.
+OBI-ONE is a standardized library of workflows for biophysically-detailed brain modeling.
 
 ## Features
 
-- **Database Integration**: Integration with a standardized cloud database for neuroscience and computational neuroscience through [entitysdk](https://github.com/openbraininstitute/entitysdk)
-- **Provenance**: Standardized provenance of workflows
-- **Parameter Scans**: Standardized parameter scans across different modeling workflows
-- **API Service**: Corresponding OpenAPI schema and service generated from Pydantic
+- **Database Integration**: Integration with a standardized cloud database for neuroscience and computational neuroscience through [**entitysdk**](https://github.com/openbraininstitute/entitysdk).
+- **Provenance**: Standardized provenance of workflows.
+- **Parameter Scans**: Standardized parameter scans across different modeling workflows.
+- **API Service**: Corresponding OpenAPI schema and service generated from Pydantic.
 
 ## Installation
 
-### Pre-installation
+### Pre-installation Requirements
 
 ```bash
 brew install uv open-mpi boost cmake
 ```
 
-### Virtual Environment
-
-Create a virtual environment (registered as a Jupyter kernel):
+### For Most Users (Default)
 
 ```bash
+# Install core + science dependencies
 make install
 ```
 
-## Architecture
+This installs everything needed for running tasks and data processing scripts.
+
+### For Development (Full Setup)
+
+```bash
+# Install all dependencies + dev tools
+make install-dev
+```
+
+This installs everything needed for development: all optional dependencies + dev tools (pytest, ruff, etc.).
+
+### For Specific Use Cases
+
+```bash
+# Service deployment
+make install-service
+
+# Notebook development
+make install-notebooks
+
+# Production build (all deps, no dev tools)
+make install-all
+```
+
+## Technical Overview / Glossary
 
 The package is split into **core/** and **scientific/** code.
 
-### Core Components
+**core/** defines the following key classes:
 
-- **[ScanConfig](obi_one/core/scan_config.py)**: Defines configurations for specific modeling use cases. A Form is composed of one or multiple Blocks, which define the parameterization of a use case.
-
-- **[Block](obi_one/core/block.py)**: Defines a component of a ScanConfig. Blocks support the specification of parameters which should be scanned over in multi-dimensional parameter scans.
-
-- **[Task](obi_one/core/task.py)**: Defines executable tasks that operate on configurations.
-
-- **[ScanGenerationTask](obi_one/core/scan_generation.py)**: Takes a single ScanConfig as input, an output path, and generates multi-dimensional parameter scans.
+- **ScanConfig**: Defines configurations for specific modeling use cases. A Form is composed of one or multiple Blocks, which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. Each Form has its own Initialize Block for specifying the base parameters of the use case.
+- **Block**: Defines a component of a ScanConfig. Blocks support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. When using the Form (in a Jupyter Notebook for example), any parameter which is specified as a list is used as a dimension of a multi-dimensional parameter scan when passed to a Scan object.
+- **SingleConfig**: A single configuration instance within a scan.
+- **Task**: Defines executable tasks that operate on configurations.
+- **ScanGenerationTask**: Takes a single ScanConfig as input, an output path and a string for specifying how output files should be stored. The `scan.execute()` function can then be called which generates the multi-dimensional scan.
 
 ## FastAPI Service
 
-Launch the FastAPI service with docs viewable at: http://127.0.0.1:8100/docs
+Launch the FastAPI service, with docs viewable at: http://127.0.0.1:8100/docs
 
 ```bash
+make install-service
 make run-local
 ```
 
 ## Examples
 
 Notebooks are available in the [examples/](../examples/) directory.
+Remember to install notebook dependencies with:
 
-## Documentation
+```bash
+make install-notebooks
+```
+
+## Further Documentation
 
 - [Single Cell Simulations](scs.md) - Learn about single cell simulation workflows
 - [Small Circuit Simulations](scircuit.md) - Learn about small circuit simulation workflows
