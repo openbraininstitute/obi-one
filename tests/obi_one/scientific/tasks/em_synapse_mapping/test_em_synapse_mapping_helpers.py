@@ -19,11 +19,6 @@ from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
 
 @pytest.fixture
-def mock_db_client():
-    return Mock()
-
-
-@pytest.fixture
 def synapses_df():
     return pd.DataFrame(
         {
