@@ -162,7 +162,8 @@ def register_morphology_mesh(
 
     try:
         swc_asset = db_client.select_assets(
-            entity=morph, selection={"content_type": ContentType.application_swc, "label": AssetLabel.morphology}
+            entity=morph,
+            selection={"content_type": ContentType.application_swc, "label": AssetLabel.morphology},
         ).one()
     except entitysdk.exception.IteratorResultError as err:
         L.error(f"No SWC asset found on morphology {cell_morphology_id}: {err}")
