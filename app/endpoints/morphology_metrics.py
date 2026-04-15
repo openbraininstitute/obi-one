@@ -81,6 +81,17 @@ def compute_measurement_kinds(
         entity_type=CellMorphology,
     )
 
+    morphology_format = morphology_format.strip().lower()
+
+    if morphology_format not in MORPHOLOGY_FORMAT_TO_CONTENT_TYPE:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=(
+                f"Unsupported morphology format: {morphology_format} "
+                f"(expected one of: {', '.join(MORPHOLOGY_FORMAT_TO_CONTENT_TYPE)})"
+            ),
+        )
+
     expected_content_type = MORPHOLOGY_FORMAT_TO_CONTENT_TYPE[morphology_format]
     asset = next(
         (a for a in morphology.assets if a.content_type == expected_content_type),
@@ -95,7 +106,8 @@ def compute_measurement_kinds(
             ),
         )
 
-    with tempfile.NamedTemporaryFile(suffix=f".{morphology_format}") as tmp:
+    suffix = "." + morphology_format
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
         tmp.write(
             db_client.download_content(
                 entity_id=morphology.id,
