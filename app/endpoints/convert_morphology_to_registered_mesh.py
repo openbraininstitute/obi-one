@@ -15,7 +15,6 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from tests.app.services.test_accounting import db_client
 
 try:
     from nmm.common import NEURON_COLORS
@@ -90,7 +89,6 @@ def _upload_glb_asset(
 
 
 def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
-    """Helper to validate mesh file existence and size to satisfy TRY301."""
     if not glb_path.exists():
         msg = f"Meshing produced no output at {glb_path_str}"
         raise RuntimeError(msg)
