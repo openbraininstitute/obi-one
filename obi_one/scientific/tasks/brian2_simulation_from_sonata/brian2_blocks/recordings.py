@@ -52,7 +52,7 @@ class Brian2SpikeRecording(Brian2ReportHandler):
 
     def apply(  # noqa: PLR6301
         self,
-        report_name: str,
+        report_name: str,  # noqa: ARG002
         report_config: dict,  # noqa: ARG002
         neuron_group: Any,
         node_population: str,  # noqa: ARG002
@@ -60,7 +60,9 @@ class Brian2SpikeRecording(Brian2ReportHandler):
         brian2_objects: list,
         b2: Any,
     ) -> Any:
-        sm = b2.SpikeMonitor(neuron_group, name=f"spikemonitor_{report_name}")
+        # Use Brian2's default SpikeMonitor name so the object name matches the
+        # reference run_trial flow (which also uses the default).
+        sm = b2.SpikeMonitor(neuron_group)
         brian2_objects.append(sm)
         return sm
 

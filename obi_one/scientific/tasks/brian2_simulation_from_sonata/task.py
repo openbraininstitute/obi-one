@@ -69,6 +69,7 @@ class Brian2SimulationFromSonataTask(Task):
     _brian2_objects: list = PrivateAttr(default_factory=list)
     _recording_devices: dict[str, Any] = PrivateAttr(default_factory=dict)
     _spike_monitor: Any = PrivateAttr(default=None)
+    _v_0_applied_from_dynamics_params: bool = PrivateAttr(default=False)
 
     def execute(
         self,
@@ -93,13 +94,23 @@ class Brian2SimulationFromSonataTask(Task):
 
         self._load_configs(sim_config_path)
 
+        # Fully isolate this simulation from any previous Brian2 state in the
+        # same Python process (e.g. prior scan coordinates or a reference
+        # run_trial run in the same notebook). `start_scope()` alone only
+        # resets the magic namespace; `device.reinit + activate` also resets
+        # the runtime device state so the seeded RNG stream is reproducible.
+        b2.device.reinit()
+        b2.device.activate()
         b2.start_scope()
         self._configure_brian2(b2)
 
         self._build_network(b2)
         self._apply_conditions(b2)
-        self._apply_inputs(b2, sim_config_path.parent)
+        # Create recording devices before stimuli so the object-creation order
+        # matches the reference Drosophila_brain_model.create_model(...)/poi(...)
+        # flow and Brian2's internal RNG bookkeeping stays aligned.
         self._apply_reports(b2)
+        self._apply_inputs(b2, sim_config_path.parent)
         self._warn_connection_overrides()
         self._warn_modifications()
 
@@ -286,6 +297,7 @@ class Brian2SimulationFromSonataTask(Task):
 
         if "v_0" in node_data["per_neuron_params"]:
             neu.v = node_data["per_neuron_params"]["v_0"] * b2.volt
+            self._v_0_applied_from_dynamics_params = True
         if "g" in full_eqs:
             neu.g = 0 * b2.volt
 
@@ -356,10 +368,25 @@ class Brian2SimulationFromSonataTask(Task):
     # ----- config-driven pieces ---------------------------------------------
 
     def _apply_conditions(self, b2: Any) -> None:
+        """Apply SONATA ``conditions`` to the Brian2 network.
+
+        For Brian2 point-neuron circuits the per-neuron ``v_0`` in
+        ``dynamics_params`` is authoritative, so a global ``conditions.v_init``
+        must not override it — a redundant assignment would desync the initial
+        state from the reference simulator and perturb Brian2's RNG bookkeeping.
+        """
         conditions = self._sonata_config.get("conditions", {})
         v_init_mv = conditions.get("v_init")
-        if v_init_mv is not None and self._neuron_group is not None:
-            self._neuron_group.v = float(v_init_mv) * b2.mV
+        if v_init_mv is None or self._neuron_group is None:
+            return
+        if self._v_0_applied_from_dynamics_params:
+            L.info(
+                "Skipping conditions.v_init=%s mV: per-neuron v_0 from dynamics_params "
+                "already initialized neu.v",
+                v_init_mv,
+            )
+            return
+        self._neuron_group.v = float(v_init_mv) * b2.mV
 
     def _apply_inputs(self, b2: Any, config_dir: Path) -> None:
         inputs = self._sonata_config.get("inputs", {})
