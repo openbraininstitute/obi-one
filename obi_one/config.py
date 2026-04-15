@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     circuit_extraction: CircuitExtractionSettings = CircuitExtractionSettings()
 
-    cave_client_config = CaveClientConfig()
+    cave_client_config: CaveClientConfig = CaveClientConfig()
 
 
 settings = Settings()
