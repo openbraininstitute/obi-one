@@ -59,8 +59,11 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
     new_asset_id = str(uuid.uuid4())
 
     mock_db_client.get_entity.return_value = mock_morphology_entity
-    mock_db_client.select_assets.return_value.one.return_value = mock_morphology_entity.assets[0]
-    mock_db_client.select_assets.return_value.__iter__.return_value = iter([])
+    
+    mock_selection = mock_db_client.select_assets.return_value
+    mock_selection.first.return_value = None
+    mock_selection.one.return_value = mock_morphology_entity.assets[0]
+    
     mock_db_client.download_content.return_value = b"mock swc data"
 
     uploaded_asset = MagicMock()
