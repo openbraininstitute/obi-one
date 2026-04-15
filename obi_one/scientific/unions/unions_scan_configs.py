@@ -11,6 +11,9 @@ from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
     IonChannelModelSimulationScanConfig,
@@ -51,6 +54,7 @@ ScanConfigsUnion = Annotated[
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
+    | Brian2CircuitSimulationScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

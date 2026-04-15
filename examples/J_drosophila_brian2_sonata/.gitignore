@@ -1,4 +1,5 @@
 Drosophila_brain_model/
 sonata_circuit/
+obi_simulation_output/
 output/
 *.executed.ipynb
