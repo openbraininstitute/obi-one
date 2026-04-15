@@ -5,7 +5,20 @@ from uuid import uuid4
 
 import pytest
 
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_neuron
+
+
+def _mock_morphio_chain():
+    return Mock(
+        to_morphio=Mock(return_value=Mock(as_mutable=Mock(return_value=Mock(write=Mock()))))
+    )
+
+
+@pytest.fixture
+def mock_db_client():
+    return Mock()
 
 
 @pytest.fixture
@@ -31,51 +44,19 @@ class TestResolveNeuron:
     def test_resolve_morphology(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):
-        morph_ref = Mock()
+        morph_ref = Mock(spec=CellMorphologyFromID)
         morph_ref.entity.return_value = morph_entity
+        morph_ref.write_spiny_neuron_h5 = Mock()
+        morph_ref.neurom_morphology.return_value = _mock_morphio_chain()
+        morph_ref.source_mesh_entity.return_value = source_mesh
 
         mock_db_client.get_entity.return_value = source_dataset
 
-        with (
-            patch.object(morph_ref, "write_spiny_neuron_h5"),
-            patch.object(
-                morph_ref,
-                "neurom_morphology",
-                return_value=Mock(
-                    to_morphio=Mock(
-                        return_value=Mock(as_mutable=Mock(return_value=Mock(write=Mock())))
-                    )
-                ),
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
-                return_value="spiny_mock",
-            ),
-            patch.object(morph_ref, "source_mesh_entity", return_value=source_mesh),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.isinstance",
-                side_effect=lambda obj, cls: False,
-            ) if False else patch.object(type(morph_ref), "__instancecheck__", return_value=False),
+        with patch(
+            "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
+            return_value="spiny_mock",
         ):
-            # We need to make isinstance(neuron_ref, MEModelFromID) return False
-            # The simplest way is to use a Mock that isn't an MEModelFromID
-            from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-
-            morph_ref_real = Mock(spec=CellMorphologyFromID)
-            morph_ref_real.entity.return_value = morph_entity
-            morph_ref_real.write_spiny_neuron_h5 = Mock()
-            morph_ref_real.neurom_morphology.return_value = Mock(
-                to_morphio=Mock(
-                    return_value=Mock(as_mutable=Mock(return_value=Mock(write=Mock())))
-                )
-            )
-            morph_ref_real.source_mesh_entity.return_value = source_mesh
-
-            with patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
-                return_value="spiny_mock",
-            ):
-                result = resolve_neuron(morph_ref_real, mock_db_client, tmp_path)
+            result = resolve_neuron(morph_ref, mock_db_client, tmp_path)
 
         assert result.pt_root_id == 42
         assert result.morph_entity is morph_entity
@@ -83,13 +64,11 @@ class TestResolveNeuron:
         assert result.spiny_morph == "spiny_mock"
         assert result.cave_version == 3
         assert result.fn_morph_h5 == Path("morphologies") / (morph_entity.name + ".h5")
-        assert result.fn_morph_swc == Path("morphologies/morphology") / (
-            morph_entity.name + ".swc"
-        )
+        assert result.fn_morph_swc == Path("morphologies/morphology") / (morph_entity.name + ".swc")
 
-    def test_resolve_memodel(self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset):
-        from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-
+    def test_resolve_memodel(
+        self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
+    ):
         me_model_entity = SimpleNamespace(
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
@@ -118,17 +97,13 @@ class TestResolveNeuron:
             ),
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.CellMorphologyFromID"
-            ) as MockCMFromID,
+            ) as mock_cm_from_id,
             patch("shutil.move"),
             patch("shutil.rmtree"),
         ):
-            mock_cm = MockCMFromID.return_value
+            mock_cm = mock_cm_from_id.return_value
             mock_cm.write_spiny_neuron_h5 = Mock()
-            mock_cm.neurom_morphology.return_value = Mock(
-                to_morphio=Mock(
-                    return_value=Mock(as_mutable=Mock(return_value=Mock(write=Mock())))
-                )
-            )
+            mock_cm.neurom_morphology.return_value = _mock_morphio_chain()
             mock_cm.source_mesh_entity.return_value = source_mesh
 
             result = resolve_neuron(memodel_ref, mock_db_client, tmp_path)

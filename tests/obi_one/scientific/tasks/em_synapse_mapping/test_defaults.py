@@ -1,3 +1,5 @@
+import pytest
+
 from obi_one.scientific.library.map_em_synapses._defaults import sonata_config_for
 
 
@@ -10,7 +12,7 @@ class TestSonataConfigFor:
             biophysical_population="biophysical_neuron",
         )
 
-        assert cfg["version"] == 2.3
+        assert cfg["version"] == pytest.approx(2.3)
         assert len(cfg["networks"]["edges"]) == 1
         assert "afferent_synapses" in cfg["networks"]["edges"][0]["populations"]
         assert len(cfg["networks"]["nodes"]) == 1

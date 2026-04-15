@@ -1,6 +1,5 @@
-from pathlib import Path
-
 import pytest
+from pydantic import ValidationError
 
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -36,7 +35,9 @@ class TestEMSynapseMappingMultipleConfig:
         assert isinstance(cfg.initialize.neurons[1], MEModelFromID)
 
     def test_min_length_validation(self, tmp_path):
-        with pytest.raises(Exception):
+        with pytest.raises(
+            ValidationError, match="ensure this value has at least 2 items|too_short"
+        ):
             EMSynapseMappingMultipleConfig(
                 coordinate_output_root=tmp_path,
                 initialize=EMSynapseMappingMultipleConfig.Initialize(
