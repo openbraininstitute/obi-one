@@ -67,6 +67,7 @@ class SkeletonizationTask(Task):
                 neuron_voxel_size=self.config.initialize.neuron_voxel_size,
                 spines_voxel_size=self.config.initialize.spines_voxel_size,
                 segment_spines=True,
+                write_raw_spines=self.config.initialize.write_raw_spines,
             ),
         )
 
