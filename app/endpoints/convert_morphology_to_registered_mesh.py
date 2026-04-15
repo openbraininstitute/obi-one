@@ -15,6 +15,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from tests.app.services.test_accounting import db_client
 
 try:
     from nmm.common import NEURON_COLORS
@@ -165,8 +166,8 @@ def register_morphology_mesh(
         swc_asset = db_client.select_assets(
             entity=morph, selection={"content_type": ContentType.application_swc}
         ).one()
-    except (entitysdk.exception.NotFoundError, entitysdk.exception.NoResultFoundError) as err:
-        L.error(f"No SWC asset found on morphology {cell_morphology_id}")
+    except entitysdk.exception.IteratorResultError as err:
+        L.error(f"No SWC asset found on morphology {cell_morphology_id}: {err}")
         raise ApiError(
             message=f"Cell morphology {cell_morphology_id} has no SWC asset.",
             error_code=ApiErrorCode.INVALID_REQUEST,

@@ -91,8 +91,8 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     morph = MagicMock(spec=CellMorphology)
     mock_db_client.get_entity.return_value = morph
 
-    mock_db_client.select_assets.return_value.one.side_effect = entitysdk.exception.NotFoundError(
-        "No asset found"
+    mock_db_client.select_assets.return_value.one.side_effect = (
+        entitysdk.exception.IteratorResultError("No asset found")
     )
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
