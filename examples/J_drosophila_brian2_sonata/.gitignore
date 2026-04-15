@@ -1,0 +1,4 @@
+Drosophila_brain_model/
+sonata_circuit/
+output/
+*.executed.ipynb
