@@ -44,15 +44,10 @@ def _check_no_existing_glb_assets(
     cell_morphology_id: str,
     morph: CellMorphology,
 ) -> None:
-    existing_glb_asset = next(
-        iter(
-            db_client.select_assets(
-                entity=morph,
-                selection={"content_type": ContentType.model_gltf_binary},
-            )
-        ),
-        None,
-    )
+    existing_glb_asset = db_client.select_assets(
+        entity=morph,
+        selection={"content_type": ContentType.model_gltf_binary},
+    ).first()
     if existing_glb_asset is not None:
         L.error(
             f"register_morphology_mesh: GLB asset already exists for {cell_morphology_id}: "
