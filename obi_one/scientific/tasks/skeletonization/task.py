@@ -3,7 +3,7 @@ from pathlib import Path
 
 import entitysdk
 from entitysdk import Client, models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
@@ -41,7 +41,10 @@ class SkeletonizationTask(Task):
         )
         em_cell_mesh_asset = db_client.fetch_assets(
             entity_or_id=em_cell_mesh,
-            selection={"label": AssetLabel.cell_surface_mesh},
+            selection={
+                "label": AssetLabel.cell_surface_mesh,
+                "content_type": ContentType.model_gltf_binary,
+            },
             output_path=output_dir,
         ).one()
         # fetch the full dataset from the nested Entity
