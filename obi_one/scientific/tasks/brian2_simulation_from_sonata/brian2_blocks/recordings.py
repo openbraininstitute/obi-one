@@ -96,8 +96,5 @@ def get_report_handler(report_config: dict) -> Brian2ReportHandler:
     if report_type == "compartment":
         return Brian2IonChannelVariableRecording()
 
-    msg = (
-        f"Unknown SONATA report type '{report_type}' with "
-        f"variable_name '{variable_name}'."
-    )
+    msg = f"Unknown SONATA report type '{report_type}' with variable_name '{variable_name}'."
     raise Brian2FeatureNotSupportedError(msg)

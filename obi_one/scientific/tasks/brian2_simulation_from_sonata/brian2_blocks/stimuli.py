@@ -218,15 +218,11 @@ class Brian2ConstantCurrentClamp(Brian2InputHandler):
         return None
 
 
-_UNSUPPORTED_MESSAGE_TMPL = (
-    "Input '{name}': {description} is not supported in Brian2 yet. {reason}"
-)
+_UNSUPPORTED_MESSAGE_TMPL = "Input '{name}': {description} is not supported in Brian2 yet. {reason}"
 
 
 def _raise_unsupported(input_name: str, description: str, reason: str) -> Any:
-    msg = _UNSUPPORTED_MESSAGE_TMPL.format(
-        name=input_name, description=description, reason=reason
-    )
+    msg = _UNSUPPORTED_MESSAGE_TMPL.format(name=input_name, description=description, reason=reason)
     raise Brian2FeatureNotSupportedError(msg)
 
 
