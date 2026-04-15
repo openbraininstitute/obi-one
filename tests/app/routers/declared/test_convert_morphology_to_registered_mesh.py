@@ -92,7 +92,7 @@ def test_register_morphology_mesh_no_swc_asset(client, mock_db_client):
     mock_db_client.get_entity.return_value = morph
 
     mock_db_client.select_assets.return_value.one.side_effect = (
-        entitysdk.exception.NoResultFoundError("No asset found")
+        entitysdk.exception.NotFoundError("No asset found")
     )
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
@@ -125,7 +125,8 @@ def test_register_morphology_mesh_conflict_existing_glb(
     glb_asset.id = "existing_glb_id"
 
     mock_db_client.get_entity.return_value = mock_morphology_entity
-    mock_db_client.select_assets.return_value.__iter__.return_value = iter([glb_asset])
+
+    mock_db_client.select_assets.return_value.first.return_value = glb_asset
 
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
