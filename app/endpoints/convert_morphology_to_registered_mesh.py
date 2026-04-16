@@ -45,7 +45,10 @@ def _check_no_existing_glb_assets(
 ) -> None:
     existing_glb_asset = db_client.select_assets(
         entity=morph,
-        selection={"content_type": ContentType.model_gltf_binary, "label": AssetLabel.cell_surface_mesh},
+        selection={
+            "content_type": ContentType.model_gltf_binary,
+            "label": AssetLabel.cell_surface_mesh,
+        },
     ).first()
     if existing_glb_asset is not None:
         L.error(
