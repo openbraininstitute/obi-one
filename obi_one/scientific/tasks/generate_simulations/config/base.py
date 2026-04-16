@@ -176,7 +176,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
         _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
-            default="soma"
+            default="AIS"
         )
         _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
             default=_SIMULATION_TIMESTEP_MILLISECONDS
