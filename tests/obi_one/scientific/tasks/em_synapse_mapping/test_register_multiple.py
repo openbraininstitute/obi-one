@@ -61,7 +61,7 @@ class TestRegisterOutputMultiple:
         db_client.upload_directory.assert_called_once()
         db_client.upload_file.assert_called_once()
 
-    def test_skip_upload_when_compressed_too_large(self, tmp_path):
+    def test_upload_large_compressed_with_multipart(self, tmp_path):
         db_client = Mock()
         circuit = SimpleNamespace(id=uuid4())
         db_client.register_entity.return_value = circuit
@@ -95,7 +95,9 @@ class TestRegisterOutputMultiple:
                 compressed_path=compressed,
             )
 
-        db_client.upload_file.assert_not_called()
+        db_client.upload_file.assert_called_once()
+        call_kwargs = db_client.upload_file.call_args.kwargs
+        assert call_kwargs["transfer_config"] is not None
 
     def test_deduplicates_notices(self, tmp_path):
         db_client = Mock()
