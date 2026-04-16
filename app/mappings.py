@@ -3,8 +3,6 @@ from pathlib import Path
 from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
-from obi_one.config import settings as obi_settings
-
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
