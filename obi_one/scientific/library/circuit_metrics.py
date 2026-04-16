@@ -213,6 +213,10 @@ def names_from_node_sets_file(
     return list(contents.keys())
 
 
+def dynamics_params_from_population(pop: NodePopulation) -> list[str]:
+    return list(pop.dynamics_attribute_names)
+
+
 def unique_node_property_values_from_population(
     pop: NodePopulation,
     max_unique_values: int,
@@ -332,6 +336,7 @@ def properties_from_nodes_files(
         "property_list",
         "property_unique_values",
         "property_value_counts",
+        "dynamics_param_names",
     ]
     properties_dict = {}
     config = circ.to_libsonata
@@ -353,6 +358,9 @@ def properties_from_nodes_files(
                 )
                 properties_dict[nodepop]["property_value_counts"] = (
                     number_of_nodes_per_unique_value_from_population(pop_obj, max_uv)
+                )
+                properties_dict[nodepop]["dynamics_param_names"] = (
+                    dynamics_params_from_population(pop_obj)
                 )
                 if lod > CircuitStatsLevelOfDetail.basic:
                     properties_dict[nodepop]["node_location_info"] = (
@@ -411,6 +419,7 @@ class CircuitMetricsNodePopulation(BaseModel):
     property_names: list[str]
     property_unique_values: dict[str, list[str]]
     property_value_counts: dict[str, dict[str, int]]
+    dynamics_param_names: list[str]
     node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
 
 
@@ -540,6 +549,7 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
+                dynamics_param_names=node_props[nodepop]["dynamics_param_names"],
                 # Use .get() because node_location_info is only added when level_of_detail > basic
                 node_location_info=node_props[nodepop].get("node_location_info"),
             )
@@ -555,6 +565,7 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
+                dynamics_param_names=node_props[nodepop]["dynamics_param_names"],
                 # Use .get() because node_location_info is only added when level_of_detail > basic
                 node_location_info=node_props[nodepop].get("node_location_info"),
             )
