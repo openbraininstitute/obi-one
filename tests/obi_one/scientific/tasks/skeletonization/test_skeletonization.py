@@ -217,6 +217,7 @@ def skeletonization_single_config(tmp_path, skeletonization_info, single_cell_me
         cell_mesh=EMCellMeshFromID(id_str=single_cell_mesh_id),
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
     return SkeletonizationSingleConfig(
         info=skeletonization_info,
@@ -248,6 +249,7 @@ def test_run_process_calls_ultraliser(tmp_path):
         segment_spines=True,
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
     output_dir = tmp_path / "out"
     output_dir.mkdir()
@@ -261,6 +263,7 @@ def test_run_process_calls_ultraliser(tmp_path):
         segment_spines=True,
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
+        write_raw_spines=False,
     )
 
 
@@ -347,7 +350,7 @@ def test_register_output_resource_creates_protocol_when_missing(
         json={"data": [license_json], "pagination": PAGINATION},
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&page=1",
+        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&order_by=%2Bcreation_date&page=1",
         method="GET",
         json={"data": [], "pagination": PAGINATION},
     )
@@ -416,7 +419,7 @@ def test_register_output_resource_reuses_existing_protocol(
         json={"data": [license_json], "pagination": PAGINATION},
     )
     httpx_mock.add_response(
-        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&page=1",
+        url=f"{API_URL}/cell-morphology-protocol?name=Ultraliser+skeletonization&order_by=%2Bcreation_date&page=1",
         method="GET",
         json={"data": [protocol_json], "pagination": PAGINATION},
     )

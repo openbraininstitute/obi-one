@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 
 from pydantic import Field, NonNegativeFloat
 
@@ -23,3 +24,22 @@ class Timestamps(Block, ABC):
     @abstractmethod
     def _resolve_timestamps(self) -> list:
         pass
+
+    def enumerate_non_negative_offset_timestamps(
+        self, timestamp_offset: float
+    ) -> Iterator[tuple[int, NonNegativeFloat]]:
+        """Enumerate timestamp index and offset timestamps.
+
+        Yields:
+            Tuples of (timestamp_index, offset_timestamp)
+        """
+        for t_ind, timestamp in enumerate(self.timestamps()):
+            offset_timestamp = timestamp + timestamp_offset
+            if offset_timestamp < 0:
+                msg = (
+                    f"Invalid stimulus configuration: timestamp ({timestamp} ms) + "
+                    f"timestamp_offset ({timestamp_offset} ms) must be >= 0."
+                )
+                raise ValueError(msg)
+
+            yield t_ind, offset_timestamp
