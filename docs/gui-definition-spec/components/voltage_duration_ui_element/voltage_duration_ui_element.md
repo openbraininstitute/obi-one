@@ -25,7 +25,6 @@ class DurationVoltageCombination(ComplexVariableHolder):
         title="Voltage for each level",
         description="The voltage for each level, given in millivolts (mV).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
             "unit": "mV",
         },
     )
@@ -34,7 +33,6 @@ class DurationVoltageCombination(ComplexVariableHolder):
         title="Duration for each level",
         description="The duration for each level, given in milliseconds (ms).",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
             "unit": "ms",
         },
     )
