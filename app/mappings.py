@@ -106,8 +106,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
         resources=MachineResources(
             cores=1,
-            memory=2,
-            timelimit="00:10",
+            memory=8,
+            timelimit="00:30",
             compute_cell="local",
         ),
     ),
