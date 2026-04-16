@@ -1,15 +1,13 @@
 *.egg-info
 **/__pycache__/**
 **/build/*
-coverage.xml
-.coverage
 .DS_Store
 .idea
 **/analysis_output
 venv/
+.venv/
 temp/
 logs/
-.coverage*
 */arm64/
 **/arm64/
 examples/new_node_sets.json
@@ -19,5 +17,6 @@ dist/*
 pip-audit-output.json
 *~
 examples/data/blueetl_data/output/
-requirements.txt
+/requirements.txt
 pip-audit-output.json
+coverage.xml

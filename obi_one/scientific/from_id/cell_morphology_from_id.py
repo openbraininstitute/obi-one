@@ -9,8 +9,10 @@ import morphio
 import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphology
+from entitysdk.models import CellMorphology, EMCellMesh, SkeletonizationExecution
+from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.models.entity import Entity
+from entitysdk.types import CellMorphologyProtocolDesign
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
@@ -65,6 +67,49 @@ class CellMorphologyFromID(EntityFromID):
                 io.StringIO(self.swc_file_content(db_client)), reader="swc"
             )
         return self._neurom_morphology
+
+    def has_source_mesh(self, db_client: entitysdk.client.Client = None) -> bool:
+        """Does the cell morphology originate from an EMCellMesh?
+
+        Test if there is a Skeletonization Task associated with the
+        CellMorphology and an EMCellMesh is available from that task.
+        """
+        morph_entity = self.entity(db_client=db_client)
+        if not isinstance(morph_entity, CellMorphology):
+            return False
+        cm_protocol = morph_entity.cell_morphology_protocol
+        if cm_protocol is None:
+            return False
+        if not isinstance(cm_protocol, DigitalReconstructionCellMorphologyProtocol):
+            return False
+        if cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy:
+            return False
+
+        activity = db_client.search_entity(
+            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+        ).one_or_none()
+        if activity is None:
+            return False
+
+        return (len(activity.used) == 1) and activity.used[0].type == "em_cell_mesh"
+
+    def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:
+        """EMCellMesh entity that the morphology originates from.
+
+        For CellMorphologies that were created from EMCellMeshes via skeletonization,
+        this returns the EMCellMesh entity it originates from. Raises EntitySDKError
+        for CellMorphologies that were created by other methods.
+        """
+        if not self.has_source_mesh(db_client=db_client):
+            err_str = "This CellMorphology does not seem to originate from an EMCellMesh!"
+            raise EntitySDKError(err_str)
+
+        morph_entity = self.entity(db_client=db_client)
+        activity = db_client.search_entity(
+            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+        ).one_or_none()
+        source_mesh = db_client.get_entity(entity_id=activity.used[0].id, entity_type=EMCellMesh)
+        return source_mesh
 
     def write_spiny_neuron_h5(
         self, path_to: Path | str, db_client: entitysdk.client.Client = None

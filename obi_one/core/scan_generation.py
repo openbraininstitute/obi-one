@@ -15,6 +15,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
@@ -174,8 +175,7 @@ class ScanGenerationTask(Task, abc.ABC):
             inheriting from OBIBaseModel for future deserialization
         """
         # Important to use model_dump_json() instead of model_dump()
-        # so OBIBaseModel's custom encoder is used to seri
-        # PosixPaths as strings
+        # (so Path objects are serialized as strings)
         model_dump = self.model_dump_json()
 
         # Now load it back into an ordered dict to do some additional modifications
@@ -212,7 +212,7 @@ class ScanGenerationTask(Task, abc.ABC):
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / "obi_one_scan.json")
+        self.serialize(self.output_root / _SCAN_CONFIG_FILENAME)
 
         # Create the campaign entity
         campaign = None
@@ -234,7 +234,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / "obi_one_coordinate.json"
+                single_coord_config.coordinate_output_root / _COORDINATE_CONFIG_FILENAME
             )
 
             # Create the single coordinate entity
@@ -260,8 +260,12 @@ class GridScanGenerationTask(ScanGenerationTask):
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 single_values = [
-                    SingleValueScanParam(location_list=multi_value.location_list, value=value)
-                    for value in multi_value.values
+                    SingleValueScanParam(
+                        location_list=multi_value.location_list,
+                        value=value,
+                        index_in_scan_dimension=index,
+                    )
+                    for index, value in enumerate(multi_value.values)
                 ]
 
                 single_values_by_multi_value.append(single_values)
@@ -290,7 +294,7 @@ class GridScanGenerationTask(ScanGenerationTask):
 class CoupledScanGenerationTask(ScanGenerationTask):
     """Description."""
 
-    def coordinate_parameters(self, *, display: bool = False) -> list:
+    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
         """Description."""
         previous_len = -1
 
@@ -313,6 +317,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
                     SingleValueScanParam(
                         location_list=multi_value.location_list,
                         value=multi_value.values[coord_i],
+                        index_in_scan_dimension=coord_i,
                     )
                     for multi_value in multi_value_parameters
                 ]

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 import pytest
+from entitysdk import ProjectContext
 from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.testclient import TestClient
 
@@ -135,6 +136,7 @@ def client_user_1(client_no_auth):
     return ClientProxy(client_no_auth, headers=AUTH_HEADER_USER_1 | PROJECT_HEADERS)
 
 
+@pytest.fixture
 def client_user_2(client_no_auth):
     """Return a web client instance, authenticated as regular user with different project-id."""
     return ClientProxy(client_no_auth, headers=AUTH_HEADER_USER_2 | UNRELATED_PROJECT_HEADERS)
@@ -150,3 +152,10 @@ def client_no_project(client_no_auth):
 def client(client_user_1):
     """Alias for client_user_1."""
     return client_user_1
+
+
+@pytest.fixture
+def project_context(user_context_user_1):
+    return ProjectContext(
+        virtual_lab_id=user_context_user_1.virtual_lab_id, project_id=user_context_user_1.project_id
+    )

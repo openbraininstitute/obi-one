@@ -11,19 +11,14 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
 
-L = logging.getLogger("obi-one")
-_NBS1_VPM_NODE_POP = "VPM"
-_NBS1_POM_NODE_POP = "POm"
-_RCA1_CA3_NODE_POP = "CA3_projections"
-
-_ALL_NODE_SET = "All"
-_EXCITATORY_NODE_SET = "Excitatory"
-_INHIBITORY_NODE_SET = "Inhibitory"
+L = logging.getLogger(__name__)
 
 _MAX_PERCENT = 100.0
 
@@ -47,11 +42,19 @@ class AbstractNeuronSet(Block, abc.ABC):
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units="%",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
+        },
     )
 
     sample_seed: int | list[int] = Field(
-        default=1, title="Sample Seed", description="Seed for random sampling."
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
     @abc.abstractmethod
@@ -67,13 +70,18 @@ class AbstractNeuronSet(Block, abc.ABC):
                 return
             msg = "Must specify a node population name!"
             raise ValueError(msg)
-        if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
-            msg = f"Node population '{population}' not found in circuit '{circuit}'!"
+        if population not in (
+            populations := Circuit.get_node_population_names(circuit.sonata_circuit)
+        ):
+            msg = (
+                f"Node population '{population}' not found in circuit '{circuit.name}'. "
+                f"Available node populations: {', '.join(populations)}"
+            )
             raise ValueError(msg)
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> None:
+    ) -> dict:
         nset_def = self.get_node_set_definition(
             circuit, circuit.default_population_name, force_resolve_ids=True
         )
@@ -81,6 +89,8 @@ class AbstractNeuronSet(Block, abc.ABC):
         add_node_set_to_circuit(
             sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
         )
+
+        return nset_def
 
     def get_population(self, population: str | None = None) -> str:
         return self._population(population)
@@ -148,6 +158,9 @@ class AbstractNeuronSet(Block, abc.ABC):
     def population_type(self, circuit: Circuit, population: str | None = None) -> str:
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
+
+    def is_biophysical(self, circuit: Circuit, population: str | None = None) -> bool:
+        return self.population_type(circuit, population) == "biophysical"
 
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:

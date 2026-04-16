@@ -7,7 +7,7 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
     pass
@@ -27,7 +27,10 @@ class CombinedNeuronSet(NeuronSet):
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
         for _nset in self.node_sets:
             if _nset not in circuit.node_sets:
-                msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
+                msg = (
+                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
+                    f"Available node sets: {', '.join(circuit.node_sets)}"
+                )
                 raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:

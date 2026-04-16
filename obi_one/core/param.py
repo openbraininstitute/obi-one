@@ -31,3 +31,7 @@ class MultiValueScanParam(ScanParam):
 
 class SingleValueScanParam(ScanParam):
     value: Any
+
+    # Optional for backwards compatibility where field not set
+    # in json serializations (i.e. obi_one_coordinate.json)
+    index_in_scan_dimension: int | None = None

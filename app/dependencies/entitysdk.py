@@ -1,5 +1,9 @@
+from typing import Annotated
+
+import entitysdk
 import entitysdk.client
 import entitysdk.common
+from fastapi import Depends
 from starlette.requests import Request
 
 from app.config import settings
@@ -34,5 +38,13 @@ def get_client(
         project_context=project_context,
         http_client=request.state.http_client,
         token_manager=token_manager,
+        local_store=(
+            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)
+            if settings.MOUNT_BASE_DIR
+            else None
+        ),
     )
     return client
+
+
+DatabaseClientDep = Annotated[entitysdk.Client, Depends(get_client)]

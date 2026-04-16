@@ -1,0 +1,20 @@
+{
+  "anyOf": [
+    {
+      "type": "string",
+      "minLength": 1
+    },
+    {
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "type": "array"
+    }
+  ],
+  "title": "predefined neuronset",
+  "description": "the description",
+  "property_group": "circuit",
+  "property": "NodeSet",
+  "ui_element": "entity_property_dropdown"
+}

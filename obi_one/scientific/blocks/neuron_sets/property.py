@@ -10,7 +10,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 
 CircuitNode = Annotated[str, Field(min_length=1)]
@@ -19,7 +19,7 @@ NodeSetType = CircuitNode | list[CircuitNode]
 
 class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     filter_dict: dict[str, list] = Field(
-        name="Filter",
+        title="Filter",
         description="Filter dictionary. Note as this is NOT a Block and the list here is \
                     not to support multi-dimensional parameters but to support a key-value pair \
                     with multiple values i.e. {'layer': ['2', '3']}}",
@@ -77,7 +77,7 @@ class PropertyNeuronSet(NeuronSet):
     """
 
     property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
-        name="Neuron property filter",
+        title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=(),
     )
@@ -93,7 +93,10 @@ class PropertyNeuronSet(NeuronSet):
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
         for _nset in self.node_sets:
             if _nset not in circuit.node_sets:
-                msg = f"Node set '{_nset}' not found in circuit '{circuit}'!"
+                msg = (
+                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
+                    f"Available node sets: {', '.join(circuit.node_sets)}"
+                )
                 raise ValueError(msg)
 
     def _get_resolved_expression(self, circuit: Circuit, population: str | None = None) -> dict:
