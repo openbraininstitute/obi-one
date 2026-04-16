@@ -171,7 +171,8 @@ def mapped_circuit_properties_endpoint(
             circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
-                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: "input_resistance" in circuit_metrics.biophysical_node_populations[0].dynamics_param_names,
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: "input_resistance"
+                in circuit_metrics.biophysical_node_populations[0].dynamics_param_names,
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
         except entitysdk.exception.EntitySDKError:

@@ -359,8 +359,8 @@ def properties_from_nodes_files(
                 properties_dict[nodepop]["property_value_counts"] = (
                     number_of_nodes_per_unique_value_from_population(pop_obj, max_uv)
                 )
-                properties_dict[nodepop]["dynamics_param_names"] = (
-                    dynamics_params_from_population(pop_obj)
+                properties_dict[nodepop]["dynamics_param_names"] = dynamics_params_from_population(
+                    pop_obj
                 )
                 if lod > CircuitStatsLevelOfDetail.basic:
                     properties_dict[nodepop]["node_location_info"] = (
