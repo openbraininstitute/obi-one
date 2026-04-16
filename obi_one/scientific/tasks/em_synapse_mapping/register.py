@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 
 import pandas  # NOQA: ICN001
 from entitysdk import Client
@@ -17,6 +16,7 @@ from entitysdk.models import (
     EMDenseReconstructionDataset,
     ScientificArtifactPublicationLink,
 )
+from entitysdk.schemas.asset import MultipartUploadTransferConfig
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
@@ -141,21 +141,14 @@ def register_output_multiple(
         label=AssetLabel.sonata_circuit,
     )
 
-    max_upload_bytes = 524_288_000
-    compressed_size = Path(compressed_path).stat().st_size
-    if 0 < compressed_size < max_upload_bytes:
-        db_client.upload_file(
-            entity_id=existing_circuit.id,
-            entity_type=Circuit,
-            file_path=compressed_path,
-            file_content_type=ContentType.application_gzip,
-            asset_label=AssetLabel.compressed_sonata_circuit,
-        )
-    else:
-        L.warning(
-            f"Skipping compressed archive upload: size={compressed_size} bytes "
-            f"(limit={max_upload_bytes}). The directory asset was uploaded successfully."
-        )
+    db_client.upload_file(
+        entity_id=existing_circuit.id,
+        entity_type=Circuit,
+        file_path=compressed_path,
+        file_content_type=ContentType.application_gzip,
+        asset_label=AssetLabel.compressed_sonata_circuit,
+        transfer_config=MultipartUploadTransferConfig(),
+    )
 
     for publication in assemble_publication_links(db_client, em_entity, all_notices):
         new_link = ScientificArtifactPublicationLink(
