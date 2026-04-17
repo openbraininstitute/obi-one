@@ -542,7 +542,6 @@ def get_circuit_metrics(  # noqa: PLR0914
     for nodepop in dict_props["names_of_biophys_node_populations"]:
         pop = None
         if nodepop in node_props:
-            print(nodepop)
             pop = CircuitMetricsNodePopulation(
                 number_of_nodes=node_props[nodepop]["population_length"],
                 name=nodepop,
