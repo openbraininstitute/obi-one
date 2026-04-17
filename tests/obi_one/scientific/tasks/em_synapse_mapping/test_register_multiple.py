@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
-from obi_one.scientific.tasks.em_synapse_mapping.register import register_output_multiple
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
 
 
 def _resolved_neuron(pt_root_id, *, use_me_model=False):
@@ -44,7 +44,7 @@ class TestRegisterOutputMultiple:
                 return_value=SimpleNamespace(id=uuid4()),
             ),
         ):
-            result = register_output_multiple(
+            result = register_output(
                 db_client=db_client,
                 resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
                 source_dataset=_source_dataset(),
@@ -57,7 +57,7 @@ class TestRegisterOutputMultiple:
                 compressed_path=compressed,
             )
 
-        assert result == circuit.id
+        assert result == str(circuit.id)
         db_client.upload_directory.assert_called_once()
         db_client.upload_file.assert_called_once()
 
@@ -82,7 +82,7 @@ class TestRegisterOutputMultiple:
                 return_value=SimpleNamespace(name="fake-circuit"),
             ),
         ):
-            register_output_multiple(
+            register_output(
                 db_client=db_client,
                 resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
                 source_dataset=_source_dataset(),
@@ -126,7 +126,7 @@ class TestRegisterOutputMultiple:
                 side_effect=fake_circuit,
             ),
         ):
-            register_output_multiple(
+            register_output(
                 db_client=db_client,
                 resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
                 source_dataset=_source_dataset(),

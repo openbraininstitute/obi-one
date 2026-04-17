@@ -9,6 +9,9 @@ import pytest
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 
 
+_TASK_MODULE = "obi_one.scientific.tasks.em_synapse_mapping.task"
+
+
 @pytest.fixture
 def mock_db_client():
     return Mock()
@@ -43,12 +46,14 @@ def mapped_synapses_df():
 
 
 def _make_task(tmp_path):
+    """Build a single-neuron task using the unified config shape."""
     config = Mock()
     config.coordinate_output_root = tmp_path / "out"
-    config.initialize.spiny_neuron = Mock()
-    config.initialize.edge_population_name = "afferent_synapses"
-    config.initialize.node_population_pre = "pre_pop"
-    config.initialize.node_population_post = "post_pop"
+    config.initialize.neurons = (Mock(),)
+    config.initialize.biophysical_node_population = "post_pop"
+    config.initialize.virtual_node_population = "pre_pop"
+    config.initialize.physical_edge_population_name = "physical_connections"
+    config.initialize.virtual_edge_population_name = "afferent_synapses"
     return EMSynapseMappingTask.model_construct(config=config)
 
 
@@ -58,13 +63,19 @@ class TestEMSynapseMappingTask:
         with pytest.raises(ValueError, match="db_client"):
             task.execute(db_client=None)
 
-    def test_execute_happy_path(
+    def test_execute_single_neuron_happy_path(
         self, tmp_path, mock_db_client, resolved_neuron, synapses_df, mapped_synapses_df
     ):
         task = _make_task(tmp_path)
 
-        coll_pre = SimpleNamespace(properties={})
-        coll_post = SimpleNamespace(properties={})
+        coll_bio = SimpleNamespace(properties={})
+        coll_virt = SimpleNamespace(properties={})
+
+        def fake_assemble(*_args, **_kwargs):
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
+            if len(mapping) == 1:
+                return coll_bio, []
+            return coll_virt, []
 
         with (
             patch.object(
@@ -73,42 +84,45 @@ class TestEMSynapseMappingTask:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.resolve_neuron",
+                f"{_TASK_MODULE}.resolve_neuron",
                 return_value=resolved_neuron,
             ),
+            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.EMDataSetFromID",
-            ) as mock_em_ds,
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.synapses_and_nodes_dataframes_from_EM",
-                return_value=(synapses_df, coll_pre, coll_post, ["notice"]),
+                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
+                return_value=(synapses_df, Mock(), Mock(), ["notice"]),
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.map_afferents_to_spiny_morphology",
+                f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 return_value=(mapped_synapses_df, 0.5),
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.plot_mapping_stats",
+                f"{_TASK_MODULE}.plot_mapping_stats",
                 return_value=Mock(savefig=Mock()),
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task.write_edges"),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task.write_nodes"),
+            patch(f"{_TASK_MODULE}.plt"),
+            patch(f"{_TASK_MODULE}.default_node_spec_for", return_value={}),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.sonata_config_for",
+                f"{_TASK_MODULE}.assemble_collection_from_specs",
+                side_effect=fake_assemble,
+            ),
+            patch(f"{_TASK_MODULE}.write_nodes"),
+            patch(f"{_TASK_MODULE}.write_edges"),
+            patch(
+                f"{_TASK_MODULE}.sonata_config_for",
                 return_value={"version": 2.3},
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task.write_json"),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.compress_output",
+                f"{_TASK_MODULE}.compress_output",
                 return_value="/fake/path.tar.gz",
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task.register_output_single",
+                f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id-123",
             ) as mock_register,
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
-            mock_em_ds.return_value.entity.return_value = SimpleNamespace(license="lic")
+            mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
 
         mock_register.assert_called_once()

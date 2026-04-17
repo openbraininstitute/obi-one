@@ -13,7 +13,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
     assemble_publication_links,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.register import register_output_single
+from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
@@ -151,14 +151,18 @@ def test_plot_mapping_stats():
     assert fig.axes[0].get_ylabel() == "Synapse count"
 
 
-def test_register_output_single(tmp_path, mock_db_client, source_dataset, em_dataset):
+def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     existing_circuit = SimpleNamespace(id=uuid4())
     mock_db_client.register_entity.side_effect = [existing_circuit, "link-1", "link-2"]
 
-    mapped_synapses_df = pd.DataFrame({"x": [1, 2, 3]})
-    syn_pre_post_df = pd.DataFrame({"pre_node_id": [5, 5, 8]})
     file_paths = {"a.txt": str(tmp_path / "a.txt")}
     compressed_path = tmp_path / "sonata.tar.gz"
+
+    resolved_neuron = SimpleNamespace(
+        pt_root_id=42,
+        use_me_model=False,
+        phys_node_props={},
+    )
 
     with (
         patch(
@@ -174,14 +178,17 @@ def test_register_output_single(tmp_path, mock_db_client, source_dataset, em_dat
             return_value=SimpleNamespace(id=uuid4()),
         ),
     ):
-        circuit_id = register_output_single(
+        em_dataset_from_id = Mock()
+        em_dataset_from_id.entity.return_value = em_dataset
+        circuit_id = register_output(
             db_client=mock_db_client,
-            pt_root_id=42,
-            mapped_synapses_df=mapped_synapses_df,
-            syn_pre_post_df=syn_pre_post_df,
+            resolved_neurons=[resolved_neuron],
             source_dataset=source_dataset,
-            em_dataset=em_dataset,
-            lst_notices=["notice"],
+            em_dataset=em_dataset_from_id,
+            all_notices=["notice"],
+            total_synapses=3,
+            total_internal=0,
+            total_external=3,
             file_paths=file_paths,
             compressed_path=compressed_path,
         )

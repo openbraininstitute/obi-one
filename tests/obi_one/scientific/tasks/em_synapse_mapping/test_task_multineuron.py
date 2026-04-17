@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from obi_one.scientific.tasks.em_synapse_mapping.task_multineuron import (
-    EMMultiNeuronSynapseMappingTask,
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
+    EMSynapseMappingTask,
 )
 
 
@@ -71,10 +71,13 @@ def _make_task(tmp_path):
     config.initialize.virtual_node_population = "virt"
     config.initialize.physical_edge_population_name = "phys"
     config.initialize.virtual_edge_population_name = "virt_edges"
-    return EMMultiNeuronSynapseMappingTask.model_construct(config=config)
+    return EMSynapseMappingTask.model_construct(config=config)
 
 
-class TestEMMultiNeuronSynapseMappingTask:
+_TASK_MODULE = "obi_one.scientific.tasks.em_synapse_mapping.task"
+
+
+class TestEMSynapseMappingTask:
     def test_execute_requires_db_client(self, tmp_path):
         task = _make_task(tmp_path)
         with pytest.raises(ValueError, match="db_client"):
@@ -88,10 +91,10 @@ class TestEMMultiNeuronSynapseMappingTask:
 
         with (
             patch.object(
-                EMMultiNeuronSynapseMappingTask, "_get_execution_activity", return_value=None
+                EMSynapseMappingTask, "_get_execution_activity", return_value=None
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.resolve_neuron",
+                f"{_TASK_MODULE}.resolve_neuron",
                 side_effect=[rn1, rn2],
             ),
             pytest.raises(ValueError, match="same EM dense reconstruction"),
@@ -130,55 +133,42 @@ class TestEMMultiNeuronSynapseMappingTask:
 
         with (
             patch.object(
-                EMMultiNeuronSynapseMappingTask, "_get_execution_activity", return_value=None
+                EMSynapseMappingTask, "_get_execution_activity", return_value=None
             ),
+            patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
+            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
+            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.resolve_neuron",
-                side_effect=resolved,
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.EMDataSetFromID",
-            ) as mock_em_ds,
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.merge_spiny_morphologies",
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.synapses_and_nodes_dataframes_from_EM",
+                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
                 side_effect=fake_synapses_and_nodes,
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.map_afferents_to_spiny_morphology",
+                f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 side_effect=[(mapped_0, 0.5), (mapped_1, 0.5)],
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.plot_mapping_stats",
+                f"{_TASK_MODULE}.plot_mapping_stats",
                 return_value=Mock(savefig=Mock()),
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.plt"),
+            patch(f"{_TASK_MODULE}.plt"),
+            patch(f"{_TASK_MODULE}.default_node_spec_for", return_value={}),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.default_node_spec_for",
-                return_value={},
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.assemble_collection_from_specs",
+                f"{_TASK_MODULE}.assemble_collection_from_specs",
                 side_effect=fake_assemble,
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.write_nodes"),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.write_edges"),
+            patch(f"{_TASK_MODULE}.write_nodes"),
+            patch(f"{_TASK_MODULE}.write_edges"),
+            patch(f"{_TASK_MODULE}.sonata_config_for", return_value={"version": 2.3}),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.sonata_config_for",
-                return_value={"version": 2.3},
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.compress_output",
+                f"{_TASK_MODULE}.compress_output",
                 return_value=str(tmp_path / "out" / "sonata.tar.gz"),
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.register_output_multiple",
+                f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id",
             ) as mock_register,
             patch.object(
-                EMMultiNeuronSynapseMappingTask, "_update_execution_activity"
+                EMSynapseMappingTask, "_update_execution_activity"
             ) as mock_update,
         ):
             mock_em_ds.return_value = Mock()
@@ -212,54 +202,38 @@ class TestEMMultiNeuronSynapseMappingTask:
 
         with (
             patch.object(
-                EMMultiNeuronSynapseMappingTask, "_get_execution_activity", return_value=None
+                EMSynapseMappingTask, "_get_execution_activity", return_value=None
             ),
+            patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
+            patch(f"{_TASK_MODULE}.EMDataSetFromID"),
+            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.resolve_neuron",
-                side_effect=resolved,
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.EMDataSetFromID",
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.merge_spiny_morphologies",
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.synapses_and_nodes_dataframes_from_EM",
+                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
                 side_effect=fake_synapses,
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.map_afferents_to_spiny_morphology",
+                f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 return_value=(mapped, 0.5),
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.plot_mapping_stats",
+                f"{_TASK_MODULE}.plot_mapping_stats",
                 return_value=Mock(savefig=Mock()),
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.plt"),
+            patch(f"{_TASK_MODULE}.plt"),
+            patch(f"{_TASK_MODULE}.default_node_spec_for", return_value={}),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.default_node_spec_for",
-                return_value={},
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.assemble_collection_from_specs",
+                f"{_TASK_MODULE}.assemble_collection_from_specs",
                 side_effect=fake_assemble,
             ),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.write_nodes"),
-            patch("obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.write_edges"),
+            patch(f"{_TASK_MODULE}.write_nodes"),
+            patch(f"{_TASK_MODULE}.write_edges"),
+            patch(f"{_TASK_MODULE}.sonata_config_for", return_value={}),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.sonata_config_for",
-                return_value={},
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.compress_output",
+                f"{_TASK_MODULE}.compress_output",
                 return_value=str(tmp_path / "out" / "sonata.tar.gz"),
             ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.task_multineuron.register_output_multiple",
-                return_value="cid",
-            ),
-            patch.object(EMMultiNeuronSynapseMappingTask, "_update_execution_activity"),
+            patch(f"{_TASK_MODULE}.register_output", return_value="cid"),
+            patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
             task.execute(db_client=mock_db_client)
 
