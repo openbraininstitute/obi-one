@@ -11,7 +11,7 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
-from obi_one.scientific.tasks.generate_simulation_task import GenerateSimulationTask
+from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingTask
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationTask
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask

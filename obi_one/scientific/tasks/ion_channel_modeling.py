@@ -18,6 +18,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
@@ -28,7 +29,7 @@ L = logging.getLogger(__name__)
 
 try:
     from ion_channel_builder.create_model.main import extract_all_equations
-    from ion_channel_builder.io.write_output import write_vgate_output
+    from ion_channel_builder.io.write_output import get_range_params_with_units, write_vgate_output
     from ion_channel_builder.run_model.run_model import run_ion_channel_model
 except ImportError:
 
@@ -41,6 +42,9 @@ except ImportError:
         stim_timings_corrections: dict,
         output_folder: Path,
     ) -> None:
+        pass
+
+    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:
         pass
 
     def write_vgate_output(
@@ -84,7 +88,7 @@ class IonChannelFittingScanConfig(ScanConfig):
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "group_order": [
+        SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP,
             BlockGroup.EQUATIONS,
             BlockGroup.GATEEXPONENTS,
@@ -135,13 +139,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 1},
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 1},
     )
 
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
-        json_schema_extra={"group": BlockGroup.SETUP, "group_order": 0},
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 0},
     )
 
     minf_eq: equations_module.MInfUnion = Field(
@@ -152,9 +156,9 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            "reference_type": equations_module.MInfReference.__name__,
-            "group": BlockGroup.EQUATIONS,
-            "group_order": 0,
+            SchemaKey.REFERENCE_TYPE: equations_module.MInfReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     mtau_eq: equations_module.MTauUnion = Field(
@@ -165,9 +169,9 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            "reference_type": equations_module.MTauReference.__name__,
-            "group": BlockGroup.EQUATIONS,
-            "group_order": 1,
+            SchemaKey.REFERENCE_TYPE: equations_module.MTauReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     hinf_eq: equations_module.HInfUnion = Field(
@@ -178,9 +182,9 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            "reference_type": equations_module.HInfReference.__name__,
-            "group": BlockGroup.EQUATIONS,
-            "group_order": 2,
+            SchemaKey.REFERENCE_TYPE: equations_module.HInfReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
     htau_eq: equations_module.HTauUnion = Field(
@@ -191,9 +195,9 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            "reference_type": equations_module.HTauReference.__name__,
-            "group": BlockGroup.EQUATIONS,
-            "group_order": 3,
+            SchemaKey.REFERENCE_TYPE: equations_module.HTauReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 3,
         },
     )
 
@@ -203,7 +207,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
-        json_schema_extra={"group": BlockGroup.GATEEXPONENTS, "group_order": 0},
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.GATEEXPONENTS, SchemaKey.GROUP_ORDER: 0},
     )
 
     def create_campaign_entity_with_config(
@@ -259,12 +263,6 @@ class IonChannelFittingScanConfig(ScanConfig):
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: entitysdk.models.IonChannelModelingConfig
-
-    @property
-    def single_entity(self) -> entitysdk.models.IonChannelModelingConfig:
-        return self._single_entity
-
     def create_single_entity_with_config(
         self,
         campaign: entitysdk.models.IonChannelModelingCampaign,
@@ -298,7 +296,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
             entitysdk.models.IonChannelModelingConfig(
                 name=f"IonChannelModelingConfig {self.idx}",
                 description=f"IonChannelModelingConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
                 ion_channel_modeling_campaign_id=campaign.id,
             )
         )
@@ -410,7 +408,11 @@ class IonChannelFittingTask(Task):
             self.register_json(db_client, model_id, json_path)
 
     def save(
-        self, mod_filepath: Path, figure_filepaths: dict[Path], db_client: entitysdk.client.Client
+        self,
+        mod_filepath: Path,
+        figure_filepaths: dict[Path],
+        db_client: entitysdk.client.Client,
+        range_vars: list[dict[str, str | None]],
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(
@@ -422,11 +424,7 @@ class IonChannelFittingTask(Task):
         )
         neuron_block = entitysdk.models.NeuronBlock(
             **{"global": [{"celsius": "degree C"}]},
-            range=[
-                {"gbar": "S/cm2"},
-                {"g": "S/cm2"},
-                {"ik": "mA/cm2"},
-            ],
+            range=range_vars,
             useion=[useion],
             nonspecific=[],
         )
@@ -572,9 +570,10 @@ class IonChannelFittingTask(Task):
             # Get recording entity to access temperature
             recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
 
+            mech_suffix = self.config.initialize.ion_channel_name
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.config.initialize.ion_channel_name,
+                mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",
                 temperature=recording_entity.temperature,
@@ -584,9 +583,24 @@ class IonChannelFittingTask(Task):
                 show=False,
             )
 
+            # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
+            range_vars = [
+                {f"g{mech_suffix}bar": "S/cm2"},
+                {f"g{mech_suffix}": "S/cm2"},
+                {"ik": "mA/cm2"},
+                {"mInf": None},
+                {"mTau": "ms"},
+                {"hInf": None},
+                {"hTau": "ms"},
+            ]
+            range_vars += get_range_params_with_units(eq_names)
+
             # register the mod file and figures to the platform
             model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
+                mod_filepath=output_name,
+                figure_filepaths=figure_paths_dict,
+                db_client=db_client,
+                range_vars=range_vars,
             )
 
         except Exception as e:

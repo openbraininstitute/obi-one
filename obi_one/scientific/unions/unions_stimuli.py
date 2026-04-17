@@ -13,38 +13,46 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike import (
+    FullySynchronousSpikeStimulus,
+    PoissonSpikeStimulus,
+    SinusoidalPoissonSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
-    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
     NormallyDistributedCurrentClampSomaticStimulus,
-    PoissonSpikeStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SEClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
-    SinusoidalPoissonSpikeStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
 
-_INJECTION_STIMULI = (
+_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | HyperpolarizingCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
     | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
     | OrnsteinUhlenbeckCurrentSomaticStimulus
     | OrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_RELATIVE_INJECTION_STIMULI = (
+    RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
     | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
     | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
 )
+
+_INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
     PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
@@ -66,6 +74,11 @@ CircuitStimulusUnion = Annotated[
 
 MEModelStimulusUnion = Annotated[
     _INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+IonChannelModelStimulusUnion = Annotated[
+    SEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 

@@ -24,8 +24,23 @@ endef
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
-install:  ## Create a virtual environment
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra connectivity
+install:  ## Default installation (for running tasks and local scripts)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+
+install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
+
+install-notebooks:  ## Install with notebooks dependencies (for running notebooks locally)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks
+
+install-service:  ## Install with service dependencies (for running as a service)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service
+
+install-all:  ## Install all dependencies (for production/deployment)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all
+
+install-dev:  ## Install all dependencies + dev tools (for development)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all --group dev
 
 install-ipython: install ## Create a virtual environment and install the ipython kernel
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
@@ -78,11 +93,11 @@ test-file: ## Run tests in a single test file locally. Usage: make test-file FIL
 
 test-schema: ## Run schema tests locally.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/schema/test_schema.py --no-cov --disable-warnings
+	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings
 
 test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/schema/test_schema.py --no-cov --disable-warnings --log-cli-level=INFO
+	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings --log-cli-level=INFO
 
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test

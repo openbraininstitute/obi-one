@@ -2,6 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.stimuli.stimulus import ContinuousStimulus
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -9,9 +11,6 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
-)
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
 )
 
 
@@ -28,8 +27,8 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLISECONDS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -38,8 +37,8 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Mean Amplitude",
         description="The mean value of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
-            "units": "nA",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.NANOAMPS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -48,33 +47,24 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="The standard deviation of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
-            "units": "nA",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.NANOAMPS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean": self.mean_amplitude,
-                "sigma": self.standard_deviation,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean": self.mean_amplitude,
+            "sigma": self.standard_deviation,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
@@ -90,8 +80,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLISECONDS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -100,8 +90,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Mean Amplitude",
         description="The mean value of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
-            "units": "μS",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MICROSIEMENS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -110,8 +100,8 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="The standard deviation of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
-            "units": "μS",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MICROSIEMENS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -120,34 +110,25 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
-            "units": "mV",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean": self.mean_amplitude,
-                "sigma": self.standard_deviation,
-                "reversal": self.reversal_potential,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean": self.mean_amplitude,
+            "sigma": self.standard_deviation,
+            "reversal": self.reversal_potential,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
@@ -163,8 +144,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLISECONDS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -173,8 +154,8 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Mean Percentage of Threshold Current",
         description="Signal mean as percentage of a cell's threshold current.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.PERCENT,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -183,33 +164,24 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's threshold current.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.PERCENT,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean_percent": self.mean_percentage_of_threshold_current,
-                "sd_percent": self.standard_deviation_percentage_of_threshold,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean_percent": self.mean_percentage_of_threshold_current,
+            "sd_percent": self.standard_deviation_percentage_of_threshold,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
 
 
 class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
@@ -218,10 +190,11 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_dictionary": {
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
-            "false_message": "Input resistance based stimuli are not supported for this circuit.",
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI,
+            SchemaKey.FALSE_MESSAGE: "Input resistance based stimuli are not supported for "
+            "this circuit.",
         },
     }
 
@@ -233,8 +206,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Tau",
         description="The time constant of the Ornstein-Uhlenbeck process.",
         json_schema_extra={
-            "units": "ms",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLISECONDS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -243,8 +216,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Mean Percentage of Cells' Input Conductance",
         description="Signal mean as percentage of a cell's input conductance.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.PERCENT,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -255,8 +228,8 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Standard Deviation",
         description="Signal standard deviation as percentage of a cell's input conductance.",
         json_schema_extra={
-            "units": "%",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.PERCENT,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
@@ -265,31 +238,22 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         title="Reversal Potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
-            "units": "mV",
-            "ui_element": "float_parameter_sweep",
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "module": self._module,
-                "input_type": self._input_type,
-                "tau": self.time_constant,
-                "mean_percent": self.mean_percentage_of_cells_input_conductance,
-                "sd_percent": self.standard_deviation_percentage_of_cells_input_conductance,
-                "reversal": self.reversal_potential,
-                "represents_physical_electrode": self._represents_physical_electrode,
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "module": self._module,
+            "input_type": self._input_type,
+            "tau": self.time_constant,
+            "mean_percent": self.mean_percentage_of_cells_input_conductance,
+            "sd_percent": self.standard_deviation_percentage_of_cells_input_conductance,
+            "reversal": self.reversal_potential,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict

@@ -8,7 +8,7 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 _NBS1_VPM_NODE_POP = "VPM"
 _NBS1_POM_NODE_POP = "POm"
 _RCA1_CA3_NODE_POP = "CA3_projections"
@@ -32,7 +32,10 @@ class AllNeurons(AbstractNeuronSet):
     @staticmethod
     def check_node_set(circuit: Circuit, _population: str) -> None:
         if _ALL_NODE_SET not in circuit.node_sets:
-            msg = f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit}'!"
+            msg = (
+                f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit.name}'. "
+                f"Available node sets: {', '.join(circuit.node_sets)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:
@@ -49,7 +52,12 @@ class ExcitatoryNeurons(AbstractNeuronSet):
     @staticmethod
     def check_node_set(circuit: Circuit, _population: str) -> None:
         if _EXCITATORY_NODE_SET not in circuit.node_sets:
-            msg = f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit}'!"
+            msg = (
+                f"Node set '{_EXCITATORY_NODE_SET}' not found in circuit '{circuit.name}'. "
+                "Please use a different Neuron Set type "
+                "or use a PredefinedNeuronSet with one of the "
+                f"available node sets: {', '.join(circuit.node_sets)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:
@@ -66,7 +74,12 @@ class InhibitoryNeurons(AbstractNeuronSet):
     @staticmethod
     def check_node_set(circuit: Circuit, _population: str) -> None:
         if _INHIBITORY_NODE_SET not in circuit.node_sets:
-            msg = f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit}'!"
+            msg = (
+                f"Node set '{_INHIBITORY_NODE_SET}' not found in circuit '{circuit.name}'. "
+                "Please use a different Neuron Set type "
+                "or use a PredefinedNeuronSet with one of the "
+                f"available node sets: {', '.join(circuit.node_sets)}"
+            )
             raise ValueError(msg)
 
     def _get_expression(self, circuit: Circuit, population: str) -> list:

@@ -18,9 +18,11 @@ from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
     circuit_properties,
+    circuit_visualization,
     config_validation,
     count_scan_coordinates,
     ephys_metrics,
+    ion_channel_properties,
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
@@ -160,11 +162,13 @@ async def version() -> dict:
     }
 
 
+app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
+app.include_router(ion_channel_properties.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)

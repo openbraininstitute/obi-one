@@ -3,6 +3,8 @@ from typing import Annotated, ClassVar, Self
 import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     _MAX_EFIELD_FREQUENCY_HZ,
@@ -15,9 +17,6 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
-)
-from obi_one.scientific.unions.unions_timestamps import (
-    resolve_timestamps_ref_to_timestamps_block,
 )
 
 from .stimulus import ContinuousStimulus
@@ -37,10 +36,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     """
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "block_usability_dictionary": {
-            "property_group": MappedPropertiesGroup.CIRCUIT,
-            "property": CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
-            "false_message": "Electric field stimuli are not supported for this circuit.",
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI,
+            SchemaKey.FALSE_MESSAGE: "Electric field stimuli are not supported for this circuit.",
         },
     }
 
@@ -54,9 +53,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
-            "ui_element": "reference",
-            "reference_type": NeuronSetReference.__name__,
-            "supports_virtual": False,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
         },
     )
 
@@ -69,8 +68,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         description="Time in milliseconds (ms) for how long the main stimulus is activated. "
         + _RAMP_QAULIFIER_DESCRIPTION,
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -82,8 +81,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         ),
         title="Ramp Up (Duration)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -95,8 +94,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         ),
         title="Ramp Down (Duration)",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "ms",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
@@ -105,8 +104,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         description="Amplitude of the electric field in the x-direction, in V/m. May be negative",
         title="X amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -115,8 +114,8 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         description="Amplitude of the electric field in the y-direction, in V/m. May be negative",
         title="Y amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -125,43 +124,32 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         description="Amplitude of the electric field in the z-direction, in V/m. May be negative",
         title="Z amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
     _frequency: float = PrivateAttr(0.0)
     _phase_degrees: float = PrivateAttr(0.0)
 
-    def _generate_config(self) -> dict:
-        sonata_config = {}
-
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
-        )
-
-        for t_ind, timestamp in enumerate(timestamps_block.timestamps()):
-            sonata_config[self.block_name + "_" + str(t_ind)] = {
-                "module": self._module,
-                "input_type": self._input_type,
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
-                "delay": timestamp + self.timestamp_offset,
-                "duration": self.duration,
-                "ramp_up_duration": self.ramp_up_duration,
-                "ramp_down_duration": self.ramp_down_duration,
-                "fields": [
-                    {
-                        "E_x": self.E_x,
-                        "E_y": self.E_y,
-                        "E_z": self.E_z,
-                        "frequency": self._frequency,
-                        "phase": np.deg2rad(self._phase_degrees),
-                    }
-                ],
-            }
-        return sonata_config
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "ramp_up_duration": self.ramp_up_duration,
+            "ramp_down_duration": self.ramp_down_duration,
+            "fields": [
+                {
+                    "E_x": self.E_x,
+                    "E_y": self.E_y,
+                    "E_z": self.E_z,
+                    "frequency": self._frequency,
+                    "phase": np.deg2rad(self._phase_degrees),
+                }
+            ],
+        }
+        return stim_dict
 
 
 class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElectricFieldStimulus):
@@ -209,8 +197,8 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         ),
         title="Frequency",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "Hz",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -219,8 +207,8 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         description="Phase of the cosinusoid, in degrees.",
         title="Phase",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "°",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
 
@@ -231,8 +219,8 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         description="Peak amplitude of the cosinusoid in the x-direction, in V/m. May be negative",
         title="X peak amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -241,8 +229,8 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         description="Peak amplitude of the cosinusoid in the y-direction, in V/m. May be negative",
         title="Y peak amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 
@@ -251,8 +239,8 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         description="Peak amplitude of the cosinusoid in the z-direction, in V/m. May be negative",
         title="Z peak amplitude",
         json_schema_extra={
-            "ui_element": "float_parameter_sweep",
-            "units": "V/m",
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.VOLTS_PER_METER,
         },
     )
 

@@ -25,14 +25,23 @@ jobs:
           python-version-file: "pyproject.toml"
       - name: Check requirements
         run: make check-deps
-      - name: Install requirements
-        run: make install
+      - name: Install mandatory and optional requirements
+        run: make install-all
       - name: Run linters
         run: make lint
       - name: Run tests
         run: make test-docker
       - name: Run pip-audit
         run: make pip-audit
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: openbraininstitute/obi-one
+          fail_ci_if_error: false
+          files: .coverage/coverage.xml
+          flags: pytest
+          verbose: true
       - name: Cleanup
         if: ${{ always() }}
         run: |

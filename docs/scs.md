@@ -5,7 +5,7 @@ tags:
 
 # Single Cell Simulations
 
-Single cell simulations in OBI-one use **MEModel** (Morphology and Electrophysiology Model) configurations to simulate individual neurons.
+Single cell simulations in OBI-ONE use **MEModel** (Morphology and Electrophysiology Model) configurations to simulate individual neurons.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Single cell simulations are configured using `MEModelSimulationSingleConfig` or 
 
 ### MEModelSimulationSingleConfig
 
-The `MEModelSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulation_configs.py`) is used to configure single cell simulations. It includes:
+The `MEModelSimulationSingleConfig` class (located in `obi_one/scientific/tasks/generate_simulations/config/base.py`) is used to configure single cell simulations. It includes:
 
 - **Circuit**: A MEModel (Morphology and Electrophysiology Model) to simulate
 - **Simulation Parameters**: Duration, timestep, initial voltage, extracellular calcium concentration
@@ -31,7 +31,7 @@ Simulations are executed using the `simulation_execution` module (`obi_one/scien
 
 ### GenerateSimulationTask
 
-The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulation_task.py`) handles:
+The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulations/task/task.py`) handles:
 
 - Converting OBI-one configuration to SONATA simulation format
 - Setting up circuit and node sets
