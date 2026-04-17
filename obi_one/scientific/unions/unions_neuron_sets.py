@@ -70,6 +70,8 @@ CircuitExtractionNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+SynapseParameterizationNeuronSetUnion = CircuitExtractionNeuronSetUnion
+
 
 MEModelWithSynapsesNeuronSetUnion = Annotated[
     nbS1VPMInputs | nbS1POmInputs,
