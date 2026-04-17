@@ -38,6 +38,7 @@ class SimpleConfig(ScanConfig):
     description: ClassVar[str] = "Simple"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
@@ -51,6 +52,7 @@ class DictBlockConfig(ScanConfig):
     description: ClassVar[str] = "Has dict blocks"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
@@ -75,6 +77,7 @@ class ConfigWithRefBlock(ScanConfig):
     description: ClassVar[str] = "Has ref block"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
@@ -139,7 +142,7 @@ class TestBlockMappingMissingReferenceType:
             description: ClassVar[str] = ""
 
             class Initialize(Block):
-                pass
+                type: str = "Block"
 
             initialize: Initialize
             blocks: dict[str, BlockUnion] = Field(

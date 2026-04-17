@@ -313,7 +313,7 @@ def test_mechanisms_dir_validations(fake_snap_circuit, tmp_path):
 
 def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
     class Other(fake_snap_circuit.Circuit):
-        pass
+        type: str = "Circuit"
 
     cfg = tmp_path / "circuit_config.json"
     cfg.write_text("{}")
