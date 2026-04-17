@@ -45,6 +45,8 @@ dependencies = [
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
+    "morph-tool",
+    "neurom",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
