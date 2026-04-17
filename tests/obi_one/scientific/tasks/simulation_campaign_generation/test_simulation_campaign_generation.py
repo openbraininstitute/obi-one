@@ -137,7 +137,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         assert cfg.pop("conditions") == {
             "extracellular_calcium": 1.1,
             "v_init": -80.0,
-            "spike_location": "soma",
+            "spike_location": "AIS",
             "mechanisms": mech_dict,
         }
         assert cfg.pop("network") == str(instance.initialize.circuit.path)
