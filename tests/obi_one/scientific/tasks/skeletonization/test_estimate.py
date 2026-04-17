@@ -1,8 +1,9 @@
 """Unit tests for skeletonization cost estimation."""
 
+import json
 import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -14,6 +15,7 @@ from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
 from obi_one.scientific.tasks.skeletonization.estimate import (
     _compute_mesh_surface_area,
+    _get_skeletonization_config,
     estimate_skeletonization_count,
 )
 
@@ -37,65 +39,79 @@ def config_id():
 
 
 @pytest.fixture
-def mock_asset(asset_id):
-    """Create a mock asset with cell_surface_mesh label."""
+def mock_task_config_asset():
+    """Create a mock asset with task_config label."""
     asset = Mock()
-    asset.id = asset_id
-    asset.label = AssetLabel.cell_surface_mesh
+    asset.id = uuid4()
+    asset.label = AssetLabel.task_config
     return asset
 
 
 @pytest.fixture
-def mock_em_cell_mesh(mock_asset):
-    """Create a mock EMCellMesh entity."""
-    em_cell_mesh = Mock()
-    em_cell_mesh.id = uuid4()
-    em_cell_mesh.assets = [mock_asset]
-    return em_cell_mesh
-
-
-@pytest.fixture
-def mock_db_client(mock_em_cell_mesh):
+def mock_db_client():
     """Create a mock database client."""
-    client = MagicMock()
-    client.get_entity.return_value = mock_em_cell_mesh
-    return client
+    return MagicMock()
 
 
-def _make_fetch_file_side_effect(source_glb_path: Path):
+def _make_fetch_assets_side_effect(source_glb_path: Path):
     """Create a side effect that copies the test GLB to the output path."""
 
-    def fetch_file_side_effect(*, output_path, **_kwargs):
+    def fetch_assets_side_effect(*, output_path, **_kwargs):
         shutil.copy(source_glb_path, output_path)
+        result = Mock()
+        result.one.return_value = None
+        return result
 
-    return fetch_file_side_effect
+    return fetch_assets_side_effect
 
 
 def test_compute_mesh_surface_area(mock_db_client, mesh_id):
     """Test that _compute_mesh_surface_area correctly computes surface area."""
-    mock_db_client.fetch_file.side_effect = _make_fetch_file_side_effect(SPHERE_GLB_PATH)
+    mock_db_client.fetch_assets.side_effect = _make_fetch_assets_side_effect(SPHERE_GLB_PATH)
 
     cell_mesh = EMCellMeshFromID(id_str=mesh_id)
     area = _compute_mesh_surface_area(mock_db_client, cell_mesh)
 
     assert area > 0
-    mock_db_client.get_entity.assert_called_once()
-    mock_db_client.fetch_file.assert_called_once()
+    mock_db_client.fetch_assets.assert_called_once()
 
 
-def test_compute_mesh_surface_area_no_asset(mock_db_client, mesh_id):
-    """Test that _compute_mesh_surface_area raises when no asset found."""
-    mock_db_client.get_entity.return_value.assets = []
+def test_get_skeletonization_config(mock_db_client, config_id, mesh_id, mock_task_config_asset):
+    """Test that _get_skeletonization_config fetches and parses the config."""
+    mock_task_config = Mock()
+    mock_task_config.assets = [mock_task_config_asset]
+    mock_db_client.get_entity.return_value = mock_task_config
 
-    cell_mesh = EMCellMeshFromID(id_str=mesh_id)
+    config_dict = {
+        "type": "SkeletonizationSingleConfig",
+        "info": {"campaign_name": "test", "campaign_description": "test"},
+        "initialize": {
+            "cell_mesh": {"type": "EMCellMeshFromID", "id_str": mesh_id},
+            "neuron_voxel_size": 0.1,
+            "spines_voxel_size": 0.1,
+        },
+    }
+    mock_db_client.download_content.return_value = json.dumps(config_dict).encode("utf-8")
 
-    with pytest.raises(ValueError, match="No cell_surface_mesh asset found"):
-        _compute_mesh_surface_area(mock_db_client, cell_mesh)
+    config = _get_skeletonization_config(mock_db_client, config_id)
+
+    assert isinstance(config, SkeletonizationSingleConfig)
+    assert config.initialize.cell_mesh.id_str == mesh_id
+
+
+def test_get_skeletonization_config_no_asset(mock_db_client, config_id):
+    """Test that _get_skeletonization_config raises when no task_config asset found."""
+    mock_task_config = Mock()
+    mock_task_config.assets = []
+    mock_db_client.get_entity.return_value = mock_task_config
+
+    with pytest.raises(ValueError, match="No task_config asset found"):
+        _get_skeletonization_config(mock_db_client, config_id)
 
 
 def test_estimate_skeletonization_count_single_mesh(mock_db_client, config_id, mesh_id, tmp_path):
     """Test estimate_skeletonization_count with a single mesh."""
-    mock_db_client.fetch_file.side_effect = _make_fetch_file_side_effect(SPHERE_GLB_PATH)
+    mock_db_client.fetch_assets.side_effect = _make_fetch_assets_side_effect(SPHERE_GLB_PATH)
 
     config = SkeletonizationSingleConfig(
         info=Info(campaign_name="test", campaign_description="test"),
@@ -108,12 +124,11 @@ def test_estimate_skeletonization_count_single_mesh(mock_db_client, config_id, m
         idx=1,
         single_coordinate_scan_params=SingleCoordinateScanParams(scan_params=[]),
     )
-    mock_db_client.get_task_config.return_value = config
 
-    count = estimate_skeletonization_count(db_client=mock_db_client, config_id=config_id)
+    with patch(
+        "obi_one.scientific.tasks.skeletonization.estimate._get_skeletonization_config",
+        return_value=config,
+    ):
+        count = estimate_skeletonization_count(db_client=mock_db_client, config_id=config_id)
 
     assert count > 0
-    mock_db_client.get_task_config.assert_called_once_with(
-        config_id=config_id,
-        config_type=SkeletonizationSingleConfig,
-    )
