@@ -28,35 +28,6 @@ dynamic = ["version"]
 
 # CORE + SCIENTIFIC - dependencies always installed
 dependencies = [
-    # PYDANTIC
-    "pydantic>=2.10.6",
-    "pydantic-settings>=2.8.1",
-    "pydantic-core",
-    # CIRCUIT EXTRACTION
-    "brainbuilder>=0.20.2",
-    # MORPHOLOGY CONTAINERIZATION
-    "bluepysnap>=3.0.2",
-    # FAST API SERVICE
-    "fastapi",
-    "uvicorn",
-    "starlette",
-    "python-multipart",  # Added python-multipart
-    # JUPYTER
-    "jupyter",
-    "notebook",
-    "jupyterlab>=4.4.8",
-    "ipykernel",
-    # DATABASE
-    "sqlalchemy",
-    # BLUEETL
-    "blueetl",
-    # NEUROM
-    "aiofiles",
-    "neurom",
-    "morph-tool",
-    # MESHES
-    "pyvista",
-    "pylmesh",
     # ENTITYSDK
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
@@ -74,8 +45,6 @@ dependencies = [
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
-    "morph-tool",
-    "neurom",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
