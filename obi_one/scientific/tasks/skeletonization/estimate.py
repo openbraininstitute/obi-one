@@ -27,19 +27,19 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_path = Path(tmp_dir) / "mesh.glb"
-        db_client.fetch_asset(
-            entity_or_id=cell_mesh.id_str,
-            entity_type=models.EMCellMesh,
+        db_client.fetch_assets(
+            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),
             selection={
                 "label": AssetLabel.cell_surface_mesh,
                 "content_type": ContentType.model_gltf_binary,
             },
             output_path=output_path,
             strategy=FetchFileStrategy.link_or_download,
-        )
+        ).one()
 
         mesh = pylmesh.load_mesh(str(output_path))
-        return mesh.surface_area()
+        # convert to um2
+        return mesh.surface_area() * 1e-6
 
 
 def _get_skeletonization_config(

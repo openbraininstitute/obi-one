@@ -89,6 +89,12 @@ def estimate_task_cost(
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )
+    L.info(
+        f"Estimated cost: subtype={accounting_parameters.service_subtype}, "
+        f"count={accounting_parameters.count}, proj_id={project_context.project_id}, "
+        f"cost={cost_estimate}"
+    )
+    
     return TaskAccountingInfo(
         cost=cost_estimate,
         config_id=config_id,
