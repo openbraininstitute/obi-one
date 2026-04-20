@@ -8,7 +8,6 @@ import pytest
 
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 
-
 _TASK_MODULE = "obi_one.scientific.tasks.em_synapse_mapping.task"
 
 

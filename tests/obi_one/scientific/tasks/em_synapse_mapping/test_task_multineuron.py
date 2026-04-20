@@ -90,9 +90,7 @@ class TestEMSynapseMappingTask:
         # Different dataset ids
 
         with (
-            patch.object(
-                EMSynapseMappingTask, "_get_execution_activity", return_value=None
-            ),
+            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(
                 f"{_TASK_MODULE}.resolve_neuron",
                 side_effect=[rn1, rn2],
@@ -132,9 +130,7 @@ class TestEMSynapseMappingTask:
             return coll_virt, []
 
         with (
-            patch.object(
-                EMSynapseMappingTask, "_get_execution_activity", return_value=None
-            ),
+            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
             patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
             patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
@@ -167,9 +163,7 @@ class TestEMSynapseMappingTask:
                 f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id",
             ) as mock_register,
-            patch.object(
-                EMSynapseMappingTask, "_update_execution_activity"
-            ) as mock_update,
+            patch.object(EMSynapseMappingTask, "_update_execution_activity") as mock_update,
         ):
             mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
@@ -201,9 +195,7 @@ class TestEMSynapseMappingTask:
             return coll_bio, []
 
         with (
-            patch.object(
-                EMSynapseMappingTask, "_get_execution_activity", return_value=None
-            ),
+            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
             patch(f"{_TASK_MODULE}.EMDataSetFromID"),
             patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
