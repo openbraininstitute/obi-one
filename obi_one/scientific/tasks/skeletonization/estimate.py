@@ -13,6 +13,7 @@ from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
 
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
+from obi_one.utils.db_sdk import get_entity_asset_by_label
 
 
 def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -> float:
@@ -61,9 +62,8 @@ def _get_skeletonization_config(
     )
 
     # Find the task_config asset
-    asset = next(
-        (a for a in task_config.assets if a.label == AssetLabel.task_config),
-        None,
+    asset = get_entity_asset_by_label(
+        client=db_client, config=task_config, asset_label=AssetLabel.task_config
     )
     if asset is None:
         msg = f"No task_config asset found for TaskConfig {config_id}"
