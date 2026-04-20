@@ -3,8 +3,9 @@ from uuid import UUID
 
 import entitysdk
 import httpx
+import libsonata
 from entitysdk import ProjectContext, models
-from entitysdk.types import ActivityStatus, ExecutorType
+from entitysdk.types import ActivityStatus, AssetLabel, CircuitScale, ExecutorType
 
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simulation
@@ -18,7 +19,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.types import CallBackAction, CallBackEvent, TaskType
+from app.types import CallBackAction, CallBackEvent, TargetSimulator, TaskType
 from obi_one.utils import db_sdk
 
 
@@ -260,3 +261,46 @@ def estimate_task_resources(
             )
         case _:
             return task_definition.resources.model_copy(update={"compute_cell": compute_cell})
+
+
+def select_simulation_task(
+    *, db_client: entitysdk.Client, config_id: UUID, config_type: models.Entity
+) -> TaskType:
+    simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)
+    sim_config_content = db_client.fetch_assets(
+        entity=simulation,
+        selection={
+            "label": AssetLabel.simulation_config,
+        },
+    ).one()
+    simulation_config = libsonata.SimulationConfig(sim_config_content, ".")
+    target_simulator = TargetSimulator(simulation_config.target_simulator.name)
+
+    circuit = db_client.get_entity(
+        entity_id=simulation_config.entity_id, entity_type=models.Circuit
+    )
+
+    circuit_config = db_sdk.get_json_asset_content(
+        client=db_client,
+        entity=circuit,
+        selection={
+            "label": AssetLabel.circuit_config,
+        },
+    )
+    target_simulator_circuit = circuit_config.get("target_simulator", TargetSimulator.NEURON)
+
+    circuit_scale = circuit.circuit_scale
+    assert target_simulator == target_simulator_circuit
+
+    match target_simulator:
+        case TargetSimulator.LEARNING_ENGINE:
+            return TaskType.circuit_simulation_inait_machine
+        case TargetSimulator.NEURON | TargetSimulator.CORENEURON:
+            match circuit_scale:
+                case CircuitScale.single | CircuitScale.pair | CircuitScale.small:
+                    return TaskType.circuit_simulation_neuron
+                case _:
+                    return TaskType.circuit_simulation_neurodamus_cluster
+        case _:
+            msg = f"Unsupported target simulator {target_simulator}"
+            raise RuntimeError(msg)
