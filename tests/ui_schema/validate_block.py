@@ -413,17 +413,9 @@ def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
 
 def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
 
     obj = {"id_str": "model_id"}
-
-    # If the schema is an array type, validate the object against the items schema
-    validation_schema = schema
-    if schema.get("type") == "array" and "items" in schema:
-        validation_schema = schema["items"]
-    elif schema.get("type") == "array" and "prefixItems" in schema:
-        validation_schema = schema["prefixItems"][0]
-
-    validator = Draft7Validator(validation_schema, resolver=resolver)
 
     try:
         validator.validate(obj)
@@ -431,6 +423,31 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
         msg = (
             f"Validation error at {ref}: 'model_identifier' param {param} failed to validate a "
             f"a 'model identifier' object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_model_identifier_multiple(schema: dict, param: str, ref: str) -> None:
+    resolver = RefResolver.from_schema(openapi_schema)
+
+    obj = {"id_str": "model_id"}
+
+    if schema.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: 'model_identifier_multiple' param {param} must be an "
+            f"array type"
+        )
+        raise ValidationError(msg)
+
+    items_schema = schema.get("items", {})
+    validator = Draft7Validator(items_schema, resolver=resolver)
+
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'model_identifier_multiple' param {param} failed to "
+            f"validate a 'model identifier' object {obj}"
         )
         raise ValidationError(msg) from None
 
@@ -505,6 +522,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_neuron_ids(schema, param, ref)
         case UIElement.MODEL_IDENTIFIER:
             validate_model_identifier(schema, param, ref)
+        case UIElement.MODEL_IDENTIFIER_MULTIPLE:
+            validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:

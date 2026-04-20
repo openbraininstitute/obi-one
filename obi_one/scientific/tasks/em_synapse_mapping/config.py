@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
-from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
+from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -51,13 +51,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
             description="Neurons to include in the circuit (>= 1).",
             min_length=1,
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-                SchemaKey.ENTITY_QUERY: {
-                    "type": EntityType.cell_morphology,
-                    "filters": {
-                        "cell_morphology_protocol": "ultraliser",
-                    },
-                },
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
             },
         )
         physical_edge_population_name: str = Field(
