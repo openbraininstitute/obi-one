@@ -85,7 +85,7 @@ def estimate_task_resources(  # noqa: PLR0914
     level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     circuit_metrics = get_circuit_metrics(
-        circuit_id=circuit_id,
+        circuit_id=str(circuit_id),
         db_client=db_client,
         level_of_detail_nodes=level_of_detail_nodes_dict,
         level_of_detail_edges=level_of_detail_edges_dict,
