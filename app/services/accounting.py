@@ -94,7 +94,7 @@ def estimate_task_cost(
         f"count={accounting_parameters.count}, proj_id={project_context.project_id}, "
         f"cost={cost_estimate}"
     )
-    
+
     return TaskAccountingInfo(
         cost=cost_estimate,
         config_id=config_id,
