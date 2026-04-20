@@ -2,7 +2,7 @@ import logging
 import os
 
 from entitysdk import Client
-from entitysdk._server_schemas import (
+from entitysdk.types import (
     AssetLabel,
     CircuitBuildCategory,
     CircuitScale,

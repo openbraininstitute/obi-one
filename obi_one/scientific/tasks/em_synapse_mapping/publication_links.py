@@ -1,9 +1,7 @@
 import logging
 
 from entitysdk import Client
-from entitysdk._server_schemas import (
-    PublicationType,
-)
+from entitysdk.types import PublicationType
 from entitysdk.models import (
     EMDenseReconstructionDataset,
     Publication,
