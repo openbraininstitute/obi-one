@@ -413,15 +413,23 @@ def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
 
 def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
     resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
 
     obj = {"id_str": "model_id"}
+
+    # If the schema is an array type, validate the object against the items schema
+    validation_schema = schema
+    if schema.get("type") == "array" and "items" in schema:
+        validation_schema = schema["items"]
+    elif schema.get("type") == "array" and "prefixItems" in schema:
+        validation_schema = schema["prefixItems"][0]
+
+    validator = Draft7Validator(validation_schema, resolver=resolver)
 
     try:
         validator.validate(obj)
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: 'model_identtifier' param {param} failed to validate a "
+            f"Validation error at {ref}: 'model_identifier' param {param} failed to validate a "
             f"a 'model identifier' object {obj}"
         )
         raise ValidationError(msg) from None
