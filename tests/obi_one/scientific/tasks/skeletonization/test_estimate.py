@@ -7,8 +7,10 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.exception import EntitySDKError
 from entitysdk.types import AssetLabel
 
+from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
@@ -81,6 +83,7 @@ def test_get_skeletonization_config(mock_db_client, config_id, mesh_id, mock_tas
     mock_task_config = Mock()
     mock_task_config.assets = [mock_task_config_asset]
     mock_db_client.get_entity.return_value = mock_task_config
+    mock_db_client.select_assets.return_value.one.return_value = mock_task_config_asset
 
     config_dict = {
         "type": "SkeletonizationSingleConfig",
@@ -104,8 +107,9 @@ def test_get_skeletonization_config_no_asset(mock_db_client, config_id):
     mock_task_config = Mock()
     mock_task_config.assets = []
     mock_db_client.get_entity.return_value = mock_task_config
+    mock_db_client.select_assets.return_value.one.side_effect = EntitySDKError("No asset found")
 
-    with pytest.raises(ValueError, match="No task_config asset found"):
+    with pytest.raises(OBIONEError, match="Could not find asset with label"):
         _get_skeletonization_config(mock_db_client, config_id)
 
 
