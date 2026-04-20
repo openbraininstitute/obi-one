@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +30,13 @@ def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: As
         raise OBIONEError(msg) from e
 
 
+def get_task_config_asset(*, client: Client, config: Entity) -> Asset:
+    """Return task config asset from entity."""
+    return get_entity_asset_by_label(
+        client=client, config=config, asset_label=AssetLabel.task_config
+    )
+
+
 def create_activity(
     *,
     client: Client,
@@ -46,6 +54,14 @@ def create_activity(
     activity = client.register_entity(activity)
     L.info(f"Activity {activity.id} of type '{activity_type.__name__}' created")
     return activity
+
+
+def get_json_asset_content(*, client: Client, entity: Entity, selection: dict) -> dict:
+    bytes_content = client.fetch_assets(
+        entity=entity,
+        selection=selection,
+    ).one()
+    return json.loads(bytes_content)
 
 
 def create_generic_activity(
