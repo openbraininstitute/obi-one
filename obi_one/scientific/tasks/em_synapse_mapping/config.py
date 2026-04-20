@@ -24,6 +24,7 @@ class BlockGroup(StrEnum):
 class EMSynapseMappingScanConfig(InfoScanConfig):
     """Map location of afferent synapses from EM onto one or more spiny morphologies."""
 
+    single_coord_class_name: ClassVar[str] = "EMSynapseMappingSingleConfig"
     name: ClassVar[str] = "Map synapse locations"
 
     json_schema_extra_additions: ClassVar[dict] = {
