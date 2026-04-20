@@ -1,12 +1,12 @@
 import logging
 
 from entitysdk import Client
-from entitysdk.types import PublicationType
 from entitysdk.models import (
     EMDenseReconstructionDataset,
     Publication,
     ScientificArtifactPublicationLink,
 )
+from entitysdk.types import PublicationType
 
 L = logging.getLogger(__name__)
 

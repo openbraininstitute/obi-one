@@ -2,6 +2,12 @@ import logging
 import os
 
 from entitysdk import Client
+from entitysdk.models import (
+    Circuit,
+    EMDenseReconstructionDataset,
+    ScientificArtifactPublicationLink,
+)
+from entitysdk.schemas.asset import MultipartUploadTransferConfig
 from entitysdk.types import (
     AssetLabel,
     CircuitBuildCategory,
@@ -9,12 +15,6 @@ from entitysdk.types import (
     ContentType,
     PublicationType,
 )
-from entitysdk.models import (
-    Circuit,
-    EMDenseReconstructionDataset,
-    ScientificArtifactPublicationLink,
-)
-from entitysdk.schemas.asset import MultipartUploadTransferConfig
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
