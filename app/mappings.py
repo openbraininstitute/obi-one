@@ -64,7 +64,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         config_type=models.Simulation,
     ),
     TaskType.circuit_simulation_inait_machine: TaskDefinitionLegacy(
-        task_type=TaskType.circuit_simulation_inait,
+        task_type=TaskType.circuit_simulation_inait_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
@@ -85,6 +85,12 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
         resources=MachineResources(
             cores=1,
             memory=2,
@@ -93,7 +99,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
     ),
     TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
-        task_type=TaskType.circuit_simulation,
+        task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=BuiltinCode(

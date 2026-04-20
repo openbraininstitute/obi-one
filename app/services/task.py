@@ -65,7 +65,7 @@ def submit_task_job(
     all_callbacks = [failure_callback, *callbacks]
 
     match task_definition.task_type:
-        case TaskType.circuit_simulation:
+        case TaskType.circuit_simulation_neurodamus_cluster:
             executor_type = ExecutorType.distributed_job
             job_data = _circuit_simulation_job_data(
                 simulation_id=config_id,
@@ -252,7 +252,21 @@ def estimate_task_resources(
                 task_definition=task_definition,
                 compute_cell=compute_cell,
             )
-        case TaskType.circuit_simulation:
+        case TaskType.circuit_simulation_neuron:
+            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
+                json_model=json_model,
+                db_client=db_client,
+                task_definition=task_definition,
+                compute_cell=compute_cell,
+            )
+        case TaskType.circuit_simulation_neurodamus_cluster:
+            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
+                json_model=json_model,
+                db_client=db_client,
+                task_definition=task_definition,
+                compute_cell=compute_cell,
+            )
+        case TaskType.circuit_simulation_inait_machine:
             return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
