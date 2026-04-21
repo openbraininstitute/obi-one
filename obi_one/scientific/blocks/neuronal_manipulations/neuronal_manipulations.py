@@ -5,6 +5,7 @@ from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.emodel_parameters import _expand_section_list
 from obi_one.scientific.library.entity_property_types import (
@@ -46,7 +47,7 @@ class BySectionListModification(OBIBaseModel):
     )
 
 
-class ByNeuronModification(OBIBaseModel):
+class ByNeuronModification(ComplexVariableHolder):
     """Modify neuron level changes - GLOBAL and RANGE (in all SectionLists) variables of ion
     channels and built-in section properties.
 

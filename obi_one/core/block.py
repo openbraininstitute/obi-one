@@ -57,6 +57,16 @@ class Block(OBIBaseModel, extra="forbid"):
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
+            if isinstance(value, ComplexVariableHolder):
+                self._multiple_value_parameters.extend(
+                    value.multiple_value_parameters(
+                        base_location_list=[category_name, block_key, key]
+                        if block_key
+                        else [category_name, key]
+                    )
+                )
+                continue
+
             if isinstance(value, ParametericMultiValue):
                 multi_values = list(value)
 
