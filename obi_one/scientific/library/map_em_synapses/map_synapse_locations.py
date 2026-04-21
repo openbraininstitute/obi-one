@@ -1,6 +1,5 @@
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
-import tqdm
 from caveclient import CAVEclient
 from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology
@@ -167,7 +166,7 @@ def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.
     else:
         chunk_ab = numpy.arange(0, len(pts) + chunk_sz, chunk_sz)
         res = []
-        for a, b in tqdm.tqdm(list(zip(chunk_ab[:-1], chunk_ab[1:], strict=False))):  # NOQA: RUF007
+        for a, b in zip(chunk_ab[:-1], chunk_ab[1:], strict=False):  # NOQA: RUF007
             res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))
         res = pandas.concat(res, axis=0)
     res.index = pts.index
