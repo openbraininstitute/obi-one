@@ -39,6 +39,8 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
         ).one()
 
         mesh = pv.read(str(output_path))
+        if isinstance(mesh, pv.MultiBlock):
+            mesh = mesh.combine()
         # convert to um2
         return mesh.area * 1e-6
 
