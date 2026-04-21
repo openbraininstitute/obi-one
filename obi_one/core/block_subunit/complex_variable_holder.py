@@ -12,15 +12,22 @@ class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
 
     # checks this for parameter scan
-    def multiple_value_parameters(self, base_location_list: list[str]) -> list[MultiValueScanParam]:
-        self._multiple_value_parameters = []
-
-        for key, value in self.__dict__.items():
-            if isinstance(value, list):
+    def nested_multiple_value_parameters(
+        self, dict_to_iterate: dict, base_location_list: list[str]
+    ) -> None:
+        for key, value in dict_to_iterate.items():
+            if isinstance(value, dict):
+                self.nested_multiple_value_parameters(
+                    value, base_location_list=[*base_location_list, key]
+                )
+            elif isinstance(value, list):
                 self._multiple_value_parameters.append(
                     MultiValueScanParam(location_list=[*base_location_list, key], values=value)
                 )
 
+    def multiple_value_parameters(self, base_location_list: list[str]) -> list[MultiValueScanParam]:
+        self._multiple_value_parameters = []
+        self.nested_multiple_value_parameters(self.__dict__, base_location_list)
         return self._multiple_value_parameters
 
 

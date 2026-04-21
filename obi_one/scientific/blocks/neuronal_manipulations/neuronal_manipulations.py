@@ -3,7 +3,6 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
-from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.schema import SchemaKey, UIElement
@@ -18,7 +17,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 
 
-class BySectionListModification(OBIBaseModel):
+class BySectionListModification(ComplexVariableHolder):
     """Modification for RANGE variables by section list.
 
     Example (ion channel):
