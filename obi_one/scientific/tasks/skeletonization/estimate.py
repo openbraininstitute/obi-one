@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from uuid import UUID
 
-import pylmesh
+import pyvista as pv
 from entitysdk import models
 from entitysdk.client import Client
 from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
@@ -38,9 +38,9 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
             strategy=FetchFileStrategy.link_or_download,
         ).one()
 
-        mesh = pylmesh.load_mesh(str(output_path))
+        mesh = pv.read(str(output_path))
         # convert to um2
-        return mesh.surface_area() * 1e-6
+        return mesh.area * 1e-6
 
 
 def _get_skeletonization_config(

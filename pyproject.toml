@@ -51,7 +51,6 @@ dependencies = [
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pyvista",
-    "pylmesh"
 ]
 
 [project.optional-dependencies]
