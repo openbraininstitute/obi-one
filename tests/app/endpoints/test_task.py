@@ -29,7 +29,18 @@ def callbacks():
     ]
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize(
+    "task_type",
+    [
+        TaskType.circuit_extraction,
+        TaskType.circuit_simulation_inait_machine,
+        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_cluster,
+        TaskType.morphology_skeletonization,
+        TaskType.ion_channel_model_simulation_execution,
+        TaskType.em_synapse_mapping,
+    ],
+)
 def test_task_launch_success(
     client,
     callbacks,
@@ -121,7 +132,18 @@ def test_task_launch_success(
         accounting_session.finish.assert_called_once_with(exc_type=RuntimeError)
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize(
+    "task_type",
+    [
+        TaskType.circuit_extraction,
+        TaskType.circuit_simulation_inait_machine,
+        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_cluster,
+        TaskType.morphology_skeletonization,
+        TaskType.ion_channel_model_simulation_execution,
+        TaskType.em_synapse_mapping,
+    ],
+)
 def test_task_estimate(client, task_type):
     config_id = uuid4()
 
