@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -77,6 +78,7 @@ class TestEMSynapseMappingTask:
             return coll_virt, []
 
         with (
+            patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
             patch.object(
                 EMSynapseMappingTask,
                 "_get_execution_activity",
