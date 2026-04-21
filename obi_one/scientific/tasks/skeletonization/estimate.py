@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from uuid import UUID
 
-import pyvista as pv
+import trimesh
 from entitysdk import models
 from entitysdk.client import Client
 from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
@@ -38,9 +38,7 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
             strategy=FetchFileStrategy.link_or_download,
         ).one()
 
-        mesh = pv.read(str(output_path))
-        if isinstance(mesh, pv.MultiBlock):
-            mesh = mesh.combine().extract_surface()
+        mesh = trimesh.load(str(output_path))
         # convert to um2
         return mesh.area * 1e-6
 
