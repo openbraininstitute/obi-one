@@ -11,7 +11,6 @@ import bluepysnap as snap
 import entitysdk.client
 import h5py
 import numpy as np
-import tqdm
 from bluepysnap import BluepySnapError
 from morph_tool import convert
 from morphio import MorphioError
@@ -145,7 +144,7 @@ class MorphologyContainerizationTask(Task):
             h5_folder = Path(os.path.split(inp_folder)[0]) / "_h5_morphologies_tmp_"
             Path(h5_folder).mkdir(parents=True, exist_ok=True)
 
-            for _m in tqdm.tqdm(morph_names, desc=f"Converting .{_morph_ext} to .h5"):
+            for _m in morph_names:
                 src_file = Path(inp_folder) / (_m + f".{_morph_ext}")
                 dest_file = Path(h5_folder) / (_m + ".h5")
                 if not Path(dest_file).exists():
@@ -160,7 +159,7 @@ class MorphologyContainerizationTask(Task):
         h5_container = Path(os.path.split(h5_folder)[0]) / self.CONTAINER_FILENAME
         with h5py.File(h5_container, "a") as f_container:
             skip_counter = 0
-            for _m in tqdm.tqdm(morph_names, desc="Merging .h5 into container"):
+            for _m in morph_names:
                 with h5py.File(Path(h5_folder) / (_m + ".h5")) as f_h5:
                     if _m in f_container:
                         skip_counter += 1
@@ -314,7 +313,7 @@ class MorphologyContainerizationTask(Task):
         _, _, hoc_code_new = self._find_hoc_proc(proc_name, tmpl_new)
 
         # Replace code in hoc files
-        for _file in tqdm.tqdm(Path(hoc_folder).iterdir(), desc="Updating .hoc files"):
+        for _file in Path(hoc_folder).iterdir():
             if Path(_file).suffix.lower() != ".hoc":
                 continue
             hoc_file = Path(hoc_folder) / _file

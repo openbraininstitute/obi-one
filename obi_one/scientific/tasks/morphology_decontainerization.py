@@ -9,7 +9,6 @@ import bluepysnap as snap
 import entitysdk.client
 import h5py
 import numpy as np
-import tqdm
 from morph_tool import convert
 from morphio import MorphioError
 
@@ -136,7 +135,7 @@ class MorphologyDecontainerizationTask(Task):
     ) -> None:
         with h5py.File(h5_container, "r") as f_container:
             skip_counter = 0
-            for _m in tqdm.tqdm(morph_names, desc="Extracting/converting from .h5 container"):
+            for _m in morph_names:
                 h5_file = Path(h5_folder) / (_m + ".h5")
                 if Path(h5_file).exists():
                     skip_counter += 1
