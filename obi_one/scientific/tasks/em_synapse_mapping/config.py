@@ -26,7 +26,6 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
 
     single_coord_class_name: ClassVar[str] = "EMSynapseMappingSingleConfig"
     name: ClassVar[str] = "Map synapse locations"
-    single_coord_class_name: ClassVar[str] = "EMSynapseMappingSingleConfig"
     description: ClassVar[str] = "EM synapse mapping campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
