@@ -110,25 +110,25 @@ class ScanGenerationTask(Task, abc.ABC):
         raise NotImplementedError(msg)
 
     def set_nested_single_coordinate_scan_param_value(
-        self, single_coord_config: ScanConfigsUnion, location_list: list, value: Any
+        self, single_coord_config_subelement: Any, location_list: list, value: Any
     ) -> Any:
         if location_list == []:
             return value
 
-        if isinstance(single_coord_config, (list, dict, tuple)):
-            single_coord_config[location_list[0]] = (
+        if isinstance(single_coord_config_subelement, (list, dict, tuple)):
+            single_coord_config_subelement[location_list[0]] = (
                 self.set_nested_single_coordinate_scan_param_value(
-                    single_coord_config[location_list[0]], location_list[1:], value
+                    single_coord_config_subelement[location_list[0]], location_list[1:], value
                 )
             )
-            return single_coord_config
+            return single_coord_config_subelement
 
-        single_coord_config.__dict__[location_list[0]] = (
+        single_coord_config_subelement.__dict__[location_list[0]] = (
             self.set_nested_single_coordinate_scan_param_value(
-                single_coord_config.__dict__[location_list[0]], location_list[1:], value
+                single_coord_config_subelement.__dict__[location_list[0]], location_list[1:], value
             )
         )
-        return single_coord_config
+        return single_coord_config_subelement
 
     def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
