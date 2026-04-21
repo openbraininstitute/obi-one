@@ -7,6 +7,7 @@ import pandas  # NOQA: ICN001
 from entitysdk import Client
 from matplotlib import pyplot as plt
 
+from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.library.map_em_synapses._defaults import (
@@ -110,7 +111,7 @@ class EMSynapseMappingTask(Task):
         cave_version = resolved_neurons[0].cave_version
         em_dataset = EMDataSetFromID(
             id_str=str(source_dataset.id),
-            auth_token=os.environ.get("CAVE_TOKEN"),  # TEMPORARY PLACEHOLDER, NOT TESTED
+            auth_token=os.environ[settings.cave_client_config.microns_api_key],
         )
 
         # Merge spiny morphologies into a single file (for multi-neuron)
