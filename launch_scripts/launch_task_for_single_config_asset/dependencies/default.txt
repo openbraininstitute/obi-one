@@ -1,1 +1,1 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one@jplanas/multineuron_microns_circuit
+obi-one
