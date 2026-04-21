@@ -18,9 +18,7 @@ class ComplexVariableHolder(OBIBaseModel, extra="forbid"):
         for key, value in self.__dict__.items():
             if isinstance(value, list):
                 self._multiple_value_parameters.append(
-                    MultiValueScanParam(
-                        location_list=[*base_location_list, key], values=value
-                    )
+                    MultiValueScanParam(location_list=[*base_location_list, key], values=value)
                 )
 
         return self._multiple_value_parameters
