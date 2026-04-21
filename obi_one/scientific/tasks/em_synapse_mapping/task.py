@@ -8,6 +8,7 @@ from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from morph_spines import load_morphology_with_spines
 
+from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
@@ -110,7 +111,7 @@ class EMSynapseMappingTask(Task):
 
         em_dataset = EMDataSetFromID(
             id_str=str(source_dataset.id),
-            auth_token=os.environ.get("CAVE_TOKEN"),  # TEMPORARY PLACEHOLDER, NOT TESTED
+            auth_token=os.environ[settings.cave_client_config.microns_api_key],
         )
 
         L.info("Reading data from source EM reconstruction...")
