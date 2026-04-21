@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 import entitysdk.client
@@ -58,7 +58,7 @@ def circuit_morphology(
             description="The name of the morphology. Required if morphology_file is a collection."
         ),
     ] = None,
-) -> Morphology:
+) -> dict[str, Any]:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
     morphology = get_morphology(

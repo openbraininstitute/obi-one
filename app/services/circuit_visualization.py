@@ -280,7 +280,7 @@ def get_morphology(
     asset_id: UUID,
     morph_path: Path,
     morph_name: str | None,
-) -> Morphology:
+) -> morphio.Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
 
@@ -315,125 +315,60 @@ SWC_TYPES = {
 }
 
 
-def get_morphology_data(morphology) -> Morphology:  # noqa: PLR0914, ANN001
-    """Parses an morphology filefile into a segment-based dictionary optimized for visualization."""
-    section_start_distances: dict[int, float] = {sec.id: 0.0 for sec in morphology.sections}
+def get_morphology_data(morphology: morphio.Morphology) -> dict[str, dict]:
+    output = {}
 
-    def walk_tree_for_distances(section: morphio.Section, current_path_distance: float) -> None:
-        section_start_distances[section.id] = current_path_distance
+    def get_prefix(sec_type):
+        mapping = {
+            morphio.SectionType.soma: "soma",
+            morphio.SectionType.axon: "axon",
+            morphio.SectionType.basal_dendrite: "dend",
+            morphio.SectionType.apical_dendrite: "apic",
+        }
+        return mapping.get(sec_type, "unknown")
 
-        points = section.points
-        vectors = np.diff(points, axis=0)
-        section_length = np.sum(np.linalg.norm(vectors, axis=1))
-
-        for child in section.children:
-            walk_tree_for_distances(child, current_path_distance + section_length)
-
-    for root_section in morphology.root_sections:
-        walk_tree_for_distances(root_section, 0.0)
-
-    morphology_data: Morphology = {}
-
-    for section in morphology.sections:
-        base_name = SWC_TYPES.get(section.type, "section")
-        section_key = f"{base_name}[{section.id}]"
-        points = section.points
-        diameters = section.diameters
-
-        starts = points[:-1]
-        ends = points[1:]
-
-        directions = ends - starts
-        segment_lengths = np.linalg.norm(directions, axis=1)
-        midpoints = (starts + ends) / 2.0
-
-        start_dist = section_start_distances[section.id]
-        cumulative_internal_lengths = np.cumsum(segment_lengths)
-        seg_distances = start_dist + np.insert(cumulative_internal_lengths[:-1], 0, 0)
-        parent_id = section.parent.id if not section.is_root else -1
-
-        num_segments = len(segment_lengths)
-
-        morphology_data[section_key] = NeuronSectionInfo(
-            index=section.id,
-            parent_index=parent_id,
-            name=section_key,
-            nseg=num_segments,
-            distance_from_soma=float(start_dist),
-            sec_length=float(np.sum(segment_lengths)),
-            xstart=starts[:, 0].tolist(),
-            xend=ends[:, 0].tolist(),
-            xcenter=midpoints[:, 0].tolist(),
-            xdirection=directions[:, 0].tolist(),
-            ystart=starts[:, 1].tolist(),
-            yend=ends[:, 1].tolist(),
-            ycenter=midpoints[:, 1].tolist(),
-            ydirection=directions[:, 1].tolist(),
-            zstart=starts[:, 2].tolist(),
-            zend=ends[:, 2].tolist(),
-            zcenter=midpoints[:, 2].tolist(),
-            zdirection=directions[:, 2].tolist(),
-            diam=diameters[:-1].tolist(),
-            length=segment_lengths.tolist(),
-            distance=seg_distances.tolist(),
-            segment_distance_from_soma=seg_distances.tolist(),
-            segx=np.linspace(0, 1, num_segments).tolist(),
-            neuron_section_id=section.id,
-            neuron_segments_offset=[0] * num_segments,
-        )
-
-    # 1. Soma Processing
+    # 1. Process Soma
     soma = morphology.soma
-    if len(soma.points) > 0:
-        points = soma.points
-        diameters = soma.diameters
 
-        # Handle single-point vs multi-point somas
-        if len(points) == 1:
-            starts = points
-            ends = points
-            midpoints = points
-            directions = np.zeros_like(points)
-            segment_lengths = np.array([0.0])
-            diam_list = diameters.tolist()
-        else:
-            starts = points[:-1]
-            ends = points[1:]
-            directions = ends - starts
-            segment_lengths = np.linalg.norm(directions, axis=1)
-            midpoints = (starts + ends) / 2.0
-            diam_list = diameters[:-1].tolist()
+    print(soma)
 
-        num_segments = len(segment_lengths)
-        cumulative_internal_lengths = np.cumsum(segment_lengths)
-        seg_distances = np.insert(cumulative_internal_lengths[:-1], 0, 0)
+    if soma and len(soma.points) > 1:
+        output["soma[0]"] = _extract_arrays(soma.points, soma.diameters)
+    elif soma and len(soma.points) == 1:
+        # Create a zero-length segment so the TS loop (nseg=1) doesn't fail
+        p, d = soma.points[0], soma.diameters[0]
+        output["soma[0]"] = {
+            "nseg": 1,
+            "xstart": [float(p[0])],
+            "ystart": [float(p[1])],
+            "zstart": [float(p[2])],
+            "xend": [float(p[0])],
+            "yend": [float(p[1])],
+            "zend": [float(p[2])],
+            "diam": [float(d)],
+        }
 
-        morphology_data["soma[0]"] = NeuronSectionInfo(
-            index=-1,
-            parent_index=-1,
-            name="soma[0]",
-            nseg=num_segments,
-            distance_from_soma=0.0,
-            sec_length=float(np.sum(segment_lengths)),
-            xstart=starts[:, 0].tolist(),
-            xend=ends[:, 0].tolist(),
-            xcenter=midpoints[:, 0].tolist(),
-            xdirection=directions[:, 0].tolist(),
-            ystart=starts[:, 1].tolist(),
-            yend=ends[:, 1].tolist(),
-            ycenter=midpoints[:, 1].tolist(),
-            ydirection=directions[:, 1].tolist(),
-            zstart=starts[:, 2].tolist(),
-            zend=ends[:, 2].tolist(),
-            zcenter=midpoints[:, 2].tolist(),
-            zdirection=directions[:, 2].tolist(),
-            diam=diam_list,
-            length=segment_lengths.tolist(),
-            distance=seg_distances.tolist(),
-            segment_distance_from_soma=seg_distances.tolist(),
-            segx=np.linspace(0, 1, num_segments).tolist() if num_segments > 1 else [0.5],
-            neuron_section_id=-1,
-            neuron_segments_offset=[0] * num_segments,
-        )
+    else:
+        print('\n\n', "no soma")
 
-    return morphology_data
+    # 2. Process Neurites
+    for section in morphology.iter():
+        prefix = get_prefix(section.type)
+        name = f"{prefix}[{section.id}]"
+        output[name] = _extract_arrays(section.points, section.diameters)
+
+    return output
+
+
+def _extract_arrays(points, diameters) -> dict:
+    nseg = len(points) - 1
+    return {
+        "nseg": nseg,
+        "xstart": [float(points[i][0]) for i in range(nseg)],
+        "ystart": [float(points[i][1]) for i in range(nseg)],
+        "zstart": [float(points[i][2]) for i in range(nseg)],
+        "xend": [float(points[i + 1][0]) for i in range(nseg)],
+        "yend": [float(points[i + 1][1]) for i in range(nseg)],
+        "zend": [float(points[i + 1][2]) for i in range(nseg)],
+        "diam": [float(diameters[i + 1]) for i in range(nseg)],
+    }
