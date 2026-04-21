@@ -19,7 +19,8 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.types import CallBackAction, CallBackEvent, TargetSimulator, TaskType
+from app.types import CallBackAction, CallBackEvent, TaskType
+from obi_one.types import TargetSimulator
 from obi_one.utils import db_sdk
 
 
@@ -288,23 +289,37 @@ def select_simulation_task(
         },
     ).one()
     simulation_config = libsonata.SimulationConfig(sim_config_content, ".")
-    target_simulator = TargetSimulator(simulation_config.target_simulator.name)
 
-    circuit = db_client.get_entity(
-        entity_id=simulation_config.entity_id, entity_type=models.Circuit
-    )
-
-    circuit_config = db_sdk.get_json_asset_content(
-        client=db_client,
-        entity=circuit,
-        selection={
-            "label": AssetLabel.circuit_config,
-        },
-    )
-    target_simulator_circuit = circuit_config.get("target_simulator", TargetSimulator.NEURON)
+    if target_simulator_from_simulation := simulation_config.target_simulator:
+        target_simulator = target_simulator_from_simulation
+        msg = f"Target simulator '{target_simulator}' is used from simulation config."
+        L.info(msg)
+    else:
+        circuit = db_client.get_entity(
+            entity_id=simulation_config.entity_id,
+            entity_type=models.Circuit,
+        )
+        circuit_config = db_sdk.get_json_asset_content(
+            client=db_client,
+            entity=circuit,
+            selection={
+                "label": AssetLabel.circuit_config,
+            },
+        )
+        # TODO: Switch to libsonata
+        if target_simulator_from_circuit := circuit_config.get("target_simulator"):
+            target_simulator = target_simulator_from_circuit
+            msg = f"Target simulator '{target_simulator}' is used from circuit config."
+            L.info(msg)
+        else:
+            target_simulator = TargetSimulator.NEURON
+            msg = (
+                f"No target simulator found in circuit/simulation configs. "
+                f"Using default '{TargetSimulator.NEURON}'."
+            )
+            L.info(msg)
 
     circuit_scale = circuit.circuit_scale
-    assert target_simulator == target_simulator_circuit
 
     match target_simulator:
         case TargetSimulator.LEARNING_ENGINE:

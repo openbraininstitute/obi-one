@@ -19,6 +19,8 @@ from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 ASSET_ID = uuid4()
 
+TASK_TYPES = [task_type for task_type in TaskType if task_type != TaskType.circuit_simulation]
+
 
 @pytest.fixture
 def db_client():
@@ -48,7 +50,7 @@ def callbacks(activity_id):
         url="http://failure",
         method="POST",
         params={
-            "task_type": TaskType.circuit_simulation,
+            "task_type": TaskType.circuit_simulation_neurodamus_cluster,
             "activity_id": str(activity_id),
         },
         headers={
@@ -95,7 +97,7 @@ def callbacks(activity_id):
             },
         ),
         (
-            TaskType.circuit_simulation,
+            TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
                 "entity_id": str(uuid4()),
@@ -203,7 +205,7 @@ def test_submit_task_job__success(
             },
         ),
         (
-            TaskType.circuit_simulation,
+            TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
                 "entity_id": str(uuid4()),
@@ -279,7 +281,9 @@ def test_submit_task_job__failure(
 
 
 def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
-    task_definition = TASK_DEFINITIONS["circuit_simulation"]
+    task_type = TaskType.circuit_simulation_neurodamus_cluster
+
+    task_definition = TASK_DEFINITIONS[task_type]
 
     res = test_module._circuit_simulation_job_data(
         simulation_id=config_id,
@@ -316,7 +320,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
                     "url": "http://failure",
                     "method": "POST",
                     "params": {
-                        "task_type": "circuit_simulation",
+                        "task_type": task_type,
                         "activity_id": str(activity_id),
                     },
                     "headers": {
@@ -365,6 +369,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
                 "private_packages": False,
                 "env_secrets": [],
             },
+            "staged_directories": [],
         },
         "inputs": [
             "--task-type circuit_extraction",
@@ -384,7 +389,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
                     "url": "http://failure",
                     "method": "POST",
                     "params": {
-                        "task_type": "circuit_simulation",
+                        "task_type": "circuit_simulation_neurodamus_cluster",
                         "activity_id": str(activity_id),
                     },
                     "headers": {
@@ -421,7 +426,7 @@ def test_generate_failure_callback(project_context, activity_id):
             "task-activity",
             {"task_activity_type": TaskActivityType.circuit_extraction__execution},
         ),
-        (TaskType.circuit_simulation, "simulation-execution", {}),
+        (TaskType.circuit_simulation_neurodamus_cluster, "simulation-execution", {}),
     ],
 )
 def test_handle_task_failure_callback(
@@ -461,7 +466,7 @@ def test_handle_task_failure_callback(
             "task-activity",
             {"task_activity_type": TaskActivityType.circuit_extraction__execution},
         ),
-        (TaskType.circuit_simulation, "simulation-execution", {}),
+        (TaskType.circuit_simulation_neurodamus_cluster, "simulation-execution", {}),
     ],
 )
 def test_handle_task_failure_callback__do_nothing(
@@ -531,10 +536,12 @@ def test_estimate_task_resources_circuit_extraction(db_client):
 
 
 def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
 
     circuit_id = uuid4()
-    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=config_id)
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.circuit_simulation_neurodamus_cluster, config_id=config_id
+    )
     mocked_instances = {
         "cell_a": [
             ClusterInstanceInfo(name="big", max_neurons=1_000_000, memory_per_instance_gb=100),
