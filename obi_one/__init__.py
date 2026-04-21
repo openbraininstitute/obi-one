@@ -58,6 +58,8 @@ __all__ = [
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
+    "EMSynapseMappingScanConfig",
+    "EMSynapseMappingSingleConfig",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -347,6 +349,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingScanConfig,
+    EMSynapseMappingSingleConfig,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

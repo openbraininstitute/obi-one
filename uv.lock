@@ -843,14 +843,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.13.3"
+version = "0.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/54/fb4fe933ad003de7228cee3b4feb04a333d5f8c80096f72d0d582d78216e/entitysdk-0.13.3.tar.gz", hash = "sha256:4725208bc1868586e6e65bfdae41ff05d448e4b0e3d2902fcba88a20cb60ac38", size = 80656, upload-time = "2026-04-10T11:33:59.708Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/58/e9c64c49aa374521d0e0d4dfba53d8b3e7d6445bdd9494862ea4b549266d/entitysdk-0.14.2.tar.gz", hash = "sha256:d7f20501d9b185196ba944b9373cea0bda31336459730eddd30db1836321681e", size = 81763, upload-time = "2026-04-20T08:12:24.504Z" }
 
 [[package]]
 name = "executing"
@@ -2115,6 +2115,7 @@ dependencies = [
     { name = "obi-auth" },
     { name = "psutil" },
     { name = "pydantic" },
+    { name = "pylmesh" },
     { name = "pyvista" },
 ]
 
@@ -2212,6 +2213,7 @@ requires-dist = [
     { name = "pydantic-core", marker = "extra == 'service'" },
     { name = "pydantic-settings", marker = "extra == 'service'", specifier = ">=2.8.1" },
     { name = "pyjwt", marker = "extra == 'service'", specifier = ">=2.10.1" },
+    { name = "pylmesh" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "pyvista" },
     { name = "starlette", marker = "extra == 'service'" },
@@ -2593,6 +2595,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5c/5a/b46fa56bf322901eee5b0454a34343cdbdae202cd421775a8ee4e42fd519/pyjwt-2.11.0.tar.gz", hash = "sha256:35f95c1f0fbe5d5ba6e43f00271c275f7a1a4db1dab27bf708073b75318ea623", size = 98019, upload-time = "2026-01-30T19:59:55.694Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/01/c26ce75ba460d5cd503da9e13b21a33804d38c2165dec7b716d06b13010c/pyjwt-2.11.0-py3-none-any.whl", hash = "sha256:94a6bde30eb5c8e04fee991062b534071fd1439ef58d2adc9ccb823e7bcd0469", size = 28224, upload-time = "2026-01-30T19:59:54.539Z" },
+]
+
+[[package]]
+name = "pylmesh"
+version = "0.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "numpy" },
+    { name = "tqdm" },
+    { name = "trimesh" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/11/bd/08f287a65959a6b23f50c50b0770f9cd92d87df5af7ff927a296590d8e59/pylmesh-0.0.9.tar.gz", hash = "sha256:60b19956cc9fd6646ab23905c24b6f294635d70d247875a7c26be3e3e1c86367", size = 19688004, upload-time = "2026-03-14T22:04:18.96Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/fc/5e773f4293f01893b1a2311de7123ba1ec07184133f9fb500a1311e65e87/pylmesh-0.0.9-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:1af60b2440d9da3e049365d3c3d86ae141484f00bcce4b5e72bc9edc9a26c72b", size = 2696322, upload-time = "2026-03-14T22:04:16.502Z" },
 ]
 
 [[package]]
