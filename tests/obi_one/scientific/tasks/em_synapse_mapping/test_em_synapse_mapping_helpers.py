@@ -187,6 +187,7 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
             em_dataset=em_dataset_from_id,
             all_notices=["notice"],
             total_synapses=3,
+            total_connections=2,
             total_internal=0,
             total_external=3,
             file_paths=file_paths,
