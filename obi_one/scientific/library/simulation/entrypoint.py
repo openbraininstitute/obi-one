@@ -161,7 +161,7 @@ def run(
     logger.info("Starting simulation with %s backend", simulator)
     match simulator:
         case SimulationBackend.bluecellulab:
-            run_bluecellulab(simulation_config=simulation_config, libnrnmech_path=libnrnmech_path)
+            run_bluecellulab(simulation_config=simulation_config, libnrnmech_path=libnrnmech_path)  # ty:ignore[invalid-argument-type]
         case SimulationBackend.neurodamus:
             run_neurodamus(
                 simulation_config=simulation_config,
@@ -220,7 +220,7 @@ def run_bluecellulab(
 
         try:
             logger.info("Rank %d: Instantiating cells...", process.rank)
-            sim.instantiate_gids(cell_ids_for_this_rank, **instantiate_params)
+            sim.instantiate_gids(cell_ids_for_this_rank, **instantiate_params)  # ty:ignore[invalid-argument-type]
 
             logger.info("Rank %d: Setting up recordings...", process.rank)
             recording_index, local_sites_index = prepare_recordings_for_reports(
@@ -315,7 +315,7 @@ def _save_reports_and_outputs(
     all_spikes: dict[str, dict[int, list[float]]],
 ) -> None:
     all_sites_index = gather_recording_sites(gathered_sites)
-    cells_for_writer = payload_to_cells(all_payload, all_sites_index)
+    cells_for_writer = payload_to_cells(all_payload, all_sites_index)  # ty:ignore[invalid-argument-type]
     report_mgr = ReportManager(sim.circuit_access.config, sim.dt)  # type: ignore[name-defined]
     report_mgr.write_all(cells=cells_for_writer, spikes_by_pop=all_spikes)
 

@@ -47,7 +47,7 @@ def resolve_provenance(
     source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
     pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
     source_dataset = db_client.get_entity(
-        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,
+        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
         entity_type=EMDenseReconstructionDataset,
     )
     return pt_root_id, source_mesh_entity, source_dataset
@@ -71,7 +71,7 @@ def resolve_neuron(
     use_me_model = isinstance(neuron_ref, MEModelFromID)
     if use_me_model:
         me_model_entity = neuron_ref.entity(db_client)
-        morph_entity = me_model_entity.morphology
+        morph_entity = me_model_entity.morphology  # ty:ignore[unresolved-attribute]
         morph_from_id = CellMorphologyFromID(id_str=str(morph_entity.id))
     else:
         morph_entity = neuron_ref.entity(db_client)
@@ -79,10 +79,10 @@ def resolve_neuron(
 
     # Place and load morphologies
     L.info("Placing morphologies...")
-    fn_morphology_out_h5 = Path("morphologies") / (morph_entity.name + ".h5")
-    fn_morphology_out_swc = Path("morphologies/morphology") / (morph_entity.name + ".swc")
-    morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)
-    smooth_morph = morph_from_id.neurom_morphology(db_client)
+    fn_morphology_out_h5 = Path("morphologies") / (morph_entity.name + ".h5")  # ty:ignore[unsupported-operator]
+    fn_morphology_out_swc = Path("morphologies/morphology") / (morph_entity.name + ".swc")  # ty:ignore[unsupported-operator]
+    morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)  # ty:ignore[unresolved-attribute]
+    smooth_morph = morph_from_id.neurom_morphology(db_client)  # ty:ignore[unresolved-attribute]
     smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
     spiny_morph = load_morphology_with_spines(str(out_root / fn_morphology_out_h5))
 
@@ -90,7 +90,7 @@ def resolve_neuron(
     if use_me_model:
         L.info("Placing mechanisms and .hoc file...")
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
-        memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)
+        memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)  # ty:ignore[invalid-argument-type]
         shutil.move(memdl_paths.mechanisms_dir, out_root / "mechanisms")
         hoc_dir = out_root / "hoc"
         hoc_dir.mkdir(parents=True)
@@ -99,21 +99,23 @@ def resolve_neuron(
         phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
         phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
         phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
-        if me_model_entity.calibration_result is not None:
+        if me_model_entity.calibration_result is not None:  # ty:ignore[unresolved-attribute]
             phys_node_props["threshold_current"] = numpy.array(
-                [me_model_entity.calibration_result.threshold_current], dtype=numpy.float32
+                [me_model_entity.calibration_result.threshold_current],  # ty:ignore[unresolved-attribute]
+                dtype=numpy.float32,
             )
             phys_node_props["holding_current"] = numpy.array(
-                [me_model_entity.calibration_result.holding_current], dtype=numpy.float32
+                [me_model_entity.calibration_result.holding_current],  # ty:ignore[unresolved-attribute]
+                dtype=numpy.float32,
             )
 
     L.info("Resolving skeleton provenance...")
-    pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(db_client, morph_from_id)
+    pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(db_client, morph_from_id)  # ty:ignore[invalid-argument-type]
 
     return ResolvedNeuron(
         pt_root_id=pt_root_id,
         morph_entity=morph_entity,
-        morph_from_id=morph_from_id,
+        morph_from_id=morph_from_id,  # ty:ignore[invalid-argument-type]
         spiny_morph=spiny_morph,
         smooth_morph=smooth_morph,
         source_mesh_entity=source_mesh_entity,

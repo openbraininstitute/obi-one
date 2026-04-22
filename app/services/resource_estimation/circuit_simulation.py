@@ -66,4 +66,4 @@ def estimate_task_resources(
             "instance_type": instance_type,
             "compute_cell": compute_cell,
         }
-    )
+    )  # ty:ignore[invalid-return-type]

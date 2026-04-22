@@ -153,7 +153,9 @@ def run_validation(circuit_path: str) -> None:
 
 
 def get_morph_dirs(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
     src_morph_dirs = {}
@@ -175,7 +177,7 @@ def get_morph_dirs(
 
         if (
             Path(morph_folder).is_dir()
-            and len(filter_extension(Path(morph_folder).iterdir(), _morph_ext)) == 0
+            and len(filter_extension(Path(morph_folder).iterdir(), _morph_ext)) == 0  # ty:ignore[invalid-argument-type]
         ):
             # Morphology folder does not contain morphologies
             continue
@@ -187,7 +189,9 @@ def get_morph_dirs(
 
 
 def copy_morphologies(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
     L.info(f"Copying morphologies for population '{pop_name}' ({pop.size})")
@@ -244,7 +248,9 @@ def copy_morphologies(
 
 
 def copy_hoc_files(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
     hoc_file_list = [

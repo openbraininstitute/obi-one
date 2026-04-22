@@ -57,7 +57,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
-        default_timestamps: TimestampsReference = None,
+        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
         source_node_population: str | None = None,
         target_node_population: str | None = None,
         default_source_neuron_set_reference: NeuronSetReference | None = None,
@@ -75,14 +75,14 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
-        if target_neuron_set.is_biophysical(circuit, target_node_population) is False:
+        if target_neuron_set.is_biophysical(circuit, target_node_population) is False:  # ty:ignore[unresolved-attribute]
             msg = "Target Neuron Set of Spike Stimulus must be biophysical."
             raise OBIONEError(msg)
 
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
-            source_neuron_set=source_neuron_set,
+            source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
             source_node_population=source_node_population,
         )
 
@@ -90,7 +90,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             spike_file_relative_path=spike_file_relative_path,
             sonata_simulation_config_directory=sonata_simulation_config_directory,
             simulation_length=simulation_length,
-            target_neuron_set=target_neuron_set,
+            target_neuron_set=target_neuron_set,  # ty:ignore[invalid-argument-type]
         )
 
         return sonata_config
@@ -106,7 +106,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_node_population = source_neuron_set.get_population(source_node_population)
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
+        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)  # ty:ignore[invalid-argument-type]
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"
@@ -122,7 +122,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
         target_neuron_set: NeuronSet,
-    ) -> dict:
+    ) -> dict:  # ty:ignore[invalid-method-override]
         spike_file_absolute_path = (
             sonata_simulation_config_directory / spike_file_relative_path
         ).resolve()

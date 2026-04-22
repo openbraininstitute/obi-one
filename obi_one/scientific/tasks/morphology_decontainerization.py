@@ -60,7 +60,7 @@ class MorphologyDecontainerizationTask(Task):
     config: MorphologyDecontainerizationSingleConfig
 
     def _copy_circuit_folder(self) -> Path:
-        input_path, input_config = os.path.split(self.config.initialize.circuit.path)
+        input_path, input_config = os.path.split(self.config.initialize.circuit.path)  # ty:ignore[unresolved-attribute]
         output_path = self.config.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -73,7 +73,7 @@ class MorphologyDecontainerizationTask(Task):
 
     def _load_node_population(
         self, c: snap.Circuit, npop: str
-    ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):
+    ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):  # ty:ignore[invalid-type-form, possibly-missing-submodule]
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
             morph_names = None
@@ -95,7 +95,7 @@ class MorphologyDecontainerizationTask(Task):
                 raise ValueError(msg)
             h5_folder = Path(os.path.split(h5_container)[0]) / "h5"
             target_folder = (
-                Path(os.path.split(h5_container)[0]) / self.config.initialize.output_format
+                Path(os.path.split(h5_container)[0]) / self.config.initialize.output_format  # ty:ignore[unsupported-operator]
             )
 
             h5_folder.mkdir(parents=True, exist_ok=True)
@@ -206,7 +206,7 @@ class MorphologyDecontainerizationTask(Task):
 
     def _set_population_morph_entry(
         self,
-        nodes: snap.nodes.NodePopulation,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
         cfg_dict: dict,
         h5_folder: Path,
         rel_target_folder: Path,
@@ -232,7 +232,7 @@ class MorphologyDecontainerizationTask(Task):
         self,
         circuit_config: str,
         target_folder: Path,
-        nodes: snap.nodes.NodePopulation,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
         *,
         global_morph_entry: bool,
         cfg_dict: dict,
@@ -257,7 +257,7 @@ class MorphologyDecontainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
@@ -310,10 +310,10 @@ class MorphologyDecontainerizationTask(Task):
 
             # Check & set if there is a global entry for morphologies (initially not set)
             global_morph_entry = self._set_morph_entry(
-                circuit_config,
+                circuit_config,  # ty:ignore[invalid-argument-type]
                 target_folder,
                 nodes,
-                global_morph_entry=global_morph_entry,
+                global_morph_entry=global_morph_entry,  # ty:ignore[invalid-argument-type]
                 cfg_dict=cfg_dict,
                 h5_folder=h5_folder,
             )
@@ -330,7 +330,7 @@ class MorphologyDecontainerizationTask(Task):
             shutil.rmtree(_folder)
 
         # Reload and check morphologies in modified circuit
-        if not self._check_morphologies(circuit_config, self.config.initialize.output_format):
+        if not self._check_morphologies(circuit_config, self.config.initialize.output_format):  # ty:ignore[invalid-argument-type]
             msg = "ERROR: Morphology check not successful!"
             raise ValueError(msg)
         L.info("Morphology decontainerization DONE")

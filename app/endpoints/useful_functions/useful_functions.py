@@ -138,18 +138,18 @@ def build_results_dict(
     results_dict["neuron_morphology"] = _run_analysis("neuron_morphology")
 
     # Only compute neurite-domain metrics if that structure exists
-    if _has_neurite_type(neuron, nm.AXON):
-        results_dict["axon"] = _run_analysis("axon", nm.AXON)
+    if _has_neurite_type(neuron, nm.AXON):  # ty:ignore[invalid-argument-type]
+        results_dict["axon"] = _run_analysis("axon", nm.AXON)  # ty:ignore[invalid-argument-type]
     else:
         results_dict["axon"] = []
 
-    if _has_neurite_type(neuron, nm.BASAL_DENDRITE):
-        results_dict["basal_dendrite"] = _run_analysis("basal_dendrite", nm.BASAL_DENDRITE)
+    if _has_neurite_type(neuron, nm.BASAL_DENDRITE):  # ty:ignore[invalid-argument-type]
+        results_dict["basal_dendrite"] = _run_analysis("basal_dendrite", nm.BASAL_DENDRITE)  # ty:ignore[invalid-argument-type]
     else:
         results_dict["basal_dendrite"] = []
 
-    if _has_neurite_type(neuron, nm.APICAL_DENDRITE):
-        results_dict["apical_dendrite"] = _run_analysis("apical_dendrite", nm.APICAL_DENDRITE)
+    if _has_neurite_type(neuron, nm.APICAL_DENDRITE):  # ty:ignore[invalid-argument-type]
+        results_dict["apical_dendrite"] = _run_analysis("apical_dendrite", nm.APICAL_DENDRITE)  # ty:ignore[invalid-argument-type]
     else:
         results_dict["apical_dendrite"] = []
 
@@ -221,7 +221,7 @@ def _update_scalar_items(
         if scalar_unit is not None:
             raw_item["unit"] = scalar_unit
     else:
-        new_item: dict[str, str | float | int | None] = {"name": "raw", "value": scalar_val}
+        new_item: dict[str, str | float | int | None] = {"name": "raw", "value": scalar_val}  # ty:ignore[invalid-assignment]
         if scalar_unit is not None:
             new_item["unit"] = scalar_unit
         measurement_items.append(new_item)

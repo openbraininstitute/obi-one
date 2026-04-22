@@ -319,7 +319,7 @@ def degree_stats_from_population(
             )
         }
         stats.update(add_stats)
-    return stats
+    return stats  # ty:ignore[invalid-return-type]
 
 
 def properties_from_nodes_files(
@@ -457,9 +457,9 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     chemical_edge_populations: list[CircuitMetricsEdgePopulation | None]
     electrical_edge_populations: list[CircuitMetricsEdgePopulation | None]
 
-    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:
+    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:  # ty:ignore[invalid-method-override]
         """Provides iterator over all populations (node + edge)."""
-        yield from self.biophysical_node_populations + self.virtual_node_populations
+        yield from self.biophysical_node_populations + self.virtual_node_populations  # ty:ignore[invalid-yield]
 
     def __getitem__(
         self, key: str

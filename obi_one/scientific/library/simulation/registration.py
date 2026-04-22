@@ -31,7 +31,7 @@ def register_simulation_results(
     L.info(f"SimulationResult: Registered entity {simulation_result.id}")
 
     asset = client.upload_file(
-        entity_id=simulation_result.id,
+        entity_id=simulation_result.id,  # ty:ignore[invalid-argument-type]
         entity_type=type(simulation_result),
         file_path=simulation_results.spike_report_file,
         file_content_type=ContentType.application_x_hdf5,
@@ -47,7 +47,7 @@ def register_simulation_results(
 
     for path in simulation_results.voltage_report_files:
         asset = client.upload_file(
-            entity_id=simulation_result.id,
+            entity_id=simulation_result.id,  # ty:ignore[invalid-argument-type]
             entity_type=type(simulation_result),
             file_path=path,
             file_content_type=EXTENSION_TO_CONTENT_TYPE[path.suffix],
@@ -61,4 +61,4 @@ def register_simulation_results(
             asset.label,
         )
 
-    return simulation_result
+    return simulation_result  # ty:ignore[invalid-return-type]

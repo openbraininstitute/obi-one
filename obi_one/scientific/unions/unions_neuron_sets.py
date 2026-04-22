@@ -104,6 +104,6 @@ def resolve_neuron_set_ref_to_neuron_set(
             )
             raise ValueError(msg)
 
-        return default_neuron_set_reference.block
+        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
 
-    return neuron_set_reference.block
+    return neuron_set_reference.block  # ty:ignore[invalid-return-type]

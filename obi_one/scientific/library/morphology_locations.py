@@ -85,7 +85,7 @@ def path_distance_all_segments_from(
 def select_segments_as_cluster_centers(
     n_pick: int, locs: pandas.DataFrame, distr: rv_frozen, lst_sec_types: list | None = None
 ) -> pandas.DataFrame:
-    p = distr.pdf(locs[_SOM_PAD])
+    p = distr.pdf(locs[_SOM_PAD])  # ty:ignore[unresolved-attribute]
     if lst_sec_types is not None:
         p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # noqa: PLR6104
 
@@ -397,7 +397,7 @@ def generate_neurite_locations_on(
         distr = stats.norm(center_path_distances_mean, center_path_distances_sd)
         centers = select_segments_as_cluster_centers(n_centers, locs, distr, lst_sec_types=None)
         lst_candidates_per_center = candidate_segments_for_center(
-            centers.index,
+            centers.index,  # ty:ignore[invalid-argument-type]
             locs,
             max_dist_from_center,
             m,

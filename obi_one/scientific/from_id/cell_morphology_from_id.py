@@ -29,7 +29,7 @@ class CellMorphologyFromID(EntityFromID):
     _morphio_morphology: morphio.Morphology | None = PrivateAttr(default=None)
     _swc_file_content: str | None = PrivateAttr(default=None)
 
-    def swc_file_content(self, db_client: entitysdk.client.Client = None) -> None:
+    def swc_file_content(self, db_client: entitysdk.client.Client = None) -> None:  # ty:ignore[invalid-parameter-default]
         """Function for downloading SWC files of a morphology into memory."""
         if self._swc_file_content is None:
             for asset in self.entity(db_client=db_client).assets:
@@ -40,7 +40,7 @@ class CellMorphologyFromID(EntityFromID):
 
                         # Download the content into memory
                         content = db_client.download_content(
-                            entity_id=self.entity(db_client=db_client).id,
+                            entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
@@ -52,10 +52,11 @@ class CellMorphologyFromID(EntityFromID):
                 msg = "No valid application/asc asset found for morphology."
                 raise ValueError(msg)
 
-        return self._swc_file_content
+        return self._swc_file_content  # ty:ignore[invalid-return-type]
 
     def neurom_morphology(
-        self, db_client: entitysdk.client.Client = None
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> neurom.core.Morphology:
         """Getter for the neurom_morphology property.
 
@@ -68,7 +69,7 @@ class CellMorphologyFromID(EntityFromID):
             )
         return self._neurom_morphology
 
-    def has_source_mesh(self, db_client: entitysdk.client.Client = None) -> bool:
+    def has_source_mesh(self, db_client: entitysdk.client.Client = None) -> bool:  # ty:ignore[invalid-parameter-default]
         """Does the cell morphology originate from an EMCellMesh?
 
         Test if there is a Skeletonization Task associated with the
@@ -91,9 +92,9 @@ class CellMorphologyFromID(EntityFromID):
         if activity is None:
             return False
 
-        return (len(activity.used) == 1) and activity.used[0].type == "em_cell_mesh"
+        return (len(activity.used) == 1) and activity.used[0].type == "em_cell_mesh"  # ty:ignore[invalid-argument-type, not-subscriptable]
 
-    def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:
+    def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:  # ty:ignore[invalid-parameter-default]
         """EMCellMesh entity that the morphology originates from.
 
         For CellMorphologies that were created from EMCellMeshes via skeletonization,
@@ -108,11 +109,13 @@ class CellMorphologyFromID(EntityFromID):
         activity = db_client.search_entity(
             entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
         ).one_or_none()
-        source_mesh = db_client.get_entity(entity_id=activity.used[0].id, entity_type=EMCellMesh)
+        source_mesh = db_client.get_entity(entity_id=activity.used[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
         return source_mesh
 
     def write_spiny_neuron_h5(
-        self, path_to: Path | str, db_client: entitysdk.client.Client = None
+        self,
+        path_to: Path | str,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         entity = self.entity(db_client=db_client)
         for asset in entity.assets:
@@ -120,10 +123,10 @@ class CellMorphologyFromID(EntityFromID):
                 asset.content_type == ContentType.application_x_hdf5
             ):
                 db_client.download_file(
-                    entity_id=entity.id,
+                    entity_id=entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=self.entitysdk_class,
                     asset_id=asset.id,
-                    output_path=str(path_to),
+                    output_path=str(path_to),  # ty:ignore[invalid-argument-type]
                 )
                 return
         err_str = "Entity does not have a spiny morphology asset!"
@@ -132,19 +135,19 @@ class CellMorphologyFromID(EntityFromID):
     def spiny_morphology(
         self, db_client: entitysdk.client.Client | None = None, path: os.PathLike | None = None
     ) -> MorphologyWithSpines:
-        entity = self.entity(db_client=db_client)
+        entity = self.entity(db_client=db_client)  # ty:ignore[invalid-argument-type]
         if path is None:
             path = Path.cwd()
         if not isinstance(path, Path):
             path = Path(path)
         if Path(path).is_dir():
-            path = path / (entity.name + ".h5")  # NOQA: PLR6104
+            path = path / (entity.name + ".h5")  # NOQA: PLR6104  # ty:ignore[unsupported-operator]
 
-        self.write_spiny_neuron_h5(path, db_client)
+        self.write_spiny_neuron_h5(path, db_client)  # ty:ignore[invalid-argument-type]
         spiny_morph = load_morphology_with_spines(str(path))
         return spiny_morph
 
-    def morphio_morphology(self, db_client: entitysdk.client.Client = None) -> morphio.Morphology:
+    def morphio_morphology(self, db_client: entitysdk.client.Client = None) -> morphio.Morphology:  # ty:ignore[invalid-parameter-default]
         """Getter for the morphio_morphology property.
 
         Downloads the application/asc asset if not already downloaded

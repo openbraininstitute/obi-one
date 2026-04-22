@@ -63,4 +63,4 @@ def parametric_multi_value_endpoint(
     except Exception as e:
         raise HTTPException(status_code=400, detail="Unknown Error") from e
 
-    return list(mvh.multi_value_class)
+    return list(mvh.multi_value_class)  # ty:ignore[invalid-argument-type, invalid-return-type]

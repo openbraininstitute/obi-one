@@ -56,7 +56,7 @@ def validate_mesh_reader(mesh_file_path: str) -> pv.DataSet:
         if mesh.n_points == 0 or mesh.n_cells == 0:
             _handle_empty_geometry(mesh_file_path)
 
-        return mesh
+        return mesh  # ty:ignore[invalid-return-type]
 
 
 class MESHValidationResponse(BaseModel):

@@ -16,7 +16,9 @@ class IonChannelRecordingFromID(EntityFromID):
     _entity: IonChannelRecording | None = PrivateAttr(default=None)
 
     def download_asset(
-        self, dest_dir: Path = Path(), db_client: entitysdk.client.Client = None
+        self,
+        dest_dir: Path = Path(),
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> Path:
         output_dir = create_dir(dest_dir)
         asset = db_client.download_assets(

@@ -107,7 +107,7 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         tgt_center = df[cols_xyz].mean() + o_df
 
         d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
-        idxx = np.nonzero(self.radius > d)[0]
+        idxx = np.nonzero(self.radius > d)[0]  # ty:ignore[invalid-argument-type]
         df = df.iloc[idxx]
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}

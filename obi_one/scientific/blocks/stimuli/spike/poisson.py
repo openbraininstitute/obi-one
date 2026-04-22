@@ -67,7 +67,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
         if (
             self.duration
-            * 1e-3
+            * 1e-3  # ty:ignore[unsupported-operator]
             * len(source_gids)
             * self.frequency
             * len(self._offset_timestamps())
@@ -82,12 +82,14 @@ class PoissonSpikeStimulus(SpikeStimulus):
         spikes_by_gid: dict[int, list[float]] = defaultdict(list)
         for offset_timestamp in self._offset_timestamps():
             start_time = offset_timestamp
-            end_time = start_time + self.duration
+            end_time = start_time + self.duration  # ty:ignore[unsupported-operator]
             for gid in source_gids:
                 t = start_time
                 while t < end_time:
                     # Draw next spike time from exponential distribution
-                    interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
+                    interval = (
+                        rng.exponential(1.0 / self.frequency) * 1000  # ty:ignore[unsupported-operator]
+                    )  # convert s → ms
                     t += interval
                     if t < end_time:
                         spikes_by_gid[gid].append(t)

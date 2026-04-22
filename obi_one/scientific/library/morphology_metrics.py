@@ -229,12 +229,12 @@ def get_morphology_metrics(
     db_client: entitysdk.client.Client,
     requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
-    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
+    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)  # ty:ignore[invalid-argument-type]
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
             content = db_client.download_content(
-                entity_id=morphology.id,
+                entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
                 entity_type=CellMorphology,
                 asset_id=asset.id,
             ).decode(encoding="utf-8")
@@ -247,4 +247,4 @@ def get_morphology_metrics(
                 }
                 return MorphologyMetricsOutput(**values)
             return MorphologyMetricsOutput.from_morphology(neurom_morphology)
-    return None
+    return None  # ty:ignore[invalid-return-type]

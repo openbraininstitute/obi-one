@@ -61,12 +61,12 @@ def validate_config(
             mock_entity.id = uuid4()
 
             # Mock for Simulation entities that will be in the generated list
-            mock_simulation = MagicMock(spec=entitysdk.models.Simulation)
+            mock_simulation = MagicMock(spec=entitysdk.models.Simulation)  # ty:ignore[possibly-missing-submodule]
             mock_simulation.id = uuid4()
 
             # Make register_entity return appropriate mocks based on what's being registered
             def register_entity_side_effect(entity: Any) -> MagicMock:
-                if isinstance(entity, entitysdk.models.Simulation):
+                if isinstance(entity, entitysdk.models.Simulation):  # ty:ignore[possibly-missing-submodule]
                     return mock_simulation
                 return mock_entity
 
@@ -82,7 +82,7 @@ def validate_config(
                 with tempfile.TemporaryDirectory() as tdir:
                     grid_scan = GridScanGenerationTask(
                         form=form,
-                        output_root=tdir,
+                        output_root=tdir,  # ty:ignore[invalid-argument-type]
                         coordinate_directory_option="ZERO_INDEX",
                     )
                     # Execute with real db_client but patched write methods

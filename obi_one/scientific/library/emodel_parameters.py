@@ -114,7 +114,7 @@ def get_mechanism_variables(
         Tuple of (variables_list, channel_mapping) where channel_mapping shows
         which section lists each ion channel appears in based on emodel JSON.
     """
-    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)
+    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
 
     optimized_params = _fetch_optimization_parameters(db_client, emodel)
     ion_channel_vars = _get_ion_channel_variables(emodel)
@@ -171,9 +171,9 @@ def _fetch_optimization_parameters(
         return []
 
     content_bytes = db_client.download_content(
-        entity_id=emodel.id,
+        entity_id=emodel.id,  # ty:ignore[invalid-argument-type]
         entity_type=EModel,
-        asset_id=asset.id,
+        asset_id=asset.id,  # ty:ignore[unresolved-attribute]
     )
     data = json.loads(content_bytes)
     return _parse_optimization_parameters(data.get("parameter", []), emodel)
@@ -246,7 +246,7 @@ def _extract_channel_suffix(neuron_variable: str, known_suffixes: list[str]) -> 
     # Sort by length descending to match longest suffix first
     for suffix in sorted(known_suffixes, key=len, reverse=True):
         if neuron_variable.endswith(f"_{suffix}"):
-            return suffix
+            return suffix  # ty:ignore[invalid-return-type]
 
     # Fallback: extract the last part after underscore for built-in mechanisms
     # This handles cases like g_pas, e_pas, etc.

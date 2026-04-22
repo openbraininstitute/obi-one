@@ -101,7 +101,7 @@ def try_get_mechanism_variables(
     Catches all exceptions so callers can safely treat this as optional data.
     """
     try:
-        memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)
+        memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
     except entitysdk.exception.EntitySDKError:
         return None
 

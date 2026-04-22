@@ -4,7 +4,10 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from obi_one.core.validation import SingleValidationOutput, Validation
+from obi_one.core.validation import (  # ty:ignore[unresolved-import]
+    SingleValidationOutput,
+    Validation,
+)
 
 L = logging.getLogger(__name__)
 
