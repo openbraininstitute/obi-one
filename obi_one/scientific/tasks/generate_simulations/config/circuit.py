@@ -120,7 +120,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -133,7 +133,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
