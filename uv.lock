@@ -824,6 +824,19 @@ wheels = [
 ]
 
 [[package]]
+name = "dracopy"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/be/7fccb6eadf9a18118fc125929b078e083e35e97aa3c10b8df677c5d93862/dracopy-2.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:00ed24e138bcfbf2605d495c3a4e6c17b71cbd0b63b78e945d9d3c89d4fb9d69", size = 2749370, upload-time = "2025-11-11T16:14:24.499Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/59/6c2c83cb8a0f56f61ca297241abb51f4157a0eebebfc24f213e707996857/dracopy-2.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:218626fc0ec0326ca65dbc47035926a15175d9044d71bcde475e25433eea0056", size = 2579812, upload-time = "2025-11-11T16:47:22.093Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/f9/f8d0e9283e17854e2e265a5249b2cc1ba16d89547dd5414f08ae8ecf0ccd/dracopy-2.0.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e7787814cf6e7a70814c78228a84f22accbfc5662053260a5756d7eabb87ad23", size = 4938162, upload-time = "2026-02-23T23:05:00.702Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/b7/28dff0bc2f992df437aaeeaeffba8f2f1ec031f054cedfc0390ea4300370/dracopy-2.0.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4d6ea2821545b5fa1cfb1ca2911ea6425a2606932cf4fac2f9b1f2d4ccb6e52d", size = 5096811, upload-time = "2025-11-11T16:14:26.18Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/2b/69af07d283aa3a7d3bbbf4236631742fdbb0a647f605f477161e4203e11c/dracopy-2.0.0-cp312-cp312-win32.whl", hash = "sha256:956c3077342d3b62d28cec10a85e4fa1836caf4641a219f4a536205f8f6e9ad1", size = 4280701, upload-time = "2025-11-11T16:14:29.676Z" },
+    { url = "https://files.pythonhosted.org/packages/35/16/3c9cf0ef315de04ff2a8754685c14e58c04394077d10cf3f3a01ff9afe9e/dracopy-2.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:7f1991d0f0575d5096847ef2320d76b2c4a2cf1f88c741cb35dea75d3d682ff4", size = 5058707, upload-time = "2025-11-11T16:14:28.062Z" },
+]
+
+[[package]]
 name = "efel"
 version = "5.7.20"
 source = { registry = "https://pypi.org/simple" }
@@ -843,14 +856,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.14.2"
+version = "0.14.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/58/e9c64c49aa374521d0e0d4dfba53d8b3e7d6445bdd9494862ea4b549266d/entitysdk-0.14.2.tar.gz", hash = "sha256:d7f20501d9b185196ba944b9373cea0bda31336459730eddd30db1836321681e", size = 81763, upload-time = "2026-04-20T08:12:24.504Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/3d/4dcbf763cc3a121d62c662ce7cf91590e2b5071403a8f7231622904e6ba1/entitysdk-0.14.3.tar.gz", hash = "sha256:d87b00d1b0e3e4f8b29ac2d4f8b11f32b30f8974e8c298dbfda5bcb017592b68", size = 81619, upload-time = "2026-04-21T15:45:07.15Z" }
 
 [[package]]
 name = "executing"
@@ -2107,6 +2120,7 @@ dependencies = [
     { name = "caveclient" },
     { name = "connectome-manipulator" },
     { name = "connectome-utilities" },
+    { name = "dracopy" },
     { name = "entitysdk" },
     { name = "libsonata" },
     { name = "morph-spines" },
@@ -2116,6 +2130,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pyvista" },
+    { name = "trimesh" },
 ]
 
 [package.optional-dependencies]
@@ -2191,6 +2206,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.11" },
+    { name = "dracopy" },
     { name = "entitysdk", specifier = ">=0.13.3" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
@@ -2215,6 +2231,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "pyvista" },
     { name = "starlette", marker = "extra == 'service'" },
+    { name = "trimesh" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "notebooks", "service", "all"]

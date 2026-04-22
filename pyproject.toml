@@ -44,6 +44,7 @@ dependencies = [
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.11",
     "connectome-manipulator>=1.0.4",
+    "DracoPy",
     "morph_spines",
     "morph-tool",
     "neurom",

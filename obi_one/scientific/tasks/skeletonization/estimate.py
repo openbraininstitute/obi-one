@@ -2,10 +2,13 @@
 
 import json
 import math
+import struct
 import tempfile
 from pathlib import Path
 from uuid import UUID
 
+import DracoPy
+import numpy as np
 import trimesh
 from entitysdk import models
 from entitysdk.client import Client
@@ -14,6 +17,33 @@ from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
 from obi_one.utils.db_sdk import get_entity_asset_by_label
+
+
+def _load_glb_mesh(path: str) -> trimesh.Trimesh:
+    """Load a GLB file into a Trimesh, handling Draco compression if present."""
+    mesh = trimesh.load(path, force="mesh")
+    if mesh.vertices.any():
+        return mesh
+
+    # Draco-compressed GLB: manually decode
+    data = Path(path).read_bytes()
+    chunk_length = struct.unpack("<I", data[12:16])[0]
+    gltf = json.loads(data[20 : 20 + chunk_length])
+
+    bin_offset = 20 + chunk_length
+    bin_chunk_length = struct.unpack("<I", data[bin_offset : bin_offset + 4])[0]
+    bin_data = data[bin_offset + 8 : bin_offset + 8 + bin_chunk_length]
+
+    draco_ext = gltf["meshes"][0]["primitives"][0]["extensions"][
+        "KHR_draco_mesh_compression"
+    ]
+    bv = gltf["bufferViews"][draco_ext["bufferView"]]
+    decoded = DracoPy.decode(bin_data[bv["byteOffset"] : bv["byteOffset"] + bv["byteLength"]])
+
+    return trimesh.Trimesh(
+        vertices=np.array(decoded.points).reshape(-1, 3),
+        faces=np.array(decoded.faces).reshape(-1, 3),
+    )
 
 
 def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -> float:
@@ -38,7 +68,7 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
             strategy=FetchFileStrategy.link_or_download,
         ).one()
 
-        mesh = trimesh.load(str(output_path))
+        mesh = _load_glb_mesh(str(output_path))
         # convert to um2
         return mesh.area * 1e-6
 
