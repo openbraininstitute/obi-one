@@ -19,6 +19,7 @@ from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskDefinition
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
+from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
@@ -88,6 +89,12 @@ def estimate_task_cost(
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )
+    L.info(
+        f"Estimated cost: subtype={accounting_parameters.service_subtype}, "
+        f"count={accounting_parameters.count}, proj_id={project_context.project_id}, "
+        f"cost={cost_estimate}"
+    )
+
     return TaskAccountingInfo(
         cost=cost_estimate,
         config_id=config_id,
@@ -131,7 +138,7 @@ def _evaluate_accounting_parameters(
             )
         case TaskType.morphology_skeletonization:
             return AccountingParameters(
-                count=1,
+                count=estimate_skeletonization_count(db_client=db_client, config_id=config_id),
                 service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
             )
         case _:
@@ -167,10 +174,10 @@ def _evaluate_circuit_simulation_parameters(
 
 def generate_accounting_callbacks(
     task_type: TaskType,
-    accounting_job_id: str,
+    accounting_job_id: UUID,
     accounting_parameters: AccountingParameters,
-    virtual_lab_id: str,
-    project_id: str,
+    virtual_lab_id: UUID,
+    project_id: UUID,
     callback_url: str,
 ) -> list[CallBack]:
     return [
@@ -190,7 +197,7 @@ def generate_accounting_callbacks(
 
 
 def _generate_accounting_failure_callback(
-    accounting_job_id: str,
+    accounting_job_id: UUID,
 ) -> CallBack:
     """Builds the callback URL for accounting failure (reservation deletion).
 
@@ -210,12 +217,12 @@ def _generate_accounting_failure_callback(
 
 def _generate_accounting_success_callback(
     task_type: TaskType,
-    accounting_job_id: str,
+    accounting_job_id: UUID,
     count: int,
     accounting_service_subtype: str,
     callback_url: str,
-    virtual_lab_id: str,
-    project_id: str,
+    virtual_lab_id: UUID,
+    project_id: UUID,
 ) -> CallBack:
     """Builds the callback URL and payload for accounting success (usage addition).
 
@@ -226,7 +233,7 @@ def _generate_accounting_success_callback(
         method="POST",
         payload={
             "task_type": task_type,
-            "job_id": accounting_job_id,
+            "job_id": str(accounting_job_id),
             "accounting_service_subtype": accounting_service_subtype,
             "count": count,
         },
@@ -243,18 +250,18 @@ def _generate_accounting_success_callback(
 
 
 def finish_accounting_session(
-    accounting_job_id: str,
+    accounting_job_id: UUID,
     service_subtype: ServiceSubtype,
     count: int,
-    project_id: str,
+    project_id: UUID,
     http_client: httpx.Client,
 ) -> None:
     data = {
         "type": "oneshot",
         "subtype": service_subtype,
-        "proj_id": project_id,
+        "proj_id": str(project_id),
         "count": str(count),
-        "job_id": accounting_job_id,
+        "job_id": str(accounting_job_id),
         "timestamp": get_current_timestamp(),
     }
     make_http_request(

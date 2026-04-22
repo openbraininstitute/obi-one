@@ -38,6 +38,7 @@ class UIElement(StrEnum):
         "ion_channel_variable_modification_by_section_list"
     )
     MODEL_IDENTIFIER = "model_identifier"
+    MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     NEURON_IDS = "neuron_ids"
     REFERENCE = "reference"

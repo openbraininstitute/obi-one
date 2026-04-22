@@ -1,7 +1,7 @@
 import json
 from http import HTTPStatus
 from unittest.mock import ANY, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import entitysdk
 import httpx
@@ -213,14 +213,20 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_extraction: 1,
         TaskType.circuit_simulation: 10,
         TaskType.ion_channel_model_simulation_execution: 1,
-        TaskType.morphology_skeletonization: 1,
+        TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
     }
 
-    with patch(
-        "app.services.accounting._evaluate_circuit_simulation_parameters",
-        return_value=accounting_parameters,
-        autospec=True,
+    with (
+        patch(
+            "app.services.accounting._evaluate_circuit_simulation_parameters",
+            return_value=accounting_parameters,
+            autospec=True,
+        ),
+        patch(
+            "app.services.accounting.estimate_skeletonization_count",
+            return_value=expected_count[TaskType.morphology_skeletonization],
+        ),
     ):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,
@@ -238,8 +244,8 @@ def test_generate_accounting_callbacks(accounting_parameters):
         task_type=TaskType.circuit_extraction,
         accounting_job_id=job_id,
         accounting_parameters=accounting_parameters,
-        project_id=PROJECT_ID,
-        virtual_lab_id=VIRTUAL_LAB_ID,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
         callback_url="my-callback",
     )
 
@@ -268,11 +274,14 @@ def test_finish_accounting_session_success(monkeypatch, httpx_mock):
 
     client = httpx.Client()
 
+    job_id = UUID(int=0)
+    proj_id = UUID(int=1)
+
     test_module.finish_accounting_session(
-        accounting_job_id="job-1",
+        accounting_job_id=job_id,
         service_subtype="compute",
         count=3,
-        project_id="proj-1",
+        project_id=proj_id,
         http_client=client,
     )
 
@@ -285,8 +294,8 @@ def test_finish_accounting_session_success(monkeypatch, httpx_mock):
     assert json.loads(request.content) == {
         "type": "oneshot",
         "subtype": "compute",
-        "proj_id": "proj-1",
+        "proj_id": str(proj_id),
         "count": "3",
-        "job_id": "job-1",
+        "job_id": str(job_id),
         "timestamp": ANY,
     }

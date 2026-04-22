@@ -1,15 +1,17 @@
 import json
 from datetime import UTC, datetime
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import entitysdk
 import httpx
 import pytest
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
+import app.services.resource_estimation.circuit_simulation
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
+from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
 from app.services import task as test_module
 
@@ -164,7 +166,6 @@ def test_submit_task_job__success(
         project_context=project_context,
         callback_url=callback_url,
         callbacks=[],
-        compute_cell="cell_a",
     )
     assert res.task_type == task_type
     assert res.config_id == config_id
@@ -274,7 +275,6 @@ def test_submit_task_job__failure(
             project_context=project_context,
             callback_url=callback_url,
             callbacks=[],
-            compute_cell="cell_a",
         )
 
 
@@ -287,7 +287,6 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
         project_id=PROJECT_ID,
         callbacks=callbacks,
         task_definition=task_definition,
-        compute_cell="cell_a",
     )
 
     assert res == {
@@ -295,8 +294,8 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
             "type": "cluster",
             "instances": 1,
             "instance_type": "small",
-            "timelimit": "00:10",
-            "compute_cell": "cell_a",
+            "timelimit": None,
+            "compute_cell": "local",
         },
         "inputs": [
             "--simulation-id",
@@ -337,13 +336,12 @@ def test_generic_job_data(config_id, activity_id, callbacks):
     res = test_module._generic_job_data(
         config_id=config_id,
         activity_id=activity_id,
-        project_id=PROJECT_ID,
-        virtual_lab_id=VIRTUAL_LAB_ID,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
         task_definition=task_definition,
         entity_cache=True,
         output_root="/foo",
         callbacks=callbacks,
-        compute_cell="cell_b",
     )
 
     assert res == {
@@ -352,7 +350,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "cores": 1,
             "memory": 2,
             "timelimit": "00:10",
-            "compute_cell": "cell_b",
+            "compute_cell": "local",
         },
         "code": {
             "type": "python_repository",
@@ -365,6 +363,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             ),
             "capabilities": {
                 "private_packages": False,
+                "env_secrets": [],
             },
         },
         "inputs": [
@@ -489,15 +488,19 @@ def test_handle_task_failure_callback__do_nothing(
 
 def test_estimate_task_resources_passthrough(db_client):
     """Non-circuit_extraction tasks should return resources unchanged."""
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
-    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
+    task_definition = TASK_DEFINITIONS[TaskType.morphology_skeletonization]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.morphology_skeletonization,
+        config_id=uuid4(),
+    )
 
     result = test_module.estimate_task_resources(
         json_model=json_model,
         db_client=db_client,
         task_definition=task_definition,
+        compute_cell="cell_b",
     )
-    assert result is task_definition.resources
+    assert result == task_definition.resources.model_copy(update={"compute_cell": "cell_b"})
 
 
 def test_estimate_task_resources_circuit_extraction(db_client):
@@ -507,7 +510,7 @@ def test_estimate_task_resources_circuit_extraction(db_client):
     expected = MachineResources(cores=4, memory=16, timelimit="02:00", compute_cell="local")
 
     with patch(
-        "app.services.circuit_extraction.estimate_task_resources",
+        "app.services.resource_estimation.circuit_extraction.estimate_task_resources",
         return_value=expected,
         autospec=True,
     ) as mock_estimate:
@@ -515,9 +518,64 @@ def test_estimate_task_resources_circuit_extraction(db_client):
             json_model=json_model,
             db_client=db_client,
             task_definition=task_definition,
+            compute_cell="cell_b",
         )
 
     assert result is expected
     mock_estimate.assert_called_once_with(
-        json_model=json_model, db_client=db_client, task_definition=task_definition
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
     )
+
+
+def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+
+    circuit_id = uuid4()
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=config_id)
+    mocked_instances = {
+        "cell_a": [
+            ClusterInstanceInfo(name="big", max_neurons=1_000_000, memory_per_instance_gb=100),
+            ClusterInstanceInfo(name="small", max_neurons=100, memory_per_instance_gb=10),
+        ]
+    }
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "entity_id": str(circuit_id),
+            "simulation_campaign_id": str(uuid4()),
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{circuit_id}",
+        method="GET",
+        json={
+            "id": str(circuit_id),
+            "number_neurons": 1000,
+            "number_connections": 20,
+            "number_synapses": 35,
+            "scale": "microcircuit",
+            "build_category": "em_reconstruction",
+        },
+    )
+    with patch.object(
+        app.services.resource_estimation.circuit_simulation,
+        "CLUSTER_INSTANCES_INFO",
+        mocked_instances,
+    ):
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_a",
+        )
+    assert result.type == "cluster"
+    assert result.instance_type == "big"
+    assert result.instances == 1
+    assert result.compute_cell == "cell_a"

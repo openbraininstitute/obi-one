@@ -1,5 +1,7 @@
+from enum import StrEnum
+
 _MIN_SIMULATION_LENGTH_MILLISECONDS = 1.0
-_MAX_SIMULATION_LENGTH_MILLISECONDS = 5000.0
+_MAX_SIMULATION_LENGTH_MILLISECONDS = 12000.0
 
 _MIN_NON_NEGATIVE_FLOAT_VALUE = 1e-6
 _MIN_TIME_STEP_MILLISECONDS = 0.025
@@ -20,3 +22,14 @@ _MAX_SMALL_MICROCIRCUIT_SIZE = 20
 
 _SCAN_CONFIG_FILENAME = "obi_one_scan.json"
 _COORDINATE_CONFIG_FILENAME = "obi_one_coordinate.json"
+
+
+class SONATA(StrEnum):
+    SPIKE_STIMULUS_MODULE = "synapse_replay"
+    SPIKE_STIMULUS_INPUT_TYPE = "spikes"
+    DELAY = "delay"
+    DURATION = "duration"
+    NODE_SET = "node_set"
+    MODULE = "module"
+    INPUT_TYPE = "input_type"
+    SPIKE_FILE = "spike_file"

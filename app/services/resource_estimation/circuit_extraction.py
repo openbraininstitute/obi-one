@@ -53,7 +53,10 @@ def _check_available_disk_space(disk_space_gb_required: float) -> None:
 
 
 def estimate_task_resources(  # noqa: PLR0914
-    json_model: TaskLaunchSubmit, db_client: entitysdk.Client, task_definition: TaskDefinition
+    json_model: TaskLaunchSubmit,
+    db_client: entitysdk.Client,
+    task_definition: TaskDefinition,
+    compute_cell: str,
 ) -> Resources:
     """Estimate machine resources for a circuit extraction task."""
     # Get extraction config
@@ -82,7 +85,7 @@ def estimate_task_resources(  # noqa: PLR0914
     level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     circuit_metrics = get_circuit_metrics(
-        circuit_id=circuit_id,
+        circuit_id=str(circuit_id),
         db_client=db_client,
         level_of_detail_nodes=level_of_detail_nodes_dict,
         level_of_detail_edges=level_of_detail_edges_dict,
@@ -121,5 +124,10 @@ def estimate_task_resources(  # noqa: PLR0914
 
     # Update resources
     return task_definition.resources.model_copy(
-        update={"cores": ncpu, "memory": mem_gb, "timelimit": f"{time_h:02d}:00"}
+        update={
+            "cores": ncpu,
+            "memory": mem_gb,
+            "timelimit": f"{time_h:02d}:00",
+            "compute_cell": compute_cell,
+        }
     )

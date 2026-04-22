@@ -1,9 +1,10 @@
-"""Basic functions to compute network stats and for plotting
-Last modified 08.2025
+"""Basic functions to compute network stats and for plotting.
+
+Requires: pip install obi-one[connectivity]
+
 Author: Daniela Egas Santander.
 """
 
-import contextlib
 import logging
 from operator import itemgetter
 
@@ -11,7 +12,6 @@ import matplotlib.patches as mpatches
 
 # Matplotlib imports
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import pandas as pd
 from conntility import ConnectivityMatrix
@@ -21,9 +21,23 @@ from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-with contextlib.suppress(ImportError):  # Try to import connalysis
+# Connectivity dependencies (optional) - check for networkx
+try:
+    import networkx as nx
+except ImportError as e:  # pragma: no cover
+    msg = "Connectivity plotting requires networkx. Install with: pip install obi-one[connectivity]"
+    raise ImportError(msg) from e
+
+# Connectivity dependencies (optional) - check for connalysis
+try:
     from connalysis.network.classic import connection_probability_within, density
     from connalysis.network.topology import node_degree, rc_submatrix
+except ImportError as e:  # pragma: no cover
+    msg = (
+        "Connectivity plotting requires connectome-analysis (connalysis). "
+        "Install with: pip install obi-one[connectivity]"
+    )
+    raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
 
@@ -119,25 +133,13 @@ def compute_global_connectivity(
     """Compute connection probabilities for the full network of with max_dist,
     and similarly for the control.
     """
-    if "rc_submatrix" not in globals():
-        msg = "Import of 'rc_submatrix' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
     if cols is None:
         cols = ["x", "y"]
     if connection_type == "full":  # Compute on the entire network
-        if "density" not in globals():
-            msg = "Import of 'density' failed. You probably need to install connalysis locally."
-            raise ValueError(msg)
         return np.array(
             [density(m), density(m_er), density(rc_submatrix(m)), density(rc_submatrix(m_er))]
         )
     if connection_type == "within":
-        if "connection_probability_within" not in globals():
-            msg = (
-                "Import of 'connection_probability_within' failed. You probably need to install"
-                " connalysis locally."
-            )
-            raise ValueError(msg)
         return np.array(
             [
                 connection_probability_within(
@@ -535,10 +537,6 @@ def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     color_strength: tuple | None = None,
     cmap_adj: plt.Colormap | None = None,
 ) -> plt.Figure:
-    if "node_degree" not in globals():
-        msg = "Import of 'node_degree' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
-
     if color_indeg is None:
         color_indeg = plt.get_cmap("Set2")(0)
     if color_outdeg is None:
@@ -764,10 +762,6 @@ def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     coord_names: list[str] | None = None,
     axis_fontsize: int | None = None,
 ) -> plt.Axes:
-    if "node_degree" not in globals():
-        msg = "Import of 'node_degree' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
-
     if coord_names is None:
         coord_names = ["x", "y"]
     ax.set_title(title, fontsize=title_fontsize)
@@ -1072,13 +1066,6 @@ def plot_network_legends(  # noqa: PLR0913
 def plot_smallMC(  # noqa: PLR0914
     conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
 ) -> plt.Figure:
-    if "density" not in globals() or "rc_submatrix" not in globals():
-        msg = (
-            "Import of 'density' or 'rc_submatrix' failed. You probably need to install connalysis"
-            " locally."
-        )
-        raise ValueError(msg)
-
     # Generate template for plot
     fig, axs = make_MC_fig_template(
         figsize=(full_width, full_width),
@@ -1209,7 +1196,7 @@ def plot_node_table(  # noqa: PLR0914
         "synapse_class": "Syn-class",
     }
     df = conn.vertices[col_sel]
-    df = df.copy().rename(columns={_col: col_lbl_map[_col] for _col in col_sel})
+    df = df.copy().rename(columns={col: col_lbl_map[col] for col in col_sel})
     if not skip_color_column:
         df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 

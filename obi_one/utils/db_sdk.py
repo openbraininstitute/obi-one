@@ -126,6 +126,7 @@ def register_task_config_entity(
     task_config_type: str,
     multiple_value_parameters_dictionary: dict,
     input_entities: list[Entity],
+    task_config_generator_id: UUID | None = None,
 ) -> TaskConfig:
     """Registers a TaskConfig entity for the given task_config_type and returns it."""
     L.info("-- Create TaskConfig entity")
@@ -134,8 +135,9 @@ def register_task_config_entity(
             name=name,
             description=description,
             task_config_type=task_config_type,
-            meta={"scan_parameters": multiple_value_parameters_dictionary},
+            meta=multiple_value_parameters_dictionary,
             inputs=input_entities,
+            task_config_generator_id=task_config_generator_id,
         )
     )
     return task_config
@@ -168,6 +170,7 @@ def register_task_config_with_asset(
     multiple_value_parameters_dictionary: dict,
     input_entities: list[UUID],
     task_config_file_path: Path,
+    task_config_generator_id: UUID | None = None,
 ) -> tuple[TaskConfig, Asset]:
     """Registers a TaskConfig entity for the task_config_type, uploads the task config asset."""
     L.info(f"-- Register TaskConfig type: {task_config_type} and task_config asset")
@@ -178,6 +181,7 @@ def register_task_config_with_asset(
         task_config_type=task_config_type,
         multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
         input_entities=input_entities,
+        task_config_generator_id=task_config_generator_id,
     )
     asset = upload_task_config_asset(
         client=client,
