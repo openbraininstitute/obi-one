@@ -18,6 +18,8 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.distributions.base import Distribution
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
@@ -29,9 +31,6 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
-from obi_one.scientific.blocks.distributions.base import Distribution
-from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
-from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
@@ -841,7 +840,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         """
         # NOTE: Node IDs are kept in SONATA convention (0-based indexing).
         # No conversion to NEURON (1-based) indexing is performed here.
-        gid_spike_map = gid_spike_map
 
         out_path = Path(spike_file).parent
         if not out_path.exists():
@@ -901,7 +899,8 @@ class SpikeStimulus(StimulusWithTimestamps):
         while True:
             interval = distribution.sample(1, rng=rng)[0]
             if interval <= 0.0:
-                raise ValueError("Inter-spike intervals must be positive.")
+                msg = "Inter-spike intervals must be positive."
+                raise ValueError(msg)
             t += interval
             if t >= duration:
                 break
@@ -915,6 +914,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         simulation_length: NonNegativeFloat,
         source_node_population: str | None,
         distribution: Distribution,
+        *,
         resample_each_repetition: bool = False,
     ) -> None:
         self._simulation_length = simulation_length

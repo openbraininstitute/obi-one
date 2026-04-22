@@ -44,9 +44,7 @@ class FloatUniformDistribution(UniformDistribution):
 
     title: ClassVar[str] = "Uniform Floats"
 
-    def _sample_generator(
-        self, n: int = 1, rng: np.random.Generator | None = None
-    ) -> list[float]:
+    def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
         """Sample n values from the uniform distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
@@ -59,9 +57,7 @@ class IntUniformDistribution(UniformDistribution):
 
     title: ClassVar[str] = "Uniform Integers"
 
-    def _sample_generator(
-        self, n: int = 1, rng: np.random.Generator | None = None
-    ) -> list[float]:
+    def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
         """Sample n values from the uniform distribution.
 
         Don't worry about the constraints here, since the sample method will handle them.

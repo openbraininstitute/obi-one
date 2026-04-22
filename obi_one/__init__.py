@@ -61,6 +61,7 @@ __all__ = [
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
+    "DistributionSpikeStimulus",
     "EMCellMeshFromID",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
@@ -69,6 +70,7 @@ __all__ = [
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
@@ -78,6 +80,7 @@ __all__ = [
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
@@ -243,12 +246,12 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
-from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,

@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 
@@ -14,10 +16,10 @@ class TestFloatConstantDistribution:
 
     def test_sample_with_explicit_rng(self):
         """Passing an explicit numpy Generator to sample() works and is honored."""
-        dist = obi.FloatConstantDistribution(value=3.14)
+        dist = obi.FloatConstantDistribution(value=math.pi)
         rng = np.random.default_rng(42)
         samples = dist.sample(n=2, rng=rng)
-        assert samples == [3.14, 3.14]
+        assert samples == [math.pi, math.pi]
 
     def test_sample_is_concrete_and_usable(self):
         """Distribution.sample() is concrete and usable through subclasses."""

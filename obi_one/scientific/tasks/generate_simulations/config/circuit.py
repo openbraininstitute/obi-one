@@ -15,6 +15,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -29,10 +33,6 @@ from obi_one.scientific.unions.unions_stimuli import (
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
-)
-from obi_one.scientific.unions.unions_distributions import (
-    AllDistributionsReference,
-    AllDistributionsUnion,
 )
 
 L = logging.getLogger(__name__)

@@ -54,7 +54,10 @@ _RELATIVE_INJECTION_STIMULI = (
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
-    DistributionSpikeStimulus | PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+    DistributionSpikeStimulus
+    | PoissonSpikeStimulus
+    | FullySynchronousSpikeStimulus
+    | SinusoidalPoissonSpikeStimulus
 )
 
 _FIELD_STIMULI = (

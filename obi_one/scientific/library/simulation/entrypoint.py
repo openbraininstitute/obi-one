@@ -63,6 +63,7 @@ def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
         logger.info("Rank %d: Cleaning up...", process.rank)
         pc.done()
 
+
 def _setup_mpi_logging(rank: int) -> None:
     """Configure stdout logging for MPI processes."""
     logger = logging.getLogger()

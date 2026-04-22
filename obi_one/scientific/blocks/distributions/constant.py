@@ -24,7 +24,9 @@ class FloatConstantDistribution(Distribution):
     )
 
     def _sample_generator(
-        self, n: int = 1, rng: np.random.Generator | None = None
+        self,
+        n: int = 1,
+        rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
         """Sample n values from the distribution."""
         return [self.value] * n
@@ -45,7 +47,9 @@ class IntConstantDistribution(Distribution):
     )
 
     def _sample_generator(
-        self, n: int = 1, rng: np.random.Generator | None = None
+        self,
+        n: int = 1,
+        rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
         """Sample n values from the distribution."""
         return [float(self.value)] * n

@@ -560,8 +560,9 @@ def test_simulation_campaign_generation(tmp_path):
         coupled_scan2.execute()
 
 
-def test_circuit_simulation_scan_config_with_distribution_stimuli(tmp_path):
-    """Test that CircuitSimulationScanConfig can include distribution blocks and DistributionSpikeStimulus."""
+def test_circuit_simulation_scan_config_with_distribution_stimuli():
+    """Test that CircuitSimulationScanConfig can include distribution blocks
+    and DistributionSpikeStimulus."""
     # Create config
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
@@ -584,13 +585,12 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli(tmp_path):
     # Add distribution-based stimulus that references the distribution
     dist_stimulus = obi.DistributionSpikeStimulus(
         distribution=obi.AllDistributionsReference(
-            block_dict_name="distributions",
-            block_name="constant_dist"
+            block_dict_name="distributions", block_name="constant_dist"
         ),
         source_neuron_set=sim_neuron_set.ref,
         timestamps=timestamps.ref,
         duration=50.0,
-        resample_each_repetition=False
+        resample_each_repetition=False,
     )
     sim_conf.add(dist_stimulus, name="DistributionStimulus")
 
@@ -605,7 +605,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli(tmp_path):
         obi.CircuitSimulationScanConfig.Initialize(
             circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=100.0
         ),
-        name="initialize"
+        name="initialize",
     )
 
     # Should be able to validate the config without errors
@@ -619,6 +619,6 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli(tmp_path):
     # Check that stimuli reference distributions correctly
     assert "DistributionStimulus" in validated_config.stimuli
     dist_stim = validated_config.stimuli["DistributionStimulus"]
-    assert hasattr(dist_stim, 'distribution')
+    assert hasattr(dist_stim, "distribution")
     assert dist_stim.distribution.block_dict_name == "distributions"
     assert dist_stim.distribution.block_name == "constant_dist"
