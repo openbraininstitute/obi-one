@@ -297,7 +297,9 @@ class EMSynapseMappingTask(Task):
         # Register entity, if possible
         L.info("Registering the output...")
         total_synapses = sum(len(df) for df in all_internal_edges + all_external_edges)
-        total_connections = sum(len(df.drop_duplicates()) for df in all_internal_pre_post + all_external_pre_post)
+        total_connections = sum(
+            len(df.drop_duplicates()) for df in all_internal_pre_post + all_external_pre_post
+        )
         total_internal = sum(len(df) for df in all_internal_pre_post)
         total_external = sum(len(df) for df in all_external_pre_post)
 
