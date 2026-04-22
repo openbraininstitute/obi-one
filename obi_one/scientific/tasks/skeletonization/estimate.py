@@ -34,9 +34,7 @@ def _load_glb_mesh(path: str) -> trimesh.Trimesh:
     bin_chunk_length = struct.unpack("<I", data[bin_offset : bin_offset + 4])[0]
     bin_data = data[bin_offset + 8 : bin_offset + 8 + bin_chunk_length]
 
-    draco_ext = gltf["meshes"][0]["primitives"][0]["extensions"][
-        "KHR_draco_mesh_compression"
-    ]
+    draco_ext = gltf["meshes"][0]["primitives"][0]["extensions"]["KHR_draco_mesh_compression"]
     bv = gltf["bufferViews"][draco_ext["bufferView"]]
     decoded = DracoPy.decode(bin_data[bv["byteOffset"] : bv["byteOffset"] + bv["byteLength"]])
 
