@@ -330,7 +330,7 @@ def get_morphology_data(morphology: morphio.Morphology) -> dict[str, dict]:
     # 1. Process Soma
     soma = morphology.soma
 
-    print(soma)
+    print('\nSOMA', soma.points, soma.diameters)
 
     if soma and len(soma.points) > 1:
         output["soma[0]"] = _extract_arrays(soma.points, soma.diameters)
@@ -348,14 +348,13 @@ def get_morphology_data(morphology: morphio.Morphology) -> dict[str, dict]:
             "diam": [float(d)],
         }
 
-    else:
-        print('\n\n', "no soma")
-
     # 2. Process Neurites
     for section in morphology.iter():
         prefix = get_prefix(section.type)
         name = f"{prefix}[{section.id}]"
         output[name] = _extract_arrays(section.points, section.diameters)
+        if section.is_root and prefix == 'axon':
+            print(f'\n\nAXON {name}', output[name])
 
     return output
 
