@@ -63,9 +63,9 @@ __all__ = [
     "DisconnectSynapticManipulation",
     "DistributionSpikeStimulus",
     "EMCellMeshFromID",
-    "EMSynapseMappingTask",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -311,10 +311,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
-    DistributionSpikeStimulus,
-    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
@@ -388,6 +387,7 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingSingleConfig,
     EMSynapseMappingTask,

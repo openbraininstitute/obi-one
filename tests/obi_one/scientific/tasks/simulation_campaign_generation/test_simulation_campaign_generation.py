@@ -232,8 +232,6 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "timestamp_offset": 0.0,
         "duration": 800.0,
         "frequency": 20.0,
-        "distribution": None,
-        "resample_each_repetition": True,
         "random_seed": 0,
     }
     sync_dict = {
@@ -400,8 +398,6 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "timestamp_offset": 0.0,
             "duration": 800.0,
             "frequency": 20.0,
-            "distribution": None,
-            "resample_each_repetition": True,
             "random_seed": 0,
         }
         sync_dict = {

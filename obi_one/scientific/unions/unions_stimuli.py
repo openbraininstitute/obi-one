@@ -18,21 +18,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
-    DistributionSpikeStimulus,
-    HyperpolarizingCurrentClampSomaticStimulus,
-    LinearCurrentClampSomaticStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    SEClampSomaticStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
-    DistributionSpikeStimulus,
-    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
@@ -68,10 +56,10 @@ _RELATIVE_INJECTION_STIMULI = (
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
-    DistributionSpikeStimulus
-    | PoissonSpikeStimulus
+    PoissonSpikeStimulus
     | FullySynchronousSpikeStimulus
     | SinusoidalPoissonSpikeStimulus
+    | DistributionSpikeStimulus
 )
 
 _FIELD_STIMULI = (
