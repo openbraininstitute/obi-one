@@ -986,7 +986,7 @@ class DistributionSpikeStimulus(SpikeStimulus):
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
         },
     )
-    resample_each_repetition: bool | list[bool] = Field(
+    resample_each_repetition: bool = Field(
         default=True,
         title="Resample Each Repetition",
         description=(
