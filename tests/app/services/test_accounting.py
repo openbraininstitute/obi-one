@@ -213,14 +213,20 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_extraction: 1,
         TaskType.circuit_simulation: 10,
         TaskType.ion_channel_model_simulation_execution: 1,
-        TaskType.morphology_skeletonization: 1,
+        TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
     }
 
-    with patch(
-        "app.services.accounting._evaluate_circuit_simulation_parameters",
-        return_value=accounting_parameters,
-        autospec=True,
+    with (
+        patch(
+            "app.services.accounting._evaluate_circuit_simulation_parameters",
+            return_value=accounting_parameters,
+            autospec=True,
+        ),
+        patch(
+            "app.services.accounting.estimate_skeletonization_count",
+            return_value=expected_count[TaskType.morphology_skeletonization],
+        ),
     ):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,

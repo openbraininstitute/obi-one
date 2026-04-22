@@ -13,7 +13,7 @@ def _create_temp_dir() -> Iterator[Path]:
     The directory is deleted only after the response is sent back to the client,
     and even in case of uncaught exception.
     """
-    temp_dir = Path(tempfile.mkdtemp())
+    temp_dir = Path(tempfile.mkdtemp()).resolve()
     try:
         yield temp_dir
     finally:

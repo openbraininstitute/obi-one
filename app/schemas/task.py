@@ -18,6 +18,7 @@ from app.types import (
 
 class Capabilities(Schema):
     private_packages: bool = False
+    env_secrets: list[str] = []  # noqa: RUF012
 
 
 class PythonRepositoryCode(Schema):

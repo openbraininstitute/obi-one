@@ -4,6 +4,7 @@ from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
 from app.config import settings
+from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
     BuiltinCode,
     Capabilities,
@@ -14,6 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
 )
 from app.types import BuiltinScript, TaskType
+from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
@@ -96,12 +98,42 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            capabilities=Capabilities(
+                env_secrets=[obi_settings.cave_client_config.microns_api_key]
+            ),
         ),
         resources=MachineResources(
             cores=1,
-            memory=2,
-            timelimit="00:10",
+            memory=8,
+            timelimit="00:30",
             compute_cell="local",
         ),
     ),
+}
+
+CLUSTER_INSTANCES_INFO = {
+    "cell_a": [
+        ClusterInstanceInfo(
+            name="small",
+            max_neurons=100,
+            memory_per_instance_gb=16,
+        ),
+        ClusterInstanceInfo(
+            name="large",
+            max_neurons=1_000_000,
+            memory_per_instance_gb=384,
+        ),
+    ],
+    "cell_b": [
+        ClusterInstanceInfo(
+            name="small",
+            max_neurons=100,
+            memory_per_instance_gb=8,
+        ),
+        ClusterInstanceInfo(
+            name="large",
+            max_neurons=1_000_000,
+            memory_per_instance_gb=788,
+        ),
+    ],
 }
