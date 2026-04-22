@@ -350,11 +350,15 @@ def get_morphology_data(morphology: morphio.Morphology) -> dict[str, dict]:
 
     # 2. Process Neurites
     for section in morphology.iter():
+
+        if (not section.is_root):
+            print(section.parent.id)
+
         prefix = get_prefix(section.type)
         name = f"{prefix}[{section.id}]"
         output[name] = _extract_arrays(section.points, section.diameters)
         if section.is_root and prefix == 'axon':
-            print(f'\n\nAXON {name}', output[name])
+            print(f'\n\nAXON {name}', output[name], section.id)
 
     return output
 
