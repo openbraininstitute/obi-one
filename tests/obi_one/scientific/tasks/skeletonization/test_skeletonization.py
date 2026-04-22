@@ -335,8 +335,11 @@ def test_register_output_resource_creates_protocol_when_missing(
     license_entity,
     agent,
     metadata_with_protocol,
+    protocol_created,
 ):
     morphology_id = uuid4()
+    protocol_id = uuid4()
+    protocol_json = _serialize(protocol_created)
     role_json = _serialize(role)
     license_json = _serialize(license_entity)
     agent_json = _serialize(agent)
@@ -357,7 +360,7 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(uuid4())},
+            json=json.loads(r.content) | {"id": str(protocol_id)},
         ),
         url=f"{API_URL}/cell-morphology-protocol",
         method="POST",
@@ -365,7 +368,12 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": agent_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
@@ -405,6 +413,7 @@ def test_register_output_resource_reuses_existing_protocol(
     protocol_created,
 ):
     morphology_id = uuid4()
+    protocol_id = uuid4()
     role_json = _serialize(role)
     license_json = _serialize(license_entity)
     agent_json = _serialize(agent)
@@ -426,7 +435,12 @@ def test_register_output_resource_reuses_existing_protocol(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": agent_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
