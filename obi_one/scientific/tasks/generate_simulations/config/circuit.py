@@ -30,6 +30,10 @@ from obi_one.scientific.unions.unions_stimuli import (
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
 )
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -115,6 +119,19 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
             SchemaKey.SINGULAR_NAME: "Stimulus",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    distributions: dict[str, AllDistributionsUnion] = Field(
+        default_factory=dict,
+        title="Distributions",
+        description="Distributions used by stimuli (e.g. inter-spike interval distributions).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },

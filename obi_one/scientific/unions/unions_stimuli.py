@@ -15,6 +15,7 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
+    DistributionSpikeStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
@@ -53,7 +54,7 @@ _RELATIVE_INJECTION_STIMULI = (
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
-    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+    DistributionSpikeStimulus | PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
 )
 
 _FIELD_STIMULI = (

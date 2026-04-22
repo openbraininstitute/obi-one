@@ -1,5 +1,6 @@
 import abc
-from typing import Never
+
+import numpy as np
 
 from obi_one.core.block import Block
 
@@ -13,7 +14,7 @@ class Distribution(Block, abc.ABC):
         le: float | None = None,
         gt: float | None = None,
         lt: float | None = None,
-    ) -> bool:
+    ) -> None:
         """Check if constraints are logically consistent."""
         if ge is not None and le is not None and ge > le:
             msg = "ge must be less than or equal to le."
@@ -34,7 +35,6 @@ class Distribution(Block, abc.ABC):
             msg = "Only one of le and lt can be specified."
             raise ValueError(msg)
 
-    @abc.abstractmethod
     def sample(
         self,
         n: int = 1,
@@ -42,15 +42,16 @@ class Distribution(Block, abc.ABC):
         le: float | None = None,
         gt: float | None = None,
         lt: float | None = None,
-    ) -> Never:
+        rng: np.random.Generator | None = None,
+    ) -> list[float]:
         """Sample n values from the distribution."""
         self._check_constraints(ge=ge, le=le, gt=gt, lt=lt)
-        initial_samples = self._sample_generator(n)
+        initial_samples = self._sample_generator(n, rng=rng)
         final_samples = self._apply_constraints(initial_samples, ge=ge, le=le, gt=gt, lt=lt)
         return final_samples
 
     @abc.abstractmethod
-    def _sample_generator(self, n: int = 1) -> Never:
+    def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
         msg = "Subclasses must implement the _sample_generator method."
         raise NotImplementedError(msg)
 

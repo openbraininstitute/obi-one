@@ -123,24 +123,12 @@ __all__ = [
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
-    "NegativeFloatConstantDistribution",
-    "NegativeFloatUniformDistribution",
-    "NegativeIntConstantDistribution",
-    "NegativeIntUniformDistribution",
     "NeuronPropertyFilter",
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
-    "NonNegativeFloatConstantDistribution",
     "NonNegativeFloatRange",
-    "NonNegativeFloatUniformDistribution",
-    "NonNegativeIntConstantDistribution",
     "NonNegativeIntRange",
-    "NonNegativeIntUniformDistribution",
-    "NonPositiveFloatConstantDistribution",
-    "NonPositiveFloatUniformDistribution",
-    "NonPositiveIntConstantDistribution",
-    "NonPositiveIntUniformDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -153,12 +141,8 @@ __all__ = [
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PoissonSpikeStimulus",
-    "PositiveFloatConstantDistribution",
     "PositiveFloatRange",
-    "PositiveFloatUniformDistribution",
-    "PositiveIntConstantDistribution",
     "PositiveIntRange",
-    "PositiveIntUniformDistribution",
     "PredefinedNeuronSet",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
@@ -258,27 +242,13 @@ from obi_one.scientific.blocks.afferent_synapses import (
 from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
-    NegativeFloatConstantDistribution,
-    NegativeIntConstantDistribution,
-    NonNegativeFloatConstantDistribution,
-    NonNegativeIntConstantDistribution,
-    NonPositiveFloatConstantDistribution,
-    NonPositiveIntConstantDistribution,
-    PositiveFloatConstantDistribution,
-    PositiveIntConstantDistribution,
 )
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
-    NegativeFloatUniformDistribution,
-    NegativeIntUniformDistribution,
-    NonNegativeFloatUniformDistribution,
-    NonNegativeIntUniformDistribution,
-    NonPositiveFloatUniformDistribution,
-    NonPositiveIntUniformDistribution,
-    PositiveFloatUniformDistribution,
-    PositiveIntUniformDistribution,
 )
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -334,6 +304,7 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
+    DistributionSpikeStimulus,
     FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
@@ -410,7 +381,7 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
-from obi_one.scientific.tasks.em_synapse_mapping import (
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingSingleConfig,
     EMSynapseMappingTask,
 )

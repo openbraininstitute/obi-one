@@ -29,6 +29,12 @@ from obi_one.scientific.library.constants import (
     _MIN_NON_NEGATIVE_FLOAT_VALUE,
     _MIN_TIME_STEP_MILLISECONDS,
 )
+from obi_one.scientific.blocks.distributions.base import Distribution
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -833,9 +839,9 @@ class SpikeStimulus(StimulusWithTimestamps):
 
         Spike file format specs: https://github.com/AllenInstitute/sonata/blob/master/docs/SONATA_DEVELOPER_GUIDE.md#spike-file
         """
-        # IMPORTANT: Convert SONATA node IDs (0-based) to NEURON cell IDs (1-based)!!
-        # (See https://sonata-extension.readthedocs.io/en/latest/blueconfig-projection-example.html#dat-spike-files)
-        gid_spike_map = {k + 1: v for k, v in gid_spike_map.items()}
+        # NOTE: Node IDs are kept in SONATA convention (0-based indexing).
+        # No conversion to NEURON (1-based) indexing is performed here.
+        gid_spike_map = gid_spike_map
 
         out_path = Path(spike_file).parent
         if not out_path.exists():
@@ -865,8 +871,155 @@ class SpikeStimulus(StimulusWithTimestamps):
             pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
             ts.attrs["units"] = "ms"
 
+    @staticmethod
+    def _validate_stimulus_windows(
+        timestamps: list[float], duration: float, timestamp_offset: float
+    ) -> None:
+        for idx, timestamp in enumerate(timestamps):
+            end_time = timestamp + timestamp_offset + duration
+            if idx < len(timestamps) - 1 and not end_time < timestamps[idx + 1]:
+                next_timestamp = timestamps[idx + 1]
+                msg = (
+                    f"Stimulus time intervals overlap! "
+                    f"Current stimulus ends at {end_time:.2f} ms "
+                    f"(timestamp {timestamp:.2f} ms + offset {timestamp_offset:.2f} ms + "
+                    f"duration {duration:.2f} ms), "
+                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
+                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
+                    f"or increase spacing between timestamps."
+                )
+                raise ValueError(msg)
 
-class PoissonSpikeStimulus(SpikeStimulus):
+    @staticmethod
+    def _generate_spike_train_from_distribution(
+        distribution: Distribution,
+        duration: float,
+        rng: np.random.Generator | None = None,
+    ) -> list[float]:
+        spikes: list[float] = []
+        t = 0.0
+        while True:
+            interval = distribution.sample(1, rng=rng)[0]
+            if interval <= 0.0:
+                raise ValueError("Inter-spike intervals must be positive.")
+            t += interval
+            if t >= duration:
+                break
+            spikes.append(t)
+        return spikes
+
+    def _generate_spikes_from_distribution(
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None,
+        distribution: Distribution,
+        resample_each_repetition: bool = False,
+    ) -> None:
+        self._simulation_length = simulation_length
+        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
+        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
+
+        self._validate_stimulus_windows(
+            timestamps_block.timestamps(), self.duration, self.timestamp_offset
+        )
+
+        random_seed = getattr(distribution, "random_seed", None)
+        rng = np.random.default_rng(random_seed) if random_seed is not None else None
+
+        gid_spike_map: dict[int, list[float]] = {}
+
+        for gid in gids:
+            if resample_each_repetition:
+                for timestamp in timestamps_block.timestamps():
+                    relative_spikes = self._generate_spike_train_from_distribution(
+                        distribution, self.duration, rng=rng
+                    )
+                    spike_offset = timestamp + self.timestamp_offset
+                    spikes = [spike_offset + t for t in relative_spikes]
+                    gid_spike_map.setdefault(gid, []).extend(spikes)
+            else:
+                relative_spikes = self._generate_spike_train_from_distribution(
+                    distribution, self.duration, rng=rng
+                )
+                for timestamp in timestamps_block.timestamps():
+                    spike_offset = timestamp + self.timestamp_offset
+                    spikes = [spike_offset + t for t in relative_spikes]
+                    gid_spike_map.setdefault(gid, []).extend(spikes)
+
+        self._spike_file = f"{self.block_name}_spikes.h5"
+        self.write_spike_file(
+            gid_spike_map, spike_file_path / self._spike_file, source_node_population
+        )
+
+
+class DistributionSpikeStimulus(SpikeStimulus):
+    """Spike replay generated from an inter-spike interval distribution."""
+
+    title: ClassVar[str] = "Distribution Spike Replay (Efferent)"
+
+    _module: str = "synapse_replay"
+    _input_type: str = "spikes"
+
+    duration: (
+        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+    ) = Field(
+        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        title="Duration",
+        description="Time duration in milliseconds for how long input is activated.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    distribution: AllDistributionsReference | None = Field(
+        default=None,
+        title="Interval Distribution",
+        description="Distribution used to sample inter-spike intervals in milliseconds.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+        },
+    )
+    resample_each_repetition: bool | list[bool] = Field(
+        default=True,
+        title="Resample Each Repetition",
+        description=(
+            "When set to True, the spike train is regenerated for every timestamp "
+            "repetition. When False, the same relative spike pattern is reused for "
+            "all repetitions."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
+
+    def generate_spikes(
+        self,
+        circuit: Circuit,
+        spike_file_path: Path,
+        simulation_length: NonNegativeFloat,
+        source_node_population: str | None = None,
+    ) -> None:
+        if self.distribution is None:
+            msg = "Distribution must be set for DistributionSpikeStimulus."
+            raise ValueError(msg)
+        self._generate_spikes_from_distribution(
+            circuit=circuit,
+            spike_file_path=spike_file_path,
+            simulation_length=simulation_length,
+            source_node_population=source_node_population,
+            distribution=self.distribution.block,
+            resample_each_repetition=bool(self.resample_each_repetition),
+        )
+
+
+class PoissonSpikeStimulus(DistributionSpikeStimulus):
     """Spike times drawn from a Poisson process with a given frequency.
 
     Sent from all neurons in the source neuron set to efferently connected
@@ -880,18 +1033,6 @@ class PoissonSpikeStimulus(SpikeStimulus):
 
     _module: str = "synapse_replay"
     _input_type: str = "spikes"
-    duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
-    ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-        title="Duration",
-        description="Time duration in milliseconds for how long input is activated.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
     frequency: (
         Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
         | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
@@ -921,60 +1062,16 @@ class PoissonSpikeStimulus(SpikeStimulus):
         simulation_length: NonNegativeFloat,
         source_node_population: str | None = None,
     ) -> None:
-        self._simulation_length = simulation_length
-        rng = np.random.default_rng(self.random_seed)
-        gids = self.source_neuron_set.block.get_neuron_ids(circuit, source_node_population)
-        source_node_population = self.source_neuron_set.block.get_population(source_node_population)
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
+        distribution = ExponentialDistribution(
+            scale=1000.0 / self.frequency, random_seed=self.random_seed
         )
-
-        if (
-            self.duration * 1e-3 * len(gids) * self.frequency * len(timestamps_block.timestamps())
-            > _MAX_POISSON_SPIKE_LIMIT
-        ):
-            msg = (
-                f"Poisson input exceeds maximum allowed nunmber of spikes "
-                f"({_MAX_POISSON_SPIKE_LIMIT})!"
-            )
-            raise OBIONEError(msg)
-
-        gid_spike_map = {}
-        for timestamp_idx, timestamp_t in enumerate(timestamps_block.timestamps()):
-            start_time = timestamp_t + self.timestamp_offset
-            end_time = start_time + self.duration
-            if (
-                timestamp_idx < len(timestamps_block.timestamps()) - 1
-                and not end_time < timestamps_block.timestamps()[timestamp_idx + 1]
-            ):
-                next_timestamp = timestamps_block.timestamps()[timestamp_idx + 1]
-                stimulus_name_part = f" in '{self.block_name}'" if self.has_block_name() else ""
-                msg = (
-                    f"Stimulus time intervals overlap{stimulus_name_part}! "
-                    f"Current stimulus ends at {end_time:.2f} ms "
-                    f"(timestamp {timestamp_t:.2f} ms + offset {self.timestamp_offset:.2f} ms + "
-                    f"duration {self.duration:.2f} ms), "
-                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
-                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
-                    f"or increase spacing between timestamps."
-                )
-                raise ValueError(msg)
-            for gid in gids:
-                spikes = []
-                t = start_time
-                while t < end_time:
-                    # Draw next spike time from exponential distribution
-                    interval = rng.exponential(1.0 / self.frequency) * 1000  # convert s → ms
-                    t += interval
-                    if t < end_time:
-                        spikes.append(t)
-                if gid in gid_spike_map:
-                    gid_spike_map[gid] += spikes
-                else:
-                    gid_spike_map[gid] = spikes
-        self._spike_file = f"{self.block_name}_spikes.h5"
-        self.write_spike_file(
-            gid_spike_map, spike_file_path / self._spike_file, source_node_population
+        self._generate_spikes_from_distribution(
+            circuit=circuit,
+            spike_file_path=spike_file_path,
+            simulation_length=simulation_length,
+            source_node_population=source_node_population,
+            distribution=distribution,
+            resample_each_repetition=bool(self.resample_each_repetition),
         )
 
 
