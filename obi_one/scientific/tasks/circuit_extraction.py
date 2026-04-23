@@ -219,7 +219,7 @@ class CircuitExtractionTask(Task):
             self._circuit = self.config.initialize.circuit.stage_circuit(
                 db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=entity_cache
             )
-            self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)
+            self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)  # ty:ignore[invalid-assignment]
 
         if self._circuit is None:
             msg = "Failed to resolve circuit!"
@@ -231,7 +231,7 @@ class CircuitExtractionTask(Task):
 
         # Define metadata for extracted circuit entity
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
-        circuit_name = f"{parent.name}__{campaign_str}"
+        circuit_name = f"{parent.name}__{campaign_str}"  # ty:ignore[unresolved-attribute]
         params = self.config.single_coordinate_scan_params.scan_params
         instance_info = [
             f"{p.location_str}={
@@ -255,23 +255,23 @@ class CircuitExtractionTask(Task):
         circuit_model = models.Circuit(
             name=circuit_name,
             description=circuit_descr,
-            subject=parent.subject,
-            brain_region=parent.brain_region,
-            license=parent.license,
+            subject=parent.subject,  # ty:ignore[unresolved-attribute]
+            brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute]
+            license=parent.license,  # ty:ignore[unresolved-attribute]
             number_neurons=num_nrn,
             number_synapses=num_syn,
             number_connections=num_conn,
-            has_morphologies=parent.has_morphologies,
-            has_point_neurons=parent.has_point_neurons,
-            has_electrical_cell_models=parent.has_electrical_cell_models,
-            has_spines=parent.has_spines,
-            scale=scale,
-            build_category=parent.build_category,
-            root_circuit_id=parent.root_circuit_id or parent.id,
-            atlas_id=parent.atlas_id,
-            contact_email=parent.contact_email,
-            published_in=parent.published_in,
-            experiment_date=parent.experiment_date,
+            has_morphologies=parent.has_morphologies,  # ty:ignore[unresolved-attribute]
+            has_point_neurons=parent.has_point_neurons,  # ty:ignore[unresolved-attribute]
+            has_electrical_cell_models=parent.has_electrical_cell_models,  # ty:ignore[unresolved-attribute]
+            has_spines=parent.has_spines,  # ty:ignore[unresolved-attribute]
+            scale=scale,  # ty:ignore[invalid-argument-type]
+            build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
+            root_circuit_id=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
+            atlas_id=parent.atlas_id,  # ty:ignore[unresolved-attribute]
+            contact_email=parent.contact_email,  # ty:ignore[unresolved-attribute]
+            published_in=parent.published_in,  # ty:ignore[unresolved-attribute]
+            experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
             authorized_public=False,
         )
         registered_circuit = db_client.register_entity(circuit_model)
@@ -285,7 +285,7 @@ class CircuitExtractionTask(Task):
         parent = self._circuit_entity  # Parent circuit entity
         derivation_type = types.DerivationType.circuit_extraction
         derivation_model = models.Derivation(
-            used=parent,
+            used=parent,  # ty:ignore[invalid-argument-type]
             generated=registered_circuit,
             derivation_type=derivation_type,
         )
@@ -510,7 +510,7 @@ class CircuitExtractionTask(Task):
             with BenchmarkTracker.section("run_circuit_folder_compression"):
                 compressed_circuit = CircuitExtractionTask._run_circuit_folder_compression(
                     circuit_path=new_circuit_path,
-                    circuit_name=new_circuit_entity.name if new_circuit_entity else None,
+                    circuit_name=new_circuit_entity.name if new_circuit_entity else None,  # ty:ignore[invalid-argument-type]
                 )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
@@ -561,8 +561,8 @@ class CircuitExtractionTask(Task):
             with BenchmarkTracker.section("run_basic_connectivity_plots"):
                 plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
                     circuit_path=new_circuit_path,
-                    matrix_config=matrix_config,
-                    edge_population=edge_population,
+                    matrix_config=matrix_config,  # ty:ignore[invalid-argument-type]
+                    edge_population=edge_population,  # ty:ignore[invalid-argument-type]
                 )
         except Exception as e:  # noqa: BLE001
             # Catch any exception here and turn into warnings only
@@ -618,7 +618,7 @@ class CircuitExtractionTask(Task):
     def execute(  # noqa: PLR0915
         self,
         *,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
@@ -639,15 +639,16 @@ class CircuitExtractionTask(Task):
         with BenchmarkTracker.section("add_node_set"):
             nset_name = self.config.neuron_set.__class__.__name__
             nset_def = self.config.neuron_set.get_node_set_definition(
-                self._circuit, self._circuit.default_population_name
+                self._circuit,  # ty:ignore[invalid-argument-type]
+                self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
             )
-            sonata_circuit = self._circuit.sonata_circuit
+            sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
             add_node_set_to_circuit(
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
 
         # Create subcircuit using "brainbuilder"
-        L.info(f"Extracting subcircuit from '{self._circuit.name}'")
+        L.info(f"Extracting subcircuit from '{self._circuit.name}'")  # ty:ignore[unresolved-attribute]
         with BenchmarkTracker.section("split_subcircuit"):
             split_population.split_subcircuit(
                 self.config.coordinate_output_root,
@@ -660,11 +661,11 @@ class CircuitExtractionTask(Task):
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
-        old_base = os.path.split(self._circuit.path)[0]
+        old_base = os.path.split(self._circuit.path)[0]  # ty:ignore[unresolved-attribute]
 
         # Fix to deal with symbolic links in the base circuit which may have been resolved
         # Note: .resolve() resolves symlinks!
-        alt_base = str(Path(self._circuit.path).resolve().parent)
+        alt_base = str(Path(self._circuit.path).resolve().parent)  # ty:ignore[unresolved-attribute]
 
         new_base = "$BASE_DIR"
         new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
@@ -687,7 +688,7 @@ class CircuitExtractionTask(Task):
 
         # Copy subcircuit morphologies and e-models (separately per node population)
         with BenchmarkTracker.section("copy_morph_hoc_mod"):
-            original_circuit = self._circuit.sonata_circuit
+            original_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
             new_circuit = snap.Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
                 if pop.config["type"] == "biophysical":
@@ -701,13 +702,15 @@ class CircuitExtractionTask(Task):
 
             # Copy .mod files, if any
             circuit_utils.copy_mod_files(
-                self._circuit.path, self.config.coordinate_output_root, "mod"
+                self._circuit.path,  # ty:ignore[unresolved-attribute]
+                self.config.coordinate_output_root,  # ty:ignore[invalid-argument-type]
+                "mod",
             )
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)
+                circuit_utils.run_validation(new_circuit_path)  # ty:ignore[invalid-argument-type]
 
         L.info("Extraction DONE")
 
@@ -744,7 +747,7 @@ class CircuitExtractionTask(Task):
         self._generate_additional_circuit_assets(
             db_client=db_client,
             new_circuit_path=new_circuit_path,
-            new_circuit_entity=new_circuit_entity,
+            new_circuit_entity=new_circuit_entity,  # ty:ignore[invalid-argument-type]
         )
 
         # Clean-up

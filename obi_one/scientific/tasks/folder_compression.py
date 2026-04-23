@@ -49,15 +49,15 @@ class FolderCompressionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         # Initial checks
-        if not Path(self.config.initialize.folder_path.path).is_dir():
+        if not Path(self.config.initialize.folder_path.path).is_dir():  # ty:ignore[unresolved-attribute]
             msg = f"Folder path '{self.config.initialize.folder_path}' is not a valid directory!"
             raise ValueError(msg)
-        if self.config.initialize.folder_path.path[-1] == os.path.sep:
+        if self.config.initialize.folder_path.path[-1] == os.path.sep:  # ty:ignore[unresolved-attribute]
             msg = f"Please remove trailing separator '{os.path.sep}' from path!"
             raise ValueError(msg)
         if self.config.initialize.file_format not in self.FILE_FORMATS:
@@ -85,12 +85,12 @@ class FolderCompressionTask(Task):
         # Determine archive name: use provided value or default to folder name
         archive_name = (
             self.config.initialize.archive_name
-            or Path(self.config.initialize.folder_path.path).name
+            or Path(self.config.initialize.folder_path.path).name  # ty:ignore[unresolved-attribute]
         )
 
-        with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:
+        with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:  # ty:ignore[no-matching-overload]
             tar.add(
-                self.config.initialize.folder_path.path,
+                self.config.initialize.folder_path.path,  # ty:ignore[unresolved-attribute]
                 arcname=archive_name,
             )
 

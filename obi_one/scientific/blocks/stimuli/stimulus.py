@@ -46,7 +46,7 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 
 class BaseStimulus(Block, ABC):
     _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -68,13 +68,14 @@ class StimulusWithTimestamps(BaseStimulus):
 
     def _offset_timestamps(self) -> list[float]:
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
+            self.timestamps,
+            self._default_timestamps,  # ty:ignore[invalid-argument-type]
         )
 
         offset_timestamps = [
             offset_timestamp
             for _, offset_timestamp in timestamps_block.enumerate_non_negative_offset_timestamps(
-                self.timestamp_offset
+                self.timestamp_offset  # ty:ignore[invalid-argument-type]
             )
         ]
 
@@ -88,7 +89,7 @@ class StimulusWithTimestamps(BaseStimulus):
             offset_timestamp,
         ) in enumerate(self._offset_timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = (
-                self._single_timestamp_stimulus_config(offset_timestamp)
+                self._single_timestamp_stimulus_config(offset_timestamp)  # ty:ignore[unresolved-attribute]
             )
         return sonata_config
 
@@ -134,7 +135,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         circuit: Circuit,
         population: str | None = None,
         default_node_set: str = "All",
-        default_timestamps: TimestampsReference = None,
+        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
     ) -> dict:
         self._default_node_set = default_node_set
         if default_timestamps is None:
@@ -142,7 +143,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         self._default_timestamps = default_timestamps
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+            self.neuron_set.block.population_type(circuit, population) != "biophysical"  # ty:ignore[unresolved-attribute]
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
@@ -653,7 +654,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": self.level1_duration + self.level2_duration + self.level3_duration,
+            "duration": self.level1_duration + self.level2_duration + self.level3_duration,  # ty:ignore[unsupported-operator]
             "voltage": self.level1_voltage,
             # the delay is used as the duration of 1st voltage at initial_voltage level
             # no need to set duration for step voltage since the SEClamp maintain the voltage

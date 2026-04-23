@@ -127,7 +127,7 @@ def get_population_nodes(  # noqa: PLR0914
             try:
                 morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
 
-                soma_diameters = morph.soma.diameters
+                soma_diameters = morph.soma.diameters  # ty:ignore[unresolved-attribute]
                 radius = float(np.mean(soma_diameters) / 2.0) if len(soma_diameters) > 0 else 0.0
 
                 if len(soma_diameters) == 0:

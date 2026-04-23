@@ -63,7 +63,9 @@ class PairMotifNeuronSet(NeuronSet):
         etab_filt["iloc_fb_"] = -1
         etab_filt = etab_filt.set_index(["row", "col"])
 
-        rev_idx = etab_filt.index.swaplevel("row", "col").to_numpy()  # Reverse index
+        rev_idx = etab_filt.index.swaplevel(  # ty:ignore[unresolved-attribute]
+            "row", "col"
+        ).to_numpy()  # Reverse index
         etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).to_numpy()
         etab_filt.loc[etab_filt["nsyn_fb_"] < 0, "nsyn_fb_"] = 0
 
@@ -178,7 +180,7 @@ class PairMotifNeuronSet(NeuronSet):
                 else:
                     msg = f"Node set list operation '{node_set_list_op}' unknown!"
                     raise ValueError(msg)
-        return node_ids
+        return node_ids  # ty:ignore[invalid-return-type]
 
     @staticmethod
     def _prepare_node_set_filter(
@@ -266,8 +268,8 @@ class PairMotifNeuronSet(NeuronSet):
         # Prepare node set filtering
         nrn1_filter, nrn2_filter = PairMotifNeuronSet._prepare_node_set_filter(
             conn_mat,
-            self.neuron1_filter,
-            self.neuron2_filter,
+            self.neuron1_filter,  # ty:ignore[invalid-argument-type]
+            self.neuron2_filter,  # ty:ignore[invalid-argument-type]
             self.node_set_list_op,
             circuit,
             population,
@@ -275,14 +277,18 @@ class PairMotifNeuronSet(NeuronSet):
 
         # Get table with all potential pairs
         pair_tab = PairMotifNeuronSet._select_pairs(
-            conn_mat, nrn1_filter, nrn2_filter, self.conn_ff_filter, self.conn_fb_filter
+            conn_mat,
+            nrn1_filter,
+            nrn2_filter,
+            self.conn_ff_filter,  # ty:ignore[invalid-argument-type]
+            self.conn_fb_filter,  # ty:ignore[invalid-argument-type]
         )
 
         # Subsample/select among these pairs
         if len(self.pair_selection) > 0:
-            pair_sel_count = self.pair_selection["count"]
-            pair_sel_method = self.pair_selection.get("method", "first")
-            pair_sel_seed = self.pair_selection.get("seed", 0)
+            pair_sel_count = self.pair_selection["count"]  # ty:ignore[invalid-argument-type]
+            pair_sel_method = self.pair_selection.get("method", "first")  # ty:ignore[unresolved-attribute]
+            pair_sel_seed = self.pair_selection.get("seed", 0)  # ty:ignore[unresolved-attribute]
             pair_tab = PairMotifNeuronSet._subsample_pairs(
                 pair_tab, pair_sel_count, pair_sel_method, pair_sel_seed
             )

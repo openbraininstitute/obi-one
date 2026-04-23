@@ -56,7 +56,7 @@ def submit_task_job(
         ).id
 
     failure_callback = _generate_failure_callback(
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         task_type=task_definition.task_type,
         callback_url=callback_url,
         project_context=project_context,
@@ -68,7 +68,7 @@ def submit_task_job(
             executor_type = ExecutorType.distributed_job
             job_data = _circuit_simulation_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,
+                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
@@ -78,11 +78,11 @@ def submit_task_job(
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
-                activity_id=activity_id,
+                activity_id=activity_id,  # ty:ignore[invalid-argument-type]
                 callbacks=all_callbacks,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
-                virtual_lab_id=project_context.virtual_lab_id,
+                virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 output_root=settings.LAUNCH_SYSTEM_OUTPUT_DIR,
             )
 
@@ -91,7 +91,7 @@ def submit_task_job(
     if not response.is_success:
         db_sdk.update_activity_status(
             client=db_client,
-            activity_id=activity_id,
+            activity_id=activity_id,  # ty:ignore[invalid-argument-type]
             activity_type=activity_type,
             status=ActivityStatus.error,
         )
@@ -103,7 +103,7 @@ def submit_task_job(
 
     db_sdk.update_activity_executor(
         client=db_client,
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         activity_type=activity_type,
         execution_id=job_id,
         executor=executor_type,
@@ -111,7 +111,7 @@ def submit_task_job(
     return TaskLaunchInfo(
         task_type=task_definition.task_type,
         config_id=config_id,
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         job_id=job_id,
     )
 

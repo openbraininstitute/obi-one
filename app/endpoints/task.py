@@ -53,18 +53,18 @@ def task_launch_endpoint(
     accounting_info = accounting_service.estimate_task_cost(
         db_client=db_client,
         config_id=json_model.config_id,
-        project_context=project_context,
+        project_context=project_context,  # ty:ignore[invalid-argument-type]
         task_definition=task_definition,
         accounting_factory=accounting_factory,
     )
     accounting_session = accounting_service.make_task_reservation(
-        user_context=user_context,
+        user_context=user_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
         accounting_parameters=accounting_info.parameters,
     )
     accounting_callbacks = accounting_service.generate_accounting_callbacks(
         task_type=json_model.task_type,
-        accounting_job_id=accounting_session.job_id,
+        accounting_job_id=accounting_session.job_id,  # ty:ignore[invalid-argument-type]
         accounting_parameters=accounting_info.parameters,
         project_id=user_context.project_id,
         virtual_lab_id=user_context.virtual_lab_id,
@@ -84,7 +84,7 @@ def task_launch_endpoint(
             ls_client=ls_client,
             callback_url=callback_url,
             config_id=json_model.config_id,
-            project_context=project_context,
+            project_context=project_context,  # ty:ignore[invalid-argument-type]
             task_definition=task_definition,
             callbacks=accounting_callbacks,
         )
@@ -121,7 +121,7 @@ def estimate_endpoint(
     return accounting_service.estimate_task_cost(
         db_client=db_client,
         config_id=json_model.config_id,
-        project_context=db_client.project_context,
+        project_context=db_client.project_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
         task_definition=TASK_DEFINITIONS[json_model.task_type],
     )
@@ -146,7 +146,7 @@ def task_failure_endpoint(
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
 
 
 @router.post(
@@ -164,6 +164,6 @@ def task_success_endpoint(
         service_subtype=json_model.accounting_service_subtype,
         count=json_model.count,
         project_id=user_context.project_id,
-        http_client=accounting_factory._http_client,  # noqa: SLF001
+        http_client=accounting_factory._http_client,  # noqa: SLF001  # ty:ignore[invalid-argument-type]
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]

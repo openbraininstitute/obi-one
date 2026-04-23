@@ -43,7 +43,7 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
             - write_raw_spines: Whether to include raw segmented spines in the output.
         output_dir: Directory where skeletonization outputs will be written.
     """
-    import ultraliser  # noqa: PLC0415
+    import ultraliser  # noqa: PLC0415  # ty:ignore[unresolved-import]
 
     ultraliser.skeletonize_neuron_mesh(
         mesh_path=str(parameters.mesh_path),
