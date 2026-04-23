@@ -69,7 +69,6 @@ def test_circuit_nodes(
             "morphology_name": "test_name",
             "position": [0.1, 0.2, 0.3],
             "orientation": [0.1, 0.2, 0.3, 0.4],
-            "soma_radius": 0.5,
         }
     ]
 
@@ -216,7 +215,6 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
                 0.2816537095884868,
                 0.3443727770658415,
             ),
-            soma_radius=7.279230117797852,
         ),
         Node(
             morphology_file="morphologies/swc/rp110127_L5-2_idD_-_Clone_1.swc",
@@ -228,7 +226,6 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
                 0.31893356942594736,
                 0.3134746233161566,
             ),
-            soma_radius=4.823882102966309,
         ),
     ]
 
@@ -255,7 +252,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.5606842175110329,
                 0.05016492562075268,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -267,7 +263,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.6162888771434368,
                 -0.03649800062123188,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -279,7 +274,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.5252529464233355,
                 0.6495004489941254,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -291,7 +285,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.5368122164342657,
                 0.07991216105872467,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -303,7 +296,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.6904054402710065,
                 0.56786758430315,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -315,7 +307,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.32009903295331554,
                 0.6382078078117599,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -327,7 +318,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.0958330582657927,
                 0.5666241988779213,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -339,7 +329,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.3583901187021639,
                 0.6367658349906609,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -351,7 +340,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.4287869416570199,
                 0.6544250685997304,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -363,7 +351,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.4206509456244123,
                 0.21559359105711814,
             ),
-            soma_radius=0.0,
         ),
     ]
 
