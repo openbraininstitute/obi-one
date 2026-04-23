@@ -4,6 +4,12 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
+from obi_one.scientific.tasks.brian2_simulation_from_sonata.config import (
+    Brian2SimulationFromSonataSingleConfig,
+)
+from obi_one.scientific.tasks.brian2_simulation_from_sonata.task import (
+    Brian2SimulationFromSonataTask,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
@@ -25,6 +31,9 @@ from obi_one.scientific.tasks.ephys_extraction import (
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
+)
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
@@ -89,6 +98,8 @@ _config_tasks_map = {
     SkeletonizationSingleConfig: SkeletonizationTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+    Brian2CircuitSimulationSingleConfig: GenerateSimulationTask,
+    Brian2SimulationFromSonataSingleConfig: Brian2SimulationFromSonataTask,
 }
 _task_type_task_map = {
     TaskType.circuit_extraction: CircuitExtractionTask,

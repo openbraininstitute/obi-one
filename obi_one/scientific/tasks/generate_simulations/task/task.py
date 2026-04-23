@@ -28,6 +28,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SONATA_VERSION,
     TARGET_SIMULATOR,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    BRIAN2_TARGET_SIMULATOR,
+    Brian2CircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -62,6 +66,7 @@ class GenerateSimulationTask(Task):
         | MEModelSimulationSingleConfig
         | MEModelWithSynapsesCircuitSimulationSingleConfig
         | IonChannelModelSimulationSingleConfig
+        | Brian2CircuitSimulationSingleConfig
     )
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
@@ -74,9 +79,13 @@ class GenerateSimulationTask(Task):
 
     def _initialize_sonata_simulation_config(self) -> dict:
         """Returns the default SONATA conditions dictionary."""
+        is_brian2 = isinstance(self.config, Brian2CircuitSimulationSingleConfig)
+
         self._sonata_config = {}
         self._sonata_config["version"] = SONATA_VERSION
-        self._sonata_config["target_simulator"] = TARGET_SIMULATOR
+        self._sonata_config["target_simulator"] = (
+            BRIAN2_TARGET_SIMULATOR if is_brian2 else TARGET_SIMULATOR
+        )
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.config.initialize.timestep
@@ -84,22 +93,25 @@ class GenerateSimulationTask(Task):
         self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
 
         self._sonata_config["conditions"] = {}
-        if hasattr(self.config.initialize, "extracellular_calcium_concentration"):
+        if not is_brian2 and hasattr(self.config.initialize, "extracellular_calcium_concentration"):
             self._sonata_config["conditions"]["extracellular_calcium"] = (
                 self.config.initialize.extracellular_calcium_concentration
             )
         if hasattr(self.config.initialize, "temperature"):
             self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
         self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        if hasattr(self.config.initialize, "spike_location"):
+        if not is_brian2 and hasattr(self.config.initialize, "spike_location"):
             self._sonata_config["conditions"]["spike_location"] = (
                 self.config.initialize.spike_location
             )
 
         self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        if isinstance(
-            self.config,
-            (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
+        if (
+            isinstance(
+                self.config,
+                (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
+            )
+            and not is_brian2
         ):
             self._sonata_config["conditions"]["mechanisms"] = {
                 "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
@@ -294,12 +306,16 @@ class GenerateSimulationTask(Task):
                     L.info("initialize.node_set is None — setting default node set.")
                     self.config.initialize.node_set = self._default_neuron_set_ref()
 
-                # Assert that simulation neuron set is biophysical
-                if isinstance(self.config.initialize.node_set, NeuronSetReference) and (
-                    self.config.initialize.node_set.block.population_type(
-                        self._circuit, self._circuit.default_population_name
+                # Assert that simulation neuron set is biophysical (skip for Brian2)
+                if (
+                    not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
+                    and isinstance(self.config.initialize.node_set, NeuronSetReference)
+                    and (
+                        self.config.initialize.node_set.block.population_type(
+                            self._circuit, self._circuit.default_population_name
+                        )
+                        != "biophysical"
                     )
-                    != "biophysical"
                 ):
                     # Get list of biophysical populations to help user
                     biophysical_populations = Circuit.get_node_population_names(
