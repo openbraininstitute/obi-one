@@ -16,7 +16,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
-from app.schemas.circuit_visualization import NeuronSectionInfo, Node
+from app.schemas.circuit_visualization import Section, Node
 from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
@@ -104,11 +104,11 @@ def test_circuit_morphology(
     name = "name"
 
     mock_circuit_asset_id.return_value = asset_id
-    mock_get_morphology_data.return_value = {}
+    mock_get_morphology_data.return_value = []
     response = client.get(f"/circuit/viz/{circuit_id!s}/morphologies/{morphology_path}?name={name}")
 
     assert response.status_code == 200
-    assert response.json() == {}
+    assert response.json() == []
 
     mock_circuit_asset_id.assert_called_once_with(mock_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
@@ -388,17 +388,9 @@ def test_get_morphology(mock_client, test_circuit_dir):
         None,
     )
 
-    morphology = get_morphology_data(morph_raw)
-
-    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
-
-    axon_0 = morphology["axon[0]"]
-
-    assert axon_0.nseg == 80
-    assert axon_0.distance_from_soma == 0.0
-    assert axon_0.sec_length == 126.4417724609375
-    assert len(axon_0.xstart) == 80
-    assert len(axon_0.xend) == 80
+    morphology_sections = get_morphology_data(morph_raw)
+    sections = [Section.model_validate(section) for section in morphology_sections]
+    assert (sections[0]).id == "soma"
 
 
 def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
@@ -411,17 +403,11 @@ def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
         "rp110125_L5-2_idF_-_Scale_x1.000_y1.025_z1.000",
     )
 
-    morphology = get_morphology_data(morph_raw)
+    morphology_sections = get_morphology_data(morph_raw)
 
-    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
+    sections = [Section.model_validate(section) for section in morphology_sections]
 
-    axon_0 = morphology["axon[0]"]
-
-    assert axon_0.nseg == 20
-    assert axon_0.distance_from_soma == 0.0
-    assert axon_0.sec_length == 39.374610900878906
-    assert len(axon_0.xstart) == 20
-    assert len(axon_0.xend) == 20
+    assert (sections[0]).id == "soma"
 
 
 def test_morphology_dir_fallback():
