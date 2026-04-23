@@ -378,6 +378,17 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
     assert nodes == test_nodes
 
 
+def assert_sections(sections: list[Section]):
+    soma = sections[0]
+    axon_0 = sections[1]
+
+    assert soma.id == "soma"
+    assert soma.type == 0
+    assert soma.parent_id is None
+
+    assert axon_0.parent_id == "soma"
+
+
 def test_get_morphology(mock_client, test_circuit_dir):
     morph_raw = get_morphology(
         test_circuit_dir,
@@ -390,7 +401,7 @@ def test_get_morphology(mock_client, test_circuit_dir):
 
     morphology_sections = get_morphology_data(morph_raw)
     sections = [Section.model_validate(section) for section in morphology_sections]
-    assert (sections[0]).id == "soma"
+    assert_sections(sections)
 
 
 def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
@@ -407,7 +418,7 @@ def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
 
     sections = [Section.model_validate(section) for section in morphology_sections]
 
-    assert (sections[0]).id == "soma"
+    assert_sections(sections)
 
 
 def test_morphology_dir_fallback():
