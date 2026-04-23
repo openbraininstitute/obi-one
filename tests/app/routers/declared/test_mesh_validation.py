@@ -179,24 +179,30 @@ def test_validate_mesh_file_too_large_via_size_header(client):
 
 
 def test_validate_mesh_reader_raises_on_value_error():
-    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=ValueError("bad")):
-        with pytest.raises(ValueError, match="Failed to load OBJ file"):
-            validate_mesh_reader("dummy.obj")
+    with (
+        patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=ValueError("bad")),
+        pytest.raises(ValueError, match="Failed to load OBJ file"),
+    ):
+        validate_mesh_reader("dummy.obj")
 
 
 def test_validate_mesh_reader_raises_on_os_error():
-    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=OSError("missing")):
-        with pytest.raises(ValueError, match="Failed to load OBJ file"):
-            validate_mesh_reader("dummy.obj")
+    with (
+        patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=OSError("missing")),
+        pytest.raises(ValueError, match="Failed to load OBJ file"),
+    ):
+        validate_mesh_reader("dummy.obj")
 
 
 def test_validate_mesh_reader_raises_on_empty_mesh():
     mock_mesh = MagicMock()
     mock_mesh.is_empty.return_value = True
 
-    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", return_value=mock_mesh):
-        with pytest.raises(ValueError, match="contains no geometry"):
-            validate_mesh_reader("dummy.obj")
+    with (
+        patch("app.endpoints.mesh_validation.pylmesh.load_mesh", return_value=mock_mesh),
+        pytest.raises(ValueError, match="contains no geometry"),
+    ):
+        validate_mesh_reader("dummy.obj")
 
 
 def test_validate_mesh_reader_returns_mesh_on_success():
@@ -223,9 +229,9 @@ def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream():
 def test_save_upload_to_tempfile_cleans_up_on_read_error():
     mock_file = MagicMock()
     mock_file.file.seek = MagicMock()
-    mock_file.file.read = MagicMock(side_effect=IOError("read failed"))
+    mock_file.file.read = MagicMock(side_effect=OSError("read failed"))
 
-    with pytest.raises(IOError):
+    with pytest.raises(OSError, match="read failed"):
         _save_upload_to_tempfile(mock_file, suffix=".obj")
 
 
@@ -233,8 +239,10 @@ def test_cleanup_temp_file_os_error_is_logged(tmp_path, caplog):
     fake_path = tmp_path / "ghost.obj"
     fake_path.write_bytes(b"x")
 
-    with patch("pathlib.Path.unlink", side_effect=OSError("permission denied")):
-        with caplog.at_level(logging.WARNING):
-            _cleanup_temp_file(str(fake_path))
+    with (
+        patch("pathlib.Path.unlink", side_effect=OSError("permission denied")),
+        caplog.at_level(logging.WARNING),
+    ):
+        _cleanup_temp_file(str(fake_path))
 
     assert any("Failed to delete" in r.message for r in caplog.records)
