@@ -21,6 +21,9 @@ from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllDistributionsReference",
+    "AllDistributionsReference",
+    "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
@@ -53,25 +56,32 @@ __all__ = [
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
     "ContributeSubjectSingleConfig",
+    "CorrelatedTsodyksMarkramSynapticModel",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
+    "DistributionSpikeStimulus",
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatConstantDistribution",
     "FloatRange",
+    "FloatUniformDistribution",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
@@ -80,8 +90,11 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntConstantDistribution",
     "IntRange",
+    "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterNeuronSetSynapticModelAssigner",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -171,14 +184,20 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapseParameterizationScanConfig",
+    "SynapseParameterizationSingleConfig",
+    "SynapseParameterizationTask",
     "SynapseSetUnion",
     "SynapticMgManipulation",
+    "SynapticModelAssignerReference",
+    "SynapticModelAssignerUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "TsodyksMarkramSynapticModel",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
@@ -223,6 +242,16 @@ from obi_one.scientific.blocks.afferent_synapses import (
     PathDistanceWeightedNumberOfSynapses,
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
+)
+from obi_one.scientific.blocks.distributions.constant import (
+    FloatConstantDistribution,
+    IntConstantDistribution,
+)
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.uniform import (
+    FloatUniformDistribution,
+    IntUniformDistribution,
 )
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
@@ -282,6 +311,7 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -308,6 +338,13 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
+    InterNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    CorrelatedTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -350,9 +387,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.config import (
-    EMSynapseMappingScanConfig,
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingSingleConfig,
+    EMSynapseMappingTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
@@ -412,8 +450,17 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
 )
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+    SynapseParameterizationSingleConfig,
+)
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
@@ -431,6 +478,10 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+    SynapticModelAssignerUnion,
+)
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
