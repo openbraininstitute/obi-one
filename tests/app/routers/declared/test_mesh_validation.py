@@ -124,7 +124,7 @@ def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path):
         ),
         patch(
             "app.endpoints.mesh_validation.validate_mesh_reader",
-            side_effect=RuntimeError("Trimesh explosion"),
+            side_effect=RuntimeError("pylmesh load error"),
         ),
     ):
         response = client.post(ROUTE, files=valid_mesh_upload)
