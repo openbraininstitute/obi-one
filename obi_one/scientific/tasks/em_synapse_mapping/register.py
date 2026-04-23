@@ -30,6 +30,7 @@ def register_output(
     em_dataset: EMDataSetFromID,
     all_notices: list[str],
     total_synapses: int,
+    total_connections: int,
     total_internal: int,
     total_external: int,
     file_paths: dict[os.PathLike, os.PathLike],
@@ -51,7 +52,7 @@ def register_output(
         description = (
             f"Multi-neuron synaptome circuit with {n_neurons} neurons "
             f"(pt_root_ids: {pt_root_ids}) from dataset {source_dataset.name}.\n"
-            f"Internal connections: {total_internal}, External inputs: {total_external}.\n"
+            f"Internal synapses: {total_internal}, External synapses: {total_external}.\n"
         )
 
     description += "Used tables with the following notice texts:\n"
@@ -64,7 +65,7 @@ def register_output(
         description=description,
         number_neurons=n_neurons,
         number_synapses=total_synapses,
-        number_connections=total_internal + total_external,
+        number_connections=total_connections,
         scale=CircuitScale.small if n_neurons > 1 else CircuitScale.single,
         build_category=CircuitBuildCategory.em_reconstruction,
         subject=source_dataset.subject,
