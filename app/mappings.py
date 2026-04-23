@@ -54,7 +54,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         resources=MachineResources(
             cores=16,
             memory=32,
-            timelimit="00:30",
+            timelimit="02:00",
             compute_cell="local",
         ),
     ),
