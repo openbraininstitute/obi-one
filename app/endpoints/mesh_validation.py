@@ -47,7 +47,7 @@ def validate_mesh_reader(mesh_file_path: str) -> pylmesh.Mesh:
     """Try pylmesh reader to validate the mesh file."""
     try:
         mesh = pylmesh.load_mesh(mesh_file_path)
-    except Exception as e:
+    except (RuntimeError, ValueError, OSError) as e:
         _handle_mesh_load_error(e)
     else:
         if mesh.is_empty():
