@@ -21,8 +21,6 @@ from app.schemas.circuit_visualization import (
     SectionDict,
 )
 
-MAX_NODES = 10
-
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     try:
@@ -66,17 +64,6 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     return asset.id
 
 
-def check_node_limit(total_nodes: int, population_size: int) -> None:
-    if total_nodes + population_size > MAX_NODES:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit has too many nodes for visualization (limit: 10)",
-            },
-        )
-
-
 def get_population_nodes(  # noqa: PLR0914
     population_name: str,
     db_client: Client,
@@ -85,7 +72,6 @@ def get_population_nodes(  # noqa: PLR0914
     parent_dir: Path,
     asset_path: Path,
     morphologies_path: MorphPath,
-    total_nodes: int,
 ) -> Nodes:
     nodes_file_path = parent_dir / asset_path
 
@@ -110,8 +96,6 @@ def get_population_nodes(  # noqa: PLR0914
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
 
-        check_node_limit(total_nodes, population.size)
-
         selection = libsonata.Selection([(0, population.size)])
 
         x = population.get_attribute("x", selection)
@@ -130,18 +114,6 @@ def get_population_nodes(  # noqa: PLR0914
         for i in range(population.size):
             m_name = morph_files[i]
             m_file = m_path if m_path.suffix else m_path / f"{m_name}.{morphologies_path.format}"
-            try:
-                morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
-
-                soma_diameters = morph.soma.diameters
-                radius = float(np.mean(soma_diameters) / 2.0) if len(soma_diameters) > 0 else 0.0
-
-                if len(soma_diameters) == 0:
-                    radius = 0.0
-
-            except Exception as e:  # noqa: BLE001
-                L.warning(e.__cause__)
-                radius = None
 
             nodes_list.append(
                 Node(
@@ -149,7 +121,6 @@ def get_population_nodes(  # noqa: PLR0914
                     orientation=(float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
                     morphology_file=str(m_file),
                     morphology_name=m_name,
-                    soma_radius=radius,
                 )
             )
 
@@ -216,7 +187,6 @@ def get_nodes(
                 parent_path,
                 asset_path,
                 morph_path,
-                len(all_nodes),
             )
 
     except HTTPException:

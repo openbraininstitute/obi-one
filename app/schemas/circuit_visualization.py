@@ -16,7 +16,6 @@ class Node(BaseModel):
     orientation: Annotated[
         tuple[float, float, float, float], Field(description="Orientation quaternion (x, y, z, w)")
     ]
-    soma_radius: float | None
 
 
 Nodes = list[Node]
