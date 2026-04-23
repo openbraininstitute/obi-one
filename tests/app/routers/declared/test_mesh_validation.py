@@ -1,5 +1,6 @@
 """Integration tests for the MESH validation endpoint."""
 
+import logging
 from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
@@ -11,9 +12,13 @@ from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
 from app.endpoints.mesh_validation import (
+    MAX_FILE_SIZE,
     FileTooLargeError,
     ValidationStatus,
+    _cleanup_temp_file,
+    _save_upload_to_tempfile,
     router as mesh_router,
+    validate_mesh_reader,
 )
 from app.errors import ApiErrorCode
 
@@ -161,3 +166,75 @@ def test_validate_mesh_file_background_cleanup_scheduled(client, valid_mesh_uplo
     assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == ValidationStatus.SUCCESS
     mock_cleanup.assert_called_once_with(str(saved_path))
+
+
+def test_validate_mesh_file_too_large_via_size_header(client):
+    large_file = {"file": (f"big{VALID_EXTENSION}", BytesIO(b"data"), "application/octet-stream")}
+
+    with patch("app.endpoints.mesh_validation.MAX_FILE_SIZE", -1):
+        response = client.post(ROUTE, files=large_file)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "too large" in get_error_detail(response.json()).lower()
+
+
+def test_validate_mesh_reader_raises_on_value_error():
+    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=ValueError("bad")):
+        with pytest.raises(ValueError, match="Failed to load OBJ file"):
+            validate_mesh_reader("dummy.obj")
+
+
+def test_validate_mesh_reader_raises_on_os_error():
+    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=OSError("missing")):
+        with pytest.raises(ValueError, match="Failed to load OBJ file"):
+            validate_mesh_reader("dummy.obj")
+
+
+def test_validate_mesh_reader_raises_on_empty_mesh():
+    mock_mesh = MagicMock()
+    mock_mesh.is_empty.return_value = True
+
+    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", return_value=mock_mesh):
+        with pytest.raises(ValueError, match="contains no geometry"):
+            validate_mesh_reader("dummy.obj")
+
+
+def test_validate_mesh_reader_returns_mesh_on_success():
+    mock_mesh = MagicMock()
+    mock_mesh.is_empty.return_value = False
+
+    with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", return_value=mock_mesh):
+        result = validate_mesh_reader("dummy.obj")
+
+    assert result is mock_mesh
+
+
+def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream():
+    chunk1 = b"x" * (MAX_FILE_SIZE - 10)
+    chunk2 = b"x" * 20
+
+    mock_file = MagicMock()
+    mock_file.file = BytesIO(chunk1 + chunk2)
+
+    with pytest.raises(FileTooLargeError):
+        _save_upload_to_tempfile(mock_file, suffix=".obj")
+
+
+def test_save_upload_to_tempfile_cleans_up_on_read_error():
+    mock_file = MagicMock()
+    mock_file.file.seek = MagicMock()
+    mock_file.file.read = MagicMock(side_effect=IOError("read failed"))
+
+    with pytest.raises(IOError):
+        _save_upload_to_tempfile(mock_file, suffix=".obj")
+
+
+def test_cleanup_temp_file_os_error_is_logged(tmp_path, caplog):
+    fake_path = tmp_path / "ghost.obj"
+    fake_path.write_bytes(b"x")
+
+    with patch("pathlib.Path.unlink", side_effect=OSError("permission denied")):
+        with caplog.at_level(logging.WARNING):
+            _cleanup_temp_file(str(fake_path))
+
+    assert any("Failed to delete" in r.message for r in caplog.records)
