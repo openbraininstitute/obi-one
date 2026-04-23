@@ -1,6 +1,6 @@
 from enum import IntEnum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, Field, RootModel
 
@@ -40,6 +40,14 @@ class MorphoViewerTreeItemType(IntEnum):
 
 
 class Section(BaseModel):
+    id: str
+    parent_id: str | None
+    type: MorphoViewerTreeItemType
+    points: list[tuple[float, float, float]]
+    radii: list[float]
+
+
+class SectionDict(TypedDict):
     id: str
     parent_id: str | None
     type: MorphoViewerTreeItemType

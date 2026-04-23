@@ -64,4 +64,4 @@ def circuit_morphology(
     morphology = get_morphology(
         temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), name
     )
-    return get_morphology_data(morphology)
+    return get_morphology_data(morphology)  # type: ignore ReportReturnType

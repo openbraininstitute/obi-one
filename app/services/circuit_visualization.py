@@ -13,7 +13,13 @@ from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.circuit_visualization import MorphPath, Node, Nodes, Sections
+from app.schemas.circuit_visualization import (
+    MorphoViewerTreeItemType,
+    MorphPath,
+    Node,
+    Nodes,
+    SectionDict,
+)
 
 MAX_NODES = 10
 
@@ -307,18 +313,18 @@ def get_morphology(
         raise HTTPException(status_code=500, detail=msg) from e
 
 
-def _map_section_type(sec_type: morphio.SectionType) -> int:
+def _map_section_type(sec_type: morphio.SectionType) -> MorphoViewerTreeItemType:
     mapping = {
-        morphio.SectionType.soma: 0,
-        morphio.SectionType.basal_dendrite: 2,
-        morphio.SectionType.apical_dendrite: 3,
-        morphio.SectionType.axon: 5,
+        morphio.SectionType.soma: MorphoViewerTreeItemType.Soma,
+        morphio.SectionType.basal_dendrite: MorphoViewerTreeItemType.BasalDendrite,
+        morphio.SectionType.apical_dendrite: MorphoViewerTreeItemType.ApicalDendrite,
+        morphio.SectionType.axon: MorphoViewerTreeItemType.Axon,
     }
-    return mapping.get(sec_type, 8)
+    return mapping.get(sec_type, MorphoViewerTreeItemType.Unknown)
 
 
-def get_morphology_data(morphology: morphio.Morphology) -> Sections:
-    sections = []
+def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
+    sections: list[SectionDict] = []
 
     soma = morphology.soma
     has_soma = soma is not None and len(soma.points) > 0
@@ -327,8 +333,8 @@ def get_morphology_data(morphology: morphio.Morphology) -> Sections:
         sections.append(
             {
                 "id": "soma",
-                "parentId": None,
-                "type": 0,
+                "parent_id": None,
+                "type": MorphoViewerTreeItemType.Soma,
                 "points": soma.points.tolist(),
                 "radii": (np.array(soma.diameters) / 2.0).tolist(),
             }
@@ -343,7 +349,7 @@ def get_morphology_data(morphology: morphio.Morphology) -> Sections:
         sections.append(
             {
                 "id": str(section.id),
-                "parentId": parent_id,
+                "parent_id": parent_id,
                 "type": _map_section_type(section.type),
                 "points": section.points.tolist(),
                 "radii": (np.array(section.diameters) / 2.0).tolist(),
