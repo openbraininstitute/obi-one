@@ -16,7 +16,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
-from app.schemas.circuit_visualization import Section, Node
+from app.schemas.circuit_visualization import Node, Section
 from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
