@@ -13,7 +13,7 @@ from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.circuit_visualization import Morphology, MorphPath, NeuronSectionInfo, Node, Nodes
+from app.schemas.circuit_visualization import MorphPath, Node, Nodes, Sections
 
 MAX_NODES = 10
 
@@ -307,71 +307,47 @@ def get_morphology(
         raise HTTPException(status_code=500, detail=msg) from e
 
 
-SWC_TYPES = {
-    morphio.SectionType.soma: "soma",
-    morphio.SectionType.axon: "axon",
-    morphio.SectionType.basal_dendrite: "dend",
-    morphio.SectionType.apical_dendrite: "apic",
-}
-
-
-def get_morphology_data(morphology: morphio.Morphology) -> dict[str, dict]:
-    output = {}
-
-    def get_prefix(sec_type):
-        mapping = {
-            morphio.SectionType.soma: "soma",
-            morphio.SectionType.axon: "axon",
-            morphio.SectionType.basal_dendrite: "dend",
-            morphio.SectionType.apical_dendrite: "apic",
-        }
-        return mapping.get(sec_type, "unknown")
-
-    # 1. Process Soma
-    soma = morphology.soma
-
-    print('\nSOMA', soma.points, soma.diameters)
-
-    if soma and len(soma.points) > 1:
-        output["soma[0]"] = _extract_arrays(soma.points, soma.diameters)
-    elif soma and len(soma.points) == 1:
-        # Create a zero-length segment so the TS loop (nseg=1) doesn't fail
-        p, d = soma.points[0], soma.diameters[0]
-        output["soma[0]"] = {
-            "nseg": 1,
-            "xstart": [float(p[0])],
-            "ystart": [float(p[1])],
-            "zstart": [float(p[2])],
-            "xend": [float(p[0])],
-            "yend": [float(p[1])],
-            "zend": [float(p[2])],
-            "diam": [float(d)],
-        }
-
-    # 2. Process Neurites
-    for section in morphology.iter():
-
-        if (not section.is_root):
-            print(section.parent.id)
-
-        prefix = get_prefix(section.type)
-        name = f"{prefix}[{section.id}]"
-        output[name] = _extract_arrays(section.points, section.diameters)
-        if section.is_root and prefix == 'axon':
-            print(f'\n\nAXON {name}', output[name], section.id)
-
-    return output
-
-
-def _extract_arrays(points, diameters) -> dict:
-    nseg = len(points) - 1
-    return {
-        "nseg": nseg,
-        "xstart": [float(points[i][0]) for i in range(nseg)],
-        "ystart": [float(points[i][1]) for i in range(nseg)],
-        "zstart": [float(points[i][2]) for i in range(nseg)],
-        "xend": [float(points[i + 1][0]) for i in range(nseg)],
-        "yend": [float(points[i + 1][1]) for i in range(nseg)],
-        "zend": [float(points[i + 1][2]) for i in range(nseg)],
-        "diam": [float(diameters[i + 1]) for i in range(nseg)],
+def _map_section_type(sec_type: morphio.SectionType) -> int:
+    mapping = {
+        morphio.SectionType.soma: 0,
+        morphio.SectionType.basal_dendrite: 2,
+        morphio.SectionType.apical_dendrite: 3,
+        morphio.SectionType.axon: 5,
     }
+    return mapping.get(sec_type, 8)
+
+
+def get_morphology_data(morphology: morphio.Morphology) -> Sections:
+    sections = []
+
+    soma = morphology.soma
+    has_soma = soma is not None and len(soma.points) > 0
+
+    if has_soma:
+        sections.append(
+            {
+                "id": "soma",
+                "parentId": None,
+                "type": 0,
+                "points": soma.points.tolist(),
+                "radii": (np.array(soma.diameters) / 2.0).tolist(),
+            }
+        )
+
+    for section in morphology.iter():
+        if section.is_root:  # noqa: SIM108
+            parent_id = "soma" if has_soma else None
+        else:
+            parent_id = str(section.parent.id)
+
+        sections.append(
+            {
+                "id": str(section.id),
+                "parentId": parent_id,
+                "type": _map_section_type(section.type),
+                "points": section.points.tolist(),
+                "radii": (np.array(section.diameters) / 2.0).tolist(),
+            }
+        )
+
+    return sections
