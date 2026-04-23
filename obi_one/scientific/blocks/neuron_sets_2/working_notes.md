@@ -60,3 +60,13 @@ neuron_sets: dict[str, AllNeuronSet2Union] = Field(
         },
     )
 ```
+
+
+
+
+# Block Union and Block Reference definitions
+
+
+
+
+# What we might want to add
