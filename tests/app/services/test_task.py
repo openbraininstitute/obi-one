@@ -280,6 +280,66 @@ def test_submit_task_job__failure(
         )
 
 
+def test_inait_job_data(config_id, activity_id, callbacks):
+    task_type = TaskType.circuit_simulation_inait_machine
+    task_definition = TASK_DEFINITIONS[task_type]
+
+    res = test_module._inait_job_data(
+        simulation_id=config_id,
+        simulation_execution_id=activity_id,
+        project_id=PROJECT_ID,
+        virtual_lab_id=VIRTUAL_LAB_ID,
+        callbacks=callbacks,
+        task_definition=task_definition,
+    )
+
+    assert res == {
+        "code": {
+            "type": "python_repository",
+            "location": "https://github.com/openbraininstitute-partners/inait",
+            "ref": "commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            "path": "scripts/simulate-circuits/run.py",
+            "dependencies": "scripts/simulate-circuits/requirements.txt",
+            "capabilities": {"private_packages": False, "env_secrets": []},
+            "staged_directories": ["wheels", "scripts/simulate-circuits/"],
+        },
+        "resources": {
+            "type": "machine",
+            "cores": 1,
+            "memory": 8,
+            "compute_cell": "local",
+            "timelimit": "02:00",
+        },
+        "inputs": [
+            "sonata-simulation-task",
+            f" --project-id {PROJECT_ID}",
+            f" --virtual-lab-id {VIRTUAL_LAB_ID}",
+            f" --simulation-id {config_id}",
+            f" --simulation-execution-id {activity_id}",
+        ],
+        "project_id": PROJECT_ID,
+        "callbacks": [
+            {
+                "action_type": "http_request_with_token",
+                "event_type": "job_on_failure",
+                "config": {
+                    "url": "http://failure",
+                    "method": "POST",
+                    "params": {
+                        "task_type": "circuit_simulation_neurodamus_cluster",
+                        "activity_id": str(activity_id),
+                    },
+                    "headers": {
+                        "virtual-lab-id": VIRTUAL_LAB_ID,
+                        "project-id": PROJECT_ID,
+                    },
+                    "payload": None,
+                },
+            }
+        ],
+    }
+
+
 def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
     task_type = TaskType.circuit_simulation_neurodamus_cluster
 
