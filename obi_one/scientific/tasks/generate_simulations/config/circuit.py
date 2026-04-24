@@ -15,6 +15,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
@@ -117,6 +121,19 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    distributions: dict[str, AllDistributionsUnion] = Field(
+        default_factory=dict,
+        title="Distributions",
+        description="Distributions used by stimuli (e.g. inter-spike interval distributions).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Distribution",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
