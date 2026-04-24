@@ -15,6 +15,8 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalAndPointNeuronSet2Reference,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
@@ -48,13 +50,13 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: BiophysicalAndPointNeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 

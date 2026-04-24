@@ -61,7 +61,7 @@ class StimulusWithTimestamps(BaseStimulus):
         description="Timestamps at which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
         },
     )
 

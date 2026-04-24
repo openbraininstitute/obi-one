@@ -18,6 +18,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     CircuitExtractionNeuronSetUnion,
     NeuronSetReference,
     SimulationNeuronSetUnion,
+    ALL_NEURON_SETS_REFERENCE_TYPES,
 )
 
 
@@ -165,7 +166,7 @@ class SchemaExampleScanConfig(ScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPES: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
             SchemaKey.GROUP_ORDER: 1,
         },

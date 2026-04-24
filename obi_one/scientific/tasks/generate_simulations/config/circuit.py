@@ -20,7 +20,9 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
     AllNeuronSet2Union,
+    AllNeuronSetUnion,
     BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
 )
@@ -60,13 +62,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    neuron_sets: dict[str, AllNeuronSet2Union] = Field(
+    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
         default_factory=dict,
         title="Neuron Sets",
         description="Neuron sets for the simulation (new version).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: NeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
@@ -77,7 +79,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: SynapticManipulationsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticManipulationsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
@@ -96,7 +98,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPES: BiophysicalAndPointNeuronSet2Reference.__name__,
+                SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             },
         )
 
@@ -116,7 +118,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Stimuli for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [StimulusReference.__name__],
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

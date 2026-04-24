@@ -7,6 +7,9 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
     resolve_neuron_set_2_ref_to_neuron_set,
@@ -25,23 +28,23 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: NeuronSet2Reference | None = Field(
+    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: NeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
-    postsynaptic_neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
+    postsynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: BiophysicalAndPointNeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -108,7 +111,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
         },
     )
 
