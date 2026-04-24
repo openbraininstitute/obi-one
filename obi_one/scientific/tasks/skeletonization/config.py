@@ -71,8 +71,8 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
         )
 
         neuron_voxel_size: (
-            Annotated[PositiveFloat, Field(ge=0.1, le=1.0)]
-            | list[Annotated[PositiveFloat, Field(ge=0.005, le=0.1)]]
+            Annotated[PositiveFloat, Field(le=0.1, ge=0.005)]
+            | list[Annotated[PositiveFloat, Field(le=0.1, ge=0.005)]]
         ) = Field(
             default=0.1,
             title="Neuron Voxel Size",
