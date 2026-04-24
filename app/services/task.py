@@ -324,7 +324,7 @@ def select_simulation_task(
 
     if simulation_config.target_simulator is not None:
         target_simulator = TargetSimulator(simulation_config.target_simulator.name)
-        msg = f"Target simulator '{target_simulator}' is used from simulation config."
+        msg = f"Using target simulator '{target_simulator}' from simulation config."
         L.info(msg)
 
     circuit = db_client.get_entity(
@@ -334,6 +334,8 @@ def select_simulation_task(
 
     if target_simulator is None:
         target_simulator = circuit.target_simulator
+        msg = f"Using target simulator '{target_simulator}' from circuit config."
+        L.info(msg)
 
     match target_simulator:
         case TargetSimulator.LearningEngine:
