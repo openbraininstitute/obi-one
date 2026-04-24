@@ -649,6 +649,71 @@ def test_task_estimate(client, task_type):
     assert data["parameters"]["count"] == 10
 
 
+@pytest.mark.parametrize(
+    "circuit_scale",
+    [
+        CircuitScale.small,
+        CircuitScale.microcircuit,
+        CircuitScale.region,
+        CircuitScale.system,
+        CircuitScale.whole_brain,
+    ],
+)
+@pytest.mark.parametrize(
+    "target_simulator",
+    [TargetSimulator.NEURON, TargetSimulator.CORENEURON, TargetSimulator.LearningEngine],
+)
+def test_task_estimate__circuit_simulation(client, target_simulator, circuit_scale, httpx_mock):
+    simulation_id = uuid4()
+    simulation_config_asset_id = uuid4()
+    circuit_id = uuid4()
+
+    db_url = settings.ENTITYCORE_URL
+
+    httpx_mock.add_response(
+        url=f"{db_url}/simulation/{simulation_id}",
+        method="GET",
+        json=_simulation_metadata(
+            simulation_id=simulation_id, circuit_id=circuit_id, config_id=simulation_config_asset_id
+        ),
+        is_reusable=True,  # TODO: Refactor code to avoid multiple requests
+    )
+    # mock simulation config asset response used to access target_simulator from config
+    httpx_mock.add_response(
+        url=f"{db_url}/simulation/{simulation_id}/assets/{simulation_config_asset_id}/download",
+        method="GET",
+        json=_simulation_config(target_simulator=target_simulator),
+    )
+    # mock circuit metadata needed for fetching target_simulator/scale for toggling
+    httpx_mock.add_response(
+        url=f"{db_url}/circuit/{circuit_id}",
+        method="GET",
+        json=_circuit_metadata(
+            circuit_id=circuit_id, target_simulator=target_simulator, circuit_scale=circuit_scale
+        ),
+        is_reusable=True,  # TODO: Refactor code to avoid multiple requests
+    )
+    httpx_mock.add_response(
+        url=f"{settings.ACCOUNTING_BASE_URL}/estimate/oneshot",
+        method="POST",
+        json={"data": {"cost": 1000}},
+    )
+
+    data = (
+        client.post(
+            url="/declared/task/estimate",
+            json={
+                "task_type": TaskType.circuit_simulation,
+                "config_id": str(simulation_id),
+            },
+        )
+        .raise_for_status()
+        .json()
+    )
+    assert data["config_id"] == str(simulation_id)
+    assert data["cost"] == 1000
+
+
 @pytest.mark.parametrize("task_type", TaskType)
 def test_task_failure_endpoint(client, task_type):
     activity_id = uuid4()
