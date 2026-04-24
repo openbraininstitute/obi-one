@@ -97,14 +97,6 @@ def select_json_asset_content(
     return json.loads(bytes_content)
 
 
-def get_json_asset_content(*, client: Client, entity: Entity, selection: dict) -> dict:
-    bytes_content = client.fetch_assets(
-        entity=entity,
-        selection=selection,
-    ).one()
-    return json.loads(bytes_content)
-
-
 def create_generic_activity(
     *,
     client: Client,
