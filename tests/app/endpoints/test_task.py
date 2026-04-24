@@ -12,10 +12,11 @@ from obp_accounting_sdk.constants import ServiceSubtype
 from app.application import app
 from app.config import settings
 from app.dependencies.compute_cell import get_compute_cell
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import APP_TAG, OBI_ONE_CODE_PATH, OBI_ONE_DEPS_DIR, TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskLaunchInfo
+from app.services.accounting import CIRCUIT_SCALE_TO_SERVICE_SUBTYPE
 from app.types import TaskType
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID, assert_request
@@ -419,7 +420,184 @@ def test_task_launch_success__circuit_simulation(
         ): TaskType.circuit_simulation_inait_machine,
     }[target_simulator, circuit_scale]
 
-    assert data["task_type"] == expected_task_type
+    response_task_type = data["task_type"]
+    task_def = TASK_DEFINITIONS[response_task_type]
+
+    assert response_task_type == expected_task_type
+
+    job_request = httpx_mock.get_request(
+        url=f"{settings.LAUNCH_SYSTEM_URL}/job",
+        method="POST",
+    )
+    job_payload = json.loads(job_request.content)
+
+    cluster_callbacks = [
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": f"{settings.API_URL}/declared/task/callback/failure",
+                "method": "POST",
+                "params": {
+                    "task_type": response_task_type,
+                    "activity_id": str(simulation_execution_id),
+                },
+                "headers": {
+                    "virtual-lab-id": VIRTUAL_LAB_ID,
+                    "project-id": PROJECT_ID,
+                },
+                "payload": None,
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": f"{settings.ACCOUNTING_BASE_URL}/reservation/oneshot/{job_id}",
+                "method": "DELETE",
+                "params": None,
+                "headers": None,
+                "payload": None,
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_success",
+            "config": {
+                "url": f"{settings.API_URL}/declared/task/callback/success",
+                "method": "POST",
+                "params": None,
+                "headers": {
+                    "virtual-lab-id": VIRTUAL_LAB_ID,
+                    "project-id": PROJECT_ID,
+                },
+                "payload": {
+                    "task_type": response_task_type,
+                    "job_id": str(job_id),
+                    "accounting_service_subtype": str(
+                        CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
+                    ),
+                    "count": 100,
+                },
+            },
+        },
+    ]
+
+    generic_callbacks = [
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": f"{settings.API_URL}/declared/task/callback/failure",
+                "method": "POST",
+                "params": {
+                    "task_type": response_task_type,
+                    "activity_id": str(simulation_execution_id),
+                },
+                "headers": {
+                    "virtual-lab-id": VIRTUAL_LAB_ID,
+                    "project-id": PROJECT_ID,
+                },
+                "payload": None,
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_failure",
+            "config": {
+                "url": f"{settings.ACCOUNTING_BASE_URL}/reservation/oneshot/{job_id}",
+                "method": "DELETE",
+                "params": None,
+                "headers": None,
+                "payload": None,
+            },
+        },
+        {
+            "action_type": "http_request_with_token",
+            "event_type": "job_on_success",
+            "config": {
+                "url": f"{settings.API_URL}/declared/task/callback/success",
+                "method": "POST",
+                "params": None,
+                "headers": {
+                    "virtual-lab-id": VIRTUAL_LAB_ID,
+                    "project-id": PROJECT_ID,
+                },
+                "payload": {
+                    "task_type": response_task_type,
+                    "job_id": str(job_id),
+                    "accounting_service_subtype": str(
+                        CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
+                    ),
+                    "count": 100,
+                },
+            },
+        },
+    ]
+    match response_task_type:
+        case TaskType.circuit_simulation_inait_machine:
+            assert job_payload == {
+                "code": task_def.code.model_dump(mode="json"),
+                "resources": task_def.resources.model_dump(mode="json")
+                | {"compute_cell": "cell_a"},
+                "inputs": [
+                    "sonata-simulation-task",
+                    f" --project-id {PROJECT_ID}",
+                    f" --virtual-lab-id {VIRTUAL_LAB_ID}",
+                    f" --simulation-id {simulation_id}",
+                    f" --simulation-execution-id {simulation_execution_id}",
+                ],
+                "project_id": PROJECT_ID,
+                "callbacks": generic_callbacks,
+            }
+
+        case TaskType.circuit_simulation_neurodamus_cluster:
+            assert job_payload == {
+                "code": task_def.code.model_dump(mode="json"),
+                "resources": {
+                    "type": "cluster",
+                    "instances": 1,
+                    "instance_type": "large",
+                    "compute_cell": "cell_a",
+                    "timelimit": None,
+                },
+                "inputs": [
+                    "--simulation-id",
+                    str(simulation_id),
+                    "--simulation-execution-id",
+                    str(simulation_execution_id),
+                ],
+                "project_id": PROJECT_ID,
+                "callbacks": cluster_callbacks,
+            }
+
+        case _:
+            assert job_payload == {
+                "code": {
+                    "type": "python_repository",
+                    "location": "https://github.com/openbraininstitute/obi-one.git",
+                    "ref": APP_TAG,
+                    "path": OBI_ONE_CODE_PATH,
+                    "dependencies": str(OBI_ONE_DEPS_DIR / "default.txt"),
+                    "capabilities": {"private_packages": False, "env_secrets": []},
+                    "staged_directories": [],
+                },
+                "resources": task_def.resources.model_dump(mode="json")
+                | {"compute_cell": "cell_a"},
+                "inputs": [
+                    "--task-type circuit_simulation_neuron",
+                    "--config_entity_type Simulation",
+                    f"--config_entity_id {simulation_id}",
+                    "--entity_cache True",
+                    "--scan_output_root ./obi-output",
+                    f"--virtual_lab_id {VIRTUAL_LAB_ID}",
+                    f"--project_id {PROJECT_ID}",
+                    "--execution_activity_type SimulationExecution",
+                    f"--execution_activity_id {simulation_execution_id}",
+                ],
+                "project_id": PROJECT_ID,
+                "callbacks": generic_callbacks,
+            }
 
 
 @pytest.mark.parametrize(

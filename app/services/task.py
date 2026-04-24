@@ -79,7 +79,7 @@ def submit_task_job(
                 simulation_execution_id=activity_id,
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,
-                callbacks=callbacks,
+                callbacks=all_callbacks,
                 task_definition=task_definition,
             )
         case TaskType.circuit_simulation_neurodamus_cluster:
