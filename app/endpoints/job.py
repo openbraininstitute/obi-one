@@ -18,7 +18,7 @@ router = APIRouter(
 @router.get("/{job_id}")
 def read_job(
     job_id: UUID,
-    user_context: UserContextDep,
+    user_context: UserContextDep,  # noqa: ARG001
     ls_client: LaunchSystemClientDep,
 ) -> JobRead:
     """Proxy GET /{job_id} to the launch-system."""
@@ -28,7 +28,7 @@ def read_job(
 @router.get("/{job_id}/stream")
 async def stream_job(
     job_id: UUID,
-    user_context: UserContextDep,
+    user_context: UserContextDep,  # noqa: ARG001
     ls_async_client: LaunchSystemAsyncClientDep,
 ) -> StreamingResponse:
     """Proxy GET /{job_id}/stream from the launch-system as NDJSON."""

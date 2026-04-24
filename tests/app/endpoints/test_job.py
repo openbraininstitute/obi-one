@@ -1,3 +1,5 @@
+"""Tests for job proxy endpoints."""
+
 import json
 from http import HTTPStatus
 from unittest.mock import AsyncMock, patch
@@ -41,6 +43,14 @@ def _make_httpx_response(json_data: dict, status_code: int = 200) -> httpx.Respo
 async def _async_line_generator(lines: list[str]):
     for line in lines:
         yield line
+
+
+def _make_mock_async_client(mock_response):
+    """Build a mock async client with send and build_request."""
+    mock_client = AsyncMock()
+    mock_client.send = AsyncMock(return_value=mock_response)
+    mock_client.build_request = httpx.Request
+    return mock_client
 
 
 def test_read_job_success(client):
@@ -90,14 +100,8 @@ def test_stream_job_success(client, monkeypatch):
     mock_response.aiter_lines = lambda: _async_line_generator(ndjson_lines)
     mock_response.aclose = AsyncMock()
 
-    async def mock_send(request, *, stream=False):
-        return mock_response
-
     async def override_get_async_client():
-        mock_client = AsyncMock()
-        mock_client.send = mock_send
-        mock_client.build_request = lambda method, url: httpx.Request(method, url)
-        yield mock_client
+        yield _make_mock_async_client(mock_response)
 
     monkeypatch.setitem(app.dependency_overrides, get_async_client, override_get_async_client)
 
@@ -119,14 +123,8 @@ def test_stream_job_launch_system_error(client, monkeypatch):
     mock_response.status_code = 500
     mock_response.aclose = AsyncMock()
 
-    async def mock_send(request, *, stream=False):
-        return mock_response
-
     async def override_get_async_client():
-        mock_client = AsyncMock()
-        mock_client.send = mock_send
-        mock_client.build_request = lambda method, url: httpx.Request(method, url)
-        yield mock_client
+        yield _make_mock_async_client(mock_response)
 
     monkeypatch.setitem(app.dependency_overrides, get_async_client, override_get_async_client)
 
@@ -139,4 +137,4 @@ def test_stream_job_launch_system_error(client, monkeypatch):
 def test_read_job_unauthenticated(client_no_auth):
     """GET /job/{job_id} without auth headers returns 401 or 403."""
     resp = client_no_auth.get(f"/job/{JOB_ID}")
-    assert resp.status_code in (401, 403)
+    assert resp.status_code in {401, 403}
