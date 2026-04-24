@@ -116,8 +116,6 @@ __all__ = [
     "NamedTuple",
     "NeuronPropertyFilter",
     "NeuronSet",
-    "NeuronSetReference",
-    "NeuronSetUnion",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
     "NormallyDistributedCurrentClampSomaticStimulus",
@@ -157,7 +155,6 @@ __all__ = [
     "SimplexMembershipBasedNeuronSet",
     "SimplexNeuronSet",
     "Simulation",
-    "SimulationNeuronSetUnion",
     "SimulationsForm",
     "SingleConfigMixin",
     "SingleConfigMixin",
@@ -416,11 +413,6 @@ from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    NeuronSetUnion,
-    SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion

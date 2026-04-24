@@ -21,9 +21,12 @@ from obi_one.scientific.unions.unions_manipulations import (
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     AllNeuronSetUnion,
-    BiophysicalAndPointNeuronSet2Reference,
-    NeuronSet2Reference,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
@@ -55,8 +58,9 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
-            BiophysicalAndPointNeuronSet2Reference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            VirtualNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            PointNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
@@ -91,13 +95,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             description="Circuit to simulate.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
-        node_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+                SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
             },
         )
 

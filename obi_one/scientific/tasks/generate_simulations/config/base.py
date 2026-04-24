@@ -31,8 +31,10 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -81,7 +83,9 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            VirtualNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            PointNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
         SchemaKey.PROPERTY_ENDPOINTS: {

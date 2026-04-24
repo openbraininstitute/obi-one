@@ -90,14 +90,10 @@ def resolve_neuron_set_2_ref_to_node_set(
     return neuron_set_reference.block.block_name
 
 
-"""
-
-
-
 def resolve_neuron_set_2_ref_to_neuron_set(
-    neuron_set_reference: NeuronSet2Reference | None,
-    default_neuron_set_reference: NeuronSet2Reference | None,
-) -> AllNeuronSet2Union | None:
+    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
+    default_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
+) -> AllNeuronSetUnion | None:
     if neuron_set_reference is None:
         if default_neuron_set_reference is None:
             msg = (
@@ -109,4 +105,3 @@ def resolve_neuron_set_2_ref_to_neuron_set(
         return default_neuron_set_reference.block
 
     return neuron_set_reference.block
-"""
