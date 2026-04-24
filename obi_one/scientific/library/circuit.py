@@ -21,7 +21,6 @@ class Circuit(OBIBaseModel):
 
     def __init__(self, name: str, path: str, **kwargs) -> None:
         """Initialize object."""
-        kwargs.setdefault("type", "Circuit")
         super().__init__(name=name, path=path, **kwargs)
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
