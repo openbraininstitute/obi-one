@@ -76,7 +76,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
         resources=MachineResources(
             cores=1,
-            memory=2,
+            memory=8,
             timelimit="00:10",
             compute_cell="local",
         ),
@@ -93,7 +93,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
         resources=MachineResources(
             cores=1,
-            memory=2,
+            memory=8,
             timelimit="00:10",
             compute_cell="local",
         ),

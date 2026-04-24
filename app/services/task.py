@@ -5,7 +5,14 @@ import entitysdk
 import httpx
 import libsonata
 from entitysdk import ProjectContext, models
-from entitysdk.types import ActivityStatus, AssetLabel, CircuitScale, ExecutorType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    CircuitScale,
+    ContentType,
+    ExecutorType,
+    TargetSimulator,
+)
 
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simulation
@@ -20,7 +27,6 @@ from app.schemas.task import (
     TaskLaunchSubmit,
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
-from obi_one.types import TargetSimulator
 from obi_one.utils import db_sdk
 
 
@@ -253,21 +259,7 @@ def estimate_task_resources(
                 task_definition=task_definition,
                 compute_cell=compute_cell,
             )
-        case TaskType.circuit_simulation_neuron:
-            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
-                json_model=json_model,
-                db_client=db_client,
-                task_definition=task_definition,
-                compute_cell=compute_cell,
-            )
         case TaskType.circuit_simulation_neurodamus_cluster:
-            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
-                json_model=json_model,
-                db_client=db_client,
-                task_definition=task_definition,
-                compute_cell=compute_cell,
-            )
-        case TaskType.circuit_simulation_inait_machine:
             return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
@@ -282,50 +274,37 @@ def select_simulation_task(
     *, db_client: entitysdk.Client, config_id: UUID, config_type: models.Entity
 ) -> TaskType:
     simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)
-    sim_config_content = db_client.fetch_assets(
+
+    simulation_config_content = db_sdk.select_asset_content(
+        client=db_client,
         entity=simulation,
         selection={
-            "label": AssetLabel.simulation_config,
+            "label": AssetLabel.sonata_simulation_config,
+            "content_type": ContentType.application_json,
         },
-    ).one()
-    simulation_config = libsonata.SimulationConfig(sim_config_content, ".")
+    )
+    simulation_config = libsonata.SimulationConfig(simulation_config_content, ".")
 
-    if target_simulator_from_simulation := simulation_config.target_simulator:
-        target_simulator = target_simulator_from_simulation
+    target_simulator = None
+
+    if simulation_config.target_simulator is not None:
+        target_simulator = TargetSimulator(simulation_config.target_simulator.name)
         msg = f"Target simulator '{target_simulator}' is used from simulation config."
         L.info(msg)
-    else:
-        circuit = db_client.get_entity(
-            entity_id=simulation_config.entity_id,
-            entity_type=models.Circuit,
-        )
-        circuit_config = db_sdk.get_json_asset_content(
-            client=db_client,
-            entity=circuit,
-            selection={
-                "label": AssetLabel.circuit_config,
-            },
-        )
-        # TODO: Switch to libsonata
-        if target_simulator_from_circuit := circuit_config.get("target_simulator"):
-            target_simulator = target_simulator_from_circuit
-            msg = f"Target simulator '{target_simulator}' is used from circuit config."
-            L.info(msg)
-        else:
-            target_simulator = TargetSimulator.NEURON
-            msg = (
-                f"No target simulator found in circuit/simulation configs. "
-                f"Using default '{TargetSimulator.NEURON}'."
-            )
-            L.info(msg)
 
-    circuit_scale = circuit.circuit_scale
+    circuit = db_client.get_entity(
+        entity_id=simulation.entity_id,
+        entity_type=models.Circuit,
+    )
+
+    if target_simulator is None:
+        target_simulator = circuit.target_simulator
 
     match target_simulator:
-        case TargetSimulator.LEARNING_ENGINE:
+        case TargetSimulator.LearningEngine:
             return TaskType.circuit_simulation_inait_machine
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:
-            match circuit_scale:
+            match circuit.scale:
                 case CircuitScale.single | CircuitScale.pair | CircuitScale.small:
                     return TaskType.circuit_simulation_neuron
                 case _:

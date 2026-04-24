@@ -22,9 +22,3 @@ class TaskType(StrEnum):
     morphology_skeletonization = auto()
     ion_channel_model_simulation_execution = auto()
     em_synapse_mapping = auto()
-
-
-class TargetSimulator(StrEnum):
-    NEURON = "NEURON"
-    CORENEURON = "CORENEURON"
-    LEARNING_ENGINE = "LearningEngine"
