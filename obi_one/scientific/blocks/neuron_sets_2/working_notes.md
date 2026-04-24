@@ -13,7 +13,7 @@ source_neuron_set: NeuronSet2Reference | None = Field(
   description="Source neuron set to simulate",
   json_schema_extra={
       SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-      SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
+      SchemaKey.REFERENCE_TYPES: NeuronSet2Reference.__name__,
   },
 )
 
@@ -23,7 +23,7 @@ targeted_neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
   description="Target neuron set to simulate",
   json_schema_extra={
       SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-      SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
+      SchemaKey.REFERENCE_TYPES: BiophysicalAndPointNeuronSet2Reference.__name__,
   },
 )
 ```
@@ -42,7 +42,7 @@ neuron_sets: dict[str, AllNeuronSet2Union] = Field(
         description="Neuron sets for the simulation (new version).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NeuronSet2Reference.__name__,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
@@ -53,7 +53,7 @@ neuron_sets: dict[str, AllNeuronSet2Union] = Field(
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: SynapticManipulationsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,

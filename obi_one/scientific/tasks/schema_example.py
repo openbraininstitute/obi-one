@@ -165,7 +165,7 @@ class SchemaExampleScanConfig(ScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: NeuronSetReference.__name__,
             SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
             SchemaKey.GROUP_ORDER: 1,
         },

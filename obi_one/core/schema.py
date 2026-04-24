@@ -15,7 +15,7 @@ class SchemaKey(StrEnum):
     PROPERTY = "property"
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
-    REFERENCE_TYPE = "reference_type"
+    REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"

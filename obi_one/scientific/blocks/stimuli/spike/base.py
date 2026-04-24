@@ -16,8 +16,10 @@ from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    BiophysicalAndPointNeuronSet2Reference,
-    NeuronSet2Reference,
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
@@ -26,23 +28,23 @@ from obi_one.scientific.unions.unions_timestamps import (
 
 
 class SpikeStimulus(StimulusWithTimestamps):
-    source_neuron_set: NeuronSet2Reference | None = Field(
+    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
-    targeted_neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
+    targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -59,8 +61,8 @@ class SpikeStimulus(StimulusWithTimestamps):
         default_timestamps: TimestampsReference = None,
         source_node_population: str | None = None,
         target_node_population: str | None = None,
-        default_source_neuron_set_reference: NeuronSet2Reference | None = None,
-        default_target_neuron_set_reference: NeuronSet2Reference | None = None,
+        default_source_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
+        default_target_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
     ) -> dict:
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)

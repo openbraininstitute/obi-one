@@ -31,7 +31,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NeuronSet2Reference.__name__,
         },
     )
 
@@ -41,7 +41,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: BiophysicalAndPointNeuronSet2Reference.__name__,
         },
     )
 
@@ -108,7 +108,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
         },
     )
 

@@ -95,7 +95,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         description="Timestamps for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -106,7 +106,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         description="Recordings for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPES: RecordingReference.__name__,
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,

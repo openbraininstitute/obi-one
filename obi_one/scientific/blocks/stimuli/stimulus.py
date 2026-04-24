@@ -22,6 +22,8 @@ from obi_one.scientific.library.constants import (
     _MIN_TIME_STEP_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalAndPointNeuronSet2Reference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
@@ -59,7 +61,7 @@ class StimulusWithTimestamps(BaseStimulus):
         description="Timestamps at which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
         },
     )
 
@@ -105,13 +107,13 @@ class StimulusWithDuration(BaseStimulus):
 
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
-    neuron_set: BiophysicalAndPointNeuronSet2Reference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: BiophysicalAndPointNeuronSet2Reference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 

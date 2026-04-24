@@ -54,11 +54,26 @@ class BiophysicalNeuronSetReference(BlockReference):
     allowed_block_types: ClassVar[Any] = BiophysicalNeuronSetUnion
 
 
-class VirtualNeuronSet2Reference(BlockReference):
+class VirtualNeuronSetReference(BlockReference):
     """A reference to a Virtual NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
 
+class PointNeuronSetReference(BlockReference):
+    """A reference to a Point NeuronSet2 block."""
+
+    allowed_block_types: ClassVar[Any] = PointNeuronSetUnion
+
+
+ALL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | VirtualNeuronSetReference | PointNeuronSetReference
+NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | PointNeuronSetReference
+
+ALL_NEURON_SETS_REFERENCE_TYPES = [
+    BiophysicalNeuronSetReference.__name__,
+    VirtualNeuronSetReference.__name__,
+    PointNeuronSetReference.__name__,
+]
+NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [BiophysicalNeuronSetReference.__name__, PointNeuronSetReference.__name__]
 
 # def resolve_neuron_set_2_ref_to_node_set(
 #     neuron_set_reference: NeuronSet2Reference | None, default_node_set: str

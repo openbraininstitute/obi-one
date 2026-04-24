@@ -156,7 +156,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.MInfReference.__name__,
+            SchemaKey.REFERENCE_TYPES: equations_module.MInfReference.__name__,
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 0,
         },
@@ -169,7 +169,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.MTauReference.__name__,
+            SchemaKey.REFERENCE_TYPES: equations_module.MTauReference.__name__,
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 1,
         },
@@ -182,7 +182,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.HInfReference.__name__,
+            SchemaKey.REFERENCE_TYPES: equations_module.HInfReference.__name__,
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 2,
         },
@@ -195,7 +195,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.HTauReference.__name__,
+            SchemaKey.REFERENCE_TYPES: equations_module.HTauReference.__name__,
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 3,
         },

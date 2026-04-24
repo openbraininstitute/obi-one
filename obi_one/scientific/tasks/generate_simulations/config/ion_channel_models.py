@@ -160,7 +160,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Ion Channel Model",
-            SchemaKey.REFERENCE_TYPE: IonChannelModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: IonChannelModelReference.__name__,
         },
     )
 
@@ -175,7 +175,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
             SchemaKey.SINGULAR_NAME: "Stimulus",
-            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: StimulusReference.__name__,
         },
     )
     # can we have recording union depending on what model we choose?
@@ -191,7 +191,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPES: RecordingReference.__name__,
         },
     )
 
@@ -204,7 +204,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
             SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: TimestampsReference.__name__,
         },
     )
 

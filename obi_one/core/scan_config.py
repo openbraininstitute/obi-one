@@ -159,9 +159,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
                         field_info.json_schema_extra
-                        and SchemaKey.REFERENCE_TYPE in field_info.json_schema_extra
+                        and SchemaKey.REFERENCE_TYPES in field_info.json_schema_extra
                     ):
-                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPE]
+                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPES]
                     else:
                         msg = (
                             f"Attribute '{attr_name}' does not have a 'reference_type'"
@@ -199,7 +199,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
-                            SchemaKey.REFERENCE_TYPE: reference_type,
+                            SchemaKey.REFERENCE_TYPES: reference_type,
                         }
 
         return self._block_mapping
@@ -270,7 +270,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
+        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPES]
 
         if name in self.__dict__.get(block_dict_name):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
