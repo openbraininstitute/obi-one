@@ -3,6 +3,9 @@ import logging
 from typing import Annotated, Literal, Self
 
 import numpy as np
+if not hasattr(np, "in1d"):
+    np.in1d = np.isin  # type: ignore[attr-defined]
+
 from pydantic import Field, field_validator, model_validator
 
 from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
