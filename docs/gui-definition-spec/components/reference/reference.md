@@ -20,7 +20,7 @@ class Block:
                                                 title="Neuron Set",
                                                 description="Neuron set to simulate.",
                                                 json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                                                                    SchemaKey.REFERENCE_TYPE: "NeuronSetReference"}
+                                                                    SchemaKey.REFERENCE_TYPES: "NeuronSetReference"}
                                                 )
 ```
 

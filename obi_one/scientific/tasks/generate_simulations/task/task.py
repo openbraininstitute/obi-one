@@ -40,14 +40,15 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model import (
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    BiophysicalNeuronSetReference,
+    resolve_neuron_set_2_ref_to_node_set,
 )
 
 L = logging.getLogger(__name__)
 
-DEFAULT_NEURON_SET_BLOCK_REFERENCE = NeuronSetReference(
+DEFAULT_NEURON_SET_BLOCK_REFERENCE = BiophysicalNeuronSetReference(
     block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
 )
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
@@ -264,7 +265,7 @@ class GenerateSimulationTask(Task):
                     stimulus
                 )
 
-    def _default_neuron_set_ref(self) -> NeuronSetReference:
+    def _default_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default neuron set."""
         if (
             DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets
@@ -321,7 +322,7 @@ class GenerateSimulationTask(Task):
                     )
                     raise OBIONEError(msg)
 
-                self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
+                self._sonata_config["node_set"] = resolve_neuron_set_2_ref_to_node_set(
                     self.config.initialize.node_set, DEFAULT_NODE_SET_NAME
                 )
             elif not hasattr(self.config.initialize, "node_set"):

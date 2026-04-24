@@ -194,9 +194,9 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, SchemaKey.REFERENCE_TYPE, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
 
-    reference_type = schema.get(SchemaKey.REFERENCE_TYPE)
+    reference_type = schema.get(SchemaKey.REFERENCE_TYPES)
 
     schema_union = schema.get("anyOf", [])
 

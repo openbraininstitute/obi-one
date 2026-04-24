@@ -25,7 +25,7 @@ class Config:
             SchemaKey.GROUP: "Group 1", # Must exit in parent config's `group_order` array
             SchemaKey.GROUP_ORDER: 0, # Unique within the group
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPE: "NeuronSetReference",
+            SchemaKey.REFERENCE_TYPES: "NeuronSetReference",
         }
     )
 
