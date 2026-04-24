@@ -24,7 +24,7 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-    BiophysicalAndPointNeuronSet2Reference,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,

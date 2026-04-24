@@ -270,7 +270,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPES]
+        reference_type_name = self.block_mapping[block.__class__.__name__][
+            SchemaKey.REFERENCE_TYPES
+        ]
 
         if name in self.__dict__.get(block_dict_name):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"

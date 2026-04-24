@@ -47,7 +47,6 @@ NonVirtualNeuronSetUnion = Annotated[
 ]
 
 
-
 class BiophysicalNeuronSetReference(BlockReference):
     """A reference to a Biophysical or Point NeuronSet2 block."""
 
@@ -59,13 +58,16 @@ class VirtualNeuronSetReference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
 
+
 class PointNeuronSetReference(BlockReference):
     """A reference to a Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = PointNeuronSetUnion
 
 
-ALL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | VirtualNeuronSetReference | PointNeuronSetReference
+ALL_NEURON_SETS_REFERENCE_UNION = (
+    BiophysicalNeuronSetReference | VirtualNeuronSetReference | PointNeuronSetReference
+)
 NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | PointNeuronSetReference
 
 ALL_NEURON_SETS_REFERENCE_TYPES = [
@@ -73,29 +75,38 @@ ALL_NEURON_SETS_REFERENCE_TYPES = [
     VirtualNeuronSetReference.__name__,
     PointNeuronSetReference.__name__,
 ]
-NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [BiophysicalNeuronSetReference.__name__, PointNeuronSetReference.__name__]
-
-# def resolve_neuron_set_2_ref_to_node_set(
-#     neuron_set_reference: NeuronSet2Reference | None, default_node_set: str
-# ) -> str:
-#     if neuron_set_reference is None:
-#         return default_node_set
-
-#     return neuron_set_reference.block.block_name
+NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    BiophysicalNeuronSetReference.__name__,
+    PointNeuronSetReference.__name__,
+]
 
 
-# def resolve_neuron_set_2_ref_to_neuron_set(
-#     neuron_set_reference: NeuronSet2Reference | None,
-#     default_neuron_set_reference: NeuronSet2Reference | None,
-# ) -> AllNeuronSet2Union | None:
-#     if neuron_set_reference is None:
-#         if default_neuron_set_reference is None:
-#             msg = (
-#                 "NeuronSet2Reference is None and no default_neuron_set provided. "
-#                 "Cannot resolve to a NeuronSet2."
-#             )
-#             raise ValueError(msg)
+def resolve_neuron_set_2_ref_to_node_set(
+    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None, default_node_set: str
+) -> str:
+    if neuron_set_reference is None:
+        return default_node_set
 
-#         return default_neuron_set_reference.block
+    return neuron_set_reference.block.block_name
 
-#     return neuron_set_reference.block
+
+"""
+
+
+
+def resolve_neuron_set_2_ref_to_neuron_set(
+    neuron_set_reference: NeuronSet2Reference | None,
+    default_neuron_set_reference: NeuronSet2Reference | None,
+) -> AllNeuronSet2Union | None:
+    if neuron_set_reference is None:
+        if default_neuron_set_reference is None:
+            msg = (
+                "NeuronSet2Reference is None and no default_neuron_set provided. "
+                "Cannot resolve to a NeuronSet2."
+            )
+            raise ValueError(msg)
+
+        return default_neuron_set_reference.block
+
+    return neuron_set_reference.block
+"""

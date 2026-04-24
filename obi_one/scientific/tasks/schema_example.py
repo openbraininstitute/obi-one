@@ -15,10 +15,9 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    CircuitExtractionNeuronSetUnion,
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
     ALL_NEURON_SETS_REFERENCE_TYPES,
+    CircuitExtractionNeuronSetUnion,
+    SimulationNeuronSetUnion,
 )
 
 

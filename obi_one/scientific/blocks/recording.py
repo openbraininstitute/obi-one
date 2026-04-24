@@ -16,8 +16,8 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 

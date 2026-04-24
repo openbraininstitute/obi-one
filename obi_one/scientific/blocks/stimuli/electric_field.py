@@ -17,7 +17,6 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-    BiophysicalAndPointNeuronSet2Reference,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
 

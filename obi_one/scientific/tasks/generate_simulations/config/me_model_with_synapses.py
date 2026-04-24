@@ -15,8 +15,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    VirtualNeuronSetUnion,
     VirtualNeuronSetReference,
+    VirtualNeuronSetUnion,
 )
 
 L = logging.getLogger(__name__)

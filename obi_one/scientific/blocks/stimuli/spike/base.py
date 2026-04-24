@@ -16,10 +16,10 @@ from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    ALL_NEURON_SETS_REFERENCE_UNION,
     ALL_NEURON_SETS_REFERENCE_TYPES,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    ALL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_2_ref_to_neuron_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (

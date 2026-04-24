@@ -21,7 +21,6 @@ from obi_one.scientific.unions.unions_manipulations import (
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
-    AllNeuronSet2Union,
     AllNeuronSetUnion,
     BiophysicalAndPointNeuronSet2Reference,
     NeuronSet2Reference,
