@@ -82,6 +82,7 @@ def register_output_resource(
         models.CellMorphology(
             name=metadata.cell_morphology_name,
             description=metadata.cell_morphology_description,
+            has_segmented_spines=True,
             cell_morphology_protocol=protocol,
             brain_region=metadata.brain_region,
             subject=metadata.subject,
