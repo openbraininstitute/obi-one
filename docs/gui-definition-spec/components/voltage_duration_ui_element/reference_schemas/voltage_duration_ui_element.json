@@ -1,0 +1,37 @@
+{
+  "duration_voltage_combinations": {
+    "items": {
+      "duration": {
+        "oneOf": [
+          {
+            "type": "float"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "float"
+            }
+          }
+        ]
+      },
+      "voltage": {
+        "oneOf": [
+          {
+            "type": "float"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "float"
+            }
+          }
+        ]
+      }
+    },
+    "type": "array",
+    "minLength": 1
+  },
+  "title": "Voltage Levels and Durations",
+  "description": "A list of duration and voltage combinations for the SEClamp stimulus.",
+  "ui_element": "voltage_duration_ui_element"
+}
