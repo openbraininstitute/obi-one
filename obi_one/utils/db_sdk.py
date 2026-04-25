@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +30,13 @@ def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: As
         raise OBIONEError(msg) from e
 
 
+def get_task_config_asset(*, client: Client, config: Entity) -> Asset:
+    """Return task config asset from entity."""
+    return get_entity_asset_by_label(
+        client=client, config=config, asset_label=AssetLabel.task_config
+    )
+
+
 def create_activity(
     *,
     client: Client,
@@ -46,6 +54,47 @@ def create_activity(
     activity = client.register_entity(activity)
     L.info(f"Activity {activity.id} of type '{activity_type.__name__}' created")
     return activity
+
+
+def select_asset_content(
+    *,
+    client: Client,
+    entity: Entity | None = None,
+    entity_id: UUID | None = None,
+    entity_type: type[Entity] | None = None,
+    selection: dict,
+) -> bytes:
+    """Select an asset from an entity and fetch its content."""
+    if entity is None:
+        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)
+    asset = client.select_assets(
+        entity=entity,
+        selection=selection,
+    ).one()
+    return client.fetch_content(
+        entity_id=entity.id,
+        entity_type=type(entity),
+        asset_or_id=asset,
+    )
+
+
+def select_json_asset_content(
+    *,
+    client: Client,
+    entity: Entity | None = None,
+    entity_id: UUID | None = None,
+    entity_type: type[Entity] | None = None,
+    selection: dict,
+) -> dict:
+    """Select an asset from the entity and fetch its content."""
+    bytes_content = select_asset_content(
+        client=client,
+        entity=entity,
+        entity_id=entity_id,
+        entity_type=entity_type,
+        selection=selection | {"content_type": ContentType.application_json},
+    )
+    return json.loads(bytes_content)
 
 
 def create_generic_activity(
