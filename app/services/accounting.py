@@ -103,7 +103,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(  # noqa: PLR0911
+def _evaluate_accounting_parameters(
     *,
     db_client: Client,
     config_id: UUID,
@@ -121,17 +121,11 @@ def _evaluate_accounting_parameters(  # noqa: PLR0911
                 count=1,
                 service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
-        case TaskType.circuit_simulation_neuron:
-            return _evaluate_circuit_simulation_parameters(
-                db_client=db_client,
-                simulation_id=config_id,
-            )
-        case TaskType.circuit_simulation_neurodamus_cluster:
-            return _evaluate_circuit_simulation_parameters(
-                db_client=db_client,
-                simulation_id=config_id,
-            )
-        case TaskType.circuit_simulation_inait_machine:
+        case (
+            TaskType.circuit_simulation_neuron
+            | TaskType.circuit_simulation_neurodamus_cluster
+            | TaskType.circuit_simulation_inait_machine
+        ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
