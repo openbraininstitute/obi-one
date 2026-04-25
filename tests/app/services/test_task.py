@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
 import entitysdk
@@ -463,6 +464,25 @@ def test_generic_job_data(config_id, activity_id, callbacks):
     }
 
 
+def test_generic_job_data_legacy(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neuron]
+
+    res = test_module._generic_job_data(
+        config_id=config_id,
+        activity_id=activity_id,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
+        task_definition=task_definition,
+        entity_cache=True,
+        output_root="/foo",
+        callbacks=callbacks,
+    )
+
+    assert f"--config_entity_type {task_definition.config_type_name}" in res["inputs"]
+    assert f"--execution_activity_type {task_definition.activity_type_name}" in res["inputs"]
+    assert f"--execution_activity_id {activity_id}" in res["inputs"]
+
+
 def test_generate_failure_callback(project_context, activity_id):
     res = test_module._generate_failure_callback(
         callback_url="my-callback-url",
@@ -646,3 +666,103 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     assert result.instance_type == "big"
     assert result.instances == 1
     assert result.compute_cell == "cell_a"
+
+
+@pytest.mark.parametrize(
+    ("target_simulator_name", "circuit_scale", "expected_task"),
+    [
+        ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
+        ("NEURON", "small", TaskType.circuit_simulation_neuron),
+        ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
+    ],
+)
+def test_select_simulation_task(
+    target_simulator_name,
+    circuit_scale,
+    expected_task,
+):
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale=circuit_scale,
+        target_simulator=target_simulator_name,
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(
+                target_simulator=SimpleNamespace(name=target_simulator_name),
+            ),
+        ),
+    ):
+        task_type = test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
+
+    assert task_type == expected_task
+
+
+def test_select_simulation_task_falls_back_to_circuit_target_simulator():
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale="small",
+        target_simulator="NEURON",
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(target_simulator=None),
+        ),
+    ):
+        task_type = test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
+
+    assert task_type == TaskType.circuit_simulation_neuron
+
+
+def test_select_simulation_task_raises_for_unsupported_target_simulator():
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale="small",
+        target_simulator="UNSUPPORTED",
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(target_simulator=None),
+        ),
+        pytest.raises(RuntimeError, match="Unsupported target simulator"),
+    ):
+        test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
