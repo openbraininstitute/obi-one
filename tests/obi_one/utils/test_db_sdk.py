@@ -55,6 +55,22 @@ def test_get_entity_asset_by_label(client, mock_entity_with_assets):
     assert result.label == AssetLabel.morphology
 
 
+def test_get_task_config_asset():
+    client = Mock()
+    config = Mock(spec=Entity)
+    config.id = uuid4()
+    expected_asset = Mock(spec=Asset, label=AssetLabel.task_config)
+    client.select_assets.return_value.one.return_value = expected_asset
+
+    result = test_module.get_task_config_asset(client=client, config=config)
+
+    assert result is expected_asset
+    client.select_assets.assert_called_once_with(
+        entity=config,
+        selection={"label": AssetLabel.task_config},
+    )
+
+
 def test_create_activity(client, mock_entity, httpx_mock):
     """Test successful activity creation."""
     activity_status = "pending"
