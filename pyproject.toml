@@ -28,7 +28,6 @@ dynamic = ["version"]
 
 # CORE + SCIENTIFIC - dependencies always installed
 dependencies = [
-    # -- CORE
     # ENTITYSDK
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
@@ -51,7 +50,7 @@ dependencies = [
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
-    "pyvista",
+    "pylmesh"
 ]
 
 [project.optional-dependencies]

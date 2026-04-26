@@ -217,10 +217,16 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.em_synapse_mapping: 1,
     }
 
-    with patch(
-        "app.services.accounting._evaluate_circuit_simulation_parameters",
-        return_value=accounting_parameters,
-        autospec=True,
+    with (
+        patch(
+            "app.services.accounting._evaluate_circuit_simulation_parameters",
+            return_value=accounting_parameters,
+            autospec=True,
+        ),
+        patch(
+            "app.services.accounting.estimate_skeletonization_count",
+            return_value=expected_count[TaskType.morphology_skeletonization],
+        ),
     ):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,

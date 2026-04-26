@@ -363,6 +363,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             ),
             "capabilities": {
                 "private_packages": False,
+                "env_secrets": [],
             },
         },
         "inputs": [
