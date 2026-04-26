@@ -4,23 +4,34 @@ import re
 
 _REDACTED = "***REDACTED***"
 
-# key names that indicate a secret value follows.
-_SECRET_KEYS = (
-    "password|passwd|secret|secret_key|token|api_key|apikey"
-    "|access_key|private_key|credentials|auth_token|client_secret"
-    "|session_token|CAVECLIENT_MICRONS_API_KEY"
+# key=value or key: value — redact the value part.
+_SENSITIVE_KEY_NAMES = [
+    "passwd",
+    "password",
+    "secret_key",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "access_key",
+    "private_key",
+    "credentials",
+    "auth_token",
+    "client_secret",
+    "session_token",
+    "CAVECLIENT_MICRONS_API_KEY",
+]
+_KEY_VALUE_RE = re.compile(
+    r"(?i)((?:" + "|".join(_SENSITIVE_KEY_NAMES) + r")[\s]*[=:]\s*)([^\s\"',;}{]+)"
 )
 
-# key=value or key: value — redact the value part
-_KEY_VALUE_RE = re.compile(rf"(?i)((?:{_SECRET_KEYS})[\s]*[=:]\s*)([^\s\"',;}}{{]+)")
-
-# aws access key IDs (AKIA + 16 alphanumeric)
+# AWS access key IDs (AKIA + 16 alphanumeric)
 _AWS_KEY_RE = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 
 # Bearer tokens
 _BEARER_RE = re.compile(r"(?i)(Bearer\s+)[A-Za-z0-9\-._~+/]+=*")
 
-# long base64 strings (64+ chars, likely tokens/keys)
+# Long base64 strings (64+ chars, likely tokens/keys)
 _BASE64_RE = re.compile(r"\b[A-Za-z0-9+/]{64,}={0,2}\b")
 
 
