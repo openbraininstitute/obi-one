@@ -17,8 +17,6 @@ from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
 
-DatetimeAdapter = TypeAdapter(datetime)
-
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
     """Determines the asset ID of the JSON config asset."""
