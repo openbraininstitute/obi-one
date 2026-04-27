@@ -91,7 +91,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
 
     initialize: Initialize = Field(
         title="Initialization",
-        description="Parameters for initializing...",
+        description="Parameters for initializing the EM Synaptome.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
