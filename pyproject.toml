@@ -33,7 +33,7 @@ dependencies = [
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
     "entitysdk>=0.13.3",
-    "pydantic>=2.10.6",
+    "pydantic>=2.10.6,<=2.12.5",
     # -- SCIENTIFIC
     "aiofiles",
     "bluecellulab>=2.6.87",
