@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 from enum import StrEnum
 from pathlib import Path
@@ -180,6 +181,8 @@ class CreateExtracellularRecordingArrayTask(Task):
         if self._circuit is None:
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
+        
+        return circuit_dest_dir
 
     def execute(
         self,
@@ -193,17 +196,18 @@ class CreateExtracellularRecordingArrayTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        circuit_dest_dir =self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        print(circuit_dest_dir)
+        files = os.listdir(circuit_dest_dir)
+        print(files)
 
         test_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
-        # Using the three valid values of self.config.initialize.calculation_method
-        self.config.initialize.calculation_method
+        # Using the value of self.config.initialize.calculation_method
+        
 
-        # Add the block of code for sonata simulation config as a comment
-
-        # Update execution activity (if any)
+        # Todo later: Update execution activity (if any)
         # CreateExtracellularRecordingArrayTask._update_execution_activity(
         #     db_client=db_client,
         #     execution_activity=execution_activity,
