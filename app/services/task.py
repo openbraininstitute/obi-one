@@ -326,6 +326,8 @@ def select_simulation_task(
         target_simulator = TargetSimulator(simulation_config.target_simulator.name)
         msg = f"Using target simulator '{target_simulator}' from simulation config."
         L.info(msg)
+    else:
+        L.info("No `target_simulator` found in simulation config.")
 
     circuit = db_client.get_entity(
         entity_id=simulation.entity_id,
@@ -336,6 +338,9 @@ def select_simulation_task(
         target_simulator = circuit.target_simulator
         msg = f"Using target simulator '{target_simulator}' from circuit config."
         L.info(msg)
+
+    msg = f"Circuit scale: {circuit.scale}"
+    L.info(msg)
 
     match target_simulator:
         case TargetSimulator.LearningEngine:
