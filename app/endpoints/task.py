@@ -2,17 +2,19 @@ from http import HTTPStatus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
+from starlette.responses import StreamingResponse
 
 from app.config import settings
 from app.dependencies.accounting import AccountingSessionFactoryDep
-from app.dependencies.auth import UserContextWithProjectIdDep, user_verified
+from app.dependencies.auth import UserContextDep, UserContextWithProjectIdDep, user_verified
 from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
-from app.dependencies.launch_system import LaunchSystemClientDep
+from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.mappings import TASK_DEFINITIONS
+from app.schemas.job import JobRead
 from app.schemas.task import (
     TaskAccountingCreate,
     TaskAccountingInfo,
@@ -20,7 +22,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.services import accounting as accounting_service, task as task_service
+from app.services import accounting as accounting_service, job as job_service, task as task_service
 from app.types import TaskType
 
 router = APIRouter(
@@ -167,3 +169,35 @@ def task_success_endpoint(
         http_client=accounting_factory._http_client,  # noqa: SLF001
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@router.get(
+    "/{job_id}",
+    summary="Read a job.",
+    description="Proxy job data from the launch-system.",
+)
+def read_job(
+    job_id: UUID,
+    user_context: UserContextDep,  # noqa: ARG001
+    ls_client: LaunchSystemClientDep,
+) -> JobRead:
+    """Proxy GET /{job_id} to the launch-system."""
+    return job_service.read_job(job_id, ls_client)
+
+
+@router.get(
+    "/{job_id}/stream",
+    summary="Stream job output.",
+    description="Proxy NDJSON stream from the launch-system.",
+)
+async def stream_job(
+    job_id: UUID,
+    user_context: UserContextDep,  # noqa: ARG001
+    ls_async_client: LaunchSystemAsyncClientDep,
+) -> StreamingResponse:
+    """Proxy GET /{job_id}/stream from the launch-system as NDJSON."""
+    line_iterator = await job_service.stream_job(job_id, ls_async_client)
+    return StreamingResponse(
+        content=line_iterator,
+        media_type="application/x-ndjson",
+    )

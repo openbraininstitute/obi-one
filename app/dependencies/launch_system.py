@@ -27,6 +27,10 @@ async def get_async_client(
 ) -> AsyncIterator[httpx.AsyncClient]:
     token = user_context.token.credentials
     headers = {"Authorization": f"Bearer {token}"}
+    if user_context.virtual_lab_id:
+        headers["virtual-lab-id"] = str(user_context.virtual_lab_id)
+    if user_context.project_id:
+        headers["project-id"] = str(user_context.project_id)
 
     async with httpx.AsyncClient(
         base_url=settings.LAUNCH_SYSTEM_URL,

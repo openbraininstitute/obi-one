@@ -1,4 +1,4 @@
-"""Tests for job proxy endpoints."""
+"""Tests for job proxy endpoints under /declared/task."""
 
 import json
 from http import HTTPStatus
@@ -30,6 +30,8 @@ JOB_JSON = {
     "updated_at": "2024-01-01T00:00:00Z",
 }
 
+_BASE = "/declared/task"
+
 
 def _make_httpx_response(json_data: dict, status_code: int = 200) -> httpx.Response:
     """Build a real httpx.Response with JSON content."""
@@ -54,7 +56,7 @@ def _make_mock_async_client(mock_response):
 
 
 def test_read_job_success(client):
-    """GET /job/{job_id} returns 200 with correct JobRead fields."""
+    """GET /declared/task/{job_id} returns 200 with correct JobRead fields."""
     mock_response = _make_httpx_response(JOB_JSON)
 
     with patch(
@@ -62,7 +64,7 @@ def test_read_job_success(client):
         return_value=mock_response,
         autospec=True,
     ):
-        resp = client.get(f"/job/{JOB_ID}")
+        resp = client.get(f"{_BASE}/{JOB_ID}")
 
     assert resp.status_code == 200
     data = resp.json()
@@ -73,7 +75,7 @@ def test_read_job_success(client):
 
 
 def test_read_job_launch_system_error(client):
-    """GET /job/{job_id} returns 500 when launch-system raises ApiError."""
+    """GET /declared/task/{job_id} returns 500 when launch-system raises ApiError."""
     with patch(
         "app.services.job.make_http_request",
         side_effect=ApiError(
@@ -83,7 +85,7 @@ def test_read_job_launch_system_error(client):
         ),
         autospec=True,
     ):
-        resp = client.get(f"/job/{JOB_ID}")
+        resp = client.get(f"{_BASE}/{JOB_ID}")
 
     assert resp.status_code == 500
     data = resp.json()
@@ -91,7 +93,7 @@ def test_read_job_launch_system_error(client):
 
 
 def test_stream_job_success(client, monkeypatch):
-    """GET /job/{job_id}/stream returns 200 with NDJSON lines."""
+    """GET /declared/task/{job_id}/stream returns 200 with NDJSON lines."""
     ndjson_lines = ['{"type":"log","msg":"hello"}', '{"type":"status","msg":"done"}']
 
     mock_response = AsyncMock()
@@ -105,7 +107,7 @@ def test_stream_job_success(client, monkeypatch):
 
     monkeypatch.setitem(app.dependency_overrides, get_async_client, override_get_async_client)
 
-    resp = client.get(f"/job/{JOB_ID}/stream")
+    resp = client.get(f"{_BASE}/{JOB_ID}/stream")
 
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/x-ndjson"
@@ -117,7 +119,7 @@ def test_stream_job_success(client, monkeypatch):
 
 
 def test_stream_job_launch_system_error(client, monkeypatch):
-    """GET /job/{job_id}/stream returns 502 when launch-system returns non-success."""
+    """GET /declared/task/{job_id}/stream returns 502 when launch-system returns non-success."""
     mock_response = AsyncMock()
     mock_response.is_success = False
     mock_response.status_code = 500
@@ -128,13 +130,13 @@ def test_stream_job_launch_system_error(client, monkeypatch):
 
     monkeypatch.setitem(app.dependency_overrides, get_async_client, override_get_async_client)
 
-    resp = client.get(f"/job/{JOB_ID}/stream")
+    resp = client.get(f"{_BASE}/{JOB_ID}/stream")
     assert resp.status_code == 502
     data = resp.json()
     assert data["error_code"] == "GENERIC_ERROR"
 
 
 def test_read_job_unauthenticated(client_no_auth):
-    """GET /job/{job_id} without auth headers returns 401 or 403."""
-    resp = client_no_auth.get(f"/job/{JOB_ID}")
+    """GET /declared/task/{job_id} without auth headers returns 401 or 403."""
+    resp = client_no_auth.get(f"{_BASE}/{JOB_ID}")
     assert resp.status_code in {401, 403}

@@ -23,7 +23,6 @@ from app.endpoints import (
     count_scan_coordinates,
     ephys_metrics,
     ion_channel_properties,
-    job,
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
@@ -178,5 +177,4 @@ app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
-app.include_router(job.router)
 app.include_router(task.router)
