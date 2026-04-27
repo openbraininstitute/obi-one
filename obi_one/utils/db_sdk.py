@@ -10,7 +10,6 @@ from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
-from pydantic import TypeAdapter
 
 from obi_one.core.exception import OBIONEError
 from obi_one.utils.io import convert_image_to_webp
