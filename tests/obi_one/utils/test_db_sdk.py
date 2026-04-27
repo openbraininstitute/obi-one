@@ -131,6 +131,38 @@ def test_update_activity_status(client, httpx_mock):
     assert result.status == new_status
 
 
+def test_finalize_activity(client, httpx_mock):
+    """Test successful activity finalization."""
+    activity_id = uuid4()
+    end_time = datetime.now(UTC)
+    finalized_status = "done"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return patched payload plus required start time."""
+        payload = json.loads(request.content)
+        return httpx.Response(
+            status_code=200,
+            json=payload | {"start_time": datetime.now(UTC).isoformat()},
+        )
+
+    httpx_mock.add_callback(
+        handler,
+        url=f"http://my-url/simulation-execution/{activity_id}",
+        method="PATCH",
+    )
+
+    result = test_module.finalize_activity(
+        client=client,
+        activity_id=activity_id,
+        activity_type=SimulationExecution,
+        status=finalized_status,
+        end_time=end_time,
+    )
+
+    assert result.status == finalized_status
+    assert result.end_time == end_time
+
+
 def test_update_activity_executor(client, httpx_mock):
     """Test successful activity executor update."""
     activity_id = uuid4()
