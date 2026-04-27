@@ -10,7 +10,7 @@ import httpx
 import pytest
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Asset, Entity, SimulationExecution
-from entitysdk.types import AssetLabel, ExecutorType, TaskActivityType
+from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.utils import db_sdk as test_module
@@ -53,6 +53,22 @@ def test_get_entity_asset_by_label(client, mock_entity_with_assets):
         asset_label=AssetLabel.morphology,
     )
     assert result.label == AssetLabel.morphology
+
+
+def test_get_task_config_asset():
+    client = Mock()
+    config = Mock(spec=Entity)
+    config.id = uuid4()
+    expected_asset = Mock(spec=Asset, label=AssetLabel.task_config)
+    client.select_assets.return_value.one.return_value = expected_asset
+
+    result = test_module.get_task_config_asset(client=client, config=config)
+
+    assert result is expected_asset
+    client.select_assets.assert_called_once_with(
+        entity=config,
+        selection={"label": AssetLabel.task_config},
+    )
 
 
 def test_create_activity(client, mock_entity, httpx_mock):
@@ -521,3 +537,61 @@ def test_add_image_assets_success_webp_and_png(tmp_path):
 
     assert assets == [uploaded_a, uploaded_b]
     assert client.upload_file.call_count == 2
+
+
+def test_select_json_asset_content(client, httpx_mock):
+    entity_id = uuid4()
+    asset_1_id = uuid4()
+    asset_2_id = uuid4()
+
+    entity = Entity(
+        id=entity_id,
+        name="foo",
+        assets=[
+            Asset(
+                id=asset_1_id,
+                path="config.json",
+                full_path="/config.json",
+                content_type=ContentType.application_json,
+                size=0,
+                storage_type="aws_s3_internal",
+                label=AssetLabel.sonata_simulation_config,
+                is_directory=False,
+            ),
+            Asset(
+                id=asset_2_id,
+                path="foo.swc",
+                full_path="/foo.swc",
+                content_type=ContentType.application_swc,
+                size=0,
+                storage_type="aws_s3_internal",
+                label=AssetLabel.morphology,
+                is_directory=False,
+            ),
+        ],
+    )
+    content = {"foo": "bar", "zee": "roo"}
+    httpx_mock.add_response(
+        url=f"{client.api_url}/entity/{entity_id}/assets/{asset_1_id}/download",
+        content=json.dumps(content),
+        is_reusable=True,
+    )
+    res = test_module.select_json_asset_content(
+        client=client,
+        entity=entity,
+        selection={"label": AssetLabel.sonata_simulation_config},
+    )
+    assert res == content
+
+    httpx_mock.add_response(
+        url=f"{client.api_url}/entity/{entity_id}",
+        json=entity.model_dump(mode="json"),
+    )
+
+    res = test_module.select_json_asset_content(
+        client=client,
+        entity_id=entity.id,
+        entity_type=type(entity),
+        selection={"label": AssetLabel.sonata_simulation_config},
+    )
+    assert res == content
