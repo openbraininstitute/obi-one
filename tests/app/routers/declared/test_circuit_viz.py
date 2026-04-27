@@ -16,7 +16,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
-from app.schemas.circuit_visualization import NeuronSectionInfo, Node
+from app.schemas.circuit_visualization import Node, Section
 from app.services.circuit_visualization import (
     circuit_asset_id,
     download_circuit_config,
@@ -69,7 +69,6 @@ def test_circuit_nodes(
             "morphology_name": "test_name",
             "position": [0.1, 0.2, 0.3],
             "orientation": [0.1, 0.2, 0.3, 0.4],
-            "soma_radius": 0.5,
         }
     ]
 
@@ -104,11 +103,11 @@ def test_circuit_morphology(
     name = "name"
 
     mock_circuit_asset_id.return_value = asset_id
-    mock_get_morphology_data.return_value = {}
+    mock_get_morphology_data.return_value = []
     response = client.get(f"/circuit/viz/{circuit_id!s}/morphologies/{morphology_path}?name={name}")
 
     assert response.status_code == 200
-    assert response.json() == {}
+    assert response.json() == []
 
     mock_circuit_asset_id.assert_called_once_with(mock_client, circuit_id)
     mock_get_morphology.assert_called_once_with(
@@ -216,7 +215,6 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
                 0.2816537095884868,
                 0.3443727770658415,
             ),
-            soma_radius=7.279230117797852,
         ),
         Node(
             morphology_file="morphologies/swc/rp110127_L5-2_idD_-_Clone_1.swc",
@@ -228,7 +226,6 @@ def test_get_nodes(test_sonata_config, mock_client, test_circuit_dir):
                 0.31893356942594736,
                 0.3134746233161566,
             ),
-            soma_radius=4.823882102966309,
         ),
     ]
 
@@ -255,7 +252,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.5606842175110329,
                 0.05016492562075268,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -267,7 +263,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.6162888771434368,
                 -0.03649800062123188,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -279,7 +274,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.5252529464233355,
                 0.6495004489941254,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -291,7 +285,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.5368122164342657,
                 0.07991216105872467,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -303,7 +296,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.6904054402710065,
                 0.56786758430315,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -315,7 +307,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.32009903295331554,
                 0.6382078078117599,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -327,7 +318,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.0958330582657927,
                 0.5666241988779213,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -339,7 +329,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.3583901187021639,
                 0.6367658349906609,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -351,7 +340,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 -0.4287869416570199,
                 0.6544250685997304,
             ),
-            soma_radius=0.0,
         ),
         Node(
             morphology_file="morphologies/merged-morphologies.h5",
@@ -363,7 +351,6 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
                 0.4206509456244123,
                 0.21559359105711814,
             ),
-            soma_radius=0.0,
         ),
     ]
 
@@ -378,6 +365,17 @@ def test_get_nodes_alternate(test_sonata_config_alternate, mock_client, test_cir
     assert nodes == test_nodes
 
 
+def assert_sections(sections: list[Section]):
+    soma = sections[0]
+    axon_0 = sections[1]
+
+    assert soma.id == "soma"
+    assert soma.type == 0
+    assert soma.parent_id is None
+
+    assert axon_0.parent_id == "soma"
+
+
 def test_get_morphology(mock_client, test_circuit_dir):
     morph_raw = get_morphology(
         test_circuit_dir,
@@ -388,17 +386,9 @@ def test_get_morphology(mock_client, test_circuit_dir):
         None,
     )
 
-    morphology = get_morphology_data(morph_raw)
-
-    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
-
-    axon_0 = morphology["axon[0]"]
-
-    assert axon_0.nseg == 80
-    assert axon_0.distance_from_soma == 0.0
-    assert axon_0.sec_length == 126.4417724609375
-    assert len(axon_0.xstart) == 80
-    assert len(axon_0.xend) == 80
+    morphology_sections = get_morphology_data(morph_raw)
+    sections = [Section.model_validate(section) for section in morphology_sections]
+    assert_sections(sections)
 
 
 def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
@@ -411,17 +401,11 @@ def test_get_morphology_alternate(mock_client, test_circuit_dir_alternate):
         "rp110125_L5-2_idF_-_Scale_x1.000_y1.025_z1.000",
     )
 
-    morphology = get_morphology_data(morph_raw)
+    morphology_sections = get_morphology_data(morph_raw)
 
-    assert all(NeuronSectionInfo.model_validate(section) for section in morphology.values())
+    sections = [Section.model_validate(section) for section in morphology_sections]
 
-    axon_0 = morphology["axon[0]"]
-
-    assert axon_0.nseg == 20
-    assert axon_0.distance_from_soma == 0.0
-    assert axon_0.sec_length == 39.374610900878906
-    assert len(axon_0.xstart) == 20
-    assert len(axon_0.xend) == 20
+    assert_sections(sections)
 
 
 def test_morphology_dir_fallback():

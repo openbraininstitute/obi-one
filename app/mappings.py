@@ -15,6 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
 )
 from app.types import BuiltinScript, TaskType
+from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
@@ -53,7 +54,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         resources=MachineResources(
             cores=16,
             memory=32,
-            timelimit="00:30",
+            timelimit="02:00",
             compute_cell="local",
         ),
     ),
@@ -97,11 +98,14 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            capabilities=Capabilities(
+                env_secrets=[obi_settings.cave_client_config.microns_api_key]
+            ),
         ),
         resources=MachineResources(
             cores=1,
-            memory=2,
-            timelimit="00:10",
+            memory=8,
+            timelimit="00:30",
             compute_cell="local",
         ),
     ),

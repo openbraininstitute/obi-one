@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Path as PathParam, Query
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import TempDirDep
+from app.schemas.circuit_visualization import Sections
 from app.services.circuit_visualization import (
-    Morphology,
     Nodes,
     circuit_asset_id,
     download_circuit_config,
@@ -58,10 +58,10 @@ def circuit_morphology(
             description="The name of the morphology. Required if morphology_file is a collection."
         ),
     ] = None,
-) -> Morphology:
+) -> Sections:
     asset_id = circuit_asset_id(db_client, circuit_id)
 
     morphology = get_morphology(
         temp_dir, db_client, circuit_id, asset_id, Path(morphology_file), name
     )
-    return get_morphology_data(morphology)
+    return get_morphology_data(morphology)  # type: ignore ReportReturnType
