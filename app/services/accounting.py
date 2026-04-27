@@ -122,7 +122,11 @@ def _evaluate_accounting_parameters(
                 count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),
                 service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
             )
-        case TaskType.circuit_simulation:
+        case (
+            TaskType.circuit_simulation_neuron
+            | TaskType.circuit_simulation_neurodamus_cluster
+            | TaskType.circuit_simulation_inait_machine
+        ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
