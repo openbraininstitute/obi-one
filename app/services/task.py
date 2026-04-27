@@ -228,7 +228,7 @@ def handle_task_failure_callback(
     ).status
 
     if current_status != ActivityStatus.done:
-        db_sdk.update_activity_status(
+        db_sdk.finalize_activity(
             client=db_client,
             activity_id=activity_id,
             activity_type=task_activity_type,

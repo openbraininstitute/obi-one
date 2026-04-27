@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 from uuid import UUID
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
@@ -71,6 +72,25 @@ def create_generic_activity(
     activity = client.register_entity(activity)
     L.info(f"Generic task activity {activity.id} of task_activity_type '{activity_type}' created")
     return activity
+
+
+def finalize_activity(
+    *,
+    client: Client,
+    activity_id: UUID,
+    activity_type: type[Activity],
+    status: Literal[ActivityStatus.done, ActivityStatus.error, ActivityStatus.cancelled],
+    end_time: datetime | None = None,
+) -> Activity:
+    """Finalize activity status and end time."""
+    return client.update_entity(
+        entity_id=activity_id,
+        entity_type=activity_type,
+        attrs_or_entity={
+            "status": status,
+            "end_time": end_time or datetime.now(UTC),
+        },
+    )
 
 
 def update_activity_status(
