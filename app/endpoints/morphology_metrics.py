@@ -75,7 +75,14 @@ def register_morphology_metrics(
 ) -> dict:
     # 1) fetch morphology and its H5 asset
     morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
-    asset = next((a for a in morph.assets if (a.content_type == "application/x-hdf5") and a.label == "morphology"), None)
+    asset = next(
+        (
+            a
+            for a in morph.assets
+            if (a.content_type == "application/x-hdf5") and a.label == "morphology"
+        ),
+        None,
+    )
     if not asset:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No H5 asset on morphology")
 
