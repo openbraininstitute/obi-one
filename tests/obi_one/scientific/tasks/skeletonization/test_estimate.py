@@ -90,7 +90,7 @@ def test_get_skeletonization_config(mock_db_client, config_id, mesh_id, mock_tas
         "info": {"campaign_name": "test", "campaign_description": "test"},
         "initialize": {
             "cell_mesh": {"type": "EMCellMeshFromID", "id_str": mesh_id},
-            "neuron_voxel_size": 0.1,
+            "neuron_voxel_size": 0.005,
             "spines_voxel_size": 0.1,
         },
     }
@@ -121,7 +121,7 @@ def test_estimate_skeletonization_count_single_mesh(mock_db_client, config_id, m
         info=Info(campaign_name="test", campaign_description="test"),
         initialize=SkeletonizationSingleConfig.Initialize(
             cell_mesh=EMCellMeshFromID(id_str=mesh_id),
-            neuron_voxel_size=0.1,
+            neuron_voxel_size=0.005,
             spines_voxel_size=0.1,
         ),
         coordinate_output_root=tmp_path,

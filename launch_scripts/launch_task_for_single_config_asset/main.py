@@ -10,7 +10,7 @@ from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
 from obi_one.core.run_tasks import run_task_type
-from obi_one.utils.db_sdk import update_activity_status
+from obi_one.utils.db_sdk import update_activity_status, finalize_activity
 
 L = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         # Catch any error that may occur to make sure that error status is correctly set
         L.exception(f"Error launching task for single configuration asset: {e}")
-        update_activity_status(
+        finalize_activity(
             client=db_client,
             activity_id=args.execution_activity_id,
             activity_type=execution_activity_type,
@@ -129,7 +129,7 @@ def main() -> int:
         )
         return 1
 
-    update_activity_status(
+    finalize_activity(
         client=db_client,
         activity_id=args.execution_activity_id,
         activity_type=execution_activity_type,
