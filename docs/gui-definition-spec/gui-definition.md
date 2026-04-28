@@ -92,6 +92,8 @@ There are two major types of such UI elements:
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
+        - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
         - [numeric](components/numeric/numeric.md)
 
         - [reference](components/reference/reference.md)
