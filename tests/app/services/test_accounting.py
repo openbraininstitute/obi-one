@@ -215,7 +215,6 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
 
     expected_subtype = {
         TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
-        TaskType.circuit_extraction: ServiceSubtype.SMALL_CIRCUIT_SIM,
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neuron: ServiceSubtype.SMALL_SIM,
