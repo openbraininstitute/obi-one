@@ -73,14 +73,21 @@ def register_morphology_metrics(
     cell_morphology_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-    # 1) fetch morphology and its SWC asset
+    # 1) fetch morphology and its H5 asset
     morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
-    asset = next((a for a in morph.assets if a.content_type == "application/swc"), None)
+    asset = next(
+        (
+            a
+            for a in morph.assets
+            if (a.content_type == "application/x-hdf5") and a.label == "morphology"
+        ),
+        None,
+    )
     if not asset:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No SWC asset on morphology")
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No H5 asset on morphology")
 
     # 2) download to temp file
-    with tempfile.NamedTemporaryFile(suffix=".swc") as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
         tmp.write(
             db_client.download_content(
                 entity_id=cell_morphology_id, entity_type=CellMorphology, asset_id=asset.id
