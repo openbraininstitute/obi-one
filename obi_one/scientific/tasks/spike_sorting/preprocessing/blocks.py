@@ -1,5 +1,5 @@
 from obi_one.core.block import Block
-from pydantic import Discriminator
+from pydantic import Discriminator, model_validator
 from pydantic import Field, PositiveFloat, NonNegativeInt, NonNegativeFloat
 from typing import Annotated, Literal
 import numpy as np
@@ -9,36 +9,6 @@ import numpy as np
 # https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing
 # https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing/blob/main/code/params.json
 
-class SpikeSortingPreprocessingHighPassFilter(Block):
-    min_freq: PositiveFloat | list[PositiveFloat] = Field(
-        default=300.0,
-        title="Minimum frequency (Hz)",
-        description="Minimum frequency for high-pass filter in Hz.",
-        unit="Hz"
-    )
-
-    margin: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=300.0,
-        title="Margin (ms)",
-        description="Margin for high-pass filter in milliseconds.",
-        unit="ms"
-    )
-
-class SpikeSortingPreprocessingBandpassFilter(SpikeSortingPreprocessingHighPassFilter):
-    max_freq: PositiveFloat | list[PositiveFloat] = Field(
-        default=300.0,
-        title="Maximum frequency (Hz)",
-        description="Maximum frequency for band-pass filter in Hz.",
-        unit="Hz"
-    )
-
-    # MAKE SURE max > min freq with validator
-
-SpikeSortingPreprocessingFilterUnion = Annotated[
-    SpikeSortingPreprocessingHighPassFilter
-    | SpikeSortingPreprocessingBandpassFilter,
-    Discriminator("type"),
-]
 
 class SpikeSortingPreprocessingInitialize(Block):
 
@@ -58,7 +28,7 @@ class SpikeSortingPreprocessingInitialize(Block):
     phase_shift: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         title="Phase shift (ms)",
-        description="Phase shift to apply to the data in seconds.",
+        description="Phase shift to apply to the data in milliseconds.",
         unit="ms"
     )
 
@@ -80,7 +50,76 @@ class SpikeSortingPreprocessingInitialize(Block):
         description="Operator to use for common reference.",
     )
 
+    def dictionary_representation(self) -> dict:
 
+        d = {
+            "denoising_strategy": self.single_config.initialize.denoising_strategy,
+            "min_preprocessing_duration": self.single_config.initialize.min_preprocessing,
+            "phase_shift": {
+                "margin_ms": self.single_config.initialize.phase_shift,
+            },
+            "remove_out_channels": self.single_config.initialize.remove_out_channels,
+            "common_reference": {
+                "reference": self.single_config.initialize.common_reference,
+                "operator": self.single_config.initialize.common_reference_operator,
+            },
+        }
+
+        return d
+
+
+class SpikeSortingPreprocessingHighPassFilter(Block):
+    min_freq: PositiveFloat | list[PositiveFloat] = Field(
+        default=300.0,
+        title="Minimum frequency (Hz)",
+        description="Minimum frequency for high-pass filter in Hz.",
+        unit="Hz"
+    )
+
+    margin: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=300.0,
+        title="Margin (ms)",
+        description="Margin for high-pass filter in milliseconds.",
+        unit="ms"
+    )
+
+    def dictionary_representation(self) -> dict:
+        d = {
+            "highpass_filter": {
+                "freq_min": self.single_config.frequency_filter.min_freq,
+                "margin_ms": self.single_config.frequency_filter.margin,
+            }
+        }
+        return d
+
+class SpikeSortingPreprocessingBandpassFilter(SpikeSortingPreprocessingHighPassFilter):
+    max_freq: PositiveFloat | list[PositiveFloat] = Field(
+        default=300.0,
+        title="Maximum frequency (Hz)",
+        description="Maximum frequency for band-pass filter in Hz.",
+        unit="Hz"
+    )
+
+    # MAKE SURE max > min freq with validator
+    @model_validator(mode="after")
+    def check_freqs(cls, values):
+        min_freq = values.get("min_freq")
+        max_freq = values.get("max_freq")
+        if max_freq <= min_freq:
+            raise ValueError("max_freq must be greater than min_freq")
+        return values
+    
+
+    def dictionary_representation(self) -> dict:
+        d = super().dictionary_representation()
+        d["highpass_filter"]["freq_max"] = self.single_config.frequency_filter.max_freq
+        return d
+
+SpikeSortingPreprocessingFilterUnion = Annotated[
+    SpikeSortingPreprocessingHighPassFilter
+    | SpikeSortingPreprocessingBandpassFilter,
+    Discriminator("type"),
+]
 
 
 class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
@@ -126,6 +165,19 @@ class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
         title="High-pass Butterworth filter cutoff frequency (Hz)",
         description="Cutoff frequency for the high-pass Butterworth filter in Hz.",
     )
+
+    def dictionary_representation(self) -> dict:
+
+        d["highpass_spatial_filter"] = {
+            "n_channel_pad": self.single_config.high_pass_spatial_filter.n_channel_pad,
+            "n_channel_taper": self.single_config.high_pass_spatial_filter.n_channel_taper,
+            "direction": self.single_config.high_pass_spatial_filter.direction,
+            "apply_agc": self.single_config.high_pass_spatial_filter.apply_agc,
+            "agc_window_length_s": self.single_config.high_pass_spatial_filter.agc_window_length_s,
+            "highpass_butter_order": self.single_config.high_pass_spatial_filter.highpass_butter_order,
+            "highpass_butter_wn": self.single_config.high_pass_spatial_filter.highpass_butter_wn,
+        }
+        return d
 
 
 class SpikeSortingPreprocessingDetectBadChannels(Block):
@@ -181,10 +233,13 @@ class SpikeSortingPreprocessingDetectBadChannels(Block):
     )
 
     seed: int | list[int] = Field(
-        default=1
+        default=1,
         title="Random seed",
         description="Random seed for reproducibility.",
     )
+
+    def dictionary_representation(self) -> dict:
+        # TODO: add detection parameters to dictionary representation
 
 class SpikeSortingPreprocessingMotionCorrection(Block):
 
@@ -223,3 +278,16 @@ class SpikeSortingPreprocessingMotionCorrection(Block):
         title="Interpolate motion kwargs",
         description="Keyword arguments for motion interpolation.",
     )
+
+
+    def dictionary_representation(self) -> dict:
+        d = {}
+        d["motion_correction"] = {
+            "preset": self.single_config.motion_correction.preset,
+            "detect_kwargs": self.single_config.motion_correction.detect_kwargs,
+            "select_kwargs": self.single_config.motion_correction.select_kwargs,
+            "localize_peaks_kwargs": self.single_config.motion_correction.localize_peaks_kwargs,
+            "estimate_motion_kwargs": self.single_config.motion_correction.estimate_motion_kwargs,
+            "interpolate_motion_kwargs": self.single_config.motion_correction.interpolate_motion_kwargs,
+        }
+        return d

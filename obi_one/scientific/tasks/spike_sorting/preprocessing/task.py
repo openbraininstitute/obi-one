@@ -1,3 +1,5 @@
+
+
 class SpikeSortingTask(Task):
     """SpikeSortingPreprocessing."""
 
@@ -57,56 +59,10 @@ class SpikeSortingTask(Task):
             "mp_context": "spawn"
         }
 
-        d["denoising_strategy"] = self.single_config.initialize.denoising_strategy
-        d["min_preprocessing_duration"] = self.single_config.initialize.min_preprocessing
-
-        if isinstance(d.frequency_filter, SpikeSortingPreprocessingHighPassFilter):
-            d["highpass_filter"] = {
-                "freq_min": self.single_config.frequency_filter.min_freq,
-                "margin_ms": self.single_config.frequency_filter.margin,
-            }
-        elif isinstance(d.frequency_filter, SpikeSortingPreprocessingBandpassFilter):
-            d["bandpass_filter"] = {
-                "freq_min": self.single_config.frequency_filter.min_freq,
-                "freq_max": self.single_config.frequency_filter.max_freq,
-                "margin_ms": self.single_config.frequency_filter.margin,
-            }
-
-        d["phase_shift"] = {
-            "margin_ms": self.single_config.initialize.phase_shift,
-        }
-
-        d["remove_out_channels"] = self.single_config.initialize.remove_out_channels
-        d["remove_bad_channels"] = self.single_config.detect_bad_channels.remove_bad
-        d["max_bad_channel_fraction"] = self.single_config.detect_bad_channels.max_bad_channel_fraction
-
-        d["common_reference"] = {
-            "reference": self.single_config.initialize.common_reference,
-            "operator": self.single_config.initialize.common_reference_operator,
-        }
-
-        d["highpass_spatial_filter"] = {
-            "n_channel_pad": self.single_config.high_pass_spatial_filter.n_channel_pad,
-            "n_channel_taper": self.single_config.high_pass_spatial_filter.n_channel_taper,
-            "direction": self.single_config.high_pass_spatial_filter.direction,
-            "apply_agc": self.single_config.high_pass_spatial_filter.apply_agc,
-            "agc_window_length_s": self.single_config.high_pass_spatial_filter.agc_window_length_s,
-            "highpass_butter_order": self.single_config.high_pass_spatial_filter.highpass_butter_order,
-            "highpass_butter_wn": self.single_config.high_pass_spatial_filter.highpass_butter_wn,
-        }
-
-        d["motion_correction"] = {
-            "preset": self.single_config.motion_correction.preset,
-            "detect_kwargs": self.single_config.motion_correction.detect_kwargs,
-            "select_kwargs": self.single_config.motion_correction.select_kwargs,
-            "localize_peaks_kwargs": self.single_config.motion_correction.localize_peaks_kwargs,
-            "estimate_motion_kwargs": self.single_config.motion_correction.estimate_motion_kwargs,
-            "interpolate_motion_kwargs": self.single_config.motion_correction.interpolate_motion_kwargs,
-        }
-
-        self._pipeline_dict["preprocessing"] = d
+        
 
 
     def execute(self):
         self._add_job_dispatch_dict()
-        self._add_preprocessing_dict()
+
+        self._pipeline_dict["preprocessing"] = self.single_config.dictionary_representation()

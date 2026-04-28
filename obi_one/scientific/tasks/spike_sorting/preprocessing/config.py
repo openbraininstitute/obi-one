@@ -9,6 +9,18 @@ from pydantic import Field, PositiveInt, PositiveFloat, NonNegativeInt, NonNegat
 from typing import Annotated, ClassVar, Literal
 import numpy as np
 
+from obi_one.scientific.tasks.spike_sorting.preprocessing.blocks import (
+    SpikeSortingPreprocessingInitialize,
+    SpikeSortingPreprocessingFilterUnion,
+    SpikeSortingPreprocessingDetectBadChannels,
+    SpikeSortingPreprocessingMotionCorrection,
+    SpikeSortingPreprocessingHighPassSpatialFilter,
+    SpikeSortingPreprocessingDetectBadChannels,
+    SpikeSortingPreprocessingMotionCorrection,
+)
+
+
+
 # Job Dispatch
 # https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/
 
@@ -42,19 +54,19 @@ class SpikeSortingScanConfig(ScanConfig):
         }
 
 
-    setup_recording: SpikeSortingSetupRecording = Field(
-        title="Recording setup",
-        description="Recording setup.",
-        group=BlockGroup.SETUP,
-        group_order=0,
-    )
+    # setup_recording: SpikeSortingPreprocessingInitialize = Field(
+    #     title="Recording setup",
+    #     description="Recording setup.",
+    #     group=BlockGroup.SETUP,
+    #     group_order=0,
+    # )
 
-    setup_advanced: SpikeSortingSetupAdvanced = Field(
-        title="Advanced setup",
-        description="Advanced setup.",
-        group=BlockGroup.SETUP,
-        group_order=1,
-    )
+    # setup_advanced: SpikeSortingPreprocessingAdvanced = Field(
+    #     title="Advanced setup",
+    #     description="Advanced setup.",
+    #     group=BlockGroup.SETUP,
+    #     group_order=1,
+    # )
 
     preprocessing_initialize: SpikeSortingPreprocessingInitialize = Field(
         title="Preprocessing initialization",
@@ -67,6 +79,12 @@ class SpikeSortingScanConfig(ScanConfig):
         description="Frequency filter.",
         group=BlockGroup.PREPROCESSING,
         group_order=1,
+    )
+    spatial_filter: SpikeSortingPreprocessingHighPassSpatialFilter = Field(
+        title="Spatial filter",
+        description="Spatial filter.",
+        group=BlockGroup.PREPROCESSING,
+        group_order=2,
     )
     detect_bad_channels: SpikeSortingPreprocessingDetectBadChannels = Field(
         title="Bad channel detection",
@@ -84,5 +102,14 @@ class SpikeSortingScanConfig(ScanConfig):
 
 class SpikeSortingSingleConfig(SpikeSortingScanConfig, SingleCoordMixin):
     """SpikeSortingPreprocessingSingleConfig."""
+
+    def dictionary_representation(self) -> dict:
+        d = {}
+        d.update(self.preprocessing_initialize.dictionary_representation())
+        d.update(self.frequency_filter.dictionary_representation())
+        d.update(self.spatial_filter.dictionary_representation())
+        d.update(self.detect_bad_channels.dictionary_representation())
+        d.update(self.motion_correction.dictionary_representation())
+        return d
 
 
