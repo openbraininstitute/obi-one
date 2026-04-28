@@ -19,6 +19,7 @@ from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskDefinition
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
+from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
@@ -118,8 +119,8 @@ def _evaluate_accounting_parameters(
     match task_definition.task_type:
         case TaskType.circuit_extraction:
             return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+                count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),
+                service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
             )
         case TaskType.circuit_simulation:
             return _evaluate_circuit_simulation_parameters(

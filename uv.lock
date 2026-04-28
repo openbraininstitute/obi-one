@@ -2152,7 +2152,7 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.0" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.1" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2183,14 +2183,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.0"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/af/d7f7745333d0c927b5d6c0a2d86b18a2115eb07d8af39bf1be6ee3e4e913/obp_accounting_sdk-0.6.0.tar.gz", hash = "sha256:975c0294360d657d3bfd739d10a389621544a707e084d5f931789c0e6b4ac7b9", size = 36179, upload-time = "2026-03-23T12:53:43.648Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/45/ed7e5e5612f3fa321feabdad24b4916b4807f0c583c5c9b18ec61b5154e1/obp_accounting_sdk-0.6.1.tar.gz", hash = "sha256:70f895bc0cf126ebd28aed187eea6758e1bf8ee06d567c0ad9c9413a0cf8d403", size = 36124, upload-time = "2026-04-28T09:49:13.423Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/77/a44a2ec6ea03084466ce87fd48612f4250dfde28ab366164778709eb9f84/obp_accounting_sdk-0.6.0-py3-none-any.whl", hash = "sha256:39caa28b041ff65be2919403606e3b19367ac364e21519a649d385382227ca3c", size = 27764, upload-time = "2026-03-23T12:53:42.185Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/dd/c90f6da98fac0d84f9e1af74b066caf4bcc6b0d41c0a1a0012d4d8880747/obp_accounting_sdk-0.6.1-py3-none-any.whl", hash = "sha256:c8d0477ddc972a2374b688d54b955f9ffadf4c5ee8b57c6d9d39ae25b6af1f23", size = 27690, upload-time = "2026-04-28T09:49:12.268Z" },
 ]
 
 [[package]]

@@ -74,7 +74,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.1",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
