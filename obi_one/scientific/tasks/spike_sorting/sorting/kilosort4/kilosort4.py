@@ -218,9 +218,6 @@ class KS4SpikeSortingScanConfig(SpikeSortingScanConfig):
         group_order=1,
     )
 
-    
-
-
 
 class KS4SpikeSortingSingleConfig(SpikeSortingSingleConfig):
     """Kilosort4SpikeSortingSingleConfig."""

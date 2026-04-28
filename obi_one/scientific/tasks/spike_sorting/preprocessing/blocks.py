@@ -1,12 +1,7 @@
 from obi_one.core.block import Block
-from obi_one.core.task import Task
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordMixin
 from pydantic import Discriminator
-from pathlib import Path
-from enum import StrEnum
-from pydantic import Field, PositiveInt, PositiveFloat, NonNegativeInt, NonNegativeFloat
-from typing import Annotated, ClassVar, Literal
+from pydantic import Field, PositiveFloat, NonNegativeInt, NonNegativeFloat
+from typing import Annotated, Literal
 import numpy as np
 
 
@@ -32,8 +27,8 @@ class SpikeSortingPreprocessingHighPassFilter(Block):
 class SpikeSortingPreprocessingBandpassFilter(SpikeSortingPreprocessingHighPassFilter):
     max_freq: PositiveFloat | list[PositiveFloat] = Field(
         default=300.0,
-        title="Minimum frequency (Hz)",
-        description="Minimum frequency for high-pass filter in Hz.",
+        title="Maximum frequency (Hz)",
+        description="Maximum frequency for band-pass filter in Hz.",
         unit="Hz"
     )
 
