@@ -19,6 +19,7 @@ from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskDefinition
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
+from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
@@ -88,6 +89,12 @@ def estimate_task_cost(
         count=accounting_parameters.count,
         proj_id=str(project_context.project_id),
     )
+    L.info(
+        f"Estimated cost: subtype={accounting_parameters.service_subtype}, "
+        f"count={accounting_parameters.count}, proj_id={project_context.project_id}, "
+        f"cost={cost_estimate}"
+    )
+
     return TaskAccountingInfo(
         cost=cost_estimate,
         config_id=config_id,
@@ -114,7 +121,11 @@ def _evaluate_accounting_parameters(
                 count=1,
                 service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
-        case TaskType.circuit_simulation:
+        case (
+            TaskType.circuit_simulation_neuron
+            | TaskType.circuit_simulation_neurodamus_cluster
+            | TaskType.circuit_simulation_inait_machine
+        ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
@@ -131,7 +142,7 @@ def _evaluate_accounting_parameters(
             )
         case TaskType.morphology_skeletonization:
             return AccountingParameters(
-                count=800,
+                count=estimate_skeletonization_count(db_client=db_client, config_id=config_id),
                 service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
             )
         case _:

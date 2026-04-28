@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
 import entitysdk
@@ -18,6 +19,8 @@ from app.services import task as test_module
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 ASSET_ID = uuid4()
+
+TASK_TYPES = [task_type for task_type in TaskType if task_type != TaskType.circuit_simulation]
 
 
 @pytest.fixture
@@ -48,7 +51,7 @@ def callbacks(activity_id):
         url="http://failure",
         method="POST",
         params={
-            "task_type": TaskType.circuit_simulation,
+            "task_type": TaskType.circuit_simulation_neurodamus_cluster,
             "activity_id": str(activity_id),
         },
         headers={
@@ -95,7 +98,7 @@ def callbacks(activity_id):
             },
         ),
         (
-            TaskType.circuit_simulation,
+            TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
                 "entity_id": str(uuid4()),
@@ -203,7 +206,7 @@ def test_submit_task_job__success(
             },
         ),
         (
-            TaskType.circuit_simulation,
+            TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
                 "entity_id": str(uuid4()),
@@ -278,8 +281,70 @@ def test_submit_task_job__failure(
         )
 
 
+def test_inait_job_data(config_id, activity_id, callbacks):
+    task_type = TaskType.circuit_simulation_inait_machine
+    task_definition = TASK_DEFINITIONS[task_type]
+
+    res = test_module._inait_job_data(
+        simulation_id=config_id,
+        simulation_execution_id=activity_id,
+        project_id=PROJECT_ID,
+        virtual_lab_id=VIRTUAL_LAB_ID,
+        callbacks=callbacks,
+        task_definition=task_definition,
+    )
+
+    assert res == {
+        "code": {
+            "type": "python_repository",
+            "location": "https://github.com/openbraininstitute-partners/inait",
+            "ref": "commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            "path": "scripts/simulate-circuits/run.py",
+            "dependencies": "scripts/simulate-circuits/requirements.txt",
+            "capabilities": {"private_packages": False, "env_secrets": []},
+            "staged_directories": ["wheels", "scripts/simulate-circuits/"],
+        },
+        "resources": {
+            "type": "machine",
+            "cores": 1,
+            "memory": 8,
+            "compute_cell": "local",
+            "timelimit": "02:00",
+        },
+        "inputs": [
+            "sonata-simulation-task",
+            f" --project-id {PROJECT_ID}",
+            f" --virtual-lab-id {VIRTUAL_LAB_ID}",
+            f" --simulation-id {config_id}",
+            f" --simulation-execution-id {activity_id}",
+        ],
+        "project_id": PROJECT_ID,
+        "callbacks": [
+            {
+                "action_type": "http_request_with_token",
+                "event_type": "job_on_failure",
+                "config": {
+                    "url": "http://failure",
+                    "method": "POST",
+                    "params": {
+                        "task_type": "circuit_simulation_neurodamus_cluster",
+                        "activity_id": str(activity_id),
+                    },
+                    "headers": {
+                        "virtual-lab-id": VIRTUAL_LAB_ID,
+                        "project-id": PROJECT_ID,
+                    },
+                    "payload": None,
+                },
+            }
+        ],
+    }
+
+
 def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
-    task_definition = TASK_DEFINITIONS["circuit_simulation"]
+    task_type = TaskType.circuit_simulation_neurodamus_cluster
+
+    task_definition = TASK_DEFINITIONS[task_type]
 
     res = test_module._circuit_simulation_job_data(
         simulation_id=config_id,
@@ -316,7 +381,7 @@ def test_circuit_simulation_job_data(config_id, activity_id, callbacks):
                     "url": "http://failure",
                     "method": "POST",
                     "params": {
-                        "task_type": "circuit_simulation",
+                        "task_type": task_type,
                         "activity_id": str(activity_id),
                     },
                     "headers": {
@@ -363,7 +428,9 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             ),
             "capabilities": {
                 "private_packages": False,
+                "env_secrets": [],
             },
+            "staged_directories": [],
         },
         "inputs": [
             "--task-type circuit_extraction",
@@ -383,7 +450,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
                     "url": "http://failure",
                     "method": "POST",
                     "params": {
-                        "task_type": "circuit_simulation",
+                        "task_type": "circuit_simulation_neurodamus_cluster",
                         "activity_id": str(activity_id),
                     },
                     "headers": {
@@ -395,6 +462,25 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             }
         ],
     }
+
+
+def test_generic_job_data_legacy(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neuron]
+
+    res = test_module._generic_job_data(
+        config_id=config_id,
+        activity_id=activity_id,
+        project_id=UUID(PROJECT_ID),
+        virtual_lab_id=UUID(VIRTUAL_LAB_ID),
+        task_definition=task_definition,
+        entity_cache=True,
+        output_root="/foo",
+        callbacks=callbacks,
+    )
+
+    assert f"--config_entity_type {task_definition.config_type_name}" in res["inputs"]
+    assert f"--execution_activity_type {task_definition.activity_type_name}" in res["inputs"]
+    assert f"--execution_activity_id {activity_id}" in res["inputs"]
 
 
 def test_generate_failure_callback(project_context, activity_id):
@@ -420,7 +506,7 @@ def test_generate_failure_callback(project_context, activity_id):
             "task-activity",
             {"task_activity_type": TaskActivityType.circuit_extraction__execution},
         ),
-        (TaskType.circuit_simulation, "simulation-execution", {}),
+        (TaskType.circuit_simulation_neurodamus_cluster, "simulation-execution", {}),
     ],
 )
 def test_handle_task_failure_callback(
@@ -460,7 +546,7 @@ def test_handle_task_failure_callback(
             "task-activity",
             {"task_activity_type": TaskActivityType.circuit_extraction__execution},
         ),
-        (TaskType.circuit_simulation, "simulation-execution", {}),
+        (TaskType.circuit_simulation_neurodamus_cluster, "simulation-execution", {}),
     ],
 )
 def test_handle_task_failure_callback__do_nothing(
@@ -530,10 +616,12 @@ def test_estimate_task_resources_circuit_extraction(db_client):
 
 
 def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
 
     circuit_id = uuid4()
-    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=config_id)
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.circuit_simulation_neurodamus_cluster, config_id=config_id
+    )
     mocked_instances = {
         "cell_a": [
             ClusterInstanceInfo(name="big", max_neurons=1_000_000, memory_per_instance_gb=100),
@@ -578,3 +666,103 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     assert result.instance_type == "big"
     assert result.instances == 1
     assert result.compute_cell == "cell_a"
+
+
+@pytest.mark.parametrize(
+    ("target_simulator_name", "circuit_scale", "expected_task"),
+    [
+        ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
+        ("NEURON", "small", TaskType.circuit_simulation_neuron),
+        ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
+    ],
+)
+def test_select_simulation_task(
+    target_simulator_name,
+    circuit_scale,
+    expected_task,
+):
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale=circuit_scale,
+        target_simulator=target_simulator_name,
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(
+                target_simulator=SimpleNamespace(name=target_simulator_name),
+            ),
+        ),
+    ):
+        task_type = test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
+
+    assert task_type == expected_task
+
+
+def test_select_simulation_task_falls_back_to_circuit_target_simulator():
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale="small",
+        target_simulator="NEURON",
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(target_simulator=None),
+        ),
+    ):
+        task_type = test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
+
+    assert task_type == TaskType.circuit_simulation_neuron
+
+
+def test_select_simulation_task_raises_for_unsupported_target_simulator():
+    db_client = Mock()
+    config_id = uuid4()
+    simulation_entity_id = uuid4()
+
+    simulation = SimpleNamespace(entity_id=simulation_entity_id)
+    circuit = SimpleNamespace(
+        scale="small",
+        target_simulator="UNSUPPORTED",
+    )
+    db_client.get_entity.side_effect = [simulation, circuit]
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(
+            test_module.libsonata,
+            "SimulationConfig",
+            return_value=SimpleNamespace(target_simulator=None),
+        ),
+        pytest.raises(RuntimeError, match="Unsupported target simulator"),
+    ):
+        test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )

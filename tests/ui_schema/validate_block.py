@@ -7,6 +7,7 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 L = logging.getLogger()
 
@@ -421,8 +422,33 @@ def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
         validator.validate(obj)
     except ValidationError:
         msg = (
-            f"Validation error at {ref}: 'model_identtifier' param {param} failed to validate a "
+            f"Validation error at {ref}: 'model_identifier' param {param} failed to validate a "
             f"a 'model identifier' object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_model_identifier_multiple(schema: dict, param: str, ref: str) -> None:
+    resolver = RefResolver.from_schema(openapi_schema)
+
+    obj = {"id_str": "model_id"}
+
+    if schema.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: 'model_identifier_multiple' param {param} must be an "
+            f"array type"
+        )
+        raise ValidationError(msg)
+
+    items_schema = schema.get("items", {})
+    validator = Draft7Validator(items_schema, resolver=resolver)
+
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'model_identifier_multiple' param {param} failed to "
+            f"validate a 'model identifier' object {obj}"
         )
         raise ValidationError(msg) from None
 
@@ -471,6 +497,49 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
+def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
+    assert schema.get("type") == "array", (
+        f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
+    )
+    assert schema.get("ui_element") == UIElement.VOLTAGE_DURATION, (
+        f"Validation error at {ref}: voltage_duration param {param} should have ui_element "
+        f"'{UIElement.VOLTAGE_DURATION}'"
+    )
+
+    resolved_ref = resolve_ref(openapi_schema, schema.get("items").get("$ref"))
+    assert (
+        resolved_ref.get("properties").get("type").get("const") == "DurationVoltageCombination"
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "with type 'DurationVoltageCombination'"
+    )
+    voltage = resolved_ref.get("properties").get("voltage")
+    assert voltage["anyOf"] == [
+        {"type": "number"},
+        {"type": "array", "items": {"type": "number"}},
+    ], (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        f"where 'voltage' is of type 'number' or an array of 'number'."
+    )
+    assert voltage.get(SchemaKey.UNITS) == Units.MILLIVOLTS, (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'voltage' has units 'millivolts'"
+    )
+
+    duration = resolved_ref.get("properties").get("duration")
+    assert duration["anyOf"] == [
+        {"type": "number", "minimum": 0.0},
+        {"type": "array", "items": {"type": "number", "minimum": 0.0}},
+    ], (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        f"where 'duration' is of type 'number' or an array of 'number'. Found {duration}"
+    )
+    assert duration.get(SchemaKey.UNITS) == Units.MILLISECONDS, (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'duration' has units 'milliseconds'"
+    )
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
@@ -497,6 +566,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_neuron_ids(schema, param, ref)
         case UIElement.MODEL_IDENTIFIER:
             validate_model_identifier(schema, param, ref)
+        case UIElement.MODEL_IDENTIFIER_MULTIPLE:
+            validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
@@ -505,6 +576,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
         case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
+        case UIElement.VOLTAGE_DURATION:
+            validate_voltage_duration(schema, param, ref)
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"

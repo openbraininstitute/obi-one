@@ -24,6 +24,7 @@ from obi_one.scientific.library.memodel_circuit import (
     try_get_mechanism_variables,
 )
 
+INPUT_RESISTANCE_DYNAMIC_PARAM = "input_resistance"
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
@@ -135,6 +136,8 @@ def mapped_circuit_properties_endpoint(
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
             db_client=db_client,
+            level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.basic},
+            level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
         mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
             circuit_metrics.names_of_nodesets
@@ -168,8 +171,12 @@ def mapped_circuit_properties_endpoint(
         try:
             circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
             simulation_options_usability = {
-                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale == "microcircuit",
-                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
+                == entitysdk.types.CircuitScale.microcircuit,
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
+                    INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names
+                    for population in circuit_metrics.biophysical_node_populations
+                ),
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
         except entitysdk.exception.EntitySDKError:
