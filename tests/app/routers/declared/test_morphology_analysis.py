@@ -31,7 +31,7 @@ def _flatten_measurements(measurements):
 def test_real_morphology_metrics_match_golden_values():
     actual_measurements = _run_morphology_analysis(str(DATA_DIR / "ch150801A1.swc"))
 
-    expected_measurements = json.loads((DATA_DIR / "measurement_kinds_ch150801A1.json").read_text())
+    expected_measurements = json.loads((DATA_DIR / "measurement_kinds_ch150801A1_swc.json").read_text())
 
     actual = _flatten_measurements(actual_measurements)
     expected = _flatten_measurements(expected_measurements)
