@@ -6,6 +6,7 @@ from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 import entitysdk
 from pydantic import PrivateAttr, ValidationError
@@ -58,7 +59,7 @@ class ScanGenerationTask(Task, abc.ABC):
         for attr_name, attr_value in self.form.__dict__.items():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_name = attr_name
                 category_blocks_dict = attr_value
@@ -108,6 +109,27 @@ class ScanGenerationTask(Task, abc.ABC):
         msg = "coordinate_parameters() must be implemented by a subclass of Scan."
         raise NotImplementedError(msg)
 
+    def set_nested_single_coordinate_scan_param_value(
+        self, single_coord_config_subelement: Any, location_list: list, value: Any
+    ) -> Any:
+        if location_list == []:
+            return value
+
+        if isinstance(single_coord_config_subelement, (list, dict, tuple)):
+            single_coord_config_subelement[location_list[0]] = (
+                self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config_subelement[location_list[0]], location_list[1:], value
+                )
+            )
+            return single_coord_config_subelement
+
+        single_coord_config_subelement.__dict__[location_list[0]] = (
+            self.set_nested_single_coordinate_scan_param_value(
+                single_coord_config_subelement.__dict__[location_list[0]], location_list[1:], value
+            )
+        )
+        return single_coord_config_subelement
+
     def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
 
@@ -135,21 +157,9 @@ class ScanGenerationTask(Task, abc.ABC):
             # Change the value of the multi parameter from a list to the single value of the
             # coordinate
             for scan_param in single_coordinate_scan_params.scan_params:
-                level_0_val = single_coord_config.__dict__[scan_param.location_list[0]]
-
-                # If the first level is a Block
-                if isinstance(level_0_val, Block):
-                    level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
-
-                # If the first level is a category dictionary
-                if isinstance(level_0_val, dict):
-                    level_1_val = level_0_val[scan_param.location_list[1]]
-                    if isinstance(level_1_val, Block):
-                        level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
-                    else:
-                        msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
-                            {level_0_val}"
-                        raise TypeError(msg)
+                single_coord_config = self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config, scan_param.location_list, scan_param.value
+                )
 
             try:
                 # Cast the form to its single_config_class_name type
