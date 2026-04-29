@@ -38,6 +38,9 @@ __all__ = [
     "AINDEcephysNWBScanConfig",
     "AINDEcephysNWBSingleConfig",
     "AINDEcephysNWBTask",
+    "AINDUnitsNWBScanConfig",
+    "AINDUnitsNWBSingleConfig",
+    "AINDUnitsNWBTask",
     "AINDEPhysResultsCollectorScanConfig",
     "AINDEPhysResultsCollectorSingleConfig",
     "AINDEPhysResultsCollectorTask",
@@ -476,6 +479,13 @@ from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.config import (
 )
 from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.task import (
     AINDEcephysNWBTask,
+)
+from obi_one.scientific.tasks.spike_sorting.units_nwb.config import (
+    AINDUnitsNWBScanConfig,
+    AINDUnitsNWBSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.units_nwb.task import (
+    AINDUnitsNWBTask,
 )
 from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
     AINDEPhysQCCollectorScanConfig,
