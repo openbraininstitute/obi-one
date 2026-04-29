@@ -14,7 +14,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
-from obi_one.scientific.tasks.spike_sorting.preprocessing.blocks import (
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import (
     BandpassFilterParams,
     CommonReference,
     DetectBadChannels,

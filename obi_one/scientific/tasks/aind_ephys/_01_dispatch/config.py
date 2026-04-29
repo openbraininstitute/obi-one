@@ -12,7 +12,7 @@ from pydantic import Field
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.tasks.spike_sorting.dispatch.blocks import (
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.blocks import (
     DispatchBasic,
     DispatchDataDependent,
     DispatchDebug,

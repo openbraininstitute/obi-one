@@ -445,81 +445,81 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.dispatch.config import (
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import (
     AINDEPhysDispatchScanConfig,
     AINDEPhysDispatchSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
     AINDEPhysDispatchTask,
 )
-from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
     AINDEPhysPreprocessingSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.preprocessing.task import (
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import (
     AINDEPhysPreprocessingTask,
 )
-from obi_one.scientific.tasks.spike_sorting.curation.config import (
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
     AINDEPhysCurationScanConfig,
     AINDEPhysCurationSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.curation.task import (
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
     AINDEPhysCurationTask,
 )
-from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
     AINDEPhysProcessingQCScanConfig,
     AINDEPhysProcessingQCSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.task import (
     AINDEPhysProcessingQCTask,
 )
-from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.config import (
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
     AINDEcephysNWBScanConfig,
     AINDEcephysNWBSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.task import (
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.task import (
     AINDEcephysNWBTask,
 )
-from obi_one.scientific.tasks.spike_sorting.units_nwb.config import (
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
     AINDUnitsNWBScanConfig,
     AINDUnitsNWBSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.units_nwb.task import (
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.task import (
     AINDUnitsNWBTask,
 )
-from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.config import (
     AINDEPhysQCCollectorScanConfig,
     AINDEPhysQCCollectorSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.qc_collector.task import (
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.task import (
     AINDEPhysQCCollectorTask,
 )
-from obi_one.scientific.tasks.spike_sorting.results_collector.config import (
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
     AINDEPhysResultsCollectorScanConfig,
     AINDEPhysResultsCollectorSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.results_collector.task import (
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.task import (
     AINDEPhysResultsCollectorTask,
 )
-from obi_one.scientific.tasks.spike_sorting.visualization.config import (
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
     AINDEPhysVisualizationScanConfig,
     AINDEPhysVisualizationSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.visualization.task import (
+from obi_one.scientific.tasks.aind_ephys._06_visualization.task import (
     AINDEPhysVisualizationTask,
 )
-from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
     AINDEPhysPostprocessingScanConfig,
     AINDEPhysPostprocessingSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.postprocessing.task import (
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
     AINDEPhysPostprocessingTask,
 )
-from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.config import (
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
     AINDEPhysSpikesortKilosort4ScanConfig,
     AINDEPhysSpikesortKilosort4SingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.task import (
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.task import (
     AINDEPhysSpikesortKilosort4Task,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm

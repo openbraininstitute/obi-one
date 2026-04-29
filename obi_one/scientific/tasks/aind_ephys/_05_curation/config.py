@@ -13,7 +13,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.tasks.spike_sorting.curation.blocks import CurationJobKwargs
+from obi_one.scientific.tasks.aind_ephys._05_curation.blocks import CurationJobKwargs
 
 
 class BlockGroup(StrEnum):

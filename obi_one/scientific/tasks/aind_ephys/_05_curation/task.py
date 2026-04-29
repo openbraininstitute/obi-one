@@ -10,7 +10,7 @@ from typing import ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
-from obi_one.scientific.tasks.spike_sorting.curation.config import (
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
     AINDEPhysCurationSingleConfig,
 )
 

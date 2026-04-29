@@ -8,7 +8,7 @@ from typing import ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
-from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchSingleConfig
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchSingleConfig
 
 L = logging.getLogger(__name__)
 

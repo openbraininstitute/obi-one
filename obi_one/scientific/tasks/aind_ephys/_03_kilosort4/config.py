@@ -13,7 +13,7 @@ from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.blocks import (
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.blocks import (
     Kilosort4JobKwargs,
     Kilosort4Sorter,
 )
