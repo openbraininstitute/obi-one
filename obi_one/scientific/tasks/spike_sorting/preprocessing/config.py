@@ -113,9 +113,7 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         max_bad_channel_fraction: float | list[float] = Field(
             default=0.5,
             title="Max bad channel fraction",
-            description=(
-                "Fail the recording if more than this fraction of channels are bad."
-            ),
+            description=("Fail the recording if more than this fraction of channels are bad."),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
 

@@ -38,14 +38,14 @@ def _seed_data_dir(data_dir: Path, source: Path) -> int:
     """
     n = 0
     for entry in source.iterdir():
-        if entry.is_dir() and entry.name.startswith("preprocessed_") and not entry.name.endswith(
-            ".json"
+        if (
+            entry.is_dir()
+            and entry.name.startswith("preprocessed_")
+            and not entry.name.endswith(".json")
         ):
             shutil.copytree(entry, data_dir / entry.name)
             n += 1
-        elif entry.is_file() and entry.name.startswith("binary_") and entry.suffix == ".json":
-            shutil.copy2(entry, data_dir / entry.name)
-        elif entry.is_file() and entry.name.startswith("preprocessed_") and entry.suffix == ".json":
+        elif (entry.is_file() and entry.name.startswith("binary_") and entry.suffix == ".json") or (entry.is_file() and entry.name.startswith("preprocessed_") and entry.suffix == ".json"):
             shutil.copy2(entry, data_dir / entry.name)
     return n
 
