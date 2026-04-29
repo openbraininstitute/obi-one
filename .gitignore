@@ -22,3 +22,4 @@ pip-audit-output.json
 coverage.xml
 examples/K_extracellular/toy_example_recording/
 examples/K_extracellular/preprocessing_results/
+examples/K_extracellular/spikesort_results/
