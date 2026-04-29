@@ -319,7 +319,7 @@ wheels = [
 
 [[package]]
 name = "brain-indexer"
-version = "3.1.1"
+version = "3.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -329,9 +329,9 @@ dependencies = [
     { name = "numpy-quaternion" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/21/51ceb970009886b0b52c6082876c6febf040872cb965b8b80881ae908a62/brain_indexer-3.1.1.tar.gz", hash = "sha256:114d7ce2d916051a495dd36e81221ee950d0f0cfa4381024a047c69eba43e364", size = 9068673, upload-time = "2025-06-06T10:13:54.708Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/27/5d56f5d49e7e4427853773df7256dd23ceb24e279a649abddf1bd301aa75/brain_indexer-3.1.3.tar.gz", hash = "sha256:46cdfdd7a9c4aa4a59c0ae2147fa3c0307de0a24586e27a553a174f4acc55e79", size = 9069307, upload-time = "2026-04-21T09:43:18.338Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/57/1f998de987673909e273414cb38bfc084f062cd6febf5b8a0ad62ce9df02/brain_indexer-3.1.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3ad5d1a90085aa41ff7c1b8050597b00a68b880923264af85d80cf520ccf54d6", size = 811108, upload-time = "2025-06-06T10:13:50.244Z" },
+    { url = "https://files.pythonhosted.org/packages/50/bf/27574ec1d72d457c1bd5d247a5d8f104d97186406b69caca49c5fcc8fae5/brain_indexer-3.1.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f930ce87958ef0f7f2bb6f817a32a7b2fe89b2662bed8a2f11ce42e682cf978e", size = 787897, upload-time = "2026-04-21T09:43:14.221Z" },
 ]
 
 [[package]]
@@ -810,14 +810,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.14.4"
+version = "0.14.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/e8/e6e7c1e166fbd0e01e8929c3000915b5ae4f76c60e0d68226770f5faeabe/entitysdk-0.14.4.tar.gz", hash = "sha256:a63b11f0d0d29fbde83df40d51f5a69d60ef48a04a2ff830639d069efc4cf6a5", size = 81728, upload-time = "2026-04-24T11:49:58.177Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/95/088da473c5de8e85c0ac0d5ba50eaad505a981000149f3a7dd0973e9f9c4/entitysdk-0.14.5.tar.gz", hash = "sha256:7557725721b8219df4383e2b2872afcc3a6e63d808a2584558e97b9e73e1aaa5", size = 82208, upload-time = "2026-04-29T09:49:46.871Z" }
 
 [[package]]
 name = "executing"
