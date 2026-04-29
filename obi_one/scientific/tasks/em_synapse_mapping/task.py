@@ -76,6 +76,16 @@ class EMSynapseMappingTask(Task):
 
         cfg = self.config
         init = cfg.initialize
+        advanced = cfg.advanced_options
+
+        if custom_virtual_edge_population_name != "":
+            advanced.custom_virtual_edge_population_name = custom_virtual_edge_population_name
+        if custom_physical_edge_population_name != "":
+            advanced.custom_physical_edge_population_name = custom_physical_edge_population_name
+        if custom_biophysical_node_population != "":
+            advanced.custom_biophysical_node_population = custom_biophysical_node_population
+        if custom_virtual_node_population != "":
+            advanced.custom_virtual_node_population = custom_virtual_node_population
 
         # Prepare output location
         out_root = cfg.coordinate_output_root

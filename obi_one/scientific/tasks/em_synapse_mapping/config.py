@@ -20,6 +20,40 @@ L = logging.getLogger(__name__)
 class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
 
+class AdvancedEMSynapseMappingOptions(StrEnum):
+    custom_physical_edge_population_name: str = Field(
+            title="Physical edge population name",
+            description="Edge population for connections between neurons in the set.",
+            default="physical_connections",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+            },
+        )
+    custom_virtual_edge_population_name: str = Field(
+        title="Virtual edge population name",
+        description="Edge population for connections from virtual neurons.",
+        default="virtual_afferents",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_biophysical_node_population: str = Field(
+        title="Biophysical node population name",
+        description="Node population for the physical neurons in the circuit.",
+        default="biophysical_neurons",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_virtual_node_population: str = Field(
+        title="Virtual node population name",
+        description="Node population for external presynaptic neurons.",
+        default="virtual_afferent_neurons",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+
 
 class EMSynapseMappingScanConfig(InfoScanConfig):
     """Map location of afferent synapses from EM onto one or more spiny morphologies."""
@@ -56,38 +90,6 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
             },
         )
-        physical_edge_population_name: str = Field(
-            title="Physical edge population name",
-            description="Edge population for connections between neurons in the set.",
-            default="physical_connections",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        virtual_edge_population_name: str = Field(
-            title="Virtual edge population name",
-            description="Edge population for connections from virtual neurons.",
-            default="virtual_afferents",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        biophysical_node_population: str = Field(
-            title="Biophysical node population name",
-            description="Node population for the physical neurons in the circuit.",
-            default="biophysical_neurons",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        virtual_node_population: str = Field(
-            title="Virtual node population name",
-            description="Node population for external presynaptic neurons.",
-            default="virtual_afferent_neurons",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -96,6 +98,17 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    advanced_options: AdvancedEMSynapseMappingOptions = Field(
+        title="Advanced options",
+        description="Advanced options for EM synapse mapping.",
+        default=AdvancedEMSynapseMappingOptions.DEFAULT,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENUM_DROPDOWN,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
