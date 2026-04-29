@@ -73,6 +73,12 @@ from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDisp
 from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
     AINDEPhysDispatchTask,
 )
+from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
+    AINDEPhysPreprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.preprocessing.task import (
+    AINDEPhysPreprocessingTask,
+)
 from obi_one.types import TaskType
 
 _config_tasks_map = {
@@ -93,6 +99,7 @@ _config_tasks_map = {
     SkeletonizationSingleConfig: SkeletonizationTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     AINDEPhysDispatchSingleConfig: AINDEPhysDispatchTask,
+    AINDEPhysPreprocessingSingleConfig: AINDEPhysPreprocessingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {

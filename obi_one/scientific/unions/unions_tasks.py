@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTas
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
 from obi_one.scientific.tasks.spike_sorting.dispatch.task import AINDEPhysDispatchTask
+from obi_one.scientific.tasks.spike_sorting.preprocessing.task import AINDEPhysPreprocessingTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
@@ -31,6 +32,7 @@ TasksUnion = Annotated[
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
     | AINDEPhysDispatchTask
+    | AINDEPhysPreprocessingTask
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]

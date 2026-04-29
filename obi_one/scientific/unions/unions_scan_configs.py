@@ -32,6 +32,9 @@ from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsSca
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchScanConfig
+from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
+    AINDEPhysPreprocessingScanConfig,
+)
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[
@@ -53,6 +56,7 @@ ScanConfigsUnion = Annotated[
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
     | AINDEPhysDispatchScanConfig
+    | AINDEPhysPreprocessingScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]
