@@ -1,0 +1,706 @@
+{
+    "session_name": "session0",
+    "recording_name": "block0_None_recording1",
+    "recording_dict": {
+        "class": "spikeinterface.core.segmentutils.AppendSegmentRecording",
+        "module": "spikeinterface",
+        "version": "0.104.3",
+        "kwargs": {
+            "recording_list": [
+                {
+                    "class": "spikeinterface.core.frameslicerecording.FrameSliceRecording",
+                    "module": "spikeinterface",
+                    "version": "0.104.3",
+                    "kwargs": {
+                        "parent_recording": {
+                            "class": "spikeinterface.core.segmentutils.SelectSegmentRecording",
+                            "module": "spikeinterface",
+                            "version": "0.104.3",
+                            "kwargs": {
+                                "recording": {
+                                    "class": "spikeinterface.core.segmentutils.SelectSegmentRecording",
+                                    "module": "spikeinterface",
+                                    "version": "0.104.3",
+                                    "kwargs": {
+                                        "recording": {
+                                            "class": "spikeinterface.core.binaryfolder.BinaryFolderRecording",
+                                            "module": "spikeinterface",
+                                            "version": "0.104.3",
+                                            "kwargs": {
+                                                "folder_path": "../../../../Users/james/Documents/obi/code/obi-main/obi-one/examples/K_extracellular/toy_example_recording"
+                                            },
+                                            "annotations": {
+                                                "name": null,
+                                                "is_filtered": true
+                                            },
+                                            "properties": {
+                                                "group": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    0
+                                                ],
+                                                "location": [
+                                                    [
+                                                        0.0,
+                                                        0.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        20.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        40.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        60.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        80.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        100.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        120.0
+                                                    ],
+                                                    [
+                                                        0.0,
+                                                        140.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        0.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        20.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        40.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        60.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        80.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        100.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        120.0
+                                                    ],
+                                                    [
+                                                        20.0,
+                                                        140.0
+                                                    ]
+                                                ],
+                                                "gain_to_uV": [
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0,
+                                                    1.0
+                                                ],
+                                                "offset_to_uV": [
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0
+                                                ],
+                                                "gain_to_physical_unit": null,
+                                                "offset_to_physical_unit": null,
+                                                "physical_unit": null
+                                            },
+                                            "relative_paths": false
+                                        },
+                                        "segment_indices": [
+                                            0
+                                        ]
+                                    },
+                                    "annotations": {
+                                        "name": null,
+                                        "is_filtered": true
+                                    },
+                                    "properties": {
+                                        "group": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "location": [
+                                            [
+                                                0.0,
+                                                0.0
+                                            ],
+                                            [
+                                                0.0,
+                                                20.0
+                                            ],
+                                            [
+                                                0.0,
+                                                40.0
+                                            ],
+                                            [
+                                                0.0,
+                                                60.0
+                                            ],
+                                            [
+                                                0.0,
+                                                80.0
+                                            ],
+                                            [
+                                                0.0,
+                                                100.0
+                                            ],
+                                            [
+                                                0.0,
+                                                120.0
+                                            ],
+                                            [
+                                                0.0,
+                                                140.0
+                                            ],
+                                            [
+                                                20.0,
+                                                0.0
+                                            ],
+                                            [
+                                                20.0,
+                                                20.0
+                                            ],
+                                            [
+                                                20.0,
+                                                40.0
+                                            ],
+                                            [
+                                                20.0,
+                                                60.0
+                                            ],
+                                            [
+                                                20.0,
+                                                80.0
+                                            ],
+                                            [
+                                                20.0,
+                                                100.0
+                                            ],
+                                            [
+                                                20.0,
+                                                120.0
+                                            ],
+                                            [
+                                                20.0,
+                                                140.0
+                                            ]
+                                        ],
+                                        "gain_to_uV": [
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0,
+                                            1.0
+                                        ],
+                                        "offset_to_uV": [
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0
+                                        ],
+                                        "gain_to_physical_unit": null,
+                                        "offset_to_physical_unit": null,
+                                        "physical_unit": null
+                                    },
+                                    "relative_paths": false
+                                },
+                                "segment_indices": [
+                                    0
+                                ]
+                            },
+                            "annotations": {
+                                "name": null,
+                                "is_filtered": true
+                            },
+                            "properties": {
+                                "group": [
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "location": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        0.0,
+                                        20.0
+                                    ],
+                                    [
+                                        0.0,
+                                        40.0
+                                    ],
+                                    [
+                                        0.0,
+                                        60.0
+                                    ],
+                                    [
+                                        0.0,
+                                        80.0
+                                    ],
+                                    [
+                                        0.0,
+                                        100.0
+                                    ],
+                                    [
+                                        0.0,
+                                        120.0
+                                    ],
+                                    [
+                                        0.0,
+                                        140.0
+                                    ],
+                                    [
+                                        20.0,
+                                        0.0
+                                    ],
+                                    [
+                                        20.0,
+                                        20.0
+                                    ],
+                                    [
+                                        20.0,
+                                        40.0
+                                    ],
+                                    [
+                                        20.0,
+                                        60.0
+                                    ],
+                                    [
+                                        20.0,
+                                        80.0
+                                    ],
+                                    [
+                                        20.0,
+                                        100.0
+                                    ],
+                                    [
+                                        20.0,
+                                        120.0
+                                    ],
+                                    [
+                                        20.0,
+                                        140.0
+                                    ]
+                                ],
+                                "gain_to_uV": [
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    1.0
+                                ],
+                                "offset_to_uV": [
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "gain_to_physical_unit": null,
+                                "offset_to_physical_unit": null,
+                                "physical_unit": null
+                            },
+                            "relative_paths": false
+                        },
+                        "start_frame": 0,
+                        "end_frame": 300000
+                    },
+                    "annotations": {
+                        "name": null,
+                        "is_filtered": true
+                    },
+                    "properties": {
+                        "group": [
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "location": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                40.0
+                            ],
+                            [
+                                0.0,
+                                60.0
+                            ],
+                            [
+                                0.0,
+                                80.0
+                            ],
+                            [
+                                0.0,
+                                100.0
+                            ],
+                            [
+                                0.0,
+                                120.0
+                            ],
+                            [
+                                0.0,
+                                140.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                20.0,
+                                40.0
+                            ],
+                            [
+                                20.0,
+                                60.0
+                            ],
+                            [
+                                20.0,
+                                80.0
+                            ],
+                            [
+                                20.0,
+                                100.0
+                            ],
+                            [
+                                20.0,
+                                120.0
+                            ],
+                            [
+                                20.0,
+                                140.0
+                            ]
+                        ],
+                        "gain_to_uV": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "offset_to_uV": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "gain_to_physical_unit": null,
+                        "offset_to_physical_unit": null,
+                        "physical_unit": null
+                    },
+                    "relative_paths": false
+                }
+            ],
+            "sampling_frequency_max_diff": 0
+        },
+        "annotations": {
+            "name": null,
+            "is_filtered": true
+        },
+        "properties": {
+            "group": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "location": [
+                [
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    20.0
+                ],
+                [
+                    0.0,
+                    40.0
+                ],
+                [
+                    0.0,
+                    60.0
+                ],
+                [
+                    0.0,
+                    80.0
+                ],
+                [
+                    0.0,
+                    100.0
+                ],
+                [
+                    0.0,
+                    120.0
+                ],
+                [
+                    0.0,
+                    140.0
+                ],
+                [
+                    20.0,
+                    0.0
+                ],
+                [
+                    20.0,
+                    20.0
+                ],
+                [
+                    20.0,
+                    40.0
+                ],
+                [
+                    20.0,
+                    60.0
+                ],
+                [
+                    20.0,
+                    80.0
+                ],
+                [
+                    20.0,
+                    100.0
+                ],
+                [
+                    20.0,
+                    120.0
+                ],
+                [
+                    20.0,
+                    140.0
+                ]
+            ],
+            "gain_to_uV": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "offset_to_uV": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "gain_to_physical_unit": null,
+            "offset_to_physical_unit": null,
+            "physical_unit": null
+        },
+        "relative_paths": true
+    },
+    "skip_times": false,
+    "duration": 10.0,
+    "input_folder": null,
+    "debug": true,
+    "multi_input": false
+}
