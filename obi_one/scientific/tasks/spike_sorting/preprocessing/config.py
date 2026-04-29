@@ -53,21 +53,6 @@ class SpikeSortingScanConfig(ScanConfig):
             ],
         }
 
-
-    # setup_recording: SpikeSortingPreprocessingInitialize = Field(
-    #     title="Recording setup",
-    #     description="Recording setup.",
-    #     group=BlockGroup.SETUP,
-    #     group_order=0,
-    # )
-
-    # setup_advanced: SpikeSortingPreprocessingAdvanced = Field(
-    #     title="Advanced setup",
-    #     description="Advanced setup.",
-    #     group=BlockGroup.SETUP,
-    #     group_order=1,
-    # )
-
     preprocessing_initialize: SpikeSortingPreprocessingInitialize = Field(
         title="Preprocessing initialization",
         description="Preprocessing initialization.",
