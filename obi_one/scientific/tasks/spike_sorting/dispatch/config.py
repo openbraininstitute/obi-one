@@ -10,6 +10,7 @@ from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.tasks.spike_sorting.dispatch.blocks import (
     DispatchBasic,
@@ -34,13 +35,19 @@ class BlockGroup(StrEnum):
 
 
 class AINDEPhysDispatchScanConfig(ScanConfig):
+    """ScanConfig wrapping the aind-ephys-job-dispatch CLI."""
+
     single_coord_class_name: ClassVar[str] = "AINDEPhysDispatchSingleConfig"
     name: ClassVar[str] = "Multi Electrode Recording Postprocessing"
     description: ClassVar[str] = "Spike sorting preprocessing configuration."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": False,
-        "group_order": [BlockGroup.SETUP, BlockGroup.PREPROCESSING, BlockGroup.SPIKE_SORTING],
+        SchemaKey.UI_ENABLED: False,
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP,
+            BlockGroup.PREPROCESSING,
+            BlockGroup.SPIKE_SORTING,
+        ],
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = None
@@ -51,93 +58,65 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
 
     dispatch_basic: DispatchBasic = Field(
         title="Recording setup",
-        description="Recording setup.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        description="Top-level dispatch flags applied to every recording.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
     )
 
     dispatch_data_dependent: DispatchDataDependent = Field(
         title="Data dependent options",
-        description="Data dependent options.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        description="Input-format-dependent dispatch options.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
     )
 
     dispatch_debug: DispatchDebug = Field(
         title="Debug setup",
-        description="Debug setup.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        description="Debug-mode dispatch options.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 2,
+        },
     )
 
     def create_campaign_entity_with_config(
         self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
+        output_root: Path,  # noqa: ARG002
+        multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
+        db_client: Client = None,  # noqa: ARG002
     ) -> None:
-        pass
+        return None
 
-    def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
-        pass
+    def create_campaign_generation_entity(
+        self,
+        generated: list,  # noqa: ARG002
+        db_client: Client,  # noqa: ARG002
+    ) -> None:
+        return None
 
 
 class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMixin):
-    """SpikeSortingPreprocessingSingleConfig."""
-
-    """Description."""
+    """Single-coordinate variant of :class:`AINDEPhysDispatchScanConfig`."""
 
     def create_single_entity_with_config(
         self,
-        campaign: TaskConfig,
-        db_client: Client,
+        campaign: TaskConfig,  # noqa: ARG002
+        db_client: Client,  # noqa: ARG002
     ) -> None:
-        pass
+        return None
 
     def command_line_representation(self) -> str:
-        """Generate command line representation of the configuration for job dispatch."""
-        """ADVANCED OPTIONS:
-        --no-split-segments       Whether to concatenate or split recording segments or not.
-                                    Default: split segments
-        --no-split-groups         Whether to process different groups separately
-        --skip-timestamps-check   Skip timestamps check
-        --debug                   Whether to run in DEBUG mode
-        --debug-duration          Duration of clipped recording in debug mode. Default is 30
-                                    seconds.
-                                    Only used if debug is enabled
-        --min-recording-duration  Minimum duration of the recording in seconds. Recordings shorter
-                                     than this will be skipped. Default: -1 (no minimum duration)
+        """Build the dispatch CLI invocation for this single coordinate.
 
-        # DATA DEPENDEDNT OPTIONS
-        --input {aind,spikeglx,openephys,nwb,spikeinterface}
-                                    Which 'loader' to use (aind | spikeglx | openephys | nwb
-                                            | spikeinterface)
-        --multi-session           Whether the data folder includes multiple sessions or not.
-                                    Default: False
-
-
-        # ONLY USED IF --input spikeinterface
-        --spikeinterface-info     A JSON path or string to specify how to parse the recording in
-                                    spikeinterface including:
-                                    - 1. reader_type (required): string with the reader type
-                                            (e.g. 'plexon', 'neuralynx', 'intan' etc.).
-                                    - 2. reader_kwargs (optional): dictionary with the reader
-                                            kwargs (e.g. {'folder': '/path/to/folder'}).
-                                    - 3. keep_stream_substrings (optional): string or list of
-                                            strings with the stream names to load
-                                            (e.g. 'AP' or ['AP', 'LFP']).
-                                    - 4. skip_stream_substrings (optional): string (or list of
-                                            strings) with substrings used to skip streams
-                                            (e.g. 'NIDQ' or ['USB', 'EVENTS']).
-                                    - 5. probe_paths (optional): string or dict the probe paths
-                                            to a ProbeInterface JSON file
-                                            (e.g. '/path/to/probe.json'). If a dict is provided,
-                                            the key is the stream name and the value is the probe
-                                            path.
-                                            If reader_kwargs is not provided, the reader will be
-                                            created with default parameters. The probe_path is
-                                            required if the reader doesn't load the probe
-                                            automatically.
+        See https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/blob/main/code/run_capsule.py
+        for the meaning of each flag.
         """
         parts: list[str] = ["python", "-u", "code/run_capsule.py"]
 
