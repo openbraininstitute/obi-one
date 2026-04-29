@@ -1,3 +1,5 @@
+import json
+import shlex
 from enum import StrEnum
 from typing import ClassVar
 from pathlib import Path
@@ -116,29 +118,36 @@ class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMix
                                     - 4. skip_stream_substrings (optional): string (or list of strings) with substrings used to skip streams (e.g. 'NIDQ' or ['USB', 'EVENTS']).
                                     - 5. probe_paths (optional): string or dict the probe paths to a ProbeInterface JSON file (e.g. '/path/to/probe.json'). If a dict is provided, the key is the stream name and the value is the probe path. If reader_kwargs is not provided, the reader will be created with default parameters. The probe_path is required if the reader doesn't load the probe automatically.
         """
-        command_str = "python code/run"
+        parts: list[str] = ["python", "code/run"]
 
-        command_str += (
-            f" --no-split-segments={not self.dispatch_basic.split_segments}"
-        )
-        command_str += f" --no-split-groups={not self.dispatch_basic.split_groups}"
-        command_str += (
-            f" --skip-timestamps-check={self.dispatch_basic.skip_timestamps_check}"
-        )
-        command_str += (
-            f" --min-recording-duration={self.dispatch_basic.min_recording_duration}"
-        )
+        parts += ["--input", self.dispatch_data_dependent.input_format]
 
-        command_str += f" --debug={self.dispatch_debug.debug_mode}"
-        command_str += f" --debug-duration={self.dispatch_debug.debug_duration}"
+        if not self.dispatch_basic.split_segments:
+            parts.append("--no-split-segments")
+        if not self.dispatch_basic.split_groups:
+            parts.append("--no-split-groups")
+        if self.dispatch_basic.skip_timestamps_check:
+            parts.append("--skip-timestamps-check")
+        parts += ["--min-recording-duration", str(self.dispatch_basic.min_recording_duration)]
 
-        command_str += f" --input={self.dispatch_data_dependent.input_format}"
-        command_str += (
-            f" --multi-session={self.dispatch_data_dependent.multi_session_data}"
-        )
+        if self.dispatch_debug.debug_mode:
+            parts.append("--debug")
+            parts += ["--debug-duration", str(self.dispatch_debug.debug_duration)]
+
+        if self.dispatch_data_dependent.multi_session_data:
+            parts.append("--multi-session")
 
         if self.dispatch_data_dependent.input_format == "spikeinterface":
-            command_str += f" --spikeinterface-info='{self.dispatch_data_dependent.spikeinterface_info}'"
-            
+            info = self.dispatch_data_dependent.spikeinterface_info
+            if info is None:
+                msg = "spikeinterface_info is required when input_format == 'spikeinterface'."
+                raise ValueError(msg)
+            parts += ["--spikeinterface-info", json.dumps(info.to_dict())]
 
-        return command_str
+        if (
+            self.dispatch_data_dependent.input_format == "nwb"
+            and self.dispatch_data_dependent.nwb_files is not None
+        ):
+            parts += ["--nwb-files", self.dispatch_data_dependent.nwb_files]
+
+        return shlex.join(parts)
