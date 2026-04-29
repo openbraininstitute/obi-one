@@ -1,9 +1,15 @@
-from obi_one.core.block import Block
-from pydantic import Discriminator, model_validator
-from pydantic import Field, PositiveFloat, NonNegativeInt, NonNegativeFloat
 from typing import Annotated, Literal
-import numpy as np
 
+from pydantic import (
+    Discriminator,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    model_validator,
+)
+
+from obi_one.core.block import Block
 
 # Preprocessing
 # https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing
@@ -11,9 +17,8 @@ import numpy as np
 
 
 class SpikeSortingPreprocessingInitialize(Block):
-
-    denoising_strategy: Literal['cmr'] | list[Literal['cmr']] = Field(
-        default='cmr',
+    denoising_strategy: Literal["cmr"] | list[Literal["cmr"]] = Field(
+        default="cmr",
         title="Denoising strategy",
         description="Denoising strategy to apply to the data.",
     )
@@ -22,14 +27,14 @@ class SpikeSortingPreprocessingInitialize(Block):
         default=120.0,
         title="Minimum preprocessing duration (s)",
         description="Minimum duration for preprocessing in seconds.",
-        unit="s"
+        unit="s",
     )
 
     phase_shift: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         title="Phase shift (ms)",
         description="Phase shift to apply to the data in milliseconds.",
-        unit="ms"
+        unit="ms",
     )
 
     remove_out_channels: bool | list[bool] = Field(
@@ -38,20 +43,19 @@ class SpikeSortingPreprocessingInitialize(Block):
         description="Whether to remove out channels from the data.",
     )
 
-    common_reference: Literal['global'] | list[Literal['global']] = Field(
-        default='global',
+    common_reference: Literal["global"] | list[Literal["global"]] = Field(
+        default="global",
         title="Common reference",
         description="Common reference strategy to apply to the data.",
     )
 
-    common_reference_operator: Literal['median'] | list[Literal['median']] = Field(
-        default='median',
+    common_reference_operator: Literal["median"] | list[Literal["median"]] = Field(
+        default="median",
         title="Common reference operator",
         description="Operator to use for common reference.",
     )
 
     def dictionary_representation(self) -> dict:
-
         d = {
             "denoising_strategy": self.single_config.initialize.denoising_strategy,
             "min_preprocessing_duration": self.single_config.initialize.min_preprocessing,
@@ -73,14 +77,14 @@ class SpikeSortingPreprocessingHighPassFilter(Block):
         default=300.0,
         title="Minimum frequency (Hz)",
         description="Minimum frequency for high-pass filter in Hz.",
-        unit="Hz"
+        unit="Hz",
     )
 
     margin: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=300.0,
         title="Margin (ms)",
         description="Margin for high-pass filter in milliseconds.",
-        unit="ms"
+        unit="ms",
     )
 
     def dictionary_representation(self) -> dict:
@@ -92,12 +96,13 @@ class SpikeSortingPreprocessingHighPassFilter(Block):
         }
         return d
 
+
 class SpikeSortingPreprocessingBandpassFilter(SpikeSortingPreprocessingHighPassFilter):
     max_freq: PositiveFloat | list[PositiveFloat] = Field(
         default=300.0,
         title="Maximum frequency (Hz)",
         description="Maximum frequency for band-pass filter in Hz.",
-        unit="Hz"
+        unit="Hz",
     )
 
     # MAKE SURE max > min freq with validator
@@ -108,22 +113,20 @@ class SpikeSortingPreprocessingBandpassFilter(SpikeSortingPreprocessingHighPassF
         if max_freq <= min_freq:
             raise ValueError("max_freq must be greater than min_freq")
         return values
-    
 
     def dictionary_representation(self) -> dict:
         d = super().dictionary_representation()
         d["highpass_filter"]["freq_max"] = self.single_config.frequency_filter.max_freq
         return d
 
+
 SpikeSortingPreprocessingFilterUnion = Annotated[
-    SpikeSortingPreprocessingHighPassFilter
-    | SpikeSortingPreprocessingBandpassFilter,
+    SpikeSortingPreprocessingHighPassFilter | SpikeSortingPreprocessingBandpassFilter,
     Discriminator("type"),
 ]
 
 
 class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
-
     n_channel_pad: int | list[int] = Field(
         default=60,
         title="Number of channels to pad",
@@ -136,8 +139,8 @@ class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
         description="Number of channels to taper for high-pass spatial filtering.",
     )
 
-    direction: Literal['x', 'y'] = Field(
-        default='y',
+    direction: Literal["x", "y"] = Field(
+        default="y",
         title="Filter direction",
         description="Direction of the high-pass spatial filter.",
     )
@@ -167,7 +170,6 @@ class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
     )
 
     def dictionary_representation(self) -> dict:
-
         d["highpass_spatial_filter"] = {
             "n_channel_pad": self.single_config.high_pass_spatial_filter.n_channel_pad,
             "n_channel_taper": self.single_config.high_pass_spatial_filter.n_channel_taper,
@@ -181,14 +183,13 @@ class SpikeSortingPreprocessingHighPassSpatialFilter(Block):
 
 
 class SpikeSortingPreprocessingDetectBadChannels(Block):
-
     # REMOVAL PARAMETERS
     remove_bad_channels: bool | list[bool] = Field(
         default=True,
         title="Remove bad channels",
         description="Whether to remove bad channels from the data.",
     )
-    
+
     max_bad_channel_fraction: float | list[float] = Field(
         default=0.5,
         title="Maximum bad channel fraction",
@@ -239,12 +240,12 @@ class SpikeSortingPreprocessingDetectBadChannels(Block):
     )
 
     def dictionary_representation(self) -> dict:
-        # TODO: add detection parameters to dictionary representation
+        print("COMPLETE THIS METHOD")
+
 
 class SpikeSortingPreprocessingMotionCorrection(Block):
-
-    preset: Literal['dredge_fast'] | list[Literal['dredge_fast']] = Field(
-        default='dredge_fast',
+    preset: Literal["dredge_fast"] | list[Literal["dredge_fast"]] = Field(
+        default="dredge_fast",
         title="Motion correction preset",
         description="Preset for motion correction.",
     )
@@ -278,7 +279,6 @@ class SpikeSortingPreprocessingMotionCorrection(Block):
         title="Interpolate motion kwargs",
         description="Keyword arguments for motion interpolation.",
     )
-
 
     def dictionary_representation(self) -> dict:
         d = {}

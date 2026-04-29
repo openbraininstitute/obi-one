@@ -1,25 +1,17 @@
-from obi_one.core.block import Block
-from obi_one.core.task import Task
+from enum import StrEnum
+from typing import ClassVar
+
+from pydantic import Field
+
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleCoordMixin
-from pydantic import Discriminator
-from pathlib import Path
-from enum import StrEnum
-from pydantic import Field, PositiveInt, PositiveFloat, NonNegativeInt, NonNegativeFloat
-from typing import Annotated, ClassVar, Literal
-import numpy as np
-
 from obi_one.scientific.tasks.spike_sorting.preprocessing.blocks import (
-    SpikeSortingPreprocessingInitialize,
+    SpikeSortingPreprocessingDetectBadChannels,
     SpikeSortingPreprocessingFilterUnion,
-    SpikeSortingPreprocessingDetectBadChannels,
-    SpikeSortingPreprocessingMotionCorrection,
     SpikeSortingPreprocessingHighPassSpatialFilter,
-    SpikeSortingPreprocessingDetectBadChannels,
+    SpikeSortingPreprocessingInitialize,
     SpikeSortingPreprocessingMotionCorrection,
 )
-
-
 
 # Job Dispatch
 # https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/
@@ -36,13 +28,11 @@ class BlockGroup(StrEnum):
     PREPROCESSING = "Preprocessing"
     SPIKE_SORTING = "Spike sorting"
 
-class SpikeSortingScanConfig(ScanConfig):
 
+class SpikeSortingScanConfig(ScanConfig):
     single_coord_class_title: ClassVar[str] = "SpikeSortingPreprocessingSingleConfig"
     title: ClassVar[str] = "Multi Electrode Recording Postprocessing"
-    description: ClassVar[str] = (
-        "Spike sorting preprocessing configuration."
-    )
+    description: ClassVar[str] = "Spike sorting preprocessing configuration."
 
     class Config:
         json_schema_extra: ClassVar[dict] = {
@@ -96,5 +86,3 @@ class SpikeSortingSingleConfig(SpikeSortingScanConfig, SingleCoordMixin):
         d.update(self.detect_bad_channels.dictionary_representation())
         d.update(self.motion_correction.dictionary_representation())
         return d
-
-

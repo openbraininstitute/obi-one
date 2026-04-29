@@ -1,19 +1,14 @@
-
-
 class SpikeSortingTask(Task):
     """SpikeSortingPreprocessing."""
 
     title: ClassVar[str] = "Multi Electrode Recording Postprocessing"
-    description: ClassVar[str] = (
-        "Spike sorting preprocessing configuration."
-    )
+    description: ClassVar[str] = "Spike sorting preprocessing configuration."
 
     single_config: SpikeSortingSingleConfig
 
     _pipeline_dict: dict = {}
 
     def _add_job_dispatch_dict(self):
-        
         d = {}
         d["no-split-segments"] = not self.single_config.setup_advanced.split_segments
         d["no-split-groups"] = not self.single_config.setup.advanced.split_groups
@@ -22,7 +17,9 @@ class SpikeSortingTask(Task):
         d["skip_timestamps_check"] = self.single_config.setup_advanced.skip_timestamps_check
         d["multi_session_data"] = self.single_config.setup_advanced.multi_session_data
         d["min_recording_duration"] = self.single_config.setup_advanced.min_recording_duration
-        d["input"] = "nwb" # Which 'loader' to use (aind | spikeglx | openephys | nwb | spikeinterface)
+        d["input"] = (
+            "nwb"  # Which 'loader' to use (aind | spikeglx | openephys | nwb | spikeinterface)
+        )
 
         spikeinterface_info = {}
 
@@ -41,7 +38,6 @@ class SpikeSortingTask(Task):
         # OPTIONAL: probe_paths (optional): string or dict the probe paths to a ProbeInterface JSON file (e.g. '/path/to/probe.json'). If a dict is provided, the key is the stream name and the value is the probe path. If reader_kwargs is not provided, the reader will be created with default parameters. The probe_path is required if the reader doesn't load the probe automatically.
         spikeinterface_info["probe_paths"] = None
 
-
         # WRITE spikeinterface_info to json
 
         # Add path to params
@@ -49,18 +45,10 @@ class SpikeSortingTask(Task):
 
         self._pipeline_dict["job_dispatch"] = d
 
-
     def _add_preprocessing_dict(self):
         d = {}
 
-        d["job_kwargs"] = {
-            "chunk_duration": "1s",
-            "progress_bar": False,
-            "mp_context": "spawn"
-        }
-
-        
-
+        d["job_kwargs"] = {"chunk_duration": "1s", "progress_bar": False, "mp_context": "spawn"}
 
     def execute(self):
         self._add_job_dispatch_dict()

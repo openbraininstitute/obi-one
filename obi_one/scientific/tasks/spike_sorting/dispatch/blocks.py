@@ -1,22 +1,24 @@
-from obi_one.core.block import Block
-from pydantic import Field, PositiveFloat
-from typing import Annotated, Literal
-import numpy as np
 from pathlib import Path
+from typing import Literal
 
+from pydantic import Field, PositiveFloat
+
+from obi_one.core.block import Block
 
 # Preprocessing
 # https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing
 # https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing/blob/main/code/params.json
 
+
 class SpikeSortingSetupBasic(Block):
     """SpikeSortingSetupBasic."""
 
     recording: Path | list[Path] = Field(
-        default=Path(""),
+        default=Path(),
         title="Recording path",
         description="Path to the recording file.",
     )
+
 
 class DispatchBasic(Block):
     """DispatchBasic."""
@@ -43,11 +45,13 @@ class DispatchBasic(Block):
         default=0.0,
         title="Minimum recording duration",
         description="Minimum duration of the recording in seconds.",
-        unit="s"
+        unit="s",
     )
+
 
 class DispatchDataDependent(Block):
     """DispatchDataDependent."""
+
     multi_session_data: bool = Field(
         default=False,
         title="Multi-session data",
@@ -60,7 +64,6 @@ class DispatchDataDependent(Block):
         description="Format of the input data.",
     )
 
-    
 
 class DispatchDebug(Block):
     """DispatchDebug."""
@@ -75,5 +78,5 @@ class DispatchDebug(Block):
         default=60.0,
         title="Debug mode duration",
         description="Duration for debug mode in seconds.",
-        unit="s"
+        unit="s",
     )

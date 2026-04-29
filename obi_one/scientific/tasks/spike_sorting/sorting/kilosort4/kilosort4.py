@@ -1,13 +1,14 @@
+from enum import StrEnum
+from typing import ClassVar
+
+from pydantic import (
+    Field,
+    PositiveFloat,
+    PositiveInt,
+)
+
 from obi_one.core.block import Block
 from obi_one.core.task import Task
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordMixin
-from pydantic import Discriminator
-from pathlib import Path
-from enum import StrEnum
-from pydantic import Field, PositiveInt, PositiveFloat, NonNegativeInt, NonNegativeFloat
-from typing import Annotated, ClassVar, Literal
-import numpy as np
 
 # Job Dispatch
 # https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/
@@ -26,7 +27,6 @@ class BlockGroup(StrEnum):
 
 
 class Kilosort4BasicSetup(Block):
-
     sampling_frequency: float | list[float] = Field(
         default=True,
         title="Sampling frequency",
@@ -91,12 +91,10 @@ class Kilosort4BasicSetup(Block):
     #                     ends at the end of the recording.",
     # )
 
-class Kilosort4AdvancedSetup(Block):
 
-    nt: PositiveInt | list[PositiveInt] = Field( # Would be nice in milliseconds?
-        title="Spike waveform width",
-        description="Spike waveform width.",
-        unit="Timesteps"
+class Kilosort4AdvancedSetup(Block):
+    nt: PositiveInt | list[PositiveInt] = Field(  # Would be nice in milliseconds?
+        title="Spike waveform width", description="Spike waveform width.", unit="Timesteps"
     )
 
     dmin: PositiveFloat | list[PositiveFloat] | None = Field(
@@ -112,13 +110,13 @@ class Kilosort4AdvancedSetup(Block):
             dminx to the median lateral distance between contacts as a starting point. Note that as\
             of version 4.0.11, the kcoords variable in the probe layout will be used to restrict \
             template placement within each shank. Each shank should have a unique kcoords value that \
-            is the same for all contacts on that shank."
-        unit="um"
+            is the same for all contacts on that shank.",
+        unit="um",
     )
 
     dminx: PositiveFloat | list[PositiveFloat] = Field(
-        default=32.0
-        title="Horizontal spacing - Universal templates"
+        default=32.0,
+        title="Horizontal spacing - Universal templates",
         description="Adjusts the lateral spacing of the \
             universal templates used during spike detection, as well as the lateral sizes of \
             channel neighborhoods used for clustering. By default, Kilosort will attempt to \
@@ -129,54 +127,54 @@ class Kilosort4AdvancedSetup(Block):
             dminx to the median lateral distance between contacts as a starting point. Note that as\
             of version 4.0.11, the kcoords variable in the probe layout will be used to restrict \
             template placement within each shank. Each shank should have a unique kcoords value that \
-            is the same for all contacts on that shank."
-        unit="um"
+            is the same for all contacts on that shank.",
+        unit="um",
     )
 
     min_template_size: PositiveFloat | list[PositiveFloat] = Field(
         default=10,
         title="Minimum template size",
-        description="This sets the standard deviation of the smallest Gaussian spatial envelope " \
-            "used to generate universal templates, with a default of 10 microns. You may need " \
-            "to increase this for probes with wider spaces between contacts.",
-        unit="um"
+        description="This sets the standard deviation of the smallest Gaussian spatial envelope "
+        "used to generate universal templates, with a default of 10 microns. You may need "
+        "to increase this for probes with wider spaces between contacts.",
+        unit="um",
     )
 
     nearest_chans: PositiveInt | list[PositiveInt] = Field(
         default=10,
         title="N nearest channels",
-        description="This is the number of nearest channels and template locations, " \
-            "respectively, used when assigning templates to spikes during spike " \
-            "detection. nearest_chans cannot be larger than the total number of channels " \
-            "on the probe, so it will need to be reduced for probes with less than 10 channels. " \
-            "nearest_templates does not have this restriction. However, for probes with around " \
-            "64 channels or less and sparsely spaced contacts, decreasing nearest_templates " \
-            "to be less than or equal to the number of channels helps avoid numerical instability."
+        description="This is the number of nearest channels and template locations, "
+        "respectively, used when assigning templates to spikes during spike "
+        "detection. nearest_chans cannot be larger than the total number of channels "
+        "on the probe, so it will need to be reduced for probes with less than 10 channels. "
+        "nearest_templates does not have this restriction. However, for probes with around "
+        "64 channels or less and sparsely spaced contacts, decreasing nearest_templates "
+        "to be less than or equal to the number of channels helps avoid numerical instability.",
     )
 
     nearest_templates: PositiveInt | list[PositiveInt] = Field(
         default=100,
         title="N nearest templates",
-        description="This is the number of nearest channels and template locations, " \
-            "respectively, used when assigning templates to spikes during spike " \
-            "detection. nearest_chans cannot be larger than the total number of channels " \
-            "on the probe, so it will need to be reduced for probes with less than 10 channels. " \
-            "nearest_templates does not have this restriction. However, for probes with around " \
-            "64 channels or less and sparsely spaced contacts, decreasing nearest_templates " \
-            "to be less than or equal to the number of channels helps avoid numerical instability."
+        description="This is the number of nearest channels and template locations, "
+        "respectively, used when assigning templates to spikes during spike "
+        "detection. nearest_chans cannot be larger than the total number of channels "
+        "on the probe, so it will need to be reduced for probes with less than 10 channels. "
+        "nearest_templates does not have this restriction. However, for probes with around "
+        "64 channels or less and sparsely spaced contacts, decreasing nearest_templates "
+        "to be less than or equal to the number of channels helps avoid numerical instability.",
     )
 
     x_centers: PositiveInt | list[PositiveInt] | None = Field(
         default=None,
         title="X Centres",
-        description="The number of x-positions to use when determining centers for template " \
-            "groupings. Specifically, this is the number of centroids to look for when " \
-            "using k-means to cluster the x-positions for the probe. In most cases you should " \
-            "not need to specify this. However, for probes with contacts arranged in a " \
-            "2D grid, we recommend setting x_centers such that centers are placed every " \
-            "200-300um so that there are not too many templates in each group. For example, " \
-            "for an array that is 2000um in width, try x_centers = 10. If contacts are very " \
-            "densely spaced, you may need to use a higher value for better performance."
+        description="The number of x-positions to use when determining centers for template "
+        "groupings. Specifically, this is the number of centroids to look for when "
+        "using k-means to cluster the x-positions for the probe. In most cases you should "
+        "not need to specify this. However, for probes with contacts arranged in a "
+        "2D grid, we recommend setting x_centers such that centers are placed every "
+        "200-300um so that there are not too many templates in each group. For example, "
+        "for an array that is 2000um in width, try x_centers = 10. If contacts are very "
+        "densely spaced, you may need to use a higher value for better performance.",
     )
 
     duplicate_spike_ms: PositiveFloat | list[PositiveFloat] = Field(
@@ -188,8 +186,8 @@ class Kilosort4AdvancedSetup(Block):
             Phy, increasing this value can help remove those artifacts. Warning!!! Do not \
             increase this value beyond 0.5ms as it will interfere with the ACG and CCG \
             refractory period estimations (which normally ignores the central 1ms of the \
-            correlogram)."
-        unit="ms"
+            correlogram).",
+        unit="ms",
     )
 
 
@@ -199,11 +197,8 @@ class KS4SpikeSortingScanConfig(SpikeSortingScanConfig):
 
     single_coord_class_title: ClassVar[str] = "Kilosort4SpikeSortingSingleConfig"
     title: ClassVar[str] = "Kilosort4 Spike Sorting"
-    description: ClassVar[str] = (
-        "Kilosort4 spike sorting configuration."
-    )
+    description: ClassVar[str] = "Kilosort4 spike sorting configuration."
 
-    
     kilosort4_basic_setup: Kilosort4BasicSetup = Field(
         title="Kilosort 4 Basic",
         description="Kilosort 4 Basic Setup.",
@@ -222,72 +217,67 @@ class KS4SpikeSortingScanConfig(SpikeSortingScanConfig):
 class KS4SpikeSortingSingleConfig(SpikeSortingSingleConfig):
     """Kilosort4SpikeSortingSingleConfig."""
 
-class KS4SpikeSortingTask(Task):
 
+class KS4SpikeSortingTask(Task):
     single_config: KS4SpikeSortingSingleConfig
 
     def execute(self):
         super().execute()
 
-        self._pipeline_dict["kilosort4"] = {
-            # "job_kwargs": {
-            #     "chunk_duration": "1s",
-            #     "progress_bar": False
-            # },
-            "skip_motion_correction": False,
-            "min_drift_channels": 96,
-            "raise_if_fails": True,
-            "clear_cache": False,
-            "sorter": {
-                "nblocks": self.single_config.kilosort4_basic_setup.nblocks,
-                "batch_size": self.single_config.kilosort4_basic_setup.batch_size,
-                "Th_learned": self.single_config.kilosort4_basic_setup.th_learned,
-                "Th_universal": self.single_config.kilosort4_basic_setup.th_universal,
-
-                "nt": self.single_config.kilosort4_advanced_setup.nt,
-                "dmin": self.single_config.kilosort4_advanced_setup.dmin,
-                "dminx": self.single_config.kilosort4_advanced_setup.dminx,
-                "min_template_size": self.single_config.kilosort4_advanced_setup.min_template_size,
-                "nearest_chans": self.single_config.kilosort4_advanced_setup.nearest_chans,
-                "nearest_templates": self.single_config.kilosort4_advanced_setup.nearest_templates,
-                "x_centers": self.single_config.kilosort4_advanced_setup.x_centers,
-                "duplicate_spike_ms": self.single_config.kilosort4_advanced_setup.duplicate_spike_ms,
-
-                "do_CAR": True,
+        self._pipeline_dict["kilosort4"] = (
+            {
+                # "job_kwargs": {
+                #     "chunk_duration": "1s",
+                #     "progress_bar": False
+                # },
+                "skip_motion_correction": False,
+                "min_drift_channels": 96,
+                "raise_if_fails": True,
                 "clear_cache": False,
-                "invert_sign": False,
-                "do_correction": True,
-                "keep_good_only": False,
-                "save_extra_vars": False,
-                "templates_from_data": True,
-                "delete_recording_dat": True,
-                "save_preprocessed_copy": False,
-                "skip_kilosort_preprocessing": False,
-                
-                "shift": None,
-                "scale": None,
-                "nt0min": None,
-                "bad_channels": None,
-                "use_binary_file": None,
-                "artifact_threshold": None,
-                "max_channel_distance": None,
-                
-                "n_pcs": 6,
-                "nskip": 25,
-                "sig_interp": 20,
-                "n_templates": 6,
-                "Th_single_ch": 6,
-                "binning_depth": 5,
-                "template_sizes": 5,
-                "whitening_range": 32,
-                "highpass_cutoff": 300,
-                "cluster_downsampling": 20,
-
-                "acg_threshold": 0.2,
-                "ccg_threshold": 0.25,
-
-                "drift_smoothing": [0.5, 0.5, 0.5],
-                
-                "torch_device": "auto",            
-            }
-        },
+                "sorter": {
+                    "nblocks": self.single_config.kilosort4_basic_setup.nblocks,
+                    "batch_size": self.single_config.kilosort4_basic_setup.batch_size,
+                    "Th_learned": self.single_config.kilosort4_basic_setup.th_learned,
+                    "Th_universal": self.single_config.kilosort4_basic_setup.th_universal,
+                    "nt": self.single_config.kilosort4_advanced_setup.nt,
+                    "dmin": self.single_config.kilosort4_advanced_setup.dmin,
+                    "dminx": self.single_config.kilosort4_advanced_setup.dminx,
+                    "min_template_size": self.single_config.kilosort4_advanced_setup.min_template_size,
+                    "nearest_chans": self.single_config.kilosort4_advanced_setup.nearest_chans,
+                    "nearest_templates": self.single_config.kilosort4_advanced_setup.nearest_templates,
+                    "x_centers": self.single_config.kilosort4_advanced_setup.x_centers,
+                    "duplicate_spike_ms": self.single_config.kilosort4_advanced_setup.duplicate_spike_ms,
+                    "do_CAR": True,
+                    "clear_cache": False,
+                    "invert_sign": False,
+                    "do_correction": True,
+                    "keep_good_only": False,
+                    "save_extra_vars": False,
+                    "templates_from_data": True,
+                    "delete_recording_dat": True,
+                    "save_preprocessed_copy": False,
+                    "skip_kilosort_preprocessing": False,
+                    "shift": None,
+                    "scale": None,
+                    "nt0min": None,
+                    "bad_channels": None,
+                    "use_binary_file": None,
+                    "artifact_threshold": None,
+                    "max_channel_distance": None,
+                    "n_pcs": 6,
+                    "nskip": 25,
+                    "sig_interp": 20,
+                    "n_templates": 6,
+                    "Th_single_ch": 6,
+                    "binning_depth": 5,
+                    "template_sizes": 5,
+                    "whitening_range": 32,
+                    "highpass_cutoff": 300,
+                    "cluster_downsampling": 20,
+                    "acg_threshold": 0.2,
+                    "ccg_threshold": 0.25,
+                    "drift_smoothing": [0.5, 0.5, 0.5],
+                    "torch_device": "auto",
+                },
+            },
+        )
