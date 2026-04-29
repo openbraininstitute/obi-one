@@ -226,10 +226,6 @@ class KS4SpikeSortingTask(Task):
 
         self._pipeline_dict["kilosort4"] = (
             {
-                # "job_kwargs": {
-                #     "chunk_duration": "1s",
-                #     "progress_bar": False
-                # },
                 "skip_motion_correction": False,
                 "min_drift_channels": 96,
                 "raise_if_fails": True,

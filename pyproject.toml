@@ -184,6 +184,10 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/blocks/neuron_sets/pair.py" = [
     "SLF001"
 ]
+"obi_one/scientific/tasks/spike_sorting/sorting/kilosort4/kilosort4.py" = ["ALL"]
+"obi_one/scientific/tasks/spike_sorting/preprocessing/blocks.py" = ["ALL"]
+"obi_one/scientific/tasks/spike_sorting/preprocessing/config.py" = ["ALL"]
+"obi_one/scientific/tasks/spike_sorting/preprocessing/task.py" = ["ALL"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

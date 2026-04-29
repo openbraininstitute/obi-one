@@ -15,7 +15,6 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
 )
@@ -32,6 +31,7 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchScanConfig
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[

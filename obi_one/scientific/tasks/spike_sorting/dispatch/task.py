@@ -1,9 +1,12 @@
+import logging
 from typing import ClassVar
 
 import entitysdk
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchSingleConfig
+
+L = logging.getLogger(__name__)
 
 
 class AINDEPhysDispatchTask(Task):
@@ -22,5 +25,5 @@ class AINDEPhysDispatchTask(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> str:
         command = self.config.command_line_representation()
-        print(command)
+        L.info(command)
         return command

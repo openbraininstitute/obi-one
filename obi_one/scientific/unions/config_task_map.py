@@ -38,10 +38,6 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model import (
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
-    AINDEPhysDispatchTask,
-)
-from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchSingleConfig
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
@@ -72,6 +68,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
     SkeletonizationTask,
+)
+from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchSingleConfig
+from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
+    AINDEPhysDispatchTask,
 )
 from obi_one.types import TaskType
 

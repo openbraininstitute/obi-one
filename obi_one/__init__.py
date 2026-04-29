@@ -20,6 +20,9 @@ from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
 
 __all__ = [
+    "AINDEPhysDispatchScanConfig",
+    "AINDEPhysDispatchSingleConfig",
+    "AINDEPhysDispatchTask",
     "AfferentSynapsesBlock",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
@@ -57,9 +60,6 @@ __all__ = [
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
-    "AINDEPhysDispatchScanConfig",
-    "AINDEPhysDispatchSingleConfig",
-    "AINDEPhysDispatchTask",
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
@@ -362,13 +362,6 @@ from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
 )
-from obi_one.scientific.tasks.spike_sorting.dispatch.config import (
-    AINDEPhysDispatchScanConfig,
-    AINDEPhysDispatchSingleConfig,
-)
-from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
-    AINDEPhysDispatchTask,
-)
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
@@ -421,6 +414,13 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.dispatch.config import (
+    AINDEPhysDispatchScanConfig,
+    AINDEPhysDispatchSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
+    AINDEPhysDispatchTask,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type

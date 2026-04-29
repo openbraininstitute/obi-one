@@ -1,13 +1,13 @@
 import json
 import shlex
 from enum import StrEnum
-from typing import ClassVar
 from pathlib import Path
+from typing import ClassVar
 
-from pydantic import Field
 from entitysdk import Client
 from entitysdk.models import Entity, TaskConfig
 from entitysdk.types import TaskActivityType, TaskConfigType
+from pydantic import Field
 
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
@@ -46,7 +46,7 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
     _campaign_task_config_type: ClassVar[TaskConfigType] = None
     _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
 
-    def input_entities(self, db_client: Client) -> list[Entity]:
+    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
         return []
 
     dispatch_basic: DispatchBasic = Field(
@@ -75,7 +75,7 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: Client = None,
-    ):
+    ) -> None:
         pass
 
     def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
@@ -91,32 +91,53 @@ class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMix
         self,
         campaign: TaskConfig,
         db_client: Client,
-    ):
+    ) -> None:
         pass
 
     def command_line_representation(self) -> str:
+        """Generate command line representation of the configuration for job dispatch."""
         """ADVANCED OPTIONS:
-        --no-split-segments       Whether to concatenate or split recording segments or not. Default: split segments
+        --no-split-segments       Whether to concatenate or split recording segments or not.
+                                    Default: split segments
         --no-split-groups         Whether to process different groups separately
         --skip-timestamps-check   Skip timestamps check
         --debug                   Whether to run in DEBUG mode
-        --debug-duration          Duration of clipped recording in debug mode. Default is 30 seconds.
+        --debug-duration          Duration of clipped recording in debug mode. Default is 30
+                                    seconds.
                                     Only used if debug is enabled
-        --min-recording-duration  Minimum duration of the recording in seconds. Recordings shorter than this will be skipped. Default: -1 (no minimum duration)
+        --min-recording-duration  Minimum duration of the recording in seconds. Recordings shorter
+                                     than this will be skipped. Default: -1 (no minimum duration)
 
         # DATA DEPENDEDNT OPTIONS
         --input {aind,spikeglx,openephys,nwb,spikeinterface}
-                                    Which 'loader' to use (aind | spikeglx | openephys | nwb | spikeinterface)
-        --multi-session           Whether the data folder includes multiple sessions or not. Default: False
+                                    Which 'loader' to use (aind | spikeglx | openephys | nwb
+                                            | spikeinterface)
+        --multi-session           Whether the data folder includes multiple sessions or not.
+                                    Default: False
 
 
         # ONLY USED IF --input spikeinterface
-        --spikeinterface-info     A JSON path or string to specify how to parse the recording in spikeinterface including:
-                                    - 1. reader_type (required): string with the reader type (e.g. 'plexon', 'neuralynx', 'intan' etc.).
-                                    - 2. reader_kwargs (optional): dictionary with the reader kwargs (e.g. {'folder': '/path/to/folder'}).
-                                    - 3. keep_stream_substrings (optional): string or list of strings with the stream names to load (e.g. 'AP' or ['AP', 'LFP']).
-                                    - 4. skip_stream_substrings (optional): string (or list of strings) with substrings used to skip streams (e.g. 'NIDQ' or ['USB', 'EVENTS']).
-                                    - 5. probe_paths (optional): string or dict the probe paths to a ProbeInterface JSON file (e.g. '/path/to/probe.json'). If a dict is provided, the key is the stream name and the value is the probe path. If reader_kwargs is not provided, the reader will be created with default parameters. The probe_path is required if the reader doesn't load the probe automatically.
+        --spikeinterface-info     A JSON path or string to specify how to parse the recording in
+                                    spikeinterface including:
+                                    - 1. reader_type (required): string with the reader type
+                                            (e.g. 'plexon', 'neuralynx', 'intan' etc.).
+                                    - 2. reader_kwargs (optional): dictionary with the reader
+                                            kwargs (e.g. {'folder': '/path/to/folder'}).
+                                    - 3. keep_stream_substrings (optional): string or list of
+                                            strings with the stream names to load
+                                            (e.g. 'AP' or ['AP', 'LFP']).
+                                    - 4. skip_stream_substrings (optional): string (or list of
+                                            strings) with substrings used to skip streams
+                                            (e.g. 'NIDQ' or ['USB', 'EVENTS']).
+                                    - 5. probe_paths (optional): string or dict the probe paths
+                                            to a ProbeInterface JSON file
+                                            (e.g. '/path/to/probe.json'). If a dict is provided,
+                                            the key is the stream name and the value is the probe
+                                            path.
+                                            If reader_kwargs is not provided, the reader will be
+                                            created with default parameters. The probe_path is
+                                            required if the reader doesn't load the probe
+                                            automatically.
         """
         parts: list[str] = ["python", "-u", "code/run_capsule.py"]
 
