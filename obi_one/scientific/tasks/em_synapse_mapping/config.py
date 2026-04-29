@@ -13,6 +13,7 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.from_id.named_tuple_from_id import CellMorphologyAndMEModelNamedTuple
 
 L = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
     class Initialize(Block):
         # We use a tuple instead of a list to avoid getting it taken as scan dimensions
         # in the scan config.
-        neurons: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(
+        neurons: CellMorphologyAndMEModelNamedTuple | list[CellMorphologyAndMEModelNamedTuple] = Field(
             title="Neurons",
             description="Neurons to include in the circuit (>= 1).",
             min_length=1,
