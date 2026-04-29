@@ -35,9 +35,9 @@ case D:
 
 In the form, user can select multiple entities in an entity group by clicking on the `Add <entity type>` button.
 
-In case B, those entities are stored in a list. In case C, they are stored in a tuple. In case D, they are stored in a dict of tuples within a list. The different types are used so that it is easy to distinguish between the different cases.
+In case B, those entities are stored in a list. In case C, they are stored in a tuple. In case D, they are stored in a NamedTuple (defined in obi_one.scientific.from_id.named_tuple_from_id) within a list. The different types are used so that it is easy to distinguish between the different cases.
 
-In case D, user can add a new entity group by clicking on `Add group`. This adds a dict[tuples] to the list.
+In case D, user can add a new entity group by clicking on `Add group`. This adds a NamedTuple to the list.
 
 By default, when the user clicks on the workflow, they have to first select one or multiple entities.
 
@@ -58,3 +58,40 @@ case D:
 When the user clicks on `Add <entity type>`, the left-side of the UI collpases and the selection UI appears in the middle and right-side of the UI. There are the usual Public/Project buttons, Species/Brain region selection and Filters. In case different entity types are accepted, (e.g. morphology and me-model for EM synpase mapping UI), then another dropdown appears, allowing the user to select the entity type.
 
 + buttons next to the entities that are not yet in the group let user add the entity to the group. - button next to the entities that are already in the group let the user remove an entity from the group.
+
+
+### Config examples
+
+## case B:
+cell_mesh: list[EMCellMeshFromID] = Field(
+    title="EM Cell Mesh",
+    description="EM cell mesh to use for skeletonization.",
+    json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
+)
+
+## case C
+
+```py
+neurons: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(
+    title="Neurons",
+    description="Neurons to include in the circuit (>= 1).",
+    min_length=1,
+    json_schema_extra={
+        SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+    },
+)
+```
+
+## case D
+
+```py
+neurons: list[CellMorphologyAndMEModelNamedTuple, ...] = Field(
+    title="Neurons",
+    description="Neurons to include in the circuit (>= 1).",
+    min_length=1,
+    json_schema_extra={
+        SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+        SchemaKey.ACCEPTED_TYPES: [CellMorphologyFromID, MEModelFromID],
+    },
+)
+```
