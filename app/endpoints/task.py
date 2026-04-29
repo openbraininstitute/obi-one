@@ -50,6 +50,19 @@ def task_launch_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
     project_context = db_client.project_context
+
+    # circuit_simulation maps to a group of tasks. Select the correct one based on circuit
+    # metadata and config contents. For example circuit_simulation -> circuit_simulation_neuron
+    if json_model.task_type == TaskType.circuit_simulation:
+        task_type = task_service.select_simulation_task(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,
+        )
+        json_model = json_model.model_copy(update={"task_type": task_type})
+        msg = f"Mapped circuit_simulation -> {task_type}"
+        L.info(msg)
+
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
     accounting_info = accounting_service.estimate_task_cost(
@@ -120,6 +133,18 @@ def estimate_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskAccountingInfo:
     """Estimates the cost for launching a task."""
+    # circuit_simulation maps to a group of tasks. Select the correct one based on circuit
+    # metadata and config contents. For example circuit_simulation -> circuit_simulation_neuron
+    if json_model.task_type == TaskType.circuit_simulation:
+        task_type = task_service.select_simulation_task(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,
+        )
+        json_model = json_model.model_copy(update={"task_type": task_type})
+        msg = f"Mapped circuit_simulation -> {task_type}"
+        L.info(msg)
+
     return accounting_service.estimate_task_cost(
         db_client=db_client,
         config_id=json_model.config_id,
