@@ -31,9 +31,19 @@ def _ensure_units_nwb_repo(repo_path: Path = UNITS_NWB_REPO_DEFAULT_PATH) -> Pat
     utils_py = repo_path / "code" / "utils.py"
     if utils_py.is_file():
         src = utils_py.read_text()
-        patched = src.replace(
-            "add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile"
-        ).replace("add_units_table_to_nwbfile", "_add_units_table_to_nwbfile")
+        patched = src
+        # `add_electrodes_info_to_nwbfile` -> `add_electrodes_to_nwbfile` is
+        # idempotent (the substring disappears).  But the units rename target
+        # contains the original substring, so we must guard against repeat
+        # runs compounding underscores.
+        if "add_electrodes_info_to_nwbfile" in patched:
+            patched = patched.replace(
+                "add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile"
+            )
+        if "_add_units_table_to_nwbfile" not in patched:
+            patched = patched.replace(
+                "add_units_table_to_nwbfile", "_add_units_table_to_nwbfile"
+            )
         if patched != src:
             utils_py.write_text(patched)
             L.info("Patched utils.py for neuroconv API drift")
