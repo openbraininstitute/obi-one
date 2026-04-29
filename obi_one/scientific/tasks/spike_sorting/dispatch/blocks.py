@@ -64,6 +64,58 @@ class DispatchDataDependent(Block):
         description="Format of the input data.",
     )
 
+class SpikeInterfaceDataDependent(Block):
+    """SpikeInterfaceDataDependent."""
+
+    reader_type: Literal['plexon', 'neuralynx', 'intan'] = Field(
+        default="plexon",
+        title="Reader type",
+        description="Type of the reader to use.",
+    )
+    reader_kwargs: dict | list[dict] = Field(
+        default_factory=dict,
+        title="Reader kwargs",
+        description="Keyword arguments for the reader.",
+    )
+    keep_or_skip_stream_substrings_mode: Literal['keep', 'skip'] = Field(
+        default="keep",
+        title="Keep or skip stream substrings mode",
+        description="Whether the substrings in substrings_to_skip_or_keep should be kept or skipped"
+    )
+    substrings_to_skip_or_keep: tuple[str] = Field(
+        default=None,
+        title="Skip or keep stream substrings",
+        description="Whether to specify stream substrings to skip or keep. Should be a tuple with two elements: (mode, substrings), where mode is either 'skip' or 'keep' and substrings is a string or list of strings with the substrings to skip or keep.",
+    )
+    # probe_paths: tuple[str] | tuple[None] = Field(
+    #     title="Probe paths",
+    #     description="Paths to the probe files. Only used if reader_type is 'spikeinterface'.",
+    # )
+    # session_names: tuple[str] = Field(
+    #     title="Session names",
+    #     description="List of session names to process. Only used if multi-session data is True.",
+    # )
+
+    def command_line_representation(self) -> str:
+        command_line_str = ""
+
+        if self.reader_kwargs:
+            command_line_str += f" --spikeinterface-reader-kwargs='{self.reader_kwargs}'"
+
+        if self.keep_or_skip_stream_substrings_mode == "keep":
+            command_line_str += f" --spikeinterface-keep-stream-substrings='{self.substrings_to_skip_or_keep}'"
+        elif self.keep_or_skip_stream_substrings_mode == "skip":
+            command_line_str += f" --spikeinterface-skip-stream-substrings='{self.substrings_to_skip_or_keep}'"
+
+        # if self.probe_paths:
+        #     command_line_str += f" --spikeinterface-probe-paths='{self.probe_paths}'"
+
+        # if self.session_names:
+        #     command_line_str += f" --spikeinterface-session-names='{self.session_names}'"
+
+        return command_line_str
+
+
 
 class DispatchDebug(Block):
     """DispatchDebug."""

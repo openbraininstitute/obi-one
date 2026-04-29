@@ -137,4 +137,8 @@ class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMix
             f" --multi-session={self.dispatch_data_dependent.multi_session_data}"
         )
 
+        if self.dispatch_data_dependent.input_format == "spikeinterface":
+            command_str += f" --spikeinterface-info='{self.dispatch_data_dependent.spikeinterface_info}'"
+            
+
         return command_str
