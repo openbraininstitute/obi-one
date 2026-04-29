@@ -13,6 +13,7 @@ from app.schemas.task import (
     PythonRepositoryCode,
     TaskDefinition,
     TaskDefinitionLegacy,
+    TaskGroupLegacyDefinition,
 )
 from app.types import BuiltinScript, TaskType
 from obi_one.config import settings as obi_settings
@@ -58,8 +59,47 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.circuit_simulation: TaskDefinitionLegacy(
+    TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
+        config_type=models.Simulation,
+    ),
+    TaskType.circuit_simulation_inait_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_inait_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location="https://github.com/openbraininstitute-partners/inait",
+            ref="commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            path="scripts/simulate-circuits/run.py",
+            dependencies="scripts/simulate-circuits/requirements.txt",
+            staged_directories=["wheels", "scripts/simulate-circuits/"],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neuron,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="00:10",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=BuiltinCode(

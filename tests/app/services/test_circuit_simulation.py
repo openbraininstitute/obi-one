@@ -24,7 +24,7 @@ def _make_db_client(number_neurons: int) -> tuple[Mock, str]:
 
 def test_estimate_task_resources_success():
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
     db_client, circuit_id = _make_db_client(number_neurons=9)
     mocked_instances = {
         "cell_a": [
