@@ -60,7 +60,6 @@ __all__ = [
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
-    "DistributionSpikeStimulus",
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
@@ -92,6 +91,7 @@ __all__ = [
     "IntRange",
     "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -302,7 +302,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
-from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,

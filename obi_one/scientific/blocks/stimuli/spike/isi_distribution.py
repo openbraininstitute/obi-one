@@ -19,10 +19,10 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
 
-class DistributionSpikeStimulus(SpikeStimulus):
+class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
     """Spike replay generated from an inter-spike interval distribution."""
 
-    title: ClassVar[str] = "Distribution Spike Replay (Efferent)"
+    title: ClassVar[str] = "Inter-Spike Interval Distribution Spike Replay (Efferent)"
 
     duration: (
         Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
@@ -79,35 +79,12 @@ class DistributionSpikeStimulus(SpikeStimulus):
             spikes.append(t)
         return spikes
 
-    @staticmethod
-    def _validate_stimulus_windows(
-        timestamps: list[float],
-        duration: float,
-        timestamp_offset: float,
-    ) -> None:
-        for idx, timestamp in enumerate(timestamps):
-            end_time = timestamp + timestamp_offset + duration
-            if idx < len(timestamps) - 1 and not end_time < timestamps[idx + 1]:
-                next_timestamp = timestamps[idx + 1]
-                msg = (
-                    f"Stimulus time intervals overlap! "
-                    f"Current stimulus ends at {end_time:.2f} ms "
-                    f"(timestamp {timestamp:.2f} ms + offset {timestamp_offset:.2f} ms + "
-                    f"duration {duration:.2f} ms), "
-                    f"but next timestamp starts at {next_timestamp:.2f} ms. "
-                    f"To fix: reduce 'duration', reduce 'timestamp_offset', "
-                    f"or increase spacing between timestamps."
-                )
-                raise ValueError(msg)
-
     def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         if self.distribution is None:
-            msg = "Distribution must be set for DistributionSpikeStimulus."
+            msg = "Distribution must be set for InterSpikeIntervalDistributionSpikeStimulus."
             raise ValueError(msg)
 
         timestamps = self._offset_timestamps()
-        self._validate_stimulus_windows(timestamps, self.duration, self.timestamp_offset)
-
         distribution = self.distribution.block
         random_seed = getattr(distribution, "random_seed", None)
         rng = np.random.default_rng(random_seed) if random_seed is not None else None

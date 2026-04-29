@@ -31,7 +31,9 @@ class ExponentialDistribution(Distribution):
         },
     )
 
-    def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
+    def _sample_generator(
+        self, n: int = 1, rng: np.random.Generator | None = None
+    ) -> list[PositiveFloat]:
         """Sample n values from the exponential distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)

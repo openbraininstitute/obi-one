@@ -562,7 +562,7 @@ def test_simulation_campaign_generation(tmp_path):
 
 def test_circuit_simulation_scan_config_with_distribution_stimuli():
     """Test that CircuitSimulationScanConfig can include distribution blocks
-    and DistributionSpikeStimulus."""
+    and InterSpikeIntervalDistributionSpikeStimulus."""
     # Create config
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
@@ -583,7 +583,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     sim_conf.add(timestamps, name="timestamps")
 
     # Add distribution-based stimulus that references the distribution
-    dist_stimulus = obi.DistributionSpikeStimulus(
+    dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
         distribution=obi.AllDistributionsReference(
             block_dict_name="distributions", block_name="constant_dist"
         ),

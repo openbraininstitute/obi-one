@@ -4,7 +4,9 @@ import h5py
 import pytest
 
 import obi_one as obi
-from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
@@ -13,12 +15,12 @@ def _set_block_name(block: object, name: str) -> None:
     block._block_name = name
 
 
-def _make_distribution_stimulus(
+def _make_isi_distribution_stimulus(
     *,
     duration: float = 25.0,
     resample_each_repetition: bool = False,
-) -> obi.DistributionSpikeStimulus:
-    stimulus = obi.DistributionSpikeStimulus(
+) -> obi.InterSpikeIntervalDistributionSpikeStimulus:
+    stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
         distribution=obi.AllDistributionsReference(
             block_dict_name="distributions",
             block_name="constant_dist",
@@ -40,7 +42,7 @@ def _make_distribution_stimulus(
 
 def _patch_distribution_ref(
     monkeypatch: pytest.MonkeyPatch,
-    stimulus: obi.DistributionSpikeStimulus,
+    stimulus: obi.InterSpikeIntervalDistributionSpikeStimulus,
     distribution: object,
 ) -> None:
     def _distribution_block(_ref_self: object) -> object:
@@ -107,28 +109,34 @@ def _patch_resolved_timestamps(
     )
 
 
-class TestSpikeStimulusGenerateSpikeTrainFromDistribution:
+class TestGenerateSpikeTrainFromInterSpikeIntervalDistribution:
     def test_constant_distribution_basic_case(self):
         dist = obi.FloatConstantDistribution(value=10.0)
-        spikes = DistributionSpikeStimulus._generate_spike_train_from_distribution(
-            dist,
-            duration=35.0,
+        spikes = (
+            InterSpikeIntervalDistributionSpikeStimulus._generate_spike_train_from_distribution(
+                dist,
+                duration=35.0,
+            )
         )
         assert spikes == [10.0, 20.0, 30.0]
 
     def test_returned_spike_times_strictly_increasing(self):
         dist = obi.ExponentialDistribution(scale=5.0, random_seed=42)
-        spikes = DistributionSpikeStimulus._generate_spike_train_from_distribution(
-            dist,
-            duration=50.0,
+        spikes = (
+            InterSpikeIntervalDistributionSpikeStimulus._generate_spike_train_from_distribution(
+                dist,
+                duration=50.0,
+            )
         )
         assert all(spikes[i] < spikes[i + 1] for i in range(len(spikes) - 1))
 
     def test_returned_spike_times_all_less_than_duration(self):
         dist = obi.GammaDistribution(shape=2.0, scale=3.0, random_seed=42)
-        spikes = DistributionSpikeStimulus._generate_spike_train_from_distribution(
-            dist,
-            duration=25.0,
+        spikes = (
+            InterSpikeIntervalDistributionSpikeStimulus._generate_spike_train_from_distribution(
+                dist,
+                duration=25.0,
+            )
         )
         assert all(s < 25.0 for s in spikes)
 
@@ -137,18 +145,18 @@ class TestSpikeStimulusGenerateSpikeTrainFromDistribution:
         mock_dist.sample.return_value = [-1.0]
 
         with pytest.raises(ValueError, match="Inter-spike intervals must be positive"):
-            DistributionSpikeStimulus._generate_spike_train_from_distribution(
+            InterSpikeIntervalDistributionSpikeStimulus._generate_spike_train_from_distribution(
                 mock_dist,
                 duration=10.0,
             )
 
 
-class TestDistributionSpikeStimulus:
+class TestInterSpikeIntervalDistributionSpikeStimulus:
     def test_generated_spike_file_has_correct_structure(self, tmp_path, monkeypatch):
         neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_distribution_stimulus(
+        stimulus = _make_isi_distribution_stimulus(
             duration=25.0,
             resample_each_repetition=False,
         )
@@ -186,7 +194,7 @@ class TestDistributionSpikeStimulus:
         neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_distribution_stimulus(
+        stimulus = _make_isi_distribution_stimulus(
             duration=25.0,
             resample_each_repetition=False,
         )
@@ -220,7 +228,7 @@ class TestDistributionSpikeStimulus:
         neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.ExponentialDistribution(scale=5.0, random_seed=42)
         timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_distribution_stimulus(
+        stimulus = _make_isi_distribution_stimulus(
             duration=25.0,
             resample_each_repetition=True,
         )
@@ -252,7 +260,7 @@ class TestSpikeStimulusIndexingConvention:
         neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[5, 10, 15]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_distribution_stimulus()
+        stimulus = _make_isi_distribution_stimulus()
 
         _patch_distribution_ref(monkeypatch, stimulus, distribution)
         _patch_source_neuron_set_ref(monkeypatch, stimulus, neuron_set)
