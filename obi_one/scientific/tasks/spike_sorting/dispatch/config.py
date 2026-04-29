@@ -118,7 +118,7 @@ class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMix
                                     - 4. skip_stream_substrings (optional): string (or list of strings) with substrings used to skip streams (e.g. 'NIDQ' or ['USB', 'EVENTS']).
                                     - 5. probe_paths (optional): string or dict the probe paths to a ProbeInterface JSON file (e.g. '/path/to/probe.json'). If a dict is provided, the key is the stream name and the value is the probe path. If reader_kwargs is not provided, the reader will be created with default parameters. The probe_path is required if the reader doesn't load the probe automatically.
         """
-        parts: list[str] = ["python", "code/run"]
+        parts: list[str] = ["python", "-u", "code/run_capsule.py"]
 
         parts += ["--input", self.dispatch_data_dependent.input_format]
 

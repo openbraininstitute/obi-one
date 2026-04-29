@@ -21,3 +21,4 @@ examples/data/blueetl_data/output/
 pip-audit-output.json
 coverage.xml
 examples/K_extracellular/toy_example_recording/
+examples/K_extracellular/dispatch_results/
