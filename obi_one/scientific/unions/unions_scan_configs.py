@@ -35,6 +35,9 @@ from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDisp
 from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
 )
+from obi_one.scientific.tasks.spike_sorting.curation.config import (
+    AINDEPhysCurationScanConfig,
+)
 from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
     AINDEPhysPostprocessingScanConfig,
 )
@@ -65,6 +68,7 @@ ScanConfigsUnion = Annotated[
     | AINDEPhysPreprocessingScanConfig
     | AINDEPhysSpikesortKilosort4ScanConfig
     | AINDEPhysPostprocessingScanConfig
+    | AINDEPhysCurationScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

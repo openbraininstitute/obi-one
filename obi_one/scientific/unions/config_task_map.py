@@ -79,6 +79,12 @@ from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
 from obi_one.scientific.tasks.spike_sorting.preprocessing.task import (
     AINDEPhysPreprocessingTask,
 )
+from obi_one.scientific.tasks.spike_sorting.curation.config import (
+    AINDEPhysCurationSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.curation.task import (
+    AINDEPhysCurationTask,
+)
 from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
     AINDEPhysPostprocessingSingleConfig,
 )
@@ -114,6 +120,7 @@ _config_tasks_map = {
     AINDEPhysPreprocessingSingleConfig: AINDEPhysPreprocessingTask,
     AINDEPhysSpikesortKilosort4SingleConfig: AINDEPhysSpikesortKilosort4Task,
     AINDEPhysPostprocessingSingleConfig: AINDEPhysPostprocessingTask,
+    AINDEPhysCurationSingleConfig: AINDEPhysCurationTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {
