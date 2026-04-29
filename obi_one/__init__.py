@@ -26,6 +26,9 @@ __all__ = [
     "AINDEPhysPreprocessingScanConfig",
     "AINDEPhysPreprocessingSingleConfig",
     "AINDEPhysPreprocessingTask",
+    "AINDEPhysSpikesortKilosort4ScanConfig",
+    "AINDEPhysSpikesortKilosort4SingleConfig",
+    "AINDEPhysSpikesortKilosort4Task",
     "AfferentSynapsesBlock",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
@@ -431,6 +434,13 @@ from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
 )
 from obi_one.scientific.tasks.spike_sorting.preprocessing.task import (
     AINDEPhysPreprocessingTask,
+)
+from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.config import (
+    AINDEPhysSpikesortKilosort4ScanConfig,
+    AINDEPhysSpikesortKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.task import (
+    AINDEPhysSpikesortKilosort4Task,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
