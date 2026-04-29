@@ -85,6 +85,30 @@ from obi_one.scientific.tasks.spike_sorting.curation.config import (
 from obi_one.scientific.tasks.spike_sorting.curation.task import (
     AINDEPhysCurationTask,
 )
+from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
+    AINDEPhysProcessingQCSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
+    AINDEPhysQCCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.config import (
+    AINDEPhysResultsCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.config import (
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.task import (
+    AINDEPhysVisualizationTask,
+)
 from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
     AINDEPhysPostprocessingSingleConfig,
 )
@@ -121,6 +145,10 @@ _config_tasks_map = {
     AINDEPhysSpikesortKilosort4SingleConfig: AINDEPhysSpikesortKilosort4Task,
     AINDEPhysPostprocessingSingleConfig: AINDEPhysPostprocessingTask,
     AINDEPhysCurationSingleConfig: AINDEPhysCurationTask,
+    AINDEPhysVisualizationSingleConfig: AINDEPhysVisualizationTask,
+    AINDEPhysResultsCollectorSingleConfig: AINDEPhysResultsCollectorTask,
+    AINDEPhysProcessingQCSingleConfig: AINDEPhysProcessingQCTask,
+    AINDEPhysQCCollectorSingleConfig: AINDEPhysQCCollectorTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {

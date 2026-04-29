@@ -38,6 +38,18 @@ from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
 from obi_one.scientific.tasks.spike_sorting.curation.config import (
     AINDEPhysCurationScanConfig,
 )
+from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
+    AINDEPhysProcessingQCScanConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
+    AINDEPhysQCCollectorScanConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.config import (
+    AINDEPhysResultsCollectorScanConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.config import (
+    AINDEPhysVisualizationScanConfig,
+)
 from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
     AINDEPhysPostprocessingScanConfig,
 )
@@ -69,6 +81,10 @@ ScanConfigsUnion = Annotated[
     | AINDEPhysSpikesortKilosort4ScanConfig
     | AINDEPhysPostprocessingScanConfig
     | AINDEPhysCurationScanConfig
+    | AINDEPhysVisualizationScanConfig
+    | AINDEPhysResultsCollectorScanConfig
+    | AINDEPhysProcessingQCScanConfig
+    | AINDEPhysQCCollectorScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

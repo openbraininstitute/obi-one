@@ -29,6 +29,18 @@ __all__ = [
     "AINDEPhysCurationScanConfig",
     "AINDEPhysCurationSingleConfig",
     "AINDEPhysCurationTask",
+    "AINDEPhysProcessingQCScanConfig",
+    "AINDEPhysProcessingQCSingleConfig",
+    "AINDEPhysProcessingQCTask",
+    "AINDEPhysQCCollectorScanConfig",
+    "AINDEPhysQCCollectorSingleConfig",
+    "AINDEPhysQCCollectorTask",
+    "AINDEPhysResultsCollectorScanConfig",
+    "AINDEPhysResultsCollectorSingleConfig",
+    "AINDEPhysResultsCollectorTask",
+    "AINDEPhysVisualizationScanConfig",
+    "AINDEPhysVisualizationSingleConfig",
+    "AINDEPhysVisualizationTask",
     "AINDEPhysPostprocessingScanConfig",
     "AINDEPhysPostprocessingSingleConfig",
     "AINDEPhysPostprocessingTask",
@@ -447,6 +459,34 @@ from obi_one.scientific.tasks.spike_sorting.curation.config import (
 )
 from obi_one.scientific.tasks.spike_sorting.curation.task import (
     AINDEPhysCurationTask,
+)
+from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
+    AINDEPhysProcessingQCScanConfig,
+    AINDEPhysProcessingQCSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
+    AINDEPhysQCCollectorScanConfig,
+    AINDEPhysQCCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.config import (
+    AINDEPhysResultsCollectorScanConfig,
+    AINDEPhysResultsCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.config import (
+    AINDEPhysVisualizationScanConfig,
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.task import (
+    AINDEPhysVisualizationTask,
 )
 from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
     AINDEPhysPostprocessingScanConfig,

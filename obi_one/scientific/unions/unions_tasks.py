@@ -20,6 +20,18 @@ from obi_one.scientific.tasks.spike_sorting.preprocessing.task import AINDEPhysP
 from obi_one.scientific.tasks.spike_sorting.curation.task import (
     AINDEPhysCurationTask,
 )
+from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.spike_sorting.qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.spike_sorting.visualization.task import (
+    AINDEPhysVisualizationTask,
+)
 from obi_one.scientific.tasks.spike_sorting.postprocessing.task import (
     AINDEPhysPostprocessingTask,
 )
@@ -45,6 +57,10 @@ TasksUnion = Annotated[
     | AINDEPhysSpikesortKilosort4Task
     | AINDEPhysPostprocessingTask
     | AINDEPhysCurationTask
+    | AINDEPhysVisualizationTask
+    | AINDEPhysResultsCollectorTask
+    | AINDEPhysProcessingQCTask
+    | AINDEPhysQCCollectorTask
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]
