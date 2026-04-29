@@ -26,6 +26,9 @@ __all__ = [
     "AINDEPhysPreprocessingScanConfig",
     "AINDEPhysPreprocessingSingleConfig",
     "AINDEPhysPreprocessingTask",
+    "AINDEPhysPostprocessingScanConfig",
+    "AINDEPhysPostprocessingSingleConfig",
+    "AINDEPhysPostprocessingTask",
     "AINDEPhysSpikesortKilosort4ScanConfig",
     "AINDEPhysSpikesortKilosort4SingleConfig",
     "AINDEPhysSpikesortKilosort4Task",
@@ -434,6 +437,13 @@ from obi_one.scientific.tasks.spike_sorting.preprocessing.config import (
 )
 from obi_one.scientific.tasks.spike_sorting.preprocessing.task import (
     AINDEPhysPreprocessingTask,
+)
+from obi_one.scientific.tasks.spike_sorting.postprocessing.config import (
+    AINDEPhysPostprocessingScanConfig,
+    AINDEPhysPostprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.postprocessing.task import (
+    AINDEPhysPostprocessingTask,
 )
 from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.config import (
     AINDEPhysSpikesortKilosort4ScanConfig,

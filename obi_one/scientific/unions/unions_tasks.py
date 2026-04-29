@@ -17,6 +17,9 @@ from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
 from obi_one.scientific.tasks.spike_sorting.dispatch.task import AINDEPhysDispatchTask
 from obi_one.scientific.tasks.spike_sorting.preprocessing.task import AINDEPhysPreprocessingTask
+from obi_one.scientific.tasks.spike_sorting.postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+)
 from obi_one.scientific.tasks.spike_sorting.sorting.kilosort4.task import (
     AINDEPhysSpikesortKilosort4Task,
 )
@@ -37,6 +40,7 @@ TasksUnion = Annotated[
     | AINDEPhysDispatchTask
     | AINDEPhysPreprocessingTask
     | AINDEPhysSpikesortKilosort4Task
+    | AINDEPhysPostprocessingTask
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]
