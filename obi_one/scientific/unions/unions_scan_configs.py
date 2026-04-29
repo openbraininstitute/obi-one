@@ -15,6 +15,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
+from obi_one.scientific.tasks.spike_sorting.dispatch.config import AINDEPhysDispatchScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
 )
@@ -51,6 +52,7 @@ ScanConfigsUnion = Annotated[
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
+    | AINDEPhysDispatchScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

@@ -57,6 +57,9 @@ __all__ = [
     "CoupledScanGenerationTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
+    "AINDEPhysDispatchScanConfig",
+    "AINDEPhysDispatchSingleConfig",
+    "AINDEPhysDispatchTask",
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
@@ -358,6 +361,13 @@ from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
+)
+from obi_one.scientific.tasks.spike_sorting.dispatch.config import (
+    AINDEPhysDispatchScanConfig,
+    AINDEPhysDispatchSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.dispatch.task import (
+    AINDEPhysDispatchTask,
 )
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,

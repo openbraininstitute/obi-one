@@ -1,10 +1,14 @@
 from enum import StrEnum
 from typing import ClassVar
+from pathlib import Path
 
 from pydantic import Field
+from entitysdk import Client
+from entitysdk.models import Entity, TaskConfig
+from entitysdk.types import TaskActivityType, TaskConfigType
 
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleCoordMixin
+from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.tasks.spike_sorting.dispatch.blocks import (
     DispatchBasic,
     DispatchDataDependent,
@@ -28,18 +32,20 @@ class BlockGroup(StrEnum):
 
 
 class AINDEPhysDispatchScanConfig(ScanConfig):
-    single_coord_class_title: ClassVar[str] = "SpikeSortingPreprocessingSingleConfig"
-    title: ClassVar[str] = "Multi Electrode Recording Postprocessing"
+    single_coord_class_name: ClassVar[str] = "AINDEPhysDispatchSingleConfig"
+    name: ClassVar[str] = "Multi Electrode Recording Postprocessing"
     description: ClassVar[str] = "Spike sorting preprocessing configuration."
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.PREPROCESSING,
-                BlockGroup.SPIKE_SORTING,
-            ],
-        }
+    json_schema_extra_additions: ClassVar[dict] = {
+        "ui_enabled": False,
+        "group_order": [BlockGroup.SETUP, BlockGroup.PREPROCESSING, BlockGroup.SPIKE_SORTING],
+    }
+
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
+
+    def input_entities(self, db_client: Client) -> list[Entity]:
+        return []
 
     dispatch_basic: DispatchBasic = Field(
         title="Recording setup",
@@ -62,9 +68,29 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
         group_order=1,
     )
 
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: Client = None,
+    ):
+        pass
 
-class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleCoordMixin):
+    def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
+        pass
+
+
+class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMixin):
     """SpikeSortingPreprocessingSingleConfig."""
+
+    """Description."""
+
+    def create_single_entity_with_config(
+        self,
+        campaign: TaskConfig,
+        db_client: Client,
+    ):
+        pass
 
     def command_line_representation(self) -> str:
         """ADVANCED OPTIONS:
@@ -93,20 +119,22 @@ class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleCoordMixi
         command_str = "python code/run"
 
         command_str += (
-            f" --no-split-segments={not self.single_config.dispatch_basic.split_segments}"
+            f" --no-split-segments={not self.dispatch_basic.split_segments}"
         )
-        command_str += f" --no-split-groups={not self.single_config.dispatch_basic.split_groups}"
+        command_str += f" --no-split-groups={not self.dispatch_basic.split_groups}"
         command_str += (
-            f" --skip-timestamps-check={self.single_config.dispatch_basic.skip_timestamps_check}"
+            f" --skip-timestamps-check={self.dispatch_basic.skip_timestamps_check}"
         )
         command_str += (
-            f" --min-recording-duration={self.single_config.dispatch_basic.min_recording_duration}"
+            f" --min-recording-duration={self.dispatch_basic.min_recording_duration}"
         )
 
-        command_str += f" --debug={self.single_config.dispatch_debug.debug_mode}"
-        command_str += f" --debug-duration={self.single_config.dispatch_debug.debug_duration}"
+        command_str += f" --debug={self.dispatch_debug.debug_mode}"
+        command_str += f" --debug-duration={self.dispatch_debug.debug_duration}"
 
-        command_str += f" --input={self.single_config.dispatch_data_dependent.input_format}"
+        command_str += f" --input={self.dispatch_data_dependent.input_format}"
         command_str += (
-            f" --multi-session={self.single_config.dispatch_data_dependent.multi_session_data}"
+            f" --multi-session={self.dispatch_data_dependent.multi_session_data}"
         )
+
+        return command_str
