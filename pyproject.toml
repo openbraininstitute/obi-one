@@ -52,6 +52,8 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "numpy<=2.3.5",
+    "python-multipart>=0.0.26",
+    "obp-accounting-sdk>=0.6.0",
 ]
 
 [project.optional-dependencies]
