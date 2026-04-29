@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
@@ -10,6 +11,7 @@ import pytest
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
+from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
@@ -766,3 +768,27 @@ def test_select_simulation_task_raises_for_unsupported_target_simulator():
             config_id=config_id,
             config_type=entitysdk.models.Simulation,
         )
+
+
+def test_select_simulation_task_raises_api_error_for_invalid_config_format():
+    db_client = Mock()
+    config_id = uuid4()
+    simulation = SimpleNamespace(id=config_id, entity_id=uuid4())
+    db_client.get_entity.return_value = simulation
+    sonata_error = test_module.libsonata.SonataError("invalid simulation config")
+
+    with (
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(test_module.libsonata, "SimulationConfig", side_effect=sonata_error),
+        pytest.raises(ApiError) as exc_info,
+    ):
+        test_module.select_simulation_task(
+            db_client=db_client,
+            config_id=config_id,
+            config_type=entitysdk.models.Simulation,
+        )
+
+    assert exc_info.value.error_code == ApiErrorCode.INVALID_CONFIG_FORMAT
+    assert exc_info.value.http_status_code == HTTPStatus.BAD_REQUEST
+    assert exc_info.value.details == "invalid simulation config"
+    assert str(config_id) in exc_info.value.message
