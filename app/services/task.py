@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 from uuid import UUID
 
 import entitysdk
@@ -17,6 +18,7 @@ from entitysdk.types import (
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
@@ -318,7 +320,19 @@ def select_simulation_task(
             "content_type": ContentType.application_json,
         },
     )
-    simulation_config = libsonata.SimulationConfig(simulation_config_content, ".")
+
+    try:
+        simulation_config = libsonata.SimulationConfig(simulation_config_content, ".")
+    except libsonata.SonataError as e:
+        raise ApiError(
+            message=(
+                f"Simulation {simulation.id} config format "
+                f"is not supported by libsonata=={libsonata.version}."
+            ),
+            error_code=ApiErrorCode.INVALID_CONFIG_FORMAT,
+            http_status_code=HTTPStatus.BAD_REQUEST,
+            details=str(e),
+        ) from e
 
     target_simulator = None
 
