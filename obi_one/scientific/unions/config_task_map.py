@@ -91,6 +91,12 @@ from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
 from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
     AINDEPhysProcessingQCTask,
 )
+from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.config import (
+    AINDEcephysNWBSingleConfig,
+)
+from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
 from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
     AINDEPhysQCCollectorSingleConfig,
 )
@@ -149,6 +155,7 @@ _config_tasks_map = {
     AINDEPhysResultsCollectorSingleConfig: AINDEPhysResultsCollectorTask,
     AINDEPhysProcessingQCSingleConfig: AINDEPhysProcessingQCTask,
     AINDEPhysQCCollectorSingleConfig: AINDEPhysQCCollectorTask,
+    AINDEcephysNWBSingleConfig: AINDEcephysNWBTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {

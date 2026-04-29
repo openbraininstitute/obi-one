@@ -23,6 +23,9 @@ from obi_one.scientific.tasks.spike_sorting.curation.task import (
 from obi_one.scientific.tasks.spike_sorting.processing_qc.task import (
     AINDEPhysProcessingQCTask,
 )
+from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
 from obi_one.scientific.tasks.spike_sorting.qc_collector.task import (
     AINDEPhysQCCollectorTask,
 )
@@ -61,6 +64,7 @@ TasksUnion = Annotated[
     | AINDEPhysResultsCollectorTask
     | AINDEPhysProcessingQCTask
     | AINDEPhysQCCollectorTask
+    | AINDEcephysNWBTask
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]

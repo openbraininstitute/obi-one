@@ -41,6 +41,9 @@ from obi_one.scientific.tasks.spike_sorting.curation.config import (
 from obi_one.scientific.tasks.spike_sorting.processing_qc.config import (
     AINDEPhysProcessingQCScanConfig,
 )
+from obi_one.scientific.tasks.spike_sorting.ecephys_nwb.config import (
+    AINDEcephysNWBScanConfig,
+)
 from obi_one.scientific.tasks.spike_sorting.qc_collector.config import (
     AINDEPhysQCCollectorScanConfig,
 )
@@ -85,6 +88,7 @@ ScanConfigsUnion = Annotated[
     | AINDEPhysResultsCollectorScanConfig
     | AINDEPhysProcessingQCScanConfig
     | AINDEPhysQCCollectorScanConfig
+    | AINDEcephysNWBScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]
