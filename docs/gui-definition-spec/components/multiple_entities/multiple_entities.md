@@ -63,11 +63,14 @@ When the user clicks on `Add <entity type>`, the left-side of the UI collpases a
 ### Config examples
 
 ## case B:
+
+```py
 cell_mesh: list[EMCellMeshFromID] = Field(
     title="EM Cell Mesh",
     description="EM cell mesh to use for skeletonization.",
     json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
 )
+```
 
 ## case C
 
