@@ -38,7 +38,7 @@ class AllNeurons(AbstractNeuronSet):
             )
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str) -> list:
+    def _get_expression(self, circuit: Circuit, population: str) -> list:  # ty:ignore[invalid-method-override]
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_ALL_NODE_SET]
@@ -60,7 +60,7 @@ class ExcitatoryNeurons(AbstractNeuronSet):
             )
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str) -> list:
+    def _get_expression(self, circuit: Circuit, population: str) -> list:  # ty:ignore[invalid-method-override]
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_EXCITATORY_NODE_SET]
@@ -82,7 +82,7 @@ class InhibitoryNeurons(AbstractNeuronSet):
             )
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str) -> list:
+    def _get_expression(self, circuit: Circuit, population: str) -> list:  # ty:ignore[invalid-method-override]
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [_INHIBITORY_NODE_SET]
@@ -98,12 +98,12 @@ class nbS1VPMInputs(AbstractNeuronSet):  # noqa: N801
     title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
 
     @typing_extensions.override
-    def _population(self, _population: str | None = None) -> str:
+    def _population(self, _population: str | None = None) -> str:  # ty:ignore[invalid-method-override]
         # Ignore default node population name. This is always VPM.
         return _NBS1_VPM_NODE_POP
 
     @typing_extensions.override
-    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:  # ty:ignore[invalid-method-override]
         return {"population": _NBS1_VPM_NODE_POP}
 
 
@@ -117,12 +117,12 @@ class nbS1POmInputs(AbstractNeuronSet):  # noqa: N801
     title: ClassVar[str] = "Demo: nbS1 POm Inputs"
 
     @typing_extensions.override
-    def _population(self, _population: str | None = None) -> str:
+    def _population(self, _population: str | None = None) -> str:  # ty:ignore[invalid-method-override]
         # Ignore default node population name. This is always POm.
         return _NBS1_POM_NODE_POP
 
     @typing_extensions.override
-    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:  # ty:ignore[invalid-method-override]
         return {"population": _NBS1_POM_NODE_POP}
 
 
@@ -136,10 +136,10 @@ class rCA1CA3Inputs(AbstractNeuronSet):  # noqa: N801
     title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
 
     @typing_extensions.override
-    def _population(self, _population: str | None = None) -> str:
+    def _population(self, _population: str | None = None) -> str:  # ty:ignore[invalid-method-override]
         # Ignore default node population name. This is always CA3_projections.
         return _RCA1_CA3_NODE_POP
 
     @typing_extensions.override
-    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:
+    def _get_expression(self, _circuit: Circuit, _population: str) -> dict:  # ty:ignore[invalid-method-override]
         return {"population": _RCA1_CA3_NODE_POP}

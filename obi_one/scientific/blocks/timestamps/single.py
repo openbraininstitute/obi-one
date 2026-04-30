@@ -9,4 +9,4 @@ class SingleTimestamp(Timestamps):
     title: ClassVar[str] = "Single Timestamp"
 
     def _resolve_timestamps(self) -> list[float]:
-        return [self.start_time]
+        return [self.start_time]  # ty:ignore[invalid-return-type]

@@ -21,7 +21,7 @@ class Circuit(OBIBaseModel):
 
     def __init__(self, name: str, path: str, **kwargs) -> None:
         """Initialize object."""
-        super().__init__(name=name, path=path, **kwargs)
+        super().__init__(name=name, path=path, **kwargs)  # ty:ignore[unknown-argument]
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
@@ -86,7 +86,7 @@ class Circuit(OBIBaseModel):
             # Include point neurons
             popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
-            return None  # No biophysical/point neurons
+            return None  # No biophysical/point neurons  # ty:ignore[invalid-return-type]
         if len(popul_names) != 1:
             msg = "Default node population unknown!"
             raise ValueError(msg)
@@ -133,7 +133,7 @@ class Circuit(OBIBaseModel):
             and c.edges[epop].target.name == default_npop
         ]
         if len(intrinsic_epops) == 0:
-            return None
+            return None  # ty:ignore[invalid-return-type]
         if len(intrinsic_epops) > 1:
             msg = "Default edge population unknown!"
             raise ValueError(msg)

@@ -169,12 +169,12 @@ def mapped_circuit_properties_endpoint(
     # Add usability (only for Circuit entities)
     if CircuitMappedProperties.NODE_SET in mapped_circuit_properties:
         try:
-            circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+            circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)  # ty:ignore[invalid-argument-type]
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
-                == entitysdk.types.CircuitScale.microcircuit,
+                == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
-                    INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names
+                    INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
                 ),
             }

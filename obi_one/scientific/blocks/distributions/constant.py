@@ -29,7 +29,7 @@ class FloatConstantDistribution(Distribution):
         rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
         """Sample n values from the distribution."""
-        return [self.value] * n
+        return [self.value] * n  # ty:ignore[invalid-return-type]
 
 
 class IntConstantDistribution(Distribution):
@@ -52,4 +52,4 @@ class IntConstantDistribution(Distribution):
         rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
         """Sample n values from the distribution."""
-        return [float(self.value)] * n
+        return [float(self.value)] * n  # ty:ignore[invalid-argument-type]
