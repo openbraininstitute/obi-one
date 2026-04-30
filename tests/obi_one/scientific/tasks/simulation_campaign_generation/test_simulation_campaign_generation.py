@@ -127,7 +127,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
-        assert cfg.pop("version") == 2.4
+        assert cfg.pop("version") == 2.4  # noqa: RUF069
         assert cfg.pop("target_simulator") == "NEURON"
         assert cfg.pop("run") == {"dt": 0.025, "random_seed": 1, "tstop": 3000.0}
         mech_dict = {
