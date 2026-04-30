@@ -11,6 +11,7 @@ from obi_one.core.units import Units
 
 if TYPE_CHECKING:
     from obi_one.scientific.blocks.distributions.base import Distribution
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -40,7 +41,10 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
     distribution: AllDistributionsReference | None = Field(
         default=None,
         title="Interval Distribution",
-        description="Distribution used to sample inter-spike intervals in milliseconds.",
+        description=(
+            "Distribution used to sample inter-spike intervals in milliseconds. "
+            "Default: ExponentialDistribution(scale=50.0), approximately 20 Hz."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
@@ -81,11 +85,11 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
 
     def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         if self.distribution is None:
-            msg = "Distribution must be set for InterSpikeIntervalDistributionSpikeStimulus."
-            raise ValueError(msg)
+            distribution = ExponentialDistribution(scale=50.0)
+        else:
+            distribution = self.distribution.block
 
         timestamps = self._offset_timestamps()
-        distribution = self.distribution.block
         random_seed = getattr(distribution, "random_seed", None)
         rng = np.random.default_rng(random_seed) if random_seed is not None else None
 

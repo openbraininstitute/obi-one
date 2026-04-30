@@ -9,6 +9,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
@@ -59,6 +60,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
     }
 
