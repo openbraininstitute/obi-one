@@ -214,7 +214,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     task_definition = TASK_DEFINITIONS[task_type]
 
     expected_subtype = {
-        TaskType.circuit_extraction: ServiceSubtype.SMALL_CIRCUIT_SIM,
+        TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neuron: ServiceSubtype.SMALL_SIM,
@@ -241,6 +241,10 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         patch(
             "app.services.accounting.estimate_skeletonization_count",
             return_value=expected_count[TaskType.morphology_skeletonization],
+        ),
+        patch(
+            "app.services.accounting.estimate_circuit_extraction_count",
+            return_value=expected_count[TaskType.circuit_extraction],
         ),
     ):
         res = test_module._evaluate_accounting_parameters(
