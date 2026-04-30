@@ -88,25 +88,25 @@ class IntRange(ParametericMultiValue):
         """Greater than or equal to operator."""
         if v is None:
             return True
-        return all(_v >= v for _v in self.values)
+        return all(v_ >= v for v_ in self.values)
 
     def __gt__(self, v: int | None) -> bool:
         """Greater than operator."""
         if v is None:
             return True
-        return all(_v > v for _v in self.values)
+        return all(v_ > v for v_ in self.values)
 
     def __le__(self, v: int | None) -> bool:
         """Less than or equal to operator."""
         if v is None:
             return True
-        return all(_v <= v for _v in self.values)
+        return all(v_ <= v for v_ in self.values)
 
     def __lt__(self, v: int | None) -> bool:
         """Less than operator."""
         if v is None:
             return True
-        return all(_v < v for _v in self.values)
+        return all(v_ < v for v_ in self.values)
 
     def __iter__(self) -> int:  # ty:ignore[invalid-method-override]
         """Iterator."""
@@ -148,25 +148,25 @@ class FloatRange(ParametericMultiValue):
         """Greater than or equal to operator."""
         if v is None:
             return True
-        return all(_v >= v for _v in self.values)
+        return all(v_ >= v for v_ in self.values)
 
     def __gt__(self, v: float | None) -> bool:
         """Greater than operator."""
         if v is None:
             return True
-        return all(_v > v for _v in self.values)
+        return all(v_ > v for v_ in self.values)
 
     def __le__(self, v: float | None) -> bool:
         """Less than or equal to operator."""
         if v is None:
             return True
-        return all(_v <= v for _v in self.values)
+        return all(v_ <= v for v_ in self.values)
 
     def __lt__(self, v: float | None) -> bool:
         """Less than operator."""
         if v is None:
             return True
-        return all(_v < v for _v in self.values)
+        return all(v_ < v for v_ in self.values)
 
     def __iter__(self) -> float:  # ty:ignore[invalid-method-override]
         """Iterator."""

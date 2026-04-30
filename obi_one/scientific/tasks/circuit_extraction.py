@@ -490,7 +490,7 @@ class CircuitExtractionTask(Task):
             "connectivity_pathway": "network_pathway_stats.png",
         }
         output_dir = grid_scan.single_configs[0].coordinate_output_root
-        output_files = [output_file_map[_pt] for _pt in plot_types]
+        output_files = [output_file_map[pt] for pt in plot_types]
         for file in output_files:
             if not (output_dir / file).is_file():
                 msg = f"Connectivity plot '{file}' missing!"

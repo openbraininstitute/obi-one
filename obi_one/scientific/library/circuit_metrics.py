@@ -248,13 +248,13 @@ def number_of_nodes_per_unique_value_from_population(
 def node_location_properties_from_population(pop: NodePopulation) -> dict:
     vals_dict = {}
     coord_names = [
-        _coord
-        for _coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
-        if str(_coord) in pop.attribute_names
+        coord
+        for coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
+        if str(coord) in pop.attribute_names
     ]
-    for _coord in coord_names:
-        coord_v = pop.get_attribute(_coord, pop.select_all())
-        vals_dict[_coord] = {
+    for coord in coord_names:
+        coord_v = pop.get_attribute(coord, pop.select_all())
+        vals_dict[coord] = {
             "min": np.min(coord_v),
             "max": np.max(coord_v),
             "mean": np.mean(coord_v),
@@ -286,9 +286,9 @@ def degree_stats_from_population(
     pop: EdgePopulation, node_stats_dict: dict
 ) -> dict[str, dict[str, float]]:
     sz = node_stats_dict[pop.target]["population_length"]
-    indegs = np.array([pop.afferent_edges(_i).flat_size for _i in range(sz)])
+    indegs = np.array([pop.afferent_edges(i).flat_size for i in range(sz)])
     sz = node_stats_dict[pop.source]["population_length"]
-    outdegs = np.array([pop.efferent_edges(_i).flat_size for _i in range(sz)])
+    outdegs = np.array([pop.efferent_edges(i).flat_size for i in range(sz)])
     stats = {
         degtype: {
             "min": np.min(degs),
@@ -346,7 +346,7 @@ def properties_from_nodes_files(
         if lod > CircuitStatsLevelOfDetail.none:
             np_file_path = circ.nodes[nodepop].h5_filepath
             remote_path = Path(np_file_path).relative_to(temp_dir)
-            properties_dict[nodepop] = {_k: {} for _k in lst_req_props}
+            properties_dict[nodepop] = {k: {} for k in lst_req_props}
             max_uv = MAX_UNIQUE_VALUES[lod]
             with TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn:
                 pop_obj = NodeStorage(fn).open_population(nodepop)
@@ -387,7 +387,7 @@ def properties_from_edges_files(
         config, TYPES_OF_CHEMICAL_SYNS + TYPES_OF_ELECTRICAL_SYNS
     ):
         if level_of_detail_specs.get(edgepop, default_lod) > CircuitStatsLevelOfDetail.none:
-            properties_dict[edgepop] = {_k: {} for _k in lst_req_props}
+            properties_dict[edgepop] = {k: {} for k in lst_req_props}
 
             ep_file_path = circ.edges[edgepop].h5_filepath
             remote_path = Path(ep_file_path).relative_to(temp_dir)

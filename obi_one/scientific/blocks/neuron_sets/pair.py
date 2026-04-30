@@ -75,9 +75,9 @@ class PairMotifNeuronSet(NeuronSet):
     @staticmethod
     def _merge_ff_fb(ff_sel: dict, fb_sel: dict) -> dict:
         sel = {}
-        for _sel, _lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
-            if _sel is not None:
-                sel |= {f"{_k}{_lbl}": _v for _k, _v in _sel.items()}
+        for sel_, lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
+            if sel_ is not None:
+                sel |= {f"{k}{lbl}": v for k, v in sel_.items()}
         return sel
 
     @staticmethod
@@ -85,17 +85,17 @@ class PairMotifNeuronSet(NeuronSet):
         conn_mat: ConnectivityMatrix, selection: dict, side: str | None = None
     ) -> ConnectivityMatrix:
         def _check_ops(ops: list) -> None:
-            for _op in ops:
-                if _op not in {"le", "lt", "ge", "gt", "eq", "isin"}:
+            for op_ in ops:
+                if op_ not in {"le", "lt", "ge", "gt", "eq", "isin"}:
                     msg = (
-                        f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
+                        f"ERROR: Operator '{op_}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
                     )
                     raise ValueError(msg)
 
         conn_mat_filt = conn_mat
-        for _prop, _val in selection.items():
+        for prop, val_ in selection.items():
             op = "eq"  # Default: Filter by equality (i.e., single value is provided)
-            val = _val
+            val = val_
             if isinstance(val, list):  # List: Select all values from list
                 op = "isin"
             elif isinstance(val, dict):  # Dict: Combinations of operator/value pairs
@@ -105,15 +105,15 @@ class PairMotifNeuronSet(NeuronSet):
                 op = [op]
                 val = [val]
             _check_ops(op)
-            for _o, _v in zip(op, val, strict=False):
+            for o, v_ in zip(op, val, strict=False):
                 if (
-                    _prop in conn_mat_filt.vertex_properties
-                    and conn_mat_filt.vertices.dtypes[_prop] == "category"
+                    prop in conn_mat_filt.vertex_properties
+                    and conn_mat_filt.vertices.dtypes[prop] == "category"
                 ):
-                    v = str(_v)
+                    v = str(v_)
                 else:
-                    v = _v
-                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(  # ty:ignore[invalid-argument-type]
+                    v = v_
+                conn_mat_filt = getattr(conn_mat_filt.filter(prop, side), o)(  # ty:ignore[invalid-argument-type]
                     v
                 )  # Call filter operator
         return conn_mat_filt
@@ -170,13 +170,13 @@ class PairMotifNeuronSet(NeuronSet):
             node_ids = nodes.ids(node_sets)
         elif isinstance(node_sets, list):  # Combine node sets
             node_ids = None
-            for _nset in node_sets:
+            for nset in node_sets:
                 if node_ids is None:
-                    node_ids = nodes.ids(_nset)
+                    node_ids = nodes.ids(nset)
                 elif node_set_list_op == "union":
-                    node_ids = np.union1d(node_ids, nodes.ids(_nset))
+                    node_ids = np.union1d(node_ids, nodes.ids(nset))
                 elif node_set_list_op == "intersect":
-                    node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
+                    node_ids = np.intersect1d(node_ids, nodes.ids(nset))
                 else:
                     msg = f"Node set list operation '{node_set_list_op}' unknown!"
                     raise ValueError(msg)

@@ -100,9 +100,9 @@ class MorphologyContainerizationTask(Task):
     ) -> list:
         """Check existence and contents of morphology folders."""
         morph_folders = {}
-        for _morph_ext in ["h5", "asc", "swc"]:
+        for morph_ext in ["h5", "asc", "swc"]:
             try:
-                morph_folder = nodes.morph.get_morphology_dir(_morph_ext)
+                morph_folder = nodes.morph.get_morphology_dir(morph_ext)
             except BluepySnapError:
                 # Path not defined in circuit config
                 morph_folder = None
@@ -116,7 +116,7 @@ class MorphologyContainerizationTask(Task):
                 and len(
                     MorphologyContainerizationTask._filter_ext(
                         Path(morph_folder).iterdir(),  # ty:ignore[invalid-argument-type]
-                        _morph_ext,
+                        morph_ext,
                     )
                 )
                 == 0
@@ -127,7 +127,7 @@ class MorphologyContainerizationTask(Task):
             if morph_folder is not None and morph_folder not in morph_folders_to_delete:
                 morph_folders_to_delete.append(morph_folder)
 
-            morph_folders[_morph_ext] = morph_folder
+            morph_folders[morph_ext] = morph_folder
 
         return morph_folders  # ty:ignore[invalid-return-type]
 
@@ -136,8 +136,8 @@ class MorphologyContainerizationTask(Task):
         """If .h5 morphologies not existing, run .asc/.swc to .h5 conversion."""
         h5_folder = morph_folders["h5"]
         if h5_folder is None:
-            for _morph_ext in ["asc", "swc"]:
-                inp_folder = morph_folders[_morph_ext]
+            for morph_ext in ["asc", "swc"]:
+                inp_folder = morph_folders[morph_ext]
                 if inp_folder is not None:
                     break
             if inp_folder is None:
@@ -146,9 +146,9 @@ class MorphologyContainerizationTask(Task):
             h5_folder = Path(os.path.split(inp_folder)[0]) / "_h5_morphologies_tmp_"
             Path(h5_folder).mkdir(parents=True, exist_ok=True)
 
-            for _m in morph_names:
-                src_file = Path(inp_folder) / (_m + f".{_morph_ext}")
-                dest_file = Path(h5_folder) / (_m + ".h5")
+            for m in morph_names:
+                src_file = Path(inp_folder) / (m + f".{morph_ext}")
+                dest_file = Path(h5_folder) / (m + ".h5")
                 if not Path(dest_file).exists():
                     convert(src_file, dest_file)
         return h5_folder
@@ -161,12 +161,12 @@ class MorphologyContainerizationTask(Task):
         h5_container = Path(os.path.split(h5_folder)[0]) / self.CONTAINER_FILENAME
         with h5py.File(h5_container, "a") as f_container:
             skip_counter = 0
-            for _m in morph_names:
-                with h5py.File(Path(h5_folder) / (_m + ".h5")) as f_h5:
-                    if _m in f_container:
+            for m in morph_names:
+                with h5py.File(Path(h5_folder) / (m + ".h5")) as f_h5:
+                    if m in f_container:
                         skip_counter += 1
                     else:
-                        f_h5.copy(f_h5, f_container, name=_m)
+                        f_h5.copy(f_h5, f_container, name=m)
         L.info(
             f"Merged {len(morph_names) - skip_counter} morphologies into container \
                 ({skip_counter} already existed)"
@@ -232,9 +232,9 @@ class MorphologyContainerizationTask(Task):
             # Skip, should be already set
             return
 
-        for _ndict in cfg_dict["networks"]["nodes"]:
-            if nodes.name in _ndict["populations"]:
-                pop = _ndict["populations"][nodes.name]
+        for ndict in cfg_dict["networks"]["nodes"]:
+            if nodes.name in ndict["populations"]:
+                pop = ndict["populations"][nodes.name]
                 base_path = None
                 if "morphologies_dir" in pop and len(pop["morphologies_dir"]) > 0:
                     base_path = os.path.split(pop["morphologies_dir"])[0]
@@ -284,14 +284,14 @@ class MorphologyContainerizationTask(Task):
             raise ValueError(msg)
         counter = 0
         has_first = False
-        for _idx in range(start_idx, len(hoc_code)):
-            if hoc_code[_idx] == "{":
+        for idx in range(start_idx, len(hoc_code)):
+            if hoc_code[idx] == "{":
                 counter += 1
                 has_first = True
-            elif hoc_code[_idx] == "}":
+            elif hoc_code[idx] == "}":
                 counter -= 1
             if has_first and counter == 0:
-                end_idx = _idx
+                end_idx = idx
                 break
         return start_idx, end_idx, hoc_code[start_idx : end_idx + 1]
 
@@ -319,13 +319,13 @@ class MorphologyContainerizationTask(Task):
         _, _, hoc_code_new = self._find_hoc_proc(proc_name, tmpl_new)
 
         # Replace code in hoc files
-        for _file in Path(hoc_folder).iterdir():
-            if Path(_file).suffix.lower() != ".hoc":
+        for file in Path(hoc_folder).iterdir():
+            if Path(file).suffix.lower() != ".hoc":
                 continue
-            hoc_file = Path(hoc_folder) / _file
+            hoc_file = Path(hoc_folder) / file
             hoc = Path(hoc_file).read_text(encoding="utf-8")
             if hoc.find(hoc_code_new) > 0:
-                L.info(f"New code version already found - Skipping update of '{_file}'!")
+                L.info(f"New code version already found - Skipping update of '{file}'!")
                 continue  # Already new code version
             if hoc.find(hoc_code_old) < 0:
                 msg = "ERROR: Old HOC code to replace not found!"
@@ -442,8 +442,8 @@ class MorphologyContainerizationTask(Task):
 
         # Clean up morphology folders with individual morphologies
         L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
-        for _folder in morph_folders_to_delete:
-            shutil.rmtree(_folder)
+        for folder in morph_folders_to_delete:
+            shutil.rmtree(folder)
 
         # Reload and check morphologies in modified circuit
         if not self._check_morphologies(circuit_config):

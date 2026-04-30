@@ -271,7 +271,7 @@ class TestInterSpikeIntervalDistributionSpikeStimulus:
 
         distribution = mock_generate.call_args.args[0]
         assert isinstance(distribution, obi.ExponentialDistribution)
-        assert distribution.scale == 50.0
+        assert distribution.scale == 50.0  # noqa: RUF069
 
 
 class TestSpikeStimulusIndexingConvention:

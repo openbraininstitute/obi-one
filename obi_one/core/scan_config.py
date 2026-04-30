@@ -241,7 +241,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         for attr_value in self.__dict__.values():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_blocks_dict = attr_value
 

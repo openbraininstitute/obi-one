@@ -6,13 +6,12 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-import entitysdk.client
 from entitysdk.models import EModel, MEModel
 from entitysdk.types import AssetLabel
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    import entitysdk.exception
+    import entitysdk.client
 
 _VARIABLE_SECTION_PARTS = 2
 _MULTILOC_MAP = {

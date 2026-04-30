@@ -26,7 +26,7 @@ def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: As
         msg = (
             f"Could not find asset with label '{asset_label}' "
             f"in Config(id={config.id}, type=config.type)\n"
-            f"Assets: {config.assets}",
+            f"Assets: {config.assets}"
         )
         raise OBIONEError(msg) from e
 

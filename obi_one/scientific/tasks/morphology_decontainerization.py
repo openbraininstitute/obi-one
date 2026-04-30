@@ -135,21 +135,21 @@ class MorphologyDecontainerizationTask(Task):
     ) -> None:
         with h5py.File(h5_container, "r") as f_container:
             skip_counter = 0
-            for _m in morph_names:
-                h5_file = Path(h5_folder) / (_m + ".h5")
+            for m in morph_names:
+                h5_file = Path(h5_folder) / (m + ".h5")
                 if Path(h5_file).exists():
                     skip_counter += 1
                 else:
                     # Create individual .h5 morphology file
                     with h5py.File(h5_file, "w") as f_h5:
                         # Copy all groups/datasets into root of the file
-                        for _key in f_container[_m]:
-                            f_container.copy(f_container[f"{_m}/{_key}"], f_h5)
+                        for key in f_container[m]:
+                            f_container.copy(f_container[f"{m}/{key}"], f_h5)
                     # Convert to required output format
                     if self.config.initialize.output_format != "h5":
-                        src_file = Path(h5_folder) / (_m + ".h5")
+                        src_file = Path(h5_folder) / (m + ".h5")
                         dest_file = Path(target_folder) / (
-                            _m + f".{self.config.initialize.output_format}"
+                            m + f".{self.config.initialize.output_format}"
                         )
                         if not Path(dest_file).exists():
                             convert(src_file, dest_file)
@@ -210,9 +210,9 @@ class MorphologyDecontainerizationTask(Task):
         h5_folder: Path,
         rel_target_folder: Path,
     ) -> None:
-        for _ndict in cfg_dict["networks"]["nodes"]:
-            if nodes.name in _ndict["populations"]:
-                pop = _ndict["populations"][nodes.name]
+        for ndict in cfg_dict["networks"]["nodes"]:
+            if nodes.name in ndict["populations"]:
+                pop = ndict["populations"][nodes.name]
                 if self.config.initialize.output_format == "h5":
                     pop["alternate_morphologies"] = {"h5v1": str(h5_folder)}
                     if "morphologies_dir" in pop:
@@ -322,11 +322,11 @@ class MorphologyDecontainerizationTask(Task):
 
         # Clean up morphology folders with individual morphologies
         L.info(f"Cleaning morphology container(s): {morph_containers_to_delete}")
-        for _file in morph_containers_to_delete:
-            Path(_file).unlink()
+        for file in morph_containers_to_delete:
+            Path(file).unlink()
         L.info(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
-        for _folder in morph_folders_to_delete:
-            shutil.rmtree(_folder)
+        for folder in morph_folders_to_delete:
+            shutil.rmtree(folder)
 
         # Reload and check morphologies in modified circuit
         if not self._check_morphologies(circuit_config, self.config.initialize.output_format):  # ty:ignore[invalid-argument-type]

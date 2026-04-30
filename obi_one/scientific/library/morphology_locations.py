@@ -71,11 +71,11 @@ def path_distance_all_segments_from(
 
     path_distances = path_distance_calculator.path_distances(locs_ref, locs_all, **kwargs)
     path_distances = [
-        pd.Series(_path_distances, name=_SOM_PAD) for _path_distances in path_distances
+        pd.Series(path_distances_, name=_SOM_PAD) for path_distances_ in path_distances
     ]
 
     return pd.concat(
-        [pd.concat([locs_all, _path_distances], axis=1) for _path_distances in path_distances],
+        [pd.concat([locs_all, path_distances_], axis=1) for path_distances_ in path_distances],
         axis=0,
         keys=range(len(path_distances)),
         names=[_CEN_IDX],

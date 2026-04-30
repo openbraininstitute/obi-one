@@ -26,7 +26,7 @@ class IDNeuronSet(AbstractNeuronSet):
 
     def check_neuron_ids(self, circuit: Circuit, population: str) -> None:
         popul_ids = circuit.sonata_circuit.nodes[population].ids()
-        if not all(_nid in popul_ids for _nid in self.neuron_ids.elements):  # ty:ignore[unresolved-attribute]
+        if not all(nid in popul_ids for nid in self.neuron_ids.elements):  # ty:ignore[unresolved-attribute]
             msg = (
                 f"Neuron ID(s) not found in population '{population}' "
                 f"of circuit '{circuit.name}'. "
