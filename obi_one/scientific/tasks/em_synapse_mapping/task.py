@@ -90,7 +90,7 @@ class EMSynapseMappingTask(Task):
         resolved_neurons = []
         all_pt_root_ids = set()
 
-        for neuron_entry in init.neurons:
+        for neuron_entry in init.neurons.elements:
             resolved_neuron = resolve_neuron(
                 neuron_entry,
                 db_client,
