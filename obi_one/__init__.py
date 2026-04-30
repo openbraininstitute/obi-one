@@ -21,6 +21,9 @@ from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllDistributionsReference",
+    "AllDistributionsReference",
+    "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
@@ -65,13 +68,17 @@ __all__ = [
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatConstantDistribution",
     "FloatRange",
+    "FloatUniformDistribution",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
@@ -80,8 +87,11 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntConstantDistribution",
     "IntRange",
+    "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -224,6 +234,16 @@ from obi_one.scientific.blocks.afferent_synapses import (
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
+from obi_one.scientific.blocks.distributions.constant import (
+    FloatConstantDistribution,
+    IntConstantDistribution,
+)
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.uniform import (
+    FloatUniformDistribution,
+    IntUniformDistribution,
+)
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -281,6 +301,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
     FullySynchronousSpikeStimulus,
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
@@ -414,6 +437,10 @@ from obi_one.scientific.tasks.skeletonization import (
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )

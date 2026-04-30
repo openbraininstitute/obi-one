@@ -302,6 +302,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     form_dict = {
         "type": "CircuitSimulationScanConfig",
         "timestamps": {"RegularTimestamps": ts_dict},
+        "distributions": {},
         "stimuli": {"PoissonInputStimulus": poisson_dict, "SynchronousInputStimulus": sync_dict},
         "recordings": {"VoltageRecording": volt_dict},
         "neuron_sets": {
@@ -470,6 +471,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "campaign_description": "Test description",
         }
         assert cfg.pop("info") == info_dict
+        assert cfg.pop("distributions") == {}
         assert len(cfg) == 0  # No additional entries
 
 
@@ -556,3 +558,67 @@ def test_simulation_campaign_generation(tmp_path):
     )
     with pytest.raises(ValueError, match="Multi value parameters have different lengths:"):
         coupled_scan2.execute()
+
+
+def test_circuit_simulation_scan_config_with_distribution_stimuli():
+    """Test that CircuitSimulationScanConfig can include distribution blocks
+    and InterSpikeIntervalDistributionSpikeStimulus."""
+    # Create config
+    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    info = obi.Info(campaign_name="Test", campaign_description="Test description")
+    sim_conf.set(info, name="info")
+
+    # Add neuron sets
+    sim_neuron_set = obi.IDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
+    )
+    sim_conf.add(sim_neuron_set, name="ID10")
+
+    # Add distribution blocks via sim_conf.add
+    constant_dist = obi.FloatConstantDistribution(value=10.0)
+    sim_conf.add(constant_dist, name="constant_dist")
+
+    # Add timestamps
+    timestamps = obi.SingleTimestamp(start_time=0.0)
+    sim_conf.add(timestamps, name="timestamps")
+
+    # Add distribution-based stimulus that references the distribution
+    dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
+        distribution=obi.AllDistributionsReference(
+            block_dict_name="distributions", block_name="constant_dist"
+        ),
+        source_neuron_set=sim_neuron_set.ref,
+        timestamps=timestamps.ref,
+        duration=50.0,
+        resample_each_repetition=False,
+    )
+    sim_conf.add(dist_stimulus, name="DistributionStimulus")
+
+    # Set up simulation initialize with a real circuit
+    circuit_list = [
+        obi.Circuit(
+            name="N_10__top_nodes_dim6",
+            path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+        )
+    ]
+    sim_conf.set(
+        obi.CircuitSimulationScanConfig.Initialize(
+            circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=100.0
+        ),
+        name="initialize",
+    )
+
+    # Should be able to validate the config without errors
+    validated_config = sim_conf.validated_config()
+    assert validated_config is not None
+
+    # Check that distributions are accessible
+    assert hasattr(validated_config, "distributions")
+    assert "constant_dist" in validated_config.distributions
+
+    # Check that stimuli reference distributions correctly
+    assert "DistributionStimulus" in validated_config.stimuli
+    dist_stim = validated_config.stimuli["DistributionStimulus"]
+    assert hasattr(dist_stim, "distribution")
+    assert dist_stim.distribution.block_dict_name == "distributions"
+    assert dist_stim.distribution.block_name == "constant_dist"

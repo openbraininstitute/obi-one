@@ -48,6 +48,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
+DEFAULT_DISTRIBUTION_NAME = "Default: Exp, scale 50 ms, 20 Hz"
 
 
 class BlockGroup(StrEnum):
