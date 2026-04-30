@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from typing import ClassVar, get_args, get_type_hints
@@ -44,6 +43,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.utils.sonata import write_simulation_config
 
 L = logging.getLogger(__name__)
 
@@ -400,9 +400,10 @@ class GenerateSimulationTask(Task):
             )
 
     def _write_simulation_config_to_file(self) -> None:
-        simulation_config_path = Path(self.config.coordinate_output_root) / self.CONFIG_FILE_NAME
-        with simulation_config_path.open("w", encoding="utf-8") as f:
-            json.dump(self._sonata_config, f, indent=2)
+        write_simulation_config(
+            config=self._sonata_config,
+            output_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
+        )
 
     def _save_generated_simulation_assets_to_entity(
         self, db_client: entitysdk.client.Client | None

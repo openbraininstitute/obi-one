@@ -143,9 +143,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [
                 {
-                    "E_x": self.E_x,
-                    "E_y": self.E_y,
-                    "E_z": self.E_z,
+                    "Ex": self.E_x,
+                    "Ey": self.E_y,
+                    "Ez": self.E_z,
                     "frequency": self._frequency,
                     "phase": np.deg2rad(self._phase_degrees),
                 }
