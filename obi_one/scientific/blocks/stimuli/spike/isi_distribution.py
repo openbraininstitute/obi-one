@@ -47,16 +47,6 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         },
     )
 
-    refractory_period: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=0.0,
-        title="Refractory Period",
-        description="Minimum time in milliseconds between spikes.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-
     resample_each_repetition: bool = Field(
         default=True,
         title="Resample Each Repetition",
@@ -74,7 +64,6 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
     def _generate_spike_train_from_distribution(
         distribution: Distribution,
         duration: float,
-        refractory_period: float = 0.0,
         rng: np.random.Generator | None = None,
     ) -> list[float]:
         spikes: list[float] = []
@@ -84,7 +73,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
             if interval <= 0.0:
                 msg = "Inter-spike intervals must be positive."
                 raise ValueError(msg)
-            t += interval + refractory_period
+            t += interval
             if t >= duration:
                 break
             spikes.append(t)
@@ -108,7 +97,6 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
                     relative_spikes = self._generate_spike_train_from_distribution(
                         distribution,
                         self.duration,
-                        refractory_period=self.refractory_period,
                         rng=rng,
                     )
                     spike_offset = timestamp + self.timestamp_offset
@@ -117,7 +105,6 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
                 relative_spikes = self._generate_spike_train_from_distribution(
                     distribution,
                     self.duration,
-                    refractory_period=self.refractory_period,
                     rng=rng,
                 )
                 for timestamp in timestamps:

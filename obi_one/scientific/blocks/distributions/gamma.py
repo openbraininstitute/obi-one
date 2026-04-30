@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 import numpy as np
-from pydantic import Field, PositiveFloat
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -30,6 +30,15 @@ class GammaDistribution(Distribution):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
+    shift: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=0.0,
+        title="Shift",
+        description="Constant value added to each sampled value.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
     random_seed: int | list[int] = Field(
         default=1,
         title="Random Seed",
@@ -45,5 +54,5 @@ class GammaDistribution(Distribution):
         """Sample n values from the gamma distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
-        samples = rng.gamma(shape=self.shape, scale=self.scale, size=n)
+        samples = rng.gamma(shape=self.shape, scale=self.scale, size=n) + self.shift
         return samples.tolist()

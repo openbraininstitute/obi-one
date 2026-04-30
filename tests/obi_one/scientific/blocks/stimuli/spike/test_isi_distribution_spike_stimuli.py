@@ -150,17 +150,6 @@ class TestGenerateSpikeTrainFromInterSpikeIntervalDistribution:
                 duration=10.0,
             )
 
-    def test_refractory_period_applied(self):
-        dist = obi.FloatConstantDistribution(value=10.0)
-        spikes = (
-            InterSpikeIntervalDistributionSpikeStimulus._generate_spike_train_from_distribution(
-                dist,
-                duration=35.0,
-                refractory_period=5.0,
-            )
-        )
-        assert spikes == [15.0, 30.0]
-
 
 class TestInterSpikeIntervalDistributionSpikeStimulus:
     def test_generated_spike_file_has_correct_structure(self, tmp_path, monkeypatch):
@@ -264,23 +253,6 @@ class TestInterSpikeIntervalDistributionSpikeStimulus:
         first_rep = sorted(t for t in timestamps_out if t < 25.0)
         second_rep = sorted(t - 50.0 for t in timestamps_out if 50.0 <= t < 75.0)
         assert first_rep != second_rep
-
-    def test_refractory_period_applied_in_stimulus(self, monkeypatch):
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0]))
-        distribution = obi.FloatConstantDistribution(value=10.0)
-        timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_isi_distribution_stimulus(duration=35.0)
-        stimulus.refractory_period = 5.0
-
-        _patch_distribution_ref(monkeypatch, stimulus, distribution)
-        _patch_source_neuron_set_ref(monkeypatch, stimulus, neuron_set)
-        _patch_timestamps_ref(monkeypatch, stimulus, timestamps)
-        _patch_neuron_set_methods(monkeypatch, neuron_set, neuron_ids=[0])
-        _patch_resolved_timestamps(monkeypatch, [0.0])
-
-        result = stimulus.generate_spikes_by_gid([0])
-
-        assert result[0] == [15.0, 30.0]
 
 
 class TestSpikeStimulusIndexingConvention:

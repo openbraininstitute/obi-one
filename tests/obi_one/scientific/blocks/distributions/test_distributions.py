@@ -55,6 +55,21 @@ class TestExponentialDistribution:
         assert isinstance(result[0], float)
         assert result[0] > 0
 
+    def test_exponential_distribution_shift(self):
+        dist = obi.ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
+        samples = dist.sample(10)
+
+        assert all(sample >= 5.0 for sample in samples)
+
+    def test_exponential_distribution_shift_adds_constant(self):
+        base = obi.ExponentialDistribution(scale=1.0, random_seed=42)
+        shifted = obi.ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
+
+        base_samples = base.sample(5)
+        shifted_samples = shifted.sample(5)
+
+        assert shifted_samples == [sample + 5.0 for sample in base_samples]
+
 
 class TestGammaDistribution:
     def test_sample_returns_positive_float_samples(self):
@@ -81,6 +96,12 @@ class TestGammaDistribution:
         assert len(result) == 1
         assert isinstance(result[0], float)
         assert result[0] > 0
+
+    def test_gamma_distribution_shift(self):
+        dist = obi.GammaDistribution(shape=2.0, scale=1.0, shift=5.0, random_seed=42)
+        samples = dist.sample(10)
+
+        assert all(sample >= 5.0 for sample in samples)
 
 
 class TestDistributionConstraints:
