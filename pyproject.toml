@@ -83,9 +83,15 @@ service = [
     "uvicorn",
 ]
 
+# BLUERECORDING - optional, needed for extracellular recording array creation
+# Requires system MPI and HDF5 libraries. Use `make install-bluerecording`.
+bluerecording = [
+    "bluerecording[neuron]",
+]
+
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service]",
+    "obi-one[connectivity,notebooks,service,bluerecording]",
 ]
 
 [dependency-groups]
