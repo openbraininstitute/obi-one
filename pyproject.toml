@@ -50,7 +50,8 @@ dependencies = [
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
-    "pylmesh"
+    "pylmesh",
+    "numpy<2.4", # Needs https://github.com/openbraininstitute/ConnectomeUtilities/pull/5
 ]
 
 [project.optional-dependencies]
