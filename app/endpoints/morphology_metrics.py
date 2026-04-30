@@ -33,7 +33,7 @@ def neuron_morphology_metrics_endpoint(
     cell_morphology_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     requested_metrics: Annotated[
-        list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]
+        list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]  # ty:ignore[invalid-type-form]
         Query(
             description="List of requested metrics",
         ),
@@ -74,7 +74,7 @@ def register_morphology_metrics(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     # 1) fetch morphology and its H5 asset
-    morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
+    morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)  # ty:ignore[invalid-argument-type]
     asset = next(
         (
             a
@@ -90,7 +90,9 @@ def register_morphology_metrics(
     with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
         tmp.write(
             db_client.download_content(
-                entity_id=cell_morphology_id, entity_type=CellMorphology, asset_id=asset.id
+                entity_id=cell_morphology_id,  # ty:ignore[invalid-argument-type]
+                entity_type=CellMorphology,
+                asset_id=asset.id,
             )
         )
         tmp.flush()
@@ -100,4 +102,4 @@ def register_morphology_metrics(
 
     # 4) register measurement annotation only
     registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
-    return {"measurement_entity_id": str(registered.id), "status": "success"}
+    return {"measurement_entity_id": str(registered.id), "status": "success"}  # ty:ignore[unresolved-attribute]

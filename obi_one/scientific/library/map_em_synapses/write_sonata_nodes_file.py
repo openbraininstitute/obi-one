@@ -29,7 +29,7 @@ def resolve_position_to_xyz(resolutions: list):  # NOQA: ANN201
     def func(lst_xyz: list) -> pandas.Series:
         if hasattr(lst_xyz, "__iter__"):
             return pandas.Series(
-                {_col: lst_xyz[_i] * resolutions[_col] for _i, _col in enumerate(["x", "y", "z"])}
+                {_col: lst_xyz[_i] * resolutions[_col] for _i, _col in enumerate(["x", "y", "z"])}  # ty:ignore[invalid-argument-type]
             )
         return pandas.Series({_col: -1 for _i, _col in enumerate(["x", "y", "z"])})
 
@@ -62,7 +62,7 @@ def assemble_collection_from_specs(
         if out_df[col].dtype.name in {"bool", "boolean"}:
             out_df[col] = out_df[col].astype(str)
 
-    return voxcell.CellCollection.from_dataframe(out_df), lst_notices
+    return voxcell.CellCollection.from_dataframe(out_df), lst_notices  # ty:ignore[invalid-return-type]
 
 
 def write_nodes(

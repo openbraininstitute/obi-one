@@ -45,16 +45,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     description: ClassVar[str] = """Add a description to the class' description variable"""
     single_coord_class_name: ClassVar[str] = ""
 
-    _block_mapping: dict = None
+    _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
-    _campaign: Entity = None
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
+    _campaign: Entity = None  # ty:ignore[invalid-assignment]
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
         self,
-    ) -> entitysdk.models.Entity | None:
+    ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
@@ -72,17 +72,17 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> None:
-        return self._campaign_task_config_type
+        return self._campaign_task_config_type  # ty:ignore[invalid-return-type]
 
     @property
     def campaign_generation_task_activity_type(self) -> None:
-        return self._campaign_generation_task_activity_type
+        return self._campaign_generation_task_activity_type  # ty:ignore[invalid-return-type]
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> TaskConfig:
         if self.campaign_task_config_type is None:
             msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
@@ -272,7 +272,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
         reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
 
-        if name in self.__dict__.get(block_dict_name):
+        if name in self.__dict__.get(block_dict_name):  # ty:ignore[unsupported-operator]
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 

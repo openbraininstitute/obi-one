@@ -80,7 +80,7 @@ class PropertyNeuronSet(NeuronSet):
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=(),
-    )
+    )  # ty:ignore[invalid-assignment]
     node_sets: (
         tuple[Annotated[str, Field(min_length=1)], ...]
         | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
@@ -88,7 +88,7 @@ class PropertyNeuronSet(NeuronSet):
 
     def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
-        self.property_filter.test_validity(circuit, population)
+        self.property_filter.test_validity(circuit, population)  # ty:ignore[unresolved-attribute]
 
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
         for _nset in self.node_sets:
@@ -104,8 +104,8 @@ class PropertyNeuronSet(NeuronSet):
         c = circuit.sonata_circuit
         population = self._population(population)
 
-        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
-        df = self.property_filter.filter(df)
+        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()  # ty:ignore[unresolved-attribute]
+        df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
 
         node_ids = df["node_ids"].to_numpy()
 
@@ -133,7 +133,7 @@ class PropertyNeuronSet(NeuronSet):
             # Symbolic expression can be preserved
             expression = {
                 property_key: __resolve_sngl(property_value)
-                for property_key, property_value in self.property_filter.filter_dict.items()
+                for property_key, property_value in self.property_filter.filter_dict.items()  # ty:ignore[unresolved-attribute]
             }
         else:
             # Individual IDs need to be resolved

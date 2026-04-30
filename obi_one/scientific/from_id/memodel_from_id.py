@@ -18,19 +18,21 @@ class MEModelFromID(EntityFromID):
     def stage_circuit(
         self,
         *,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         dest_dir: Path | None = None,
         entity_cache: bool = False,
     ) -> MEModelCircuit:
-        if not entity_cache and dest_dir.exists():
+        if not entity_cache and dest_dir.exists():  # ty:ignore[unresolved-attribute]
             msg = f"Circuit directory '{dest_dir}' already exists and is not empty."
             raise FileExistsError(msg)
 
-        if (not entity_cache) | (entity_cache and not dest_dir.exists()):
+        if (not entity_cache) | (entity_cache and not dest_dir.exists()):  # ty:ignore[unresolved-attribute]
             circuit_config_path = stage_sonata_from_memodel(
-                client=db_client, memodel=self.entity(db_client), output_dir=dest_dir
+                client=db_client,
+                memodel=self.entity(db_client),  # ty:ignore[invalid-argument-type]
+                output_dir=dest_dir,  # ty:ignore[invalid-argument-type]
             )
         else:
-            circuit_config_path = dest_dir / "circuit_config.json"
+            circuit_config_path = dest_dir / "circuit_config.json"  # ty:ignore[unsupported-operator]
 
         return MEModelCircuit(name="single_cell", path=str(circuit_config_path))

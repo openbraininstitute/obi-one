@@ -67,7 +67,7 @@ format:  ## Run formatters
 lint:  ## Run linters
 	uv run -m ruff format --check
 	uv run -m ruff check
-	#uv run -m pyright obi_one
+	uv run --with ty ty check app obi_one
 
 format_count: ## Count the number of errors by file
 	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c

@@ -18,7 +18,7 @@ def compress_output(
         subprocess.check_output(["tar", "-cf", "-", *files])  # NOQA: S607, S603
     )
     subprocess.check_call(["gzip", "-1", "-f", str(tar_path)])  # NOQA: S607, S603
-    return str(gz_path)
+    return str(gz_path)  # ty:ignore[invalid-return-type]
 
 
 def merge_spiny_morphologies(

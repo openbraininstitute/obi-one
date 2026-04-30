@@ -120,7 +120,7 @@ app = FastAPI(
         ApiError: api_error_handler,
         RequestValidationError: validation_exception_handler,
         EntitySDKError: entity_sdk_error_handler,
-    },
+    },  # ty:ignore[invalid-argument-type]
     root_path=settings.ROOT_PATH,
     strict_content_type=False,
 )

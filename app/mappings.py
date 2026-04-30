@@ -149,7 +149,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-}
+}  # ty:ignore[invalid-assignment]
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [

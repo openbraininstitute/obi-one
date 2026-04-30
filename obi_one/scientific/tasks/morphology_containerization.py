@@ -72,7 +72,7 @@ class MorphologyContainerizationTask(Task):
     @classmethod
     def _load_node_population(
         cls, c: snap.Circuit, npop: str
-    ) -> (snap.nodes.NodePopulation, np.ndarray):
+    ) -> (snap.nodes.NodePopulation, np.ndarray):  # ty:ignore[invalid-type-form, possibly-missing-submodule]
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
             morph_names = None
@@ -95,7 +95,8 @@ class MorphologyContainerizationTask(Task):
 
     @staticmethod
     def _check_morph_folders(
-        nodes: snap.nodes.NodePopulation, morph_folders_to_delete: list
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        morph_folders_to_delete: list,
     ) -> list:
         """Check existence and contents of morphology folders."""
         morph_folders = {}
@@ -114,7 +115,8 @@ class MorphologyContainerizationTask(Task):
                 morph_folder is not None
                 and len(
                     MorphologyContainerizationTask._filter_ext(
-                        Path(morph_folder).iterdir(), _morph_ext
+                        Path(morph_folder).iterdir(),  # ty:ignore[invalid-argument-type]
+                        _morph_ext,
                     )
                 )
                 == 0
@@ -127,7 +129,7 @@ class MorphologyContainerizationTask(Task):
 
             morph_folders[_morph_ext] = morph_folder
 
-        return morph_folders
+        return morph_folders  # ty:ignore[invalid-return-type]
 
     @staticmethod
     def _convert_to_h5(morph_folders: dict, morph_names: list) -> Path:
@@ -215,7 +217,11 @@ class MorphologyContainerizationTask(Task):
 
     @classmethod
     def _set_morph_entries_per_population(
-        cls, *, global_morph_entry: bool, cfg_dict: dict, nodes: snap.nodes.NodePopulation
+        cls,
+        *,
+        global_morph_entry: bool,
+        cfg_dict: dict,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
     ) -> None:
         """Set morphology entries individually per population."""
         if global_morph_entry is None:
@@ -270,7 +276,7 @@ class MorphologyContainerizationTask(Task):
         return True  # All successful
 
     @staticmethod
-    def _find_hoc_proc(proc_name: str, hoc_code: str) -> (int, int, str):
+    def _find_hoc_proc(proc_name: str, hoc_code: str) -> (int, int, str):  # ty:ignore[invalid-type-form]
         """Find a procedure with a given name in hoc code."""
         start_idx = hoc_code.find(f"proc {proc_name}")
         if start_idx < 0:
@@ -290,7 +296,7 @@ class MorphologyContainerizationTask(Task):
         return start_idx, end_idx, hoc_code[start_idx : end_idx + 1]
 
     @staticmethod
-    def _find_hoc_header(hoc_code: str) -> (int, int, str):
+    def _find_hoc_header(hoc_code: str) -> (int, int, str):  # ty:ignore[invalid-type-form]
         """Find the header section in hoc code."""
         start_idx = hoc_code.find("/*")  # First occurrence
         if start_idx != 0:
@@ -338,7 +344,9 @@ class MorphologyContainerizationTask(Task):
             Path(hoc_file).write_text(hoc_new, encoding="utf-8")
 
     def _update_hoc_folder(
-        self, nodes: snap.nodes.NodePopulation, hoc_folders_updated: list
+        self,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        hoc_folders_updated: list,
     ) -> str:
         hoc_folder = nodes.config["biophysical_neuron_models_dir"]
         if not Path(hoc_folder).exists():
@@ -351,7 +359,7 @@ class MorphologyContainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
@@ -361,7 +369,7 @@ class MorphologyContainerizationTask(Task):
         logging.getLogger("morph_tool").setLevel(logging.WARNING)
 
         # Copy contents of original circuit folder to output_root
-        input_path, input_config = os.path.split(self.config.initialize.circuit.path)
+        input_path, input_config = os.path.split(self.config.initialize.circuit.path)  # ty:ignore[unresolved-attribute]
         output_path = self.config.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -397,7 +405,7 @@ class MorphologyContainerizationTask(Task):
             morph_folders = self._check_morph_folders(nodes, morph_folders_to_delete)
 
             # If .h5 morphologies not existing, run .asc/.swc to .h5 conversion
-            h5_folder = self._convert_to_h5(morph_folders, morph_names)
+            h5_folder = self._convert_to_h5(morph_folders, morph_names)  # ty:ignore[invalid-argument-type]
             if h5_folder not in morph_folders_to_delete:
                 morph_folders_to_delete.append(h5_folder)
 
@@ -417,7 +425,8 @@ class MorphologyContainerizationTask(Task):
 
             # Check and set if there is a global entry for morphologies (initially not set)
             global_morph_entry = self._set_global_morph_entry(
-                global_morph_entry=global_morph_entry, cfg_dict=cfg_dict
+                global_morph_entry=global_morph_entry,  # ty:ignore[invalid-argument-type]
+                cfg_dict=cfg_dict,
             )
 
             # Otherwise, set individually per population
