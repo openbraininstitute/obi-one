@@ -31,6 +31,37 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchScanConfig
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+    AINDEPhysPreprocessingScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
+    AINDEPhysCurationScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
+    AINDEPhysProcessingQCScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
+    AINDEcephysNWBScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
+    AINDUnitsNWBScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.config import (
+    AINDEPhysQCCollectorScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
+    AINDEPhysResultsCollectorScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
+    AINDEPhysVisualizationScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
+    AINDEPhysPostprocessingScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
+    AINDEPhysSpikesortKilosort4ScanConfig,
+)
 from obi_one.scientific.unions.aliases import SimulationsForm
 
 ScanConfigsUnion = Annotated[
@@ -51,6 +82,17 @@ ScanConfigsUnion = Annotated[
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
+    | AINDEPhysDispatchScanConfig
+    | AINDEPhysPreprocessingScanConfig
+    | AINDEPhysSpikesortKilosort4ScanConfig
+    | AINDEPhysPostprocessingScanConfig
+    | AINDEPhysCurationScanConfig
+    | AINDEPhysVisualizationScanConfig
+    | AINDEPhysResultsCollectorScanConfig
+    | AINDEPhysProcessingQCScanConfig
+    | AINDEPhysQCCollectorScanConfig
+    | AINDEcephysNWBScanConfig
+    | AINDUnitsNWBScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]
