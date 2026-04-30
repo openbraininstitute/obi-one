@@ -22,7 +22,6 @@ from obi_one.core.tuple import NamedTuple
 __all__ = [
     "AfferentSynapsesBlock",
     "AllDistributionsReference",
-    "AllDistributionsReference",
     "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
@@ -161,7 +160,6 @@ __all__ = [
     "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
     "ScanConfig",
-    "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
     "SimplexMembershipBasedNeuronSet",
@@ -169,7 +167,6 @@ __all__ = [
     "Simulation",
     "SimulationNeuronSetUnion",
     "SimulationsForm",
-    "SingleConfigMixin",
     "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",

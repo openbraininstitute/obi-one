@@ -358,16 +358,16 @@ class GenerateSimulationTask(Task):
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
-            for _neuron_set_key, _neuron_set in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
+            for neuron_set_key, neuron_set_ in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
                 # 1. Check that the neuron sets block name matches the dict key
-                if _neuron_set_key != _neuron_set.block_name:
+                if neuron_set_key != neuron_set_.block_name:
                     msg = "Neuron set name mismatch! \
                         Using sim_conf.add(neuron_set, name=neuron_set_name) should ensure this."
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                self._neuron_set_definitions[_neuron_set_key] = (
-                    _neuron_set.add_node_set_definition_to_sonata_circuit(
+                self._neuron_set_definitions[neuron_set_key] = (
+                    neuron_set_.add_node_set_definition_to_sonata_circuit(
                         self._circuit, sonata_circuit
                     )
                 )

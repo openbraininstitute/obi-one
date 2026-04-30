@@ -44,8 +44,8 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 
     def filter(self, df_in: pd.DataFrame, *, reindex: bool = True) -> pd.DataFrame:
         ret = df_in
-        for filter_key, _filter_value in self.filter_dict.items():
-            filter_value = [str(_entry) for _entry in _filter_value]
+        for filter_key, filter_value_ in self.filter_dict.items():
+            filter_value = [str(entry) for entry in filter_value_]
             vld = ret[filter_key].astype(str).isin(filter_value)
             ret = ret.loc[vld]
             if reindex:
@@ -55,7 +55,7 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     def test_validity(self, circuit: Circuit, node_population: str) -> None:
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
 
-        if not all(_prop in circuit_prop_names for _prop in self.filter_keys):
+        if not all(prop in circuit_prop_names for prop in self.filter_keys):
             msg = f"Invalid neuron properties! Available properties: {circuit_prop_names}"
             raise ValueError(msg)
 
@@ -91,10 +91,10 @@ class PropertyNeuronSet(NeuronSet):
         self.property_filter.test_validity(circuit, population)  # ty:ignore[unresolved-attribute]
 
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
-        for _nset in self.node_sets:
-            if _nset not in circuit.node_sets:
+        for nset in self.node_sets:
+            if nset not in circuit.node_sets:
                 msg = (
-                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
+                    f"Node set '{nset}' not found in circuit '{circuit.name}'. "
                     f"Available node sets: {', '.join(circuit.node_sets)}"
                 )
                 raise ValueError(msg)
@@ -111,8 +111,8 @@ class PropertyNeuronSet(NeuronSet):
 
         if len(self.node_sets) > 0:
             node_ids_nset = np.array([]).astype(int)
-            for _nset in self.node_sets:
-                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(_nset))
+            for nset in self.node_sets:
+                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(nset))
             node_ids = np.intersect1d(node_ids, node_ids_nset)
 
         expression = {"population": population, "node_id": node_ids.tolist()}

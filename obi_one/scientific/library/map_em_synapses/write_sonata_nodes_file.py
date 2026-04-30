@@ -12,9 +12,9 @@ def get_specified_tables(
     em_dataset: EMDataSetFromID, db_client: Client, cave_version: int, specs: dict
 ) -> tuple[dict, list]:
     lst_tbls = []
-    for _x in specs.values():
-        if _x["table"] not in lst_tbls:
-            lst_tbls.append(_x["table"])
+    for x in specs.values():
+        if x["table"] not in lst_tbls:
+            lst_tbls.append(x["table"])
 
     dict_tpls = []
     lst_notices = []
@@ -29,9 +29,9 @@ def resolve_position_to_xyz(resolutions: list):  # NOQA: ANN201
     def func(lst_xyz: list) -> pandas.Series:
         if hasattr(lst_xyz, "__iter__"):
             return pandas.Series(
-                {_col: lst_xyz[_i] * resolutions[_col] for _i, _col in enumerate(["x", "y", "z"])}  # ty:ignore[invalid-argument-type]
+                {col: lst_xyz[i] * resolutions[col] for i, col in enumerate(["x", "y", "z"])}  # ty:ignore[invalid-argument-type]
             )
-        return pandas.Series({_col: -1 for _i, _col in enumerate(["x", "y", "z"])})
+        return pandas.Series({col: -1 for _i, col in enumerate(["x", "y", "z"])})
 
     return func
 

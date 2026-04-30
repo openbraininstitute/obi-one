@@ -85,8 +85,8 @@ def add_competing_mesh_distances(
         competitor_ids = mesh_pt_df.spine_sharing_id.to_numpy()[idx]
         is_different = competitor_ids[:, 0] != competitor_ids[:, -1]
         first_different = [
-            numpy.nonzero(_x)[0][0] + 1
-            for _x in numpy.diff(competitor_ids[is_different], axis=1) != 0
+            numpy.nonzero(x)[0][0] + 1
+            for x in numpy.diff(competitor_ids[is_different], axis=1) != 0
         ]
         competitor_dists[mask_idx[is_different]] = dist[is_different][
             range(len(first_different)), first_different
@@ -262,19 +262,19 @@ def calc_center_positions(df: pandas.DataFrame, morph: MorphologyWithSpines) -> 
 def rename_directed_dataframe_colums(
     df: pandas.DataFrame, prefix: str = _PF_AFF
 ) -> pandas.DataFrame:
-    rename_dict = {_col: prefix + _col for _col in _WITH_DIR if _col in df.columns}
+    rename_dict = {col: prefix + col for col in _WITH_DIR if col in df.columns}
     return df.rename(columns=rename_dict)
 
 
 def fill_defaults_for_missing_columns(
     df_reference: pandas.DataFrame, df_modify: pandas.DataFrame
 ) -> None:
-    missingcols = [_col for _col in df_reference.columns if _col not in df_modify.columns]
-    for _col in missingcols:
-        if _col in _V_COLNAME_DICT:
-            df_modify[_col] = _V_COLNAME_DICT[_col]
+    missingcols = [col for col in df_reference.columns if col not in df_modify.columns]
+    for col in missingcols:
+        if col in _V_COLNAME_DICT:
+            df_modify[col] = _V_COLNAME_DICT[col]
         else:
-            df_modify[_col] = _V_DTYPE_DICT.get(str(df_reference.dtypes[_col]), _V_FALLBACK)
+            df_modify[col] = _V_DTYPE_DICT.get(str(df_reference.dtypes[col]), _V_FALLBACK)
 
 
 def edges_dataframe_for_soma_syns(
@@ -302,8 +302,8 @@ def edges_dataframe_for_soma_syns(
     c[_STR_SEG_ID] = 0
     c[_STR_SEG_OFF] = 0.0
     c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)  # ty:ignore[invalid-argument-type]
-    for _col, _coord in zip(_C_CENTER, m.morphology.soma.center, strict=False):
-        c[_col] = _coord
+    for col, coord in zip(_C_CENTER, m.morphology.soma.center, strict=False):
+        c[col] = coord
     c["distance"] = mpd.loc[is_on_soma, "distance"]
     c = rename_directed_dataframe_colums(c, prefix=_PF_AFF)
     return c
@@ -358,9 +358,9 @@ def edges_dataframe_for_spine_syns(
     a["distance"] = mpd.loc[is_on_spine, "distance"].to_numpy()
     a["synapse_id"] = mpd.index[is_on_spine].to_numpy()
     a[_C_PSD_ID] = numpy.arange(len(a.index))  # For now simply all different
-    for _col in _C_P_LOCS:
-        a[_PF_AFF + _col] = syns.loc[
-            is_on_spine, _col
+    for col in _C_P_LOCS:
+        a[_PF_AFF + col] = syns.loc[
+            is_on_spine, col
         ].to_numpy()  # Could also be a pandas.concat after reset_index()
     a[_C_CAVE_ID_OUT] = syns.loc[is_on_spine, _C_CAVE_ID_IN].to_numpy()
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()

@@ -25,10 +25,10 @@ class CombinedNeuronSet(NeuronSet):
     )
 
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
-        for _nset in self.node_sets:
-            if _nset not in circuit.node_sets:
+        for nset in self.node_sets:
+            if nset not in circuit.node_sets:
                 msg = (
-                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
+                    f"Node set '{nset}' not found in circuit '{circuit.name}'. "
                     f"Available node sets: {', '.join(circuit.node_sets)}"
                 )
                 raise ValueError(msg)

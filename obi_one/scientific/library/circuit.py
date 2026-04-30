@@ -72,10 +72,10 @@ class Circuit(OBIBaseModel):
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if c.nodes[_pop].type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "virtual"]
         if not incl_point:
             # Exclude "point_neuron", "point_process", etc. types
-            popul_names = [_pop for _pop in popul_names if "point_" not in c.nodes[_pop].type]
+            popul_names = [pop for pop in popul_names if "point_" not in c.nodes[pop].type]
         return popul_names
 
     @staticmethod
@@ -104,14 +104,14 @@ class Circuit(OBIBaseModel):
         """Returns edge population names."""
         popul_names = c.edges.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if c.edges[_pop].source.type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.edges[pop].source.type != "virtual"]
         if not incl_point:
             # Exclude "point_neuron", "point_process", etc. source/target types
             popul_names = [
-                _pop
-                for _pop in popul_names
-                if "point_" not in c.edges[_pop].source.type
-                and "point_" not in c.edges[_pop].target.type
+                pop
+                for pop in popul_names
+                if "point_" not in c.edges[pop].source.type
+                and "point_" not in c.edges[pop].target.type
             ]
         return popul_names
 

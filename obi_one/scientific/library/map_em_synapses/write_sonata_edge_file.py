@@ -59,8 +59,8 @@ def write_edges(
     create_or_resize_dataset(grp_root, "target_node_id", syn_pre_post[_STR_POST_NODE].values)
     grp_root["target_node_id"].attrs["node_population"] = tgt_pop_name
 
-    for _col in syn_data.columns:
-        create_or_resize_dataset(grp_0, _col, syn_data[_col].values)
+    for col in syn_data.columns:
+        create_or_resize_dataset(grp_0, col, syn_data[col].values)
     adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()
