@@ -65,7 +65,7 @@ When the user clicks on `Add <entity type>`, the left-side of the UI collpases a
 ## case B:
 
 ```py
-cell_mesh: list[EMCellMeshFromID] = Field(
+cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
     title="EM Cell Mesh",
     description="EM cell mesh to use for skeletonization.",
     json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
@@ -88,7 +88,22 @@ neurons: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(
 ## case D
 
 ```py
-neurons: list[CellMorphologyAndMEModelNamedTuple, ...] = Field(
+class NamedTuple(OBIBaseModel):
+    """Helper class to assign a name to a tuple of elements."""
+
+    name: str = "Default name"
+    elements: tuple[NonNegativeInt, ...]
+
+    def __repr__(self) -> str:
+        """Return a string representation of the NamedTuple."""
+        return self.name
+
+
+class CellMorphologyAndMEModelNamedTuple(NamedTuple):
+    elements: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(min_length=1)
+
+
+neurons: CellMorphologyAndMEModelNamedTuple | list[CellMorphologyAndMEModelNamedTuple] = Field(
     title="Neurons",
     description="Neurons to include in the circuit (>= 1).",
     min_length=1,
