@@ -103,7 +103,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
     )
 
     advanced_options: AdvancedEMSynapseMappingOptions = Field(
-        title="Advanced options",
+        title="Advanced",
         description="Advanced options for EM synapse mapping.",
         default=AdvancedEMSynapseMappingOptions.DEFAULT,
         json_schema_extra={
