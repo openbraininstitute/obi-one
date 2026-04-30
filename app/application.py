@@ -122,6 +122,7 @@ app = FastAPI(
         EntitySDKError: entity_sdk_error_handler,
     },
     root_path=settings.ROOT_PATH,
+    strict_content_type=False,
 )
 app.add_middleware(
     CORSMiddleware,
