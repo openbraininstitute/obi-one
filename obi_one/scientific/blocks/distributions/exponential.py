@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 import numpy as np
-from pydantic import Field, NonNegativeFloat, PositiveFloat
+from pydantic import Field, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -22,7 +22,7 @@ class ExponentialDistribution(Distribution):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    shift: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    shift: float | list[float] = Field(
         default=0.0,
         title="Shift",
         description="Constant value added to each sampled value.",
