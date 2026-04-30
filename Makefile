@@ -42,7 +42,7 @@ install-all:  ## Install all dependencies (for production/deployment)
 install-dev:  ## Install all dependencies + dev tools (for development)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all --group dev
 
-install-ipython: install ## Create a virtual environment and install the ipython kernel
+install-ipython: install-all ## Create a virtual environment and install the ipython kernel
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
 
 install-docs:  ## Install documentation dependencies without uninstalling other dependencies

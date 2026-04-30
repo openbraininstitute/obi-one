@@ -51,9 +51,9 @@ dependencies = [
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
-    "numpy<=2.3.5",
     "python-multipart>=0.0.26",
     "obp-accounting-sdk>=0.6.0",
+    "numpy<2.4", # Needs https://github.com/openbraininstitute/ConnectomeUtilities/pull/5
 ]
 
 [project.optional-dependencies]
