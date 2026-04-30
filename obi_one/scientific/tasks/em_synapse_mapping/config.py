@@ -10,10 +10,8 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.from_id.named_tuple_from_id import CellMorphologyAndMEModelNamedTuple
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
 
@@ -21,15 +19,16 @@ L = logging.getLogger(__name__)
 class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
 
+
 class AdvancedEMSynapseMappingOptions(StrEnum):
     custom_physical_edge_population_name: str = Field(
-            title="Physical edge population name",
-            description="Edge population for connections between neurons in the set.",
-            default="physical_connections",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
+        title="Physical edge population name",
+        description="Edge population for connections between neurons in the set.",
+        default="physical_connections",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
     custom_virtual_edge_population_name: str = Field(
         title="Virtual edge population name",
         description="Edge population for connections from virtual neurons.",
@@ -83,13 +82,15 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
     class Initialize(Block):
         # We use a tuple instead of a list to avoid getting it taken as scan dimensions
         # in the scan config.
-        neurons: CellMorphologyAndMEModelNamedTuple | list[CellMorphologyAndMEModelNamedTuple] = Field(
-            title="Neurons",
-            description="Neurons to include in the circuit (>= 1).",
-            min_length=1,
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
-            },
+        neurons: CellMorphologyAndMEModelNamedTuple | list[CellMorphologyAndMEModelNamedTuple] = (
+            Field(
+                title="Neurons",
+                description="Neurons to include in the circuit (>= 1).",
+                min_length=1,
+                json_schema_extra={
+                    SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+                },
+            )
         )
 
     initialize: Initialize = Field(

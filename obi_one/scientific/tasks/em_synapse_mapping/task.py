@@ -243,13 +243,13 @@ class EMSynapseMappingTask(Task):
         pop_bio = "biophysical_neurons"
         pop_virt = "virtual_afferent_neurons"
 
-        if advanced.custom_virtual_edge_population_name != "":
+        if advanced.custom_virtual_edge_population_name:
             pop_edge_ext = advanced.custom_virtual_edge_population_name
-        if advanced.custom_physical_edge_population_name != "":
+        if advanced.custom_physical_edge_population_name:
             pop_edge_int = advanced.custom_physical_edge_population_name
-        if advanced.custom_biophysical_node_population != "":
+        if advanced.custom_biophysical_node_population:
             pop_bio = advanced.custom_biophysical_node_population
-        if advanced.custom_virtual_node_population != "":
+        if advanced.custom_virtual_node_population:
             pop_virt = advanced.custom_virtual_node_population
 
         write_nodes(out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w")
