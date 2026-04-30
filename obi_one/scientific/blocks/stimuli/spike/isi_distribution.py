@@ -99,20 +99,20 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
             if self.resample_each_repetition:
                 for timestamp in timestamps:
                     relative_spikes = self._generate_spike_train_from_distribution(
-                        distribution,
-                        self.duration,
+                        distribution,  # ty:ignore[invalid-argument-type]
+                        self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
                     )
-                    spike_offset = timestamp + self.timestamp_offset
+                    spike_offset = timestamp + self.timestamp_offset  # ty:ignore[unsupported-operator]
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
             else:
                 relative_spikes = self._generate_spike_train_from_distribution(
-                    distribution,
-                    self.duration,
+                    distribution,  # ty:ignore[invalid-argument-type]
+                    self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,
                 )
                 for timestamp in timestamps:
-                    spike_offset = timestamp + self.timestamp_offset
+                    spike_offset = timestamp + self.timestamp_offset  # ty:ignore[unsupported-operator]
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
 
         return spikes_by_gid

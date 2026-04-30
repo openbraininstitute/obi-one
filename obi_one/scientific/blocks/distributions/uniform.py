@@ -64,5 +64,5 @@ class IntUniformDistribution(UniformDistribution):
         """
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
-        samples = rng.integers(low=self.low, high=self.high, size=n)
+        samples = rng.integers(low=self.low, high=self.high, size=n)  # ty:ignore[no-matching-overload]
         return samples.astype(float).tolist()
