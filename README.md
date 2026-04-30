@@ -30,6 +30,8 @@ This installs everything needed for development: all optional dependencies + dev
 
 ## For Specific Use Cases
 
+Each command below is standalone and includes core dependencies — no need to run `make install` first.
+
 ```bash
 # Service deployment
 make install-service
@@ -37,15 +39,25 @@ make install-service
 # Notebook development
 make install-notebooks
 
+# Extracellular recording (BlueRecording)
+# Note: bluerecording requires MPI-enabled h5py which is incompatible with `uv run`.
+# Use `source bluerecording_env.sh` instead, which activates the venv and sets env vars.
+make install-bluerecording
+source bluerecording_env.sh
+
 # Production build (all deps, no dev tools)
 make install-all
 ```
-
 
 ## Pre-installation Requirements
 
 ```bash
 brew install uv open-mpi boost cmake
+```
+
+For BlueRecording support, you also need:
+```bash
+brew install hdf5-mpi
 ```
 
 <br>
