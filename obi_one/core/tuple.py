@@ -15,10 +15,6 @@ class NamedTupleBase(OBIBaseModel):
         """Return a string representation of the NamedTuple."""
         return self.name
 
-    def __iter__(self) -> iter:
-        """Return an iterator over the elements of the NamedTuple."""
-        return iter(self.elements)
-
     def __len__(self) -> int:
         """Return the number of elements in the NamedTuple."""
         return len(self.elements)

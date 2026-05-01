@@ -44,13 +44,13 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list[Entity]:
         if isinstance(self.initialize.neurons, EMSynapseMappingInputNamedTuple):
-            return [n.entity(db_client=db_client) for n in self.initialize.neurons]
+            return [n.entity(db_client=db_client) for n in self.initialize.neurons.elements]
         if isinstance(self.initialize.neurons, list):
             # make sure that there are no duplicate in the returned list of entities
             to_return = []
             to_return_ids = []
             for input_tuple in self.initialize.neurons:
-                for n in input_tuple:
+                for n in input_tuple.elements:
                     if n.id_str not in to_return_ids:
                         to_return_ids.append(n.id_str)
                         to_return.append(n.entity(db_client=db_client))
@@ -118,7 +118,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
                     )
                     raise OBIONEError(msg)
 
-                tuple_names = [n.name for n in self.neurons]
+                tuple_names = [input_tuple.name for input_tuple in self.neurons]
                 if len(tuple_names) != len(set(tuple_names)):
                     msg = (
                         "All named tuples in the list of neurons must have unique names "
@@ -142,4 +142,17 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
     _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.em_synapse_mapping__execution
+    )
+
+    class Initialize(EMSynapseMappingScanConfig.Initialize):
+        neurons: "EMSynapseMappingInputNamedTuple"
+
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Parameters for initializing the EM Synaptome.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
     )
