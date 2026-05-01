@@ -14,22 +14,26 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ENVIRONMENT: prod
-      IMAGE_NAME: ${{ vars.PUBLICECR_URI }}
 
     steps:
-      - name: Checkout code
+      - name: Clone repo
         uses: actions/checkout@v4
-
-      - name: Authenticate with AWS ECR account for pushing the image
-        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ECR_PUBLISH_ROLE_ARN }}
-          aws-region: ${{ vars.PUBLICECR_REGION }}
+          fetch-tags: true
+          fetch-depth: 0
 
-      - name: Authenticate with AWS Public ECR
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_ecr_push_obi-one-private
+          aws-region: us-east-1
+
+      - name: Authenticate with AWS ECR
         uses: aws-actions/amazon-ecr-login@v2
-        with:
-          registry-type: public
+        id: login-ecr
 
-      - name: Build and publish the Docker image to AWS ECR
-        run: make publish
+      - name: Build, tag and push container
+        env:
+          IMAGE_NAME: ${{ steps.login-ecr.outputs.registry }}/obi-one
+        run: |-
+          make publish
