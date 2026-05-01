@@ -66,18 +66,18 @@ def all_syns_on(
         "@target_node",
         "edge_id",
     ]
-    node_props_ = [_prop for _prop in node_props if _prop not in reserved_props]
+    node_props_ = [prop_ for prop_ in node_props if prop_ not in reserved_props]
 
     for edge_name in node.target_in_edges():
         edge = circ.edges[edge_name]
-        if not numpy.all([_x in edge.property_names for _x in syn_props]):
+        if not numpy.all([x in edge.property_names for x in syn_props]):
             continue
         new_syns = edge.afferent_edges(node_id, properties=syn_props)
         if len(new_syns) == 0:
             continue
         syns.append(new_syns)
         pre_node = circ.nodes[edge.source.name]
-        node_props__ = [_x for _x in node_props_ if _x in pre_node.property_names]
+        node_props__ = [x for x in node_props_ if x in pre_node.property_names]
         loaded_node_props = pre_node.get(syns[-1]["@source_node"], properties=node_props__)
         loaded_node_props = loaded_node_props.reindex(
             columns=node_props_, index=syns[-1]["@source_node"].values
@@ -118,7 +118,7 @@ def add_section_types(syns: pandas.DataFrame, morph: morphio.Morphology) -> None
         they are specified in SONATA, e.g, "afferent_section_id".
       morph (morphio.Morphology): The morphology the locations are defined on
     """
-    sec_types = numpy.array([1] + [int(_sec.type) for _sec in morph.sections])
+    sec_types = numpy.array([1] + [int(sec.type) for sec in morph.sections])
     syns["afferent_section_type"] = sec_types[syns["afferent_section_id"]]
 
 

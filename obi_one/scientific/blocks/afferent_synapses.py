@@ -116,8 +116,8 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
         description="Number of synapses to pick",
     )
 
-    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002
-        return select_randomly(syns, n=self.n, raise_insufficient=False)
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002  # ty:ignore[invalid-method-override]
+        return select_randomly(syns, n=self.n, raise_insufficient=False)  # ty:ignore[invalid-argument-type]
 
     def _check_parameter_values(self) -> None:
         if (not isinstance(self.n, list)) and (self.n <= 0):
@@ -134,10 +134,10 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
         default=1.0,
         title="Fracton of synapses",
         description="Fracton of synapses to pick",
-    )
+    )  # ty:ignore[invalid-assignment]
 
-    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002
-        return select_randomly(syns, p=self.p, raise_insufficient=False)
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002  # ty:ignore[invalid-method-override]
+        return select_randomly(syns, p=self.p, raise_insufficient=False)  # ty:ignore[invalid-argument-type]
 
     def _check_parameter_values(self) -> None:
         if not isinstance(self.p, list) and ((self.p <= 0) or (self.p > 1.0)):
@@ -166,13 +166,13 @@ class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
         *args,  # noqa: ARG002
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_minmax_distance(
             syns,
             soma_pds,
-            soma_pd_min=self.soma_pd_min,
-            soma_pd_max=self.soma_pd_max,
-            n=self.n,
+            soma_pd_min=self.soma_pd_min,  # ty:ignore[invalid-argument-type]
+            soma_pd_max=self.soma_pd_max,  # ty:ignore[invalid-argument-type]
+            n=self.n,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -198,13 +198,13 @@ class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynaps
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
         *args,  # noqa: ARG002
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_minmax_distance(
             syns,
             soma_pds,
-            soma_pd_min=self.soma_pd_min,
-            soma_pd_max=self.soma_pd_max,
-            n=self.p,
+            soma_pd_min=self.soma_pd_min,  # ty:ignore[invalid-argument-type]
+            soma_pd_max=self.soma_pd_max,  # ty:ignore[invalid-argument-type]
+            n=self.p,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -234,13 +234,13 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
         *args,  # noqa: ARG002
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_by_path_distance(
             syns,
             soma_pds,
-            soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd,
-            n=self.n,
+            soma_pd_mean=self.soma_pd_mean,  # ty:ignore[invalid-argument-type]
+            soma_pd_sd=self.soma_pd_sd,  # ty:ignore[invalid-argument-type]
+            n=self.n,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -270,13 +270,13 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
         *args,  # noqa: ARG002
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_by_path_distance(
             syns,
             soma_pds,
-            soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd,
-            n=self.p,
+            soma_pd_mean=self.soma_pd_mean,  # ty:ignore[invalid-argument-type]
+            soma_pd_sd=self.soma_pd_sd,  # ty:ignore[invalid-argument-type]
+            n=self.p,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -306,13 +306,13 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_clusters_by_max_distance(
             syns,
             soma_pds,
             pw_pds,
-            n_clusters=self.n_clusters,
-            cluster_max_distance=self.cluster_max_distance,
+            n_clusters=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            cluster_max_distance=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -343,13 +343,13 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
 
     def _select_syns(
         self, syns: pandas.DataFrame, soma_pds: numpy.ndarray, pw_pds: numpy.ndarray
-    ) -> pandas.DataFrame:
+    ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_clusters_by_count(
             syns,
             soma_pds,
             pw_pds,
-            n_clusters=self.n_clusters,
-            n_per_cluster=self.n_per_cluster,
+            n_clusters=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_per_cluster=self.n_per_cluster,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -384,10 +384,10 @@ class ClusteredPDSynapsesByMaxDistance(ClusteredSynapsesByMaxDistance):
             syns,
             soma_pds,
             pw_pds,
-            n_clusters=self.n_clusters,
-            cluster_max_distance=self.cluster_max_distance,
-            soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd,
+            n_clusters=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            cluster_max_distance=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            soma_pd_mean=self.soma_pd_mean,  # ty:ignore[invalid-argument-type]
+            soma_pd_sd=self.soma_pd_sd,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )
 
@@ -422,9 +422,9 @@ class ClusteredPDSynapsesByCount(ClusteredSynapsesByCount):
             syns,
             soma_pds,
             pw_pds,
-            n_clusters=self.n_clusters,
-            n_per_cluster=self.n_per_cluster,
-            soma_pd_mean=self.soma_pd_mean,
-            soma_pd_sd=self.soma_pd_sd,
+            n_clusters=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_per_cluster=self.n_per_cluster,  # ty:ignore[invalid-argument-type]
+            soma_pd_mean=self.soma_pd_mean,  # ty:ignore[invalid-argument-type]
+            soma_pd_sd=self.soma_pd_sd,  # ty:ignore[invalid-argument-type]
             raise_insufficient=False,
         )

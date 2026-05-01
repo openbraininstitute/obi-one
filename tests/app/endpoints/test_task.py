@@ -644,7 +644,7 @@ def test_task_estimate(client, task_type):
 
     assert data["task_type"] == task_type
     assert data["config_id"] == str(config_id)
-    assert data["cost"] == 123.4
+    assert data["cost"] == 123.4  # noqa: RUF069
     assert data["parameters"]["service_subtype"] == ServiceSubtype.SMALL_SIM
     assert data["parameters"]["count"] == 10
 

@@ -129,8 +129,8 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
         elif isinstance(value, dict):
             rebase_config(value, old_base, new_base)
         elif isinstance(value, list):
-            for _v in value:
-                rebase_config(_v, old_base, new_base)
+            for v in value:
+                rebase_config(v, old_base, new_base)
 
 
 def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
@@ -153,15 +153,17 @@ def run_validation(circuit_path: str) -> None:
 
 
 def get_morph_dirs(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
     src_morph_dirs = {}
     dest_morph_dirs = {}
-    for _morph_ext in ["swc", "asc", "h5"]:
+    for morph_ext in ["swc", "asc", "h5"]:
         try:
             morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
-                _morph_ext
+                morph_ext
             )
             # TODO: Should not use private function!! But required to get path
             #       even if h5 container.
@@ -175,19 +177,21 @@ def get_morph_dirs(
 
         if (
             Path(morph_folder).is_dir()
-            and len(filter_extension(Path(morph_folder).iterdir(), _morph_ext)) == 0
+            and len(filter_extension(Path(morph_folder).iterdir(), morph_ext)) == 0  # ty:ignore[invalid-argument-type]
         ):
             # Morphology folder does not contain morphologies
             continue
 
-        dest_morph_dirs[_morph_ext] = pop.morph._get_morphology_base(_morph_ext)  # noqa: SLF001
+        dest_morph_dirs[morph_ext] = pop.morph._get_morphology_base(morph_ext)  # noqa: SLF001
         # TODO: Should not use private function!!
-        src_morph_dirs[_morph_ext] = morph_folder
+        src_morph_dirs[morph_ext] = morph_folder
     return src_morph_dirs, dest_morph_dirs
 
 
 def copy_morphologies(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
     L.info(f"Copying morphologies for population '{pop_name}' ({pop.size})")
@@ -198,17 +202,17 @@ def copy_morphologies(
     if len(src_morph_dirs) == 0:
         msg = "ERROR: No morphologies of any supported format found!"
         raise ValueError(msg)
-    for _morph_ext, _src_dir in src_morph_dirs.items():
-        if _morph_ext == "h5" and Path(_src_dir).is_file():
+    for morph_ext, src_dir in src_morph_dirs.items():
+        if morph_ext == "h5" and Path(src_dir).is_file():
             # TODO: If there is only one neuron extracted, consider removing
             #       the container
             # https://github.com/openbraininstitute/obi-one/issues/387
 
             # Copy containerized morphologies into new container
-            L.info(f"Copying {len(morphology_list)} containerized .{_morph_ext} morphologies")
-            Path(os.path.split(dest_morph_dirs[_morph_ext])[0]).mkdir(parents=True, exist_ok=True)
-            src_container = _src_dir
-            dest_container = dest_morph_dirs[_morph_ext]
+            L.info(f"Copying {len(morphology_list)} containerized .{morph_ext} morphologies")
+            Path(os.path.split(dest_morph_dirs[morph_ext])[0]).mkdir(parents=True, exist_ok=True)
+            src_container = src_dir
+            dest_container = dest_morph_dirs[morph_ext]
             with (
                 h5py.File(src_container) as f_src,
                 h5py.File(dest_container, "a") as f_dest,
@@ -229,11 +233,11 @@ def copy_morphologies(
             )
         else:
             # Copy morphology files
-            L.info(f"Copying {len(morphology_list)} .{_morph_ext} morphologies")
-            Path(dest_morph_dirs[_morph_ext]).mkdir(parents=True, exist_ok=True)
+            L.info(f"Copying {len(morphology_list)} .{morph_ext} morphologies")
+            Path(dest_morph_dirs[morph_ext]).mkdir(parents=True, exist_ok=True)
             for morphology_name in morphology_list:
-                src_file = Path(_src_dir) / f"{morphology_name}.{_morph_ext}"
-                dest_file = Path(dest_morph_dirs[_morph_ext]) / f"{morphology_name}.{_morph_ext}"
+                src_file = Path(src_dir) / f"{morphology_name}.{morph_ext}"
+                dest_file = Path(dest_morph_dirs[morph_ext]) / f"{morphology_name}.{morph_ext}"
                 if not Path(src_file).exists():
                     msg = f"ERROR: Morphology '{src_file}' missing!"
                     raise ValueError(msg)
@@ -244,11 +248,13 @@ def copy_morphologies(
 
 
 def copy_hoc_files(
-    pop_name: str, pop: snap.nodes.NodePopulation, original_circuit: snap.Circuit
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
     hoc_file_list = [
-        _hoc.split(":")[-1] + ".hoc" for _hoc in pop.get(properties="model_template").unique()
+        hoc.split(":")[-1] + ".hoc" for hoc in pop.get(properties="model_template").unique()
     ]
     L.info(
         f"Copying {len(hoc_file_list)} biophysical neuron models (.hoc) for"
@@ -259,9 +265,9 @@ def copy_hoc_files(
     dest_dir = pop.config["biophysical_neuron_models_dir"]
     Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
-    for _hoc_file in hoc_file_list:
-        src_file = Path(source_dir) / _hoc_file
-        dest_file = Path(dest_dir) / _hoc_file
+    for hoc_file in hoc_file_list:
+        src_file = Path(source_dir) / hoc_file
+        dest_file = Path(dest_dir) / hoc_file
         if not Path(src_file).exists():
             msg = f"ERROR: HOC file '{src_file}' missing!"
             raise ValueError(msg)

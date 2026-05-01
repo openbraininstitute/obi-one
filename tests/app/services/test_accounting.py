@@ -119,7 +119,7 @@ def test_estimate_task_cost(project_context, accounting_parameters, task_definit
         )
 
     assert isinstance(info, TaskAccountingInfo)
-    assert info.cost == 100.0
+    assert info.cost == 100.0  # noqa: RUF069
     assert info.parameters == accounting_parameters
 
 
