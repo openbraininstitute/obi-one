@@ -2213,7 +2213,7 @@ requires-dist = [
     { name = "numpy", specifier = "<2.4" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["connectivity", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
     { name = "obp-accounting-sdk", specifier = ">=0.6.0" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.0" },
     { name = "psutil", specifier = ">=6.1.0" },
