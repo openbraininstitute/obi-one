@@ -144,7 +144,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            default=1.10,
+            default=1.1,
             title="Extracellular Calcium Concentration",
             description=(
                 "Extracellular calcium concentration around the synapse in millimoles (mM). "
