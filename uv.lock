@@ -2102,7 +2102,7 @@ requires-dist = [
     { name = "obp-accounting-sdk", specifier = ">=0.6.0" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.0" },
     { name = "psutil", specifier = ">=6.1.0" },
-    { name = "pydantic", specifier = ">=2.10.6,<=2.12.5" },
+    { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
     { name = "pydantic-settings", marker = "extra == 'service'", specifier = ">=2.8.1" },
     { name = "pyjwt", marker = "extra == 'service'", specifier = ">=2.10.1" },
