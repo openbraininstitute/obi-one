@@ -47,6 +47,7 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
+    "numpy<2.4.0",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
@@ -57,6 +58,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# New group for the private dependency
+meshing = [
+    "neuromorphomesh",
+]
+
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
@@ -88,7 +94,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service]",
+    "obi-one[connectivity,notebooks,service,meshing]",
 ]
 
 [dependency-groups]
@@ -129,8 +135,14 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.9.22"
 
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
+
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
