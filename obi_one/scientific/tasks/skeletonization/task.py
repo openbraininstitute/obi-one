@@ -3,7 +3,7 @@ from pathlib import Path
 
 import entitysdk
 from entitysdk import Client, models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
@@ -36,27 +36,30 @@ class SkeletonizationTask(Task):
         """Generate all inputs for skeletonization task."""
         L.info("Creating inputs...")
         em_cell_mesh = db_client.get_entity(
-            entity_id=self.config.initialize.cell_mesh.id_str,
+            entity_id=self.config.initialize.cell_mesh.id_str,  # ty:ignore[invalid-argument-type, unresolved-attribute]
             entity_type=models.EMCellMesh,
         )
         em_cell_mesh_asset = db_client.fetch_assets(
             entity_or_id=em_cell_mesh,
-            selection={"label": AssetLabel.cell_surface_mesh},
+            selection={
+                "label": AssetLabel.cell_surface_mesh,
+                "content_type": ContentType.model_gltf_binary,
+            },
             output_path=output_dir,
         ).one()
         # fetch the full dataset from the nested Entity
         em_dense_reconstruction_dataset = db_client.get_entity(
-            em_cell_mesh.em_dense_reconstruction_dataset.id,
+            em_cell_mesh.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
             entity_type=models.EMDenseReconstructionDataset,
         )
         cell_id = em_cell_mesh.dense_reconstruction_cell_id
         return SkeletonizationInputs(
             metadata=Metadata(
-                subject=em_cell_mesh.subject,
-                brain_region=em_cell_mesh.brain_region,
+                subject=em_cell_mesh.subject,  # ty:ignore[invalid-argument-type]
+                brain_region=em_cell_mesh.brain_region,  # ty:ignore[invalid-argument-type]
                 cell_morphology_protocol_name=CELL_MORPHOLOGY_PROTOCOL_NAME,
                 cell_morphology_protocol_description=CELL_MORPHOLOGY_PROTOCOL_DESCRIPTION,
-                cell_morphology_name=self.config.initialize.cell_mesh.id_str,
+                cell_morphology_name=self.config.initialize.cell_mesh.id_str,  # ty:ignore[unresolved-attribute]
                 cell_morphology_description=(
                     f"Reconstructed morphology and extracted spines of neuron {cell_id}"
                 ),
@@ -64,9 +67,10 @@ class SkeletonizationTask(Task):
             ),
             parameters=ProcessParameters(
                 mesh_path=em_cell_mesh_asset.path,
-                neuron_voxel_size=self.config.initialize.neuron_voxel_size,
-                spines_voxel_size=self.config.initialize.spines_voxel_size,
+                neuron_voxel_size=self.config.initialize.neuron_voxel_size,  # ty:ignore[invalid-argument-type]
+                spines_voxel_size=self.config.initialize.spines_voxel_size,  # ty:ignore[invalid-argument-type]
                 segment_spines=True,
+                write_raw_spines=self.config.initialize.write_raw_spines,
             ),
         )
 

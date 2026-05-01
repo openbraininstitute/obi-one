@@ -18,6 +18,7 @@ from app.types import (
 
 class Capabilities(Schema):
     private_packages: bool = False
+    env_secrets: list[str] = []  # noqa: RUF012
 
 
 class PythonRepositoryCode(Schema):
@@ -27,6 +28,7 @@ class PythonRepositoryCode(Schema):
     path: str
     dependencies: str
     capabilities: Capabilities = Capabilities()
+    staged_directories: list[str] = []  # noqa: RUF012
 
 
 class BuiltinCode(Schema):
@@ -88,6 +90,11 @@ class TaskAccountingCreate(Schema):
 class TaskAccountingInfo(TaskAccountingCreate):
     cost: float
     parameters: AccountingParameters
+
+
+class TaskGroupLegacyDefinition(Schema):
+    task_type: TaskType
+    config_type: type[Entity]
 
 
 class TaskDefinition(Schema):

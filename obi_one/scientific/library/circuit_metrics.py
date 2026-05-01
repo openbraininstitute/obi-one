@@ -3,20 +3,32 @@ import os.path
 import tempfile
 from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
+from os.path import realpath
 from pathlib import Path
+from uuid import UUID
 
-import h5py
-import libsonata
 import numpy as np
 import pandas as pd
+from bluepysnap import Circuit as SnapCircuit
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
+from libsonata import (
+    CircuitConfig,
+    EdgePopulation,
+    EdgeStorage,
+    NodePopulation,
+    NodeStorage,
+)
 from pydantic import BaseModel
 
 ALL_POPULATIONS = "_ALL_"
+TYPES_OF_CHEMICAL_SYNS = ["chemical", "Exp2Syn_synapse", "point_process"]
+TYPES_OF_ELECTRICAL_SYNS = ["electrical"]
+TYPES_OF_BIOPHYS_NODES = ["biophysical"]
+TYPES_OF_VIRTUAL_NODES = ["point_process", "virtual"]
 
 
 class NodePopulationType(StrEnum):
@@ -42,16 +54,24 @@ class DegreeTypes(StrEnum):
     degreedifference = auto()
 
 
-def _get_asset_path(config_path: str, manifest: dict, temp_dir: str) -> Path:
-    for k, v in manifest.items():
-        config_path = config_path.replace(k, v)
-    path_to_fetch = Path(config_path).relative_to(temp_dir)
-    return path_to_fetch
+class CircuitStatsLevelOfDetail(IntEnum):
+    none = 0
+    basic = 1
+    advanced = 2
+    full = 3
+
+
+MAX_UNIQUE_VALUES = {
+    CircuitStatsLevelOfDetail.basic: 25,
+    CircuitStatsLevelOfDetail.advanced: 50,
+    CircuitStatsLevelOfDetail.full: 100,
+}
 
 
 def _assert_level_of_detail_specs(
-    level_of_detail_nodes: dict, level_of_detail_edges: dict
-) -> tuple:
+    level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None,
+    level_of_detail_edges: dict[str, CircuitStatsLevelOfDetail] | None,
+) -> tuple[dict[str, CircuitStatsLevelOfDetail], dict[str, CircuitStatsLevelOfDetail]]:
     if level_of_detail_nodes is None:
         level_of_detail_nodes = {ALL_POPULATIONS: CircuitStatsLevelOfDetail.none}
     if level_of_detail_edges is None:
@@ -60,14 +80,16 @@ def _assert_level_of_detail_specs(
         level_of_detail_nodes[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.none
     if ALL_POPULATIONS not in level_of_detail_edges:
         level_of_detail_edges[ALL_POPULATIONS] = CircuitStatsLevelOfDetail.none
+    for lod_edges in level_of_detail_edges.values():
+        if lod_edges > CircuitStatsLevelOfDetail.basic:
+            if CircuitStatsLevelOfDetail.none in level_of_detail_nodes.values():
+                err_str = (
+                    "To support more than basic level of detail on edges,"
+                    " the minimum level of detail on nodes must be basic!"
+                )
+                raise ValueError(err_str)
+            break
     return level_of_detail_nodes, level_of_detail_edges
-
-
-class CircuitStatsLevelOfDetail(IntEnum):
-    none = 0
-    basic = 1
-    advanced = 2
-    full = 3
 
 
 class TemporaryAsset:
@@ -87,11 +109,11 @@ class TemporaryAsset:
 
         try:
             self._db_client.fetch_file(
-                entity_id=self._circuit_id,
+                entity_id=UUID(self._circuit_id),
                 entity_type=Circuit,
-                asset_id=self._asset_id,
+                asset_id=UUID(self._asset_id),
                 output_path=temp_file_path,
-                asset_path=self._remote_path,
+                asset_path=Path(self._remote_path),
                 strategy=FetchFileStrategy.link_or_download,
             )
         except HTTPStatusError:
@@ -105,75 +127,81 @@ class TemporaryAsset:
 
 
 def get_names_of_typed_populations(
-    config_dict: dict, type_str: str, population_type: str
+    config: CircuitConfig, type_str: list[str], population_type: str
 ) -> list[str]:
     names = []
-    lst_nodes = config_dict.get("networks", {}).get(population_type, [])
-    for nodefile in lst_nodes:
-        for population_name, population in nodefile["populations"].items():
-            if population["type"] == type_str:
-                names.append((nodefile[f"{population_type}_file"], population_name))
+    if population_type == "edges":
+        for pop_name in config.edge_populations:
+            if config.edge_population_properties(pop_name).type in type_str:
+                names.extend([pop_name])
+    elif population_type == "nodes":
+        for pop_name in config.node_populations:
+            if config.node_population_properties(pop_name).type in type_str:
+                names.extend([pop_name])
+    else:
+        err_str = f"Unknown population_type: {population_type}"
+        raise ValueError(err_str)
     return names
 
 
-def get_names_of_typed_node_populations(config_dict: dict, type_str: str) -> list[str]:
-    return get_names_of_typed_populations(config_dict, type_str, "nodes")
+def get_names_of_typed_node_populations(config: CircuitConfig, type_str: list[str]) -> list[str]:
+    return get_names_of_typed_populations(config, type_str, "nodes")
 
 
-def get_names_of_typed_edge_populations(config_dict: dict, type_str: str) -> list[str]:
-    return get_names_of_typed_populations(config_dict, type_str, "edges")
+def get_names_of_typed_edge_populations(config: CircuitConfig, type_str: list[str]) -> list[str]:
+    return get_names_of_typed_populations(config, type_str, "edges")
 
 
-def get_number_of_typed_node_populations(config_dict: dict, type_str: str) -> int:
-    return len(get_names_of_typed_node_populations(config_dict, type_str))
+def get_number_of_typed_node_populations(config: CircuitConfig, type_str: list[str]) -> int:
+    return len(get_names_of_typed_node_populations(config, type_str))
 
 
-def get_number_of_typed_edge_populations(config_dict: dict, type_str: str) -> int:
-    return len(get_names_of_typed_edge_populations(config_dict, type_str))
+def get_number_of_typed_edge_populations(config: CircuitConfig, type_str: list[str]) -> int:
+    return len(get_names_of_typed_edge_populations(config, type_str))
 
 
-def properties_from_config(config_dict: dict) -> dict:
+def properties_from_config(config: CircuitConfig) -> dict:
     return {
         "number_of_biophys_node_populations": get_number_of_typed_node_populations(
-            config_dict, "biophysical"
+            config, TYPES_OF_BIOPHYS_NODES
         ),
         "number_of_virtual_node_populations": get_number_of_typed_node_populations(
-            config_dict, "virtual"
+            config, TYPES_OF_VIRTUAL_NODES
         ),
         "number_of_chemical_edge_populations": get_number_of_typed_edge_populations(
-            config_dict, "chemical"
+            config, TYPES_OF_CHEMICAL_SYNS
         ),
         "number_of_electrical_edge_populations": get_number_of_typed_edge_populations(
-            config_dict, "electrical"
+            config, TYPES_OF_ELECTRICAL_SYNS
         ),
         "names_of_biophys_node_populations": get_names_of_typed_node_populations(
-            config_dict, "biophysical"
+            config, TYPES_OF_BIOPHYS_NODES
         ),
         "names_of_virtual_node_populations": get_names_of_typed_node_populations(
-            config_dict, "virtual"
+            config, TYPES_OF_VIRTUAL_NODES
         ),
         "names_of_chemical_edge_populations": get_names_of_typed_edge_populations(
-            config_dict, "chemical"
+            config, TYPES_OF_CHEMICAL_SYNS
         ),
         "names_of_electrical_edge_populations": get_names_of_typed_edge_populations(
-            config_dict, "electrical"
+            config, TYPES_OF_ELECTRICAL_SYNS
         ),
     }
 
 
 def names_from_node_sets_file(
-    config_dict: dict,
-    manifest: dict,
+    config: CircuitConfig,
     temp_dir: str,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
+    asset_id: str | UUID,
 ) -> list:
-    if "node_sets_file" in config_dict:
+    ns_path = realpath(config.node_sets_path)
+    if len(ns_path) > 0:
         try:
-            remote_path = _get_asset_path(config_dict["node_sets_file"], manifest, temp_dir)
+            remote_path = Path(ns_path).relative_to(temp_dir)
             with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
+                TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn,
                 Path.open(fn) as fid,
             ):
                 contents = json.load(fid)
@@ -185,61 +213,48 @@ def names_from_node_sets_file(
     return list(contents.keys())
 
 
-def number_of_nodes_from_h5(h5: h5py.File, population_name: str) -> int:
-    return len(h5["nodes"][population_name]["node_type_id"])
+def dynamics_params_from_population(pop: NodePopulation) -> list[str]:
+    return list(pop.dynamics_attribute_names)
 
 
-def number_of_edges_from_h5(h5: h5py.File, population_name: str) -> int:
-    return len(h5["edges"][population_name]["source_node_id"])
+def unique_node_property_values_from_population(
+    pop: NodePopulation,
+    max_unique_values: int,
+) -> dict[str, list]:
+    return {
+        name: pop.enumeration_values(name)
+        for name in pop.enumeration_names
+        if len(pop.enumeration_values(name)) <= max_unique_values
+    }
 
 
-def source_name_from_h5(h5: h5py.File, population_name: str) -> str:
-    return libsonata.EdgeStorage(h5.filename).open_population(population_name).source
-
-
-def target_name_from_h5(h5: h5py.File, population_name: str) -> str:
-    return libsonata.EdgeStorage(h5.filename).open_population(population_name).target
-
-
-def list_of_node_properties_from_h5(h5: h5py.File, population_name: str) -> list[str]:
-    return [_k for _k in h5["nodes"][population_name]["0"] if not _k.startswith("@")]
-
-
-def list_of_edge_properties_from_h5(h5: h5py.File, population_name: str) -> list[str]:
-    return list(h5["edges"][population_name].get("0", {}).keys())
-
-
-def unique_node_property_values_from_h5(h5: h5py.File, population_name: str) -> dict[str, list]:
+def number_of_nodes_per_unique_value_from_population(
+    pop: NodePopulation, max_unique_values: int
+) -> dict:
     vals_dict = {}
-    grp = h5["nodes"][population_name]["0"]
-    for k in grp.get("@library", {}):
-        vals_dict[k] = grp["@library"][k][:]
+    for name in pop.enumeration_names:
+        prop_vals = pop.enumeration_values(name)
+        if len(prop_vals) <= max_unique_values:
+            prop_idx = pop.get_enumeration(name, pop.select_all())
+
+            prop_counts = (
+                pd.Series(prop_idx).value_counts().reindex(range(len(prop_vals)), fill_value=0)
+            )
+            prop_counts.index = prop_vals
+            vals_dict[name] = prop_counts.to_dict()
     return vals_dict
 
 
-def number_of_nodes_per_unique_value_from_h5(h5: h5py.File, population_name: str) -> dict:
+def node_location_properties_from_population(pop: NodePopulation) -> dict:
     vals_dict = {}
-    grp = h5["nodes"][population_name]["0"]
-    for k in grp.get("@library", {}):
-        prop_vals = grp["@library"][k][:]
-        prop_idx_counts = pd.Series(grp[k][:]).value_counts()
-        prop_idx_counts = prop_idx_counts.reindex(range(len(prop_vals)), fill_value=0)
-        prop_idx_counts.index = pd.Index(prop_vals)
-        vals_dict[k] = prop_idx_counts.to_dict()
-    return vals_dict
-
-
-def node_location_properties_from_h5(h5: h5py.File, population_name: str) -> dict:
-    vals_dict = {}
-    grp = h5["nodes"][population_name]["0"]
     coord_names = [
-        _coord
-        for _coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
-        if str(_coord) in grp
+        coord
+        for coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
+        if str(coord) in pop.attribute_names
     ]
-    for _coord in coord_names:
-        coord_v = grp[str(_coord)][:]
-        vals_dict[_coord] = {
+    for coord in coord_names:
+        coord_v = pop.get_attribute(coord, pop.select_all())
+        vals_dict[coord] = {
             "min": np.min(coord_v),
             "max": np.max(coord_v),
             "mean": np.mean(coord_v),
@@ -251,11 +266,12 @@ def node_location_properties_from_h5(h5: h5py.File, population_name: str) -> dic
     return vals_dict
 
 
-def edge_property_stats_from_h5(h5: h5py.File, population_name: str) -> dict:
+def edge_property_stats_from_population(pop: EdgePopulation) -> dict:
     vals_dict = {}
-    grp = h5["edges"][population_name]["0"]
-    for edgeprop_name in grp:
-        vals = grp[edgeprop_name][:]
+    for edgeprop_name in pop.attribute_names:
+        if edgeprop_name in pop.enumeration_names:
+            continue
+        vals = pop.get_attribute(edgeprop_name, pop.select_all())
         vals_dict[edgeprop_name] = {
             "mean": np.mean(vals),
             "median": np.median(vals),
@@ -266,25 +282,13 @@ def edge_property_stats_from_h5(h5: h5py.File, population_name: str) -> dict:
     return vals_dict
 
 
-def degree_stats_from_h5(
-    h5: h5py.File, population_name: str
-) -> dict[DegreeTypes, dict[str, float]]:
-    grp = h5["edges"][population_name]["indices"]
-
-    def _degrees(_grp: h5py.Group) -> np.ndarray:
-        range_to_len = np.diff(_grp["range_to_edge_id"], axis=1).transpose()[0]
-        cc = np.hstack([0, np.cumsum(range_to_len)]).astype(int)
-        deg = cc[_grp["node_id_to_ranges"][:, 1]] - cc[_grp["node_id_to_ranges"][:, 0]]
-        return deg
-
-    grp_in = grp["target_to_source"]
-    indegs = _degrees(grp_in)
-    if "source_to_target" in grp:
-        grp_out = grp["source_to_target"]
-        outdegs = _degrees(grp_out)
-    else:
-        outdegs = np.zeros_like(indegs)
-
+def degree_stats_from_population(
+    pop: EdgePopulation, node_stats_dict: dict
+) -> dict[str, dict[str, float]]:
+    sz = node_stats_dict[pop.target]["population_length"]
+    indegs = np.array([pop.afferent_edges(i).flat_size for i in range(sz)])
+    sz = node_stats_dict[pop.source]["population_length"]
+    outdegs = np.array([pop.efferent_edges(i).flat_size for i in range(sz)])
     stats = {
         degtype: {
             "min": np.min(degs),
@@ -315,17 +319,16 @@ def degree_stats_from_h5(
             )
         }
         stats.update(add_stats)
-    return stats
+    return stats  # ty:ignore[invalid-return-type]
 
 
 def properties_from_nodes_files(
-    config_dict: dict,
-    manifest: dict,
+    circ: SnapCircuit,
     temp_dir: str,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
-    level_of_detail_specs: dict,
+    asset_id: str | UUID,
+    level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
 ) -> dict:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = [
@@ -335,73 +338,77 @@ def properties_from_nodes_files(
         "property_value_counts",
     ]
     properties_dict = {}
-    for nodefile, nodepop in get_names_of_typed_node_populations(
-        config_dict, "virtual"
-    ) + get_names_of_typed_node_populations(config_dict, "biophysical"):
-        if level_of_detail_specs.get(nodepop, default_lod) > CircuitStatsLevelOfDetail.none:
-            remote_path = _get_asset_path(nodefile, manifest, temp_dir)
-            properties_dict[nodepop] = {_k: {} for _k in lst_req_props}
-            with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
-                h5py.File(fn, "r") as h5,
-            ):
-                properties_dict[nodepop]["population_length"] = number_of_nodes_from_h5(h5, nodepop)
-                properties_dict[nodepop]["property_list"] = list_of_node_properties_from_h5(
-                    h5, nodepop
-                )
+    config = circ.to_libsonata
+    for nodepop in get_names_of_typed_node_populations(
+        config, TYPES_OF_VIRTUAL_NODES + TYPES_OF_BIOPHYS_NODES
+    ):
+        lod = level_of_detail_specs.get(nodepop, default_lod)
+        if lod > CircuitStatsLevelOfDetail.none:
+            np_file_path = circ.nodes[nodepop].h5_filepath
+            remote_path = Path(np_file_path).relative_to(temp_dir)
+            properties_dict[nodepop] = {k: {} for k in lst_req_props}
+            max_uv = MAX_UNIQUE_VALUES[lod]
+            with TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn:
+                pop_obj = NodeStorage(fn).open_population(nodepop)
+                properties_dict[nodepop]["population_length"] = pop_obj.size
+                properties_dict[nodepop]["property_list"] = list(pop_obj.attribute_names)
                 properties_dict[nodepop]["property_unique_values"] = (
-                    unique_node_property_values_from_h5(h5, nodepop)
+                    unique_node_property_values_from_population(pop_obj, max_uv)
                 )
                 properties_dict[nodepop]["property_value_counts"] = (
-                    number_of_nodes_per_unique_value_from_h5(h5, nodepop)
+                    number_of_nodes_per_unique_value_from_population(pop_obj, max_uv)
                 )
-                if (
-                    level_of_detail_specs.get(nodepop, default_lod)
-                    > CircuitStatsLevelOfDetail.basic
-                ):
+                if nodepop in get_names_of_typed_node_populations(config, TYPES_OF_BIOPHYS_NODES):
+                    properties_dict[nodepop]["dynamics_param_names"] = (
+                        dynamics_params_from_population(pop_obj)
+                    )
+                if lod > CircuitStatsLevelOfDetail.basic:
                     properties_dict[nodepop]["node_location_info"] = (
-                        node_location_properties_from_h5(h5, nodepop)
+                        node_location_properties_from_population(pop_obj)
                     )
 
     return properties_dict
 
 
 def properties_from_edges_files(
-    config_dict: str,
-    manifest: dict,
+    circ: SnapCircuit,
     temp_dir: str,
+    node_stats_dict: dict,
     db_client: Client,
     circuit_id: str,
-    asset_id: str,
-    level_of_detail_specs: dict,
+    asset_id: str | UUID,
+    level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
 ) -> dict:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = ["number_of_edges", "property_list", "property_stats", "degrees"]
     properties_dict = {}
-    for edgefile, edgepop in get_names_of_typed_edge_populations(
-        config_dict, "chemical"
-    ) + get_names_of_typed_edge_populations(config_dict, "electrical"):
+    config = circ.to_libsonata
+    for edgepop in get_names_of_typed_edge_populations(
+        config, TYPES_OF_CHEMICAL_SYNS + TYPES_OF_ELECTRICAL_SYNS
+    ):
         if level_of_detail_specs.get(edgepop, default_lod) > CircuitStatsLevelOfDetail.none:
-            properties_dict[edgepop] = {_k: {} for _k in lst_req_props}
-            remote_path = _get_asset_path(edgefile, manifest, temp_dir)
+            properties_dict[edgepop] = {k: {} for k in lst_req_props}
+
+            ep_file_path = circ.edges[edgepop].h5_filepath
+            remote_path = Path(ep_file_path).relative_to(temp_dir)
             with (
-                TemporaryAsset(remote_path, db_client, circuit_id, asset_id) as fn,
-                h5py.File(fn, "r") as h5,
+                TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn,
             ):
-                properties_dict[edgepop]["number_of_edges"] = number_of_edges_from_h5(h5, edgepop)
-                properties_dict[edgepop]["property_list"] = list_of_edge_properties_from_h5(
-                    h5, edgepop
-                )
-                properties_dict[edgepop]["source_name"] = source_name_from_h5(h5, edgepop)
-                properties_dict[edgepop]["target_name"] = target_name_from_h5(h5, edgepop)
+                pop_obj = EdgeStorage(fn).open_population(edgepop)
+                properties_dict[edgepop]["number_of_edges"] = pop_obj.size
+                properties_dict[edgepop]["property_list"] = list(pop_obj.attribute_names)
+                properties_dict[edgepop]["source_name"] = pop_obj.source
+                properties_dict[edgepop]["target_name"] = pop_obj.target
                 if (
                     level_of_detail_specs.get(edgepop, default_lod)
                     > CircuitStatsLevelOfDetail.basic
                 ):
-                    properties_dict[edgepop]["property_stats"] = edge_property_stats_from_h5(
-                        h5, edgepop
+                    properties_dict[edgepop]["property_stats"] = (
+                        edge_property_stats_from_population(pop_obj)
                     )
-                    properties_dict[edgepop]["degrees"] = degree_stats_from_h5(h5, edgepop)
+                    properties_dict[edgepop]["degrees"] = degree_stats_from_population(
+                        pop_obj, node_stats_dict
+                    )
     return properties_dict
 
 
@@ -412,6 +419,7 @@ class CircuitMetricsNodePopulation(BaseModel):
     property_names: list[str]
     property_unique_values: dict[str, list[str]]
     property_value_counts: dict[str, dict[str, int]]
+    dynamics_param_names: list[str] | None = None
     node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
 
 
@@ -449,11 +457,13 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     chemical_edge_populations: list[CircuitMetricsEdgePopulation | None]
     electrical_edge_populations: list[CircuitMetricsEdgePopulation | None]
 
-    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:
+    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:  # ty:ignore[invalid-method-override]
         """Provides iterator over all populations (node + edge)."""
-        yield from self.biophysical_node_populations + self.virtual_node_populations
+        yield from self.biophysical_node_populations + self.virtual_node_populations  # ty:ignore[invalid-yield]
 
-    def __getitem__(self, key: str) -> CircuitMetricsNodePopulation | CircuitMetricsEdgePopulation:
+    def __getitem__(
+        self, key: str
+    ) -> CircuitMetricsNodePopulation | CircuitMetricsEdgePopulation | None:
         """Provides access to populations by name."""
         if key in self.names_of_biophys_node_populations:
             return self.biophysical_node_populations[
@@ -487,7 +497,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         level_of_detail_nodes, level_of_detail_edges
     )
     circuit = db_client.get_entity(
-        entity_id=circuit_id,
+        entity_id=UUID(circuit_id),
         entity_type=Circuit,
     )
 
@@ -506,35 +516,30 @@ def get_circuit_metrics(  # noqa: PLR0914
         temp_file_path = Path(temp_dir) / "circuit_config.json"
 
         db_client.fetch_file(
-            entity_id=circuit_id,
+            entity_id=UUID(circuit_id),
             entity_type=Circuit,
             asset_id=asset_id,
             output_path=temp_file_path,
-            asset_path="circuit_config.json",
+            asset_path=Path("circuit_config.json"),
             strategy=FetchFileStrategy.link_or_download,
         )
 
-        # Read the file and load JSON
-        content = Path(temp_file_path).read_text(encoding="utf-8")
-        config_dict = json.loads(content)
-        manifest = {
-            k: str(Path(temp_dir) / Path(v)) for k, v in config_dict.get("manifest", {}).items()
-        }
+        circ = SnapCircuit(temp_file_path)
+        config = circ.to_libsonata
 
-    dict_props = properties_from_config(config_dict)
-    nodesets = names_from_node_sets_file(
-        config_dict, manifest, temp_dir, db_client, circuit_id, asset_id
-    )
+    temp_dir = realpath(str(temp_dir))
+    dict_props = properties_from_config(config)
+    nodesets = names_from_node_sets_file(config, temp_dir, db_client, circuit_id, asset_id)
 
     node_props = properties_from_nodes_files(
-        config_dict, manifest, temp_dir, db_client, circuit_id, asset_id, level_of_detail_nodes
+        circ, temp_dir, db_client, circuit_id, asset_id, level_of_detail_nodes
     )
     edge_props = properties_from_edges_files(
-        config_dict, manifest, temp_dir, db_client, circuit_id, asset_id, level_of_detail_edges
+        circ, temp_dir, node_props, db_client, circuit_id, asset_id, level_of_detail_edges
     )
 
     biophys_pops = []
-    for _, nodepop in dict_props["names_of_biophys_node_populations"]:
+    for nodepop in dict_props["names_of_biophys_node_populations"]:
         pop = None
         if nodepop in node_props:
             pop = CircuitMetricsNodePopulation(
@@ -544,12 +549,13 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
+                dynamics_param_names=node_props[nodepop]["dynamics_param_names"],
                 # Use .get() because node_location_info is only added when level_of_detail > basic
                 node_location_info=node_props[nodepop].get("node_location_info"),
             )
         biophys_pops.append(pop)
     virtual_pops = []
-    for _, nodepop in dict_props["names_of_virtual_node_populations"]:
+    for nodepop in dict_props["names_of_virtual_node_populations"]:
         pop = None
         if nodepop in node_props:
             pop = CircuitMetricsNodePopulation(
@@ -564,7 +570,7 @@ def get_circuit_metrics(  # noqa: PLR0914
             )
         virtual_pops.append(pop)
     chemical_pops = []
-    for _, edgepop in dict_props["names_of_chemical_edge_populations"]:
+    for edgepop in dict_props["names_of_chemical_edge_populations"]:
         pop = None
         if edgepop in edge_props:
             pop = CircuitMetricsEdgePopulation(
@@ -579,7 +585,7 @@ def get_circuit_metrics(  # noqa: PLR0914
             )
         chemical_pops.append(pop)
     electrical_pops = []
-    for _, edgepop in dict_props["names_of_electrical_edge_populations"]:
+    for edgepop in dict_props["names_of_electrical_edge_populations"]:
         pop = None
         if edgepop in edge_props:
             pop = CircuitMetricsEdgePopulation(
@@ -599,18 +605,10 @@ def get_circuit_metrics(  # noqa: PLR0914
         number_of_virtual_node_populations=dict_props["number_of_virtual_node_populations"],
         number_of_chemical_edge_populations=dict_props["number_of_chemical_edge_populations"],
         number_of_electrical_edge_populations=dict_props["number_of_electrical_edge_populations"],
-        names_of_biophys_node_populations=[
-            _x[1] for _x in dict_props["names_of_biophys_node_populations"]
-        ],
-        names_of_virtual_node_populations=[
-            _x[1] for _x in dict_props["names_of_virtual_node_populations"]
-        ],
-        names_of_chemical_edge_populations=[
-            _x[1] for _x in dict_props["names_of_chemical_edge_populations"]
-        ],
-        names_of_electrical_edge_populations=[
-            _x[1] for _x in dict_props["names_of_electrical_edge_populations"]
-        ],
+        names_of_biophys_node_populations=dict_props["names_of_biophys_node_populations"],
+        names_of_virtual_node_populations=dict_props["names_of_virtual_node_populations"],
+        names_of_chemical_edge_populations=dict_props["names_of_chemical_edge_populations"],
+        names_of_electrical_edge_populations=dict_props["names_of_electrical_edge_populations"],
         names_of_nodesets=nodesets,
         biophysical_node_populations=biophys_pops,
         virtual_node_populations=virtual_pops,

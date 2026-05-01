@@ -1,6 +1,5 @@
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
-import tqdm
 from caveclient import CAVEclient
 from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology
@@ -86,8 +85,8 @@ def add_competing_mesh_distances(
         competitor_ids = mesh_pt_df.spine_sharing_id.to_numpy()[idx]
         is_different = competitor_ids[:, 0] != competitor_ids[:, -1]
         first_different = [
-            numpy.nonzero(_x)[0][0] + 1
-            for _x in numpy.diff(competitor_ids[is_different], axis=1) != 0
+            numpy.nonzero(x)[0][0] + 1
+            for x in numpy.diff(competitor_ids[is_different], axis=1) != 0
         ]
         competitor_dists[mask_idx[is_different]] = dist[is_different][
             range(len(first_different)), first_different
@@ -109,8 +108,8 @@ def synapse_info_df(
     client: CAVEclient, pt_root_id: int, resolutions: list, col_location: str = "ctr_pt_position"
 ) -> pandas.DataFrame:
     if not isinstance(pt_root_id, list):
-        pt_root_id = [pt_root_id]
-    syns = client.materialize.synapse_query(post_ids=pt_root_id)
+        pt_root_id = [pt_root_id]  # ty:ignore[invalid-assignment]
+    syns = client.materialize.synapse_query(post_ids=pt_root_id)  # ty:ignore[unresolved-attribute]
 
     syn_locs = syns[col_location].apply(
         lambda _x: pandas.Series(_x * resolutions / 1000.0, index=_C_P_LOCS)
@@ -123,12 +122,12 @@ def synapse_info_df(
 def morph_to_segs_df(morph: Morphology) -> pandas.DataFrame:
     segs = []
     sec_id_keys = []
-    for sec in morph.morphology.sections:
+    for sec in morph.morphology.sections:  # ty:ignore[unresolved-attribute]
         if len(sec.points) <= 1:
             continue
         seg_start, seg_end = zip(*sec.segments, strict=False)
-        seg_start = pandas.DataFrame(seg_start, columns=_C_SEG_S_F)
-        seg_end = pandas.DataFrame(seg_end, columns=_C_SEG_E_F)
+        seg_start = pandas.DataFrame(seg_start, columns=_C_SEG_S_F)  # ty:ignore[invalid-argument-type]
+        seg_end = pandas.DataFrame(seg_end, columns=_C_SEG_E_F)  # ty:ignore[invalid-argument-type]
         seg = (
             pandas.concat([seg_start, seg_end], axis=1)
             .reset_index(drop=False)
@@ -144,14 +143,14 @@ def morph_to_segs_df(morph: Morphology) -> pandas.DataFrame:
 def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
     all_spine_points = pandas.concat(
         [
-            pandas.DataFrame(m.spines.spine_mesh_points(i), columns=["x", "y", "z"])
+            pandas.DataFrame(m.spines.spine_mesh_points(i), columns=["x", "y", "z"])  # ty:ignore[invalid-argument-type]
             for i in range(m.spines.spine_count)
         ],
         axis=0,
         keys=m.spines.spine_table.index.to_numpy(),
         names=[_C_SP_INDEX],
     ).reset_index(0)
-    soma_points = pandas.DataFrame(m.soma.soma_mesh_points, columns=["x", "y", "z"])
+    soma_points = pandas.DataFrame(m.soma.soma_mesh_points, columns=["x", "y", "z"])  # ty:ignore[invalid-argument-type]
     soma_points[_C_SP_INDEX] = -1
 
     spine_and_soma_points = pandas.concat([all_spine_points, soma_points], axis=0).reset_index(
@@ -163,14 +162,14 @@ def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
 def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.DataFrame:
     chunk_sz = 1000
     if len(pts) <= chunk_sz:
-        res = _map_points_to_segs_df(segs, pts.to_numpy())
+        res = _map_points_to_segs_df(segs, pts.to_numpy())  # ty:ignore[unresolved-attribute]
     else:
         chunk_ab = numpy.arange(0, len(pts) + chunk_sz, chunk_sz)
         res = []
-        for a, b in tqdm.tqdm(list(zip(chunk_ab[:-1], chunk_ab[1:], strict=False))):  # NOQA: RUF007
-            res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))
+        for a, b in zip(chunk_ab[:-1], chunk_ab[1:], strict=False):  # NOQA: RUF007
+            res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))  # ty:ignore[unresolved-attribute]
         res = pandas.concat(res, axis=0)
-    res.index = pts.index
+    res.index = pts.index  # ty:ignore[unresolved-attribute]
     return res
 
 
@@ -234,8 +233,8 @@ def calc_section_offset(
         err_str = "Optional dependency Connectome-Utilities not installed!"
         raise RuntimeError(err_str) from None
 
-    pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())
-    all_sec_l = numpy.array([sec.length for sec in morph.sections])
+    pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())  # ty:ignore[unresolved-attribute]
+    all_sec_l = numpy.array([sec.length for sec in morph.sections])  # ty:ignore[unresolved-attribute]
     is_not_on_neurite = syns[prefix + _STR_SEC_ID] < 1
 
     abs_off = pd_calc.O[syns[prefix + _STR_SEC_ID] - 1, syns[prefix + _STR_SEG_ID]]
@@ -253,7 +252,7 @@ def segment_interpolator(seg: tuple, o: float) -> pandas.Series:
 def calc_center_positions(df: pandas.DataFrame, morph: MorphologyWithSpines) -> pandas.DataFrame:
     return df.apply(
         lambda row: segment_interpolator(
-            morph.section(int(row[_STR_SEC_ID]) - 1).segments[int(row[_STR_SEG_ID])],
+            morph.section(int(row[_STR_SEC_ID]) - 1).segments[int(row[_STR_SEG_ID])],  # ty:ignore[unresolved-attribute]
             row[_STR_SEG_OFF],
         ),
         axis=1,
@@ -263,19 +262,19 @@ def calc_center_positions(df: pandas.DataFrame, morph: MorphologyWithSpines) -> 
 def rename_directed_dataframe_colums(
     df: pandas.DataFrame, prefix: str = _PF_AFF
 ) -> pandas.DataFrame:
-    rename_dict = {_col: prefix + _col for _col in _WITH_DIR if _col in df.columns}
+    rename_dict = {col: prefix + col for col in _WITH_DIR if col in df.columns}
     return df.rename(columns=rename_dict)
 
 
 def fill_defaults_for_missing_columns(
     df_reference: pandas.DataFrame, df_modify: pandas.DataFrame
 ) -> None:
-    missingcols = [_col for _col in df_reference.columns if _col not in df_modify.columns]
-    for _col in missingcols:
-        if _col in _V_COLNAME_DICT:
-            df_modify[_col] = _V_COLNAME_DICT[_col]
+    missingcols = [col for col in df_reference.columns if col not in df_modify.columns]
+    for col in missingcols:
+        if col in _V_COLNAME_DICT:
+            df_modify[col] = _V_COLNAME_DICT[col]
         else:
-            df_modify[_col] = _V_DTYPE_DICT.get(str(df_reference.dtypes[_col]), _V_FALLBACK)
+            df_modify[col] = _V_DTYPE_DICT.get(str(df_reference.dtypes[col]), _V_FALLBACK)
 
 
 def edges_dataframe_for_soma_syns(
@@ -302,9 +301,9 @@ def edges_dataframe_for_soma_syns(
     c[_STR_SEC_ID] = 0
     c[_STR_SEG_ID] = 0
     c[_STR_SEG_OFF] = 0.0
-    c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)
-    for _col, _coord in zip(_C_CENTER, m.morphology.soma.center, strict=False):
-        c[_col] = _coord
+    c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)  # ty:ignore[invalid-argument-type]
+    for col, coord in zip(_C_CENTER, m.morphology.soma.center, strict=False):
+        c[col] = coord
     c["distance"] = mpd.loc[is_on_soma, "distance"]
     c = rename_directed_dataframe_colums(c, prefix=_PF_AFF)
     return c
@@ -331,8 +330,8 @@ def edges_dataframe_for_shaft_syns(
         ],
         axis=1,
     )
-    b = pandas.concat([b, calc_center_positions(b, m.morphology)], axis=1)
-    b[_STR_SEC_OFF] = calc_section_offset(b, m.morphology)
+    b = pandas.concat([b, calc_center_positions(b, m.morphology)], axis=1)  # ty:ignore[invalid-argument-type]
+    b[_STR_SEC_OFF] = calc_section_offset(b, m.morphology)  # ty:ignore[invalid-argument-type]
     b = rename_directed_dataframe_colums(b, _PF_AFF)
     return b
 
@@ -359,9 +358,9 @@ def edges_dataframe_for_spine_syns(
     a["distance"] = mpd.loc[is_on_spine, "distance"].to_numpy()
     a["synapse_id"] = mpd.index[is_on_spine].to_numpy()
     a[_C_PSD_ID] = numpy.arange(len(a.index))  # For now simply all different
-    for _col in _C_P_LOCS:
-        a[_PF_AFF + _col] = syns.loc[
-            is_on_spine, _col
+    for col in _C_P_LOCS:
+        a[_PF_AFF + col] = syns.loc[
+            is_on_spine, col
         ].to_numpy()  # Could also be a pandas.concat after reset_index()
     a[_C_CAVE_ID_OUT] = syns.loc[is_on_spine, _C_CAVE_ID_IN].to_numpy()
     a = a.reset_index(drop=False).set_index("synapse_id").sort_index()
@@ -373,7 +372,7 @@ def map_afferents_to_spiny_morphology(
     syns: pandas.DataFrame,
     add_quality_info: bool = False,  # NOQA: FBT001, FBT002
 ) -> pandas.DataFrame:
-    segs_df = morph_to_segs_df(m)
+    segs_df = morph_to_segs_df(m)  # ty:ignore[invalid-argument-type]
     spine_and_soma_points = morph_to_spine_and_soma_df(m)
 
     mpd_nrt = map_points_to_segs_df(segs_df, syns[_C_P_LOCS])
@@ -402,5 +401,5 @@ def map_afferents_to_spiny_morphology(
             competing_dist[is_on_spine].to_numpy(), mpd_nrt.loc[is_on_spine, "distance"].to_numpy()
         )
         df_concat["competing_distance"] = competing_dist
-        return df_concat, estimate_mesh_resolution(spine_and_soma_points)
+        return df_concat, estimate_mesh_resolution(spine_and_soma_points)  # ty:ignore[invalid-return-type]
     return df_concat

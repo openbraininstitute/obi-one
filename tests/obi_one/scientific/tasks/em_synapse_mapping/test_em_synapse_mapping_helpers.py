@@ -10,11 +10,11 @@ from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
     synapses_and_nodes_dataframes_from_EM,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.plot import plot_mapping_stats
-from obi_one.scientific.tasks.em_synapse_mapping.provenance import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
     assemble_publication_links,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
+from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
 from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
 
@@ -51,6 +51,7 @@ def em_dataset():
 def test_compress_output(tmp_path):
     out_root = tmp_path / "out"
     out_root.mkdir()
+    test_files = [str(out_root / "a.h5"), str(out_root / "b.h5")]
 
     with (
         patch(
@@ -61,12 +62,12 @@ def test_compress_output(tmp_path):
             "obi_one.scientific.tasks.em_synapse_mapping.util.subprocess.check_call"
         ) as mock_check_call,
     ):
-        compressed_path = compress_output(out_root)
+        compressed_path = compress_output(out_root, test_files)
 
     assert compressed_path == str(out_root / "sonata.tar.gz")
     assert (out_root / "sonata.tar").read_bytes() == b"tar-bytes"
-    mock_check_output.assert_called_once_with(["tar", "-c", str(out_root)])
-    mock_check_call.assert_called_once_with(["gzip", "-1", str(out_root / "sonata.tar")])
+    mock_check_output.assert_called_once_with(["tar", "-cf", "-", *test_files])
+    mock_check_call.assert_called_once_with(["gzip", "-1", "-f", str(out_root / "sonata.tar")])
 
 
 def test_assemble_publication_links_filters_application(mock_db_client):
@@ -154,10 +155,14 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     existing_circuit = SimpleNamespace(id=uuid4())
     mock_db_client.register_entity.side_effect = [existing_circuit, "link-1", "link-2"]
 
-    mapped_synapses_df = pd.DataFrame({"x": [1, 2, 3]})
-    syn_pre_post_df = pd.DataFrame({"pre_node_id": [5, 5, 8]})
     file_paths = {"a.txt": str(tmp_path / "a.txt")}
     compressed_path = tmp_path / "sonata.tar.gz"
+
+    resolved_neuron = SimpleNamespace(
+        pt_root_id=42,
+        use_me_model=False,
+        phys_node_props={},
+    )
 
     with (
         patch(
@@ -173,14 +178,18 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
             return_value=SimpleNamespace(id=uuid4()),
         ),
     ):
+        em_dataset_from_id = Mock()
+        em_dataset_from_id.entity.return_value = em_dataset
         circuit_id = register_output(
             db_client=mock_db_client,
-            pt_root_id=42,
-            mapped_synapses_df=mapped_synapses_df,
-            syn_pre_post_df=syn_pre_post_df,
+            resolved_neurons=[resolved_neuron],
             source_dataset=source_dataset,
-            em_dataset=em_dataset,
-            lst_notices=["notice"],
+            em_dataset=em_dataset_from_id,
+            all_notices=["notice"],
+            total_synapses=3,
+            total_connections=2,
+            total_internal=0,
+            total_external=3,
             file_paths=file_paths,
             compressed_path=compressed_path,
         )

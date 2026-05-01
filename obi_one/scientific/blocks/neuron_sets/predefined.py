@@ -40,7 +40,7 @@ class PredefinedNeuronSet(AbstractNeuronSet):
             )
             raise ValueError(msg)
 
-    def _get_expression(self, circuit: Circuit, population: str) -> list:
+    def _get_expression(self, circuit: Circuit, population: str) -> list:  # ty:ignore[invalid-method-override]
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
         return [self.node_set]

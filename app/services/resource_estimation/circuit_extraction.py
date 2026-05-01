@@ -68,7 +68,7 @@ def estimate_task_resources(  # noqa: PLR0914
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=get_task_type_config_asset_label(task_definition.task_type),
+        asset_label=get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
     ).id
 
     json_str = db_client.download_content(
@@ -81,20 +81,20 @@ def estimate_task_resources(  # noqa: PLR0914
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
     # Get parent circuit metrics
-    circuit_id = config.inputs[0].id
+    circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
     level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     circuit_metrics = get_circuit_metrics(
-        circuit_id=circuit_id,
+        circuit_id=str(circuit_id),
         db_client=db_client,
         level_of_detail_nodes=level_of_detail_nodes_dict,
         level_of_detail_edges=level_of_detail_edges_dict,
     )
 
     # Estimate memory based on the number of input neurons
-    nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])
-    nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])
-    input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio
+    nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
+    nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])  # ty:ignore[unresolved-attribute]
+    input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
 
     mem_gb_required = 1 + 55e-6 * input_size_neurons
     ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
@@ -105,19 +105,19 @@ def estimate_task_resources(  # noqa: PLR0914
     # Estimate disk space based in the number of input synapses
     sbio = np.sum(
         [
-            epop.number_of_edges
+            epop.number_of_edges  # ty:ignore[unresolved-attribute]
             for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_biophys_node_populations
+            if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
         ]
     )
     svirt = np.sum(
         [
-            epop.number_of_edges
+            epop.number_of_edges  # ty:ignore[unresolved-attribute]
             for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_virtual_node_populations
+            if epop.source_name in circuit_metrics.names_of_virtual_node_populations  # ty:ignore[unresolved-attribute]
         ]
     )
-    input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio
+    input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
     output_size_synapses = input_size_synapses  # Using maximum output count
     output_size_gb = 1 + output_size_synapses * 1.85e-7
     _check_available_disk_space(output_size_gb)
