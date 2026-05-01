@@ -61,7 +61,6 @@ class BlockGroup(StrEnum):
     EVENTS_GROUP = "Events"
 
 
-TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
@@ -145,7 +144,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            default=1.1,
+            default=1.10,
             title="Extracellular Calcium Concentration",
             description=(
                 "Extracellular calcium concentration around the synapse in millimoles (mM). "

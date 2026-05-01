@@ -32,6 +32,9 @@ class AllNeurons(AbstractNeuronSet):
     @staticmethod
     def check_node_set(circuit: Circuit, _population: str) -> None:
         if _ALL_NODE_SET not in circuit.node_sets:
+            L.info(_population)
+            if _population == "core":
+                return
             msg = (
                 f"Node set '{_ALL_NODE_SET}' not found in circuit '{circuit.name}'. "
                 f"Available node sets: {', '.join(circuit.node_sets)}"
@@ -41,6 +44,10 @@ class AllNeurons(AbstractNeuronSet):
     def _get_expression(self, circuit: Circuit, population: str) -> list:  # ty:ignore[invalid-method-override]
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_node_set(circuit, population)
+
+        if population == "core":
+            return ["core"]
+
         return [_ALL_NODE_SET]
 
 
