@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 
 _INFO = Info(campaign_name="test", campaign_description="test")
@@ -23,7 +24,10 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(),),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph",
+                    elements=(_morph(),),
+                ),
             ),
         )
         assert len(cfg.initialize.neurons) == 1
@@ -33,7 +37,10 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _morph("00003")),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="two morph",
+                    elements=(_morph(), _morph("00003")),
+                ),
             ),
         )
         assert len(cfg.initialize.neurons) == 2
@@ -43,7 +50,10 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _memodel()),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph, one emodel",
+                    elements=(_morph(), _memodel()),
+                ),
             ),
         )
         assert isinstance(cfg.initialize.neurons[0], CellMorphologyFromID)
@@ -57,7 +67,10 @@ class TestEMSynapseMappingConfig:
                 info=_INFO,
                 coordinate_output_root=tmp_path,
                 initialize=EMSynapseMappingSingleConfig.Initialize(
-                    neurons=(),
+                    neurons=EMSynapseMappingInputNamedTuple(
+                        name="no element - bad config",
+                        elements=(),
+                    ),
                 ),
             )
 
@@ -66,7 +79,10 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _memodel()),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph, one emodel",
+                    elements=(_morph(), _memodel()),
+                ),
             ),
         )
         init = cfg.initialize
