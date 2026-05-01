@@ -99,17 +99,19 @@ class NamedTuple(OBIBaseModel):
         return self.name
 
 
-class CellMorphologyAndMEModelNamedTuple(NamedTuple):
+class EMSynapseMappingInputNamedTuple(NamedTuple):
     elements: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(min_length=1)
 
 
-neurons: CellMorphologyAndMEModelNamedTuple | list[CellMorphologyAndMEModelNamedTuple] = Field(
+neurons: EMSynapseMappingInputNamedTuple | list[EMSynapseMappingInputNamedTuple] = Field(
     title="Neurons",
     description="Neurons to include in the circuit (>= 1).",
     min_length=1,
     json_schema_extra={
         SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
-        SchemaKey.ACCEPTED_TYPES: [CellMorphologyFromID, MEModelFromID],
+        SchemaKey.ACCEPTED_INPUT_TYPES: [
+            AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID, AcceptedInputTypes.ME_MODEL_FROM_ID
+        ],
     },
 )
 ```

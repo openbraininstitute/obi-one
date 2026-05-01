@@ -1,17 +1,17 @@
 import logging
 from enum import StrEnum
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
 from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import AcceptedInputTypes, SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
@@ -43,17 +43,34 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
     )
 
     def input_entities(self, db_client: Client) -> list[Entity]:
-        return [n.entity(db_client=db_client) for n in self.initialize.neurons]
+        if isinstance(self.initialize.neurons, EMSynapseMappingInputNamedTuple):
+            return [n.entity(db_client=db_client) for n in self.initialize.neurons]
+        elif isinstance(self.initialize.neurons, list):
+            # make sure that there are no duplicate in the returned list of entities
+            to_return = []
+            to_return_ids = []
+            for input_tuple in self.initialize.neurons:
+                for n in input_tuple:
+                    if n.id_str not in to_return_ids:
+                        to_return_ids.append(n.id_str)
+                        to_return.append(n.entity(db_client=db_client))
+            return to_return
+        raise ValueError(
+            "Invalid type for neurons. "
+            "Expected EMSynapseMappingInputNamedTuple or list of EMSynapseMappingInputNamedTuple."
+        )
 
     class Initialize(Block):
-        # We use a tuple instead of a list to avoid getting it taken as scan dimensions
-        # in the scan config.
-        neurons: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(
+        # We use a named tuple instead of a list to avoid getting it taken as scan dimensions
+        # in the scan config. list[named tuple] for scanning over different sets of neurons.
+        neurons: EMSynapseMappingInputNamedTuple | list[EMSynapseMappingInputNamedTuple] = Field(
             title="Neurons",
             description="Neurons to include in the circuit (>= 1).",
-            min_length=1,
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+                SchemaKey.ACCEPTED_INPUT_TYPES: [
+                    AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID, AcceptedInputTypes.ME_MODEL_FROM_ID
+                ],
             },
         )
         physical_edge_population_name: str = Field(
@@ -88,6 +105,25 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
             },
         )
+
+        @model_validator(mode="after")
+        def check_neuron_structure(self) -> Self:
+            if isinstance(self.neurons, list):
+                if len(self.neurons) < 1:
+                    msg = (
+                        "At least one set of neurons must be provided in "
+                        "EM Synapse Mapping Scan Config."
+                    )
+                    raise OBIONEError(msg)
+
+                tuple_names = [n.name for n in self.neurons]
+                if len(tuple_names) != len(set(tuple_names)):
+                    msg = (
+                        "All named tuples in the list of neurons must have unique names "
+                        "in EM Synapse Mapping Scan Config."
+                    )
+                    raise OBIONEError(msg)
+            return self
 
     initialize: Initialize = Field(
         title="Initialization",

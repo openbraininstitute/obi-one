@@ -5,13 +5,5 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFro
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 
 
-class CellMorphologyNamedTuple(NamedTuple):
-    elements: tuple[CellMorphologyFromID, ...] = Field(min_length=1)
-
-
-class MEModelNamedTuple(NamedTuple):
-    elements: tuple[MEModelFromID, ...] = Field(min_length=1)
-
-
-class CellMorphologyAndMEModelNamedTuple(NamedTuple):
+class EMSynapseMappingInputNamedTuple(NamedTuple):
     elements: tuple[CellMorphologyFromID | MEModelFromID, ...] = Field(min_length=1)
