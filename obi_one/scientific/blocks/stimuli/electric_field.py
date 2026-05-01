@@ -248,6 +248,6 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
 
     @model_validator(mode="after")
     def _set_private_vars(self) -> Self:
-        self._frequency = self.frequency
-        self._phase_degrees = self.phase_degrees
+        self._frequency = self.frequency  # ty:ignore[invalid-assignment]
+        self._phase_degrees = self.phase_degrees  # ty:ignore[invalid-assignment]
         return self

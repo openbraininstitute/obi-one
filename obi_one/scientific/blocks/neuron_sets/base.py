@@ -96,7 +96,7 @@ class AbstractNeuronSet(Block, abc.ABC):
         return self._population(population)
 
     def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
-        return population
+        return population  # ty:ignore[invalid-return-type]
 
     def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
@@ -121,10 +121,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
+        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:  # ty:ignore[unsupported-operator]
             rng = np.random.default_rng(self.sample_seed)
 
-            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)  # ty:ignore[unsupported-operator]
 
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
@@ -178,7 +178,7 @@ class AbstractNeuronSet(Block, abc.ABC):
                 msg = "File name must be non-empty and of type .json!"
                 raise ValueError(msg)
         output_file = Path(output_path) / file_name
-        return output_file
+        return output_file  # ty:ignore[invalid-return-type]
 
     def to_node_set_file(
         self,
@@ -220,7 +220,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             msg = "Node set already exists in circuit, nothing to be done!"
             raise ValueError(msg)
 
-        if not Path.exists(output_file) or overwrite_if_exists:
+        if not Path.exists(output_file) or overwrite_if_exists:  # ty:ignore[invalid-argument-type]
             # Create new node sets file, overwrite if existing
             if init_empty:
                 # Initialize empty
@@ -233,7 +233,7 @@ class AbstractNeuronSet(Block, abc.ABC):
                     raise ValueError(msg)
             node_sets.update({node_set_name: expression})
 
-        elif Path.exists(output_file) and append_if_exists:
+        elif Path.exists(output_file) and append_if_exists:  # ty:ignore[invalid-argument-type]
             # Append to existing node sets file
             with Path(output_file).open("r", encoding="utf-8") as f:
                 node_sets = json.load(f)
@@ -275,7 +275,7 @@ class NeuronSet(AbstractNeuronSet):
                 self.node_population,
                 population,
             )
-        population = self.node_population or population
+        population = self.node_population or population  # ty:ignore[invalid-assignment]
         if population is None:
             msg = "Must specify name of a node population to resolve the NeuronSet!"
             raise ValueError(msg)

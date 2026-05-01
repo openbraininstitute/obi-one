@@ -99,7 +99,7 @@ def _get_template() -> dict:
     template_path = Path(__file__).parent / "morphology_template.json"
     template = json.loads(template_path.read_text())
 
-    _get_template.cached = template
+    _get_template.cached = template  # ty:ignore[unresolved-attribute]
     return template
 
 
@@ -116,7 +116,7 @@ def _get_analysis_dict() -> dict:
         for domain in TARGET_NEURITE_DOMAINS:
             analysis_dict.setdefault(domain, default_analysis)
 
-    _get_analysis_dict.cached = analysis_dict
+    _get_analysis_dict.cached = analysis_dict  # ty:ignore[unresolved-attribute]
     return analysis_dict
 
 
@@ -211,7 +211,7 @@ async def _parse_file_and_metadata(
             detail={"code": "INVALID_METADATA", "detail": f"Invalid metadata: {e}"},
         ) from e
 
-    return morphology_name, file_extension, content, metadata_obj
+    return morphology_name, file_extension, content, metadata_obj  # ty:ignore[invalid-return-type]
 
 
 T = TypeVar("T", bound=BaseEntity)
@@ -225,7 +225,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
             return None
 
         try:
-            return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
+            return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()  # ty:ignore[invalid-argument-type]
         except (EntitySDKError, RequestException):
             return None
 
@@ -242,17 +242,17 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
                 z=float(brain_location_data[2]),
             )
 
-    subject = _get_entity("subject", Subject)
-    brain_region = _get_entity("brain_region", BrainRegion)
-    morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
+    subject = _get_entity("subject", Subject)  # ty:ignore[invalid-argument-type]
+    brain_region = _get_entity("brain_region", BrainRegion)  # ty:ignore[invalid-argument-type]
+    morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)  # ty:ignore[invalid-argument-type]
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
-    license = _get_entity("license", License)
+    license = _get_entity("license", License)  # ty:ignore[invalid-argument-type]
     name = new_item.get("name")
     description = new_item.get("description")
     authorized_public = new_item.get("authorized_public")
     morphology = CellMorphology(
-        cell_morphology_protocol=morphology_protocol,
+        cell_morphology_protocol=morphology_protocol,  # ty:ignore[invalid-argument-type]
         repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
@@ -261,7 +261,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         brain_region=brain_region,
         location=brain_location,
         legacy_id=None,
-        authorized_public=authorized_public,
+        authorized_public=authorized_public,  # ty:ignore[invalid-argument-type]
         published_in=new_item.get("published_in"),
     )
     registered = client.register_entity(entity=morphology)
@@ -294,11 +294,11 @@ def register_assets(
 
     try:
         asset1 = client.upload_file(
-            entity_id=entity_id,
+            entity_id=entity_id,  # ty:ignore[invalid-argument-type]
             entity_type=CellMorphology,
-            file_path=file_path,
-            file_content_type=mime_type,
-            asset_label="morphology",
+            file_path=file_path,  # ty:ignore[invalid-argument-type]
+            file_content_type=mime_type,  # ty:ignore[invalid-argument-type]
+            asset_label="morphology",  # ty:ignore[invalid-argument-type]
         )
     except requests.exceptions.RequestException as e:
         raise HTTPException(
@@ -309,7 +309,7 @@ def register_assets(
             },
         ) from e
     else:
-        return asset1
+        return asset1  # ty:ignore[invalid-return-type]
 
 
 def register_measurements(
@@ -319,7 +319,9 @@ def register_measurements(
 ) -> dict[str, Any]:
     try:
         measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id, entity_type="cell_morphology", measurement_kinds=measurements
+            entity_id=entity_id,  # ty:ignore[invalid-argument-type]
+            entity_type="cell_morphology",  # ty:ignore[invalid-argument-type]
+            measurement_kinds=measurements,  # ty:ignore[invalid-argument-type]
         )
         registered = client.register_entity(entity=measurement_annotation)
     except requests.exceptions.RequestException as e:
@@ -331,7 +333,7 @@ def register_measurements(
             },
         ) from e
     else:
-        return registered
+        return registered  # ty:ignore[invalid-return-type]
 
 
 def _prepare_entity_payload(
@@ -411,8 +413,8 @@ async def _run_pipeline(
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
             file_extension=file_extension,
-            converted_morphology_file1=converted_morphology_file1,
-            converted_morphology_file2=converted_morphology_file2,
+            converted_morphology_file1=converted_morphology_file1,  # ty:ignore[invalid-argument-type]
+            converted_morphology_file2=converted_morphology_file2,  # ty:ignore[invalid-argument-type]
         )
         measurement_list = _run_morphology_analysis(analysis_path)
 
@@ -424,10 +426,10 @@ async def _run_pipeline(
             morphology_name,
             content,
             measurement_list,
-            converted_morphology_file1,
-            converted_morphology_file2,
+            converted_morphology_file1,  # ty:ignore[invalid-argument-type]
+            converted_morphology_file2,  # ty:ignore[invalid-argument-type]
         )
-        return entity_id, str(data2.id)
+        return entity_id, str(data2.id)  # ty:ignore[unresolved-attribute]
 
 
 @router.post(

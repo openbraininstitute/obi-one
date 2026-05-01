@@ -17,7 +17,7 @@ def resolve_provenance(
     source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
     pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
     source_dataset = db_client.get_entity(
-        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,
+        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
         entity_type=EMDenseReconstructionDataset,
     )
     return pt_root_id, source_mesh_entity, source_dataset
