@@ -1,26 +1,34 @@
+from typing import Any
+
 from pydantic import NonNegativeInt
 
 from obi_one.core.base import OBIBaseModel
 
 
-class NamedTuple(OBIBaseModel):
+class NamedTupleBase(OBIBaseModel):
     """Helper class to assign a name to a tuple of elements."""
 
     name: str = "Default name"
-    elements: tuple[NonNegativeInt, ...]
+    elements: tuple[Any, ...]
 
     def __repr__(self) -> str:
         """Return a string representation of the NamedTuple."""
         return self.name
-    
-    def __iter__(self):
+
+    def __iter__(self) -> iter:
         """Return an iterator over the elements of the NamedTuple."""
         return iter(self.elements)
-    
-    def __len__(self):
+
+    def __len__(self) -> int:
         """Return the number of elements in the NamedTuple."""
         return len(self.elements)
-    
-    def __getitem__(self, index):
+
+    def __getitem__(self, index: int) -> Any:
         """Return the element at the specified index."""
         return self.elements[index]
+
+
+class NamedTuple(NamedTupleBase):
+    """Helper class to assign a name to a tuple of elements."""
+
+    elements: tuple[NonNegativeInt, ...]

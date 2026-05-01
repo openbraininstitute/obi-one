@@ -45,7 +45,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
     def input_entities(self, db_client: Client) -> list[Entity]:
         if isinstance(self.initialize.neurons, EMSynapseMappingInputNamedTuple):
             return [n.entity(db_client=db_client) for n in self.initialize.neurons]
-        elif isinstance(self.initialize.neurons, list):
+        if isinstance(self.initialize.neurons, list):
             # make sure that there are no duplicate in the returned list of entities
             to_return = []
             to_return_ids = []
@@ -55,10 +55,11 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
                         to_return_ids.append(n.id_str)
                         to_return.append(n.entity(db_client=db_client))
             return to_return
-        raise ValueError(
+        msg = (
             "Invalid type for neurons. "
             "Expected EMSynapseMappingInputNamedTuple or list of EMSynapseMappingInputNamedTuple."
         )
+        raise ValueError(msg)
 
     class Initialize(Block):
         # We use a named tuple instead of a list to avoid getting it taken as scan dimensions
@@ -69,7 +70,8 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
                 SchemaKey.ACCEPTED_INPUT_TYPES: [
-                    AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID, AcceptedInputTypes.ME_MODEL_FROM_ID
+                    AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID,
+                    AcceptedInputTypes.ME_MODEL_FROM_ID,
                 ],
             },
         )

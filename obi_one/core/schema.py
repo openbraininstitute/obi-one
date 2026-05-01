@@ -54,10 +54,11 @@ class UIElement(StrEnum):
 
 class AcceptedInputTypes(StrEnum):
     """Contains types that can be used as inputs.
-    
+
     For now, is only used for models that use a subclass of NamedTuples as input
     to make explicit the accepted types of models.
     Can be extended in the future if needed.
     """
+
     CELL_MORPHOLOGY_FROM_ID = "CellMorphologyFromID"
     ME_MODEL_FROM_ID = "MEModelFromID"
