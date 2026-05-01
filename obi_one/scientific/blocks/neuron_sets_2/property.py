@@ -6,7 +6,6 @@
 - No node sets any more (can be combined separately, see below)
 """
 
-import abc
 import logging
 from typing import Annotated, Self
 
@@ -26,19 +25,12 @@ from obi_one.core.schema import SchemaKey, UIElement
 L = logging.getLogger("obi-one")
 
 
-class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
+class NeuronPropertyFilter(OBIBaseModel):
     filter_dict: dict[str, list] = Field(
         title="Filter",
         description="Filter dictionary. Note as this is NOT a Block and the list here is \
                     not to support multi-dimensional parameters but to support a key-value pair \
-                    with multiple values i.e. {'layer': ['2', '3']}}",
-        default={},
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
-        },
-    )
+                    with multiple values i.e. {'layer': ['2', '3']}}")
 
     @model_validator(mode="after")
     def check_filter_dict_values(self) -> Self:
@@ -93,7 +85,12 @@ class PropertyNeuronSet(NeuronSet):
     property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
-        default=(),
+        default=NeuronPropertyFilter(),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
+        },
     )
     node_sets: (
         tuple[Annotated[str, Field(min_length=1)], ...]
