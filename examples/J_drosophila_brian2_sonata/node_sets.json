@@ -1,0 +1,493 @@
+{
+  "All": {},
+  "Intrinsic": {
+    "flow": "intrinsic"
+  },
+  "Afferent": {
+    "flow": "afferent"
+  },
+  "Efferent": {
+    "flow": "efferent"
+  },
+  "super_class__optic": {
+    "super_class": "optic"
+  },
+  "super_class__central": {
+    "super_class": "central"
+  },
+  "super_class__sensory": {
+    "super_class": "sensory"
+  },
+  "super_class__visual_projection": {
+    "super_class": "visual_projection"
+  },
+  "super_class__visual_centrifugal": {
+    "super_class": "visual_centrifugal"
+  },
+  "super_class__ascending": {
+    "super_class": "ascending"
+  },
+  "super_class__sensory_ascending": {
+    "super_class": "sensory_ascending"
+  },
+  "super_class__descending": {
+    "super_class": "descending"
+  },
+  "super_class__motor": {
+    "super_class": "motor"
+  },
+  "super_class__endocrine": {
+    "super_class": "endocrine"
+  },
+  "Optic_lobe": [
+    "super_class__optic",
+    "super_class__visual_projection",
+    "super_class__visual_centrifugal"
+  ],
+  "Central_brain": [
+    "super_class__central"
+  ],
+  "Sensory_periphery": [
+    "super_class__sensory",
+    "super_class__sensory_ascending"
+  ],
+  "Brain_outputs": [
+    "super_class__descending",
+    "super_class__motor",
+    "super_class__endocrine"
+  ],
+  "side__left": {
+    "side": "left"
+  },
+  "side__right": {
+    "side": "right"
+  },
+  "side__center": {
+    "side": "center"
+  },
+  "nt__acetylcholine": {
+    "top_nt": "acetylcholine"
+  },
+  "nt__glutamate": {
+    "top_nt": "glutamate"
+  },
+  "nt__gaba": {
+    "top_nt": "gaba"
+  },
+  "nt__dopamine": {
+    "top_nt": "dopamine"
+  },
+  "nt__serotonin": {
+    "top_nt": "serotonin"
+  },
+  "nt__octopamine": {
+    "top_nt": "octopamine"
+  },
+  "OL__lamina": {
+    "cell_class": [
+      "LA",
+      "LA>ME"
+    ]
+  },
+  "OL__medulla": {
+    "cell_class": [
+      "ME",
+      "ME>LO",
+      "ME>LOP",
+      "ME>LO.LOP",
+      "ME>LA",
+      "ME.LO",
+      "ME.LO.LOP",
+      "ME.LOP",
+      "ME>LOP.LO"
+    ]
+  },
+  "OL__lobula": {
+    "cell_class": [
+      "LO",
+      "LO>ME",
+      "LO>LOP",
+      "LO.LOP"
+    ]
+  },
+  "OL__lobula_plate": {
+    "cell_class": [
+      "LOP",
+      "LOP>ME.LO",
+      "LOP>LO",
+      "LOP>LO.ME",
+      "LOP>ME"
+    ]
+  },
+  "OL__photoreceptors_R1-6": {
+    "cell_type": "R1-6"
+  },
+  "OL__photoreceptors_R7": {
+    "cell_type": "R7"
+  },
+  "OL__photoreceptors_R8": {
+    "cell_type": "R8"
+  },
+  "OL__photoreceptors": [
+    "OL__photoreceptors_R1-6",
+    "OL__photoreceptors_R7",
+    "OL__photoreceptors_R8"
+  ],
+  "OL__lamina_monopolar_L1-5": {
+    "cell_type": [
+      "L1",
+      "L2",
+      "L3",
+      "L4",
+      "L5"
+    ]
+  },
+  "OL__T4_neurons": {
+    "cell_type": {
+      "$regex": "^T4"
+    }
+  },
+  "OL__T5_neurons": {
+    "cell_type": {
+      "$regex": "^T5"
+    }
+  },
+  "OL__Mi_neurons": {
+    "cell_type": {
+      "$regex": "^Mi[0-9]"
+    }
+  },
+  "OL__Tm_neurons": {
+    "cell_type": {
+      "$regex": "^Tm[0-9]"
+    }
+  },
+  "OL__TmY_neurons": {
+    "cell_type": {
+      "$regex": "^TmY"
+    }
+  },
+  "OL__Dm_distal_medulla": {
+    "cell_type": {
+      "$regex": "^Dm[0-9]"
+    }
+  },
+  "OL__Pm_proximal_medulla": {
+    "cell_type": {
+      "$regex": "^Pm[0-9]"
+    }
+  },
+  "OL__LC_lobula_columnar": {
+    "cell_type": {
+      "$regex": "^LC[0-9]"
+    }
+  },
+  "OL__LPLC_lobula_plate_lobula_columnar": {
+    "cell_type": {
+      "$regex": "^LPLC"
+    }
+  },
+  "OL__LPC_lobula_plate_columnar": {
+    "cell_type": {
+      "$regex": "^LPC"
+    }
+  },
+  "OL__LPi_lobula_plate_intrinsic": {
+    "cell_type": {
+      "$regex": "^LPi"
+    }
+  },
+  "OL__LT_lobula_tangential": {
+    "cell_type": {
+      "$regex": "^LT"
+    }
+  },
+  "OL__DRA_dorsal_rim_area": {
+    "cell_sub_class": "DRA"
+  },
+  "MB__Kenyon_cells": {
+    "cell_class": "Kenyon_Cell"
+  },
+  "MB__KCab": {
+    "cell_type": "KCab"
+  },
+  "MB__KCab_p": {
+    "cell_type": "KCab-p"
+  },
+  "MB__KCgamma": {
+    "cell_type": {
+      "$regex": "^KCg"
+    }
+  },
+  "MB__KCapbp": {
+    "cell_type": {
+      "$regex": "^KCapbp"
+    }
+  },
+  "MB__MBON": {
+    "cell_class": "MBON"
+  },
+  "MB__MBIN": {
+    "cell_class": "MBIN"
+  },
+  "MB__DAN": {
+    "cell_class": "DAN"
+  },
+  "MB__APL": {
+    "cell_type": {
+      "$regex": "^APL"
+    }
+  },
+  "MB__DPM": {
+    "cell_type": {
+      "$regex": "^DPM"
+    }
+  },
+  "MB__all": [
+    "MB__Kenyon_cells",
+    "MB__MBON",
+    "MB__MBIN",
+    "MB__DAN",
+    "MB__APL",
+    "MB__DPM"
+  ],
+  "AL__projection_neurons_ALPN": {
+    "cell_class": "ALPN"
+  },
+  "AL__local_neurons_ALLN": {
+    "cell_class": "ALLN"
+  },
+  "AL__intrinsic_neurons_ALIN": {
+    "cell_class": "ALIN"
+  },
+  "AL__other_neurons_ALON": {
+    "cell_class": "ALON"
+  },
+  "AL__mAL": {
+    "cell_class": "mAL"
+  },
+  "AL__multiglomerular_PNs": {
+    "cell_sub_class": "multiglomerular"
+  },
+  "AL__uniglomerular_PNs": {
+    "cell_sub_class": "uniglomerular"
+  },
+  "AL__all": [
+    "AL__projection_neurons_ALPN",
+    "AL__local_neurons_ALLN",
+    "AL__intrinsic_neurons_ALIN",
+    "AL__other_neurons_ALON",
+    "AL__mAL"
+  ],
+  "LH__local_neurons": {
+    "cell_class": "LHLN"
+  },
+  "LH__centrifugal_neurons": {
+    "cell_class": "LHCENT"
+  },
+  "LH__all": [
+    "LH__local_neurons",
+    "LH__centrifugal_neurons"
+  ],
+  "CX__all_neurons": {
+    "cell_class": "CX"
+  },
+  "CX__columnar": {
+    "cell_sub_class": "columnar"
+  },
+  "CX__tangential": {
+    "cell_sub_class": "tangential"
+  },
+  "CX__ring_neurons": {
+    "cell_sub_class": "ring neuron"
+  },
+  "CX__EPG_compass": {
+    "cell_type": {
+      "$regex": "^EPG"
+    }
+  },
+  "CX__PEN": {
+    "cell_type": {
+      "$regex": "^PEN"
+    }
+  },
+  "CX__PEG": {
+    "cell_type": {
+      "$regex": "^PEG"
+    }
+  },
+  "CX__Delta7": {
+    "cell_type": {
+      "$regex": "^Delta7"
+    }
+  },
+  "CX__ER_ring": {
+    "cell_type": {
+      "$regex": "^ER[0-9]"
+    }
+  },
+  "CX__FB_fan_shaped": {
+    "cell_type": {
+      "$regex": "^FB"
+    }
+  },
+  "SENS__olfactory": {
+    "cell_class": "olfactory"
+  },
+  "SENS__mechanosensory": {
+    "cell_class": "mechanosensory"
+  },
+  "SENS__gustatory": {
+    "cell_class": "gustatory"
+  },
+  "SENS__visual": {
+    "cell_class": "visual"
+  },
+  "SENS__hygrosensory": {
+    "cell_class": "hygrosensory"
+  },
+  "SENS__thermosensory": {
+    "cell_class": "thermosensory"
+  },
+  "SENS__ocellar": {
+    "cell_class": "ocellar"
+  },
+  "SENS__JON_auditory": {
+    "cell_sub_class": "auditory"
+  },
+  "SENS__JON_wind_gravity": {
+    "cell_sub_class": "wind_gravity"
+  },
+  "SENS__eye_bristle": {
+    "cell_sub_class": "eye bristle"
+  },
+  "SENS__head_bristle": {
+    "cell_sub_class": "head bristle"
+  },
+  "SENS__taste_peg": {
+    "cell_sub_class": "taste peg"
+  },
+  "SENS__nerve_CV": {
+    "nerve": "CV"
+  },
+  "SENS__nerve_AN": {
+    "nerve": "AN"
+  },
+  "SENS__nerve_MxLbN": {
+    "nerve": "MxLbN"
+  },
+  "SENS__nerve_OCN": {
+    "nerve": "OCN"
+  },
+  "SENS__nerve_PhN": {
+    "nerve": "PhN"
+  },
+  "SENS__nerve_aPhN": {
+    "nerve": "aPhN"
+  },
+  "SENS__nerve_NCC": {
+    "nerve": "NCC"
+  },
+  "SENS__nerve_ON": {
+    "nerve": "ON"
+  },
+  "NE__pars_intercerebralis": {
+    "cell_class": "pars_intercerebralis"
+  },
+  "NE__pars_lateralis": {
+    "cell_class": "pars_lateralis"
+  },
+  "NE__medial_NSC": {
+    "cell_sub_class": "medial_NSC"
+  },
+  "NE__lateral_NSC": {
+    "cell_sub_class": "lateral_NSC"
+  },
+  "MOT__brain_motor": {
+    "cell_class": "brain_motor_neuron"
+  },
+  "MOT__neck_motor": {
+    "cell_class": "neck_motor_neuron"
+  },
+  "MOT__proboscis_motor": {
+    "cell_sub_class": "proboscis_motor_neuron"
+  },
+  "MOT__ingestion_motor": {
+    "cell_sub_class": "ingestion_motor_neuron"
+  },
+  "DN__b": {
+    "cell_type": {
+      "$regex": "^DNb"
+    }
+  },
+  "DN__p": {
+    "cell_type": {
+      "$regex": "^DNp[0-9]"
+    }
+  },
+  "DN__g": {
+    "cell_type": {
+      "$regex": "^DNg[0-9]"
+    }
+  },
+  "DN__a": {
+    "cell_type": {
+      "$regex": "^DNa[0-9]"
+    }
+  },
+  "DN__d": {
+    "cell_type": {
+      "$regex": "^DNd[0-9]"
+    }
+  },
+  "DN__ge": {
+    "cell_type": {
+      "$regex": "^DNge"
+    }
+  },
+  "DN__pe": {
+    "cell_type": {
+      "$regex": "^DNpe"
+    }
+  },
+  "CLOCK__LNv": {
+    "cell_sub_class": "LNv"
+  },
+  "CLOCK__LNd": {
+    "cell_sub_class": "LNd"
+  },
+  "CLOCK__DN1p_clock": {
+    "cell_sub_class": "DN1p"
+  },
+  "CLOCK__DN2_clock": {
+    "cell_sub_class": "DN2"
+  },
+  "CLOCK__DN3_clock": {
+    "cell_sub_class": "DN3"
+  },
+  "CLOCK__all": [
+    "CLOCK__LNv",
+    "CLOCK__LNd",
+    "CLOCK__DN1p_clock",
+    "CLOCK__DN2_clock",
+    "CLOCK__DN3_clock"
+  ],
+  "LIN__MBp1": {
+    "ito_lee_hemilineage": "MBp1"
+  },
+  "LIN__MBp2": {
+    "ito_lee_hemilineage": "MBp2"
+  },
+  "LIN__MBp3": {
+    "ito_lee_hemilineage": "MBp3"
+  },
+  "LIN__MBp4": {
+    "ito_lee_hemilineage": "MBp4"
+  },
+  "LIN__MB_all": [
+    "LIN__MBp1",
+    "LIN__MBp2",
+    "LIN__MBp3",
+    "LIN__MBp4"
+  ]
+}
