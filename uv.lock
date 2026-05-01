@@ -548,7 +548,7 @@ wheels = [
 
 [[package]]
 name = "connectome-utilities"
-version = "0.4.11"
+version = "0.4.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -563,10 +563,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/1a/c7125f422a85b953378cf93368147e8efe615bba5c18ac32693671611567/connectome_utilities-0.4.11.tar.gz", hash = "sha256:3da50ec0b41b4ea0682b66a4e1fb8ed310c409324683d29d6425c9a687ade436", size = 88720, upload-time = "2025-05-12T15:20:41.986Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/a6/0a51efceb7be6093d3e6d7fa7d837e13956f98c51329f37f3d18393793f8/connectome_utilities-0.4.11-py3-none-any.whl", hash = "sha256:3fdd0cc2f3219382a45739dc53714be80d9393d0164bd9cf378a6be481dc52f9", size = 91270, upload-time = "2025-05-12T15:20:40.558Z" },
-]
+sdist = { url = "https://files.pythonhosted.org/packages/e7/a6/b32ac11d2ccd2c3b995dbda7598870e8a8c56a5d14effee78f7d9be4c2d8/connectome_utilities-0.4.12.tar.gz", hash = "sha256:52a7463465ca05f24fa583620d11a56e8b0a53c9defa9f0cdb476a8ceb15ea96", size = 33117216, upload-time = "2026-05-01T12:53:00.033Z" }
 
 [[package]]
 name = "contourpy"
@@ -2111,7 +2108,6 @@ dependencies = [
     { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "neurom" },
-    { name = "numpy" },
     { name = "obi-auth" },
     { name = "obp-accounting-sdk" },
     { name = "psutil" },
@@ -2196,7 +2192,7 @@ requires-dist = [
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
-    { name = "connectome-utilities", specifier = ">=0.4.11" },
+    { name = "connectome-utilities", specifier = ">=0.4.12" },
     { name = "entitysdk", specifier = ">=0.13.3" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
@@ -2210,7 +2206,6 @@ requires-dist = [
     { name = "neurom" },
     { name = "neuromorphomesh", marker = "extra == 'meshing'", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "notebook", marker = "extra == 'notebooks'" },
-    { name = "numpy", specifier = "<2.4" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
