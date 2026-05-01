@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
 
       - name: Authenticate with AWS CodeArtifact account
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::985539765147:role/gh_codeartifact_read_all
           aws-region: us-east-1
