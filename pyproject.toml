@@ -47,7 +47,6 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
-    "numpy<2.4.0",
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
