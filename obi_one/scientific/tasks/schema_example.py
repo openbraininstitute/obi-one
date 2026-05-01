@@ -14,10 +14,9 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    CircuitExtractionNeuronSetUnion,
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    AllNeuronSetUnion,
 )
 
 
@@ -148,7 +147,7 @@ class SchemaExampleScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
+    neuron_set: AllNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
@@ -159,13 +158,13 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
             SchemaKey.GROUP_ORDER: 1,
         },

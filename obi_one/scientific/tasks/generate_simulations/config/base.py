@@ -31,8 +31,10 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -82,7 +84,9 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            VirtualNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            PointNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
@@ -96,7 +100,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         description="Timestamps for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -107,7 +111,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         description="Recordings for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,

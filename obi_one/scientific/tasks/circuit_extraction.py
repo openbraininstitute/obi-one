@@ -47,7 +47,7 @@ from obi_one.scientific.tasks.folder_compression import (
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.scientific.unions.unions_neuron_sets_2 import NonVirtualNeuronSetUnion
 from obi_one.utils import circuit as circuit_utils, db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
 
@@ -149,7 +149,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
+    neuron_set: NonVirtualNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",

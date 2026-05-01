@@ -142,9 +142,26 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
             circuit_metrics.names_of_nodesets
         )
+        mapped_circuit_properties[CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_biophys_node_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_virtual_node_populations
+        )
+        mapped_circuit_properties[
+            CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION
+        ] = {
+            pop.name: pop.property_unique_values
+            for pop in (
+                *circuit_metrics.biophysical_node_populations,
+                *circuit_metrics.virtual_node_populations,
+            )
+            if pop is not None
+        }
     except (entitysdk.exception.EntitySDKError, ValueError):
         # Expected for MEModel entities or entities without proper circuit configuration
         # Continue to try mechanism variables
+        L.info(f"Could not retrieve circuit metrics for entity {circuit_id}. This may be expected if the entity is not a Circuit or is missing circuit configuration.")
         pass
 
     # Try fetching mechanism variables (succeeds for MEModel entities).
@@ -177,6 +194,15 @@ def mapped_circuit_properties_endpoint(
                     INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
                 ),
+                CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: len(
+                    circuit_metrics.names_of_biophys_node_populations
+                )
+                > 0,
+                CircuitUsability.SHOW_POINT_NEURON_SETS: False,
+                CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: len(
+                    circuit_metrics.names_of_virtual_node_populations
+                )
+                > 0,
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
         except entitysdk.exception.EntitySDKError:
@@ -184,12 +210,18 @@ def mapped_circuit_properties_endpoint(
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+                CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
+                CircuitUsability.SHOW_POINT_NEURON_SETS: False,
+                CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
             }
     else:
         # For MEModel entities, set default usability
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+            CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
+            CircuitUsability.SHOW_POINT_NEURON_SETS: False,
+            CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
         }
 
     return mapped_circuit_properties
