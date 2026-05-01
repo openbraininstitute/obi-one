@@ -108,11 +108,78 @@ Or open it in JupyterLab and run all cells. The first run takes ~30 s
 Required packages: `pandas`, `numpy`, `matplotlib` (already in the project
 venv). `plotly` is optional.
 
+Required packages for the SONATA writer: `h5py`, `libsonata` (already in the
+project venv).
+
 ## Output
 
 - Inline figures inside the notebook (3D scatter + 2D projections).
 - `~/.cache/flywire_783/model_neuron_coordinates_783.csv` — the joined
   coordinate table, ready for downstream analysis.
+- `sonata/nodes.h5` — SONATA nodes file (12.6 MB, 138 617 nodes; written next
+  to the notebook, gitignored via the local `.gitignore`; see schema below).
+- `sonata/node_types.csv` — minimal node_types catalogue (one row,
+  `point_neuron` template).
+
+## SONATA `nodes.h5`
+
+The notebook writes a SONATA-format nodes file with population
+**`drosophila_brain`** and 138 617 entries — one per matched FlyWire neuron in
+the model. The file is structured following the
+[SONATA spec](https://github.com/AllenInstitute/sonata) with a single
+attribute group (`/0/`) and uses the `@library` enumeration convention for
+all categorical attributes, so libsonata exposes them as enums.
+
+### Schema
+
+```
+/nodes/drosophila_brain/
+├── node_type_id        (int64, n=138 617, all 0)
+├── node_group_id       (int64, n=138 617, all 0)
+├── node_group_index    (int64, n=138 617, 0..N-1)
+└── 0/
+    ├── x, y, z         (float32 µm — soma position; falls back to anchor)
+    ├── root_id         (int64 — FlyWire 783 root_id)
+    ├── flow            (enum: intrinsic / afferent / efferent)
+    ├── super_class     (enum, 10 values: optic, central, sensory, …)
+    ├── cell_class      (enum, ~50 values: Kenyon_Cell, ALPN, MBON, ME, …)
+    ├── cell_sub_class  (enum: KCab, KCg, ring neuron, multiglomerular, …)
+    ├── cell_type       (enum, ~8 800 values: T4a, MBON01, EPG_R, …)
+    ├── hemilineage     (enum, Ito-Lee primary lineages)
+    ├── side            (enum: left / right / center / na)
+    ├── nerve           (enum: CV / AN / MxLbN / OCN / PhN / aPhN / NCC / ON / unknown)
+    ├── neurotransmitter (enum: acetylcholine / glutamate / gaba / dopamine / serotonin / octopamine)
+    ├── synapse_class   (enum: EXC / INH / UNKNOWN — derived from neurotransmitter)
+    ├── model_type      (enum: point_neuron)
+    └── @library/       (lookup tables for the categorical datasets above)
+```
+
+`synapse_class` follows the philshiu/Drosophila_brain_model convention:
+ACh / DA / 5HT / OA → `EXC`; GABA / Glu → `INH`. (Adult-fly glutamatergic
+neurons are typically inhibitory through GluCl chloride channels — this is
+the same E/I assignment used by the Brian2 simulation in that repo.)
+
+### Loading with libsonata
+
+```python
+import libsonata
+storage = libsonata.NodeStorage("nodes.h5")
+pop = storage.open_population("drosophila_brain")
+
+pop.size                           # 138_617
+pop.attribute_names                # {x, y, z, root_id, super_class, ...}
+pop.enumeration_names              # categorical attrs
+
+sel = libsonata.Selection([(0, pop.size)])
+pop.get_attribute("x", sel)        # numpy float32 (µm)
+pop.get_attribute("super_class", sel)  # numpy str (decoded enum)
+
+# Resolve a node_set against this population:
+ns = libsonata.NodeSets.from_file("node_sets.json")
+ns.materialize("MB__Kenyon_cells", pop).flat_size   # 5177
+ns.materialize("OL__T4_neurons",  pop).flat_size    # 6244
+ns.materialize("Optic_lobe",      pop).flat_size    # 86082
+```
 
 ## SONATA `node_sets.json`
 

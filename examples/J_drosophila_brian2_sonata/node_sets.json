@@ -1,5 +1,7 @@
 {
-  "All": {},
+  "All": {
+    "population": "drosophila_brain"
+  },
   "Intrinsic": {
     "flow": "intrinsic"
   },
