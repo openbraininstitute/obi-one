@@ -40,7 +40,7 @@ def _mesh_swc(swc_path: str, output_directory: str) -> str:
 
 def _check_no_existing_glb_assets(
     db_client: entitysdk.client.Client,
-    cell_morphology_id: str,
+    cell_morphology_id: uuid.UUID,
     morph: CellMorphology,
 ) -> None:
     existing_glb_asset = db_client.select_assets(
@@ -65,7 +65,7 @@ def _check_no_existing_glb_assets(
 
 def _upload_glb_asset(
     db_client: entitysdk.client.Client,
-    cell_morphology_id: str,
+    cell_morphology_id: uuid.UUID,
     glb_path: Path,
 ) -> Asset:
     L.info(
@@ -102,7 +102,7 @@ def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
 
 def _mesh_and_register(
     db_client: entitysdk.client.Client,
-    cell_morphology_id: str,
+    cell_morphology_id: uuid.UUID,
     swc_bytes: bytes,
 ) -> Asset:
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
