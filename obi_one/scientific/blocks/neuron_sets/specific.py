@@ -32,7 +32,6 @@ class AllNeurons(AbstractNeuronSet):
     @staticmethod
     def check_node_set(circuit: Circuit, _population: str) -> None:
         if _ALL_NODE_SET not in circuit.node_sets:
-            L.info(_population)
             if _population == "core":
                 return
             msg = (
