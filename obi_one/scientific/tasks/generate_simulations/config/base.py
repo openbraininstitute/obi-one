@@ -50,6 +50,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
+DEFAULT_DISTRIBUTION_NAME = "Default: Exp, scale 50 ms, 20 Hz"
 
 
 class BlockGroup(StrEnum):
@@ -73,7 +74,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    _campaign: entitysdk.models.SimulationCampaign = None
+    _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -196,17 +197,17 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
-        if isinstance(self.initialize.circuit, list):
-            if len(self.initialize.circuit) != 1:
+        if isinstance(self.initialize.circuit, list):  # ty:ignore[unresolved-attribute]
+            if len(self.initialize.circuit) != 1:  # ty:ignore[unresolved-attribute]
                 msg = "Only single circuit/MEModel currently supported for \
                     simulation campaign database persistence."
                 raise OBIONEError(msg)
-            return self.initialize.circuit[0].id_str
-        if self.initialize.circuit is None:
+            return self.initialize.circuit[0].id_str  # ty:ignore[unresolved-attribute]
+        if self.initialize.circuit is None:  # ty:ignore[unresolved-attribute]
             msg = "Circuit must be specified to determine entity ID for simulation campaign."
             raise OBIONEError(msg)
         try:
-            return self.initialize.circuit.id_str
+            return self.initialize.circuit.id_str  # ty:ignore[unresolved-attribute]
         except AttributeError as err:
             msg = "self.initialize.circuit must have an id_str attribute."
             raise OBIONEError(msg) from err
@@ -215,8 +216,8 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.SimulationCampaign:
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> entitysdk.models.SimulationCampaign:  # ty:ignore[possibly-missing-submodule]
         """Initializes the simulation campaign in the database."""
         L.info("1. Initializing simulation campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -225,7 +226,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         L.info("-- Register SimulationCampaign Entity")
 
         self._campaign = db_client.register_entity(
-            entitysdk.models.SimulationCampaign(
+            entitysdk.models.SimulationCampaign(  # ty:ignore[possibly-missing-submodule]
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 entity_id=self.entity_id_for_campaign_entity_generation(),
@@ -236,22 +237,24 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         L.info("-- Upload campaign_generation_config")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
-            entity_type=entitysdk.models.SimulationCampaign,
+            entity_type=entitysdk.models.SimulationCampaign,  # ty:ignore[possibly-missing-submodule]
             file_path=output_root / _SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",
-            asset_label="campaign_generation_config",
+            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+            asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
         )
 
         return self._campaign
 
     def create_campaign_generation_entity(
-        self, simulations: list[entitysdk.models.Simulation], db_client: entitysdk.client.Client
-    ) -> None:
+        self,
+        simulations: list[entitysdk.models.Simulation],  # ty:ignore[possibly-missing-submodule]
+        db_client: entitysdk.client.Client,
+    ) -> None:  # ty:ignore[invalid-method-override]
         L.info("3. Saving completed simulation campaign generation")
 
         L.info("-- Register SimulationGeneration Entity")
         db_client.register_entity(
-            entitysdk.models.SimulationGeneration(
+            entitysdk.models.SimulationGeneration(  # ty:ignore[possibly-missing-submodule]
                 start_time=datetime.now(UTC),
                 used=[self._campaign],
                 generated=simulations,
@@ -267,13 +270,15 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
     """
 
     def create_single_entity_with_config(
-        self, campaign: entitysdk.models.SimulationCampaign, db_client: entitysdk.client.Client
-    ) -> entitysdk.models.Simulation:
+        self,
+        campaign: entitysdk.models.SimulationCampaign,  # ty:ignore[possibly-missing-submodule]
+        db_client: entitysdk.client.Client,
+    ) -> entitysdk.models.Simulation:  # ty:ignore[possibly-missing-submodule]
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
-        if hasattr(self.initialize, "circuit"):
-            circuit = self.initialize.circuit
+        if hasattr(self.initialize, "circuit"):  # ty:ignore[unresolved-attribute]
+            circuit = self.initialize.circuit  # ty:ignore[unresolved-attribute]
         elif hasattr(self, "circuit"):
             circuit = self.circuit
 
@@ -294,11 +299,11 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Register Simulation Entity")
         self._single_entity = db_client.register_entity(
-            entitysdk.models.Simulation(
+            entitysdk.models.Simulation(  # ty:ignore[possibly-missing-submodule]
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
-                entity_id=self.entity_id_for_campaign_entity_generation(),
+                entity_id=self.entity_id_for_campaign_entity_generation(),  # ty:ignore[unresolved-attribute]
                 simulation_campaign_id=campaign.id,
                 number_neurons=-1,
             )
@@ -306,9 +311,9 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.Simulation,
+            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",
-            asset_label="simulation_generation_config",
+            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+            asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )

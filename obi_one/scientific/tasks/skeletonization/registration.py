@@ -73,7 +73,7 @@ def register_output_resource(
                 description=metadata.cell_morphology_protocol_description,
                 protocol_design=CellMorphologyProtocolDesign.electron_microscopy,
                 slicing_direction=dset.slicing_direction,
-                slicing_thickness=dset.slicing_thickness,
+                slicing_thickness=dset.slicing_thickness,  # ty:ignore[invalid-argument-type]
                 staining_type=StainingType.other,
                 tissue_shrinkage=dset.tissue_shrinkage,
             )
@@ -82,7 +82,8 @@ def register_output_resource(
         models.CellMorphology(
             name=metadata.cell_morphology_name,
             description=metadata.cell_morphology_description,
-            cell_morphology_protocol=protocol,
+            has_segmented_spines=True,
+            cell_morphology_protocol=protocol,  # ty:ignore[invalid-argument-type]
             brain_region=metadata.brain_region,
             subject=metadata.subject,
             license=license,
@@ -92,32 +93,32 @@ def register_output_resource(
         entity=models.Contribution(
             entity=morphology,
             role=role,
-            agent=morphology.created_by,
+            agent=morphology.created_by,  # ty:ignore[invalid-argument-type]
         )
     )
     client.upload_file(
-        entity_id=morphology.id,
+        entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.CellMorphology,
         file_path=outputs.swc_morphology_file,
         file_content_type=ContentType.application_swc,
         asset_label=AssetLabel.morphology,
     )
     client.upload_file(
-        entity_id=morphology.id,
+        entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.CellMorphology,
         file_path=outputs.asc_morphology_file,
         file_content_type=ContentType.application_asc,
         asset_label=AssetLabel.morphology,
     )
     client.upload_file(
-        entity_id=morphology.id,
+        entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.CellMorphology,
         file_path=outputs.h5_morphology_file,
         file_content_type=ContentType.application_x_hdf5,
         asset_label=AssetLabel.morphology,
     )
     client.upload_file(
-        entity_id=morphology.id,
+        entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.CellMorphology,
         file_path=outputs.h5_combined_morphology_file,
         file_content_type=ContentType.application_x_hdf5,

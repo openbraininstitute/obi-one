@@ -1,3 +1,6 @@
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+)
 from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
 from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import StimulusReference
@@ -8,4 +11,5 @@ AllBlockReferenceTypes = [
     SynapticManipulationsReference,
     RecordingReference,
     TimestampsReference,
+    AllDistributionsReference,
 ]

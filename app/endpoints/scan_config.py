@@ -61,7 +61,7 @@ def create_endpoint_for_scan_config(
     @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)
     def endpoint(
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-        form: model,
+        form: model,  # ty:ignore[invalid-type-form]
     ) -> str:
         L.info("generate_grid_scan")
         L.info(db_client)
@@ -77,7 +77,7 @@ def create_endpoint_for_scan_config(
                     form=form,
                     # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
                     #        / "grid_scan", => ERA001 Found commented-out code
-                    output_root=tdir,
+                    output_root=tdir,  # ty:ignore[invalid-argument-type]
                     coordinate_directory_option="ZERO_INDEX",
                 )
                 grid_scan.execute(db_client=db_client)
@@ -129,4 +129,4 @@ def activate_scan_config_endpoints() -> None:
             execute_single_config_task=execute_single_config_task,
         )
 
-    return router
+    return router  # ty:ignore[invalid-return-type]

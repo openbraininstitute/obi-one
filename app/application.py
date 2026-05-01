@@ -56,7 +56,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()
+        http_client.close()  # noqa: ASYNC212
         L.info("Stopping application")
 
 
@@ -120,8 +120,9 @@ app = FastAPI(
         ApiError: api_error_handler,
         RequestValidationError: validation_exception_handler,
         EntitySDKError: entity_sdk_error_handler,
-    },
+    },  # ty:ignore[invalid-argument-type]
     root_path=settings.ROOT_PATH,
+    strict_content_type=False,
 )
 app.add_middleware(
     CORSMiddleware,

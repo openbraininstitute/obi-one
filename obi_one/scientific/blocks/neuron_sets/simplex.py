@@ -120,13 +120,13 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         selection = simplex_submat(
             conn.matrix,
             index,
-            self.dim,
-            v_position=self.central_neuron_simplex_position,
-            subsample=self.subsample,
-            n_count_max=self.n_count_max,
-            subsample_method=self.subsample_method,
-            simplex_type=self.simplex_type,
-            seed=self.seed,
+            self.dim,  # ty:ignore[invalid-argument-type]
+            v_position=self.central_neuron_simplex_position,  # ty:ignore[invalid-argument-type]
+            subsample=self.subsample,  # ty:ignore[invalid-argument-type]
+            n_count_max=self.n_count_max,  # ty:ignore[invalid-argument-type]
+            subsample_method=self.subsample_method,  # ty:ignore[invalid-argument-type]
+            simplex_type=self.simplex_type,  # ty:ignore[invalid-argument-type]
+            seed=self.seed,  # ty:ignore[invalid-argument-type]
         )
 
         # Get node_ids (i.e., get correct index) and build expression dict
@@ -225,13 +225,13 @@ class SimplexNeuronSet(PropertyNeuronSet):
         selection = simplex_submat(
             conn.matrix,
             index,
-            self.dim,
-            v_position=self.central_neuron_simplex_position,
+            self.dim,  # ty:ignore[invalid-argument-type]
+            v_position=self.central_neuron_simplex_position,  # ty:ignore[invalid-argument-type]
             subsample=self.subsample,
-            n_count_max=self.n_count_max,
+            n_count_max=self.n_count_max,  # ty:ignore[invalid-argument-type]
             subsample_method="sample_simplices",
-            simplex_type=self.simplex_type,
-            seed=self.seed,
+            simplex_type=self.simplex_type,  # ty:ignore[invalid-argument-type]
+            seed=self.seed,  # ty:ignore[invalid-argument-type]
         )
 
         # Get node_ids (i.e., get correct index) and build expression dict

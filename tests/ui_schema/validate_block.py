@@ -7,6 +7,7 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
 from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 L = logging.getLogger()
 
@@ -496,6 +497,49 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
+def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
+    assert schema.get("type") == "array", (
+        f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
+    )
+    assert schema.get("ui_element") == UIElement.VOLTAGE_DURATION, (
+        f"Validation error at {ref}: voltage_duration param {param} should have ui_element "
+        f"'{UIElement.VOLTAGE_DURATION}'"
+    )
+
+    resolved_ref = resolve_ref(openapi_schema, schema.get("items").get("$ref"))
+    assert (
+        resolved_ref.get("properties").get("type").get("const") == "DurationVoltageCombination"
+    ), (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "with type 'DurationVoltageCombination'"
+    )
+    voltage = resolved_ref.get("properties").get("voltage")
+    assert voltage["anyOf"] == [
+        {"type": "number"},
+        {"type": "array", "items": {"type": "number"}},
+    ], (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        f"where 'voltage' is of type 'number' or an array of 'number'."
+    )
+    assert voltage.get(SchemaKey.UNITS) == Units.MILLIVOLTS, (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'voltage' has units 'millivolts'"
+    )
+
+    duration = resolved_ref.get("properties").get("duration")
+    assert duration["anyOf"] == [
+        {"type": "number", "minimum": 0.0},
+        {"type": "array", "items": {"type": "number", "minimum": 0.0}},
+    ], (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        f"where 'duration' is of type 'number' or an array of 'number'. Found {duration}"
+    )
+    assert duration.get(SchemaKey.UNITS) == Units.MILLISECONDS, (
+        f"Validation error at {ref}: voltage_duration param {param} should reference a schema "
+        "where 'duration' has units 'milliseconds'"
+    )
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
@@ -532,6 +576,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
         case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
+        case UIElement.VOLTAGE_DURATION:
+            validate_voltage_duration(schema, param, ref)
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"

@@ -67,7 +67,7 @@ def make_task_reservation(
         f"Accounting parameters reserved: subtype={accounting_parameters.service_subtype}, "
         f"count={accounting_parameters.count}, job_id={accounting_session.job_id}"
     )
-    return accounting_session
+    return accounting_session  # ty:ignore[invalid-return-type]
 
 
 def estimate_task_cost(
@@ -96,7 +96,7 @@ def estimate_task_cost(
     )
 
     return TaskAccountingInfo(
-        cost=cost_estimate,
+        cost=cost_estimate,  # ty:ignore[invalid-argument-type]
         config_id=config_id,
         parameters=accounting_parameters,
         task_type=task_definition.task_type,
@@ -121,7 +121,11 @@ def _evaluate_accounting_parameters(
                 count=1,
                 service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
             )
-        case TaskType.circuit_simulation:
+        case (
+            TaskType.circuit_simulation_neuron
+            | TaskType.circuit_simulation_neurodamus_cluster
+            | TaskType.circuit_simulation_inait_machine
+        ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
@@ -145,7 +149,7 @@ def _evaluate_accounting_parameters(
             # For other task types, use the default mapping
             return AccountingParameters(
                 count=1,
-                service_subtype=task_definition.accounting_service_subtype,
+                service_subtype=task_definition.accounting_service_subtype,  # ty:ignore[unresolved-attribute]
             )
 
 
@@ -169,7 +173,7 @@ def _evaluate_circuit_simulation_parameters(
         msg = f"Unsupported circuit scale '{circuit.scale}' for cost estimation"
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg) from e
 
-    return AccountingParameters(count=count, service_subtype=service_subtype)
+    return AccountingParameters(count=count, service_subtype=service_subtype)  # ty:ignore[invalid-argument-type]
 
 
 def generate_accounting_callbacks(
