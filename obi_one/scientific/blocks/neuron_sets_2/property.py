@@ -17,6 +17,11 @@ from pydantic import Field, model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
+from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger("obi-one")
 
@@ -28,6 +33,11 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
                     not to support multi-dimensional parameters but to support a key-value pair \
                     with multiple values i.e. {'layer': ['2', '3']}}",
         default={},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
+        },
     )
 
     @model_validator(mode="after")

@@ -17,6 +17,7 @@ class CircuitMappedProperties(StrEnum):
     VIRTUAL_NEURONAL_POPULATION = "VirtualNeuronalPopulation"
     POINT_NEURONAL_POPULATION = "PointNeuronalPopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
+    NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
 
 class CircuitUsability(StrEnum):
