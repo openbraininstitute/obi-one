@@ -55,7 +55,6 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
 
-
 class GenerateSimulationTask(Task):
     config: (
         CircuitSimulationSingleConfig
