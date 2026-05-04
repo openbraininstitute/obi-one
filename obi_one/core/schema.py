@@ -30,6 +30,7 @@ class UIElement(StrEnum):
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
+    ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
