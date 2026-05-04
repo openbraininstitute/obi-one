@@ -107,20 +107,23 @@ class SigFitHTau(IonChannelEquation):
     )
 
 
+
+_MINF_BLOCKS = SigFitMInf
 MInfUnion = Annotated[
-    SigFitMInf | None, Discriminator("type")
+    _MINF_BLOCKS | None, Discriminator("type")
 ]  # None: have to use a dummy fallback because pydantic forces me to have a 'real' Union here
 
-
+_MTAU_BLOCKS = SigFitMTau | ThermoFitMTau | ThermoFitMTauV2 | BellFitMTau
 MTauUnion = Annotated[
-    SigFitMTau | ThermoFitMTau | ThermoFitMTauV2 | BellFitMTau, Discriminator("type")
+    _MTAU_BLOCKS, Discriminator("type")
 ]
 
+_HINF_BLOCKS = SigFitHInf
+HInfUnion = Annotated[_HINF_BLOCKS | None, Discriminator("type")]
 
-HInfUnion = Annotated[SigFitHInf | None, Discriminator("type")]
 
-
-HTauUnion = Annotated[SigFitHTau | None, Discriminator("type")]
+_HTAU_BLOCKS = SigFitHTau
+HTauUnion = Annotated[_HTAU_BLOCKS | None, Discriminator("type")]
 
 
 class MInfReference(BlockReference):
@@ -128,11 +131,19 @@ class MInfReference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = MInfUnion
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_MINF_BLOCKS)
+    }
+
 
 class MTauReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = MTauUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_MTAU_BLOCKS)
+    }
 
 
 class HInfReference(BlockReference):
@@ -140,8 +151,16 @@ class HInfReference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = HInfUnion
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_HINF_BLOCKS)
+    }
+
 
 class HTauReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = HTauUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_HTAU_BLOCKS)
+    }

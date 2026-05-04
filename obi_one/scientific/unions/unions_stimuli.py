@@ -84,13 +84,22 @@ MEModelStimulusUnion = Annotated[
     Discriminator("type"),
 ]
 
+_SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
 IonChannelModelStimulusUnion = Annotated[
-    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    _SE_CLAMP_STIMULI | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
+
+
+
+_ALL_STIMULI = _INJECTION_STIMULI | _SPIKE_STIMULI | _FIELD_STIMULI | _SE_CLAMP_STIMULI
 
 
 class StimulusReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = StimulusUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_ALL_STIMULI)
+    }

@@ -1,6 +1,6 @@
 import abc
-from typing import Annotated, Any, ClassVar, get_args
-
+from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
+    
 from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
@@ -25,6 +25,11 @@ class BlockReference(OBIBaseModel, abc.ABC):
     ] = None  # ty:ignore[invalid-assignment]
 
     _block: Any = None
+
+    @staticmethod
+    def get_class_names(tp):
+        args = get_args(tp)
+        return [t.__name__ for t in args] if args else [tp.__name__]
 
     @classmethod
     def allowed_block_types_union(

@@ -52,17 +52,29 @@ class BiophysicalNeuronSetReference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = BiophysicalNeuronSetUnion
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_BIOPHYSICAL_NEURON_SETS)
+    }
+
 
 class VirtualNeuronSetReference(BlockReference):
     """A reference to a Virtual NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_VIRTUAL_NEURON_SETS)
+    }
+
 
 class PointNeuronSetReference(BlockReference):
     """A reference to a Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = PointNeuronSetUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_POINT_NEURON_SETS)
+    }
 
 
 ALL_NEURON_SETS_REFERENCE_UNION = (

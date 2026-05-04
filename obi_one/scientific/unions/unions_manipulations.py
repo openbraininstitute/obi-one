@@ -12,11 +12,14 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     SynapticMgManipulation,
 )
 
-SynapticManipulationsUnion = Annotated[
+_SYNAPTIC_MANIPULATIONS = (
     DisconnectSynapticManipulation
     | ConnectSynapticManipulation
     | SynapticMgManipulation
-    | ScaleAcetylcholineUSESynapticManipulation,
+    | ScaleAcetylcholineUSESynapticManipulation
+)
+SynapticManipulationsUnion = Annotated[
+    _SYNAPTIC_MANIPULATIONS,
     Discriminator("type"),
 ]
 
@@ -25,3 +28,7 @@ class SynapticManipulationsReference(BlockReference):
     """A reference to a SynapticManipulations block."""
 
     allowed_block_types: ClassVar[Any] = SynapticManipulationsUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_SYNAPTIC_MANIPULATIONS)
+    }
