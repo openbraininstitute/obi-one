@@ -14,7 +14,7 @@ class ExponentialDistribution(Distribution):
     title: ClassVar[str] = "Exponential"
 
     scale: PositiveFloat | list[PositiveFloat] = Field(
-        default=1.0,
+        default=50.0,
         title="Scale",
         description="Scale parameter of the exponential distribution in milliseconds.",
         json_schema_extra={
@@ -42,7 +42,7 @@ class ExponentialDistribution(Distribution):
 
     def _sample_generator(
         self, n: int = 1, rng: np.random.Generator | None = None
-    ) -> list[PositiveFloat]:
+    ) -> list[float]:
         """Sample n values from the exponential distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
