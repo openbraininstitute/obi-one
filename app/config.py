@@ -68,7 +68,7 @@ class Settings(BaseSettings):
 
     def build_launch_system_url(self, subdomain: str) -> str:
         """Return the launch-system URL with the subdomain placeholder resolved."""
-        return self.LAUNCH_SYSTEM_URL_TEMPLATE.replace(self.SUBDOMAIN_PLACEHOLDER, subdomain)
+        return self.LAUNCH_SYSTEM_URL_TEMPLATE.replace(self.SUBDOMAIN_PLACEHOLDER, subdomain)  # ty:ignore[unresolved-attribute]
 
     # Path to the obi-one repository
     OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
@@ -79,4 +79,4 @@ class Settings(BaseSettings):
     MOUNT_BASE_DIR: str | None = None
 
 
-settings = Settings()
+settings = Settings()  # ty:ignore[missing-argument]

@@ -22,7 +22,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
 
     allowed_block_types: ClassVar[
         Annotated[type[OBIBaseModel] | tuple[type[OBIBaseModel], ...], Discriminator("type")]
-    ] = None
+    ] = None  # ty:ignore[invalid-assignment]
 
     _block: Any = None
 
@@ -56,7 +56,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
     def block(self, value: Block) -> None:
         """Sets the block associated with this reference."""
         if not isinstance(value, self.allowed_block_types_union()):
-            msg = f"Value must be of type {self.block_type.__name__}."
+            msg = f"Value must be of type {self.block_type.__name__}."  # ty:ignore[unresolved-attribute]
             raise TypeError(msg)
 
         self._block = value

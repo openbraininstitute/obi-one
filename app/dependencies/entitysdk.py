@@ -32,14 +32,14 @@ def get_client(
         )
     else:
         project_context = None
-    token_manager = FixedTokenManager(user_context.token.credentials)
+    token_manager = FixedTokenManager(user_context.token.credentials)  # ty:ignore[unresolved-attribute]
     client = entitysdk.client.Client(
         api_url=settings.ENTITYCORE_URL,
         project_context=project_context,
         http_client=request.state.http_client,
         token_manager=token_manager,
         local_store=(
-            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)
+            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)  # ty:ignore[invalid-argument-type]
             if settings.MOUNT_BASE_DIR
             else None
         ),

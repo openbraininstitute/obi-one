@@ -44,8 +44,8 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
 
     def filter(self, df_in: pd.DataFrame, *, reindex: bool = True) -> pd.DataFrame:
         ret = df_in
-        for filter_key, _filter_value in self.filter_dict.items():
-            filter_value = [str(_entry) for _entry in _filter_value]
+        for filter_key, filter_value_ in self.filter_dict.items():
+            filter_value = [str(entry) for entry in filter_value_]
             vld = ret[filter_key].astype(str).isin(filter_value)
             ret = ret.loc[vld]
             if reindex:
@@ -55,7 +55,7 @@ class NeuronPropertyFilter(OBIBaseModel, abc.ABC):
     def test_validity(self, circuit: Circuit, node_population: str) -> None:
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
 
-        if not all(_prop in circuit_prop_names for _prop in self.filter_keys):
+        if not all(prop in circuit_prop_names for prop in self.filter_keys):
             msg = f"Invalid neuron properties! Available properties: {circuit_prop_names}"
             raise ValueError(msg)
 
@@ -80,7 +80,7 @@ class PropertyNeuronSet(NeuronSet):
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=(),
-    )
+    )  # ty:ignore[invalid-assignment]
     node_sets: (
         tuple[Annotated[str, Field(min_length=1)], ...]
         | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
@@ -88,13 +88,13 @@ class PropertyNeuronSet(NeuronSet):
 
     def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
-        self.property_filter.test_validity(circuit, population)
+        self.property_filter.test_validity(circuit, population)  # ty:ignore[unresolved-attribute]
 
     def check_node_sets(self, circuit: Circuit, _population: str) -> None:
-        for _nset in self.node_sets:
-            if _nset not in circuit.node_sets:
+        for nset in self.node_sets:
+            if nset not in circuit.node_sets:
                 msg = (
-                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
+                    f"Node set '{nset}' not found in circuit '{circuit.name}'. "
                     f"Available node sets: {', '.join(circuit.node_sets)}"
                 )
                 raise ValueError(msg)
@@ -104,15 +104,15 @@ class PropertyNeuronSet(NeuronSet):
         c = circuit.sonata_circuit
         population = self._population(population)
 
-        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
-        df = self.property_filter.filter(df)
+        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()  # ty:ignore[unresolved-attribute]
+        df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
 
         node_ids = df["node_ids"].to_numpy()
 
         if len(self.node_sets) > 0:
             node_ids_nset = np.array([]).astype(int)
-            for _nset in self.node_sets:
-                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(_nset))
+            for nset in self.node_sets:
+                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(nset))
             node_ids = np.intersect1d(node_ids, node_ids_nset)
 
         expression = {"population": population, "node_id": node_ids.tolist()}
@@ -133,7 +133,7 @@ class PropertyNeuronSet(NeuronSet):
             # Symbolic expression can be preserved
             expression = {
                 property_key: __resolve_sngl(property_value)
-                for property_key, property_value in self.property_filter.filter_dict.items()
+                for property_key, property_value in self.property_filter.filter_dict.items()  # ty:ignore[unresolved-attribute]
             }
         else:
             # Individual IDs need to be resolved

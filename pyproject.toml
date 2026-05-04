@@ -42,7 +42,7 @@ dependencies = [
     "bluepysnap>=3.0.2",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.11",
+    "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
     "morph-tool",
@@ -50,10 +50,18 @@ dependencies = [
     "libsonata>=0.1.33",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
-    "pylmesh"
+    "pylmesh",
+    "python-multipart>=0.0.26",
+    "obp-accounting-sdk>=0.6.0",
+    "numpy",
 ]
 
 [project.optional-dependencies]
+# New group for the private dependency
+meshing = [
+    "neuromorphomesh",
+]
+
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
@@ -85,19 +93,19 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service]",
+    "obi-one[connectivity,notebooks,service,meshing]",
 ]
 
 [dependency-groups]
 dev = [
     "coverage[toml]",
     "jsonschema>=4.25.1",
-    "pyright",
     "pytest",
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "ruff<=0.12.7",
+    "ruff",
+    "ty>=0.0.33",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -126,8 +134,14 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.9.22"
 
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
+
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100

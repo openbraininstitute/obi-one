@@ -164,9 +164,10 @@ class BenchmarkTracker:
         # Add total execution and unbenchmarked time if available
         if total_execution_time is not None:
             summary_data["total_execution_time_s"] = round(total_execution_time, 2)
-            summary_data["unbenchmarked_time_s"] = round(unbenchmarked_time, 2)
+            summary_data["unbenchmarked_time_s"] = round(unbenchmarked_time, 2)  # ty:ignore[no-matching-overload]
             summary_data["unbenchmarked_percentage"] = round(
-                (unbenchmarked_time / total_execution_time) * 100, 1
+                (unbenchmarked_time / total_execution_time) * 100,  # ty:ignore[unsupported-operator]
+                1,
             )
 
         # Print as single-line JSON with same format as individual sections

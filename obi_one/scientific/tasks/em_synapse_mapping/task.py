@@ -62,7 +62,7 @@ class EMSynapseMappingTask(Task):
     def execute(  # NOQA: PLR0914, PLR0915, C901, PLR0912
         self,
         *,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,
     ) -> None:
@@ -121,7 +121,7 @@ class EMSynapseMappingTask(Task):
             L.info("Merging spiny morphologies into combined file...")
             merge_spiny_morphologies(
                 source_files=[out_root / rn.fn_morph_h5 for rn in resolved_neurons],
-                output_path=out_root / fn_merged_h5,
+                output_path=out_root / fn_merged_h5,  # ty:ignore[unsupported-operator]
                 include_meshes=False,
             )
 
@@ -203,7 +203,7 @@ class EMSynapseMappingTask(Task):
         )
         coll_bio, _ = assemble_collection_from_specs(
             em_dataset, db_client, cave_version, node_spec, bio_pt_root_mapping
-        )
+        )  # ty:ignore[not-iterable]
 
         morph_names = [f"morphology/{rn.morph_entity.name}" for rn in resolved_neurons]
         coll_bio.properties["morphology"] = numpy.array(morph_names)
@@ -229,7 +229,7 @@ class EMSynapseMappingTask(Task):
             )
             coll_virtual, _ = assemble_collection_from_specs(
                 em_dataset, db_client, cave_version, node_spec, virt_pt_root_mapping
-            )
+            )  # ty:ignore[not-iterable]
         else:
             coll_virtual = None
 
@@ -354,7 +354,7 @@ class EMSynapseMappingTask(Task):
             total_connections=total_connections,
             total_internal=total_internal,
             total_external=total_external,
-            file_paths=file_paths,
+            file_paths=file_paths,  # ty:ignore[invalid-argument-type]
             compressed_path=compressed_path,
         )
 

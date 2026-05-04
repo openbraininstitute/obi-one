@@ -128,8 +128,8 @@ def _check_hoc(npop_dict, c_res):
         if nodes.type == "biophysical":
             # Check HOC files
             hoc_files = [
-                _hoc.split(":")[-1] + ".hoc"
-                for _hoc in nodes.get(properties="model_template").unique()
+                hoc_.split(":")[-1] + ".hoc"
+                for hoc_ in nodes.get(properties="model_template").unique()
             ]
             hoc_path = Path(nodes.config["biophysical_neuron_models_dir"])
             for hoc in hoc_files:
