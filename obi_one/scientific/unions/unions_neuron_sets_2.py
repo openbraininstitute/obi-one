@@ -13,8 +13,9 @@ from obi_one.scientific.blocks.neuron_sets_2.property import (
     VirtualPropertyNeuronSet,
     PointPropertyNeuronSet,
 )
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
 
-_BIOPHYSICAL_NEURON_SETS = BiophysicalIDNeuronSet | BiophysicalPropertyNeuronSet
+_BIOPHYSICAL_NEURON_SETS = BiophysicalIDNeuronSet | BiophysicalPropertyNeuronSet | PredefinedNeuronSet
 _VIRTUAL_NEURON_SETS = VirtualIDNeuronSet | VirtualPropertyNeuronSet
 _POINT_NEURON_SETS = PointIDNeuronSet | PointPropertyNeuronSet
 _ALL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS
