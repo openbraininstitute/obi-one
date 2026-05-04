@@ -53,6 +53,7 @@ dependencies = [
     "pylmesh",
     "python-multipart>=0.0.26",
     "obp-accounting-sdk>=0.6.0",
+    "numpy",
 ]
 
 [project.optional-dependencies]
