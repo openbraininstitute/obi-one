@@ -8,15 +8,15 @@ from obi_one.scientific.blocks.neuron_sets_2.id import (
     PointIDNeuronSet,
     VirtualIDNeuronSet,
 )
-from obi_one.scientific.blocks.neuron_sets_2.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
-    VirtualPopulationNeuronSet,
+from obi_one.scientific.blocks.neuron_sets_2.property import (
+    BiophysicalPropertyNeuronSet,
+    VirtualPropertyNeuronSet,
+    PointPropertyNeuronSet,
 )
 
-_BIOPHYSICAL_NEURON_SETS = BiophysicalIDNeuronSet | BiophysicalPopulationNeuronSet
-_VIRTUAL_NEURON_SETS = VirtualIDNeuronSet | VirtualPopulationNeuronSet
-_POINT_NEURON_SETS = PointIDNeuronSet | PointPopulationNeuronSet
+_BIOPHYSICAL_NEURON_SETS = BiophysicalIDNeuronSet | BiophysicalPropertyNeuronSet
+_VIRTUAL_NEURON_SETS = VirtualIDNeuronSet | VirtualPropertyNeuronSet
+_POINT_NEURON_SETS = PointIDNeuronSet | PointPropertyNeuronSet
 _ALL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS
 _BIOPHYSICAL_AND_POINT_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
 

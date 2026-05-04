@@ -7,7 +7,7 @@
 """
 
 import logging
-from typing import Annotated, Self
+from typing import Annotated, ClassVar, Self
 
 import numpy as np
 import pandas as pd
@@ -19,6 +19,11 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
+)
+from obi_one.scientific.blocks.neuron_sets_2.population import (
+    BiophysicalPopulationNeuronSet,
+    PointPopulationNeuronSet,
+    VirtualPopulationNeuronSet,
 )
 from obi_one.core.schema import SchemaKey, UIElement
 
@@ -85,7 +90,6 @@ class PropertyNeuronSet(NeuronSet):
     property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
-        default=NeuronPropertyFilter(),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
@@ -151,3 +155,20 @@ class PropertyNeuronSet(NeuronSet):
             return self._get_resolved_expression(circuit, population)
 
         return expression
+    
+class BiophysicalPropertyNeuronSet(PropertyNeuronSet, BiophysicalPopulationNeuronSet):
+    """Only biophysical neuron node populations are selectable."""
+
+    title: ClassVar[str] = "By Properties (Biophysical)"
+
+
+class VirtualPropertyNeuronSet(PropertyNeuronSet, VirtualPopulationNeuronSet):
+    """Only virtual neuron node populations are selectable."""
+
+    title: ClassVar[str] = "By Properties (Virtual)"
+
+
+class PointPropertyNeuronSet(PropertyNeuronSet, PointPopulationNeuronSet):
+    """Only point neuron node populations are selectable."""
+
+    title: ClassVar[str] = "By Properties (Point)"
