@@ -128,9 +128,7 @@ def mock_io_for_test(monkeypatch):
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.pathlib.Path", _make_mock_path
     )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.Path", _make_mock_path
-    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _make_mock_path)
 
 
 @pytest.fixture
