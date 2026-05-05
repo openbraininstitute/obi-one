@@ -2,6 +2,7 @@ import json
 import pathlib
 import tempfile
 import traceback
+import uuid
 from contextlib import ExitStack, suppress
 from http import HTTPStatus
 from pathlib import Path
@@ -29,9 +30,15 @@ from requests.exceptions import RequestException
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.errors import ApiError
+from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     validate_and_convert_morphology,
+)
+from app.endpoints.convert_morphology_to_registered_mesh import (
+    HAS_MESHING,
+    _mesh_and_register,
 )
 
 
@@ -378,6 +385,25 @@ def _register_assets_and_measurements(
     return registered
 
 
+def _try_mesh_and_register(
+    client: entitysdk.client.Client,
+    entity_id: str,
+    swc_bytes: bytes,
+) -> str | None:
+    if not HAS_MESHING:
+        L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
+        return None
+    try:
+        asset = _mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
+        return str(asset.id)
+    except ApiError as err:
+        L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
+        return None
+    except Exception as err:
+        L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_id}: {err}")
+        return None
+
+
 async def _run_pipeline(
     client: Client,
     morphology_name: str,
@@ -385,7 +411,7 @@ async def _run_pipeline(
     content: bytes,
     entity_payload: dict[str, Any],
     single_point_soma_by_ext: dict[str, bool],
-) -> tuple[str, str]:
+) -> tuple[str, str, str | None]:
     with ExitStack() as stack:
         temp_file_obj = stack.enter_context(
             tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
@@ -429,7 +455,26 @@ async def _run_pipeline(
             converted_morphology_file1,  # ty:ignore[invalid-argument-type]
             converted_morphology_file2,  # ty:ignore[invalid-argument-type]
         )
-        return entity_id, str(data2.id)  # ty:ignore[unresolved-attribute]
+
+        swc_bytes_for_mesh: bytes | None = None
+        for converted_path in (converted_morphology_file1, converted_morphology_file2):
+            if (
+                converted_path
+                and pathlib.Path(converted_path).suffix.lower() == ".swc"
+                and pathlib.Path(converted_path).exists()
+            ):
+                swc_bytes_for_mesh = pathlib.Path(converted_path).read_bytes()
+                break
+        if swc_bytes_for_mesh is None and file_extension == ".swc":
+            swc_bytes_for_mesh = content
+
+        mesh_asset_id: str | None = None
+        if swc_bytes_for_mesh is not None:
+            mesh_asset_id = await run_in_threadpool(
+                _try_mesh_and_register, client, entity_id, swc_bytes_for_mesh
+            )
+
+        return entity_id, str(data2.id), mesh_asset_id  # ty:ignore[unresolved-attribute]
 
 
 @router.post(
@@ -437,7 +482,7 @@ async def _run_pipeline(
     summary="Calculate morphology metrics and register entities.",
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
-        "asset, and measurements."
+        "asset, measurements, and (when possible) a GLB surface mesh."
     ),
 )
 async def morphology_metrics_calculation(
@@ -458,7 +503,7 @@ async def morphology_metrics_calculation(
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
     try:
-        entity_id, measurement_entity_id = await _run_pipeline(
+        entity_id, measurement_entity_id, mesh_asset_id = await _run_pipeline(
             client=client,
             morphology_name=morphology_name,
             file_extension=file_extension,
@@ -481,6 +526,7 @@ async def morphology_metrics_calculation(
         return {
             "entity_id": entity_id,
             "measurement_entity_id": measurement_entity_id,
+            "mesh_asset_id": mesh_asset_id,
             "status": "success",
             "morphology_name": morphology_name,
         }
