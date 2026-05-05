@@ -417,7 +417,7 @@ def _try_mesh_and_register(
     except ApiError as err:
         L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
         return None
-    except BaseException as err:
+    except Exception as err:  # noqa: BLE001
         L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_id}: {err}")
         return None
 
