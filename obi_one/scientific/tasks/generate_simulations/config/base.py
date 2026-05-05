@@ -31,12 +31,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_compartment_sets import (
-    CompartmentSetReference,
-    CompartmentSetUnion,
-)
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
@@ -120,24 +115,9 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         },
     )
 
-    compartment_sets: dict[str, CompartmentSetUnion] = Field(
-        default_factory=dict,
-        title="Compartment Sets",
-        reference_type=CompartmentSetReference.__name__,
-        description="SONATA-style compartment_sets blocks.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Compartment Set",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 2,
-        },
-    )
-
     morphology_locations: dict[str, MorphologyLocationUnion] = Field(
         default_factory=dict,
         title="Morphology Locations",
-        reference_type=MorphologyLocationsReference.__name__,
         description="Rules to generate locations on morphologies (used by stimuli.locations).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,

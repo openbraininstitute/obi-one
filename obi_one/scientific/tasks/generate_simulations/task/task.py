@@ -431,7 +431,7 @@ class GenerateSimulationTask(Task):
         compartment_sets = getattr(self.config, "compartment_sets", None)
         if compartment_sets:
             compartment_sets_dict: dict = {}
-            for cs_key, cs_block in self.config.compartment_sets.items():
+            for cs_key, cs_block in compartment_sets.items():
                 if cs_key != cs_block.block_name:
                     msg = (
                         "Compartment set name mismatch! "

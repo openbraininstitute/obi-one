@@ -6,23 +6,42 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
     random_seed: int | list[int] = Field(
-        default=0, title="Random seed", description="Seed for the random generation of locations"
+        default=0,
+        title="Random Seed",
+        description="Seed for the random generation of locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
+
     number_of_locations: int | list[int] = Field(
         default=1,
-        title="Number of locations",
-        description="Number of locations to generate on morphology",
+        title="Number of Locations",
+        description="Number of locations to generate on morphology.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
-    section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-        default=None,
-        title="Section types",
-        description="Types of sections to generate locations on. 2: axon, 3: basal, 4: apical",
+
+    section_types: int | list[int] = Field(
+        default=1,
+        ge=0,
+        title="Section Types",
+        description=(
+            "SWC section types to generate locations on. "
+            "0: undefined, 1: soma, 2: axon, 3: basal dendrite, "
+            "4: apical dendrite, 5+: custom."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
     @abc.abstractmethod

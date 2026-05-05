@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, cast
 from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -30,6 +31,9 @@ class CompartmentSet(Block):
     population: str = Field(
         title="Population",
         description="Node population name for which the compartment entries apply.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
     )
 
     compartment_entries: tuple[tuple[int, int, float], ...] = Field(

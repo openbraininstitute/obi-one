@@ -316,7 +316,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         },
         "initialize": init_dict,
         "info": info_dict,
-        "compartment_sets": {},
+        "morphology_locations": {},
     }
     assert cfg.pop("form") == form_dict
     assert cfg.pop("coordinate_directory_option") == "ZERO_INDEX"
@@ -472,8 +472,8 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "campaign_description": "Test description",
         }
         assert cfg.pop("info") == info_dict
-        assert cfg.pop("compartment_sets") == {}
         assert cfg.pop("distributions") == {}
+        assert cfg.pop("morphology_locations") == {}
         assert len(cfg) == 0  # No additional entries
 
 
