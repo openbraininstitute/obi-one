@@ -111,24 +111,25 @@ def mock_io_for_test(monkeypatch):
 
     real_path = pathlib.Path
 
-    def mock_path_constructor_final(path_str):
-        mock_path_instance = MagicMock()
-        mock_path_instance.unlink.return_value = None
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.is_file.return_value = True
+    def _make_mock_path(path_str):
         real = real_path(path_str)
-        mock_path_instance.suffix = real.suffix
-        mock_path_instance.stem = real.stem
-        mock_path_instance.name = real.name
-        mock_path_instance.parent = mock_path_instance
-        mock_path_instance.__truediv__.return_value = mock_path_instance
-        return mock_path_instance
+        mock_inst = MagicMock()
+        mock_inst.unlink.return_value = None
+        mock_inst.exists.return_value = True
+        mock_inst.is_file.return_value = True
+        mock_inst.suffix = real.suffix
+        mock_inst.stem = real.stem
+        mock_inst.name = real.name
+        mock_inst.parent = _make_mock_path(str(real.parent))
+        mock_inst.__str__ = lambda _self: str(real)
+        mock_inst.__truediv__ = lambda _self, other: _make_mock_path(str(real / other))
+        return mock_inst
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.pathlib.Path", mock_path_constructor_final
+        "app.endpoints.morphology_metrics_calculation.pathlib.Path", _make_mock_path
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.Path", mock_path_constructor_final
+        "app.endpoints.morphology_metrics_calculation.Path", _make_mock_path
     )
 
 
