@@ -53,7 +53,6 @@ __all__ = [
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
     "ConstantCurrentClampSomaticStimulus",
-    "ConstantCurrentClampStimulus",
     "ContributeMorphologyScanConfig",
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
@@ -86,7 +85,6 @@ __all__ = [
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
-    "HyperpolarizingCurrentClampStimulus",
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
@@ -126,7 +124,6 @@ __all__ = [
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
     "MultiPulseCurrentClampSomaticStimulus",
-    "MultiPulseCurrentClampStimulus",
     "NamedPath",
     "NamedTuple",
     "NeuronPropertyFilter",
@@ -136,7 +133,6 @@ __all__ = [
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
     "NormallyDistributedCurrentClampSomaticStimulus",
-    "NormallyDistributedCurrentClampStimulus",
     "OBIBaseModel",
     "OBIONEError",
     "OrnsteinUhlenbeckConductanceSomaticStimulus",
@@ -177,7 +173,6 @@ __all__ = [
     "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
-    "SinusoidalCurrentClampStimulus",
     "SinusoidalPoissonSpikeStimulus",
     "SkeletonizationScanConfig",
     "SkeletonizationSingleConfig",
@@ -186,7 +181,6 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
-    "SubthresholdCurrentClampStimulus",
     "SynapseSetUnion",
     "SynapticMgManipulation",
     "Task",
@@ -451,6 +445,7 @@ from obi_one.scientific.unions.unions_distributions import (
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,

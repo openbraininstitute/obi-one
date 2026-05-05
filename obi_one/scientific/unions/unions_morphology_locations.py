@@ -24,4 +24,4 @@ MorphologyLocationUnion = Annotated[
     | RandomMorphologyLocations,
     Discriminator("type"),
 ]
-__all__ = ["MorphologyLocationUnion", "MorphologyLocationsReference"]
+__all__ = ["MorphologyLocationUnion"]

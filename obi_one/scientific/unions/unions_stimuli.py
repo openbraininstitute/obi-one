@@ -35,10 +35,6 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
-from obi_one.scientific.blocks.stimulus import (
-    # Deprecated somatic aliases (backward compatibility)
-    ConstantCurrentClampSomaticStimulus,
-)
 
 _ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus

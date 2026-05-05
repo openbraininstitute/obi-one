@@ -148,19 +148,20 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
 
     @model_validator(mode="after")
     def _validate_targeting(self) -> Self:
-        if self.compartment_set is not None:
-            if self.neuron_set is not None or self.locations is not None:
-                raise ValueError(
-                    "If 'compartment_set' is set, do not set 'neuron_set' or 'locations'."
-                )
+        if self.compartment_set is not None and (
+            self.neuron_set is not None or self.locations is not None
+        ):
+            msg = "If 'compartment_set' is set, do not set 'neuron_set' or 'locations'."
+            raise ValueError(msg)
         return self
 
     def _target_entry(self) -> dict[str, Any]:
         if self.locations is not None:
-            raise ValueError(
-                "Stimulus 'locations' must be materialized to a CompartmentSet before SONATA export. "
-                "This is normally done by GenerateSimulationTask."
+            msg = (
+                "Stimulus 'locations' must be materialized to a CompartmentSet "
+                "before SONATA export. This is normally done by GenerateSimulationTask."
             )
+            raise ValueError(msg)
 
         comp_set_name = resolve_compartment_set_ref_to_name(self.compartment_set, default=None)
         if comp_set_name is not None:

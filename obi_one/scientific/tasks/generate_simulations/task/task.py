@@ -12,7 +12,6 @@ from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.builders.stimuli import materialize_locations_to_compartment_sets
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -41,6 +40,9 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
+    materialize_locations_to_compartment_sets,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -268,11 +270,19 @@ class GenerateSimulationTask(Task):
                 )
 
     def _materialize_location_targets(self) -> None:
+        circuit = self._circuit
+        if circuit is None:
+            msg = "Circuit must be resolved before materializing location targets."
+            raise OBIONEError(msg)
+
+        population = circuit.default_population_name
+
         materialize_locations_to_compartment_sets(
-            self.config,
-            self._circuit,
-            self._circuit.default_population_name,
-            self._load_morphology,
+            form=self.config,
+            circuit=circuit,
+            node_population=population,
+            population=population,
+            morphology_loader=self._load_morphology,
         )
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
@@ -295,13 +305,14 @@ class GenerateSimulationTask(Task):
 
         return DEFAULT_NEURON_SET_BLOCK_REFERENCE
 
+    @staticmethod
     def _load_morphology(
-        self, circuit: Circuit, node_id: int, population: str | None
+        circuit: Circuit, node_id: int, population: str | None
     ) -> morphio.Morphology | None:
         population_name = population or circuit.default_population_name
         try:
             return circuit.load_morphology(node_id, population=population_name)
-        except Exception as exc:  # pragma: no cover - external dependency
+        except (FileNotFoundError, KeyError, ValueError) as exc:
             L.warning(
                 "Unable to load morphology for node %s in population '%s': %s",
                 node_id,
@@ -420,19 +431,19 @@ class GenerateSimulationTask(Task):
         compartment_sets = getattr(self.config, "compartment_sets", None)
         if compartment_sets:
             compartment_sets_dict: dict = {}
-            for _cs_key, _cs_block in self.config.compartment_sets.items():
-                if _cs_key != _cs_block.block_name:
+            for cs_key, cs_block in self.config.compartment_sets.items():
+                if cs_key != cs_block.block_name:
                     msg = (
                         "Compartment set name mismatch! "
                         "Using sim_conf.add(compartment_set, name=compartment_set_name) "
                         "should ensure this."
                     )
                     raise OBIONEError(msg)
-                compartment_sets_dict.update(_cs_block.to_sonata_dict())
+                compartment_sets_dict.update(cs_block.to_sonata_dict())
 
             write_circuit_compartment_set_file(
                 sonata_circuit,
-                self.config.coordinate_output_root,
+                str(self.config.coordinate_output_root),
                 compartment_sets=compartment_sets_dict,
                 file_name="compartment_sets.json",
                 overwrite_if_exists=False,

@@ -125,9 +125,13 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         title="Compartment Sets",
         reference_type=CompartmentSetReference.__name__,
         description="SONATA-style compartment_sets blocks.",
-        singular_name="Compartment Set",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=2,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Compartment Set",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
+        },
     )
 
     morphology_locations: dict[str, MorphologyLocationUnion] = Field(
@@ -135,9 +139,13 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         title="Morphology Locations",
         reference_type=MorphologyLocationsReference.__name__,
         description="Rules to generate locations on morphologies (used by stimuli.locations).",
-        singular_name="Morphology Locations",
-        group=BlockGroup.CIRUIT_COMPONENTS_BLOCK_GROUP,
-        group_order=3,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Morphology Locations",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 3,
+        },
     )
 
     class Initialize(Block):
