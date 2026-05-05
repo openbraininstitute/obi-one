@@ -30,15 +30,15 @@ from requests.exceptions import RequestException
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.endpoints.convert_morphology_to_registered_mesh import (
+    HAS_MESHING,
+    _mesh_and_register,
+)
 from app.errors import ApiError
 from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     validate_and_convert_morphology,
-)
-from app.endpoints.convert_morphology_to_registered_mesh import (
-    HAS_MESHING,
-    _mesh_and_register,
 )
 
 
@@ -385,6 +385,24 @@ def _register_assets_and_measurements(
     return registered
 
 
+def _resolve_swc_bytes_for_mesh(
+    converted_morphology_file1: str | None,
+    converted_morphology_file2: str | None,
+    file_extension: str,
+    content: bytes,
+) -> bytes | None:
+    for converted_path in (converted_morphology_file1, converted_morphology_file2):
+        if (
+            converted_path
+            and pathlib.Path(converted_path).suffix.lower() == ".swc"
+            and pathlib.Path(converted_path).exists()
+        ):
+            return pathlib.Path(converted_path).read_bytes()
+    if file_extension == ".swc":
+        return content
+    return None
+
+
 def _try_mesh_and_register(
     client: entitysdk.client.Client,
     entity_id: str,
@@ -399,7 +417,7 @@ def _try_mesh_and_register(
     except ApiError as err:
         L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
         return None
-    except Exception as err:
+    except BaseException as err:
         L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_id}: {err}")
         return None
 
@@ -456,17 +474,13 @@ async def _run_pipeline(
             converted_morphology_file2,  # ty:ignore[invalid-argument-type]
         )
 
-        swc_bytes_for_mesh: bytes | None = None
-        for converted_path in (converted_morphology_file1, converted_morphology_file2):
-            if (
-                converted_path
-                and pathlib.Path(converted_path).suffix.lower() == ".swc"
-                and pathlib.Path(converted_path).exists()
-            ):
-                swc_bytes_for_mesh = pathlib.Path(converted_path).read_bytes()
-                break
-        if swc_bytes_for_mesh is None and file_extension == ".swc":
-            swc_bytes_for_mesh = content
+        swc_bytes_for_mesh: bytes | None = await run_in_threadpool(
+            _resolve_swc_bytes_for_mesh,
+            converted_morphology_file1,
+            converted_morphology_file2,
+            file_extension,
+            content,
+        )
 
         mesh_asset_id: str | None = None
         if swc_bytes_for_mesh is not None:
